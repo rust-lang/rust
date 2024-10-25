@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
@@ -133,21 +134,31 @@ pub enum CallConv {
     AvrInterrupt = 85,
 }
 
-/// LLVMRustLinkage
-#[derive(Copy, Clone, PartialEq)]
+/// Must match the layout of `LLVMLinkage`.
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 4,
-    WeakODRLinkage = 5,
-    AppendingLinkage = 6,
-    InternalLinkage = 7,
-    PrivateLinkage = 8,
-    ExternalWeakLinkage = 9,
-    CommonLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    LinkOnceODRAutoHideLinkage = 4,
+    WeakAnyLinkage = 5,
+    WeakODRLinkage = 6,
+    AppendingLinkage = 7,
+    InternalLinkage = 8,
+    PrivateLinkage = 9,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLImportLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLExportLinkage = 11,
+    ExternalWeakLinkage = 12,
+    #[deprecated = "marked obsolete by LLVM"]
+    GhostLinkage = 13,
+    CommonLinkage = 14,
+    LinkerPrivateLinkage = 15,
+    LinkerPrivateWeakLinkage = 16,
 }
 
 // LLVMRustVisibility
@@ -970,6 +981,8 @@ unsafe extern "C" {
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
+    pub fn LLVMGetLinkage(Global: &Value) -> RawEnum<Linkage>;
+    pub fn LLVMSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
@@ -1546,8 +1559,6 @@ unsafe extern "C" {
     ) -> bool;
 
     // Operations on global variables, functions, and aliases (globals)
-    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
-    pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
     pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);

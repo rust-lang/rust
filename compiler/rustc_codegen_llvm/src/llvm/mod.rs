@@ -233,12 +233,12 @@ pub fn set_global_constant(llglobal: &Value, is_constant: bool) {
 }
 
 pub fn get_linkage(llglobal: &Value) -> Linkage {
-    unsafe { LLVMRustGetLinkage(llglobal) }
+    unsafe { LLVMGetLinkage(llglobal) }.to_rust()
 }
 
 pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     unsafe {
-        LLVMRustSetLinkage(llglobal, linkage);
+        LLVMSetLinkage(llglobal, linkage);
     }
 }
 
