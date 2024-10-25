@@ -3,19 +3,19 @@ struct Foo;
 impl Foo {
     fn bar(self) {}
 
-    fn foo() {
+    fn foo(&self) {
         self.bar(); //~ ERROR E0424
     }
 
-    fn baz(_: i32) {
+    fn baz(&self,_: i32) {
         self.bar(); //~ ERROR E0424
     }
 
-    fn qux() {
+    fn qux(&self) {
         let _ = || self.bar(); //~ ERROR E0424
     }
 }
 
 fn main () {
-    let self = "self"; //~ ERROR E0424
+    let my_self = "self"; //~ ERROR E0424
 }
