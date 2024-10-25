@@ -30,8 +30,11 @@ pub(crate) fn orphan_check_impl(
         Ok(()) => {}
         Err(err) => match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
             Ok(()) => match err {
-                OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
-                    lint_uncovered_ty_params(tcx, uncovered_ty_params, impl_def_id)
+                OrphanCheckErr::UncoveredTyParams(err) => {
+                    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+                    complain_about_uncovered_ty_params!(tcx, err, |span, diag| {
+                        tcx.emit_node_span_lint(UNCOVERED_PARAM_IN_PROJECTION, hir_id, span, diag)
+                    });
                 }
                 OrphanCheckErr::NonLocalInputType(_) => {
                     bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
@@ -461,62 +464,33 @@ fn emit_orphan_check_error<'tcx>(
 
             diag.emit()
         }
-        traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
-            let mut reported = None;
-            for param_def_id in uncovered {
-                let span = tcx.def_ident_span(param_def_id).unwrap();
-                let name = tcx.item_name(param_def_id);
-
-                reported.get_or_insert(match local_ty {
-                    Some(local_type) => tcx
-                        .dcx()
-                        .create_err(errors::TyParamFirstLocal {
-                            label: span,
-                            note: (),
-                            param: name,
-                            local_type,
-                        })
-                        .with_span(span)
-                        .emit(),
-                    None => tcx
-                        .dcx()
-                        .create_err(errors::TyParamSome { label: span, note: (), param: name })
-                        .with_span(span)
-                        .emit(),
-                });
-            }
-            reported.unwrap() // FIXME(fmease): This is very likely reachable.
+        traits::OrphanCheckErr::UncoveredTyParams(err) => {
+            complain_about_uncovered_ty_params!(tcx, err, |span, diag| tcx
+                .dcx()
+                .create_err(diag)
+                .with_span(span)
+                .emit())
         }
     }
 }
 
-fn lint_uncovered_ty_params<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<TyCtxt<'tcx>, FxIndexSet<DefId>>,
-    impl_def_id: LocalDefId,
-) {
-    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
-
-    for param_def_id in uncovered {
-        let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_name(param_def_id);
-
-        match local_ty {
-            Some(local_type) => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                errors::TyParamFirstLocal { label: span, note: (), param: name, local_type },
-            ),
-            None => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                errors::TyParamSome { label: span, note: (), param: name },
-            ),
-        };
+macro complain_about_uncovered_ty_params($tcx:ident, $err:ident, $emit:expr) {{
+    let mut guar = None;
+    for param_def_id in $err.uncovered {
+        let span = $tcx.def_ident_span(param_def_id).unwrap();
+        let name = $tcx.item_name(param_def_id);
+        guar = Some(match $err.local_ty {
+            Some(local_type) => $emit(span, errors::TyParamFirstLocal {
+                label: span,
+                note: (),
+                param: name,
+                local_type,
+            }),
+            None => $emit(span, errors::TyParamSome { label: span, note: (), param: name }),
+        });
     }
-}
+    guar.unwrap() // FIXME(fmease): This very likely reachable
+}}
 
 struct UncoveredTyParamCollector<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'tcx>,
