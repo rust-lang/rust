@@ -1424,6 +1424,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 //    |                 ^^^^^ expected `Unit3`, found `Unit4`
                 //    |
                 diag.span_label(span, "");
+                if !span.overlaps(obligation.cause.span) {
+                    // Point at the binding corresponding to the closure where it is used.
+                    diag.span_label(obligation.cause.span, "");
+                }
             }
 
             let secondary_span = (|| {
