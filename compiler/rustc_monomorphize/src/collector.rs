@@ -217,6 +217,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -232,7 +233,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
-use rustc_session::config::EntryFnType;
+use rustc_session::config::{CrateType, EntryFnType};
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{DUMMY_SP, Span};
@@ -940,9 +941,24 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return true;
     };
 
+    let def_is_for_mir_only_rlib = if def_id.krate == rustc_hir::def_id::LOCAL_CRATE {
+        tcx.building_mir_only_rlib()
+    } else {
+        tcx.mir_only_crates(()).iter().any(|c| *c == def_id.krate)
+    };
+
     if tcx.is_foreign_item(def_id) {
-        // Foreign items are always linked against, there's no way of instantiating them.
-        return false;
+        if def_is_for_mir_only_rlib {
+            return tcx.is_mir_available(instance.def_id());
+        } else {
+            // Foreign items are always linked against, there's no way of instantiating them.
+            return false;
+        }
+    }
+
+    if def_is_for_mir_only_rlib {
+        let has_mir = tcx.is_mir_available(instance.def_id());
+        return has_mir || matches!(tcx.def_kind(instance.def_id()), DefKind::Static { .. });
     }
 
     if def_id.is_local() {
@@ -950,15 +966,17 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return true;
     }
 
+    if !def_is_for_mir_only_rlib {
+        if let DefKind::Static { .. } = tcx.def_kind(def_id) {
+            // We cannot monomorphize statics from upstream crates.
+            return false;
+        }
+    }
+
     if tcx.is_reachable_non_generic(def_id)
         || instance.polymorphize(*tcx).upstream_monomorphization(*tcx).is_some()
     {
         // We can link to the item in question, no instance needed in this crate.
-        return false;
-    }
-
-    if let DefKind::Static { .. } = tcx.def_kind(def_id) {
-        // We cannot monomorphize statics from upstream crates.
         return false;
     }
 
@@ -1351,6 +1369,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
 
         collector.push_extra_entry_roots();
+        collector.push_extra_roots_from_mir_only_rlibs();
     }
 
     // We can only codegen items that are instantiable - items all of
@@ -1494,6 +1513,50 @@ impl<'v> RootCollector<'_, 'v> {
         );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
+    }
+
+    fn push_extra_roots_from_mir_only_rlibs(&mut self) {
+        // An upstream extern function may be used anywhere in the dependency tree, so we
+        // cannot do any reachability analysis on them. We blindly monomorphize every
+        // extern function declared anywhere in our dependency tree. We must give them
+        // GloballyShared codegen because we don't know if the only call to an upstream
+        // extern function is also upstream: We don't have reachability information. All we
+        // can do is codegen all extern functions and pray for the linker to delete the
+        // ones that are reachable.
+        if !self.tcx.crate_types().iter().any(|c| !matches!(c, CrateType::Rlib)) {
+            return;
+        }
+
+        for (symbol, _info) in self
+            .tcx
+            .mir_only_crates(())
+            .into_iter()
+            .flat_map(|krate| self.tcx.exported_symbols(*krate))
+        {
+            let def_id = match symbol {
+                ExportedSymbol::NonGeneric(def_id) => def_id,
+                ExportedSymbol::ThreadLocalShim(def_id) => {
+                    let item = MonoItem::Fn(Instance {
+                        def: InstanceKind::ThreadLocalShim(*def_id),
+                        args: GenericArgs::empty(),
+                    });
+                    self.output.push(dummy_spanned(item));
+                    continue;
+                }
+                _ => continue,
+            };
+            match self.tcx.def_kind(def_id) {
+                DefKind::Fn | DefKind::AssocFn => {
+                    let instance = Instance::mono(self.tcx, *def_id);
+                    let item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
+                    self.output.push(item);
+                }
+                DefKind::Static { .. } => {
+                    self.output.push(dummy_spanned(MonoItem::Static(*def_id)));
+                }
+                _ => {}
+            }
+        }
     }
 }
 
