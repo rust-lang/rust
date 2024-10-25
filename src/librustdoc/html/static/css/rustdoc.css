@@ -2210,6 +2210,29 @@ details.toggle[open] > summary::after {
 	content: "Collapse";
 }
 
+details.toggle:not([open]) > summary .docblock {
+	max-height: calc(1.5em + 0.75em);
+	overflow-y: hidden;
+}
+details.toggle:not([open]) > summary .docblock::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	pointer-events: none;
+	background: linear-gradient(
+		to top,
+		var(--scrape-example-code-wrapper-background-start),
+		var(--scrape-example-code-wrapper-background-end)
+	);
+	height: 0.7em;
+	z-index: 1;
+}
+details.toggle > summary .docblock {
+	margin-top: 0.75em;
+}
+
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
 .docblock summary > * {
 	display: inline-block;
