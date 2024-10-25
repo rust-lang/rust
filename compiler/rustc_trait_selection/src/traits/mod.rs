@@ -6,6 +6,7 @@ pub mod auto_trait;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod dyn_compatibility;
+pub mod effects;
 mod engine;
 mod fulfill;
 pub mod misc;

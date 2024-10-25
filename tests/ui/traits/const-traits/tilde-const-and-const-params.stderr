@@ -11,21 +11,29 @@ LL |     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
    |        ^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-and-const-params.rs:26:11
+  --> $DIR/tilde-const-and-const-params.rs:27:11
    |
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
    |           ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
-  --> $DIR/tilde-const-and-const-params.rs:26:4
+  --> $DIR/tilde-const-and-const-params.rs:27:4
    |
 LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
    |    ^^^
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
+error[E0277]: the trait bound `A: const Add42` is not satisfied
+  --> $DIR/tilde-const-and-const-params.rs:27:61
    |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
+LL | fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
+   |                                                             ^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0277]: the trait bound `A: const Add42` is not satisfied
+  --> $DIR/tilde-const-and-const-params.rs:9:44
+   |
+LL |     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
+   |                                            ^^^^^^^^^
 
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

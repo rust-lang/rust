@@ -63,11 +63,6 @@ LL | #![feature(const_trait_impl, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0379`.

@@ -17,11 +17,6 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
   --> $DIR/const_drop_is_valid.rs:6:12
    |
@@ -39,7 +34,7 @@ LL | impl const Drop for A {}
    |
    = help: implement the missing item: `fn drop(&mut self) { todo!() }`
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0046, E0658.
 For more information about an error, try `rustc --explain E0046`.
