@@ -21,7 +21,7 @@ standard library, and documentation.
 
 ## Why Rust?
 
-- **Performance:** Fast and memory-efficient, suitable for critical services, embedded devices, and easily integrate with other languages.
+- **Performance:** Rust is blazingly fast and memory-efficient: with no runtime or garbage collector, it can power performance-critical services, run on embedded devices, and easily integrate with other languages. 
 
 - **Reliability:** Our rich type system and ownership model ensure memory and thread safety, reducing bugs at compile-time.
 
@@ -41,7 +41,7 @@ Read ["Installation"] from [The Book].
 
 ## Installing from Source
 
-If you really want to install from source (though this is not recommended), see
+If you want to install from source (though this is not recommended), see
 [INSTALL.md](INSTALL.md).
 
 ## Getting Help
