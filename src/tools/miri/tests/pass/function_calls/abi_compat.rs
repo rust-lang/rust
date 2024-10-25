@@ -1,3 +1,5 @@
+#![feature(never_type)]
+
 use std::rc::Rc;
 use std::{mem, num, ptr};
 
@@ -10,6 +12,18 @@ struct Wrapper<T>(T);
 
 fn id<T>(x: T) -> T {
     x
+}
+
+#[derive(Copy, Clone)]
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+#[derive(Copy, Clone)]
+enum Either2<T, U> {
+    Left(T),
+    #[allow(unused)]
+    Right(U, ()),
 }
 
 fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
@@ -81,6 +95,8 @@ fn main() {
     test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
     // - 1-ZST
     test_abi_compat((), [0u8; 0]);
+
+    // Guaranteed null-pointer-layout optimizations:
     // - Guaranteed Option<X> null-pointer-optimizations (RFC 3391).
     test_abi_compat(&0u32 as *const u32, Some(&0u32));
     test_abi_compat(main as fn(), Some(main as fn()));
@@ -89,6 +105,7 @@ fn main() {
     test_abi_compat(0u32, Some(Wrapper(num::NonZeroU32::new(1u32).unwrap())));
     // - Guaranteed Result<X, ZST1> does the same as Option<X> (RFC 3391)
     test_abi_compat(&0u32 as *const u32, Result::<_, ()>::Ok(&0u32));
+    test_abi_compat(&0u32 as *const u32, Result::<_, !>::Ok(&0u32));
     test_abi_compat(main as fn(), Result::<_, ()>::Ok(main as fn()));
     test_abi_compat(0u32, Result::<_, ()>::Ok(num::NonZeroU32::new(1).unwrap()));
     test_abi_compat(&0u32 as *const u32, Result::<_, ()>::Ok(Wrapper(&0u32)));
@@ -99,6 +116,13 @@ fn main() {
     test_abi_compat(0u32, Result::<(), _>::Err(num::NonZeroU32::new(1).unwrap()));
     test_abi_compat(&0u32 as *const u32, Result::<(), _>::Err(Wrapper(&0u32)));
     test_abi_compat(0u32, Result::<(), _>::Err(Wrapper(num::NonZeroU32::new(1).unwrap())));
+    // - Guaranteed null-pointer-optimizations for custom option-like types
+    test_abi_compat(&0u32 as *const u32, Either::<_, ()>::Left(&0u32));
+    test_abi_compat(&0u32 as *const u32, Either::<_, !>::Left(&0u32));
+    test_abi_compat(&0u32 as *const u32, Either::<(), _>::Right(&0u32));
+    test_abi_compat(&0u32 as *const u32, Either::<!, _>::Right(&0u32));
+    test_abi_compat(&0u32 as *const u32, Either2::<_, ()>::Left(&0u32));
+    test_abi_compat(&0u32 as *const u32, Either2::<_, [u8; 0]>::Left(&0u32));
 
     // These must work for *any* type, since we guarantee that `repr(transparent)` is ABI-compatible
     // with the wrapped field.
