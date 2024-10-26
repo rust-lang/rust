@@ -65,10 +65,6 @@ help: consider further restricting this bound
    |
 LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
    |                                      +++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/const-closures.rs:24:11
@@ -81,10 +77,6 @@ help: consider further restricting this bound
    |
 LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
    |                                      +++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/const-closures.rs:12:5
@@ -97,10 +89,6 @@ help: consider further restricting this bound
    |
 LL |         F: ~const FnOnce() -> u8 + ~const Fn(),
    |                                  +++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error: aborting due to 11 previous errors
 

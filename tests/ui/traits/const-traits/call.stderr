@@ -1,8 +1,8 @@
 error[E0015]: cannot call non-const closure in constants
-  --> $DIR/issue-93647.rs:2:5
+  --> $DIR/call.rs:7:13
    |
-LL |     (||1usize)()
-   |     ^^^^^^^^^^^^
+LL |     assert!((const || true)());
+   |             ^^^^^^^^^^^^^^^^^
    |
    = note: closures need an RFC before allowed to be called in constants
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants

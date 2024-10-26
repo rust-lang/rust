@@ -616,14 +616,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 let mut is_trait = false;
                 // Attempting to call a trait method?
-                if tcx.trait_of_item(callee).is_some() {
+                if let Some(trait_did) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
+
+                    let trait_is_const = tcx.is_const_trait(trait_did);
                     // trait method calls are only permitted when `effects` is enabled.
-                    // we don't error, since that is handled by typeck. We try to resolve
-                    // the trait into the concrete method, and uses that for const stability
-                    // checks.
+                    // typeck ensures the conditions for calling a const trait method are met,
+                    // so we only error if the trait isn't const. We try to resolve the trait
+                    // into the concrete method, and uses that for const stability checks.
                     // FIXME(effects) we might consider moving const stability checks to typeck as well.
-                    if tcx.features().effects() {
+                    if tcx.features().effects() && trait_is_const {
                         // This skips the check below that ensures we only call `const fn`.
                         is_trait = true;
 
@@ -638,17 +640,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             callee = def;
                         }
                     } else {
+                        // if the trait is const but the user has not enabled the feature(s),
+                        // suggest them.
+                        let feature = if trait_is_const {
+                            Some(if tcx.features().const_trait_impl() {
+                                sym::effects
+                            } else {
+                                sym::const_trait_impl
+                            })
+                        } else {
+                            None
+                        };
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
                             args: fn_args,
                             span: *fn_span,
                             call_source,
-                            feature: Some(if tcx.features().const_trait_impl() {
-                                sym::effects
-                            } else {
-                                sym::const_trait_impl
-                            }),
+                            feature,
                         });
                         // If we allowed this, we're in miri-unleashed mode, so we might
                         // as well skip the remaining checks.
