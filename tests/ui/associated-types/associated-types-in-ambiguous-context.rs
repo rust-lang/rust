@@ -21,6 +21,7 @@ trait Bar {}
 
 trait Foo where Foo::Assoc: Bar {
 //~^ ERROR ambiguous associated type
+//~| ERROR ambiguous associated type
     type Assoc;
 }
 

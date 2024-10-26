@@ -19,6 +19,23 @@ error[E0277]: the trait bound `bool: Bar` is not satisfied
   --> $DIR/point-at-type-on-obligation-failure-2.rs:19:18
    |
 LL |     type Assoc = bool;
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`, which is required by `(): Baz`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:1:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required for `()` to implement `Baz`
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:11:7
+   |
+LL | trait Baz
+   |       ^^^
+
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:19:18
+   |
+LL |     type Assoc = bool;
    |                  ^^^^ the trait `Bar` is not implemented for `bool`
    |
 help: this trait has no implementations, consider adding one
@@ -36,7 +53,24 @@ LL |     type Assoc;
    |          ----- required by a bound in this associated type
 
 error[E0277]: the trait bound `bool: Bar` is not satisfied
-  --> $DIR/point-at-type-on-obligation-failure-2.rs:30:18
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:32:18
+   |
+LL |     type Assoc = bool;
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`, which is required by `(): Bat`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:1:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required for `()` to implement `Bat`
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:24:7
+   |
+LL | trait Bat
+   |       ^^^
+
+error[E0277]: the trait bound `bool: Bar` is not satisfied
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:32:18
    |
 LL |     type Assoc = bool;
    |                  ^^^^ the trait `Bar` is not implemented for `bool`
@@ -47,7 +81,7 @@ help: this trait has no implementations, consider adding one
 LL | trait Bar {}
    | ^^^^^^^^^
 note: required by a bound in `Bat::Assoc`
-  --> $DIR/point-at-type-on-obligation-failure-2.rs:24:27
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:26:27
    |
 LL |     <Self as Bat>::Assoc: Bar,
    |                           ^^^ required by this bound in `Bat::Assoc`
@@ -55,6 +89,6 @@ LL | {
 LL |     type Assoc;
    |          ----- required by a bound in this associated type
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

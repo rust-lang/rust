@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
@@ -617,8 +618,12 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let mut bounds = Bounds::default();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
-    let where_bounds_that_match =
-        icx.probe_ty_param_bounds_in_generics(generics, item.owner_id.def_id, filter);
+    let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
+        generics,
+        item.owner_id.def_id,
+        Some(trait_def_id.to_def_id()),
+        filter,
+    );
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
@@ -836,6 +841,7 @@ pub(super) fn type_param_predicates<'tcx>(
     let extra_predicates = extend.into_iter().chain(icx.probe_ty_param_bounds_in_generics(
         hir_generics,
         def_id,
+        None,
         PredicateFilter::SelfTraitThatDefines(assoc_name),
     ));
 
@@ -855,8 +861,10 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         hir_generics: &'tcx hir::Generics<'tcx>,
         param_def_id: LocalDefId,
+        trait_def_id: Option<DefId>,
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
+        let tcx = self.tcx;
         let mut bounds = Bounds::default();
 
         for predicate in hir_generics.predicates {
@@ -864,23 +872,56 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
+            let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
+            let bound_ty;
             match filter {
                 _ if predicate.is_param_bound(param_def_id.to_def_id()) => {
                     // Ok
+                    bound_ty =
+                        self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
                 }
                 PredicateFilter::All => {
                     // Ok
+                    bound_ty =
+                        self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
+                }
+                PredicateFilter::SelfAndAssociatedTypeBounds => {
+                    if let Some(trait_def_id) = trait_def_id {
+                        bound_ty = self
+                            .lowerer()
+                            .lower_ty_maybe_return_type_notation(predicate.bounded_ty);
+                        let ty::Alias(ty::Projection, projection_ty) = bound_ty.kind() else {
+                            continue;
+                        };
+                        if projection_ty.self_ty() != tcx.types.self_param {
+                            continue;
+                        }
+                        let anonymized_target = tcx.anonymize_bound_vars(
+                            ty::Binder::bind_with_vars(projection_ty.trait_ref(tcx), bound_vars),
+                        );
+                        let mut found = false;
+                        for supertrait in elaborate::supertraits(
+                            tcx,
+                            ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id)),
+                        ) {
+                            if tcx.anonymize_bound_vars(supertrait) == anonymized_target {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if !found {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
                 }
                 PredicateFilter::SelfOnly
                 | PredicateFilter::SelfTraitThatDefines(_)
-                | PredicateFilter::SelfConstIfConst
-                | PredicateFilter::SelfAndAssociatedTypeBounds => continue,
+                | PredicateFilter::SelfConstIfConst => continue,
                 PredicateFilter::ConstIfConst => unreachable!(),
             }
 
-            let bound_ty = self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
-
-            let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
             self.lowerer().lower_bounds(
                 bound_ty,
                 predicate.bounds,

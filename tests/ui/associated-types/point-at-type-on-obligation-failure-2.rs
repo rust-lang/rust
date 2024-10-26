@@ -16,7 +16,9 @@ where
 }
 
 impl Baz for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    type Assoc = bool;
+    //~^ ERROR the trait bound `bool: Bar` is not satisfied
+    //~| ERROR the trait bound `bool: Bar` is not satisfied
 }
 
 trait Bat
@@ -27,7 +29,9 @@ where
 }
 
 impl Bat for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    type Assoc = bool;
+    //~^ ERROR the trait bound `bool: Bar` is not satisfied
+    //~| ERROR the trait bound `bool: Bar` is not satisfied
 }
 
 fn main() {}
