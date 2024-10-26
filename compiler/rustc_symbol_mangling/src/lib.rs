@@ -135,7 +135,7 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
         // to differentiate between local copies.
-        if is_generic(instance, tcx) {
+        if is_generic(instance) {
             // For generics we might find re-usable upstream instances. If there
             // is one, we rely on the symbol being instantiated locally.
             instance.upstream_monomorphization(tcx).unwrap_or(LOCAL_CRATE)
@@ -241,7 +241,7 @@ fn compute_symbol_name<'tcx>(
     // the ID of the instantiating crate. This avoids symbol conflicts
     // in case the same instances is emitted in two crates of the same
     // project.
-    let avoid_cross_crate_conflicts = is_generic(instance, tcx) || is_globally_shared_function;
+    let avoid_cross_crate_conflicts = is_generic(instance) || is_globally_shared_function;
 
     let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 
@@ -276,6 +276,6 @@ fn compute_symbol_name<'tcx>(
     symbol
 }
 
-fn is_generic<'tcx>(instance: Instance<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-    instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some()
+fn is_generic<'tcx>(instance: Instance<'tcx>) -> bool {
+    instance.args.non_erasable_generics().next().is_some()
 }

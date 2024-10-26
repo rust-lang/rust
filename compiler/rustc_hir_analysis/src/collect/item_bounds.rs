@@ -67,7 +67,7 @@ fn associated_type_bounds<'tcx>(
             )
         });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -339,7 +339,7 @@ fn opaque_type_bounds<'tcx>(
         }
         debug!(?bounds);
 
-        tcx.arena.alloc_from_iter(bounds.clauses(tcx))
+        tcx.arena.alloc_from_iter(bounds.clauses())
     })
 }
 

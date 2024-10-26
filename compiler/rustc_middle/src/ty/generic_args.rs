@@ -501,9 +501,6 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     pub fn non_erasable_generics(
         &'tcx self,
-        // FIXME(effects): Remove these
-        _tcx: TyCtxt<'tcx>,
-        _def_id: DefId,
     ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
         self.iter().filter_map(|k| match k.unpack() {
             ty::GenericArgKind::Lifetime(_) => None,

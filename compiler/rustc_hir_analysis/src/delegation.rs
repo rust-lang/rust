@@ -278,8 +278,6 @@ impl<'tcx> PredicatesBuilder<'tcx> {
         ty::GenericPredicates {
             parent: self.parent,
             predicates: self.tcx.arena.alloc_from_iter(preds),
-            // FIXME(fn_delegation): Support effects.
-            effects_min_tys: ty::List::empty(),
         }
     }
 }
