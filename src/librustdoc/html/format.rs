@@ -16,6 +16,7 @@ use itertools::Itertools;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::creader::{CStore, LoadedMacro};
@@ -25,7 +26,6 @@ use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::abi::Abi;
 use tracing::{debug, trace};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
 use crate::clean::types::ExternalLocation;
@@ -554,10 +554,8 @@ fn generate_macro_def_id_path(
     // Check to see if it is a macro 2.0 or built-in macro.
     // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
     let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx) {
-        LoadedMacro::MacroDef(def, _) => {
-            // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
-            matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
-        }
+        // If `def.macro_rules` is `true`, then it's not a macro 2.0.
+        LoadedMacro::MacroDef { def, .. } => !def.macro_rules,
         _ => false,
     };
 
