@@ -76,7 +76,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
             llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);
-            llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
+            llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
             // This should make sure that the whole section is not larger than
             // the string it contains. Otherwise we get a warning from GDB.
             llvm::LLVMSetAlignment(section_var, 1);

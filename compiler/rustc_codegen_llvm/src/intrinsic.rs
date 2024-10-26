@@ -785,13 +785,12 @@ fn codegen_msvc_try<'ll>(
         let type_info =
             bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
         let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
-        unsafe {
-            llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
-            if bx.cx.tcx.sess.target.supports_comdat() {
-                llvm::SetUniqueComdat(bx.llmod, tydesc);
-            }
-            llvm::LLVMSetInitializer(tydesc, type_info);
+
+        llvm::set_linkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
+        if bx.cx.tcx.sess.target.supports_comdat() {
+            llvm::SetUniqueComdat(bx.llmod, tydesc);
         }
+        unsafe { llvm::LLVMSetInitializer(tydesc, type_info) };
 
         // The flag value of 8 indicates that we are catching the exception by
         // reference instead of by value. We can't use catch by value because
@@ -1064,7 +1063,7 @@ fn gen_fn<'ll, 'tcx>(
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
     // FIXME(eddyb) find a nicer way to do this.
-    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
+    llvm::set_linkage(llfn, llvm::Linkage::InternalLinkage);
     let llbb = Builder::append_block(cx, llfn, "entry-block");
     let bx = Builder::build(cx, llbb);
     codegen(bx);

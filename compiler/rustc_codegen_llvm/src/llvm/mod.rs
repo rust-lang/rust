@@ -232,15 +232,23 @@ pub fn set_global_constant(llglobal: &Value, is_constant: bool) {
     }
 }
 
+pub fn get_linkage(llglobal: &Value) -> Linkage {
+    unsafe { LLVMGetLinkage(llglobal) }.to_rust()
+}
+
 pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     unsafe {
-        LLVMRustSetLinkage(llglobal, linkage);
+        LLVMSetLinkage(llglobal, linkage);
     }
+}
+
+pub fn get_visibility(llglobal: &Value) -> Visibility {
+    unsafe { LLVMGetVisibility(llglobal) }.to_rust()
 }
 
 pub fn set_visibility(llglobal: &Value, visibility: Visibility) {
     unsafe {
-        LLVMRustSetVisibility(llglobal, visibility);
+        LLVMSetVisibility(llglobal, visibility);
     }
 }
 
