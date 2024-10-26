@@ -5,7 +5,10 @@ edition = "2021"
 publish = false
 
 [features]
-default = []
+default = ["unstable-float"]
+
+# Propagated from libm because this affects which functions we test.
+unstable-float = ["libm/unstable-float"]
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.
@@ -44,3 +47,9 @@ criterion = { version = "0.5.1", default-features = false, features = ["cargo_be
 [[bench]]
 name = "random"
 harness = false
+
+[lints.rust]
+# Values from the chared config.rs used by `libm` but not the test crate
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(feature, values("arch", "force-soft-floats", "unstable-intrinsics"))',
+] }

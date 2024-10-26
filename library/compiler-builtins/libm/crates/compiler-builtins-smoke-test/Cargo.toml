@@ -21,5 +21,7 @@ force-soft-floats = []
 unexpected_cfgs = { level = "warn", check-cfg = [
   "cfg(arch_enabled)",
   "cfg(assert_no_panic)",
+  "cfg(f128_enabled)",
+  "cfg(f16_enabled)",
   "cfg(intrinsics_enabled)",
 ] }
