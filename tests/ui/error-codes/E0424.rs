@@ -17,5 +17,5 @@ impl Foo {
 }
 
 fn main () {
-    let self = "self"; //~ ERROR E0424
+    let my_self = "self"; //~ ERROR E0424
 }
