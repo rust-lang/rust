@@ -87,6 +87,7 @@ mod support;
 mod arch;
 mod expo2;
 mod fenv;
+mod generic;
 mod k_cos;
 mod k_cosf;
 mod k_expo2;

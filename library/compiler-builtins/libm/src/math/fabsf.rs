@@ -9,7 +9,7 @@ pub fn fabsf(x: f32) -> f32 {
         args: x,
     }
 
-    f32::from_bits(x.to_bits() & 0x7fffffff)
+    super::generic::abs(x)
 }
 
 // PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
