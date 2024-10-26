@@ -205,7 +205,6 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-mod abi_check;
 mod move_check;
 
 use std::path::PathBuf;
@@ -767,7 +766,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
-                abi_check::check_call_site_abi(tcx, callee_ty, *fn_span, self.body.source.instance);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
@@ -1209,9 +1207,6 @@ fn collect_items_of_instance<'tcx>(
     mentioned_items: &mut MonoItems<'tcx>,
     mode: CollectionMode,
 ) {
-    // Check the instance for feature-dependent ABI.
-    abi_check::check_instance_abi(tcx, instance);
-
     let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
