@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
+publish = false
 
 [dependencies]
 libm = { path = "../..", default-features = false }
