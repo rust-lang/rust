@@ -231,6 +231,8 @@ impl FileDescription for FileHandle {
                 TRUE => Ok(()),
                 FALSE => {
                     let mut err = io::Error::last_os_error();
+                    // This only runs on Windows hosts so we can use `raw_os_error`.
+                    // We have to be careful not to forward that error code to target code.
                     let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
                     if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
                         if lock_nb {
@@ -339,15 +341,10 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
                 }
             }
-            Err(e) =>
-                match e.raw_os_error() {
-                    Some(error) => interp_ok(error),
-                    None =>
-                        throw_unsup_format!(
-                            "the error {} couldn't be converted to a return value",
-                            e
-                        ),
-                },
+            Err(_) => {
+                // Fallback on error
+                interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
+            }
         }
     }
 }
@@ -1132,14 +1129,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir_r`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            // Return error code, do *not* set `errno`.
+            return interp_ok(this.eval_libc("EBADF"));
         }
 
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
         })?;
-        interp_ok(Scalar::from_i32(match open_dir.read_dir.next() {
+        interp_ok(match open_dir.read_dir.next() {
             Some(Ok(dir_entry)) => {
                 // Write into entry, write pointer to result, return 0 on success.
                 // The name is written with write_os_str_to_c_str, while the rest of the
@@ -1217,25 +1214,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result_place = this.deref_pointer(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
-                0
+                Scalar::from_i32(0)
             }
             None => {
                 // end of stream: return 0, assign *result=NULL
                 this.write_null(&this.deref_pointer(result_op)?)?;
-                0
+                Scalar::from_i32(0)
             }
-            Some(Err(e)) =>
-                match e.raw_os_error() {
-                    // return positive error number on error
-                    Some(error) => error,
-                    None => {
-                        throw_unsup_format!(
-                            "the error {} couldn't be converted to a return value",
-                            e
-                        )
-                    }
-                },
-        }))
+            Some(Err(e)) => {
+                // return positive error number on error (do *not* set last error)
+                this.io_error_to_errnum(e)?
+            }
+        })
     }
 
     fn closedir(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
