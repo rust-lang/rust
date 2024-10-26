@@ -139,7 +139,7 @@ jobs:
           git push -u origin $BRANCH
       - name: Create Pull Request
         run: |
-          PR=$(gh pr create -B master --title 'Automatic Rustup' --body '')
+          PR=$(gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.')
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
             --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
             --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."
