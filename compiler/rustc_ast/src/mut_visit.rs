@@ -148,7 +148,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_arm(self, arm)
     }
 
-    fn visit_pat(&mut self, p: &mut P<Pat>) {
+    fn visit_pat(&mut self, p: &mut Pat) {
         walk_pat(self, p);
     }
 
@@ -1333,8 +1333,8 @@ impl WalkItemKind for ForeignItemKind {
     }
 }
 
-pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
-    let Pat { id, kind, span, tokens } = pat.deref_mut();
+pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut Pat) {
+    let Pat { id, kind, span, tokens } = pat;
     vis.visit_id(id);
     match kind {
         PatKind::Err(_guar) => {}
