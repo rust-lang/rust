@@ -613,12 +613,8 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let mut bounds = Bounds::default();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
-    let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
-        generics,
-        item.owner_id.def_id,
-        self_param_ty,
-        filter,
-    );
+    let where_bounds_that_match =
+        icx.probe_ty_param_bounds_in_generics(generics, item.owner_id.def_id, filter);
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
@@ -765,7 +761,6 @@ pub(super) fn type_param_predicates<'tcx>(
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
     use rustc_hir::*;
-    use rustc_middle::ty::Ty;
 
     // In the HIR, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
@@ -775,7 +770,6 @@ pub(super) fn type_param_predicates<'tcx>(
     let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-    let ty = Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner {
@@ -812,7 +806,6 @@ pub(super) fn type_param_predicates<'tcx>(
         icx.probe_ty_param_bounds_in_generics(
             hir_generics,
             def_id,
-            ty,
             PredicateFilter::SelfThatDefines(assoc_name),
         )
         .into_iter()
@@ -838,7 +831,6 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         hir_generics: &'tcx hir::Generics<'tcx>,
         param_def_id: LocalDefId,
-        ty: Ty<'tcx>,
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Bounds::default();
@@ -848,13 +840,21 @@ impl<'tcx> ItemCtxt<'tcx> {
                 continue;
             };
 
-            let bound_ty = if predicate.is_param_bound(param_def_id.to_def_id()) {
-                ty
-            } else if matches!(filter, PredicateFilter::All) {
-                self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty)
-            } else {
-                continue;
-            };
+            match filter {
+                _ if predicate.is_param_bound(param_def_id.to_def_id()) => {
+                    // Ok
+                }
+                PredicateFilter::All => {
+                    // Ok
+                }
+                PredicateFilter::SelfOnly
+                | PredicateFilter::SelfThatDefines(_)
+                | PredicateFilter::SelfConstIfConst
+                | PredicateFilter::SelfAndAssociatedTypeBounds => continue,
+                PredicateFilter::ConstIfConst => unreachable!(),
+            }
+
+            let bound_ty = self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
 
             let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
             self.lowerer().lower_bounds(
