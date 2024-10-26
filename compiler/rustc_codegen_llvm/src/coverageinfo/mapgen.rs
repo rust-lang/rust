@@ -349,6 +349,7 @@ fn generate_covmap_record<'ll>(
     llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::set_section(llglobal, &covmap_section_name);
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    // <https://llvm.org/docs/CoverageMappingFormat.html>
     llvm::set_alignment(llglobal, Align::EIGHT);
     cx.add_used_global(llglobal);
 }
@@ -400,6 +401,7 @@ fn generate_covfun_record(
     llvm::set_visibility(llglobal, llvm::Visibility::Hidden);
     llvm::set_section(llglobal, cx.covfun_section_name());
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
+    // <https://llvm.org/docs/CoverageMappingFormat.html>
     llvm::set_alignment(llglobal, Align::EIGHT);
     if cx.target_spec().supports_comdat() {
         llvm::set_comdat(cx.llmod, llglobal, &func_record_var_name);
