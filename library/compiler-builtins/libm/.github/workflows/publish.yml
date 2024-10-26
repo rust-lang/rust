@@ -20,8 +20,6 @@ jobs:
           fetch-depth: 0
       - name: Install Rust (rustup)
         run: rustup update nightly --no-self-update && rustup default nightly
-      - name: Publish `libm` as part of builtins, rather than its own crate
-        run: rm libm/Cargo.toml
       - name: Run release-plz
         uses: MarcoIeni/release-plz-action@v0.5
         env:
