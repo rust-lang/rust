@@ -98,8 +98,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            let is_generic =
-                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some();
+            let is_generic = instance.args.non_erasable_generics().next().is_some();
 
             let is_hidden = if is_generic {
                 // This is a monomorphization of a generic function.

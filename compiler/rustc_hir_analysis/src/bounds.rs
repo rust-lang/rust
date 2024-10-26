@@ -1,7 +1,6 @@
 //! Bounds are restrictions applied to some types after they've been lowered from the HIR to the
 //! [`rustc_middle::ty`] form.
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
@@ -25,7 +24,6 @@ use rustc_span::Span;
 #[derive(Default, PartialEq, Eq, Clone, Debug)]
 pub(crate) struct Bounds<'tcx> {
     clauses: Vec<(ty::Clause<'tcx>, Span)>,
-    effects_min_tys: FxIndexMap<Ty<'tcx>, Span>,
 }
 
 impl<'tcx> Bounds<'tcx> {
@@ -96,15 +94,7 @@ impl<'tcx> Bounds<'tcx> {
         }
     }
 
-    pub(crate) fn clauses(
-        &self,
-        // FIXME(effects): remove tcx
-        _tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {
+    pub(crate) fn clauses(&self) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {
         self.clauses.iter().cloned()
-    }
-
-    pub(crate) fn effects_min_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
-        self.effects_min_tys.keys().copied()
     }
 }

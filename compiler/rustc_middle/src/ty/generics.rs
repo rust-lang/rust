@@ -360,7 +360,6 @@ impl<'tcx> Generics {
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Clause<'tcx>, Span)],
-    pub effects_min_tys: &'tcx ty::List<Ty<'tcx>>,
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
