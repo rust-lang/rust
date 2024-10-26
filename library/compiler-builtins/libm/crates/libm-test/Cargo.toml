@@ -9,7 +9,7 @@ default = []
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.
-musl-bitwise-tests = ["rand"]
+test-musl-serialized = ["rand"]
 
 [dependencies]
 libm = { path = "../.." }
