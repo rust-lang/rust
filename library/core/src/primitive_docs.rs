@@ -1612,6 +1612,9 @@ mod prim_ref {}
 /// pointers, make your type [`Option<fn()>`](core::option#options-and-pointers-nullable-pointers)
 /// with your required signature.
 ///
+/// Note that FFI requires additional care to ensure that the ABI for both sides of the call match.
+/// The exact requirements are not currently documented.
+///
 /// ### Safety
 ///
 /// Plain function pointers are obtained by casting either plain functions, or closures that don't
@@ -1750,8 +1753,13 @@ mod prim_ref {}
 /// is also used rarely. So, most likely you do not have to worry about ABI compatibility.
 ///
 /// But assuming such circumstances, what are the rules? For this section, we are only considering
-/// the ABI of direct Rust-to-Rust calls, not linking in general -- once functions are imported via
-/// `extern` blocks, there are more things to consider that we do not go into here.
+/// the ABI of direct Rust-to-Rust calls (with both definition and callsite visible to the
+/// Rust compiler), not linking in general -- once functions are imported via `extern` blocks, there
+/// are more things to consider that we do not go into here. Note that this also applies to
+/// passing/calling functions across language boundaries via function pointers.
+///
+/// **Nothing in this section should be taken as a guarantee for non-Rust-to-Rust calls, even with
+/// types from `core::ffi` or `libc`**.
 ///
 /// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
 /// must take the same number of arguments, the individual argument types and the return types must
