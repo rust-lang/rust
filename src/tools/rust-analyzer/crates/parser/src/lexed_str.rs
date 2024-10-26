@@ -39,7 +39,9 @@ impl<'a> LexedStr<'a> {
             conv.offset = shebang_len;
         };
 
-        for token in rustc_lexer::tokenize(&text[conv.offset..]) {
+        // Re-create the tokenizer from scratch every token because `GuardedStrPrefix` is one token in the lexer
+        // but we want to split it to two in edition <2024.
+        while let Some(token) = rustc_lexer::tokenize(&text[conv.offset..]).next() {
             let token_text = &text[conv.offset..][..token.len as usize];
 
             conv.extend_token(&token.kind, token_text);
@@ -158,7 +160,7 @@ impl<'a> Converter<'a> {
         }
     }
 
-    fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, token_text: &str) {
+    fn extend_token(&mut self, kind: &rustc_lexer::TokenKind, mut token_text: &str) {
         // A note on an intended tradeoff:
         // We drop some useful information here (see patterns with double dots `..`)
         // Storing that info in `SyntaxKind` is not possible due to its layout requirements of
@@ -189,10 +191,15 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::RawIdent => IDENT,
 
                 rustc_lexer::TokenKind::GuardedStrPrefix if self.edition.at_least_2024() => {
+                    // FIXME: rustc does something better for recovery.
                     err = "Invalid string literal (reserved syntax)";
                     ERROR
                 }
-                rustc_lexer::TokenKind::GuardedStrPrefix => POUND,
+                rustc_lexer::TokenKind::GuardedStrPrefix => {
+                    // The token is `#"` or `##`, split it into two.
+                    token_text = &token_text[1..];
+                    POUND
+                }
 
                 rustc_lexer::TokenKind::Literal { kind, .. } => {
                     self.extend_literal(token_text.len(), kind);
