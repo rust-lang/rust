@@ -3,6 +3,7 @@
 
 #![allow(clippy::never_loop)]
 #![warn(clippy::infinite_loop)]
+#![feature(async_closure)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};
@@ -425,6 +426,25 @@ fn continue_outer() {
     loop {
         //~^ ERROR: infinite loop detected
         continue;
+    }
+}
+
+// don't suggest adding `-> !` to async fn/closure that already returning `-> !`
+mod issue_12338 {
+    use super::do_something;
+
+    async fn foo() -> ! {
+        loop {
+            do_something();
+        }
+    }
+
+    fn bar() {
+        let _ = async || -> ! {
+            loop {
+                do_something();
+            }
+        };
     }
 }
 
