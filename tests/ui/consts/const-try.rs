@@ -34,6 +34,8 @@ impl const Try for TryMe {
 
 const fn t() -> TryMe {
     TryMe?;
+    //~^ ERROR `?` cannot determine the branch of `TryMe` in constant functions
+    //~| ERROR `?` cannot convert from residual of `TryMe` in constant functions
     TryMe
 }
 

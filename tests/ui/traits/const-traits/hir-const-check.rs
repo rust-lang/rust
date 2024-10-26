@@ -12,6 +12,8 @@ pub trait MyTrait {
 impl const MyTrait for () {
     fn method(&self) -> Option<()> {
         Some(())?; //~ ERROR `?` is not allowed in a `const fn`
+        //~^ ERROR `?` cannot determine the branch of `Option<()>` in constant functions
+        //~| ERROR `?` cannot convert from residual of `Option<()>` in constant functions
         None
     }
 }

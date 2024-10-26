@@ -17,10 +17,6 @@ LL |     Some(())?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: `?` cannot convert from residual of `Option<()>` in constant functions
   --> $DIR/const-try-feature-gate.rs:4:5
@@ -31,10 +27,6 @@ LL |     Some(())?;
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 3 previous errors
 

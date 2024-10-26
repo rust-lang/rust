@@ -23,10 +23,6 @@ help: consider further restricting this bound
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const FnOnce(())>(x: T) -> i32 {
    |                                                         +++++++++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error: aborting due to 3 previous errors
 

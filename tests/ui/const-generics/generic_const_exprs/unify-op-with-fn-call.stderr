@@ -27,11 +27,13 @@ LL + #[derive(ConstParamTy)]
 LL | struct Foo(u8);
    |
 
-error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#0}`
-  --> $DIR/unify-op-with-fn-call.rs:20:25
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/unify-op-with-fn-call.rs:20:39
    |
 LL | fn foo<const N: Foo>(a: Evaluatable<{ N + N }>) {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#0}`
+   |                                       ^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
   --> $DIR/unify-op-with-fn-call.rs:20:17
@@ -63,11 +65,21 @@ error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
 LL | fn foo2<const N: usize>(a: Evaluatable2<{ N + N }>) {
    |                            ^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#0}`
 
-error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#0}`
-  --> $DIR/unify-op-with-fn-call.rs:21:11
+error[E0015]: cannot call non-const fn `<Foo as Add>::add` in constants
+  --> $DIR/unify-op-with-fn-call.rs:21:13
    |
 LL |     bar::<{ std::ops::Add::add(N, N) }>();
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#0}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const fn `<usize as Add>::add` in constants
+  --> $DIR/unify-op-with-fn-call.rs:30:14
+   |
+LL |     bar2::<{ std::ops::Add::add(N, N) }>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
   --> $DIR/unify-op-with-fn-call.rs:30:12
@@ -75,7 +87,7 @@ error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
 LL |     bar2::<{ std::ops::Add::add(N, N) }>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#0}`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0284, E0741.
-For more information about an error, try `rustc --explain E0284`.
+Some errors have detailed explanations: E0015, E0284, E0741.
+For more information about an error, try `rustc --explain E0015`.
