@@ -316,7 +316,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
-    ("pclmulqdq", Stable, &[]),
+    ("pclmulqdq", Stable, &["sse2"]),
     ("popcnt", Stable, &[]),
     ("prfchw", Unstable(sym::prfchw_target_feature), &[]),
     ("rdrand", Stable, &[]),
