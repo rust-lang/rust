@@ -959,7 +959,7 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .docblock-short .stab {
+.docblock .stab, .docblock-short .stab, .docblock p code {
 	display: inline-block;
 }
 
