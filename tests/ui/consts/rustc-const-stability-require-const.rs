@@ -47,16 +47,15 @@ pub const fn foobar() {}
 pub const fn barfoo() {}
 
 // `rustc_const_stable` also requires the function to be stable.
-// FIXME: these are disabled until <https://github.com/rust-lang/stdarch/pull/1654> propagates.
 
 #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 const fn barfoo_unmarked() {}
-// FIXME disabled ERROR can only be applied to functions that are declared `#[stable]`
+//~^ ERROR can only be applied to functions that are declared `#[stable]`
 
 #[unstable(feature = "unstable", issue = "none")]
 #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 pub const fn barfoo_unstable() {}
-// FIXME disabled ERROR can only be applied to functions that are declared `#[stable]`
+//~^ ERROR can only be applied to functions that are declared `#[stable]`
 
 // `#[rustc_const_stable_indirect]` also requires a const fn
 #[rustc_const_stable_indirect]
