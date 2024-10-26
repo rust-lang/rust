@@ -53,22 +53,38 @@ marks an item as stabilized. Note that stable functions may use unstable things 
 
 The `#[rustc_const_unstable(feature = "foo", issue = "1234", reason = "lorem
 ipsum")]` has the same interface as the `unstable` attribute. It is used to mark
-`const fn` as having their constness be unstable. Every `const fn` with
-stability attributes should carry either this attribute or
-`#[rustc_const_stable]` (see below).
+`const fn` as having their constness be unstable. This is only needed in rare cases:
+- If a `const fn` makes use of unstable language features or intrinsics.
+  (The compiler will tell you to add the attribute if you run into this.)
+- If a `const fn` is `#[stable]` but not yet intended to be const-stable.
 
-Furthermore this attribute is needed to mark an intrinsic as `const fn`, because
+Furthermore, this attribute is needed to mark an intrinsic as an *unstable* `const fn`, because
 there's no way to add `const` to functions in `extern` blocks for now.
+
+Const-stability differs from regular stability in that it is *recursive*: a
+`#[rustc_const_unstable(...)]` function cannot even be indirectly called from stable code. This is
+to avoid accidentally leaking unstable compiler implementation artifacts to stable code or locking
+us into the accidental quirks of an incomplete implementation. See the rustc_const_stable_indirect
+and rustc_allow_const_fn_unstable attributes below for how to fine-tune this check.
 
 ## rustc_const_stable
 
 The `#[rustc_const_stable(feature = "foo", since = "1.420.69")]` attribute explicitly marks
-a `const fn` as having its constness be `stable`. This attribute can make sense
-even on an `unstable` function, if that function is called from another
-`rustc_const_stable` function.
+a `const fn` as having its constness be `stable`.
 
-Furthermore this attribute is needed to mark an intrinsic as callable from
-`rustc_const_stable` functions.
+## rustc_const_stable_indirect
+
+The `#[rustc_const_stable_indirect]` attribute can be added to a `#[rustc_const_unstable(...)]`
+function to make it callable from `#[rustc_const_stable(...)]` functions. This indicates that the
+function is ready for stable in terms of its implementation (i.e., it doesn't use any unstable
+compiler features); the only reason it is not const-stable yet are API concerns.
+
+This should also be added to lang items for which const-calls are synthesized in the compiler, to
+ensure those calls do not bypass recursive const stability rules.
+
+On an intrinsic, this attribute marks the intrinsic as "ready to be used by public stable functions".
+The `rustc_const_unstable` can be removed when this attribute is added.
+**Adding this attribute to an intrinsic requires t-lang and wg-const-eval approval!**
 
 ## rustc_default_body_unstable
 
@@ -89,8 +105,9 @@ To stabilize a feature, follow these steps:
 2. Change `#[unstable(...)]` to `#[stable(since = "CURRENT_RUSTC_VERSION")]`.
 3. Remove `#![feature(...)]` from any test or doc-test for this API. If the feature is used in the
    compiler or tools, remove it from there as well.
-4. If applicable, change `#[rustc_const_unstable(...)]` to
-   `#[rustc_const_stable(since = "CURRENT_RUSTC_VERSION")]`.
+4. If this is a `const fn`, add `#[rustc_const_stable(since = "CURRENT_RUSTC_VERSION")]`.
+   Alternatively, if this is not supposed to be const-stabilized yet,
+   add `#[rustc_const_unstable(...)]` for some new feature gate (with a new tracking issue).
 5. Open a PR against `rust-lang/rust`.
    - Add the appropriate labels: `@rustbot modify labels: +T-libs-api`.
    - Link to the tracking issue and say "Closes #XXXXX".
@@ -107,18 +124,21 @@ site. To work around not being able to use unstable things in the standard
 library's macros, there's the `#[allow_internal_unstable(feature1, feature2)]`
 attribute that allows the given features to be used in stable macros.
 
+Note that if a macro is used in const context and generates a call to a
+`#[rustc_const_unstable(...)]` function, that will *still* be rejected even with
+`allow_internal_unstable`. Add `#[rustc_const_stable_indirect]` to the function to ensure the macro
+cannot accidentally bypass the recursive const stability checks.
+
 ## rustc_allow_const_fn_unstable
 
-`const fn`, while not directly exposing their body to the world, are going to get
-evaluated at compile time in stable crates. If their body does something const-unstable,
-that could lock us into certain features indefinitely by accident. Thus no unstable const
-features are allowed inside stable `const fn`.
+As explained above, no unstable const features are allowed inside stable `const fn`, not even
+indirectly.
 
-However, sometimes we do know that a feature will get
-stabilized, just not when, or there is a stable (but e.g. runtime-slow) workaround, so we
-could always fall back to some stable version if we scrapped the unstable feature.
-In those cases, the rustc_allow_const_fn_unstable attribute can be used to allow some
-unstable features in the body of a stable `const fn`.
+However, sometimes we do know that a feature will get stabilized, just not when, or there is a
+stable (but e.g. runtime-slow) workaround, so we could always fall back to some stable version if we
+scrapped the unstable feature. In those cases, the `[rustc_allow_const_fn_unstable(feature1,
+feature2)]` attribute can be used to allow some unstable features in the body of a stable (or
+indirectly stable) `const fn`.
 
 You also need to take care to uphold the `const fn` invariant that calling it at runtime and
 compile-time needs to behave the same (see also [this blog post][blog]). This means that you
@@ -126,8 +146,8 @@ may not create a `const fn` that e.g. transmutes a memory address to an integer,
 because the addresses of things are nondeterministic and often unknown at
 compile-time.
 
-Always ping @rust-lang/wg-const-eval if you are adding more
-`rustc_allow_const_fn_unstable` attributes to any `const fn`.
+**Always ping @rust-lang/wg-const-eval if you are adding more
+`rustc_allow_const_fn_unstable` attributes to any `const fn`.**
 
 ## staged_api
 
