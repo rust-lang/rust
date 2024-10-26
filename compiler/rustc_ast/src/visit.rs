@@ -961,7 +961,7 @@ pub fn walk_struct_def<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) -> V::Result {
-    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _ } = field;
+    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _, safety: _ } = field;
     walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     visit_opt!(visitor, visit_ident, ident);

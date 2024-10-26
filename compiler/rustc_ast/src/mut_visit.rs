@@ -1115,10 +1115,11 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
 }
 
 pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = fd;
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety } = fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
+    visit_safety(visitor, safety);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
     visitor.visit_span(span);

@@ -411,6 +411,7 @@ define_tables! {
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
+    safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
     lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,

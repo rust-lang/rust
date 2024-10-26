@@ -1599,6 +1599,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 f.did.index
             }));
 
+            for field in &variant.fields {
+                self.tables.safety.set_some(field.did.index, field.safety);
+            }
+
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
                 let fn_sig = tcx.fn_sig(ctor_def_id);
                 // FIXME only encode signature for ctor_def_id
