@@ -2,6 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+#[feature(thread_sleep_until)]
+use std::time::Instant;
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
@@ -77,4 +79,15 @@ fn thread_local_hygeiene() {
 fn available_parallelism() {
     // check that std::thread::available_parallelism() returns a valid value
     assert!(thread::available_parallelism().is_ok());
+}
+
+#[test]
+fn sleep_until() {
+    let now = Instant::now();
+    let period = Duration::from_millis(100);
+    let deadline = now + period;
+    thread::sleep_until(deadline);
+
+    let elapsed = now.elapsed();
+    assert!(elapsed >= period);
 }

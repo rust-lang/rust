@@ -19,7 +19,7 @@ pub(in crate::sys) const TIMESPEC_MAX_CAPPED: libc::timespec = libc::timespec {
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
 #[rustc_layout_scalar_valid_range_end(999_999_999)]
-pub(in crate::sys::unix) struct Nanoseconds(pub(in crate::sys::unix) u32);
+pub(crate) struct Nanoseconds(pub(crate) u32);
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SystemTime {
@@ -28,8 +28,8 @@ pub struct SystemTime {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Timespec {
-    tv_sec: i64,
-    tv_nsec: Nanoseconds,
+    pub(crate) tv_sec: i64,
+    pub(crate) tv_nsec: Nanoseconds,
 }
 
 impl SystemTime {
@@ -288,7 +288,7 @@ impl Instant {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
     }
 
-    pub(in crate::sys::unix) fn into_timespec(self) -> Timespec {
+    pub(crate) fn into_timespec(self) -> Timespec {
         self.t
     }
 }

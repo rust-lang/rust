@@ -357,10 +357,6 @@ impl Thread {
 
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
     pub fn sleep_until(deadline: crate::time::Instant) {
-        // does not count during sleep/suspend same as clock monotonic
-        // does instant use mach_absolute_time?
-        // https://developer.apple.com/library/archive/technotes/tn2169/_index.html
-
         use super::time::Timespec;
         use core::mem::MaybeUninit;
 
