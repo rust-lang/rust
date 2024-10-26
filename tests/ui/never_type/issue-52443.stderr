@@ -50,10 +50,6 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
@@ -62,10 +58,6 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 5 previous errors; 1 warning emitted
 

@@ -37,10 +37,6 @@ help: consider further restricting this bound
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct + ~const Fn(&foo::Alias<'_>)>(fun: F) {
    |                                                                              ++++++++++++++++++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
   --> $DIR/normalize-tait-in-const.rs:26:79

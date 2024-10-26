@@ -24,6 +24,7 @@ const fn foo<T: ~const Bar>(x: &T) {
     //[yn,nn]~| ERROR: `~const` can only be applied to `#[const_trait]`
     x.a();
     //[yn]~^ ERROR: the trait bound `T: ~const Foo` is not satisfied
+    //[nn,ny]~^^ ERROR: cannot call non-const fn `<T as Foo>::a` in constant functions
 }
 
 fn main() {}

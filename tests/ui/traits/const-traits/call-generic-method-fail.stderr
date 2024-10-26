@@ -1,12 +1,14 @@
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-94675.rs:11:17
+  --> $DIR/call-generic-method-fail.rs:6:5
    |
-LL |         self.bar[0] = baz.len();
-   |                 ^^^
+LL |     *t == *t
+   |     ^^^^^^^^
    |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider further restricting this bound
+   |
+LL | pub const fn equals_self<T: PartialEq + ~const std::cmp::PartialEq>(t: &T) -> bool {
+   |                                       ++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
