@@ -1,7 +1,7 @@
 struct Foo;
 
 impl Foo {
-    fn bar(self) {}
+    fn bar(&self) {}
 
     fn foo(&self) {
         self.bar(); //~ ERROR E0424
@@ -17,5 +17,5 @@ impl Foo {
 }
 
 fn main () {
-    let _self = "self"; //~ ERROR E0424
+    let self = "self"; //~ ERROR E0424
 }
