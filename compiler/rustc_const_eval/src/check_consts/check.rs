@@ -11,7 +11,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -20,9 +19,11 @@ use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};
@@ -360,6 +361,60 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // end of evaluation.
         !is_transient
     }
+
+    fn revalidate_conditional_constness(
+        &self,
+        callee: DefId,
+        callee_args: ty::GenericArgsRef<'tcx>,
+        call_source: CallSource,
+        call_span: Span,
+    ) {
+        let tcx = self.tcx;
+        if !tcx.is_conditionally_const(callee) {
+            return;
+        }
+
+        let infcx = tcx.infer_ctxt().build(self.body.typing_mode(tcx));
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+
+        let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
+
+        let body_id = self.body.source.def_id().expect_local();
+        let host_polarity = match self.const_kind() {
+            hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+            hir::ConstContext::Static(_) | hir::ConstContext::Const { .. } => {
+                ty::BoundConstness::Const
+            }
+        };
+        let const_conditions = ocx.normalize(
+            &ObligationCause::misc(call_span, body_id),
+            self.param_env,
+            const_conditions,
+        );
+        ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
+            Obligation::new(
+                tcx,
+                ObligationCause::new(
+                    call_span,
+                    body_id,
+                    ObligationCauseCode::WhereClause(callee, span),
+                ),
+                self.param_env,
+                trait_ref.to_host_effect_clause(tcx, host_polarity),
+            )
+        }));
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            // FIXME(effects): Soon this should be unconditionally delaying a bug.
+            if matches!(call_source, CallSource::Normal) && tcx.features().effects() {
+                tcx.dcx()
+                    .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+            } else {
+                infcx.err_ctxt().report_fulfillment_errors(errors);
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -584,31 +639,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
-                // Check that all trait bounds that are marked as `~const` can be satisfied.
-                //
-                // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
-                // which path expressions are getting called on and which path expressions are only used
-                // as function pointers. This is required for correctness.
-                let infcx = tcx.infer_ctxt().build(body.typing_mode(tcx));
-                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-
-                let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);
-                let cause = ObligationCause::new(
+                self.revalidate_conditional_constness(
+                    callee,
+                    fn_args,
+                    call_source,
                     terminator.source_info.span,
-                    self.body.source.def_id().expect_local(),
-                    ObligationCauseCode::WhereClause(callee, DUMMY_SP),
                 );
-                let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
-                ocx.register_obligations(traits::predicates_for_generics(
-                    |_, _| cause.clone(),
-                    self.param_env,
-                    normalized_predicates,
-                ));
-
-                let errors = ocx.select_all_or_error();
-                if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(errors);
-                }
 
                 let mut is_trait = false;
                 // Attempting to call a trait method?

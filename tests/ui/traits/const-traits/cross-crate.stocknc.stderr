@@ -1,3 +1,9 @@
+error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrait` is not satisfied
+  --> $DIR/cross-crate.rs:19:5
+   |
+LL |     NonConst.func();
+   |     ^^^^^^^^^^^^^^^
+
 error[E0015]: cannot call non-const fn `<cross_crate::NonConst as cross_crate::MyTrait>::func` in constant functions
   --> $DIR/cross-crate.rs:19:14
    |
@@ -22,6 +28,7 @@ help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 LL + #![feature(const_trait_impl)]
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.
