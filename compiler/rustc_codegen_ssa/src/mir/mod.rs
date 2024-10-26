@@ -8,12 +8,12 @@ use rustc_middle::mir::{UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_session::lint;
+use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
-use crate::traits::*;
 use crate::base;
+use crate::traits::*;
 
 mod analyze;
 mod block;
@@ -251,16 +251,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
                 let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
-                    cx.tcx().node_span_lint(
-                        lint::builtin::DANGEROUS_STACK_ALLOCATION,
-                        CRATE_HIR_ID,
-                        decl.source_info.span,
-                        |lint| {
-                            lint.primary_message(format!("allocation of size: {:.2} {}  exceeds most system architecture limits", size_quantity, size_unit));
-                        },
-                    );
+                cx.tcx().node_span_lint(
+                    lint::builtin::DANGEROUS_STACK_ALLOCATION,
+                    CRATE_HIR_ID,
+                    decl.source_info.span,
+                    |lint| {
+                        lint.primary_message(format!(
+                            "allocation of size: {:.2} {}  exceeds most system architecture limits",
+                            size_quantity, size_unit
+                        ));
+                    },
+                );
             }
-                        
+
             if local == mir::RETURN_PLACE {
                 match fx.fn_abi.ret.mode {
                     PassMode::Indirect { .. } => {
