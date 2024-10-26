@@ -339,7 +339,10 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
                 }
             }
-            Err(e) => this.io_error_to_errnum(e)?.to_i32(),
+            Err(_) => {
+                // Fallback on error
+                interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
+            }
         }
     }
 }
