@@ -1,9 +1,9 @@
 fn main() {
-    #[cfg(feature = "musl-bitwise-tests")]
+    #[cfg(feature = "test-musl-serialized")]
     musl_reference_tests::generate();
 }
 
-#[cfg(feature = "musl-bitwise-tests")]
+#[cfg(feature = "test-musl-serialized")]
 mod musl_reference_tests {
     use rand::seq::SliceRandom;
     use rand::Rng;

@@ -7,7 +7,7 @@
   in `src/lib.rs`.
 - Write some simple tests in your module (using `#[test]`)
 - Run `cargo test` to make sure it works
-- Run `cargo test --features libm-test/musl-bitwise-tests` to compare your
+- Run `cargo test --features libm-test/test-musl-serialized` to compare your
   implementation against musl's
 - Send us a pull request! Make sure to run `cargo fmt` on your code before
   sending the PR. Also include "closes #42" in the PR description to close the
@@ -80,15 +80,15 @@ let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 12
 
 Normal tests can be executed with:
 
-```
+```sh
 cargo test
 ```
 
 If you'd like to run tests with randomized inputs that get compared against musl
 itself, you'll need to be on a Linux system and then you can execute:
 
-```
-cargo test --features libm-test/musl-bitwise-tests
+```sh
+cargo test --features libm-test/test-musl-serialized
 ```
 
 Note that you may need to pass `--release` to Cargo if there are errors related
