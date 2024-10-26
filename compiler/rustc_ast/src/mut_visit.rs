@@ -174,7 +174,7 @@ pub trait MutVisitor: Sized {
         walk_generic_arg(self, arg);
     }
 
-    fn visit_ty(&mut self, t: &mut P<Ty>) {
+    fn visit_ty(&mut self, t: &mut Ty) {
         walk_ty(self, t);
     }
 
@@ -476,8 +476,8 @@ fn walk_assoc_item_constraint<T: MutVisitor>(
     vis.visit_span(span);
 }
 
-pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
-    let Ty { id, kind, span, tokens } = ty.deref_mut();
+pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut Ty) {
+    let Ty { id, kind, span, tokens } = ty;
     vis.visit_id(id);
     match kind {
         TyKind::Err(_guar) => {}

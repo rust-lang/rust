@@ -1586,14 +1586,14 @@ impl InvocationCollectorNode for ast::Crate {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Ty> {
-    type OutputTy = P<ast::Ty>;
+impl InvocationCollectorNode for ast::Ty {
+    type OutputTy = ast::Ty;
     const KIND: AstFragmentKind = AstFragmentKind::Ty;
     fn to_annotatable(self) -> Annotatable {
         unreachable!()
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_ty()
+        fragment.make_ty().into_inner()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
         walk_ty(visitor, self)
@@ -1602,8 +1602,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
         matches!(self.kind, ast::TyKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
+        match self.kind {
             TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
@@ -2168,7 +2167,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_ty(&mut self, node: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, node: &mut ast::Ty) {
         self.visit_node(node)
     }
 

@@ -376,9 +376,9 @@ impl MutVisitor for PlaceholderExpander {
         }
     }
 
-    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, ty: &mut ast::Ty) {
         match ty.kind {
-            ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty(),
+            ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty().into_inner(),
             _ => walk_ty(self, ty),
         }
     }
