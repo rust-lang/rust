@@ -1041,8 +1041,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         .get(0)
                         .map(|p| {
                             let suggestion = match p.ty.kind {
-                                rustc_ast::TyKind::Ref(..) => "&self, ",
-                                _ => "self",
+                                rustc_ast::TyKind::Ref(_, _) => "&self, ",
+                                rustc_ast::TyKind::Ptr(_) => "&mut self, ",
+                                _ => "self", 
                             };
                             (p.span.shrink_to_lo(), suggestion)
                         })

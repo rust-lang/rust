@@ -9,7 +9,4 @@ impl Thing {
     }
 }
 
-fn main() {
-    let mut instance = Thing { state: 0 };
-    instance.oof();
-}
+fn main() {}

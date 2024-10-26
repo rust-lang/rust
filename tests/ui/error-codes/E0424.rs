@@ -7,7 +7,7 @@ impl Foo {
         self.bar(); //~ ERROR E0424
     }
 
-    fn baz(&self,_: i32) {
+    fn baz(&self, _: i32) {
         self.bar(); //~ ERROR E0424
     }
 
@@ -17,5 +17,5 @@ impl Foo {
 }
 
 fn main () {
-    let my_self = "self"; //~ ERROR E0424
+    let _self = "self"; //~ ERROR E0424
 }
