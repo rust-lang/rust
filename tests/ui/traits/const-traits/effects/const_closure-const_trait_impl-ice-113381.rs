@@ -1,5 +1,3 @@
-//@ check-pass
-// FIXME(effects) this shouldn't pass
 //@ compile-flags: -Znext-solver
 #![feature(const_closures, const_trait_impl, effects)]
 #![allow(incomplete_features)]
@@ -14,5 +12,6 @@ impl Foo for () {
 
 fn main() {
     (const || { (()).foo() })();
-    // FIXME(effects) ~^ ERROR: cannot call non-const fn
+    //~^ ERROR: cannot call non-const fn `<() as Foo>::foo` in constant functions
+    // FIXME(effects) this should probably say constant closures
 }

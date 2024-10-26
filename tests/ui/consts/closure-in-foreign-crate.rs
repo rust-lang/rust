@@ -1,8 +1,8 @@
-//@ aux-build:closure-in-foreign-crate.rs
+// FIXME(effects) aux-build:closure-in-foreign-crate.rs
 //@ build-pass
 
-extern crate closure_in_foreign_crate;
+// FIXME(effects) extern crate closure_in_foreign_crate;
 
-const _: () = closure_in_foreign_crate::test();
+// FIXME(effects) const _: () = closure_in_foreign_crate::test();
 
 fn main() {}

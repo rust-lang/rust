@@ -35,10 +35,6 @@ LL |     for i in 0..4 {
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
   --> $DIR/loop.rs:53:14
@@ -47,10 +43,6 @@ LL |     for i in 0..4 {
    |              ^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
   --> $DIR/loop.rs:59:14
@@ -61,10 +53,6 @@ LL |     for i in 0..4 {
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
   --> $DIR/loop.rs:59:14
@@ -73,10 +61,6 @@ LL |     for i in 0..4 {
    |              ^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 6 previous errors
 

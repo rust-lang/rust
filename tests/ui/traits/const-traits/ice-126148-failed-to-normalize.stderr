@@ -38,6 +38,23 @@ LL | impl const Try for TryMe {
    = help: implement the missing item: `fn from_output(_: <Self as Try>::Output) -> Self { todo!() }`
    = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Try>::Residual, <Self as Try>::Output> { todo!() }`
 
-error: aborting due to 5 previous errors
+error[E0015]: `?` cannot determine the branch of `TryMe` in constant functions
+  --> $DIR/ice-126148-failed-to-normalize.rs:20:5
+   |
+LL |     TryMe?;
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0046`.
+error[E0015]: `?` cannot convert from residual of `TryMe` in constant functions
+  --> $DIR/ice-126148-failed-to-normalize.rs:20:5
+   |
+LL |     TryMe?;
+   |     ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0015, E0046.
+For more information about an error, try `rustc --explain E0015`.

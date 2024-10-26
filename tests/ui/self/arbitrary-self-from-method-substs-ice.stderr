@@ -5,10 +5,6 @@ LL |         self.0
    |         ^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0493]: destructor of `R` cannot be evaluated at compile-time
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:43
