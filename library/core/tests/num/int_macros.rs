@@ -369,8 +369,8 @@ macro_rules! int_module {
                 assert_eq_const_safe!(<$T>::midpoint(3, 4), 3);
                 assert_eq_const_safe!(<$T>::midpoint(4, 3), 3);
 
-                assert_eq_const_safe!(<$T>::midpoint(<$T>::MIN, <$T>::MAX), -1);
-                assert_eq_const_safe!(<$T>::midpoint(<$T>::MAX, <$T>::MIN), -1);
+                assert_eq_const_safe!(<$T>::midpoint(<$T>::MIN, <$T>::MAX), 0);
+                assert_eq_const_safe!(<$T>::midpoint(<$T>::MAX, <$T>::MIN), 0);
                 assert_eq_const_safe!(<$T>::midpoint(<$T>::MIN, <$T>::MIN), <$T>::MIN);
                 assert_eq_const_safe!(<$T>::midpoint(<$T>::MAX, <$T>::MAX), <$T>::MAX);
 
