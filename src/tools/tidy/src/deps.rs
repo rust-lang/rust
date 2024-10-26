@@ -24,6 +24,7 @@ const LICENSES: &[&str] = &[
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
     "MIT / Apache-2.0",
+    "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
