@@ -204,7 +204,7 @@ impl<'tcx> Instance<'tcx> {
         }
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        self.args.non_erasable_generics(tcx, self.def_id()).next()?;
+        self.args.non_erasable_generics().next()?;
 
         // compiler_builtins cannot use upstream monomorphizations.
         if tcx.is_compiler_builtins(LOCAL_CRATE) {

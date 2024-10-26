@@ -504,7 +504,7 @@ fn collect_items_rec<'tcx>(
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
     if tcx.dcx().err_count() > error_count
-        && starting_item.node.is_generic_fn(tcx)
+        && starting_item.node.is_generic_fn()
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());

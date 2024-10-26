@@ -106,7 +106,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(tcx.parent(def_id.to_def_id())),
                 predicates: tcx.arena.alloc_from_iter(predicates),
-                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -128,7 +127,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),
                 predicates: tcx.arena.alloc_from_iter(impl_predicates),
-                effects_min_tys: ty::List::empty(),
             };
         }
 
@@ -154,7 +152,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
-    let mut effects_min_tys = Vec::new();
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -189,8 +186,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             ty::List::empty(),
             PredicateFilter::All,
         );
-        predicates.extend(bounds.clauses(tcx));
-        effects_min_tys.extend(bounds.effects_min_tys());
+        predicates.extend(bounds.clauses());
     }
 
     // In default impls, we can assume that the self type implements
@@ -223,7 +219,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.clauses(tcx));
+                predicates.extend(bounds.clauses());
                 trace!(?predicates);
             }
             hir::GenericParamKind::Const { .. } => {
@@ -275,8 +271,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     PredicateFilter::All,
                 );
-                predicates.extend(bounds.clauses(tcx));
-                effects_min_tys.extend(bounds.effects_min_tys());
+                predicates.extend(bounds.clauses());
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
@@ -348,7 +343,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
-        effects_min_tys: tcx.mk_type_list(&effects_min_tys),
     }
 }
 
@@ -499,7 +493,6 @@ pub(super) fn explicit_predicates_of<'tcx>(
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
-                effects_min_tys: predicates_and_bounds.effects_min_tys,
             }
         }
     } else {
@@ -551,7 +544,6 @@ pub(super) fn explicit_predicates_of<'tcx>(
             return GenericPredicates {
                 parent: parent_preds.parent,
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
-                effects_min_tys: parent_preds.effects_min_tys,
             };
         }
         gather_explicit_predicates_of(tcx, def_id)
@@ -630,7 +622,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(bounds.clauses().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -874,7 +866,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        bounds.clauses(self.tcx).collect()
+        bounds.clauses().collect()
     }
 }
 
@@ -966,7 +958,7 @@ pub(super) fn const_conditions<'tcx>(
 
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
-        predicates: tcx.arena.alloc_from_iter(bounds.clauses(tcx).map(|(clause, span)| {
+        predicates: tcx.arena.alloc_from_iter(bounds.clauses().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
                     ty::ClauseKind::HostEffect(ty::HostEffectPredicate {

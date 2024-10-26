@@ -70,7 +70,7 @@ impl<'tcx> Ty<'tcx> {
     /// ADTs with no type arguments.
     pub fn is_simple_text(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            Adt(def, args) => args.non_erasable_generics(tcx, def.did()).next().is_none(),
+            Adt(_, args) => args.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(tcx),
             _ => self.is_simple_ty(),
         }

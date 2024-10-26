@@ -62,7 +62,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.clauses(tcx) {
+        for (pred, span) in bounds.clauses() {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {

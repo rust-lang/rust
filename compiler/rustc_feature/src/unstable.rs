@@ -36,35 +36,54 @@ macro_rules! status_to_enum {
 #[derive(Clone, Default, Debug)]
 pub struct Features {
     /// `#![feature]` attrs for language features, for error reporting.
-    enabled_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
+    enabled_lang_features: Vec<EnabledLangFeature>,
     /// `#![feature]` attrs for non-language (library) features.
-    enabled_lib_features: Vec<(Symbol, Span)>,
+    enabled_lib_features: Vec<EnabledLibFeature>,
     /// `enabled_lang_features` + `enabled_lib_features`.
     enabled_features: FxHashSet<Symbol>,
+}
+
+/// Information about an enabled language feature.
+#[derive(Debug, Copy, Clone)]
+pub struct EnabledLangFeature {
+    /// Name of the feature gate guarding the language feature.
+    pub gate_name: Symbol,
+    /// Span of the `#[feature(...)]` attribute.
+    pub attr_sp: Span,
+    /// If the lang feature is stable, the version number when it was stabilized.
+    pub stable_since: Option<Symbol>,
+}
+
+/// Information abhout an enabled library feature.
+#[derive(Debug, Copy, Clone)]
+pub struct EnabledLibFeature {
+    pub gate_name: Symbol,
+    pub attr_sp: Span,
 }
 
 impl Features {
     /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
     /// attribute, indicating since when they are stable.
-    pub fn set_enabled_lang_feature(&mut self, name: Symbol, span: Span, since: Option<Symbol>) {
-        self.enabled_lang_features.push((name, span, since));
-        self.enabled_features.insert(name);
+    pub fn set_enabled_lang_feature(&mut self, lang_feat: EnabledLangFeature) {
+        self.enabled_lang_features.push(lang_feat);
+        self.enabled_features.insert(lang_feat.gate_name);
     }
 
-    pub fn set_enabled_lib_feature(&mut self, name: Symbol, span: Span) {
-        self.enabled_lib_features.push((name, span));
-        self.enabled_features.insert(name);
+    pub fn set_enabled_lib_feature(&mut self, lib_feat: EnabledLibFeature) {
+        self.enabled_lib_features.push(lib_feat);
+        self.enabled_features.insert(lib_feat.gate_name);
     }
 
-    /// Returns a list of triples with:
-    /// - feature gate name
-    /// - the span of the `#[feature]` attribute
-    /// - (for already stable features) the version since which it is stable
-    pub fn enabled_lang_features(&self) -> &Vec<(Symbol, Span, Option<Symbol>)> {
+    /// Returns a list of [`EnabledLangFeature`] with info about:
+    ///
+    /// - Feature gate name.
+    /// - The span of the `#[feature]` attribute.
+    /// - For stable language features, version info for when it was stabilized.
+    pub fn enabled_lang_features(&self) -> &Vec<EnabledLangFeature> {
         &self.enabled_lang_features
     }
 
-    pub fn enabled_lib_features(&self) -> &Vec<(Symbol, Span)> {
+    pub fn enabled_lib_features(&self) -> &Vec<EnabledLibFeature> {
         &self.enabled_lib_features
     }
 
