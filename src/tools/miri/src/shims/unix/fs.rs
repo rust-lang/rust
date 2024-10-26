@@ -1130,8 +1130,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir_r`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+            // Return error code, do *not* set `errno`.
+            return interp_ok(this.eval_libc("EBADF"));
         }
 
         let open_dir = this.machine.dirs.streams.get_mut(&dirp).ok_or_else(|| {
