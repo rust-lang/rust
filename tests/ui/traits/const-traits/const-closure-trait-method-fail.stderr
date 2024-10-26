@@ -1,14 +1,14 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method-fail.rs:14:39
+  --> $DIR/const-closure-trait-method-fail.rs:14:32
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                       ^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method-fail.rs:14:39
+  --> $DIR/const-closure-trait-method-fail.rs:14:32
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                       ^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

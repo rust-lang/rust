@@ -1,14 +1,14 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-block-const-bound.rs:8:22
+  --> $DIR/const-block-const-bound.rs:8:15
    |
 LL | const fn f<T: ~const Destruct>(x: T) {}
-   |                      ^^^^^^^^
+   |               ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-block-const-bound.rs:8:22
+  --> $DIR/const-block-const-bound.rs:8:15
    |
 LL | const fn f<T: ~const Destruct>(x: T) {}
-   |                      ^^^^^^^^
+   |               ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

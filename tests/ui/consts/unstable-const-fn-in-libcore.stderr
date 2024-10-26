@@ -1,14 +1,14 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:39
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
    |
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                       ^^^^^^^^^^^^^
+   |                                ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:39
+  --> $DIR/unstable-const-fn-in-libcore.rs:19:32
    |
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {
-   |                                       ^^^^^^^^^^^^^
+   |                                ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

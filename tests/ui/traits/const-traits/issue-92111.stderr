@@ -1,14 +1,14 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/issue-92111.rs:20:22
+  --> $DIR/issue-92111.rs:20:15
    |
 LL | const fn a<T: ~const Destruct>(t: T) {}
-   |                      ^^^^^^^^
+   |               ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/issue-92111.rs:20:22
+  --> $DIR/issue-92111.rs:20:15
    |
 LL | const fn a<T: ~const Destruct>(t: T) {}
-   |                      ^^^^^^^^
+   |               ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

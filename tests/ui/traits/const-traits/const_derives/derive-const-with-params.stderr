@@ -23,12 +23,6 @@ LL | #[derive_const(PartialEq)]
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/derive-const-with-params.rs:7:16
-   |
-LL | #[derive_const(PartialEq)]
-   |                ^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const operator in constant functions
   --> $DIR/derive-const-with-params.rs:8:23

@@ -168,13 +168,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
                     let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
-                    // FIXME: We could pass these directly into `lower_poly_trait_ref`
-                    // so that we could use these spans in diagnostics within that function...
-                    let constness = match constness {
-                        hir::BoundConstness::Never => None,
-                        hir::BoundConstness::Always(_) => Some(ty::BoundConstness::Const),
-                        hir::BoundConstness::Maybe(_) => Some(ty::BoundConstness::ConstIfConst),
-                    };
                     let polarity = match polarity {
                         rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
                         rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
