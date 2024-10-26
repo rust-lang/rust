@@ -1,17 +1,16 @@
 //! libm in pure Rust
-#![deny(warnings)]
 #![no_std]
 #![cfg_attr(feature = "unstable", allow(internal_features))]
 #![cfg_attr(feature = "unstable", feature(core_intrinsics))]
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::many_single_char_names)]
-#![allow(clippy::needless_return)]
-#![allow(clippy::int_plus_one)]
-#![allow(clippy::deprecated_cfg_attr)]
-#![allow(clippy::mixed_case_hex_literals)]
-#![allow(clippy::float_cmp)]
-#![allow(clippy::eq_op)]
 #![allow(clippy::assign_op_pattern)]
+#![allow(clippy::deprecated_cfg_attr)]
+#![allow(clippy::eq_op)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::int_plus_one)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::mixed_case_hex_literals)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::unreadable_literal)]
 
 mod libm_helper;
 mod math;
