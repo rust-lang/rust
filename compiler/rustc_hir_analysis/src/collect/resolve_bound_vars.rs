@@ -156,7 +156,7 @@ enum Scope<'a> {
     /// `fn foo<'a>() -> impl MyTrait<'a> { ... }`
     ///
     /// HIR tells us that `'a` refer to the lifetime bound on `foo`.
-    /// However, typeck and borrowck for opaques are work based on using a new generics type.
+    /// However, typeck and borrowck for opaques work based on using a new generic type.
     /// `type MyAnonTy<'b> = impl MyTrait<'b>;`
     ///
     /// This scope collects the mapping `'a -> 'b`.
