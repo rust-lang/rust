@@ -80,6 +80,7 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
 
     pub isize_ty: &'ll Type,
 
+    /// Extra codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
@@ -592,11 +593,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self.statics_to_rauw
     }
 
+    /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
-    pub(crate) fn coverage_context(
-        &self,
-    ) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
-        self.coverage_cx.as_ref()
+    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
+        self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }
 
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
