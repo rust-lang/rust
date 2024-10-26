@@ -32,6 +32,7 @@ declare_lint_pass! {
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
+        DANGEROUS_STACK_ALLOCATION,
         DEAD_CODE,
         DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
@@ -709,6 +710,47 @@ declare_lint! {
     pub UNUSED_ASSIGNMENTS,
     Warn,
     "detect assignments that will never be read"
+}
+
+declare_lint! {
+    /// The `dangerous_stack_allocation` lint detects stack allocations that are 1 GB or more.
+    ///
+    /// ### Example
+    ///
+    /// ``` fn func() {
+    ///     const CAP: usize = std::u32::MAX as usize;
+    ///     let mut x: [u8; CAP>>1] = [0; CAP>>1];
+    ///     x[2] = 123;
+    ///     println!("{}", x[2]);
+    /// }
+    ///
+    /// fn main() {
+    ///     std::thread::Builder::new()
+    ///         .stack_size(3 * 1024 * 1024 * 1024)
+    ///         .spawn(func)
+    ///         .unwrap()
+    ///         .join()
+    ///         .unwrap();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    /// ```
+    /// warning: allocation of size: 1 GiB  exceeds most system architecture limits
+    /// --> $DIR/large-stack-size-issue-83060.rs:7:9
+    /// |
+    /// LL |     let mut x: [u8; CAP>>1] = [0; CAP>>1];
+    ///  |         ^^^^^
+    ///  |
+    ///  = note: `#[warn(dangerous_stack_allocation)]` on by default
+    ///  ```
+    /// ### Explanation
+    ///
+    /// Large arras may cause stack overflow due to the limited size of the
+    /// stack on most platforms. 
+    pub DANGEROUS_STACK_ALLOCATION,
+    Warn,
+    "Detects dangerous stack allocations at the limit of most architectures"
 }
 
 declare_lint! {
