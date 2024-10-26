@@ -1634,15 +1634,15 @@ impl InvocationCollectorNode for P<ast::Pat> {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Expr> {
-    type OutputTy = P<ast::Expr>;
+impl InvocationCollectorNode for ast::Expr {
+    type OutputTy = ast::Expr;
     type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(self)
+        Annotatable::Expr(P(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_expr()
+        fragment.make_expr().into_inner()
     }
     fn descr() -> &'static str {
         "an expression"
@@ -1654,9 +1654,8 @@ impl InvocationCollectorNode for P<ast::Expr> {
         matches!(self.kind, ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
-            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+        match self.kind {
+            ExprKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -2178,7 +2177,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_expr(&mut self, node: &mut ast::Expr) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);

@@ -198,9 +198,9 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
 struct RemoveParens;
 
 impl MutVisitor for RemoveParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         match e.kind.clone() {
-            ExprKind::Paren(inner) => *e = inner,
+            ExprKind::Paren(inner) => *e = inner.into_inner(),
             _ => {}
         };
         mut_visit::walk_expr(self, e);
@@ -211,16 +211,16 @@ impl MutVisitor for RemoveParens {
 struct AddParens;
 
 impl MutVisitor for AddParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         mut_visit::walk_expr(self, e);
         visit_clobber(e, |e| {
-            P(Expr {
+            Expr {
                 id: DUMMY_NODE_ID,
-                kind: ExprKind::Paren(e),
+                kind: ExprKind::Paren(P(e)),
                 span: DUMMY_SP,
                 attrs: AttrVec::new(),
                 tokens: None,
-            })
+            }
         });
     }
 }

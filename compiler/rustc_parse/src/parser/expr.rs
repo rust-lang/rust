@@ -3927,7 +3927,7 @@ impl<'a> CondChecker<'a> {
 }
 
 impl MutVisitor for CondChecker<'_> {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         use ForbiddenLetReason::*;
 
         let span = e.span;

@@ -1,6 +1,5 @@
 //! Conditional compilation stripping.
 
-use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
@@ -428,7 +427,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    pub fn configure_expr(&self, expr: &mut P<ast::Expr>, method_receiver: bool) {
+    pub fn configure_expr(&self, expr: &mut ast::Expr, method_receiver: bool) {
         if !method_receiver {
             for attr in expr.attrs.iter() {
                 self.maybe_emit_expr_attr_err(attr);

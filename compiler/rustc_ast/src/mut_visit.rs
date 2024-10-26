@@ -156,7 +156,7 @@ pub trait MutVisitor: Sized {
         walk_anon_const(self, c);
     }
 
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         walk_expr(self, e);
     }
 
