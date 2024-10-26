@@ -1,6 +1,8 @@
 // We're testing x86 target specific features
+//@revisions: avx512 avx
 //@only-target: x86_64 i686
-//@compile-flags: -C target-feature=+vpclmulqdq,+avx512f
+//@[avx512]compile-flags: -C target-feature=+vpclmulqdq,+avx512f
+//@[avx]compile-flags: -C target-feature=+vpclmulqdq,+avx2
 
 // The constants in the tests below are just bit patterns. They should not
 // be interpreted as integers; signedness does not make sense for them, but
@@ -20,11 +22,13 @@ fn main() {
 
     assert!(is_x86_feature_detected!("pclmulqdq"));
     assert!(is_x86_feature_detected!("vpclmulqdq"));
-    assert!(is_x86_feature_detected!("avx512f"));
 
     unsafe {
         test_mm256_clmulepi64_epi128();
-        test_mm512_clmulepi64_epi128();
+
+        if is_x86_feature_detected!("avx512f") {
+            test_mm512_clmulepi64_epi128();
+        }
     }
 }
 
