@@ -99,10 +99,13 @@
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {
+    ($left:expr, $right:expr) => {
+        assert_eq_const_safe!($left, $right, concat!(stringify!($left), " == ", stringify!($right)));
+    };
     ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
         {
             fn runtime() {
-                assert_eq!($left, $right, $($arg)*);
+                assert_eq!($left, $right, $($($arg)*),*);
             }
             const fn compiletime() {
                 assert!(matches!($left, const { $right }));
