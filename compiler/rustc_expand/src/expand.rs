@@ -2184,11 +2184,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {
         visit_clobber(node, |node| {
-            let mut wrapper = AstNodeWrapper::new(node, MethodReceiverTag);
+            let mut wrapper = AstNodeWrapper::new(P(node), MethodReceiverTag);
             self.visit_node(&mut wrapper);
-            wrapper.wrapped
+            wrapper.wrapped.into_inner()
         })
     }
 

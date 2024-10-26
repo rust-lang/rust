@@ -162,7 +162,7 @@ pub trait MutVisitor: Sized {
 
     /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
     /// It can be removed once that feature is stabilized.
-    fn visit_method_receiver_expr(&mut self, ex: &mut P<Expr>) {
+    fn visit_method_receiver_expr(&mut self, ex: &mut Expr) {
         self.visit_expr(ex)
     }
 
