@@ -1619,86 +1619,6 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
 }
 
-enum class LLVMRustLinkage {
-  ExternalLinkage = 0,
-  AvailableExternallyLinkage = 1,
-  LinkOnceAnyLinkage = 2,
-  LinkOnceODRLinkage = 3,
-  WeakAnyLinkage = 4,
-  WeakODRLinkage = 5,
-  AppendingLinkage = 6,
-  InternalLinkage = 7,
-  PrivateLinkage = 8,
-  ExternalWeakLinkage = 9,
-  CommonLinkage = 10,
-};
-
-static LLVMRustLinkage toRust(LLVMLinkage Linkage) {
-  switch (Linkage) {
-  case LLVMExternalLinkage:
-    return LLVMRustLinkage::ExternalLinkage;
-  case LLVMAvailableExternallyLinkage:
-    return LLVMRustLinkage::AvailableExternallyLinkage;
-  case LLVMLinkOnceAnyLinkage:
-    return LLVMRustLinkage::LinkOnceAnyLinkage;
-  case LLVMLinkOnceODRLinkage:
-    return LLVMRustLinkage::LinkOnceODRLinkage;
-  case LLVMWeakAnyLinkage:
-    return LLVMRustLinkage::WeakAnyLinkage;
-  case LLVMWeakODRLinkage:
-    return LLVMRustLinkage::WeakODRLinkage;
-  case LLVMAppendingLinkage:
-    return LLVMRustLinkage::AppendingLinkage;
-  case LLVMInternalLinkage:
-    return LLVMRustLinkage::InternalLinkage;
-  case LLVMPrivateLinkage:
-    return LLVMRustLinkage::PrivateLinkage;
-  case LLVMExternalWeakLinkage:
-    return LLVMRustLinkage::ExternalWeakLinkage;
-  case LLVMCommonLinkage:
-    return LLVMRustLinkage::CommonLinkage;
-  default:
-    report_fatal_error("Invalid LLVMRustLinkage value!");
-  }
-}
-
-static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
-  switch (Linkage) {
-  case LLVMRustLinkage::ExternalLinkage:
-    return LLVMExternalLinkage;
-  case LLVMRustLinkage::AvailableExternallyLinkage:
-    return LLVMAvailableExternallyLinkage;
-  case LLVMRustLinkage::LinkOnceAnyLinkage:
-    return LLVMLinkOnceAnyLinkage;
-  case LLVMRustLinkage::LinkOnceODRLinkage:
-    return LLVMLinkOnceODRLinkage;
-  case LLVMRustLinkage::WeakAnyLinkage:
-    return LLVMWeakAnyLinkage;
-  case LLVMRustLinkage::WeakODRLinkage:
-    return LLVMWeakODRLinkage;
-  case LLVMRustLinkage::AppendingLinkage:
-    return LLVMAppendingLinkage;
-  case LLVMRustLinkage::InternalLinkage:
-    return LLVMInternalLinkage;
-  case LLVMRustLinkage::PrivateLinkage:
-    return LLVMPrivateLinkage;
-  case LLVMRustLinkage::ExternalWeakLinkage:
-    return LLVMExternalWeakLinkage;
-  case LLVMRustLinkage::CommonLinkage:
-    return LLVMCommonLinkage;
-  }
-  report_fatal_error("Invalid LLVMRustLinkage value!");
-}
-
-extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
-  return toRust(LLVMGetLinkage(V));
-}
-
-extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
-                                   LLVMRustLinkage RustLinkage) {
-  LLVMSetLinkage(V, fromRust(RustLinkage));
-}
-
 extern "C" bool LLVMRustConstIntGetZExtValue(LLVMValueRef CV, uint64_t *value) {
   auto C = unwrap<llvm::ConstantInt>(CV);
   if (C->getBitWidth() > 64)
@@ -1724,45 +1644,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext,
   *low = AP.getLoBits(64).getZExtValue();
   *high = AP.getHiBits(64).getZExtValue();
   return true;
-}
-
-enum class LLVMRustVisibility {
-  Default = 0,
-  Hidden = 1,
-  Protected = 2,
-};
-
-static LLVMRustVisibility toRust(LLVMVisibility Vis) {
-  switch (Vis) {
-  case LLVMDefaultVisibility:
-    return LLVMRustVisibility::Default;
-  case LLVMHiddenVisibility:
-    return LLVMRustVisibility::Hidden;
-  case LLVMProtectedVisibility:
-    return LLVMRustVisibility::Protected;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
-  switch (Vis) {
-  case LLVMRustVisibility::Default:
-    return LLVMDefaultVisibility;
-  case LLVMRustVisibility::Hidden:
-    return LLVMHiddenVisibility;
-  case LLVMRustVisibility::Protected:
-    return LLVMProtectedVisibility;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
-  return toRust(LLVMGetVisibility(V));
-}
-
-extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
-                                      LLVMRustVisibility RustVisibility) {
-  LLVMSetVisibility(V, fromRust(RustVisibility));
 }
 
 extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {
