@@ -23,10 +23,6 @@ help: consider further restricting this bound
    |
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T + ~const FnOnce()>(self, f: F) -> T {
    |                                                     +++++++++++++++++
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0493]: destructor of `F` cannot be evaluated at compile-time
   --> $DIR/unstable-const-fn-in-libcore.rs:19:60

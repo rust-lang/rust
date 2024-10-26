@@ -23,10 +23,6 @@ LL | const ADD_INT: Int = Int(1i32) + Int(2i32);
    |                      ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0015]: cannot call non-const fn `<i32 as Plus>::plus` in constant functions
   --> $DIR/call-const-trait-method-pass.rs:11:20
@@ -47,10 +43,6 @@ LL |         !self.eq(other)
    |               ^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
 
 error[E0015]: cannot call non-const fn `<i32 as Plus>::plus` in constant functions
   --> $DIR/call-const-trait-method-pass.rs:36:7

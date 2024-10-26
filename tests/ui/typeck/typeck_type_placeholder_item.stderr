@@ -675,10 +675,6 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error[E0015]: cannot call non-const fn `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:230:49: 230:52}>` in constants
   --> $DIR/typeck_type_placeholder_item.rs:230:45
@@ -687,10 +683,6 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                                             ^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   |
-LL + #![feature(const_trait_impl)]
-   |
 
 error: aborting due to 74 previous errors
 
