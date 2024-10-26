@@ -103,7 +103,9 @@ pub fn sanitize_explanation(raw_docs: &str) -> String {
     // Remove tags and hidden code:
     let mut explanation = String::with_capacity(128);
     let mut in_code = false;
-    for line in raw_docs.lines().map(str::trim) {
+    for line in raw_docs.lines() {
+        let line = line.strip_prefix(' ').unwrap_or(line);
+
         if let Some(lang) = line.strip_prefix("```") {
             let tag = lang.split_once(',').map_or(lang, |(left, _)| left);
             if !in_code && matches!(tag, "" | "rust" | "ignore" | "should_panic" | "no_run" | "compile_fail") {
