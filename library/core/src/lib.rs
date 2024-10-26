@@ -134,6 +134,7 @@
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
+#![feature(const_sockaddr_setters)]
 #![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
 #![feature(const_try)]
