@@ -73,10 +73,6 @@
         stdarch_loongarch_feature_detection
     )
 )]
-#![cfg_attr(
-    any(target_arch = "wasm32", target_arch = "wasm64", doc),
-    feature(wasm_simd_const_internals)
-)]
 
 #[cfg(test)]
 #[macro_use]
