@@ -15,7 +15,7 @@ use crate::{Analysis, GenKill};
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    pub(super) fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
+    pub(super) fn transfer_function<'a, T>(trans: &'a mut T) -> TransferFunction<'a, T> {
         TransferFunction { trans }
     }
 }
@@ -39,7 +39,7 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
         statement: &Statement<'tcx>,
         location: Location,
     ) {
-        self.transfer_function(trans).visit_statement(statement, location);
+        Self::transfer_function(trans).visit_statement(statement, location);
     }
 
     fn apply_terminator_effect<'mir>(
@@ -48,7 +48,7 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.transfer_function(trans).visit_terminator(terminator, location);
+        Self::transfer_function(trans).visit_terminator(terminator, location);
         terminator.edges()
     }
 }
