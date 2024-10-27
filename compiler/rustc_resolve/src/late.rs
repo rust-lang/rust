@@ -2258,7 +2258,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     }));
                 }
-                // Ordering is not important here.
+                // Ordering is not important if there's only one element in the set.
                 #[allow(rustc::potential_query_instability)]
                 let mut distinct_iter = distinct.into_iter();
                 if let Some(res) = distinct_iter.next() {
