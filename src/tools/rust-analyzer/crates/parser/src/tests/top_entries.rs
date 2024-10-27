@@ -195,6 +195,38 @@ fn macro_pattern() {
             error 0: expected pattern
         "#]],
     );
+
+    check(
+        TopEntryPoint::Pattern,
+        "| 42 | 43",
+        expect![[r#"
+            OR_PAT
+              PIPE "|"
+              WHITESPACE " "
+              LITERAL_PAT
+                LITERAL
+                  INT_NUMBER "42"
+              WHITESPACE " "
+              PIPE "|"
+              WHITESPACE " "
+              LITERAL_PAT
+                LITERAL
+                  INT_NUMBER "43"
+        "#]],
+    );
+
+    check(
+        TopEntryPoint::Pattern,
+        "| 42",
+        expect![[r#"
+            OR_PAT
+              PIPE "|"
+              WHITESPACE " "
+              LITERAL_PAT
+                LITERAL
+                  INT_NUMBER "42"
+        "#]],
+    );
 }
 
 #[test]
