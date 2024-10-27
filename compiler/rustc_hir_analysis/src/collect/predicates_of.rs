@@ -652,7 +652,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 }
 
 // Make sure when elaborating supertraits, probing for associated types, etc.,
-// we really truly are elaborating clauses that have `Self` as their self type.
+// we really truly are elaborating clauses that have `ty` as their self type.
 // This is very important since downstream code relies on this being correct.
 pub(super) fn assert_only_contains_predicates_from<'tcx>(
     filter: PredicateFilter,
@@ -794,8 +794,6 @@ pub(super) fn type_param_predicates<'tcx>(
         None => {}
     }
 
-    use rustc_hir::*;
-
     // In the HIR, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
@@ -827,7 +825,7 @@ pub(super) fn type_param_predicates<'tcx>(
     };
 
     if let Node::Item(item) = hir_node
-        && let ItemKind::Trait(..) = item.kind
+        && let hir::ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
         && param_id == item_hir_id
     {
@@ -842,9 +840,28 @@ pub(super) fn type_param_predicates<'tcx>(
         PredicateFilter::SelfTraitThatDefines(assoc_name),
     ));
 
-    ty::EarlyBinder::bind(
-        tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates)),
-    )
+    let bounds =
+        &*tcx.arena.alloc_from_iter(result.skip_binder().iter().copied().chain(extra_predicates));
+
+    // Double check that the bounds *only* contain `SelfTy: Trait` preds.
+    let self_ty = match tcx.def_kind(def_id) {
+        DefKind::TyParam => Ty::new_param(
+            tcx,
+            tcx.generics_of(item_def_id)
+                .param_def_id_to_index(tcx, def_id.to_def_id())
+                .expect("expected generic param to be owned by item"),
+            tcx.item_name(def_id.to_def_id()),
+        ),
+        DefKind::Trait | DefKind::TraitAlias => tcx.types.self_param,
+        _ => unreachable!(),
+    };
+    assert_only_contains_predicates_from(
+        PredicateFilter::SelfTraitThatDefines(assoc_name),
+        bounds,
+        self_ty,
+    );
+
+    ty::EarlyBinder::bind(bounds)
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
