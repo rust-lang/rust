@@ -1122,9 +1122,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Compile the macro into a `SyntaxExtension` and its rule spans.
     ///
     /// Possibly replace its expander to a pre-defined one for built-in macros.
-    pub(crate) fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> MacroData {
-        let (mut ext, mut rule_spans) =
-            compile_declarative_macro(self.tcx.sess, self.tcx.features(), item, edition);
+    pub(crate) fn compile_macro(
+        &mut self,
+        macro_def: &ast::MacroDef,
+        ident: Ident,
+        attrs: &[ast::Attribute],
+        span: Span,
+        node_id: NodeId,
+        edition: Edition,
+    ) -> MacroData {
+        let (mut ext, mut rule_spans) = compile_declarative_macro(
+            self.tcx.sess,
+            self.tcx.features(),
+            macro_def,
+            ident,
+            attrs,
+            span,
+            node_id,
+            edition,
+        );
 
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
@@ -1132,28 +1148,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
-                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
+                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(span)) {
                     BuiltinMacroState::NotYetSeen(builtin_ext) => {
                         ext.kind = builtin_ext;
                         rule_spans = Vec::new();
                     }
-                    BuiltinMacroState::AlreadySeen(span) => {
-                        self.dcx().emit_err(errors::AttemptToDefineBuiltinMacroTwice {
-                            span: item.span,
-                            note_span: span,
-                        });
+                    BuiltinMacroState::AlreadySeen(note_span) => {
+                        self.dcx()
+                            .emit_err(errors::AttemptToDefineBuiltinMacroTwice { span, note_span });
                     }
                 }
             } else {
-                self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName {
-                    span: item.span,
-                    ident: item.ident,
-                });
+                self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }
         }
 
-        let ItemKind::MacroDef(def) = &item.kind else { unreachable!() };
-        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: def.macro_rules }
+        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(

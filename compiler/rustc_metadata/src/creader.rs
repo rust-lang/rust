@@ -28,7 +28,7 @@ use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{Ident, Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::{PanicStrategy, Target, TargetTriple};
 use tracing::{debug, info, trace};
@@ -97,7 +97,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 }
 
 pub enum LoadedMacro {
-    MacroDef(ast::Item, Edition),
+    MacroDef { def: MacroDef, ident: Ident, attrs: AttrVec, span: Span, edition: Edition },
     ProcMacro(SyntaxExtension),
 }
 
