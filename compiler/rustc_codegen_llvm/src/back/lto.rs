@@ -502,9 +502,9 @@ fn thin_lto(
         // upstream...
         let data = llvm::LLVMRustCreateThinLTOData(
             thin_modules.as_ptr(),
-            thin_modules.len() as u32,
+            thin_modules.len(),
             symbols_below_threshold.as_ptr(),
-            symbols_below_threshold.len() as u32,
+            symbols_below_threshold.len(),
         )
         .ok_or_else(|| write::llvm_err(dcx, LlvmError::PrepareThinLtoContext))?;
 
