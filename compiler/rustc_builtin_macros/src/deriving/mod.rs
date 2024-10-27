@@ -22,12 +22,12 @@ macro path_std($($x:tt)*) {
 
 pub(crate) mod bounds;
 pub(crate) mod clone;
+pub(crate) mod coerce_pointee;
 pub(crate) mod debug;
 pub(crate) mod decodable;
 pub(crate) mod default;
 pub(crate) mod encodable;
 pub(crate) mod hash;
-pub(crate) mod smart_ptr;
 
 #[path = "cmp/eq.rs"]
 pub(crate) mod eq;
