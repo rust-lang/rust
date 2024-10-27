@@ -1521,12 +1521,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let fn_kind = self_ty.prefix_string(self.tcx);
                 let (span, closure_span) = if let ty::Closure(def_id, _) = self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
-                    let node = self.tcx.hir_node_by_def_id(def_id.as_local().unwrap());
-                    if let Some(fn_decl) = node.fn_decl() {
+                    if let Some(local_def_id) = def_id.as_local()
+                        && let node = self.tcx.hir_node_by_def_id(local_def_id)
+                        && let Some(fn_decl) = node.fn_decl()
+                        && let Some(id) = node.body_id()
+                    {
                         span = match fn_decl.output {
                             hir::FnRetTy::Return(ty) => ty.span,
                             hir::FnRetTy::DefaultReturn(_) => {
-                                let body = self.tcx.hir().body(node.body_id().unwrap());
+                                let body = self.tcx.hir().body(id);
                                 match body.value.kind {
                                     hir::ExprKind::Block(
                                         hir::Block { expr: Some(expr), .. },
