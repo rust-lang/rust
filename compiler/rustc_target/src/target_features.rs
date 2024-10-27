@@ -541,6 +541,7 @@ impl super::spec::Target {
             "csky" => CSKY_ALLOWED_FEATURES,
             "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
             "s390x" => IBMZ_ALLOWED_FEATURES,
+            "xtensa" => XTENSA_ALLOWED_FEATURES,
             _ => &[],
         }
     }
