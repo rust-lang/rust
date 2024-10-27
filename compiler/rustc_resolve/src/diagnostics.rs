@@ -1964,7 +1964,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Symbol,
         current_module: Module<'ra>,
     ) -> Option<Symbol> {
-        // It will be sorted later.
+        // The candidates are sorted just below.
         #[allow(rustc::potential_query_instability)]
         let mut candidates = self
             .extern_prelude
