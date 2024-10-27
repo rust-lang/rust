@@ -320,8 +320,9 @@ impl char {
     /// '1'.is_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_char_is_digit", issue = "132241")]
     #[inline]
-    pub fn is_digit(self, radix: u32) -> bool {
+    pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
     }
 
