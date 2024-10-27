@@ -135,7 +135,7 @@ impl Step for Std {
                 !t!(helpers::git(Some(&builder.src))
                     .args(["diff-index", "--quiet", &closest_merge_commit])
                     .arg("--")
-                    .arg(builder.src.join("library"))
+                    .arg("library")
                     .as_command_mut()
                     .status())
                 .success()
