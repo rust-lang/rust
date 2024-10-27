@@ -2168,7 +2168,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
-                            // It is sorted later so ordering is not important.
+                            // The names are sorted at the bottom of this function.
                             #[allow(rustc::potential_query_instability)]
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r
