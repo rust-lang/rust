@@ -167,6 +167,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("pacg", Stable, &[]),
     // FEAT_PAN
     ("pan", Stable, &[]),
+    // FEAT_PAuth_LR
+    ("pauth-lr", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_PMUv3
     ("pmuv3", Stable, &[]),
     // FEAT_RNG
