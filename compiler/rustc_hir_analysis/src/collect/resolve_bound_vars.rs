@@ -557,37 +557,29 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     /// like async desugaring.
     #[instrument(level = "debug", skip(self))]
     fn visit_opaque_ty(&mut self, opaque: &'tcx rustc_hir::OpaqueTy<'tcx>) {
-        let mut captures = FxIndexMap::default();
+        let captures = RefCell::new(FxIndexMap::default());
 
         let capture_all_in_scope_lifetimes =
             opaque_captures_all_in_scope_lifetimes(self.tcx, opaque);
         if capture_all_in_scope_lifetimes {
-            let mut create_def_for_duplicated_param = |original_lifetime: LocalDefId, def| {
-                captures.entry(def).or_insert_with(|| {
-                    let name = self.tcx.item_name(original_lifetime.to_def_id());
-                    let span = self.tcx.def_span(original_lifetime);
-                    let feed = self.tcx.create_def(opaque.def_id, name, DefKind::LifetimeParam);
-                    feed.def_span(span);
-                    feed.def_ident_span(Some(span));
-                    feed.def_id()
-                });
+            let lifetime_ident = |def_id: LocalDefId| {
+                let name = self.tcx.item_name(def_id.to_def_id());
+                let span = self.tcx.def_span(def_id);
+                Ident::new(name, span)
             };
 
             // We list scopes outwards, this causes us to see lifetime parameters in reverse
             // declaration order. In order to make it consistent with what `generics_of` might
             // give, we will reverse the IndexMap after early captures.
             let mut scope = self.scope;
+            let mut opaque_capture_scopes = vec![(opaque.def_id, &captures)];
             loop {
                 match *scope {
                     Scope::Binder { ref bound_vars, s, .. } => {
-                        for (&original_lifetime, &(mut def)) in bound_vars.iter().rev() {
+                        for (&original_lifetime, &def) in bound_vars.iter().rev() {
                             if let DefKind::LifetimeParam = self.tcx.def_kind(original_lifetime) {
-                                if let Err(guar) =
-                                    self.check_lifetime_is_capturable(opaque.def_id, def, None)
-                                {
-                                    def = ResolvedArg::Error(guar);
-                                }
-                                create_def_for_duplicated_param(original_lifetime, def);
+                                let ident = lifetime_ident(original_lifetime);
+                                self.remap_opaque_captures(&opaque_capture_scopes, def, ident);
                             }
                         }
                         scope = s;
@@ -598,10 +590,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             let parent_generics = self.tcx.generics_of(parent_item);
                             for param in parent_generics.own_params.iter().rev() {
                                 if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                    create_def_for_duplicated_param(
-                                        param.def_id.expect_local(),
-                                        ResolvedArg::EarlyBound(param.def_id.expect_local()),
-                                    );
+                                    let def = ResolvedArg::EarlyBound(param.def_id.expect_local());
+                                    let ident = lifetime_ident(param.def_id.expect_local());
+                                    self.remap_opaque_captures(&opaque_capture_scopes, def, ident);
                                 }
                             }
                             opt_parent_item = parent_generics.parent.and_then(DefId::as_local);
@@ -609,14 +600,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         break;
                     }
 
-                    Scope::Opaque { captures: outer_captures, .. } => {
-                        for (_, &duplicated_param) in outer_captures.borrow().iter().rev() {
-                            create_def_for_duplicated_param(
-                                duplicated_param,
-                                ResolvedArg::EarlyBound(duplicated_param),
-                            );
-                        }
-                        break;
+                    Scope::Opaque { captures, def_id, s } => {
+                        opaque_capture_scopes.push((def_id, captures));
+                        scope = s;
                     }
 
                     Scope::Body { .. } => {
@@ -631,10 +617,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                 }
             }
-            captures.reverse();
+            captures.borrow_mut().reverse();
         }
-
-        let captures = RefCell::new(captures);
 
         let scope = Scope::Opaque { captures: &captures, def_id: opaque.def_id, s: self.scope };
         self.with(scope, |this| {
@@ -643,6 +627,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         });
 
         let captures = captures.into_inner().into_iter().collect();
+        debug!(?captures);
         self.map.opaque_captured_lifetimes.insert(opaque.def_id, captures);
     }
 
@@ -1297,7 +1282,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         };
 
         if let Some(mut def) = result {
-            def = self.remap_opaque_captures(opaque_capture_scopes, def, lifetime_ref.ident);
+            def = self.remap_opaque_captures(&opaque_capture_scopes, def, lifetime_ref.ident);
 
             if let ResolvedArg::EarlyBound(..) = def {
                 // Do not free early-bound regions, only late-bound ones.
@@ -1396,7 +1381,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         &self,
         opaque_def_id: LocalDefId,
         lifetime: ResolvedArg,
-        span: Option<Span>,
+        capture_span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let ResolvedArg::LateBound(_, _, lifetime_def_id) = lifetime else { return Ok(()) };
         let lifetime_hir_id = self.tcx.local_def_id_to_hir_id(lifetime_def_id);
@@ -1416,10 +1401,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         };
 
         let decl_span = self.tcx.def_span(lifetime_def_id);
-        let (span, label) = if let Some(span) = span
-            && span != decl_span
-        {
-            (span, None)
+        let (span, label) = if capture_span != decl_span {
+            (capture_span, None)
         } else {
             let opaque_span = self.tcx.def_span(opaque_def_id);
             (opaque_span, Some(opaque_span))
@@ -1435,19 +1418,22 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         Err(guar)
     }
 
+    #[instrument(level = "trace", skip(self, opaque_capture_scopes), ret)]
     fn remap_opaque_captures(
         &self,
-        opaque_capture_scopes: Vec<(LocalDefId, &RefCell<FxIndexMap<ResolvedArg, LocalDefId>>)>,
+        opaque_capture_scopes: &Vec<(LocalDefId, &RefCell<FxIndexMap<ResolvedArg, LocalDefId>>)>,
         mut lifetime: ResolvedArg,
         ident: Ident,
     ) -> ResolvedArg {
-        for (opaque_def_id, captures) in opaque_capture_scopes.into_iter().rev() {
+        if let Some(&(opaque_def_id, _)) = opaque_capture_scopes.last() {
             if let Err(guar) =
-                self.check_lifetime_is_capturable(opaque_def_id, lifetime, Some(ident.span))
+                self.check_lifetime_is_capturable(opaque_def_id, lifetime, ident.span)
             {
-                return ResolvedArg::Error(guar);
+                lifetime = ResolvedArg::Error(guar);
             }
+        }
 
+        for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
                 let feed = self.tcx.create_def(opaque_def_id, ident.name, DefKind::LifetimeParam);
@@ -1976,7 +1962,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         };
 
-        lifetime = self.remap_opaque_captures(opaque_capture_scopes, lifetime, lifetime_ref.ident);
+        lifetime = self.remap_opaque_captures(&opaque_capture_scopes, lifetime, lifetime_ref.ident);
 
         self.insert_lifetime(lifetime_ref, lifetime);
     }
