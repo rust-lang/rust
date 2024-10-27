@@ -1928,7 +1928,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let Some(default_trait) = default_trait else {
             return;
         };
-        // The ordering is not important here.
+        // The ordering is not important because `any` is used on the iterator.
         #[allow(rustc::potential_query_instability)]
         if self
             .r
