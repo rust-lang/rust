@@ -2256,17 +2256,14 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
         unsafe {
             self.inner().dec_strong();
             if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
+                // Reconstruct the "strong weak" pointer and drop it when this
+                // variable goes out of scope. This ensures that the memory is
+                // deallocated even if the destructor of `T` panics.
+                let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
 
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    self.alloc
-                        .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
-                }
+                // Destroy the contained object.
+                // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
+                ptr::drop_in_place(&mut (*self.ptr.as_ptr()).value);
             }
         }
     }
