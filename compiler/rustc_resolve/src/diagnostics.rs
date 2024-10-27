@@ -1086,7 +1086,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
-                    // The suggestions are deterministically sorted later
+                    // The suggestions are deterministically sorted at the bottom of this function.
                     #[allow(rustc::potential_query_instability)]
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
