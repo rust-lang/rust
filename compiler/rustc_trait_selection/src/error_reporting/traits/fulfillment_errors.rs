@@ -1423,10 +1423,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // LL |                 Unit4
                 //    |                 ^^^^^ expected `Unit3`, found `Unit4`
                 //    |
-                diag.span_label(span, "");
+                diag.span_label(span, "this closure");
                 if !span.overlaps(obligation.cause.span) {
                     // Point at the binding corresponding to the closure where it is used.
-                    diag.span_label(obligation.cause.span, "");
+                    diag.span_label(obligation.cause.span, "closure used here");
                 }
             }
 

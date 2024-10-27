@@ -3,8 +3,9 @@ error[E0271]: expected `{closure@return-type-doesnt-match-bound.rs:8:17}` to be 
    |
 LL |     f().or_else(|e| -> ! {
    |         ------- -------^
-   |         |              |
-   |         |              expected `Result<(), _>`, found `!`
+   |         |       |      |
+   |         |       |      expected `Result<(), _>`, found `!`
+   |         |       this closure
    |         required by a bound introduced by this call
    |
    = note: expected enum `Result<(), _>`
@@ -17,11 +18,12 @@ error[E0271]: expected `{closure@return-type-doesnt-match-bound.rs:18:13}` to be
    |
 LL |     let c = |e| -> ! {
    |             -------^
-   |                    |
-   |                    expected `Result<(), _>`, found `!`
+   |             |      |
+   |             |      expected `Result<(), _>`, found `!`
+   |             this closure
 ...
 LL |     f().or_else(c);
-   |         ------- -
+   |         ------- - closure used here
    |         |
    |         required by a bound introduced by this call
    |

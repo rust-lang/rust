@@ -36,7 +36,7 @@ LL |     let v = Unit2.m(
    |                   - required by a bound introduced by this call
 LL |         L {
 LL |             f: |x| {
-   |                ---
+   |                --- this closure
 LL |                 drop(x);
 LL |                 Unit4
    |                 ^^^^^ expected `Unit3`, found `Unit4`

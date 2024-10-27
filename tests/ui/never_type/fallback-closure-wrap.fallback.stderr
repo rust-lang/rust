@@ -2,7 +2,7 @@ error[E0271]: expected `{closure@fallback-closure-wrap.rs:18:40}` to be a closur
   --> $DIR/fallback-closure-wrap.rs:19:9
    |
 LL |     let error = Closure::wrap(Box::new(move || {
-   |                                        -------
+   |                                        ------- this closure
 LL |         panic!("Can't connect to server.");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `!`
    |

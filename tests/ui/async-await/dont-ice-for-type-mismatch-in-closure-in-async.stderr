@@ -25,8 +25,9 @@ error[E0271]: expected `{closure@dont-ice-for-type-mismatch-in-closure-in-async.
    |
 LL |     call(|| -> Option<()> {
    |     ---- ------^^^^^^^^^^
-   |     |          |
-   |     |          expected `bool`, found `Option<()>`
+   |     |    |     |
+   |     |    |     expected `bool`, found `Option<()>`
+   |     |    this closure
    |     required by a bound introduced by this call
    |
    = note: expected type `bool`
