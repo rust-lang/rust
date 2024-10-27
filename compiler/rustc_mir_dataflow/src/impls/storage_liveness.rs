@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -99,8 +100,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
-    body: &'mir Body<'tcx>,
-    borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
+    borrowed_locals: RefCell<ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
@@ -108,7 +108,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
         body: &'mir Body<'tcx>,
         borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
-        MaybeRequiresStorage { body, borrowed_locals }
+        MaybeRequiresStorage { borrowed_locals: borrowed_locals.as_results_cursor(body).into() }
     }
 }
 
@@ -137,7 +137,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.analysis.apply_statement_effect(trans, stmt, loc);
+        self.borrowed_locals.borrow().analysis().apply_statement_effect(trans, stmt, loc);
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -176,7 +176,11 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals.analysis.transfer_function(trans).visit_terminator(terminator, loc);
+        self.borrowed_locals
+            .borrow()
+            .analysis()
+            .transfer_function(trans)
+            .visit_terminator(terminator, loc);
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
@@ -278,14 +282,15 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
 impl<'tcx> MaybeRequiresStorage<'_, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, trans: &mut <Self as Analysis<'tcx>>::Domain, loc: Location) {
-        let borrowed_locals = self.borrowed_locals.as_results_cursor(self.body);
-        let mut visitor = MoveVisitor { trans, borrowed_locals };
-        visitor.visit_location(self.body, loc);
+        let mut borrowed_locals = self.borrowed_locals.borrow_mut();
+        let body = borrowed_locals.body();
+        let mut visitor = MoveVisitor { trans, borrowed_locals: &mut borrowed_locals };
+        visitor.visit_location(body, loc);
     }
 }
 
 struct MoveVisitor<'a, 'mir, 'tcx> {
-    borrowed_locals: ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>,
+    borrowed_locals: &'a mut ResultsCursor<'mir, 'tcx, MaybeBorrowedLocals>,
     trans: &'a mut BitSet<Local>,
 }
 
