@@ -34,7 +34,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         modifiers: Option<ast::TraitBoundModifiers>,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
+        let qself = qself
+            .as_ref()
+            // Reject cases like `<impl Trait>::Assoc` and `<impl Trait as Trait>::Assoc`.
+            .map(|q| self.lower_ty(&q.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path)));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -73,6 +76,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             Some(self.allow_async_fn_traits.clone())
         } else {
             None
+        };
+
+        // Only permit `impl Trait` in the final segment. E.g., we permit `Option<impl Trait>`,
+        // `option::Option<T>::Xyz<impl Trait>` and reject `option::Option<impl Trait>::Xyz`.
+        let itctx = |i| {
+            if i + 1 == p.segments.len() {
+                itctx
+            } else {
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path)
+            }
         };
 
         let path_span_lo = p.span.shrink_to_lo();
@@ -121,7 +134,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         segment,
                         param_mode,
                         generic_args_mode,
-                        itctx,
+                        itctx(i),
                         bound_modifier_allowed_features.clone(),
                     )
                 },
@@ -185,7 +198,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 segment,
                 param_mode,
                 generic_args_mode,
-                itctx,
+                itctx(i),
                 None,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);

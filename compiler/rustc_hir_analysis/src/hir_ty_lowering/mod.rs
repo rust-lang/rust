@@ -1203,15 +1203,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.emit()
                 } else if let Err(reported) = qself_ty.error_reported() {
                     reported
-                } else if let ty::Alias(ty::Opaque, alias_ty) = qself_ty.kind() {
-                    // `<impl Trait as OtherTrait>::Assoc` makes no sense.
-                    struct_span_code_err!(
-                        self.dcx(),
-                        tcx.def_span(alias_ty.def_id),
-                        E0667,
-                        "`impl Trait` is not allowed in path parameters"
-                    )
-                    .emit() // Already reported in an earlier stage.
                 } else {
                     self.maybe_report_similar_assoc_fn(span, qself_ty, qself)?;
 
