@@ -13,6 +13,25 @@ for a list of Miri maintainers.
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
 
+### Pull review process
+
+When you get a review, please take care of the requested changes in new commits. Do not amend
+existing commits. Generally avoid force-pushing. The only time you should force push is when there
+is a conflict with the master branch (in that case you should rebase across master, not merge), and
+all the way at the end of the review process when the reviewer tells you that the PR is done and you
+should squash the commits. For the latter case, use `git rebase --keep-base ...` to squash without
+changing the base commit your PR branches off of. Use your own judgment and the reviewer's guidance
+to decide whether the PR should be squashed into a single commit or multiple logically separate
+commits. (All this is to work around the fact that Github is quite bad at dealing with force pushes
+and does not support `git range-diff`. Maybe one day Github will be good at git and then life can
+become easier.)
+
+Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
+keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
+`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
+they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
+next round of review.
+
 ### Larger-scale contributions
 
 If you are thinking about making a larger-scale contribution -- in particular anything that needs
@@ -44,14 +63,6 @@ process for such contributions:
 
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
-
-### Managing the review state
-
-Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
-keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
-`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
-they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
-next round of review.
 
 ## Preparing the build environment
 
