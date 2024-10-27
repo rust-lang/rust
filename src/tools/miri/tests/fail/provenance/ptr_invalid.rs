@@ -1,4 +1,3 @@
-
 // Ensure that a `ptr::without_provenance` ptr is truly invalid.
 fn main() {
     let x = 42;

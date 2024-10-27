@@ -63,8 +63,7 @@ pub fn futex<'tcx>(
             };
 
             if bitset == 0 {
-                this.set_last_error(LibcError("EINVAL"))?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
                 return interp_ok(());
             }
 
@@ -75,9 +74,7 @@ pub fn futex<'tcx>(
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
-                        this.set_last_error(LibcError("EINVAL"))?;
-                        this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                        return interp_ok(());
+                        return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                     }
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
@@ -153,14 +150,12 @@ pub fn futex<'tcx>(
                     Scalar::from_target_isize(0, this), // retval_succ
                     Scalar::from_target_isize(-1, this), // retval_timeout
                     dest.clone(),
-                    this.eval_libc("ETIMEDOUT"),
+                    this.eval_libc("ETIMEDOUT"), // errno_timeout
                 );
             } else {
                 // The futex value doesn't match the expected value, so we return failure
                 // right away without sleeping: -1 and errno set to EAGAIN.
-                let eagain = this.eval_libc("EAGAIN");
-                this.set_last_error(eagain)?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                return this.set_last_error_and_return(LibcError("EAGAIN"), dest);
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -180,9 +175,7 @@ pub fn futex<'tcx>(
                 u32::MAX
             };
             if bitset == 0 {
-                this.set_last_error(LibcError("EINVAL"))?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                return interp_ok(());
+                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller

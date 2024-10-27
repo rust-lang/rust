@@ -141,6 +141,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(-1))
     }
 
+    /// Sets the last OS error and return `-1` as a `i64`-typed Scalar
+    fn set_last_error_and_return_i64(
+        &mut self,
+        err: impl Into<IoError>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+        this.set_last_error(err)?;
+        interp_ok(Scalar::from_i64(-1))
+    }
+
     /// Gets the last error variable.
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();

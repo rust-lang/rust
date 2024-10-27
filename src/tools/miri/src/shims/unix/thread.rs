@@ -64,23 +64,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Set the name of the specified thread. If the name including the null terminator
-    /// is longer than `name_max_len`, then `false` is returned.
+    /// is longer or equals to `name_max_len`, then if `truncate` is set the truncated name
+    /// is used as the thread name, otherwise `false` is returned.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar,
         name: Scalar,
         name_max_len: usize,
+        truncate: bool,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
         let thread = ThreadId::try_from(thread).unwrap();
         let name = name.to_pointer(this)?;
-        let name = this.read_c_str(name)?.to_owned();
+        let mut name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
         if name.len() >= name_max_len {
-            return interp_ok(false);
+            if truncate {
+                name.truncate(name_max_len.saturating_sub(1));
+            } else {
+                return interp_ok(false);
+            }
         }
 
         this.set_thread_name(thread, name);
