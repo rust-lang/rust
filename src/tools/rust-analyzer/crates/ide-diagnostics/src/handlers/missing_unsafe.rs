@@ -3,7 +3,7 @@ use hir::HirFileIdExt;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

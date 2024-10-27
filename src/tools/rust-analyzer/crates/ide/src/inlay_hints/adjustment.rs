@@ -17,7 +17,7 @@ use syntax::{
     ast::{self, make, AstNode},
     ted,
 };
-use text_edit::TextEditBuilder;
+use ide_db::text_edit::TextEditBuilder;
 
 use crate::{
     AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintLabelPart,

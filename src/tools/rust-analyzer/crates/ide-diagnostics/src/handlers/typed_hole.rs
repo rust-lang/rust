@@ -9,7 +9,7 @@ use ide_db::{
     source_change::SourceChange,
 };
 use itertools::Itertools;
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 

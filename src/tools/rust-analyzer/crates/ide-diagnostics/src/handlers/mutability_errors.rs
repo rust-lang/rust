@@ -1,7 +1,7 @@
 use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T};
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

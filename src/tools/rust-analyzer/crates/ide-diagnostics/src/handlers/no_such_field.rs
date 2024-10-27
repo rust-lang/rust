@@ -5,7 +5,7 @@ use syntax::{
     ast::{self, edit::IndentLevel, make},
     AstNode,
 };
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

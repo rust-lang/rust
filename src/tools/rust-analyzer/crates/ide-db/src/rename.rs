@@ -22,6 +22,7 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
+use crate::text_edit::{TextEdit, TextEditBuilder};
 use base_db::AnchoredPathBuf;
 use either::Either;
 use hir::{FieldSource, FileRange, HirFileIdExt, InFile, ModuleSource, Semantics};
@@ -32,7 +33,6 @@ use syntax::{
     utils::is_raw_identifier,
     AstNode, SyntaxKind, TextRange, T,
 };
-use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     defs::Definition,

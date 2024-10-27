@@ -9,7 +9,7 @@ use syntax::{
     ast::{self, AstNode},
     SyntaxKind,
 };
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 

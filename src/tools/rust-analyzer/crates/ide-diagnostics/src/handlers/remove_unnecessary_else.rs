@@ -8,7 +8,7 @@ use syntax::{
     },
     AstNode, SyntaxToken, TextRange,
 };
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{
     adjusted_display_range, fix, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity,

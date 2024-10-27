@@ -1,5 +1,6 @@
 use either::Either;
 use hir::ModuleDef;
+use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -19,7 +20,6 @@ use syntax::{
     },
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
-use text_edit::TextRange;
 
 use crate::{
     assist_context::{AssistContext, Assists},

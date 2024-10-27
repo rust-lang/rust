@@ -4,7 +4,7 @@ use syntax::{
     ast::{self, HasArgList},
     AstNode, TextRange,
 };
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

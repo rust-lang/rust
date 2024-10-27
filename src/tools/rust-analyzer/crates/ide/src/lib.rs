@@ -139,7 +139,7 @@ pub use ide_diagnostics::{
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
-pub use text_edit::{Indel, TextEdit};
+pub use ide_db::text_edit::{Indel, TextEdit};
 
 pub type Cancellable<T> = Result<T, Cancelled>;
 
