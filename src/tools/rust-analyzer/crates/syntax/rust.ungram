@@ -736,7 +736,7 @@ PathPat =
   Path
 
 OrPat =
-  (Pat ('|' Pat)* '|'?)
+  '|'? (Pat ('|' Pat)*)
 
 BoxPat =
   'box' Pat

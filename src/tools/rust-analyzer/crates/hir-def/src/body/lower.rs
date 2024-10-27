@@ -1598,6 +1598,10 @@ impl ExprCollector<'_> {
                 for (id, _) in current_is_used.into_iter() {
                     binding_list.check_is_used(self, id);
                 }
+                if let &[pat] = &*pats {
+                    // Leading pipe without real OR pattern. Leaving an one-item OR pattern may confuse later stages.
+                    return pat;
+                }
                 Pat::Or(pats.into())
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat(), binding_list),

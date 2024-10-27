@@ -1140,3 +1140,13 @@ impl From<ast::AssocItem> for ast::AnyHasAttrs {
         Self::new(node)
     }
 }
+
+impl ast::OrPat {
+    pub fn leading_pipe(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .find(|it| !it.kind().is_trivia())
+            .and_then(NodeOrToken::into_token)
+            .filter(|it| it.kind() == T![|])
+    }
+}

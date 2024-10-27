@@ -21,7 +21,8 @@ const RANGE_PAT_END_FIRST: TokenSet =
     expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[T![-], T![const]]));
 
 pub(crate) fn pattern(p: &mut Parser<'_>) {
-    pattern_r(p, PAT_RECOVERY_SET);
+    let m = p.start();
+    pattern_r(p, m, false, PAT_RECOVERY_SET);
 }
 
 /// Parses a pattern list separated by pipes `|`.
@@ -36,8 +37,9 @@ pub(crate) fn pattern_single(p: &mut Parser<'_>) {
 /// Parses a pattern list separated by pipes `|`
 /// using the given `recovery_set`.
 pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
-    p.eat(T![|]);
-    pattern_r(p, recovery_set);
+    let m = p.start();
+    let has_leading_pipe = p.eat(T![|]);
+    pattern_r(p, m, has_leading_pipe, recovery_set);
 }
 
 // test or_pattern
@@ -51,11 +53,10 @@ pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
 // }
 /// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
 /// given `recovery_set`.
-fn pattern_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
-    let m = p.start();
+fn pattern_r(p: &mut Parser<'_>, m: Marker, has_leading_pipe: bool, recovery_set: TokenSet) {
     pattern_single_r(p, recovery_set);
 
-    if !p.at(T![|]) {
+    if !p.at(T![|]) && !has_leading_pipe {
         m.abandon(p);
         return;
     }

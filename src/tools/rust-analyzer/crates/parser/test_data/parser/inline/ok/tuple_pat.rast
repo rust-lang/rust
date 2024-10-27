@@ -91,9 +91,9 @@ SOURCE_FILE
           WHITESPACE " "
           TUPLE_PAT
             L_PAREN "("
-            PIPE "|"
-            WHITESPACE " "
             OR_PAT
+              PIPE "|"
+              WHITESPACE " "
               IDENT_PAT
                 NAME
                   IDENT "a"
@@ -105,11 +105,12 @@ SOURCE_FILE
                   IDENT "a"
             COMMA ","
             WHITESPACE " "
-            PIPE "|"
-            WHITESPACE " "
-            IDENT_PAT
-              NAME
-                IDENT "b"
+            OR_PAT
+              PIPE "|"
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "b"
             R_PAREN ")"
           WHITESPACE " "
           EQ "="

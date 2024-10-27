@@ -1283,6 +1283,8 @@ pub struct OrPat {
 impl OrPat {
     #[inline]
     pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    #[inline]
+    pub fn pipe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![|]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
