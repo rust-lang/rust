@@ -1111,6 +1111,18 @@ pub fn rustc_cargo(
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
+    // Use protected visibility for rustc_driver.so. This significantly reduces the
+    // amount of symbols the dynamic linker has to process at runtime as protected
+    // symbols defined in the same DSO can't be overwritten by other DSO's and thus
+    // can be directly referenced rather than going through the GOT. Only do this
+    // with lld however as ld.bfd versions older than 2.40 will give a linker error
+    // when using protected symbols with object files compiled by LLVM. See
+    // https://davidlattimore.github.io/posts/2024/08/27/rust-dylib-rabbit-holes.html
+    // for more details.
+    if builder.config.lld_mode.is_used() {
+        cargo.rustflag("-Zdefault-visibility=protected");
+    }
+
     if builder.config.rust_profile_use.is_some() && builder.config.rust_profile_generate.is_some() {
         panic!("Cannot use and generate PGO profiles at the same time");
     }
