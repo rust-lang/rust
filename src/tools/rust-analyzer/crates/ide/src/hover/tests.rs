@@ -289,19 +289,6 @@ m!(ab$0c);
             *abc*
 
             ```rust
-            test::module
-            ```
-
-            ```rust
-            fn abc()
-            ```
-
-            ---
-
-            Inner
-            ---
-
-            ```rust
             test
             ```
 
@@ -312,6 +299,19 @@ m!(ab$0c);
             ---
 
             Outer
+            ---
+
+            ```rust
+            test::module
+            ```
+
+            ```rust
+            fn abc()
+            ```
+
+            ---
+
+            Inner
         "#]],
     );
 }
