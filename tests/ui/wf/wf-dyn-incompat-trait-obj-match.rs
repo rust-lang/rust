@@ -22,8 +22,8 @@ fn main() {
         Some(()) => &S,
         None => &R,  //~ ERROR E0308
     }
-    let t: &dyn Trait = match opt() { //~ ERROR E0038
+    let t: &dyn Trait = match opt() {
         Some(()) => &S, //~ ERROR E0038
-        None => &R,
+        None => &R, //~ ERROR E0038
     };
 }

@@ -519,6 +519,8 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arm_span: Span,
     pub scrut_span: Span,
     pub source: hir::MatchSource,
+    // Span of the *whole* match expr
+    pub expr_span: Span,
     pub prior_non_diverging_arms: Vec<Span>,
     // Is the expectation of this match expression an RPIT?
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,

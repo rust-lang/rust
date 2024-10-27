@@ -94,14 +94,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (None, arm.body.span)
             };
 
-            let (span, code) = match prior_arm {
+            let code = match prior_arm {
                 // The reason for the first arm to fail is not that the match arms diverge,
                 // but rather that there's a prior obligation that doesn't hold.
-                None => {
-                    (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id, match_src))
-                }
-                Some((prior_arm_block_id, prior_arm_ty, prior_arm_span)) => (
-                    expr.span,
+                None => ObligationCauseCode::BlockTailExpression(arm.body.hir_id, match_src),
+                Some((prior_arm_block_id, prior_arm_ty, prior_arm_span)) => {
                     ObligationCauseCode::MatchExpressionArm(Box::new(MatchExpressionArmCause {
                         arm_block_id,
                         arm_span,
@@ -110,13 +107,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         prior_arm_ty,
                         prior_arm_span,
                         scrut_span: scrut.span,
+                        expr_span: expr.span,
                         source: match_src,
                         prior_non_diverging_arms: prior_non_diverging_arms.clone(),
                         tail_defines_return_position_impl_trait,
-                    })),
-                ),
+                    }))
+                }
             };
-            let cause = self.cause(span, code);
+            let cause = self.cause(arm_span, code);
 
             // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
             // We use it this way to be able to expand on the potential error and detect when a
