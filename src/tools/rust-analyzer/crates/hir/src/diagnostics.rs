@@ -165,6 +165,7 @@ pub struct MacroError {
     pub precise_location: Option<TextRange>,
     pub message: String,
     pub error: bool,
+    pub kind: &'static str,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

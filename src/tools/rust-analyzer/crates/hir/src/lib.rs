@@ -58,7 +58,8 @@ use hir_def::{
     TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{
-    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
+    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, RenderedExpandError,
+    ValueResult,
 };
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
@@ -838,7 +839,7 @@ fn macro_call_diagnostics(
         let file_id = loc.kind.file_id();
         let node =
             InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
-        let (message, error) = err.render_to_string(db.upcast());
+        let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
         let precise_location = if err.span().anchor.file_id == file_id {
             Some(
                 err.span().range
@@ -850,7 +851,7 @@ fn macro_call_diagnostics(
         } else {
             None
         };
-        acc.push(MacroError { node, precise_location, message, error }.into());
+        acc.push(MacroError { node, precise_location, message, error, kind }.into());
     }
 
     if !parse_errors.is_empty() {
@@ -916,13 +917,14 @@ fn emit_def_diagnostic_(
 
         DefDiagnosticKind::MacroError { ast, path, err } => {
             let item = ast.to_ptr(db.upcast());
-            let (message, error) = err.render_to_string(db.upcast());
+            let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
             acc.push(
                 MacroError {
                     node: InFile::new(ast.file_id, item.syntax_node_ptr()),
                     precise_location: None,
                     message: format!("{}: {message}", path.display(db.upcast(), edition)),
                     error,
+                    kind,
                 }
                 .into(),
             )
@@ -1811,7 +1813,8 @@ impl DefWithBody {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
                 BodyDiagnostic::MacroError { node, err } => {
-                    let (message, error) = err.render_to_string(db.upcast());
+                    let RenderedExpandError { message, error, kind } =
+                        err.render_to_string(db.upcast());
 
                     let precise_location = if err.span().anchor.file_id == node.file_id {
                         Some(
@@ -1829,6 +1832,7 @@ impl DefWithBody {
                         precise_location,
                         message,
                         error,
+                        kind,
                     }
                     .into()
                 }
