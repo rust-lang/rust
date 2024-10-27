@@ -1,18 +1,7 @@
-//! Implementation of lint checking.
+//! Basic types for managing and implementing lints.
 //!
-//! The lint checking is mostly consolidated into one pass which runs
-//! after all other analyses. Throughout compilation, lint warnings
-//! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an ID of the node that the lint is being added to. The
-//! lint isn't actually emitted at that time because it is unknown what the
-//! actual lint level at that location is.
-//!
-//! To actually emit lint warnings/errors, a separate pass is used.
-//! A context keeps track of the current state of all lint levels.
-//! Upon entering a node of the ast which can modify the lint settings, the
-//! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon. As the ast is traversed, this keeps track of the current lint level
-//! for all lint attributes.
+//! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
+//! overview of how lints are implemented.
 
 use std::cell::Cell;
 use std::{iter, slice};
@@ -52,9 +41,6 @@ type LateLintPassFactory =
     dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
 
 /// Information about the registered lints.
-///
-/// This is basically the subset of `Context` that we can
-/// build early in the compile pipeline.
 pub struct LintStore {
     /// Registered lints.
     lints: Vec<&'static Lint>,
