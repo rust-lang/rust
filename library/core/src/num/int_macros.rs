@@ -3181,44 +3181,6 @@ macro_rules! int_impl {
             }
         }
 
-        /// Calculates the middle point of `self` and `rhs`.
-        ///
-        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
-        /// sufficiently-large signed integral type. This implies that the result is
-        /// always rounded towards negative infinity and that no overflow will ever occur.
-        ///
-        /// # Examples
-        ///
-        /// ```
-        /// #![feature(num_midpoint)]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(-1), -1);")]
-        #[doc = concat!("assert_eq!((-1", stringify!($SelfT), ").midpoint(0), -1);")]
-        /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
-        #[rustc_allow_const_fn_unstable(const_num_midpoint)]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        pub const fn midpoint(self, rhs: Self) -> Self {
-            const U: $UnsignedT = <$SelfT>::MIN.unsigned_abs();
-
-            // Map an $SelfT to an $UnsignedT
-            // ex: i8 [-128; 127] to [0; 255]
-            const fn map(a: $SelfT) -> $UnsignedT {
-                (a as $UnsignedT) ^ U
-            }
-
-            // Map an $UnsignedT to an $SelfT
-            // ex: u8 [0; 255] to [-128; 127]
-            const fn demap(a: $UnsignedT) -> $SelfT {
-                (a ^ U) as $SelfT
-            }
-
-            demap(<$UnsignedT>::midpoint(map(self), map(rhs)))
-        }
-
         /// Returns the logarithm of the number with respect to an arbitrary base,
         /// rounded down.
         ///
