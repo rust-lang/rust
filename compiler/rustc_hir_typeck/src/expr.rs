@@ -2027,7 +2027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     }
                                     Err(_) => {
                                         span_bug!(
-                                            cause.span(),
+                                            cause.span,
                                             "subtyping remaining fields of type changing FRU failed: {target_ty} != {fru_ty}: {}::{}",
                                             variant.name,
                                             ident.name,

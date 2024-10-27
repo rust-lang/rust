@@ -611,7 +611,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         Err(terr) => {
             let mut diag = struct_span_code_err!(
                 tcx.dcx(),
-                cause.span(),
+                cause.span,
                 E0053,
                 "method `{}` has an incompatible return type for trait",
                 trait_m.name
@@ -1169,7 +1169,7 @@ fn extract_spans_for_error_reporting<'tcx>(
         TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span(), tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span, tcx.hir().span_if_local(trait_m.def_id)),
     }
 }
 

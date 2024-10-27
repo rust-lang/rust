@@ -392,7 +392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         Some(ty) if expected == ty => {
                             let source_map = self.tcx.sess.source_map();
                             err.span_suggestion(
-                                source_map.end_point(cause.span()),
+                                source_map.end_point(cause.span),
                                 "try removing this `?`",
                                 "",
                                 Applicability::MachineApplicable,
@@ -431,7 +431,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(
-                                    source_map.end_point(cause.span()),
+                                    source_map.end_point(cause.span),
                                     "try removing this `?`",
                                     "",
                                     Applicability::MachineApplicable,
@@ -1149,7 +1149,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
         prefer_label: bool,
     ) {
-        let span = cause.span();
+        let span = cause.span;
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1643,7 +1643,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let values = self.resolve_vars_if_possible(trace.values);
         if let Some((expected, found)) = values.ty() {
             match (expected.kind(), found.kind()) {
@@ -1793,7 +1793,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,

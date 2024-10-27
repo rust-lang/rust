@@ -1180,7 +1180,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                             selcx.tcx(),
                                             selcx.tcx().require_lang_item(
                                                 LangItem::Sized,
-                                                Some(obligation.cause.span()),
+                                                Some(obligation.cause.span),
                                             ),
                                             [self_ty],
                                         ),
@@ -1600,7 +1600,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                 let sized_predicate = ty::TraitRef::new(
                     tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span())),
+                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
                     [self_ty],
                 );
                 obligations.push(obligation.with(tcx, sized_predicate));
