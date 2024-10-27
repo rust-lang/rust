@@ -35,6 +35,16 @@ jobs:
     - run: cargo generate-lockfile
     - run: ./ci/run-docker.sh ${{ matrix.target }}
 
+  stable:
+    name: Build succeeds on stable
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update stable && rustup default stable
+    - run: cargo build -p libm
+
+
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-latest
