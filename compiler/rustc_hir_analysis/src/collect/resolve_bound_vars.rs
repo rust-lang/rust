@@ -33,18 +33,12 @@ use crate::errors;
 
 #[extension(trait RegionExt)]
 impl ResolvedArg {
-    fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
-        debug!("ResolvedArg::early: def_id={:?}", param.def_id);
-        (param.def_id, ResolvedArg::EarlyBound(param.def_id))
+    fn early(param: &GenericParam<'_>) -> ResolvedArg {
+        ResolvedArg::EarlyBound(param.def_id)
     }
 
-    fn late(idx: u32, param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
-        let depth = ty::INNERMOST;
-        debug!(
-            "ResolvedArg::late: idx={:?}, param={:?} depth={:?} def_id={:?}",
-            idx, param, depth, param.def_id,
-        );
-        (param.def_id, ResolvedArg::LateBound(depth, idx, param.def_id))
+    fn late(idx: u32, param: &GenericParam<'_>) -> ResolvedArg {
+        ResolvedArg::LateBound(ty::INNERMOST, idx, param.def_id)
     }
 
     fn id(&self) -> Option<LocalDefId> {
@@ -282,24 +276,33 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
 
 fn late_arg_as_bound_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    arg: &ResolvedArg,
     param: &GenericParam<'tcx>,
 ) -> ty::BoundVariableKind {
-    match arg {
-        ResolvedArg::LateBound(_, _, def_id) => {
-            let def_id = def_id.to_def_id();
-            let name = tcx.item_name(def_id);
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
-                }
-                GenericParamKind::Type { .. } => {
-                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
-                }
-                GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
-            }
+    let def_id = param.def_id.to_def_id();
+    let name = tcx.item_name(def_id);
+    match param.kind {
+        GenericParamKind::Lifetime { .. } => {
+            ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
         }
-        _ => bug!("{:?} is not a late argument", arg),
+        GenericParamKind::Type { .. } => {
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
+        }
+        GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
+    }
+}
+
+/// Turn a [`ty::GenericParamDef`] into a bound arg. Generally, this should only
+/// be used when turning early-bound vars into late-bound vars when lowering
+/// return type notation.
+fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
+    match param.kind {
+        ty::GenericParamDefKind::Lifetime => {
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(param.def_id, param.name))
+        }
+        ty::GenericParamDefKind::Type { .. } => {
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+        }
+        ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
     }
 }
 
@@ -360,10 +363,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let mut bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = FxIndexMap::default();
         let binders_iter =
             trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
-                let pair = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
-                let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
-                bound_vars.insert(pair.0, pair.1);
-                r
+                let arg = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
+                bound_vars.insert(param.def_id, arg);
+                late_arg_as_bound_arg(self.tcx, param)
             });
         binders.extend(binders_iter);
 
@@ -458,9 +460,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .iter()
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
-                        let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                        let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
-                        (pair, r)
+                        (
+                            (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                            late_arg_as_bound_arg(self.tcx, param),
+                        )
                     })
                     .unzip();
 
@@ -492,8 +495,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         let mut bound_vars = FxIndexMap::default();
         debug!(?opaque.generics.params);
         for param in opaque.generics.params {
-            let (def_id, reg) = ResolvedArg::early(param);
-            bound_vars.insert(def_id, reg);
+            let arg = ResolvedArg::early(param);
+            bound_vars.insert(param.def_id, arg);
         }
 
         let hir_id = self.tcx.local_def_id_to_hir_id(opaque.def_id);
@@ -618,9 +621,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .iter()
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
-                        let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                        let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
-                        (pair, r)
+                        (
+                            (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                            late_arg_as_bound_arg(self.tcx, param),
+                        )
                     })
                     .unzip();
 
@@ -870,9 +874,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .iter()
                         .enumerate()
                         .map(|(late_bound_idx, param)| {
-                            let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                            let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
-                            (pair, r)
+                            (
+                                (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                                late_arg_as_bound_arg(self.tcx, param),
+                            )
                         })
                         .unzip();
 
@@ -1052,19 +1057,21 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = generics
             .params
             .iter()
-            .map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    if self.tcx.is_late_bound(param.hir_id) {
-                        let late_bound_idx = named_late_bound_vars;
-                        named_late_bound_vars += 1;
-                        ResolvedArg::late(late_bound_idx, param)
-                    } else {
+            .map(|param| {
+                (param.def_id, match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        if self.tcx.is_late_bound(param.hir_id) {
+                            let late_bound_idx = named_late_bound_vars;
+                            named_late_bound_vars += 1;
+                            ResolvedArg::late(late_bound_idx, param)
+                        } else {
+                            ResolvedArg::early(param)
+                        }
+                    }
+                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                         ResolvedArg::early(param)
                     }
-                }
-                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                    ResolvedArg::early(param)
-                }
+                })
             })
             .collect();
 
@@ -1075,11 +1082,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 matches!(param.kind, GenericParamKind::Lifetime { .. })
                     && self.tcx.is_late_bound(param.hir_id)
             })
-            .enumerate()
-            .map(|(late_bound_idx, param)| {
-                let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                late_arg_as_bound_arg(self.tcx, &pair.1, param)
-            })
+            .map(|param| late_arg_as_bound_arg(self.tcx, param))
             .collect();
         self.record_late_bound_vars(hir_id, binders);
         let scope = Scope::Binder {
@@ -1096,7 +1099,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b, 'c> FnOnce(&'b mut BoundVarContext<'c, 'tcx>),
     {
-        let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
+        let bound_vars =
+            generics.params.iter().map(|param| (param.def_id, ResolvedArg::early(param))).collect();
         self.record_late_bound_vars(hir_id, vec![]);
         let scope = Scope::Binder {
             hir_id,
@@ -1639,17 +1643,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         constraint.ident,
                         ty::AssocKind::Fn,
                     ) {
-                    bound_vars.extend(self.tcx.generics_of(assoc_fn.def_id).own_params.iter().map(
-                        |param| match param.kind {
-                            ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
-                                ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                            ),
-                            ty::GenericParamDefKind::Type { .. } => ty::BoundVariableKind::Ty(
-                                ty::BoundTyKind::Param(param.def_id, param.name),
-                            ),
-                            ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
-                        },
-                    ));
+                    bound_vars.extend(
+                        self.tcx
+                            .generics_of(assoc_fn.def_id)
+                            .own_params
+                            .iter()
+                            .map(|param| generic_param_def_as_bound_arg(param)),
+                    );
                     bound_vars.extend(
                         self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars(),
                     );
@@ -1968,17 +1968,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // Append the early-bound vars on the function, and then the late-bound ones.
         // We actually turn type parameters into higher-ranked types here, but we
         // deny them later in HIR lowering.
-        bound_vars.extend(self.tcx.generics_of(item_def_id).own_params.iter().map(|param| {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
-                    ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                ),
-                ty::GenericParamDefKind::Type { .. } => {
-                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
-                }
-                ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
-            }
-        }));
+        bound_vars.extend(
+            self.tcx
+                .generics_of(item_def_id)
+                .own_params
+                .iter()
+                .map(|param| generic_param_def_as_bound_arg(param)),
+        );
         bound_vars.extend(self.tcx.fn_sig(item_def_id).instantiate_identity().bound_vars());
 
         // SUBTLE: Stash the old bound vars onto the *item segment* before appending
