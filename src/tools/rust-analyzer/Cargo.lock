@@ -164,6 +164,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "syntax",
  "syntax-bridge",
+ "tracing",
  "tt",
 ]
 
