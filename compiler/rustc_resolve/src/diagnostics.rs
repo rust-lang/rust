@@ -2852,7 +2852,7 @@ fn show_candidates(
             } else {
                 // Get the unique item kinds and if there's only one, we use the right kind name
                 // instead of the more generic "items".
-                // Ordering is not important here.
+                // Ordering is not important if there's only one element in the set.
                 #[allow(rustc::potential_query_instability)]
                 let mut kinds = accessible_path_strings
                     .iter()
