@@ -642,7 +642,6 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
             );
             let hir = tcx.hir();
             infcx.err_ctxt().note_type_err(
-                cause.span,
                 &mut diag,
                 &cause,
                 hir.get_if_local(impl_m.def_id)
@@ -654,6 +653,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 }))),
                 terr,
                 false,
+                None,
             );
             return Err(diag.emit());
         }
@@ -1062,7 +1062,6 @@ fn report_trait_method_mismatch<'tcx>(
 
     cause.span = impl_err_span;
     infcx.err_ctxt().note_type_err(
-        cause.span,
         &mut diag,
         &cause,
         trait_err_span.map(|sp| (sp, Cow::from("type in trait"), false)),
@@ -1072,6 +1071,7 @@ fn report_trait_method_mismatch<'tcx>(
         }))),
         terr,
         false,
+        None,
     );
 
     diag.emit()
@@ -1855,7 +1855,6 @@ fn compare_const_predicate_entailment<'tcx>(
         });
 
         infcx.err_ctxt().note_type_err(
-            cause.span,
             &mut diag,
             &cause,
             trait_c_span.map(|span| (span, Cow::from("type in trait"), false)),
@@ -1865,6 +1864,7 @@ fn compare_const_predicate_entailment<'tcx>(
             }))),
             terr,
             false,
+            None,
         );
         return Err(diag.emit());
     };

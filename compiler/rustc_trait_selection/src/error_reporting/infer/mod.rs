@@ -1386,14 +1386,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, diag, secondary_span, prefer_label))]
     pub fn note_type_err(
         &self,
-        span: Span,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
         secondary_span: Option<(Span, Cow<'static, str>, bool)>,
         mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
+        override_span: Option<Span>,
     ) {
+        // We use `override_span` when we want the error to point at a `Span` other than
+        // `cause.span`. This is used in E0271, when a closure is passed in where the return type
+        // isn't what was expected. We want to point at the closure's return type (or expression),
+        // instead of the expression where the closure is passed as call argument.
+        let span = override_span.unwrap_or(cause.span);
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         if let TypeError::CyclicTy(_) = terr {
@@ -2052,13 +2057,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = self.dcx().create_err(failure_code);
         self.note_type_err(
-            span,
             &mut diag,
             &trace.cause,
             None,
             Some(param_env.and(trace.values)),
             terr,
             false,
+            None,
         );
         diag
     }

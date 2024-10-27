@@ -2462,7 +2462,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
 
             infcx.err_ctxt().note_type_err(
-                cause.span,
                 &mut diag,
                 &cause,
                 None,
@@ -2472,6 +2471,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }))),
                 terr,
                 false,
+                None,
             );
             diag.emit();
             self.abort.set(true);

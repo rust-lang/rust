@@ -1141,13 +1141,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trace = mk_trace(provided_span, (formal_ty, expected_ty), provided_ty);
                         if let Some(e) = error {
                             self.err_ctxt().note_type_err(
-                                trace.cause.span,
                                 &mut err,
                                 &trace.cause,
                                 None,
                                 Some(self.param_env.and(trace.values)),
                                 e,
                                 true,
+                                None,
                             );
                         }
                     }

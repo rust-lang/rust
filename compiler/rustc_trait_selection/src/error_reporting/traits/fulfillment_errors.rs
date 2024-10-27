@@ -702,13 +702,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
 
                 self.note_type_err(
-                    span,
                     &mut diag,
                     &obligation.cause,
                     None,
                     None,
                     TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
                     false,
+                    None,
                 );
                 diag
             }
@@ -1488,7 +1488,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })();
 
             self.note_type_err(
-                span,
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
@@ -1500,6 +1499,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }),
                 err,
                 false,
+                Some(span),
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit()
