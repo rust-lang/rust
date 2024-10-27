@@ -248,9 +248,7 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(
             CStore::from_tcx(cx.tcx).load_macro_untracked(did, cx.tcx),
-            LoadedMacro::MacroDef(def, _)
-                if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
-                    if !ast_def.macro_rules)
+            LoadedMacro::MacroDef { def, .. } if !def.macro_rules
         ) {
             once(crate_name).chain(relative).collect()
         } else {
@@ -747,24 +745,12 @@ fn build_macro(
     is_doc_hidden: bool,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
-        LoadedMacro::MacroDef(item_def, _) => match macro_kind {
+        LoadedMacro::MacroDef { def, .. } => match macro_kind {
             MacroKind::Bang => {
-                if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                    let vis =
-                        cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
-                    clean::MacroItem(clean::Macro {
-                        source: utils::display_macro_source(
-                            cx,
-                            name,
-                            def,
-                            def_id,
-                            vis,
-                            is_doc_hidden,
-                        ),
-                    })
-                } else {
-                    unreachable!()
-                }
+                let vis = cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
+                clean::MacroItem(clean::Macro {
+                    source: utils::display_macro_source(cx, name, &def, def_id, vis, is_doc_hidden),
+                })
             }
             MacroKind::Derive | MacroKind::Attr => {
                 clean::ProcMacroItem(clean::ProcMacro { kind: macro_kind, helpers: Vec::new() })
