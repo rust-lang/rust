@@ -5,8 +5,8 @@ set -eux
 
 arch=$1
 binutils_version=2.40
-freebsd_version=12.3
-triple=$arch-unknown-freebsd12
+freebsd_version=13.4
+triple=$arch-unknown-freebsd13
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -59,7 +59,7 @@ done
 
 # Originally downloaded from:
 # URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://ci-mirrors.rust-lang.org/rustc/2022-05-06-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/2024-09-13-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Clang can do cross-builds out of the box, if we give it the right
