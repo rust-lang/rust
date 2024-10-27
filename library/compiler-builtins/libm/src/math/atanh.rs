@@ -29,9 +29,5 @@ pub fn atanh(x: f64) -> f64 {
         y = 0.5 * log1p(2.0 * (y / (1.0 - y)));
     }
 
-    if sign {
-        -y
-    } else {
-        y
-    }
+    if sign { -y } else { y }
 }

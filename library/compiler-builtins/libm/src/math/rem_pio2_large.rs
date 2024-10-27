@@ -11,8 +11,7 @@
  * ====================================================
  */
 
-use super::floor;
-use super::scalbn;
+use super::{floor, scalbn};
 
 // initial value for jk
 const INIT_JK: [usize; 4] = [3, 4, 4, 6];

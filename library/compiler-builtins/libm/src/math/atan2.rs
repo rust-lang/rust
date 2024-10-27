@@ -37,8 +37,7 @@
  * to produce the hexadecimal values shown.
  */
 
-use super::atan;
-use super::fabs;
+use super::{atan, fabs};
 
 const PI: f64 = 3.1415926535897931160E+00; /* 0x400921FB, 0x54442D18 */
 const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */

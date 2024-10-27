@@ -32,9 +32,5 @@ pub fn asinh(mut x: f64) -> f64 {
         force_eval!(x + x1p120);
     }
 
-    if sign {
-        -x
-    } else {
-        x
-    }
+    if sign { -x } else { x }
 }

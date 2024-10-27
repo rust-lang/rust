@@ -89,9 +89,5 @@ pub fn remquof(mut x: f32, mut y: f32) -> (f32, i32) {
     }
     q &= 0x7fffffff;
     let quo = if sx ^ sy { -(q as i32) } else { q as i32 };
-    if sx {
-        (-x, quo)
-    } else {
-        (x, quo)
-    }
+    if sx { (-x, quo) } else { (x, quo) }
 }

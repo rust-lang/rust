@@ -72,11 +72,7 @@ pub fn log1pf(x: f32) -> f32 {
         k = (iu >> 23) as i32 - 0x7f;
         /* correction term ~ log(1+x)-log(u), avoid underflow in c/u */
         if k < 25 {
-            c = if k >= 2 {
-                1. - (f32::from_bits(ui) - x)
-            } else {
-                x - (f32::from_bits(ui) - 1.)
-            };
+            c = if k >= 2 { 1. - (f32::from_bits(ui) - x) } else { x - (f32::from_bits(ui) - 1.) };
             c /= f32::from_bits(ui);
         } else {
             c = 0.;

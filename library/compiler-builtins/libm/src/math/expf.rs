@@ -93,9 +93,5 @@ pub fn expf(mut x: f32) -> f32 {
     let xx = x * x;
     let c = x - xx * (P1 + xx * P2);
     let y = 1. + (x * c / (2. - c) - lo + hi);
-    if k == 0 {
-        y
-    } else {
-        scalbnf(y, k)
-    }
+    if k == 0 { y } else { scalbnf(y, k) }
 }

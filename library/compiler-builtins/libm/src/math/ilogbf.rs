@@ -21,11 +21,7 @@ pub fn ilogbf(x: f32) -> i32 {
         e
     } else if e == 0xff {
         force_eval!(0.0 / 0.0);
-        if (i << 9) != 0 {
-            FP_ILOGBNAN
-        } else {
-            i32::max_value()
-        }
+        if (i << 9) != 0 { FP_ILOGBNAN } else { i32::max_value() }
     } else {
         e - 0x7f
     }

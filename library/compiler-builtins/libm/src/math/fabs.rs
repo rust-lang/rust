@@ -18,8 +18,9 @@ pub fn fabs(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use core::f64::*;
+
+    use super::*;
 
     #[test]
     fn sanity_check() {

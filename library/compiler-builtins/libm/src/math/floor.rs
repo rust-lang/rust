@@ -41,27 +41,20 @@ pub fn floor(x: f64) -> f64 {
         return x;
     }
     /* y = int(x) - x, where int(x) is an integer neighbor of x */
-    let y = if (ui >> 63) != 0 {
-        x - TOINT + TOINT - x
-    } else {
-        x + TOINT - TOINT - x
-    };
+    let y = if (ui >> 63) != 0 { x - TOINT + TOINT - x } else { x + TOINT - TOINT - x };
     /* special case because of non-nearest rounding modes */
     if e < 0x3ff {
         force_eval!(y);
         return if (ui >> 63) != 0 { -1. } else { 0. };
     }
-    if y > 0. {
-        x + y - 1.
-    } else {
-        x + y
-    }
+    if y > 0. { x + y - 1. } else { x + y }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use core::f64::*;
+
+    use super::*;
 
     #[test]
     fn sanity_check() {

@@ -5,12 +5,12 @@ fn main() {
 
 #[cfg(feature = "test-musl-serialized")]
 mod musl_reference_tests {
-    use rand::seq::SliceRandom;
-    use rand::Rng;
-    use std::env;
-    use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
+    use std::{env, fs};
+
+    use rand::Rng;
+    use rand::seq::SliceRandom;
 
     // Number of tests to generate for each function
     const NTESTS: usize = 500;
@@ -60,10 +60,7 @@ mod musl_reference_tests {
             return;
         }
 
-        let files = fs::read_dir(math_src)
-            .unwrap()
-            .map(|f| f.unwrap().path())
-            .collect::<Vec<_>>();
+        let files = fs::read_dir(math_src).unwrap().map(|f| f.unwrap().path()).collect::<Vec<_>>();
 
         let mut math = Vec::new();
         for file in files {
@@ -112,12 +109,7 @@ mod musl_reference_tests {
         let tail = eat(tail, " -> ");
         let ret = parse_retty(tail.replace("{", "").trim());
 
-        return Function {
-            name: name.to_string(),
-            args,
-            ret,
-            tests: Vec::new(),
-        };
+        return Function { name: name.to_string(), args, ret, tests: Vec::new() };
 
         fn parse_ty(s: &str) -> Ty {
             match s {
@@ -156,11 +148,7 @@ mod musl_reference_tests {
         }
 
         fn generate_test<R: Rng>(function: &Function, rng: &mut R) -> Test {
-            let mut inputs = function
-                .args
-                .iter()
-                .map(|ty| ty.gen_i64(rng))
-                .collect::<Vec<_>>();
+            let mut inputs = function.args.iter().map(|ty| ty.gen_i64(rng)).collect::<Vec<_>>();
 
             // First argument to this function appears to be a number of
             // iterations, so passing in massive random numbers causes it to
@@ -180,15 +168,12 @@ mod musl_reference_tests {
 
     impl Ty {
         fn gen_i64<R: Rng>(&self, r: &mut R) -> i64 {
-            use std::f32;
-            use std::f64;
+            use std::{f32, f64};
 
             return match self {
                 Ty::F32 => {
                     if r.gen_range(0..20) < 1 {
-                        let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY]
-                            .choose(r)
-                            .unwrap();
+                        let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY].choose(r).unwrap();
                         i.to_bits().into()
                     } else {
                         r.gen::<f32>().to_bits().into()
@@ -196,9 +181,7 @@ mod musl_reference_tests {
                 }
                 Ty::F64 => {
                     if r.gen_range(0..20) < 1 {
-                        let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY]
-                            .choose(r)
-                            .unwrap();
+                        let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY].choose(r).unwrap();
                         i.to_bits() as i64
                     } else {
                         r.gen::<f64>().to_bits() as i64
@@ -424,11 +407,7 @@ mod musl_reference_tests {
             src.push_str(");");
 
             for (i, ret) in function.ret.iter().enumerate() {
-                let get = if function.ret.len() == 1 {
-                    String::new()
-                } else {
-                    format!(".{}", i)
-                };
+                let get = if function.ret.len() == 1 { String::new() } else { format!(".{}", i) };
                 src.push_str(&(match ret {
                     Ty::F32 => format!("if libm::_eqf(output{}, f32::from_bits(expected[{}] as u32)).is_ok() {{ continue }}", get, i),
                     Ty::F64 => format!("if libm::_eq(output{}, f64::from_bits(expected[{}] as u64)).is_ok() {{ continue }}", get, i),

@@ -126,9 +126,5 @@ pub fn expm1f(mut x: f32) -> f32 {
         return y - 1.;
     }
     let uf = f32::from_bits(((0x7f - k) << 23) as u32); /* 2^-k */
-    if k < 23 {
-        (x - e + (1. - uf)) * twopk
-    } else {
-        (x - (e + uf) + 1.) * twopk
-    }
+    if k < 23 { (x - e + (1. - uf)) * twopk } else { (x - (e + uf) + 1.) * twopk }
 }

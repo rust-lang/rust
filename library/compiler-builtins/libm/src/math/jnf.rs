@@ -188,11 +188,7 @@ pub fn jnf(n: i32, mut x: f32) -> f32 {
         }
     }
 
-    if sign {
-        -b
-    } else {
-        b
-    }
+    if sign { -b } else { b }
 }
 
 pub fn ynf(n: i32, x: f32) -> f32 {
@@ -251,9 +247,5 @@ pub fn ynf(n: i32, x: f32) -> f32 {
         a = temp;
     }
 
-    if sign {
-        -b
-    } else {
-        b
-    }
+    if sign { -b } else { b }
 }
