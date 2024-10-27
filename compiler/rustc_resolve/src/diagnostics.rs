@@ -1106,7 +1106,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::ExternPrelude => {
-                    // The suggestions are deterministically sorted later
+                    // The suggestions are deterministically sorted at the bottom of this function.
                     #[allow(rustc::potential_query_instability)]
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
