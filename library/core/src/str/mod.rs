@@ -17,6 +17,7 @@ use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::ops::Range;
 use crate::slice::{self, SliceIndex};
+use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, mem};
 
 pub mod pattern;
@@ -720,7 +721,7 @@ impl str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
-            Some(unsafe { (self.get_unchecked(0..mid), self.get_unchecked(mid..self.len())) })
+            Some(unsafe { self.split_at_unchecked(mid) })
         } else {
             None
         }
@@ -766,15 +767,51 @@ impl str {
         }
     }
 
-    /// Divides one string slice into two at an index.
+    /// Divides one string slice into two immutable slices at an index.
     ///
     /// # Safety
     ///
     /// The caller must ensure that `mid` is a valid byte offset from the start
     /// of the string and falls on the boundary of a UTF-8 code point.
-    unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
+    #[inline]
+    #[must_use]
+    const unsafe fn split_at_unchecked(&self, mid: usize) -> (&str, &str) {
+        let len = self.len();
+        let ptr = self.as_ptr();
+
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "str::split_at_unchecked requires the index to be within the slice",
+            (mid: usize = mid, len: usize = len) => mid <= len,
+        );
+
+        // SAFETY: caller guarantees `mid` is on a char boundary.
+        unsafe {
+            (
+                from_utf8_unchecked(slice::from_raw_parts(ptr, mid)),
+                from_utf8_unchecked(slice::from_raw_parts(ptr.add(mid), len - mid)),
+            )
+        }
+    }
+
+    /// Divides one string slice into two mutable slices at an index.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `mid` is a valid byte offset from the start
+    /// of the string and falls on the boundary of a UTF-8 code point.
+    #[inline]
+    #[must_use]
+    const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
+
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "str::split_at_mut_unchecked requires the index to be within the slice",
+            (mid: usize = mid, len: usize = len) => mid <= len,
+        );
+
         // SAFETY: caller guarantees `mid` is on a char boundary.
         unsafe {
             (
