@@ -1,0 +1,5 @@
+# This matches rustc
+style_edition = "2024"
+use_small_heuristics = "Max"
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"

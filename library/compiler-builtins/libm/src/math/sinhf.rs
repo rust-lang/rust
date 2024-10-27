@@ -1,5 +1,4 @@
-use super::expm1f;
-use super::k_expo2f;
+use super::{expm1f, k_expo2f};
 
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sinhf(x: f32) -> f32 {

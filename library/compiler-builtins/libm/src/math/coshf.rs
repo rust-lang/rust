@@ -1,6 +1,4 @@
-use super::expf;
-use super::expm1f;
-use super::k_expo2f;
+use super::{expf, expm1f, k_expo2f};
 
 /// Hyperbolic cosine (f64)
 ///

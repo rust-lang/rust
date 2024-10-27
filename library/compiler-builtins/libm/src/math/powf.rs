@@ -181,19 +181,11 @@ pub fn powf(x: f32, y: f32) -> f32 {
         /* if |y| > 2**27 */
         /* over/underflow if x is not close to one */
         if ix < 0x3f7ffff8 {
-            return if hy < 0 {
-                sn * HUGE * HUGE
-            } else {
-                sn * TINY * TINY
-            };
+            return if hy < 0 { sn * HUGE * HUGE } else { sn * TINY * TINY };
         }
 
         if ix > 0x3f800007 {
-            return if hy > 0 {
-                sn * HUGE * HUGE
-            } else {
-                sn * TINY * TINY
-            };
+            return if hy > 0 { sn * HUGE * HUGE } else { sn * TINY * TINY };
         }
 
         /* now |1-x| is TINY <= 2**-20, suffice to compute

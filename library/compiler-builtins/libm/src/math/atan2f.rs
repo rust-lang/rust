@@ -13,8 +13,7 @@
  * ====================================================
  */
 
-use super::atanf;
-use super::fabsf;
+use super::{atanf, fabsf};
 
 const PI: f32 = 3.1415927410e+00; /* 0x40490fdb */
 const PI_LO: f32 = -8.7422776573e-08; /* 0xb3bbbd2e */

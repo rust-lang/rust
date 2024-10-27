@@ -117,11 +117,7 @@ pub fn log1p(x: f64) -> f64 {
         k = (hu >> 20) as i32 - 0x3ff;
         /* correction term ~ log(1+x)-log(u), avoid underflow in c/u */
         if k < 54 {
-            c = if k >= 2 {
-                1. - (f64::from_bits(ui) - x)
-            } else {
-                x - (f64::from_bits(ui) - 1.)
-            };
+            c = if k >= 2 { 1. - (f64::from_bits(ui) - x) } else { x - (f64::from_bits(ui) - 1.) };
             c /= f64::from_bits(ui);
         } else {
             c = 0.;

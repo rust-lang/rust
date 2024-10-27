@@ -41,7 +41,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
-      run: rustup update stable && rustup default stable && rustup component add rustfmt
+      run: rustup update nightly && rustup default nightly && rustup component add rustfmt
     - run: cargo fmt -- --check
 
   wasm:

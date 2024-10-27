@@ -31,9 +31,5 @@ pub fn asinhf(mut x: f32) -> f32 {
         force_eval!(x + x1p120);
     }
 
-    if sign {
-        -x
-    } else {
-        x
-    }
+    if sign { -x } else { x }
 }

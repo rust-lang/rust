@@ -111,9 +111,5 @@ pub fn asin(mut x: f64) -> f64 {
         c = (z - f * f) / (s + f);
         x = 0.5 * PIO2_HI - (2.0 * s * r - (PIO2_LO - 2.0 * c) - (0.5 * PIO2_HI - 2.0 * f));
     }
-    if hx >> 31 != 0 {
-        -x
-    } else {
-        x
-    }
+    if hx >> 31 != 0 { -x } else { x }
 }

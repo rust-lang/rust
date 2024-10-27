@@ -146,9 +146,5 @@ pub fn exp(mut x: f64) -> f64 {
     xx = x * x;
     c = x - xx * (P1 + xx * (P2 + xx * (P3 + xx * (P4 + xx * P5))));
     y = 1. + (x * c / (2. - c) - lo + hi);
-    if k == 0 {
-        y
-    } else {
-        scalbn(y, k)
-    }
+    if k == 0 { y } else { scalbn(y, k) }
 }

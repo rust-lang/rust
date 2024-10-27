@@ -14,9 +14,9 @@
  * ====================================================
  */
 
-use super::{k_cosf, k_sinf, rem_pio2f};
-
 use core::f64::consts::FRAC_PI_2;
+
+use super::{k_cosf, k_sinf, rem_pio2f};
 
 /* Small multiples of pi/2 rounded to double precision. */
 const C1_PIO2: f64 = 1. * FRAC_PI_2; /* 0x3FF921FB, 0x54442D18 */

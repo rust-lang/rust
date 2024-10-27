@@ -29,9 +29,5 @@ pub fn atanhf(mut x: f32) -> f32 {
         x = 0.5 * log1pf(2.0 * (x / (1.0 - x)));
     }
 
-    if sign {
-        -x
-    } else {
-        x
-    }
+    if sign { -x } else { x }
 }

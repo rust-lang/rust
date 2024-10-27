@@ -29,8 +29,9 @@
  * to produce the hexadecimal values shown.
  */
 
-use super::fabs;
 use core::f64;
+
+use super::fabs;
 
 const ATANHI: [f64; 4] = [
     4.63647609000806093515e-01, /* atan(0.5)hi 0x3FDDAC67, 0x0561BB4F */
@@ -128,17 +129,14 @@ pub fn atan(x: f64) -> f64 {
 
     let z = i!(ATANHI, id as usize) - (x * (s1 + s2) - i!(ATANLO, id as usize) - x);
 
-    if sign != 0 {
-        -z
-    } else {
-        z
-    }
+    if sign != 0 { -z } else { z }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::atan;
     use core::f64;
+
+    use super::atan;
 
     #[test]
     fn sanity_check() {

@@ -49,11 +49,7 @@ pub fn tan(x: f64) -> f64 {
         if ix < 0x3e400000 {
             /* |x| < 2**-27 */
             /* raise inexact if x!=0 and underflow if subnormal */
-            force_eval!(if ix < 0x00100000 {
-                x / x1p120 as f64
-            } else {
-                x + x1p120 as f64
-            });
+            force_eval!(if ix < 0x00100000 { x / x1p120 as f64 } else { x + x1p120 as f64 });
             return x;
         }
         return k_tan(x, 0.0, 0);

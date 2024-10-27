@@ -44,8 +44,9 @@ pub fn ceilf(x: f32) -> f32 {
 #[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
-    use super::*;
     use core::f32::*;
+
+    use super::*;
 
     #[test]
     fn sanity_check() {

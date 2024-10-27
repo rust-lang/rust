@@ -167,11 +167,7 @@ pub fn erff(x: f32) -> f32 {
         y = 1.0 - x1p_120;
     }
 
-    if sign != 0 {
-        -y
-    } else {
-        y
-    }
+    if sign != 0 { -y } else { y }
 }
 
 /// Complementary error function (f32)
@@ -222,9 +218,5 @@ pub fn erfcf(x: f32) -> f32 {
     }
 
     let x1p_120 = f32::from_bits(0x03800000);
-    if sign != 0 {
-        2.0 - x1p_120
-    } else {
-        x1p_120 * x1p_120
-    }
+    if sign != 0 { 2.0 - x1p_120 } else { x1p_120 * x1p_120 }
 }

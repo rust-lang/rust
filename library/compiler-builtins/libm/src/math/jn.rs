@@ -244,11 +244,7 @@ pub fn jn(n: i32, mut x: f64) -> f64 {
         }
     }
 
-    if sign {
-        -b
-    } else {
-        b
-    }
+    if sign { -b } else { b }
 }
 
 pub fn yn(n: i32, x: f64) -> f64 {
@@ -335,9 +331,5 @@ pub fn yn(n: i32, x: f64) -> f64 {
         }
     }
 
-    if sign {
-        -b
-    } else {
-        b
-    }
+    if sign { -b } else { b }
 }

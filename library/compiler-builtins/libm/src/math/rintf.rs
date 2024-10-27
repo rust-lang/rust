@@ -23,15 +23,7 @@ pub fn rintf(x: f32) -> f32 {
             xminusoneovere + one_over_e
         };
 
-        if ans == 0.0 {
-            if is_positive {
-                0.0
-            } else {
-                -0.0
-            }
-        } else {
-            ans
-        }
+        if ans == 0.0 { if is_positive { 0.0 } else { -0.0 } } else { ans }
     }
 }
 
