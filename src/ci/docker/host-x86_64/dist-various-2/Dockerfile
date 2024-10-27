@@ -56,9 +56,9 @@ ENV \
     CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     CXX_x86_64_fortanix_unknown_sgx=clang++-11 \
     CXXFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd13-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd13-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd13-clang++ \
+    AR_i686_unknown_freebsd=i686-unknown-freebsd12-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd12-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd12-clang++ \
     CC_aarch64_unknown_uefi=clang-11 \
     CXX_aarch64_unknown_uefi=clang++-11 \
     CC_i686_unknown_uefi=clang-11 \

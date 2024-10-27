@@ -256,23 +256,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let epollhup = this.eval_libc_u32("EPOLLHUP");
         let epollerr = this.eval_libc_u32("EPOLLERR");
 
-        // Fail on unsupported operations.
-        if op & epoll_ctl_add != epoll_ctl_add
-            && op & epoll_ctl_mod != epoll_ctl_mod
-            && op & epoll_ctl_del != epoll_ctl_del
-        {
-            throw_unsup_format!("epoll_ctl: encountered unknown unsupported operation {:#x}", op);
-        }
-
         // Throw EINVAL if epfd and fd have the same value.
         if epfd_value == fd {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         // Check if epfd is a valid epoll file descriptor.
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let epoll_file_description = epfd
             .downcast::<Epoll>()
@@ -282,7 +273,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ready_list = &epoll_file_description.ready_list;
 
         let Some(fd_ref) = this.machine.fds.get(fd) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let id = fd_ref.get_id();
 
@@ -332,15 +323,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Check the existence of fd in the interest list.
             if op == epoll_ctl_add {
                 if interest_list.contains_key(&epoll_key) {
-                    let eexist = this.eval_libc("EEXIST");
-                    this.set_last_error(eexist)?;
-                    return interp_ok(Scalar::from_i32(-1));
+                    return this.set_last_error_and_return_i32(LibcError("EEXIST"));
                 }
             } else {
                 if !interest_list.contains_key(&epoll_key) {
-                    let enoent = this.eval_libc("ENOENT");
-                    this.set_last_error(enoent)?;
-                    return interp_ok(Scalar::from_i32(-1));
+                    return this.set_last_error_and_return_i32(LibcError("ENOENT"));
                 }
             }
 
@@ -368,15 +355,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notification will be returned for current epfd if there is event in the file
             // descriptor we registered.
             check_and_update_one_event_interest(&fd_ref, interest, id, this)?;
-            return interp_ok(Scalar::from_i32(0));
+            interp_ok(Scalar::from_i32(0))
         } else if op == epoll_ctl_del {
             let epoll_key = (id, fd);
 
             // Remove epoll_event_interest from interest_list.
             let Some(epoll_interest) = interest_list.remove(&epoll_key) else {
-                let enoent = this.eval_libc("ENOENT");
-                this.set_last_error(enoent)?;
-                return interp_ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(LibcError("ENOENT"));
             };
             // All related Weak<EpollEventInterest> will fail to upgrade after the drop.
             drop(epoll_interest);
@@ -394,9 +379,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .unwrap()
                 .retain(|event| event.upgrade().is_some());
 
-            return interp_ok(Scalar::from_i32(0));
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            throw_unsup_format!("unsupported epoll_ctl operation: {op}");
         }
-        interp_ok(Scalar::from_i32(-1))
     }
 
     /// The `epoll_wait()` system call waits for events on the `Epoll`
@@ -447,9 +433,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            this.set_last_error(LibcError("EINVAL"))?;
-            this.write_int(-1, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         }
 
         // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
@@ -460,9 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            let result_value: i32 = this.fd_not_found()?;
-            this.write_int(result_value, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
         // Create a weak ref of epfd and pass it to callback so we will make sure that epfd
         // is not close after the thread unblocks.
