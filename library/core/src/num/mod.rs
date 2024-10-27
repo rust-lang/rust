@@ -429,7 +429,7 @@ impl i64 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
-    midpoint_impl! { i64, i128, signed }
+    midpoint_impl! { i64, signed }
 }
 
 impl i128 {
@@ -530,7 +530,7 @@ impl isize {
         from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
         bound_condition = " on 64-bit targets",
     }
-    midpoint_impl! { isize, i128, signed }
+    midpoint_impl! { isize, signed }
 }
 
 /// If the 6th bit is set ascii is lower case.
