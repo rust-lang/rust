@@ -526,6 +526,15 @@ impl<'tcx> Inliner<'tcx> {
                 continue;
             }
 
+            let cost = checker.cost();
+            if cost > threshold {
+                debug!(
+                    "NOT inlining {:?} [cost lower bound={} > threshold={}], early exit",
+                    callsite, cost, threshold
+                );
+                return Err("cost above threshold");
+            }
+
             let blk = &callee_body.basic_blocks[bb];
             checker.visit_basic_block_data(bb, blk);
 
