@@ -1063,9 +1063,10 @@ pub trait FnPtr: Copy + Clone {
 }
 
 /// Derive macro generating impls of traits related to smart pointers.
-#[rustc_builtin_macro(SmartPointer, attributes(pointee))]
+#[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
-#[unstable(feature = "derive_smart_pointer", issue = "123430")]
-pub macro SmartPointer($item:item) {
+#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+#[cfg(not(bootstrap))]
+pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
