@@ -42,8 +42,6 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
         target,
         |edit| {
             let mut editor = edit.make_editor(&parent_node);
-            let impl_trait_type = edit.make_mut(impl_trait_type);
-            let fn_ = edit.make_mut(fn_);
             let fn_generic_param_list = fn_.get_or_create_generic_param_list();
 
             let existing_names = fn_generic_param_list
