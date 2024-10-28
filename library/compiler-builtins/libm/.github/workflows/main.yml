@@ -38,6 +38,8 @@ jobs:
   msrv:
     name: Check MSRV
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
     - uses: actions/checkout@master
     - run: |
