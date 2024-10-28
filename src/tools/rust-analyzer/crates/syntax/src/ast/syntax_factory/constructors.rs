@@ -14,6 +14,27 @@ impl SyntaxFactory {
         make::name(name).clone_for_update()
     }
 
+    pub fn ty(&self, text: &str) -> ast::Type {
+        // FIXME: Is there anything to map here?
+        make::ty(text).clone_for_update()
+    }
+
+    pub fn type_param(
+        &self,
+        name: ast::Name,
+        bounds: Option<ast::TypeBoundList>,
+    ) -> ast::TypeParam {
+        let ast = make::type_param(name.clone(), bounds.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn ident_pat(&self, ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
         let ast = make::ident_pat(ref_, mut_, name.clone()).clone_for_update();
 

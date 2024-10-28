@@ -1,8 +1,11 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, HasGenericParams, HasName},
-    ted,
+    ast::{
+        self, edit_in_place::GenericParamsOwnerEdit, syntax_factory::SyntaxFactory, AstNode,
+        HasGenericParams, HasName,
+    },
+    SyntaxElement,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -25,12 +28,20 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
+    // FIXME: Is this node appropriate to use for SyntaxEditor in this case?
+    let parent_node = match ctx.covering_element() {
+        SyntaxElement::Node(n) => n,
+        SyntaxElement::Token(t) => t.parent()?,
+    };
+    let make = SyntaxFactory::new();
+
     let target = fn_.syntax().text_range();
     acc.add(
         AssistId("introduce_named_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
         |edit| {
+            let mut editor = edit.make_editor(&parent_node);
             let impl_trait_type = edit.make_mut(impl_trait_type);
             let fn_ = edit.make_mut(fn_);
             let fn_generic_param_list = fn_.get_or_create_generic_param_list();
@@ -47,11 +58,12 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             )
             .for_impl_trait_as_generic(&impl_trait_type);
 
-            let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
+            let type_param = make
+                .type_param(make.name(&type_param_name), Some(type_bound_list))
                 .clone_for_update();
-            let new_ty = make::ty(&type_param_name).clone_for_update();
+            let new_ty = make.ty(&type_param_name).clone_for_update();
 
-            ted::replace(impl_trait_type.syntax(), new_ty.syntax());
+            editor.replace(impl_trait_type.syntax(), new_ty.syntax());
             fn_generic_param_list.add_generic_param(type_param.into());
 
             if let Some(cap) = ctx.config.snippet_cap {
@@ -61,6 +73,9 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
                     edit.add_tabstop_before(cap, generic_param);
                 }
             }
+
+            editor.add_mappings(make.finish_with_mappings());
+            edit.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
