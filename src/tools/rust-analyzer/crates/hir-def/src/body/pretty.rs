@@ -11,7 +11,6 @@ use crate::{
         Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
-    type_ref::TypeRef,
 };
 
 use super::*;
@@ -69,20 +68,20 @@ pub(super) fn print_body_hir(
     };
     if let DefWithBodyId::FunctionId(it) = owner {
         p.buf.push('(');
-        let function_data = &db.function_data(it);
+        let function_data = db.function_data(it);
         let (mut params, ret_type) = (function_data.params.iter(), &function_data.ret_type);
         if let Some(self_param) = body.self_param {
             p.print_binding(self_param);
             p.buf.push_str(": ");
             if let Some(ty) = params.next() {
-                p.print_type_ref(ty);
+                p.print_type_ref(*ty, &function_data.types_map);
                 p.buf.push_str(", ");
             }
         }
         body.params.iter().zip(params).for_each(|(&param, ty)| {
             p.print_pat(param);
             p.buf.push_str(": ");
-            p.print_type_ref(ty);
+            p.print_type_ref(*ty, &function_data.types_map);
             p.buf.push_str(", ");
         });
         // remove the last ", " in param list
@@ -92,7 +91,7 @@ pub(super) fn print_body_hir(
         p.buf.push(')');
         // return type
         p.buf.push_str(" -> ");
-        p.print_type_ref(ret_type);
+        p.print_type_ref(*ret_type, &function_data.types_map);
         p.buf.push(' ');
     }
     p.print_expr(body.body_expr);
@@ -242,7 +241,7 @@ impl Printer<'_> {
             Expr::InlineAsm(_) => w!(self, "builtin#asm(_)"),
             Expr::OffsetOf(offset_of) => {
                 w!(self, "builtin#offset_of(");
-                self.print_type_ref(&offset_of.container);
+                self.print_type_ref(offset_of.container, &self.body.types);
                 let edition = self.edition;
                 w!(
                     self,
@@ -296,7 +295,7 @@ impl Printer<'_> {
                 if let Some(args) = generic_args {
                     w!(self, "::<");
                     let edition = self.edition;
-                    print_generic_args(self.db, args, self, edition).unwrap();
+                    print_generic_args(self.db, args, &self.body.types, self, edition).unwrap();
                     w!(self, ">");
                 }
                 w!(self, "(");
@@ -405,7 +404,7 @@ impl Printer<'_> {
             Expr::Cast { expr, type_ref } => {
                 self.print_expr(*expr);
                 w!(self, " as ");
-                self.print_type_ref(type_ref);
+                self.print_type_ref(*type_ref, &self.body.types);
             }
             Expr::Ref { expr, rawness, mutability } => {
                 w!(self, "&");
@@ -493,13 +492,13 @@ impl Printer<'_> {
                     self.print_pat(*pat);
                     if let Some(ty) = ty {
                         w!(self, ": ");
-                        self.print_type_ref(ty);
+                        self.print_type_ref(*ty, &self.body.types);
                     }
                 }
                 w!(self, "|");
                 if let Some(ret_ty) = ret_type {
                     w!(self, " -> ");
-                    self.print_type_ref(ret_ty);
+                    self.print_type_ref(*ret_ty, &self.body.types);
                 }
                 self.whitespace();
                 self.print_expr(*body);
@@ -734,7 +733,7 @@ impl Printer<'_> {
                 self.print_pat(*pat);
                 if let Some(ty) = type_ref {
                     w!(self, ": ");
-                    self.print_type_ref(ty);
+                    self.print_type_ref(*ty, &self.body.types);
                 }
                 if let Some(init) = initializer {
                     w!(self, " = ");
@@ -792,14 +791,14 @@ impl Printer<'_> {
         }
     }
 
-    fn print_type_ref(&mut self, ty: &TypeRef) {
+    fn print_type_ref(&mut self, ty: TypeRefId, map: &TypesMap) {
         let edition = self.edition;
-        print_type_ref(self.db, ty, self, edition).unwrap();
+        print_type_ref(self.db, ty, map, self, edition).unwrap();
     }
 
     fn print_path(&mut self, path: &Path) {
         let edition = self.edition;
-        print_path(self.db, path, self, edition).unwrap();
+        print_path(self.db, path, &self.body.types, self, edition).unwrap();
     }
 
     fn print_binding(&mut self, id: BindingId) {

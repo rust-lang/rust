@@ -24,7 +24,7 @@ use hir_def::{
     nameres::MacroSubNs,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
-    type_ref::Mutability,
+    type_ref::{Mutability, TypesMap, TypesSourceMap},
     AsMacroCall, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, ItemContainerId,
     LocalFieldId, Lookup, ModuleDefId, StructId, TraitId, VariantId,
 };
@@ -614,7 +614,10 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Macro> {
-        let ctx = LowerCtx::new(db.upcast(), macro_call.file_id);
+        let (mut types_map, mut types_source_map) =
+            (TypesMap::default(), TypesSourceMap::default());
+        let ctx =
+            LowerCtx::new(db.upcast(), macro_call.file_id, &mut types_map, &mut types_source_map);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(&ctx, ast))?;
         self.resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Bang))
@@ -632,7 +635,7 @@ impl SourceAnalyzer {
             Pat::Path(path) => path,
             _ => return None,
         };
-        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT)?;
+        let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, TypesMap::EMPTY)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -726,14 +729,16 @@ impl SourceAnalyzer {
             return resolved;
         }
 
-        let ctx = LowerCtx::new(db.upcast(), self.file_id);
+        let (mut types_map, mut types_source_map) =
+            (TypesMap::default(), TypesSourceMap::default());
+        let ctx = LowerCtx::new(db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
         let hir_path = Path::from_src(&ctx, path.clone())?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
         if let Some(use_tree) = parent().and_then(ast::UseTree::cast) {
             if use_tree.coloncolon_token().is_some() {
-                return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
+                return resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map);
             }
         }
 
@@ -750,7 +755,7 @@ impl SourceAnalyzer {
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
         if path.parent_path().is_some() {
-            return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path) {
+            return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map) {
                 None if meta_path.is_some() => {
                     path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
                         ToolModule::by_name(db, self.resolver.krate().into(), &name_ref.text())
@@ -821,7 +826,7 @@ impl SourceAnalyzer {
             };
         }
         if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
-            resolve_hir_path_qualifier(db, &self.resolver, &hir_path)
+            resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map)
         } else {
             resolve_hir_path_(
                 db,
@@ -829,6 +834,7 @@ impl SourceAnalyzer {
                 &hir_path,
                 prefer_value_ns,
                 name_hygiene(db, InFile::new(self.file_id, path.syntax())),
+                &types_map,
             )
         }
     }
@@ -1156,8 +1162,9 @@ pub(crate) fn resolve_hir_path(
     resolver: &Resolver,
     path: &Path,
     hygiene: HygieneId,
+    types_map: &TypesMap,
 ) -> Option<PathResolution> {
-    resolve_hir_path_(db, resolver, path, false, hygiene)
+    resolve_hir_path_(db, resolver, path, false, hygiene, types_map)
 }
 
 #[inline]
@@ -1178,13 +1185,19 @@ fn resolve_hir_path_(
     path: &Path,
     prefer_value_ns: bool,
     hygiene: HygieneId,
+    types_map: &TypesMap,
 ) -> Option<PathResolution> {
     let types = || {
         let (ty, unresolved) = match path.type_anchor() {
             Some(type_ref) => {
-                let (_, res) =
-                    TyLoweringContext::new_maybe_unowned(db, resolver, resolver.type_owner())
-                        .lower_ty_ext(type_ref);
+                let (_, res) = TyLoweringContext::new_maybe_unowned(
+                    db,
+                    resolver,
+                    types_map,
+                    None,
+                    resolver.type_owner(),
+                )
+                .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
@@ -1305,13 +1318,19 @@ fn resolve_hir_path_qualifier(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     path: &Path,
+    types_map: &TypesMap,
 ) -> Option<PathResolution> {
     (|| {
         let (ty, unresolved) = match path.type_anchor() {
             Some(type_ref) => {
-                let (_, res) =
-                    TyLoweringContext::new_maybe_unowned(db, resolver, resolver.type_owner())
-                        .lower_ty_ext(type_ref);
+                let (_, res) = TyLoweringContext::new_maybe_unowned(
+                    db,
+                    resolver,
+                    types_map,
+                    None,
+                    resolver.type_owner(),
+                )
+                .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {

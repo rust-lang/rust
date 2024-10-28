@@ -14,6 +14,7 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
+    type_ref::TypesMap,
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
     Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
@@ -28,7 +29,7 @@ use triomphe::Arc;
 use crate::{
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure},
-    display::HirDisplay,
+    display::{hir_display_with_types_map, HirDisplay},
     error_lifetime,
     generics::generics,
     infer::{cast::CastTy, unify::InferenceTable, CaptureKind, CapturedItem, TypeMismatch},
@@ -247,8 +248,15 @@ impl From<LayoutError> for MirLowerError {
 }
 
 impl MirLowerError {
-    fn unresolved_path(db: &dyn HirDatabase, p: &Path, edition: Edition) -> Self {
-        Self::UnresolvedName(p.display(db, edition).to_string())
+    fn unresolved_path(
+        db: &dyn HirDatabase,
+        p: &Path,
+        edition: Edition,
+        types_map: &TypesMap,
+    ) -> Self {
+        Self::UnresolvedName(
+            hir_display_with_types_map(p, types_map).display(db, edition).to_string(),
+        )
     }
 }
 
@@ -451,7 +459,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         .resolver
                         .resolve_path_in_value_ns_fully(self.db.upcast(), p, hygiene)
                         .ok_or_else(|| {
-                            MirLowerError::unresolved_path(self.db, p, self.edition())
+                            MirLowerError::unresolved_path(
+                                self.db,
+                                p,
+                                self.edition(),
+                                &self.body.types,
+                            )
                         })?;
                     self.resolver.reset_to_guard(resolver_guard);
                     result
@@ -824,7 +837,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {
                         Some(p) => MirLowerError::UnresolvedName(
-                            p.display(self.db, self.edition()).to_string(),
+                            hir_display_with_types_map(&**p, &self.body.types)
+                                .display(self.db, self.edition())
+                                .to_string(),
                         ),
                         None => MirLowerError::RecordLiteralWithoutPath,
                     })?;
@@ -1359,10 +1374,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 };
                 let edition = self.edition();
                 let unresolved_name =
-                    || MirLowerError::unresolved_path(self.db, c.as_ref(), edition);
+                    || MirLowerError::unresolved_path(self.db, c, edition, &self.body.types);
                 let pr = self
                     .resolver
-                    .resolve_path_in_value_ns(self.db.upcast(), c.as_ref(), HygieneId::ROOT)
+                    .resolve_path_in_value_ns(self.db.upcast(), c, HygieneId::ROOT)
                     .ok_or_else(unresolved_name)?;
                 match pr {
                     ResolveValueResult::ValueNs(v, _) => {

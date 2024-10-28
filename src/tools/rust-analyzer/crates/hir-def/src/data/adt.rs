@@ -6,7 +6,7 @@ use cfg::CfgOptions;
 use either::Either;
 
 use hir_expand::name::Name;
-use intern::{sym, Interned};
+use intern::sym;
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use triomphe::Arc;
@@ -21,7 +21,7 @@ use crate::{
     lang_item::LangItem,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
-    type_ref::TypeRef,
+    type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
     EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
@@ -73,8 +73,8 @@ pub struct EnumVariantData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
-    Record(Arena<FieldData>),
-    Tuple(Arena<FieldData>),
+    Record { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
+    Tuple { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Unit,
 }
 
@@ -82,7 +82,7 @@ pub enum VariantData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldData {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
 }
 
@@ -208,7 +208,7 @@ impl StructData {
         }
 
         let strukt = &item_tree[loc.id.value];
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             loc.container.local_id,
@@ -219,12 +219,13 @@ impl StructData {
             &strukt.fields,
             None,
         );
+        let types_map = strukt.types_map.clone();
         (
             Arc::new(StructData {
                 name: strukt.name.clone(),
                 variant_data: Arc::new(match strukt.shape {
-                    FieldsShape::Record => VariantData::Record(data),
-                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Record => VariantData::Record { fields, types_map },
+                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
                     FieldsShape::Unit => VariantData::Unit,
                 }),
                 repr,
@@ -258,7 +259,7 @@ impl StructData {
         }
 
         let union = &item_tree[loc.id.value];
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             loc.container.local_id,
@@ -269,10 +270,11 @@ impl StructData {
             &union.fields,
             None,
         );
+        let types_map = union.types_map.clone();
         (
             Arc::new(StructData {
                 name: union.name.clone(),
-                variant_data: Arc::new(VariantData::Record(data)),
+                variant_data: Arc::new(VariantData::Record { fields, types_map }),
                 repr,
                 visibility: item_tree[union.visibility].clone(),
                 flags,
@@ -360,7 +362,7 @@ impl EnumVariantData {
         let item_tree = loc.id.item_tree(db);
         let variant = &item_tree[loc.id.value];
 
-        let (data, diagnostics) = lower_fields(
+        let (fields, diagnostics) = lower_fields(
             db,
             krate,
             container.local_id,
@@ -371,13 +373,14 @@ impl EnumVariantData {
             &variant.fields,
             Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
+        let types_map = variant.types_map.clone();
 
         (
             Arc::new(EnumVariantData {
                 name: variant.name.clone(),
                 variant_data: Arc::new(match variant.shape {
-                    FieldsShape::Record => VariantData::Record(data),
-                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Record => VariantData::Record { fields, types_map },
+                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
                     FieldsShape::Unit => VariantData::Unit,
                 }),
             }),
@@ -390,8 +393,17 @@ impl VariantData {
     pub fn fields(&self) -> &Arena<FieldData> {
         const EMPTY: &Arena<FieldData> = &Arena::new();
         match &self {
-            VariantData::Record(fields) | VariantData::Tuple(fields) => fields,
+            VariantData::Record { fields, .. } | VariantData::Tuple { fields, .. } => fields,
             _ => EMPTY,
+        }
+    }
+
+    pub fn types_map(&self) -> &TypesMap {
+        match &self {
+            VariantData::Record { types_map, .. } | VariantData::Tuple { types_map, .. } => {
+                types_map
+            }
+            VariantData::Unit => TypesMap::EMPTY,
         }
     }
 
@@ -402,8 +414,8 @@ impl VariantData {
 
     pub fn kind(&self) -> StructKind {
         match self {
-            VariantData::Record(_) => StructKind::Record,
-            VariantData::Tuple(_) => StructKind::Tuple,
+            VariantData::Record { .. } => StructKind::Record,
+            VariantData::Tuple { .. } => StructKind::Tuple,
             VariantData::Unit => StructKind::Unit,
         }
     }
@@ -463,7 +475,7 @@ fn lower_field(
 ) -> FieldData {
     FieldData {
         name: field.name.clone(),
-        type_ref: field.type_ref.clone(),
+        type_ref: field.type_ref,
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
     }
 }

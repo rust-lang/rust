@@ -309,7 +309,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for struct fields.
     fn validate_struct_fields(&mut self, struct_id: StructId) {
         let data = self.db.struct_data(struct_id);
-        let VariantData::Record(fields) = data.variant_data.as_ref() else {
+        let VariantData::Record { fields, .. } = data.variant_data.as_ref() else {
             return;
         };
         let edition = self.edition(struct_id);
@@ -469,7 +469,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for fields of enum variant.
     fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
         let variant_data = self.db.enum_variant_data(variant_id);
-        let VariantData::Record(fields) = variant_data.variant_data.as_ref() else {
+        let VariantData::Record { fields, .. } = variant_data.variant_data.as_ref() else {
             return;
         };
         let edition = self.edition(variant_id);

@@ -16,7 +16,7 @@ use hir_def::{
     nameres::{MacroSubNs, ModuleOrigin},
     path::ModPath,
     resolver::{self, HasResolver, Resolver, TypeNs},
-    type_ref::Mutability,
+    type_ref::{Mutability, TypesMap, TypesSourceMap},
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, StructId, TraitId, VariantId,
 };
 use hir_expand::{
@@ -1269,19 +1269,28 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
-        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
+        let (mut types_map, mut types_source_map) =
+            (TypesMap::default(), TypesSourceMap::default());
+        let ctx =
+            LowerCtx::new(self.db.upcast(), analyze.file_id, &mut types_map, &mut types_source_map);
+        let type_ref = crate::TypeRef::from_ast(&ctx, ty.clone());
         let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
+            &types_map,
+            None,
             analyze.resolver.type_owner(),
         )
-        .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
+        .lower_ty(type_ref);
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
     }
 
     pub fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
         let analyze = self.analyze(path.syntax())?;
-        let ctx = LowerCtx::new(self.db.upcast(), analyze.file_id);
+        let (mut types_map, mut types_source_map) =
+            (TypesMap::default(), TypesSourceMap::default());
+        let ctx =
+            LowerCtx::new(self.db.upcast(), analyze.file_id, &mut types_map, &mut types_source_map);
         let hir_path = Path::from_src(&ctx, path.clone())?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
@@ -1963,13 +1972,17 @@ impl SemanticsScope<'_> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
-        let ctx = LowerCtx::new(self.db.upcast(), self.file_id);
+        let (mut types_map, mut types_source_map) =
+            (TypesMap::default(), TypesSourceMap::default());
+        let ctx =
+            LowerCtx::new(self.db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
         let path = Path::from_src(&ctx, ast_path.clone())?;
         resolve_hir_path(
             self.db,
             &self.resolver,
             &path,
             name_hygiene(self.db, InFile::new(self.file_id, ast_path.syntax())),
+            &types_map,
         )
     }
 

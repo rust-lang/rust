@@ -283,11 +283,11 @@ impl CapturedItem {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
                     match &*f.parent.variant_data(db.upcast()) {
-                        VariantData::Record(fields) => {
+                        VariantData::Record { fields, .. } => {
                             result.push('_');
                             result.push_str(fields[f.local_id].name.as_str())
                         }
-                        VariantData::Tuple(fields) => {
+                        VariantData::Tuple { fields, .. } => {
                             let index = fields.iter().position(|it| it.0 == f.local_id);
                             if let Some(index) = index {
                                 format_to!(result, "_{index}");
@@ -325,12 +325,12 @@ impl CapturedItem {
                 ProjectionElem::Field(Either::Left(f)) => {
                     let variant_data = f.parent.variant_data(db.upcast());
                     match &*variant_data {
-                        VariantData::Record(fields) => format_to!(
+                        VariantData::Record { fields, .. } => format_to!(
                             result,
                             ".{}",
                             fields[f.local_id].name.display(db.upcast(), edition)
                         ),
-                        VariantData::Tuple(fields) => format_to!(
+                        VariantData::Tuple { fields, .. } => format_to!(
                             result,
                             ".{}",
                             fields.iter().position(|it| it.0 == f.local_id).unwrap_or_default()
@@ -383,8 +383,10 @@ impl CapturedItem {
                     }
                     let variant_data = f.parent.variant_data(db.upcast());
                     let field = match &*variant_data {
-                        VariantData::Record(fields) => fields[f.local_id].name.as_str().to_owned(),
-                        VariantData::Tuple(fields) => fields
+                        VariantData::Record { fields, .. } => {
+                            fields[f.local_id].name.as_str().to_owned()
+                        }
+                        VariantData::Tuple { fields, .. } => fields
                             .iter()
                             .position(|it| it.0 == f.local_id)
                             .unwrap_or_default()

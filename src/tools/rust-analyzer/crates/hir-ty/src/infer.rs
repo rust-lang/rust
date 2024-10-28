@@ -41,7 +41,7 @@ use hir_def::{
     layout::Integer,
     path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    type_ref::{LifetimeRef, TypeRef},
+    type_ref::{LifetimeRef, TypeRefId, TypesMap},
     AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ImplId, ItemContainerId, Lookup,
     TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
@@ -858,7 +858,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
-        let return_ty = self.make_ty(&data.type_ref);
+        let return_ty = self.make_ty(data.type_ref, &data.types_map);
 
         // Constants might be defining usage sites of TAITs.
         self.make_tait_coercion_table(iter::once(&return_ty));
@@ -867,7 +867,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_static(&mut self, data: &StaticData) {
-        let return_ty = self.make_ty(&data.type_ref);
+        let return_ty = self.make_ty(data.type_ref, &data.types_map);
 
         // Statics might be defining usage sites of TAITs.
         self.make_tait_coercion_table(iter::once(&return_ty));
@@ -877,11 +877,11 @@ impl<'a> InferenceContext<'a> {
 
     fn collect_fn(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
-            .with_type_param_mode(ParamLoweringMode::Placeholder)
-            .with_impl_trait_mode(ImplTraitLoweringMode::Param);
-        let mut param_tys =
-            data.params.iter().map(|type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
+        let mut param_tys = self.with_ty_lowering(&data.types_map, |ctx| {
+            ctx.type_param_mode(ParamLoweringMode::Placeholder)
+                .impl_trait_mode(ImplTraitLoweringMode::Param);
+            data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>()
+        });
         // Check if function contains a va_list, if it does then we append it to the parameter types
         // that are collected from the function data
         if data.is_varargs() {
@@ -916,12 +916,13 @@ impl<'a> InferenceContext<'a> {
                 tait_candidates.insert(ty);
             }
         }
-        let return_ty = &*data.ret_type;
+        let return_ty = data.ret_type;
 
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into())
-            .with_type_param_mode(ParamLoweringMode::Placeholder)
-            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
-        let return_ty = ctx.lower_ty(return_ty);
+        let return_ty = self.with_ty_lowering(&data.types_map, |ctx| {
+            ctx.type_param_mode(ParamLoweringMode::Placeholder)
+                .impl_trait_mode(ImplTraitLoweringMode::Opaque)
+                .lower_ty(return_ty)
+        });
         let return_ty = self.insert_type_vars(return_ty);
 
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
@@ -1225,11 +1226,35 @@ impl<'a> InferenceContext<'a> {
         self.result.diagnostics.push(diagnostic);
     }
 
-    fn make_ty(&mut self, type_ref: &TypeRef) -> Ty {
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
-        let ty = ctx.lower_ty(type_ref);
+    fn with_ty_lowering<R>(
+        &self,
+        types_map: &TypesMap,
+        f: impl FnOnce(&mut crate::lower::TyLoweringContext<'_>) -> R,
+    ) -> R {
+        let mut ctx = crate::lower::TyLoweringContext::new(
+            self.db,
+            &self.resolver,
+            types_map,
+            self.owner.into(),
+        );
+        f(&mut ctx)
+    }
+
+    fn with_body_ty_lowering<R>(
+        &self,
+        f: impl FnOnce(&mut crate::lower::TyLoweringContext<'_>) -> R,
+    ) -> R {
+        self.with_ty_lowering(&self.body.types, f)
+    }
+
+    fn make_ty(&mut self, type_ref: TypeRefId, types_map: &TypesMap) -> Ty {
+        let ty = self.with_ty_lowering(types_map, |ctx| ctx.lower_ty(type_ref));
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
+    }
+
+    fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty {
+        self.make_ty(type_ref, &self.body.types)
     }
 
     fn err_ty(&self) -> Ty {
@@ -1237,8 +1262,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn make_lifetime(&mut self, lifetime_ref: &LifetimeRef) -> Lifetime {
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
-        let lt = ctx.lower_lifetime(lifetime_ref);
+        let lt = self.with_ty_lowering(TypesMap::EMPTY, |ctx| ctx.lower_lifetime(lifetime_ref));
         self.insert_type_vars(lt)
     }
 
@@ -1396,7 +1420,12 @@ impl<'a> InferenceContext<'a> {
             Some(path) => path,
             None => return (self.err_ty(), None),
         };
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
+        let ctx = crate::lower::TyLoweringContext::new(
+            self.db,
+            &self.resolver,
+            &self.body.types,
+            self.owner.into(),
+        );
         let (resolution, unresolved) = if value_ns {
             match self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, HygieneId::ROOT) {
                 Some(ResolveValueResult::ValueNs(value, _)) => match value {

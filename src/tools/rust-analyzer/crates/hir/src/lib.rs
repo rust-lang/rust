@@ -2424,8 +2424,8 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|param| match &**param {
-                TypeRef::Reference(.., mutability) => match mutability {
+            .map(|&param| match &func_data.types_map[param] {
+                TypeRef::Reference(ref_) => match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
                 },
@@ -2749,10 +2749,6 @@ impl TypeAlias {
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         Module { id: self.id.module(db.upcast()) }
-    }
-
-    pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
-        db.type_alias_data(self.id).type_ref.as_deref().cloned()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
