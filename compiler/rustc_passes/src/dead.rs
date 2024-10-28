@@ -7,6 +7,7 @@ use std::mem;
 
 use hir::ItemKind;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
@@ -22,7 +23,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
     ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,

@@ -3621,6 +3621,7 @@ version = "0.0.0"
 dependencies = [
  "annotate-snippets 0.11.4",
  "derive_setters",
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3718,6 +3719,7 @@ name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
  "itertools",
+ "rustc_abi",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3906,6 +3908,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3980,6 +3983,7 @@ dependencies = [
  "bitflags 2.6.0",
  "libloading",
  "odht",
+ "rustc_abi",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4074,6 +4078,7 @@ version = "0.0.0"
 dependencies = [
  "polonius-engine",
  "regex",
+ "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -4187,6 +4192,7 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -4213,6 +4219,7 @@ name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
  "rustc-hash 2.0.0",
+ "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",
@@ -4352,6 +4359,7 @@ dependencies = [
  "bitflags 2.6.0",
  "getopts",
  "libc",
+ "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -4415,6 +4423,7 @@ version = "0.0.0"
 dependencies = [
  "punycode",
  "rustc-demangle",
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

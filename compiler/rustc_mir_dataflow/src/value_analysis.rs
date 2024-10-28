@@ -36,6 +36,7 @@ use std::assert_matches::assert_matches;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -46,7 +47,6 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::debug;
 
 use crate::fmt::DebugWithContext;
