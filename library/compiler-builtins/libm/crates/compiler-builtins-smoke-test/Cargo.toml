@@ -10,6 +10,8 @@ test = false
 bench = false
 
 [features]
+# Duplicated from libm's Cargo.toml
 unstable = []
+unstable-intrinsics = []
 checked = []
 force-soft-floats = []

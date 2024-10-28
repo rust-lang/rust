@@ -1,7 +1,7 @@
 //! libm in pure Rust
 #![no_std]
-#![cfg_attr(feature = "unstable", allow(internal_features))]
-#![cfg_attr(feature = "unstable", feature(core_intrinsics))]
+#![cfg_attr(feature = "unstable-intrinsics", allow(internal_features))]
+#![cfg_attr(feature = "unstable-intrinsics", feature(core_intrinsics))]
 #![allow(clippy::assign_op_pattern)]
 #![allow(clippy::deprecated_cfg_attr)]
 #![allow(clippy::eq_op)]

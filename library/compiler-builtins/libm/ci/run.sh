@@ -49,7 +49,7 @@ fi
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     cmd="cargo build --target $target --package libm"
     $cmd
-    $cmd --features 'unstable'
+    $cmd --features "unstable-intrinsics"
 
     echo "can't run tests on $target"
 else
@@ -60,6 +60,6 @@ else
     $cmd --release
 
     # unstable with a feature
-    $cmd --features 'unstable'
-    $cmd --release --features 'unstable'
+    $cmd --features "unstable-intrinsics"
+    $cmd --release --features "unstable-intrinsics"
 fi
