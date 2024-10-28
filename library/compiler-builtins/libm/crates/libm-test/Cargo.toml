@@ -11,8 +11,21 @@ default = []
 # musl libc.
 test-musl-serialized = ["rand"]
 
+# Build our own musl for testing and benchmarks
+build-musl = ["dep:musl-math-sys"]
+
 [dependencies]
+anyhow = "1.0.90"
 libm = { path = "../.." }
+libm-macros = { path = "../libm-macros" }
+musl-math-sys = { path = "../musl-math-sys", optional = true }
+paste = "1.0.15"
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+# Enable randomness on WASM
+getrandom = { version = "0.2", features = ["js"] }
 
 [build-dependencies]
 rand = { version = "0.8.5", optional = true }

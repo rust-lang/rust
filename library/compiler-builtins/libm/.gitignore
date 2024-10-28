@@ -1,8 +1,9 @@
-**/*.rs.bk
+**.bk
 .#*
 /bin
 /math/src
 /math/target
 /target
-/tests
 Cargo.lock
+musl/
+**.tar.gz
