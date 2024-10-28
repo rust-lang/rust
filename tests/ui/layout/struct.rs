@@ -6,7 +6,7 @@
 #![crate_type = "lib"]
 
 #[rustc_layout(abi)]
-struct AlignedZstPreventsScalar(i16, [i32; 0]); //~ERROR: abi: Aggregate
+struct AlignedZstPreventsScalar(i16, [i32; 0]); //~ERROR: abi: Memory
 
 #[rustc_layout(abi)]
 struct AlignedZstButStillScalar(i32, [i16; 0]); //~ERROR: abi: Scalar

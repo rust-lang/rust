@@ -90,7 +90,7 @@ error: layout_of(MissingPayloadField) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -489,7 +489,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -509,7 +509,7 @@ error: layout_of(NicheFirst) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -641,7 +641,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -661,7 +661,7 @@ error: layout_of(NicheSecond) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
