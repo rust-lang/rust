@@ -15,7 +15,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::builder::Builder;
-use crate::common::Funclet;
+use crate::common::{AsCCharPtr, Funclet};
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -420,7 +420,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         unsafe {
             llvm::LLVMAppendModuleInlineAsm(
                 self.llmod,
-                template_str.as_ptr().cast(),
+                template_str.as_c_char_ptr(),
                 template_str.len(),
             );
         }
@@ -458,14 +458,14 @@ pub(crate) fn inline_asm_call<'ll>(
     let fty = bx.cx.type_func(&argtys, output);
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
-        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
+        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_c_char_ptr(), cons.len());
         debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
             let v = llvm::LLVMRustInlineAsm(
                 fty,
-                asm.as_ptr().cast(),
+                asm.as_c_char_ptr(),
                 asm.len(),
-                cons.as_ptr().cast(),
+                cons.as_c_char_ptr(),
                 cons.len(),
                 volatile,
                 alignstack,
