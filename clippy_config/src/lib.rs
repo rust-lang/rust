@@ -20,6 +20,7 @@ extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate smallvec;
 
 mod conf;
 mod metadata;

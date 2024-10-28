@@ -3,6 +3,7 @@ use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::{Symbol, sym};
 use serde::Deserialize;
+use smallvec::{SmallVec, smallvec};
 use std::fmt;
 
 macro_rules! msrv_aliases {
@@ -67,7 +68,7 @@ msrv_aliases! {
 /// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]`
 #[derive(Debug, Clone)]
 pub struct Msrv {
-    stack: Vec<RustcVersion>,
+    stack: SmallVec<[RustcVersion; 2]>,
 }
 
 impl fmt::Display for Msrv {
@@ -87,14 +88,14 @@ impl<'de> Deserialize<'de> for Msrv {
     {
         let v = String::deserialize(deserializer)?;
         parse_version(Symbol::intern(&v))
-            .map(|v| Msrv { stack: vec![v] })
+            .map(|v| Msrv { stack: smallvec![v] })
             .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
     }
 }
 
 impl Msrv {
     pub fn empty() -> Msrv {
-        Msrv { stack: Vec::new() }
+        Msrv { stack: SmallVec::new() }
     }
 
     pub fn read_cargo(&mut self, sess: &Session) {
@@ -103,7 +104,7 @@ impl Msrv {
             .and_then(|v| parse_version(Symbol::intern(&v)));
 
         match (self.current(), cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.stack = vec![cargo_msrv],
+            (None, Some(cargo_msrv)) => self.stack = smallvec![cargo_msrv],
             (Some(clippy_msrv), Some(cargo_msrv)) => {
                 if clippy_msrv != cargo_msrv {
                     sess.dcx().warn(format!(
