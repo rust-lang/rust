@@ -35,13 +35,17 @@ jobs:
     - run: cargo generate-lockfile
     - run: ./ci/run-docker.sh ${{ matrix.target }}
 
-  stable:
-    name: Build succeeds on stable
+  msrv:
+    name: Check MSRV
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+    - run: |
+        msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' Cargo.toml)"
+        echo "MSRV: $msrv"
+        echo "MSRV=$msrv" >> "$GITHUB_ENV"
     - name: Install Rust
-      run: rustup update stable && rustup default stable
+      run: rustup update "$MSRV" && rustup default "$MSRV"
     - run: cargo build -p libm
 
 
