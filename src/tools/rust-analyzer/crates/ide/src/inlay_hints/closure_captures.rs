@@ -2,10 +2,10 @@
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
+use ide_db::text_edit::{TextRange, TextSize};
 use span::EditionedFileId;
 use stdx::{never, TupleExt};
 use syntax::ast::{self, AstNode};
-use ide_db::text_edit::{TextRange, TextSize};
 
 use crate::{
     InlayHint, InlayHintLabel, InlayHintLabelPart, InlayHintPosition, InlayHintsConfig, InlayKind,

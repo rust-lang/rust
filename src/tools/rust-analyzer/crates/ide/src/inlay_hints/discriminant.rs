@@ -5,10 +5,10 @@
 //! }
 //! ```
 use hir::Semantics;
+use ide_db::text_edit::TextEdit;
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use span::EditionedFileId;
 use syntax::ast::{self, AstNode, HasName};
-use ide_db::text_edit::TextEdit;
 
 use crate::{
     DiscriminantHints, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,

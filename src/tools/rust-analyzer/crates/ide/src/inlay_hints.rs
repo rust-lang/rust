@@ -8,6 +8,7 @@ use hir::{
     sym, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
+use ide_db::text_edit::TextEdit;
 use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
@@ -17,7 +18,6 @@ use syntax::{
     ast::{self, AstNode, HasGenericParams},
     format_smolstr, match_ast, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
 };
-use ide_db::text_edit::TextEdit;
 
 use crate::{navigation_target::TryToNav, FileId};
 
