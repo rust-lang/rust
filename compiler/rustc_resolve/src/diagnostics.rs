@@ -1366,7 +1366,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
 
         if lookup_ident.span.at_least_rust_2018() {
-            // It will be sorted later.
+            // Extended suggestions will be sorted at the end of this function.
             #[allow(rustc::potential_query_instability)]
             for ident in self.extern_prelude.clone().into_keys() {
                 if ident.span.from_expansion() {
@@ -1422,6 +1422,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        // Make sure error reporting is deterministic.
+        suggestions.sort_by_key(|suggestion| suggestion.did.unwrap().index);
         suggestions
     }
 
