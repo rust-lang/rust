@@ -1,3 +1,4 @@
+use rustc_abi::{Align, Size};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{AllocRange, Pointer, alloc_range};
 use stable_mir::Error;
@@ -7,7 +8,7 @@ use stable_mir::ty::{Allocation, ProvenanceMap};
 use crate::rustc_smir::{Stable, Tables};
 
 /// Creates new empty `Allocation` from given `Align`.
-fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
+fn new_empty_allocation(align: Align) -> Allocation {
     Allocation {
         bytes: Vec::new(),
         provenance: ProvenanceMap { ptrs: Vec::new() },
@@ -45,7 +46,7 @@ pub(crate) fn try_new_allocation<'tcx>(
                 .align;
             let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
             allocation
-                .write_scalar(&tables.tcx, alloc_range(rustc_target::abi::Size::ZERO, size), scalar)
+                .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
                 .map_err(|e| e.stable(tables))?;
             allocation.stable(tables)
         }
@@ -59,7 +60,7 @@ pub(crate) fn try_new_allocation<'tcx>(
         }
         ConstValue::Slice { data, meta } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = Pointer::new(alloc_id.into(), rustc_target::abi::Size::ZERO);
+            let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =
                 rustc_middle::mir::interpret::Scalar::from_target_usize(meta, &tables.tcx);
@@ -72,7 +73,7 @@ pub(crate) fn try_new_allocation<'tcx>(
             allocation
                 .write_scalar(
                     &tables.tcx,
-                    alloc_range(rustc_target::abi::Size::ZERO, tables.tcx.data_layout.pointer_size),
+                    alloc_range(Size::ZERO, tables.tcx.data_layout.pointer_size),
                     scalar_ptr,
                 )
                 .map_err(|e| e.stable(tables))?;
@@ -112,10 +113,7 @@ pub(super) fn allocation_filter<'tcx>(
         .map(Some)
         .collect();
     for (i, b) in bytes.iter_mut().enumerate() {
-        if !alloc
-            .init_mask()
-            .get(rustc_target::abi::Size::from_bytes(i + alloc_range.start.bytes_usize()))
-        {
+        if !alloc.init_mask().get(Size::from_bytes(i + alloc_range.start.bytes_usize())) {
             *b = None;
         }
     }
