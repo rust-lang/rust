@@ -118,25 +118,25 @@ error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:161:8
    |
 LL |     if !(12 == a) {}
-   |        ^^^^^^^^^^ help: try: `12 != a`
+   |        ^^^^^^^^^^ help: try: `(12 != a)`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:162:8
    |
 LL |     if !(a == 12) {}
-   |        ^^^^^^^^^^ help: try: `a != 12`
+   |        ^^^^^^^^^^ help: try: `(a != 12)`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:163:8
    |
 LL |     if !(12 != a) {}
-   |        ^^^^^^^^^^ help: try: `12 == a`
+   |        ^^^^^^^^^^ help: try: `(12 == a)`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:164:8
    |
 LL |     if !(a != 12) {}
-   |        ^^^^^^^^^^ help: try: `a == 12`
+   |        ^^^^^^^^^^ help: try: `(a == 12)`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:168:8
