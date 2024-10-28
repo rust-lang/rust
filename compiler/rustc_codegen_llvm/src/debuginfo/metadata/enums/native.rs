@@ -10,7 +10,7 @@ use rustc_middle::ty::{self};
 use rustc_target::abi::{Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
 
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
 use crate::debuginfo::metadata::{
     DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata,
@@ -244,7 +244,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
             llvm::LLVMRustDIBuilderCreateVariantPart(
                 DIB(cx),
                 enum_type_di_node,
-                variant_part_name.as_ptr().cast(),
+                variant_part_name.as_c_char_ptr(),
                 variant_part_name.len(),
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
@@ -253,7 +253,7 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
                 DIFlags::FlagZero,
                 tag_member_di_node,
                 create_DIArray(DIB(cx), &[]),
-                variant_part_unique_type_id_str.as_ptr().cast(),
+                variant_part_unique_type_id_str.as_c_char_ptr(),
                 variant_part_unique_type_id_str.len(),
             )
         },
@@ -327,7 +327,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
-                    tag_name.as_ptr().cast(),
+                    tag_name.as_c_char_ptr(),
                     tag_name.len(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
@@ -399,7 +399,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateVariantMemberType(
             DIB(cx),
             variant_part_di_node,
-            variant_member_info.variant_name.as_ptr().cast(),
+            variant_member_info.variant_name.as_c_char_ptr(),
             variant_member_info.variant_name.len(),
             file_di_node,
             line_number,

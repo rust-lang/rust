@@ -29,6 +29,7 @@ use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
+use crate::common::AsCCharPtr;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
@@ -231,7 +232,7 @@ pub(crate) unsafe fn create_module<'ll>(
     // If we're normalizing integers with CFI, ensure LLVM generated functions do the same.
     // See https://github.com/llvm/llvm-project/pull/104826
     if sess.is_sanitizer_cfi_normalize_integers_enabled() {
-        let cfi_normalize_integers = c"cfi-normalize-integers".as_ptr().cast();
+        let cfi_normalize_integers = c"cfi-normalize-integers".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
@@ -268,7 +269,7 @@ pub(crate) unsafe fn create_module<'ll>(
         let pfe =
             PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
         if pfe.prefix() > 0 {
-            let kcfi_offset = c"kcfi-offset".as_ptr().cast();
+            let kcfi_offset = c"kcfi-offset".as_ptr();
             unsafe {
                 llvm::LLVMRustAddModuleFlagU32(
                     llmod,
@@ -429,7 +430,7 @@ pub(crate) unsafe fn create_module<'ll>(
     let name_metadata = unsafe {
         llvm::LLVMMDStringInContext2(
             llcx,
-            rustc_producer.as_ptr().cast(),
+            rustc_producer.as_c_char_ptr(),
             rustc_producer.as_bytes().len(),
         )
     };
@@ -453,7 +454,7 @@ pub(crate) unsafe fn create_module<'ll>(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
                 c"target-abi".as_ptr(),
-                llvm_abiname.as_ptr().cast(),
+                llvm_abiname.as_c_char_ptr(),
                 llvm_abiname.len(),
             );
         }
@@ -474,7 +475,7 @@ pub(crate) unsafe fn create_module<'ll>(
             // We already checked this during option parsing
             _ => unreachable!(),
         };
-        unsafe { llvm::LLVMRustAddModuleFlagU32(llmod, behavior, key.as_ptr().cast(), *value) }
+        unsafe { llvm::LLVMRustAddModuleFlagU32(llmod, behavior, key.as_c_char_ptr(), *value) }
     }
 
     llmod
