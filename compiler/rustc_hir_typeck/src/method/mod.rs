@@ -356,20 +356,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, args);
         let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
-        self.construct_obligation_for_trait(m_name, trait_def_id, obligation, args)
-    }
-
-    // FIXME(#18741): it seems likely that we can consolidate some of this
-    // code with the other method-lookup code. In particular, the second half
-    // of this method is basically the same as confirmation.
-    fn construct_obligation_for_trait(
-        &self,
-        m_name: Ident,
-        trait_def_id: DefId,
-        obligation: traits::PredicateObligation<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(?obligation);
 
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
@@ -393,8 +379,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = PredicateObligations::new();
 
-        // FIXME(effects): revisit when binops get `#[const_trait]`
-
         // Instantiate late-bound regions and instantiate the trait
         // parameters into the method type to get the actual method type.
         //
@@ -405,12 +389,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig =
             self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
 
-        let InferOk { value, obligations: o } =
+        let InferOk { value: fn_sig, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(fn_sig);
-        let fn_sig = {
-            obligations.extend(o);
-            value
-        };
+        obligations.extend(o);
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
@@ -422,13 +403,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
-        let InferOk { value, obligations: o } =
+        let InferOk { value: bounds, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(bounds);
-        let bounds = {
-            obligations.extend(o);
-            value
-        };
-
+        obligations.extend(o);
         assert!(!bounds.has_escaping_bound_vars());
 
         let predicates_cause = obligation.cause.clone();
@@ -441,7 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Also add an obligation for the method type being well-formed.
         let method_ty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
         debug!(
-            "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
+            "lookup_method_in_trait: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation
         );
         obligations.push(traits::Obligation::new(
@@ -454,7 +431,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
 
         let callee = MethodCallee { def_id, args, sig: fn_sig };
-
         debug!("callee = {:?}", callee);
 
         Some(InferOk { obligations, value: callee })
