@@ -74,7 +74,6 @@ use crate::html::format::{
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
-    markdown_split_summary_and_content,
 };
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
@@ -1941,7 +1940,7 @@ fn render_impl(
             .impl_item
             .opt_doc_value()
             .map(|dox| {
-                markdown_split_summary_and_content(Markdown {
+                Markdown {
                     content: &*dox,
                     links: &i.impl_item.links(cx),
                     ids: &mut cx.id_map.borrow_mut(),
@@ -1949,7 +1948,8 @@ fn render_impl(
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
                     heading_offset: HeadingOffset::H4,
-                })
+                }
+                .split_summary_and_content()
             })
             .unwrap_or((None, None));
         render_impl_summary(
