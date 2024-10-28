@@ -78,6 +78,7 @@
 
 use core::f64;
 
+/// The square root of `x` (f64).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sqrt(x: f64) -> f64 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized

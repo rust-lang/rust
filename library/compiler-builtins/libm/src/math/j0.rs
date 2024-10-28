@@ -109,6 +109,7 @@ const S02: f64 = 1.16926784663337450260e-04; /* 0x3F1EA6D2, 0xDD57DBF4 */
 const S03: f64 = 5.13546550207318111446e-07; /* 0x3EA13B54, 0xCE84D5A9 */
 const S04: f64 = 1.16614003333790000205e-09; /* 0x3E1408BC, 0xF4745D8F */
 
+/// Zeroth order of the [Bessel function](https://en.wikipedia.org/wiki/Bessel_function) of the first kind (f64).
 pub fn j0(mut x: f64) -> f64 {
     let z: f64;
     let r: f64;
@@ -162,6 +163,7 @@ const V02: f64 = 7.60068627350353253702e-05; /* 0x3F13ECBB, 0xF578C6C1 */
 const V03: f64 = 2.59150851840457805467e-07; /* 0x3E91642D, 0x7FF202FD */
 const V04: f64 = 4.41110311332675467403e-10; /* 0x3DFE5018, 0x3BD6D9EF */
 
+/// Zeroth order of the [Bessel function](https://en.wikipedia.org/wiki/Bessel_function) of the second kind (f64).
 pub fn y0(x: f64) -> f64 {
     let z: f64;
     let u: f64;

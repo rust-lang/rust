@@ -40,6 +40,10 @@ use super::{k_cos, k_sin, rem_pio2};
 //
 // Accuracy:
 //      TRIG(x) returns trig(x) nearly rounded
+
+/// The sine of `x` (f64).
+///
+/// `x` is specified in radians.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sin(x: f64) -> f64 {
     let x1p120 = f64::from_bits(0x4770000000000000); // 0x1p120f === 2 ^ 120
