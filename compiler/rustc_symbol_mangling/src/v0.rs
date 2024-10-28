@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::iter;
 use std::ops::Range;
 
+use rustc_abi::Integer;
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -17,7 +18,6 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
 use rustc_span::symbol::kw;
-use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
 pub(super) fn mangle<'tcx>(
