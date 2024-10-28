@@ -74,6 +74,7 @@ pub mod wfcheck;
 use std::num::NonZero;
 
 pub use check::{check_abi, check_abi_fn_ptr};
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -90,7 +91,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
-use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
