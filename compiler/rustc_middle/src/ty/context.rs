@@ -22,7 +22,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sharded::{IntoPointer, ShardedIndexMap};
+use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
@@ -787,7 +787,7 @@ impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
     }
 }
 
-type InternedSet<'tcx, T> = ShardedIndexMap<InternedInSet<'tcx, T>, ()>;
+type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
@@ -2377,6 +2377,8 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
                 for shard in tcx.interners.type_.lock_shards() {
+                    // It seems that ordering doesn't affect anything here.
+                    #[allow(rustc::potential_query_instability)]
                     let types = shard.iter();
                     for &(InternedInSet(t), ()) in types {
                         let variant = match t.internee {

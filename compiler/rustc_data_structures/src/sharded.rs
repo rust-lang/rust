@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
 use std::{iter, mem};
 
@@ -246,7 +247,7 @@ pub trait IntoPointer {
     fn into_pointer(&self) -> *const ();
 }
 
-impl<K: Eq + Hash + Copy + IntoPointer> ShardedIndexMap<K, ()> {
+impl<K: Eq + Hash + Copy + IntoPointer> ShardedHashMap<K, ()> {
     pub fn contains_pointer_to<T: Hash + IntoPointer>(&self, value: &T) -> bool {
         let hash = make_hash(&value);
         let shard = self.lock_shard_by_hash(hash);
