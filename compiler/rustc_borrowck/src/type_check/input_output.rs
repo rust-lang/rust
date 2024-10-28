@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 
 use super::{Locations, TypeChecker};
 use crate::renumber::RegionCtxt;
-use crate::universal_regions::{DefiningTy, UniversalRegions};
+use crate::universal_regions::DefiningTy;
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check explicit closure signature annotation,
@@ -124,11 +124,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    #[instrument(skip(self, body, universal_regions), level = "debug")]
+    #[instrument(skip(self, body), level = "debug")]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         body: &Body<'tcx>,
-        universal_regions: &UniversalRegions<'tcx>,
         normalized_inputs_and_output: &[Ty<'tcx>],
     ) {
         let (&normalized_output_ty, normalized_input_tys) =
@@ -161,7 +160,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Some(mir_yield_ty) = body.yield_ty() {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(
-                universal_regions.yield_ty.unwrap(),
+                self.universal_regions.yield_ty.unwrap(),
                 mir_yield_ty,
                 yield_span,
             );
@@ -170,7 +169,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Some(mir_resume_ty) = body.resume_ty() {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(
-                universal_regions.resume_ty.unwrap(),
+                self.universal_regions.resume_ty.unwrap(),
                 mir_resume_ty,
                 yield_span,
             );

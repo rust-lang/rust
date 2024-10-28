@@ -180,7 +180,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(body, &universal_regions, &normalized_inputs_and_output);
+    checker.equate_inputs_and_outputs(body, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
     liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
