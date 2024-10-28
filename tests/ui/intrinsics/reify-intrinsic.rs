@@ -26,6 +26,12 @@ fn c() -> [unsafe fn(f32) -> f32; 2] {
     fs
 }
 
+fn call_by_ptr() {
+    let ptr: fn(u8, u8) -> u8 = std::intrinsics::wrapping_add::<u8>;
+    let res = ptr(u8::MAX, 1);
+    assert_eq!(res, 0);
+}
+
 fn main() {
     unsafe {
         assert_eq!(a()(-1), !0);
@@ -35,4 +41,6 @@ fn main() {
         assert_eq!(floorf32_ptr(1.5), 1.0);
         assert_eq!(log2f32_ptr(2.0), 1.0);
     }
+
+    call_by_ptr();
 }
