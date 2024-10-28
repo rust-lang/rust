@@ -1,42 +1,42 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:9:68
+  --> $DIR/const-drop-bound.rs:9:61
    |
 LL | const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
-   |                                                                    ^^^^^^^^
+   |                                                             ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:9:68
+  --> $DIR/const-drop-bound.rs:9:61
    |
 LL | const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
-   |                                                                    ^^^^^^^^
+   |                                                             ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:20:15
+  --> $DIR/const-drop-bound.rs:20:8
    |
 LL |     T: ~const Destruct,
-   |               ^^^^^^^^
+   |        ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:21:15
+  --> $DIR/const-drop-bound.rs:21:8
    |
 LL |     E: ~const Destruct,
-   |               ^^^^^^^^
+   |        ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:20:15
+  --> $DIR/const-drop-bound.rs:20:8
    |
 LL |     T: ~const Destruct,
-   |               ^^^^^^^^
+   |        ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:21:15
+  --> $DIR/const-drop-bound.rs:21:8
    |
 LL |     E: ~const Destruct,
-   |               ^^^^^^^^
+   |        ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

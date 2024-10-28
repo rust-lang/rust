@@ -1,14 +1,14 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-in-impl.rs:10:16
+  --> $DIR/call-generic-in-impl.rs:10:9
    |
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
-   |                ^^^^^^^^^
+   |         ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-in-impl.rs:10:16
+  --> $DIR/call-generic-in-impl.rs:10:9
    |
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
-   |                ^^^^^^^^^
+   |         ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

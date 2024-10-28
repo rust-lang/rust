@@ -17,7 +17,7 @@ note: required by a bound in `Foo::Assoc`
   --> $DIR/item-bound-entailment-fails.rs:6:20
    |
 LL |     type Assoc<T>: ~const Bar
-   |                    ^^^^^^^^^^ required by this bound in `Foo::Assoc`
+   |                    ^^^^^^ required by this bound in `Foo::Assoc`
 
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
   --> $DIR/item-bound-entailment-fails.rs:25:21
@@ -29,7 +29,7 @@ note: required by a bound in `Foo::Assoc`
   --> $DIR/item-bound-entailment-fails.rs:6:20
    |
 LL |     type Assoc<T>: ~const Bar
-   |                    ^^^^^^^^^^ required by this bound in `Foo::Assoc`
+   |                    ^^^^^^ required by this bound in `Foo::Assoc`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

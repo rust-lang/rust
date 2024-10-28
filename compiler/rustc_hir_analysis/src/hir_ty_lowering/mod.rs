@@ -658,7 +658,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
-        constness: Option<ty::BoundConstness>,
+        constness: hir::BoundConstness,
         polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
@@ -681,11 +681,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
-        if let Some(constness) = constness
+        if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
             && !self.tcx().is_const_trait(trait_def_id)
         {
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span: trait_ref.path.span,
+                span,
                 modifier: constness.as_str(),
             });
         }
@@ -708,7 +708,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
                 match constness {
-                    Some(ty::BoundConstness::Const) => {
+                    hir::BoundConstness::Always(span) => {
                         if polarity == ty::PredicatePolarity::Positive {
                             bounds.push_const_bound(
                                 tcx,
@@ -718,13 +718,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             );
                         }
                     }
-                    Some(ty::BoundConstness::ConstIfConst) => {
+                    hir::BoundConstness::Maybe(_) => {
                         // We don't emit a const bound here, since that would mean that we
                         // unconditionally need to prove a `HostEffect` predicate, even when
                         // the predicates are being instantiated in a non-const context. This
                         // is instead handled in the `const_conditions` query.
                     }
-                    None => {}
+                    hir::BoundConstness::Never => {}
                 }
             }
             // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
@@ -734,12 +734,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // here because we only call this on self bounds, and deal with the recursive case
             // in `lower_assoc_item_constraint`.
             PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => match constness {
-                Some(ty::BoundConstness::ConstIfConst) => {
+                hir::BoundConstness::Maybe(span) => {
                     if polarity == ty::PredicatePolarity::Positive {
                         bounds.push_const_bound(tcx, poly_trait_ref, ty::HostPolarity::Maybe, span);
                     }
                 }
-                None | Some(ty::BoundConstness::Const) => {}
+                hir::BoundConstness::Always(_) | hir::BoundConstness::Never => {}
             },
         }
 

@@ -23,16 +23,16 @@ error: using `#![feature(effects)]` without enabling next trait solver globally
    = help: use `-Znext-solver` to enable
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:32
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:25
    |
 LL | const fn test() -> impl ~const Fn() {
-   |                                ^^^^
+   |                         ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-112822-expected-type-for-param.rs:3:32
+  --> $DIR/ice-112822-expected-type-for-param.rs:3:25
    |
 LL | const fn test() -> impl ~const Fn() {
-   |                                ^^^^
+   |                         ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -1835,6 +1835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
+                    let self_ty = impl_trait_ref.self_ty().to_string();
                     err.highlighted_help(vec![
                         StringPart::normal(format!(
                             "the trait `{}` ",
@@ -1842,16 +1843,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         )),
                         StringPart::highlighted("is"),
                         StringPart::normal(" implemented for `"),
-                        StringPart::highlighted(impl_trait_ref.self_ty().to_string()),
+                        if let [TypeError::Sorts(_)] = &terrs[..] {
+                            StringPart::normal(self_ty)
+                        } else {
+                            StringPart::highlighted(self_ty)
+                        },
                         StringPart::normal("`"),
                     ]);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
-                        err.help(format!(
-                            "for that trait implementation, expected `{}`, found `{}`",
-                            exp_found.expected, exp_found.found
-                        ));
+                        err.highlighted_help(vec![
+                            StringPart::normal("for that trait implementation, "),
+                            StringPart::normal("expected `"),
+                            StringPart::highlighted(exp_found.expected.to_string()),
+                            StringPart::normal("`, found `"),
+                            StringPart::highlighted(exp_found.found.to_string()),
+                            StringPart::normal("`"),
+                        ]);
                     }
 
                     true
@@ -2160,6 +2169,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
+            let mut long_ty_file = None;
             self.note_obligation_cause_code(
                 obligation.cause.body_id,
                 err,
@@ -2168,7 +2178,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code(),
                 &mut vec![],
                 &mut Default::default(),
+                &mut long_ty_file,
             );
+            if let Some(file) = long_ty_file {
+                err.note(format!(
+                    "the full name for the type has been written to '{}'",
+                    file.display(),
+                ));
+                err.note("consider using `--verbose` to print the full type name to the console");
+            }
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
