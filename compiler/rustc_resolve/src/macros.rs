@@ -341,7 +341,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
         let did = self.local_def_id(id);
         if let Some(rules) = self.unused_macro_rules.get_mut(&did) {
-            rules.shift_remove(&rule_i);
+            rules.remove(&rule_i);
         }
     }
 
@@ -360,6 +360,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
 
         for (&def_id, unused_arms) in self.unused_macro_rules.iter() {
+            // It is already sorted below.
+            #[allow(rustc::potential_query_instability)]
             let mut unused_arms = unused_arms.iter().collect::<Vec<_>>();
             unused_arms.sort_by_key(|&(&arm_i, _)| arm_i);
 
