@@ -324,35 +324,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(pick)
     }
 
-    pub(super) fn obligation_for_method(
-        &self,
-        cause: ObligationCause<'tcx>,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        opt_input_types: Option<&[Ty<'tcx>]>,
-    ) -> (traits::PredicateObligation<'tcx>, ty::GenericArgsRef<'tcx>) {
-        // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| {
-            match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
-                GenericParamDefKind::Type { .. } => {
-                    if param.index == 0 {
-                        return self_ty.into();
-                    } else if let Some(input_types) = opt_input_types {
-                        return input_types[param.index as usize - 1].into();
-                    }
-                }
-            }
-            self.var_for_def(cause.span, param)
-        });
-
-        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, args);
-
-        // Construct an obligation
-        let poly_trait_ref = ty::Binder::dummy(trait_ref);
-        (traits::Obligation::new(self.tcx, cause, self.param_env, poly_trait_ref), args)
-    }
-
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
@@ -367,8 +338,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        let (obligation, args) =
-            self.obligation_for_method(cause, trait_def_id, self_ty, opt_input_types);
+        // Construct a trait-reference `self_ty : Trait<input_tys>`
+        let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| match param.kind {
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {
+                unreachable!("did not expect operator trait to have lifetime/const")
+            }
+            GenericParamDefKind::Type { .. } => {
+                if param.index == 0 {
+                    self_ty.into()
+                } else if let Some(input_types) = opt_input_types {
+                    input_types[param.index as usize - 1].into()
+                } else {
+                    self.var_for_def(cause.span, param)
+                }
+            }
+        });
+
+        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, args);
+        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
         self.construct_obligation_for_trait(m_name, trait_def_id, obligation, args)
     }
 

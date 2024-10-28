@@ -15,7 +15,7 @@ use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Ident, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{FulfillmentError, ObligationCtxt};
+use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use rustc_type_ir::TyKind::*;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -931,9 +931,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.check_expr_coercible_to_type(rhs_expr, rhs_ty, None);
                 }
 
-                let (obligation, _) =
-                    self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
-                // FIXME: This should potentially just add the obligation to the `FnCtxt`
+                // Construct an obligation `self_ty : Trait<input_tys>`
+                let args =
+                    ty::GenericArgs::for_item(self.tcx, trait_did, |param, _| match param.kind {
+                        ty::GenericParamDefKind::Lifetime
+                        | ty::GenericParamDefKind::Const { .. } => {
+                            unreachable!("did not expect operand trait to have lifetime/const args")
+                        }
+                        ty::GenericParamDefKind::Type { .. } => {
+                            if param.index == 0 {
+                                lhs_ty.into()
+                            } else {
+                                input_types[param.index as usize - 1].into()
+                            }
+                        }
+                    });
+                let obligation = Obligation::new(
+                    self.tcx,
+                    cause,
+                    self.param_env,
+                    ty::TraitRef::new_from_args(self.tcx, trait_did, args),
+                );
                 let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligation(obligation);
                 Err(ocx.select_all_or_error())
