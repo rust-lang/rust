@@ -671,7 +671,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "toolchain",
  "tracing",
  "triomphe",
@@ -693,7 +692,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -712,7 +710,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -744,7 +741,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -766,7 +762,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -785,7 +780,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "triomphe",
 ]
 
@@ -1979,7 +1973,6 @@ dependencies = [
  "smol_str",
  "stdx",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -2025,14 +2018,6 @@ dependencies = [
  "stdx",
  "text-size",
  "tracing",
-]
-
-[[package]]
-name = "text-edit"
-version = "0.0.0"
-dependencies = [
- "itertools",
- "text-size",
 ]
 
 [[package]]

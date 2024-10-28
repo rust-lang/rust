@@ -122,6 +122,7 @@ pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
     CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
 };
+pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
     base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
@@ -139,7 +140,6 @@ pub use ide_diagnostics::{
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
-pub use text_edit::{Indel, TextEdit};
 
 pub type Cancellable<T> = Result<T, Cancelled>;
 

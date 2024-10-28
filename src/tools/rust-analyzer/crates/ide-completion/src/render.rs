@@ -11,6 +11,7 @@ pub(crate) mod union_literal;
 pub(crate) mod variant;
 
 use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
@@ -18,7 +19,6 @@ use ide_db::{
     RootDatabase, SnippetCap, SymbolKind,
 };
 use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, TextRange, ToSmolStr};
-use text_edit::TextEdit;
 
 use crate::{
     context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},

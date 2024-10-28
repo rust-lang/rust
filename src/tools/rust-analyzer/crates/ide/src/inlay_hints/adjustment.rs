@@ -11,13 +11,13 @@ use hir::{
 };
 use ide_db::famous_defs::FamousDefs;
 
+use ide_db::text_edit::TextEditBuilder;
 use span::EditionedFileId;
 use stdx::never;
 use syntax::{
     ast::{self, make, AstNode},
     ted,
 };
-use text_edit::TextEditBuilder;
 
 use crate::{
     AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintLabelPart,

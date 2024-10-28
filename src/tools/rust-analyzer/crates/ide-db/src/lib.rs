@@ -19,6 +19,7 @@ pub mod rust_doc;
 pub mod search;
 pub mod source_change;
 pub mod symbol_index;
+pub mod text_edit;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
@@ -36,6 +37,7 @@ pub mod generated {
 pub mod syntax_helpers {
     pub mod format_string;
     pub mod format_string_exprs;
+    pub mod tree_diff;
     pub use hir::prettify_macro_expansion;
     pub mod node_ext;
     pub mod suggest_name;

@@ -1,4 +1,5 @@
 use hir::Name;
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
@@ -6,7 +7,6 @@ use ide_db::{
     FileRange, RootDatabase,
 };
 use syntax::{Edition, TextRange};
-use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 

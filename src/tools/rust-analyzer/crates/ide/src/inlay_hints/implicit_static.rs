@@ -4,12 +4,12 @@
 //! ```
 use either::Either;
 use ide_db::famous_defs::FamousDefs;
+use ide_db::text_edit::TextEdit;
 use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
     SyntaxKind,
 };
-use text_edit::TextEdit;
 
 use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 

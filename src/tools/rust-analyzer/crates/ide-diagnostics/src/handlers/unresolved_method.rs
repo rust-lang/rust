@@ -1,4 +1,5 @@
 use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
@@ -8,7 +9,6 @@ use syntax::{
     ast::{self, make, HasArgList},
     format_smolstr, AstNode, SmolStr, TextRange, ToSmolStr,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
