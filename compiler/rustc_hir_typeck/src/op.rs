@@ -895,7 +895,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
-        let input_types = opt_rhs_ty.as_slice();
         let cause = self.cause(span, ObligationCauseCode::BinOp {
             lhs_hir_id: lhs_expr.hir_id,
             rhs_hir_id: opt_rhs_expr.map(|expr| expr.hir_id),
@@ -904,13 +903,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             output_ty: expected.only_has_type(self),
         });
 
-        let method = self.lookup_method_in_trait(
-            cause.clone(),
-            opname,
-            trait_did,
-            lhs_ty,
-            Some(input_types),
-        );
+        let method =
+            self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
@@ -942,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if param.index == 0 {
                                 lhs_ty.into()
                             } else {
-                                input_types[param.index as usize - 1].into()
+                                opt_rhs_ty.expect("expected RHS for binop").into()
                             }
                         }
                     });

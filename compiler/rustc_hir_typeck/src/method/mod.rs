@@ -336,7 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        opt_input_types: Option<&[Ty<'tcx>]>,
+        opt_rhs_ty: Option<Ty<'tcx>>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| match param.kind {
@@ -346,16 +346,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             GenericParamDefKind::Type { .. } => {
                 if param.index == 0 {
                     self_ty.into()
-                } else if let Some(input_types) = opt_input_types {
-                    input_types[param.index as usize - 1].into()
+                } else if let Some(rhs_ty) = opt_rhs_ty {
+                    assert_eq!(param.index, 1, "did not expect >1 param on operator trait");
+                    rhs_ty.into()
                 } else {
+                    // FIXME: We should stop passing `None` for the failure case
+                    // when probing for call exprs. I.e. `opt_rhs_ty` should always
+                    // be set when it needs to be.
                     self.var_for_def(cause.span, param)
                 }
             }
         });
 
-        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, args);
-        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation = traits::Obligation::new(
+            self.tcx,
+            cause,
+            self.param_env,
+            ty::TraitRef::new_from_args(self.tcx, trait_def_id, args),
+        );
 
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
