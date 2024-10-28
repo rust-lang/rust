@@ -4,7 +4,7 @@ use std::{cmp, fmt};
 
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutS,
+    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutData,
     PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout, Variants,
 };
 use rustc_error_messages::DiagMessage;
@@ -751,7 +751,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutS {
+                tcx.mk_layout(LayoutData {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -788,7 +788,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };

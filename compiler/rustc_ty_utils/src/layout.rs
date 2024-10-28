@@ -6,7 +6,7 @@ use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     Abi, AbiAndPrefAlign, AddressSpace, Align, FieldsShape, HasDataLayout, LayoutCalculatorError,
-    LayoutS, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding, Variants, WrappingRange,
+    LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding, Variants, WrappingRange,
 };
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -131,7 +131,7 @@ fn univariant_uninterned<'tcx>(
     fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>,
     repr: &ReprOptions,
     kind: StructKind,
-) -> Result<LayoutS<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
+) -> Result<LayoutData<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
         cx.tcx().dcx().bug("struct cannot be packed and aligned");
@@ -159,7 +159,7 @@ fn layout_of_uncached<'tcx>(
         assert!(size.bits() <= 128);
         Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
     };
-    let scalar = |value: Primitive| tcx.mk_layout(LayoutS::scalar(cx, scalar_unit(value)));
+    let scalar = |value: Primitive| tcx.mk_layout(LayoutData::scalar(cx, scalar_unit(value)));
 
     let univariant =
         |fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>, repr: &ReprOptions, kind| {
@@ -170,7 +170,7 @@ fn layout_of_uncached<'tcx>(
     Ok(match *ty.kind() {
         ty::Pat(ty, pat) => {
             let layout = cx.layout_of(ty)?.layout;
-            let mut layout = LayoutS::clone(&layout.0);
+            let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end, include_end } => {
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut layout.abi {
@@ -206,11 +206,11 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Basic scalars.
-        ty::Bool => tcx.mk_layout(LayoutS::scalar(cx, Scalar::Initialized {
+        ty::Bool => tcx.mk_layout(LayoutData::scalar(cx, Scalar::Initialized {
             value: Int(I8, false),
             valid_range: WrappingRange { start: 0, end: 1 },
         })),
-        ty::Char => tcx.mk_layout(LayoutS::scalar(cx, Scalar::Initialized {
+        ty::Char => tcx.mk_layout(LayoutData::scalar(cx, Scalar::Initialized {
             value: Int(I32, false),
             valid_range: WrappingRange { start: 0, end: 0x10FFFF },
         })),
@@ -220,7 +220,7 @@ fn layout_of_uncached<'tcx>(
         ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
-            tcx.mk_layout(LayoutS::scalar(cx, ptr))
+            tcx.mk_layout(LayoutData::scalar(cx, ptr))
         }
 
         // The never type.
@@ -235,7 +235,7 @@ fn layout_of_uncached<'tcx>(
 
             let pointee = tcx.normalize_erasing_regions(param_env, pointee);
             if pointee.is_sized(tcx, param_env) {
-                return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
+                return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
             }
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
@@ -272,7 +272,7 @@ fn layout_of_uncached<'tcx>(
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
                 if metadata_layout.is_1zst() {
-                    return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
+                    return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
                 }
 
                 let Abi::Scalar(metadata) = metadata_layout.abi else {
@@ -285,7 +285,7 @@ fn layout_of_uncached<'tcx>(
 
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
-                        return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
+                        return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
                     }
                     ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
@@ -337,7 +337,7 @@ fn layout_of_uncached<'tcx>(
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 
-            tcx.mk_layout(LayoutS {
+            tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count },
                 abi,
@@ -350,7 +350,7 @@ fn layout_of_uncached<'tcx>(
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
-            tcx.mk_layout(LayoutS {
+            tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 abi: Abi::Aggregate { sized: false },
@@ -361,7 +361,7 @@ fn layout_of_uncached<'tcx>(
                 unadjusted_abi_align: element.align.abi,
             })
         }
-        ty::Str => tcx.mk_layout(LayoutS {
+        ty::Str => tcx.mk_layout(LayoutData {
             variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             abi: Abi::Aggregate { sized: false },
@@ -532,7 +532,7 @@ fn layout_of_uncached<'tcx>(
                 FieldsShape::Array { stride: e_ly.size, count: e_len }
             };
 
-            tcx.mk_layout(LayoutS {
+            tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields,
                 abi,
@@ -835,7 +835,7 @@ fn coroutine_layout<'tcx>(
     };
     let tag_layout = TyAndLayout {
         ty: discr_int.to_ty(tcx, /* signed = */ false),
-        layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+        layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
     };
 
     let promoted_layouts = ineligible_locals.iter().map(|local| {
@@ -991,7 +991,7 @@ fn coroutine_layout<'tcx>(
         Abi::Aggregate { sized: true }
     };
 
-    let layout = tcx.mk_layout(LayoutS {
+    let layout = tcx.mk_layout(LayoutData {
         variants: Variants::Multiple {
             tag,
             tag_encoding: TagEncoding::Direct,
