@@ -120,9 +120,6 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   elif [ "$DEPLOY_ALT" != "" ]; then
-    if [ "$ALT_PARALLEL_COMPILER" = "" ]; then
-      RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.parallel-compiler=false"
-    fi
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
@@ -261,7 +258,7 @@ fi
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -f config.toml
-  $SRC/configure --set change-id=99999999 --set rust.parallel-compiler
+  $SRC/configure --set change-id=99999999
 
   # Save the build metrics before we wipe the directory
   if [ "$HAS_METRICS" = 1 ]; then

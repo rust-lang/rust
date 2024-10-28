@@ -276,7 +276,6 @@ pub struct Config {
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
     pub rust_stack_protector: Option<String>,
-    pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
@@ -1222,7 +1221,6 @@ impl Config {
             bindir: "bin".into(),
             dist_include_mingw_linker: true,
             dist_compression_profile: "fast".into(),
-            rustc_parallel: true,
 
             stdout_is_tty: std::io::stdout().is_terminal(),
             stderr_is_tty: std::io::stderr().is_terminal(),
@@ -1771,8 +1769,14 @@ impl Config {
 
             config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
-            config.rustc_parallel =
-                parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
+
+            // FIXME: Remove this option at the end of 2024.
+            if parallel_compiler.is_some() {
+                println!(
+                    "WARNING: The `rust.parallel-compiler` option is deprecated and does nothing. The parallel compiler (with one thread) is now the default"
+                );
+            }
+
             config.llvm_enzyme =
                 llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;

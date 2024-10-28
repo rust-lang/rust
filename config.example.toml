@@ -594,8 +594,7 @@
 
 # Build a multi-threaded rustc. This allows users to use parallel rustc
 # via the unstable option `-Z threads=n`.
-# Since stable/beta channels only allow using stable features,
-# `parallel-compiler = false` should be set for these channels.
+# This option is deprecated and always true.
 #parallel-compiler = true
 
 # The default linker that will be hard-coded into the generated

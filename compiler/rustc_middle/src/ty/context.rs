@@ -22,9 +22,9 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, RwLock, WorkerLocal};
-#[cfg(parallel_compiler)]
-use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_data_structures::sync::{
+    self, DynSend, DynSync, FreezeReadGuard, Lock, Lrc, RwLock, WorkerLocal,
+};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
@@ -1260,9 +1260,7 @@ pub struct TyCtxt<'tcx> {
 }
 
 // Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution.
-#[cfg(parallel_compiler)]
 unsafe impl DynSend for TyCtxt<'_> {}
-#[cfg(parallel_compiler)]
 unsafe impl DynSync for TyCtxt<'_> {}
 fn _assert_tcx_fields() {
     sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
@@ -1384,9 +1382,7 @@ pub struct CurrentGcx {
     value: Lrc<RwLock<Option<*const ()>>>,
 }
 
-#[cfg(parallel_compiler)]
 unsafe impl DynSend for CurrentGcx {}
-#[cfg(parallel_compiler)]
 unsafe impl DynSync for CurrentGcx {}
 
 impl CurrentGcx {
