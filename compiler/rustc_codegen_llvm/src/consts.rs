@@ -19,7 +19,7 @@ use rustc_target::abi::{
 };
 use tracing::{debug, instrument, trace};
 
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::errors::{
     InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
 };
@@ -400,7 +400,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
                     self.llmod,
-                    name.as_ptr().cast(),
+                    name.as_c_char_ptr(),
                     name.len(),
                     val_llty,
                 );
@@ -451,7 +451,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
-                        section.as_str().as_ptr().cast(),
+                        section.as_str().as_c_char_ptr(),
                         section.as_str().len(),
                     );
                     assert!(alloc.provenance().ptrs().is_empty());
@@ -462,7 +462,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                     let bytes =
                         alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                     let alloc =
-                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_ptr().cast(), bytes.len());
+                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
                     let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
