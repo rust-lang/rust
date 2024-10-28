@@ -23,3 +23,23 @@ pub fn operands(val: u8) {
     let size_of = std::mem::size_of_val(&length);
     assert_eq!(length, size_of);
 }
+
+pub struct Dummy { c: char, i: i32 }
+
+pub enum Ctors {
+    Unit,
+    StructLike { d: Dummy },
+    TupLike(bool),
+}
+
+pub fn more_operands() -> [Ctors; 3] {
+    let dummy = Dummy { c: 'a', i: i32::MIN };
+    let unit = Ctors::Unit;
+    let struct_like = Ctors::StructLike { d: dummy };
+    let tup_like = Ctors::TupLike(false);
+    [unit, struct_like, tup_like]
+}
+
+pub fn closures(x: bool, z: bool) -> impl FnOnce(bool) -> bool {
+    move |y: bool| { (x ^ y) || z }
+}

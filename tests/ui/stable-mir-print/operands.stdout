@@ -195,3 +195,69 @@ fn operands::{constant#0}() -> usize {
         return;
     }
 }
+fn more_operands() -> [Ctors; 3] {
+    let mut _0: [Ctors; 3];
+    let  _1: Dummy;
+    let  _2: Ctors;
+    let  _3: Ctors;
+    let  _4: Ctors;
+    debug dummy => _1;
+    debug unit => _2;
+    debug struct_like => _3;
+    debug tup_like => _4;
+    bb0: {
+        _1 = Dummy('a', core::num::<impl i32>::MIN);
+        _2 = Ctors::Unit;
+        _3 = Ctors::StructLike(move _1);
+        _4 = Ctors::TupLike(false);
+        _0 = [move _2, move _3, move _4];
+        return;
+    }
+}
+fn more_operands::{constant#0}() -> usize {
+    let mut _0: usize;
+    bb0: {
+        _0 = 3_usize;
+        return;
+    }
+}
+fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:44:5: 44:19} {
+    let mut _0: {closure@$DIR/operands.rs:44:5: 44:19};
+    debug x => _1;
+    debug z => _2;
+    bb0: {
+        _0 = {closure@Span { id: 105, repr: "$DIR/operands.rs:44:5: 44:19" }}(_1, _2);
+        return;
+    }
+}
+fn closures::{closure#0}(_1: {closure@$DIR/operands.rs:44:5: 44:19}, _2: bool) -> bool {
+    let mut _0: bool;
+    let mut _3: bool;
+    let mut _4: bool;
+    debug y => _2;
+    debug x => (_1.0: bool);
+    debug z => (_1.1: bool);
+    bb0: {
+        _4 = (_1.0: bool);
+        _3 = BitXor(move _4, _2);
+        switchInt(move _3) -> [0: bb2, otherwise: bb1];
+    }
+    bb1: {
+        _0 = true;
+        goto -> bb3;
+    }
+    bb2: {
+        _0 = (_1.1: bool);
+        goto -> bb3;
+    }
+    bb3: {
+        return;
+    }
+}
+fn Ctors::TupLike(_1: bool) -> Ctors {
+    let mut _0: Ctors;
+    bb0: {
+        _0 = Ctors::TupLike(move _1);
+        return;
+    }
+}

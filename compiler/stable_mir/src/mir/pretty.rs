@@ -24,10 +24,12 @@ impl Debug for Place {
 
 pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -> io::Result<()> {
     write!(writer, "fn {name}(")?;
-    body.arg_locals()
-        .iter()
-        .enumerate()
-        .try_for_each(|(index, local)| write!(writer, "_{}: {}", index + 1, local.ty))?;
+    let mut sep = "";
+    body.arg_locals().iter().enumerate().try_for_each(|(index, local)| {
+        write!(writer, "{}_{}: {}", sep, index + 1, local.ty)?;
+        sep = ", ";
+        io::Result::Ok(())
+    })?;
     write!(writer, ")")?;
 
     let return_local = body.ret_local();
