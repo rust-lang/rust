@@ -117,6 +117,9 @@ pub struct DeterministicRandomSource {
     // block counter, resulting in a 128-bit counter that will realistically
     // never roll over.
     counter_nonce: u128,
+    block: [u8; 64],
+    // The amount of bytes in block that were already used.
+    used: u8,
 }
 
 /// Implement the ChaCha round function as defined by
@@ -215,7 +218,7 @@ impl DeterministicRandomSource {
     /// ```
     #[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
     pub const fn from_seed(seed: [u8; 32]) -> DeterministicRandomSource {
-        DeterministicRandomSource { seed, counter_nonce: 0 }
+        DeterministicRandomSource { seed, counter_nonce: 0, block: [0; 64], used: 64 }
     }
 
     /// Returns the seed this random source was initialized with.
@@ -234,15 +237,34 @@ impl DeterministicRandomSource {
     pub const fn seed(&self) -> &[u8; 32] {
         &self.seed
     }
+
+    fn next_block(&mut self) -> [u8; 64] {
+        let block = chacha::block(&self.seed, self.counter_nonce, Self::ROUNDS);
+        self.counter_nonce = self.counter_nonce.wrapping_add(1);
+        block
+    }
 }
 
 #[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
 impl RandomSource for DeterministicRandomSource {
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        for block in bytes.chunks_mut(64) {
-            let data = chacha::block(&self.seed, self.counter_nonce, Self::ROUNDS);
-            block.copy_from_slice(&data[..block.len()]);
-            self.counter_nonce = self.counter_nonce.wrapping_add(1);
+    fn fill_bytes(&mut self, mut bytes: &mut [u8]) {
+        if self.used as usize != self.block.len() {
+            let len = usize::min(self.block.len() - self.used as usize, bytes.len());
+            bytes[..len].copy_from_slice(&self.block[self.used as usize..][..len]);
+            bytes = &mut bytes[len..];
+            self.used += len as u8;
+        }
+
+        let mut blocks = bytes.array_chunks_mut::<64>();
+        for block in &mut blocks {
+            block.copy_from_slice(&self.next_block());
+        }
+
+        let bytes = blocks.into_remainder();
+        if !bytes.is_empty() {
+            self.block = self.next_block();
+            bytes.copy_from_slice(&self.block[..bytes.len()]);
+            self.used = bytes.len() as u8;
         }
     }
 }
