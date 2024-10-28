@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.11](https://github.com/rust-lang/libm/compare/libm-v0.2.10...libm-v0.2.11) - 2024-10-28
+
+### Fixed
+
+- fix type of constants in ported sincosf ([#331](https://github.com/rust-lang/libm/pull/331))
+
+### Other
+
+- Disable a unit test that is failing on i586
+- Add a procedural macro for expanding all function signatures
+- Introduce `musl-math-sys` for bindings to musl math symbols
+- Add basic docstrings to some functions ([#337](https://github.com/rust-lang/libm/pull/337))
+
 ## [0.2.10](https://github.com/rust-lang/libm/compare/libm-v0.2.9...libm-v0.2.10) - 2024-10-28
 
 ### Other
