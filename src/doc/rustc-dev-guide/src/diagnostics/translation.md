@@ -1,5 +1,27 @@
 # Translation
 
+<div class="warning">
+rustc's current diagnostics translation infrastructure (as of
+<!-- date-check --> October 2024
+) unfortunately causes some friction for compiler contributors, and the current
+infrastructure is mostly pending a redesign that better addresses needs of both
+compiler contributors and translation teams. Note that there is no current
+active redesign proposals (as of
+<!-- date-check --> October 2024
+)!
+
+Please see the tracking issue <https://github.com/rust-lang/rust/issues/132181>
+for status updates.
+
+We have downgraded the internal lints `untranslatable_diagnostic` and
+`diagnostic_outside_of_impl`. Those internal lints previously required new code
+to use the current translation infrastructure. However, because the translation
+infra is waiting for a yet-to-be-proposed redesign and thus rework, we are not
+mandating usage of current translation infra. Use the infra if you *want to* or
+otherwise makes the code cleaner, but otherwise sidestep the translation infra
+if you need more flexibility.
+</div>
+
 rustc's diagnostic infrastructure supports translatable diagnostics using
 [Fluent].
 
