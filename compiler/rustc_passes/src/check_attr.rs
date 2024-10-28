@@ -2279,10 +2279,34 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
                     TypeError::SafetyMismatch(_) => {
-                        // FIXME: Would be nice if we had a span here..
+                        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span)
+                            && let Some(pos) = snippet.find("unsafe")
+                        {
+                            let lo = span.lo() + BytePos(pos as u32);
+                            let span =
+                                span.with_lo(lo).with_hi(lo + BytePos("unsafe".len() as u32));
+                            diag.span(span);
+                            cause.span = span;
+                        }
                     }
-                    TypeError::AbiMismatch(_) => {
-                        // FIXME: Would be nice if we had a span here..
+                    TypeError::AbiMismatch(err) => {
+                        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span)
+                            && let Some(pos) = snippet.find(" extern ")
+                        {
+                            let snippet = &snippet[pos + 1..];
+                            let found = err.found.to_string();
+                            let lo = span.lo() + BytePos(pos as u32 + 1); // `extern`
+                            let span = if let Some(pos_2) = snippet.find(&found) {
+                                let lo_2 = span.lo() + BytePos((pos + pos_2) as u32); // `C`
+                                span.with_lo(lo)
+                                    // `extern "C"`
+                                    .with_hi(lo_2 + BytePos(found.len() as u32 + 1))
+                            } else {
+                                span.with_lo(lo).with_hi(lo + BytePos("extern".len() as u32))
+                            };
+                            diag.span(span);
+                            cause.span = span;
+                        }
                     }
                     TypeError::VariadicMismatch(_) => {
                         // FIXME: Would be nice if we had a span here..
