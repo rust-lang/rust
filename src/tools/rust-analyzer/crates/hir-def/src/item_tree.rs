@@ -1166,6 +1166,11 @@ impl UseTree {
         self.expand_impl(None, &mut cb)
     }
 
+    /// The [`UseTreeKind`] of this `UseTree`.
+    pub fn kind(&self) -> &UseTreeKind {
+        &self.kind
+    }
+
     fn expand_impl(
         &self,
         prefix: Option<ModPath>,
