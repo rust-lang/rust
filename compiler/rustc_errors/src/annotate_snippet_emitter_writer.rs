@@ -173,7 +173,7 @@ impl AnnotateSnippetEmitter {
                             source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
-                                source_string(file.clone(), &line),
+                                source_string(Lrc::clone(&file), &line),
                                 line.line_index,
                                 line.annotations,
                             )

@@ -134,7 +134,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::with_specific_points(elements.clone()),
+        liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&elements)),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
@@ -150,7 +150,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         infcx,
         param_env,
         implicit_region_bound,
-        universal_regions.clone(),
+        Rc::clone(&universal_regions),
         &mut constraints,
     );
 
