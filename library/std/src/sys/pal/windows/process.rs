@@ -253,10 +253,28 @@ impl Command {
         attribute: usize,
         value: T,
     ) {
-        self.proc_thread_attributes.insert(attribute, ProcThreadAttributeValue {
-            size: mem::size_of::<T>(),
-            data: Box::new(value),
-        });
+        self.proc_thread_attributes.insert(
+            attribute,
+            ProcThreadAttributeValue::Data(ProcThreadAttributeValueData {
+                size: mem::size_of::<T>(),
+                data: Box::new(value),
+            }),
+        );
+    }
+
+    pub unsafe fn raw_attribute_ptr(
+        &mut self,
+        attribute: usize,
+        value_ptr: *const c_void,
+        value_size: usize,
+    ) {
+        self.proc_thread_attributes.insert(
+            attribute,
+            ProcThreadAttributeValue::Pointer(ProcThreadAttributeValuePointer {
+                size: value_size,
+                pointer: value_ptr as isize,
+            }),
+        );
     }
 
     pub fn spawn(
@@ -907,9 +925,19 @@ impl Drop for ProcThreadAttributeList {
 }
 
 /// Wrapper around the value data to be used as a Process Thread Attribute.
-struct ProcThreadAttributeValue {
+struct ProcThreadAttributeValueData {
     data: Box<dyn Send + Sync>,
     size: usize,
+}
+
+struct ProcThreadAttributeValuePointer {
+    pointer: isize, // using isize instead of *const c_void to have it sendable
+    size: usize,
+}
+
+enum ProcThreadAttributeValue {
+    Data(ProcThreadAttributeValueData),
+    Pointer(ProcThreadAttributeValuePointer),
 }
 
 fn make_proc_thread_attribute_list(
@@ -953,18 +981,38 @@ fn make_proc_thread_attribute_list(
     // It's theoretically possible for the attribute count to exceed a u32 value.
     // Therefore, we ensure that we don't add more attributes than the buffer was initialized for.
     for (&attribute, value) in attributes.iter().take(attribute_count as usize) {
-        let value_ptr = (&raw const *value.data) as _;
-        cvt(unsafe {
-            c::UpdateProcThreadAttribute(
-                proc_thread_attribute_list.0.as_mut_ptr() as _,
-                0,
-                attribute,
-                value_ptr,
-                value.size,
-                ptr::null_mut(),
-                ptr::null_mut(),
-            )
-        })?;
+        match value {
+            ProcThreadAttributeValue::Data(value) => {
+                let value_ptr = (&raw const *value.data) as _;
+                cvt(unsafe {
+                    c::UpdateProcThreadAttribute(
+                        proc_thread_attribute_list.0.as_mut_ptr() as _,
+                        0,
+                        attribute,
+                        value_ptr,
+                        value.size,
+                        ptr::null_mut(),
+                        ptr::null_mut(),
+                    )
+                })?;
+            }
+            ProcThreadAttributeValue::Pointer(value) => {
+                cvt(
+                    unsafe {
+                        #![allow(fuzzy_provenance_casts)]
+                        c::UpdateProcThreadAttribute(
+                            proc_thread_attribute_list.0.as_mut_ptr() as _,
+                            0,
+                            attribute,
+                            value.pointer as *const c_void,
+                            value.size,
+                            ptr::null_mut(),
+                            ptr::null_mut(),
+                        )
+                    },
+                )?;
+            }
+        }
     }
 
     Ok(proc_thread_attribute_list)
