@@ -612,7 +612,7 @@ pub fn check_function_signature<'tcx>(
         match err {
             TypeError::ArgumentMutability(i)
             | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
-            _ => cause.span(),
+            _ => cause.span,
         }
     }
 

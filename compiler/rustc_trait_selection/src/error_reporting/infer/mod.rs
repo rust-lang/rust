@@ -392,7 +392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         Some(ty) if expected == ty => {
                             let source_map = self.tcx.sess.source_map();
                             err.span_suggestion(
-                                source_map.end_point(cause.span()),
+                                source_map.end_point(cause.span),
                                 "try removing this `?`",
                                 "",
                                 Applicability::MachineApplicable,
@@ -412,6 +412,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source,
                 ref prior_non_diverging_arms,
                 scrut_span,
+                expr_span,
                 ..
             }) => match source {
                 hir::MatchSource::TryDesugar(scrut_hir_id) => {
@@ -430,7 +431,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(
-                                    source_map.end_point(cause.span()),
+                                    source_map.end_point(cause.span),
                                     "try removing this `?`",
                                     "",
                                     Applicability::MachineApplicable,
@@ -460,12 +461,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this and all prior arms are found to be of type `{t}`"),
                         );
                     }
-                    let outer = if any_multiline_arm || !source_map.is_multiline(cause.span) {
+                    let outer = if any_multiline_arm || !source_map.is_multiline(expr_span) {
                         // Cover just `match` and the scrutinee expression, not
                         // the entire match body, to reduce diagram noise.
-                        cause.span.shrink_to_lo().to(scrut_span)
+                        expr_span.shrink_to_lo().to(scrut_span)
                     } else {
-                        cause.span
+                        expr_span
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer, msg);
@@ -1148,7 +1149,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
         prefer_label: bool,
     ) {
-        let span = cause.span();
+        let span = cause.span;
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1642,7 +1643,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let values = self.resolve_vars_if_possible(trace.values);
         if let Some((expected, found)) = values.ty() {
             match (expected.kind(), found.kind()) {
@@ -1792,7 +1793,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,

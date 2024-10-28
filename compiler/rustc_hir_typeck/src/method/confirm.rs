@@ -550,7 +550,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
                     // may run before wfcheck if the function is used in const eval.
                     self.dcx().span_delayed_bug(
-                        cause.span(),
+                        cause.span,
                         format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
                     );
                 }
