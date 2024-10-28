@@ -172,7 +172,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             return;
         }
     };
-    if layout.abi.is_uninhabited() {
+    if layout.is_uninhabited() {
         tcx.node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),

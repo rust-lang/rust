@@ -28,7 +28,7 @@ where
     VariantIdx: Idx,
     F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
 {
-    let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
+    let uninhabited = fields.iter().any(|f| f.is_uninhabited());
     // We cannot ignore alignment; that might lead us to entirely discard a variant and
     // produce an enum that is less aligned than it should be!
     let is_1zst = fields.iter().all(|f| f.is_1zst());
@@ -681,7 +681,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let discr_type = repr.discr_type();
         let bits = Integer::from_attr(dl, discr_type).size().bits();
         for (i, mut val) in discriminants {
-            if !repr.c() && variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+            if !repr.c() && variants[i].iter().any(|f| f.is_uninhabited()) {
                 continue;
             }
             if discr_type.is_signed() {
