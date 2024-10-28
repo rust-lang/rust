@@ -24,6 +24,11 @@ unstable = ["unstable-intrinsics"]
 unstable-intrinsics = []
 
 # Used to prevent using any intrinsics or arch-specific code.
+#
+# HACK: this is a negative feature which is generally a bad idea in Cargo, but
+# we need it to be able to forbid other features when this crate is used in
+# Rust dependencies. Setting this overrides all features that may enable
+# hard float operations.
 force-soft-floats = []
 
 [workspace]

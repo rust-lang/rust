@@ -60,14 +60,14 @@ macro_rules! i {
 // the time of this writing this is only used in a few places, and once
 // rust-lang/rust#72751 is fixed then this macro will no longer be necessary and
 // the native `/` operator can be used and panics won't be codegen'd.
-#[cfg(any(debug_assertions, not(feature = "unstable-intrinsics")))]
+#[cfg(any(debug_assertions, not(intrinsics_enabled)))]
 macro_rules! div {
     ($a:expr, $b:expr) => {
         $a / $b
     };
 }
 
-#[cfg(all(not(debug_assertions), feature = "unstable-intrinsics"))]
+#[cfg(all(not(debug_assertions), intrinsics_enabled))]
 macro_rules! div {
     ($a:expr, $b:expr) => {
         unsafe { core::intrinsics::unchecked_div($a, $b) }
@@ -76,9 +76,7 @@ macro_rules! div {
 
 macro_rules! llvm_intrinsically_optimized {
     (#[cfg($($clause:tt)*)] $e:expr) => {
-        #[cfg(all(
-            feature = "unstable-intrinsics", not(feature = "force-soft-floats"), $($clause)*
-        ))]
+        #[cfg(all(intrinsics_enabled, not(feature = "force-soft-floats"), $($clause)*))]
         {
             if true { // thwart the dead code lint
                 $e

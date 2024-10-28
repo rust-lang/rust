@@ -15,3 +15,9 @@ unstable = []
 unstable-intrinsics = []
 checked = []
 force-soft-floats = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  "cfg(assert_no_panic)",
+  "cfg(intrinsics_enabled)",
+] }
