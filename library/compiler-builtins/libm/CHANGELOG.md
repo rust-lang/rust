@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.10](https://github.com/rust-lang/libm/compare/libm-v0.2.9...libm-v0.2.10) - 2024-10-28
+
+### Other
+
+- Set the MSRV to 1.63 and test this in CI
+
 ## [0.2.9](https://github.com/rust-lang/libm/compare/libm-v0.2.8...libm-v0.2.9) - 2024-10-26
 
 ### Fixed
