@@ -13,31 +13,21 @@ const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
 
 /// Number of tests to run.
 const NTESTS: usize = {
-    let ntests = if cfg!(optimizations_enabled) {
-        if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {
-            5_000_000
-        } else if !cfg!(target_pointer_width = "64")
+    if cfg!(optimizations_enabled) {
+        if crate::emulated()
+            || !cfg!(target_pointer_width = "64")
             || cfg!(all(target_arch = "x86_64", target_vendor = "apple"))
-            || option_env!("EMULATED").is_some()
-                && cfg!(any(target_arch = "aarch64", target_arch = "powerpc64"))
         {
-            // Tests are pretty slow on:
-            // - Non-64-bit targets
-            // - Emulated ppc
-            // - Emulated aarch64
-            // - x86 MacOS
-            // So reduce the number of iterations
+            // Tests are pretty slow on non-64-bit targets, x86 MacOS, and targets that run
+            // in QEMU.
             100_000
         } else {
-            // Most everything else gets tested in docker and works okay, but we still
-            // don't need 20 minutes of tests.
-            1_000_000
+            5_000_000
         }
     } else {
+        // Without optimizations just run a quick check
         800
-    };
-
-    ntests
+    }
 };
 
 /// Tested inputs.
