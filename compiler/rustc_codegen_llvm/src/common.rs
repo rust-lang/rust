@@ -17,7 +17,7 @@ use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
-use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, OperandBundleDef, True};
+use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, True};
 use crate::type_::Type;
 use crate::value::Value;
 
@@ -63,19 +63,19 @@ use crate::value::Value;
 /// the `OperandBundleDef` value created for MSVC landing pads.
 pub(crate) struct Funclet<'ll> {
     cleanuppad: &'ll Value,
-    operand: OperandBundleDef<'ll>,
+    operand: llvm::OperandBundleOwned<'ll>,
 }
 
 impl<'ll> Funclet<'ll> {
     pub(crate) fn new(cleanuppad: &'ll Value) -> Self {
-        Funclet { cleanuppad, operand: OperandBundleDef::new("funclet", &[cleanuppad]) }
+        Funclet { cleanuppad, operand: llvm::OperandBundleOwned::new("funclet", &[cleanuppad]) }
     }
 
     pub(crate) fn cleanuppad(&self) -> &'ll Value {
         self.cleanuppad
     }
 
-    pub(crate) fn bundle(&self) -> &OperandBundleDef<'ll> {
+    pub(crate) fn bundle(&self) -> &llvm::OperandBundle<'ll> {
         &self.operand
     }
 }
