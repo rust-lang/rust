@@ -84,6 +84,13 @@ pub(crate) struct MultipleStabilityLevels {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_multiple_unstable_reasons)]
+pub(crate) struct MultipleUnstableReasons {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_invalid_issue_string, code = E0545)]
 pub(crate) struct InvalidIssueString {
     #[primary_span]
@@ -398,6 +405,13 @@ pub(crate) struct InvalidSince {
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_soft_inconsistent)]
+pub(crate) struct SoftInconsistent {
+    #[primary_span]
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

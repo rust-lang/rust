@@ -416,11 +416,21 @@ fn add_level(
                 (_, UnstableReason::None) => {}
                 (reason @ UnstableReason::None, _) => *reason = new_reason,
                 _ => {
-                    // TODO: sanity check for only one reason
+                    sess.dcx()
+                        .emit_err(session_diagnostics::MultipleUnstableReasons { span: attr.span });
                 }
             }
-            // TODO: sanity check for is_soft consistency
-            *is_soft |= new_soft;
+            // If any unstable attributes are marked 'soft', all should be. This keeps soft-unstable
+            // items from accidentally being made properly unstable as attributes are removed.
+            if *is_soft != new_soft {
+                let spans = stab_spans
+                    .iter()
+                    .filter(|(stab, _)| stab.is_unstable())
+                    .map(|&(_, sp)| sp)
+                    .chain([attr.span])
+                    .collect();
+                sess.dcx().emit_err(session_diagnostics::SoftInconsistent { spans });
+            }
         }
         // an item with some stable and some unstable features is unstable
         (Some(Unstable { .. }), Stable { .. }) => {}

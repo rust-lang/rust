@@ -13,9 +13,7 @@ error: `const_unstable_fn` is not yet stable as a const fn
 LL | const USE_UNSTABLE: () = mixed_levels::const_unstable_fn();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: use of unstable library feature `unstable_c`
    = help: add `#![feature(unstable_c)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 
