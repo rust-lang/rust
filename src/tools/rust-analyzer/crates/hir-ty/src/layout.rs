@@ -6,7 +6,7 @@ use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutS,
+        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutData,
         Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
     },
     LocalFieldId, StructId,
@@ -66,7 +66,7 @@ impl rustc_index::Idx for RustcFieldIdx {
     }
 }
 
-pub type Layout = LayoutS<RustcFieldIdx, RustcEnumVariantIdx>;
+pub type Layout = LayoutData<RustcFieldIdx, RustcEnumVariantIdx>;
 pub type TagEncoding = hir_def::layout::TagEncoding<RustcEnumVariantIdx>;
 pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx>;
 
