@@ -4100,6 +4100,7 @@ version = "0.0.0"
 dependencies = [
  "either",
  "itertools",
+ "rustc_abi",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",

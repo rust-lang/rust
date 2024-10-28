@@ -203,10 +203,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<OperandValue<Bx::Value>> {
         // Check for transmutes that are always UB.
         if operand.layout.size != cast.size
-            || operand.layout.abi.is_uninhabited()
-            || cast.abi.is_uninhabited()
+            || operand.layout.is_uninhabited()
+            || cast.is_uninhabited()
         {
-            if !operand.layout.abi.is_uninhabited() {
+            if !operand.layout.is_uninhabited() {
                 // Since this is known statically and the input could have existed
                 // without already having hit UB, might as well trap for it.
                 bx.abort();
@@ -555,7 +555,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         assert!(bx.cx().is_backend_immediate(cast));
                         let to_backend_ty = bx.cx().immediate_backend_type(cast);
-                        if operand.layout.abi.is_uninhabited() {
+                        if operand.layout.is_uninhabited() {
                             let val = OperandValue::Immediate(bx.cx().const_poison(to_backend_ty));
                             return OperandRef { val, layout: cast };
                         }
