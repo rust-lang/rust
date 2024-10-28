@@ -1652,6 +1652,11 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         }
     }
 
+    /// Returns `true` if this is an uninhabited type
+    pub fn is_uninhabited(&self) -> bool {
+        self.abi.is_uninhabited()
+    }
+
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);

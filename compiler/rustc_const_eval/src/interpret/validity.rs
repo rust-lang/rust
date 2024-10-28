@@ -542,7 +542,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             throw_validation_failure!(self.path, NullPtr { ptr_kind })
         }
         // Do not allow references to uninhabited types.
-        if place.layout.abi.is_uninhabited() {
+        if place.layout.is_uninhabited() {
             let ty = place.layout.ty;
             throw_validation_failure!(self.path, PtrToUninhabited { ptr_kind, ty })
         }
@@ -867,7 +867,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     /// Add the entire given place to the "data" range of this visit.
     fn add_data_range_place(&mut self, place: &PlaceTy<'tcx, M::Provenance>) {
         // Only sized places can be added this way.
-        debug_assert!(place.layout.abi.is_sized());
+        debug_assert!(place.layout.is_sized());
         if let Some(data_bytes) = self.data_bytes.as_mut() {
             let offset = Self::data_range_offset(self.ecx, place);
             data_bytes.add_range(offset, place.layout.size);
@@ -945,7 +945,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         layout: TyAndLayout<'tcx>,
     ) -> Cow<'e, RangeSet> {
         assert!(layout.ty.is_union());
-        assert!(layout.abi.is_sized(), "there are no unsized unions");
+        assert!(layout.is_sized(), "there are no unsized unions");
         let layout_cx = LayoutCx::new(*ecx.tcx, ecx.param_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());

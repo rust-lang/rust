@@ -29,7 +29,7 @@ pub fn check_validity_requirement<'tcx>(
 
     // There is nothing strict or lax about inhabitedness.
     if kind == ValidityRequirement::Inhabited {
-        return Ok(!layout.abi.is_uninhabited());
+        return Ok(!layout.is_uninhabited());
     }
 
     let layout_cx = LayoutCx::new(tcx, param_env_and_ty.param_env);

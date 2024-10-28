@@ -364,7 +364,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let msg = match requirement {
                         // For *all* intrinsics we first check `is_uninhabited` to give a more specific
                         // error message.
-                        _ if layout.abi.is_uninhabited() => format!(
+                        _ if layout.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{ty}`"
                         ),
                         ValidityRequirement::Inhabited => bug!("handled earlier"),
