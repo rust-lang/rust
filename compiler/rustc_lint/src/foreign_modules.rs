@@ -1,3 +1,4 @@
+use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -6,7 +7,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, TyCtxt};
 use rustc_session::declare_lint;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::FIRST_VARIANT;
 use tracing::{debug, instrument};
 
 use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
