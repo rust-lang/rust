@@ -68,18 +68,21 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
 hir_analysis_cmse_call_generic =
     function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
 
-hir_analysis_cmse_call_inputs_stack_spill =
-    arguments for `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_entry_generic =
+    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+
+hir_analysis_cmse_inputs_stack_spill =
+    arguments for `"{$abi_name}"` function too large to pass via registers
     .label = {$plural ->
         [false] this argument doesn't
         *[true] these arguments don't
     } fit in the available registers
-    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .note = functions with the `"{$abi_name}"` ABI must pass all their arguments via the 4 32-bit available argument registers
 
-hir_analysis_cmse_call_output_stack_spill =
-    return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_output_stack_spill =
+    return value of `"{$abi_name}"` function too large to pass via registers
     .label = this type doesn't fit in the available registers
-    .note1 = functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+    .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
@@ -353,11 +356,13 @@ hir_analysis_only_current_traits_arbitrary = only traits defined in the current 
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
 
-hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
-
 hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
 
 hir_analysis_only_current_traits_note = define and implement a trait or new type instead
+
+hir_analysis_only_current_traits_note_more_info = for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+
+hir_analysis_only_current_traits_note_uncovered = impl doesn't have any local type before any uncovered type parameters
 
 hir_analysis_only_current_traits_opaque = type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
 

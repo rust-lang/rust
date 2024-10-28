@@ -1,6 +1,6 @@
 //! Constant evaluation details
 
-use base_db::{salsa::Cycle, CrateId};
+use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
     body::Body,

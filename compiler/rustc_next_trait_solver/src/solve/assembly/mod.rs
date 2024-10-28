@@ -6,6 +6,7 @@ use derive_where::derive_where;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::inspect;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
 use tracing::{debug, instrument};
@@ -98,6 +99,15 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
+
+    /// Assemble additional assumptions for an alias that are not included
+    /// in the item bounds of the alias. For now, this is limited to the
+    /// `implied_const_bounds` for an associated type.
+    fn consider_additional_alias_assumptions(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>>;
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
@@ -269,11 +279,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -288,6 +293,25 @@ where
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
+            // FIXME: We register a fake candidate when normalization fails so that
+            // we can point at the reason for *why*. I'm tempted to say that this
+            // is the wrong way to do this, though.
+            let result =
+                self.probe(|&result| inspect::ProbeKind::RigidAlias { result }).enter(|this| {
+                    let normalized_ty = this.next_ty_infer();
+                    let alias_relate_goal = Goal::new(
+                        this.cx(),
+                        goal.param_env,
+                        ty::PredicateKind::AliasRelate(
+                            goal.predicate.self_ty().into(),
+                            normalized_ty.into(),
+                            ty::AliasRelationDirection::Equate,
+                        ),
+                    );
+                    this.add_goal(GoalSource::AliasWellFormed, alias_relate_goal);
+                    this.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                });
+            assert_eq!(result, Err(NoSolution));
             return vec![];
         };
 
@@ -461,9 +485,6 @@ where
                 Some(TraitSolverLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::EffectsIntersection) => {
-                    G::consider_builtin_effects_intersection_candidate(self, goal)
-                }
                 _ => Err(NoSolution),
             }
         };
@@ -581,6 +602,8 @@ where
                 [],
             ));
         }
+
+        candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
         if kind != ty::Projection {
             return;

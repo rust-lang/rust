@@ -119,6 +119,7 @@ use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::collector::{self, MonoItemCollectionStrategy, UsageMap};
@@ -228,7 +229,7 @@ where
         }
 
         let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
-        let is_volatile = is_incremental_build && mono_item.is_generic_fn(cx.tcx);
+        let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
         let cgu_name = match characteristic_def_id {
             Some(def_id) => compute_codegen_unit_name(
@@ -821,7 +822,7 @@ fn mono_item_visibility<'tcx>(
         return Visibility::Hidden;
     }
 
-    let is_generic = instance.args.non_erasable_generics(tcx, def_id).next().is_some();
+    let is_generic = instance.args.non_erasable_generics().next().is_some();
 
     // Upstream `DefId` instances get different handling than local ones.
     let Some(def_id) = def_id.as_local() else {
@@ -904,6 +905,11 @@ fn mono_item_visibility<'tcx>(
 }
 
 fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
+    // Fast-path to avoid expensive query call below
+    if tcx.sess.default_visibility() == SymbolVisibility::Interposable {
+        return Visibility::Default;
+    }
+
     let export_level = if is_generic {
         // Generic functions never have export-level C.
         SymbolExportLevel::Rust
@@ -913,6 +919,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
             _ => SymbolExportLevel::Rust,
         }
     };
+
     match export_level {
         // C-export level items remain at `Default` to allow C code to
         // access and interpose them.

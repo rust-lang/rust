@@ -1,10 +1,8 @@
-//@revisions: old next
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // A regression test for #105787
-
-//@[old] known-bug: #105787
-//@[old] check-pass
 #![feature(type_alias_impl_trait)]
 mod defining_scope {
     use super::*;
@@ -28,7 +26,7 @@ impl<T> Trait<T> for T {
     type Assoc = Box<u32>;
 }
 impl<T> Trait<T> for defining_scope::Alias<T> {
-    //[next]~^ ERROR conflicting implementations of trait
+    //~^ ERROR conflicting implementations of trait
     type Assoc = usize;
 }
 

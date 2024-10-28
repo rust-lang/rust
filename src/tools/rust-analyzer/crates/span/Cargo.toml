@@ -12,7 +12,7 @@ authors.workspace = true
 
 [dependencies]
 la-arena.workspace = true
-salsa.workspace = true
+ra-salsa.workspace = true
 rustc-hash.workspace = true
 hashbrown.workspace = true
 text-size.workspace = true

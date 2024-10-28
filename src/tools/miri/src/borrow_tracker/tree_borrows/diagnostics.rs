@@ -298,7 +298,7 @@ pub(super) struct TbError<'node> {
 
 impl TbError<'_> {
     /// Produce a UB error.
-    pub fn build<'tcx>(self) -> InterpError<'tcx> {
+    pub fn build<'tcx>(self) -> InterpErrorKind<'tcx> {
         use TransitionError::*;
         let cause = self.access_cause;
         let accessed = self.accessed_info;

@@ -16,7 +16,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
-    run: collect_trait_impls,
+    run: Some(collect_trait_impls),
     description: "retrieves trait impls for items in the crate",
 };
 

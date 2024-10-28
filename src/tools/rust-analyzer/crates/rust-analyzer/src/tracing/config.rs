@@ -7,7 +7,7 @@ use anyhow::Context;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{
     filter::{filter_fn, Targets},
-    fmt::MakeWriter,
+    fmt::{time, MakeWriter},
     layer::SubscriberExt,
     Layer, Registry,
 };
@@ -58,6 +58,10 @@ where
         let writer = self.writer;
 
         let ra_fmt_layer = tracing_subscriber::fmt::layer()
+            .with_timer(
+                time::OffsetTime::local_rfc_3339()
+                    .expect("Could not get local offset, make sure you're on the main thread"),
+            )
             .with_target(false)
             .with_ansi(false)
             .with_writer(writer)

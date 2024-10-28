@@ -1,8 +1,8 @@
-error: unsupported operation: socketpair write: blocking isn't supported yet
+error: unsupported operation: socketpair/pipe/pipe2 write: blocking isn't supported yet
   --> tests/fail-dep/libc/socketpair_write_blocking.rs:LL:CC
    |
 LL |     let _ = unsafe { libc::write(fds[0], data as *const libc::c_void, 3) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ socketpair write: blocking isn't supported yet
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ socketpair/pipe/pipe2 write: blocking isn't supported yet
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

@@ -21,7 +21,9 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{FieldIdx, TyAbiInterface, VariantIdx, call};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi};
+use rustc_target::spec::{
+    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
+};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
@@ -396,8 +398,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
-            ty::Array(inner, len) if tcx.features().transmute_generic_consts => {
-                let len_eval = len.try_eval_target_usize(tcx, param_env);
+            ty::Array(inner, len) if tcx.features().transmute_generic_consts() => {
+                let len_eval = len.try_to_target_usize(tcx);
                 if len_eval == Some(0) {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
                 }
@@ -544,6 +546,12 @@ impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        X86Abi { regparm: self.sess.opts.unstable_opts.regparm }
+    }
+}
+
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -592,6 +600,12 @@ impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
 impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.calc.cx.wasm_c_abi_opt()
+    }
+}
+
+impl<'tcx> HasX86AbiOpt for LayoutCx<'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        self.calc.cx.x86_abi_opt()
     }
 }
 

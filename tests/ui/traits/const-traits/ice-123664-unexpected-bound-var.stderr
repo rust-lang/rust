@@ -1,0 +1,21 @@
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:34
+   |
+LL | const fn with_positive<F: ~const Fn()>() {}
+   |                                  ^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:34
+   |
+LL | const fn with_positive<F: ~const Fn()>() {}
+   |                                  ^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

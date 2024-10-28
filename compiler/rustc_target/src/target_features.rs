@@ -167,6 +167,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("pacg", Stable, &[]),
     // FEAT_PAN
     ("pan", Stable, &[]),
+    // FEAT_PAuth_LR
+    ("pauth-lr", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_PMUv3
     ("pmuv3", Stable, &[]),
     // FEAT_RNG
@@ -316,7 +318,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
-    ("pclmulqdq", Stable, &[]),
+    ("pclmulqdq", Stable, &["sse2"]),
     ("popcnt", Stable, &[]),
     ("prfchw", Unstable(sym::prfchw_target_feature), &[]),
     ("rdrand", Stable, &[]),

@@ -43,6 +43,11 @@ use crate::common::{
 use crate::header::HeadersCache;
 use crate::util::logv;
 
+/// Creates the `Config` instance for this invocation of compiletest.
+///
+/// The config mostly reflects command-line arguments, but there might also be
+/// some code here that inspects environment variables or even runs executables
+/// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
@@ -170,6 +175,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "git-merge-commit-email",
             "email address used for finding merge commits",
             "EMAIL",
+        )
+        .optopt(
+            "",
+            "compiletest-diff-tool",
+            "What custom diff tool to use for displaying compiletest tests.",
+            "COMMAND",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -225,14 +236,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let run_ignored = matches.opt_present("ignored");
     let with_debug_assertions = matches.opt_present("with-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_tidy = if mode == Mode::Rustdoc {
+    let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
             .arg("--version")
             .stdout(Stdio::null())
             .status()
             .map_or(false, |status| status.success())
     } else {
-        // Avoid spawning an external command when we know tidy won't be used.
+        // Avoid spawning an external command when we know html-tidy won't be used.
         false
     };
     let has_enzyme = matches.opt_present("has-enzyme");
@@ -331,7 +342,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .opt_str("compare-mode")
             .map(|s| s.parse().expect("invalid --compare-mode provided")),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_tidy,
+        has_html_tidy,
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
@@ -351,6 +362,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfgs: OnceLock::new(),
+        builtin_cfg_names: OnceLock::new(),
 
         nocapture: matches.opt_present("nocapture"),
 
@@ -359,6 +371,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+        diff_command: matches.opt_str("compiletest-diff-tool"),
     }
 }
 
@@ -413,6 +426,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
     }
 }
 
+/// Called by `main` after the config has been parsed.
 pub fn run_tests(config: Arc<Config>) {
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
@@ -454,16 +468,21 @@ pub fn run_tests(config: Arc<Config>) {
         configs.push(config.clone());
     };
 
+    // Discover all of the tests in the test suite directory, and build a libtest
+    // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
     for c in configs {
-        let mut found_paths = HashSet::new();
-        make_tests(c, &mut tests, &mut found_paths);
-        check_overlapping_tests(&found_paths);
+        tests.extend(collect_and_make_tests(c));
     }
 
     tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
 
+    // Delegate to libtest to filter and run the big list of structures created
+    // during test discovery. When libtest decides to run a test, it will invoke
+    // the corresponding closure created by `make_test_closure`.
     let res = test::run_tests_console(&opts, tests);
+
+    // Check the outcome reported by libtest.
     match res {
         Ok(true) => {}
         Ok(false) => {
@@ -532,41 +551,62 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(
+/// Read-only context data used during test collection.
+struct TestCollectorCx {
     config: Arc<Config>,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-) {
+    cache: HeadersCache,
+    common_inputs_stamp: Stamp,
+    modified_tests: Vec<PathBuf>,
+}
+
+/// Mutable state used during test collection.
+struct TestCollector {
+    tests: Vec<test::TestDescAndFn>,
+    found_path_stems: HashSet<PathBuf>,
+    poisoned: bool,
+}
+
+/// Creates libtest structures for every test/revision in the test suite directory.
+///
+/// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
+/// regardless of whether any filters/tests were specified on the command-line,
+/// because filtering is handled later by libtest.
+pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
-    let inputs = common_inputs_stamp(&config);
+    let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
         panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
     });
-
     let cache = HeadersCache::load(&config);
-    let mut poisoned = false;
-    collect_tests_from_dir(
-        config.clone(),
-        &cache,
-        &config.src_base,
-        &PathBuf::new(),
-        &inputs,
-        tests,
-        found_paths,
-        &modified_tests,
-        &mut poisoned,
-    )
-    .unwrap_or_else(|reason| {
-        panic!("Could not read tests from {}: {reason}", config.src_base.display())
-    });
+
+    let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
+    let mut collector =
+        TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
+
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
+        .unwrap_or_else(|reason| {
+            panic!("Could not read tests from {}: {reason}", cx.config.src_base.display())
+        });
+
+    let TestCollector { tests, found_path_stems, poisoned } = collector;
 
     if poisoned {
         eprintln!();
         panic!("there are errors in tests");
     }
+
+    check_for_overlapping_test_paths(&found_path_stems);
+
+    tests
 }
 
-/// Returns a stamp constructed from input files common to all test cases.
+/// Returns the most recent last-modified timestamp from among the input files
+/// that are considered relevant to all tests (e.g. the compiler, std, and
+/// compiletest itself).
+///
+/// (Some of these inputs aren't actually relevant to _all_ tests, but they are
+/// common to some subset of tests, and are hopefully unlikely to be modified
+/// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
     let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
 
@@ -610,10 +650,17 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     stamp
 }
 
+/// Returns a list of modified/untracked test files that should be run when
+/// the `--only-modified` flag is in use.
+///
+/// (Might be inaccurate in some cases.)
 fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
+    // If `--only-modified` wasn't passed, the list of modified tests won't be
+    // used for anything, so avoid some work and just return an empty list.
     if !config.only_modified {
         return Ok(vec![]);
     }
+
     let files =
         get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?
             .unwrap_or(vec![]);
@@ -634,23 +681,22 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(full_paths)
 }
 
+/// Recursively scans a directory to find test files and create test structures
+/// that will be handed over to libtest.
 fn collect_tests_from_dir(
-    config: Arc<Config>,
-    cache: &HeadersCache,
+    cx: &TestCollectorCx,
+    collector: &mut TestCollector,
     dir: &Path,
     relative_dir_path: &Path,
-    inputs: &Stamp,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-    modified_tests: &Vec<PathBuf>,
-    poisoned: &mut bool,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
         return Ok(());
     }
 
-    if config.mode == Mode::RunMake {
+    // For run-make tests, a "test file" is actually a directory that contains
+    // an `rmake.rs` or `Makefile`"
+    if cx.config.mode == Mode::RunMake {
         if dir.join("Makefile").exists() && dir.join("rmake.rs").exists() {
             return Err(io::Error::other(
                 "run-make tests cannot have both `Makefile` and `rmake.rs`",
@@ -662,7 +708,8 @@ fn collect_tests_from_dir(
                 file: dir.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            tests.extend(make_test(config, cache, &paths, inputs, poisoned));
+            make_test(cx, collector, &paths);
+            // This directory is a test, so don't try to find other tests inside it.
             return Ok(());
         }
     }
@@ -673,40 +720,37 @@ fn collect_tests_from_dir(
     // sequential loop because otherwise, if we do it in the
     // tests themselves, they race for the privilege of
     // creating the directories and sometimes fail randomly.
-    let build_dir = output_relative_path(&config, relative_dir_path);
+    let build_dir = output_relative_path(&cx.config, relative_dir_path);
     fs::create_dir_all(&build_dir).unwrap();
 
     // Add each `.rs` file as a test, and recurse further on any
-    // subdirectories we find, except for `aux` directories.
+    // subdirectories we find, except for `auxiliary` directories.
     // FIXME: this walks full tests tree, even if we have something to ignore
     // use walkdir/ignore like in tidy?
     for file in fs::read_dir(dir)? {
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
-        if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
+
+        if is_test(&file_name)
+            && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
+        {
+            // We found a test file, so create the corresponding libtest structures.
             debug!("found test file: {:?}", file_path.display());
+
+            // Record the stem of the test file, to check for overlaps later.
             let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
-            found_paths.insert(rel_test_path);
+            collector.found_path_stems.insert(rel_test_path);
+
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
-
-            tests.extend(make_test(config.clone(), cache, &paths, inputs, poisoned))
+            make_test(cx, collector, &paths);
         } else if file_path.is_dir() {
+            // Recurse to find more tests in a subdirectory.
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(
-                    config.clone(),
-                    cache,
-                    &file_path,
-                    &relative_file_path,
-                    inputs,
-                    tests,
-                    found_paths,
-                    modified_tests,
-                    poisoned,
-                )?;
+                collect_tests_from_dir(cx, collector, &file_path, &relative_file_path)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -728,14 +772,13 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-fn make_test(
-    config: Arc<Config>,
-    cache: &HeadersCache,
-    testpaths: &TestPaths,
-    inputs: &Stamp,
-    poisoned: &mut bool,
-) -> Vec<test::TestDescAndFn> {
-    let test_path = if config.mode == Mode::RunMake {
+/// For a single test file, creates one or more test structures (one per revision)
+/// that can be handed over to libtest to run, possibly in parallel.
+fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &TestPaths) {
+    // For run-make tests, each "test file" is actually a _directory_ containing
+    // an `rmake.rs` or `Makefile`. But for the purposes of directive parsing,
+    // we want to look at that recipe file, not the directory itself.
+    let test_path = if cx.config.mode == Mode::RunMake {
         if testpaths.file.join("rmake.rs").exists() && testpaths.file.join("Makefile").exists() {
             panic!("run-make tests cannot have both `rmake.rs` and `Makefile`");
         }
@@ -750,45 +793,66 @@ fn make_test(
     } else {
         PathBuf::from(&testpaths.file)
     };
-    let early_props = EarlyProps::from_file(&config, &test_path);
 
-    // Incremental tests are special, they inherently cannot be run in parallel.
-    // `runtest::run` will be responsible for iterating over revisions.
-    let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
+    // Scan the test file to discover its revisions, if any.
+    let early_props = EarlyProps::from_file(&cx.config, &test_path);
+
+    // Normally we create one libtest structure per revision, with two exceptions:
+    // - If a test doesn't use revisions, create a dummy revision (None) so that
+    //   the test can still run.
+    // - Incremental tests inherently can't run their revisions in parallel, so
+    //   we treat them like non-revisioned tests here. Incremental revisions are
+    //   handled internally by `runtest::run` instead.
+    let revisions = if early_props.revisions.is_empty() || cx.config.mode == Mode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
-    revisions
-        .into_iter()
-        .map(|revision| {
-            let src_file =
-                std::fs::File::open(&test_path).expect("open test file to parse ignores");
-            let test_name = crate::make_test_name(&config, testpaths, revision);
-            let mut desc = make_test_description(
-                &config, cache, test_name, &test_path, src_file, revision, poisoned,
-            );
-            // Ignore tests that already run and are up to date with respect to inputs.
-            if !config.force_rerun
-                && is_up_to_date(&config, testpaths, &early_props, revision, inputs)
-            {
-                desc.ignore = true;
-                // Keep this in sync with the "up-to-date" message detected by bootstrap.
-                desc.ignore_message = Some("up-to-date");
-            }
-            test::TestDescAndFn {
-                desc,
-                testfn: make_test_closure(config.clone(), testpaths, revision),
-            }
-        })
-        .collect()
+    // For each revision (or the sole dummy revision), create and append a
+    // `test::TestDescAndFn` that can be handed over to libtest.
+    collector.tests.extend(revisions.into_iter().map(|revision| {
+        // Create a test name and description to hand over to libtest.
+        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
+        let test_name = make_test_name(&cx.config, testpaths, revision);
+        // Create a libtest description for the test/revision.
+        // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+        // because they need to set the libtest ignored flag.
+        let mut desc = make_test_description(
+            &cx.config,
+            &cx.cache,
+            test_name,
+            &test_path,
+            src_file,
+            revision,
+            &mut collector.poisoned,
+        );
+
+        // If a test's inputs haven't changed since the last time it ran,
+        // mark it as ignored so that libtest will skip it.
+        if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
+            desc.ignore = true;
+            // Keep this in sync with the "up-to-date" message detected by bootstrap.
+            desc.ignore_message = Some("up-to-date");
+        }
+
+        // Create the callback that will run this test/revision when libtest calls it.
+        let testfn = make_test_closure(Arc::clone(&cx.config), testpaths, revision);
+
+        test::TestDescAndFn { desc, testfn }
+    }));
 }
 
-fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+/// The path of the `stamp` file that gets created or updated whenever a
+/// particular test completes successfully.
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Returns a list of files that, if modified, would cause this test to no
+/// longer be up-to-date.
+///
+/// (Might be inaccurate in some cases.)
 fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
@@ -824,46 +888,60 @@ fn files_related_to_test(
     related
 }
 
+/// Checks whether a particular test/revision is "up-to-date", meaning that no
+/// relevant files/settings have changed since the last time the test succeeded.
+///
+/// (This is not very reliable in some circumstances, so the `--force-rerun`
+/// flag can be used to ignore up-to-date checking and always re-run tests.)
 fn is_up_to_date(
-    config: &Config,
+    cx: &TestCollectorCx,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-    inputs: &Stamp,
 ) -> bool {
-    let stamp_name = stamp(config, testpaths, revision);
-    // Check hash.
-    let contents = match fs::read_to_string(&stamp_name) {
+    let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
+    // Check the config hash inside the stamp file.
+    let contents = match fs::read_to_string(&stamp_file_path) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
+        // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
-    let expected_hash = runtest::compute_stamp_hash(config);
+    let expected_hash = runtest::compute_stamp_hash(&cx.config);
     if contents != expected_hash {
+        // Some part of compiletest configuration has changed since the test
+        // last succeeded, so it is not up-to-date.
         return false;
     }
 
-    // Check timestamps.
-    let mut inputs = inputs.clone();
-    for path in files_related_to_test(config, testpaths, props, revision) {
-        inputs.add_path(&path);
+    // Check the timestamp of the stamp file against the last modified time
+    // of all files known to be relevant to the test.
+    let mut inputs_stamp = cx.common_inputs_stamp.clone();
+    for path in files_related_to_test(&cx.config, testpaths, props, revision) {
+        inputs_stamp.add_path(&path);
     }
 
-    inputs < Stamp::from_path(&stamp_name)
+    // If no relevant files have been modified since the stamp file was last
+    // written, the test is up-to-date.
+    inputs_stamp < Stamp::from_path(&stamp_file_path)
 }
 
+/// The maximum of a set of file-modified timestamps.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Stamp {
     time: SystemTime,
 }
 
 impl Stamp {
+    /// Creates a timestamp holding the last-modified time of the specified file.
     fn from_path(path: &Path) -> Self {
         let mut stamp = Stamp { time: SystemTime::UNIX_EPOCH };
         stamp.add_path(path);
         stamp
     }
 
+    /// Updates this timestamp to the last-modified time of the specified file,
+    /// if it is later than the currently-stored timestamp.
     fn add_path(&mut self, path: &Path) {
         let modified = fs::metadata(path)
             .and_then(|metadata| metadata.modified())
@@ -871,6 +949,9 @@ impl Stamp {
         self.time = self.time.max(modified);
     }
 
+    /// Updates this timestamp to the most recent last-modified time of all files
+    /// recursively contained in the given directory, if it is later than the
+    /// currently-stored timestamp.
     fn add_dir(&mut self, path: &Path) {
         for entry in WalkDir::new(path) {
             let entry = entry.unwrap();
@@ -886,6 +967,7 @@ impl Stamp {
     }
 }
 
+/// Creates a name for this test/revision that can be handed over to libtest.
 fn make_test_name(
     config: &Config,
     testpaths: &TestPaths,
@@ -914,25 +996,46 @@ fn make_test_name(
     ))
 }
 
+/// Creates a callback for this test/revision that libtest will call when it
+/// decides to actually run the underlying test.
 fn make_test_closure(
     config: Arc<Config>,
     testpaths: &TestPaths,
     revision: Option<&str>,
 ) -> test::TestFn {
-    let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.map(str::to_owned);
+
+    // This callback is the link between compiletest's test discovery code,
+    // and the parts of compiletest that know how to run an individual test.
     test::DynTestFn(Box::new(move || {
         runtest::run(config, &testpaths, revision.as_deref());
         Ok(())
     }))
 }
 
-fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {
+/// Checks that test discovery didn't find any tests whose name stem is a prefix
+/// of some other tests's name.
+///
+/// For example, suppose the test suite contains these two test files:
+/// - `tests/rustdoc/primitive.rs`
+/// - `tests/rustdoc/primitive/no_std.rs`
+///
+/// The test runner might put the output from those tests in these directories:
+/// - `$build/test/rustdoc/primitive/`
+/// - `$build/test/rustdoc/primitive/no_std/`
+///
+/// Because one output path is a subdirectory of the other, the two tests might
+/// interfere with each other in unwanted ways, especially if the test runner
+/// decides to delete test output directories to clean them between runs.
+/// To avoid problems, we forbid test names from overlapping in this way.
+///
+/// See <https://github.com/rust-lang/rust/pull/109509> for more context.
+fn check_for_overlapping_test_paths(found_path_stems: &HashSet<PathBuf>) {
     let mut collisions = Vec::new();
-    for path in found_paths {
+    for path in found_path_stems {
         for ancestor in path.ancestors().skip(1) {
-            if found_paths.contains(ancestor) {
+            if found_path_stems.contains(ancestor) {
                 collisions.push((path, ancestor));
             }
         }

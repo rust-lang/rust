@@ -905,7 +905,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
             try_visit!(visitor.visit_array_length(length));
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
-            for (bound, _modifier) in bounds {
+            for bound in bounds {
                 try_visit!(visitor.visit_poly_trait_ref(bound));
             }
             try_visit!(visitor.visit_lifetime(lifetime));
@@ -935,7 +935,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => visit_opt!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, ref default, is_host_effect: _, synthetic: _ } => {
+        GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
             try_visit!(visitor.visit_ty(ty));
             if let Some(ref default) = default {
                 try_visit!(visitor.visit_const_param_default(param.hir_id, default));
@@ -1160,7 +1160,7 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(
     bound: &'v GenericBound<'v>,
 ) -> V::Result {
     match *bound {
-        GenericBound::Trait(ref typ, _modifier) => visitor.visit_poly_trait_ref(typ),
+        GenericBound::Trait(ref typ) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
         GenericBound::Use(args, _) => {
             walk_list!(visitor, visit_precise_capturing_arg, args);

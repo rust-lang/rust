@@ -959,13 +959,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         None
                     }
                 }
-                hir::ExprKind::MethodCall(_, _, args, span) => {
-                    if let Some(def_id) = typeck_results.type_dependent_def_id(*hir_id) {
-                        Some((def_id, *span, *args))
-                    } else {
-                        None
-                    }
-                }
+                hir::ExprKind::MethodCall(_, _, args, span) => typeck_results
+                    .type_dependent_def_id(*hir_id)
+                    .map(|def_id| (def_id, *span, *args)),
                 _ => None,
             }
         };
@@ -1146,6 +1142,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                     // don't create labels for compiler-generated spans
                     Some(_) => None,
+                    // don't create labels for the span not from user's code
+                    None if opt_assignment_rhs_span
+                        .is_some_and(|span| self.infcx.tcx.sess.source_map().is_imported(span)) =>
+                    {
+                        None
+                    }
                     None => {
                         let (has_sugg, decl_span, sugg) = if name != kw::SelfLower {
                             suggest_ampmut(
@@ -1198,18 +1200,21 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     sugg.push(s);
                 }
 
-                err.multipart_suggestion_verbose(
-                    format!(
-                        "consider changing this to be a mutable {pointer_desc}{}",
-                        if is_trait_sig {
-                            " in the `impl` method and the `trait` definition"
-                        } else {
-                            ""
-                        }
-                    ),
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
+                if sugg.iter().all(|(span, _)| !self.infcx.tcx.sess.source_map().is_imported(*span))
+                {
+                    err.multipart_suggestion_verbose(
+                        format!(
+                            "consider changing this to be a mutable {pointer_desc}{}",
+                            if is_trait_sig {
+                                " in the `impl` method and the `trait` definition"
+                            } else {
+                                ""
+                            }
+                        ),
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             Some((false, err_label_span, message, _)) => {
                 let def_id = self.body.source.def_id();

@@ -167,9 +167,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
             }
         }
         if let Some(tail_expr) = blk.expr {
-            if visitor.tcx.features().shorter_tail_lifetimes
-                && blk.span.edition().at_least_rust_2024()
-            {
+            if blk.span.edition().at_least_rust_2024() {
                 visitor.terminating_scopes.insert(tail_expr.hir_id.local_id);
             }
             visitor.visit_expr(tail_expr);
@@ -466,7 +464,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
-            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope()
+            {
                 ScopeData::IfThenRescope
             } else {
                 ScopeData::IfThen
@@ -481,7 +480,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
-            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope()
+            {
                 ScopeData::IfThenRescope
             } else {
                 ScopeData::IfThen

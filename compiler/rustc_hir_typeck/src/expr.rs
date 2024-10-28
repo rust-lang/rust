@@ -10,7 +10,8 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -734,7 +735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
-            if !tcx.features().unsized_fn_params {
+            if !tcx.features().unsized_fn_params() {
                 // We want to remove some Sized bounds from std functions,
                 // but don't want to expose the removal to stable Rust.
                 // i.e., we don't want to allow
@@ -1320,84 +1321,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let expected_ty = expected.coercion_target_type(self, expr.span);
         if expected_ty == self.tcx.types.bool {
-            // The expected type is `bool` but this will result in `()` so we can reasonably
-            // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
-            // The likely cause of this is `if foo = bar { .. }`.
-            let actual_ty = self.tcx.types.unit;
-            let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap_err();
-            let lhs_ty = self.check_expr(lhs);
-            let rhs_ty = self.check_expr(rhs);
-            let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
-                let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
-                let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
-                self.can_coerce(rhs, lhs)
-            };
-            let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
-                (Applicability::MachineApplicable, true)
-            } else if refs_can_coerce(rhs_ty, lhs_ty) {
-                // The lhs and rhs are likely missing some references in either side. Subsequent
-                // suggestions will show up.
-                (Applicability::MaybeIncorrect, true)
-            } else if let ExprKind::Binary(
-                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
-                _,
-                rhs_expr,
-            ) = lhs.kind
-            {
-                // if x == 1 && y == 2 { .. }
-                //                 +
-                let actual_lhs_ty = self.check_expr(rhs_expr);
-                (
-                    Applicability::MaybeIncorrect,
-                    self.can_coerce(rhs_ty, actual_lhs_ty)
-                        || refs_can_coerce(rhs_ty, actual_lhs_ty),
-                )
-            } else if let ExprKind::Binary(
-                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
-                lhs_expr,
-                _,
-            ) = rhs.kind
-            {
-                // if x == 1 && y == 2 { .. }
-                //       +
-                let actual_rhs_ty = self.check_expr(lhs_expr);
-                (
-                    Applicability::MaybeIncorrect,
-                    self.can_coerce(actual_rhs_ty, lhs_ty)
-                        || refs_can_coerce(actual_rhs_ty, lhs_ty),
-                )
-            } else {
-                (Applicability::MaybeIncorrect, false)
-            };
-            if !lhs.is_syntactic_place_expr()
-                && lhs.is_approximately_pattern()
-                && !matches!(lhs.kind, hir::ExprKind::Lit(_))
-            {
-                // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
-                if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
-                    self.tcx.parent_hir_node(expr.hir_id)
-                {
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_lo(),
-                        "you might have meant to use pattern matching",
-                        "let ",
-                        applicability,
-                    );
-                };
-            }
-            if eq {
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "you might have meant to compare for equality",
-                    '=',
-                    applicability,
-                );
-            }
-
-            // If the assignment expression itself is ill-formed, don't
-            // bother emitting another error
-            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
-            return Ty::new_error(self.tcx, reported);
+            let guar = self.expr_assign_expected_bool_error(expr, lhs, rhs, span);
+            return Ty::new_error(self.tcx, guar);
         }
 
         let lhs_ty = self.check_expr_with_needs(lhs, Needs::MutPlace);
@@ -1414,7 +1339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.param_env,
                     )
                     .may_apply();
-                if lhs_deref_ty_is_sized && self.can_coerce(rhs_ty, lhs_deref_ty) {
+                if lhs_deref_ty_is_sized && self.may_coerce(rhs_ty, lhs_deref_ty) {
                     err.span_suggestion_verbose(
                         lhs.span.shrink_to_lo(),
                         "consider dereferencing here to assign to the mutably borrowed value",
@@ -1448,6 +1373,88 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.types.unit
         }
+    }
+
+    /// The expected type is `bool` but this will result in `()` so we can reasonably
+    /// say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
+    /// The likely cause of this is `if foo = bar { .. }`.
+    fn expr_assign_expected_bool_error(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        lhs: &'tcx hir::Expr<'tcx>,
+        rhs: &'tcx hir::Expr<'tcx>,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let actual_ty = self.tcx.types.unit;
+        let expected_ty = self.tcx.types.bool;
+        let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap_err();
+        let lhs_ty = self.check_expr(lhs);
+        let rhs_ty = self.check_expr(rhs);
+        let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
+            let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
+            let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
+            self.may_coerce(rhs, lhs)
+        };
+        let (applicability, eq) = if self.may_coerce(rhs_ty, lhs_ty) {
+            (Applicability::MachineApplicable, true)
+        } else if refs_can_coerce(rhs_ty, lhs_ty) {
+            // The lhs and rhs are likely missing some references in either side. Subsequent
+            // suggestions will show up.
+            (Applicability::MaybeIncorrect, true)
+        } else if let ExprKind::Binary(
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            _,
+            rhs_expr,
+        ) = lhs.kind
+        {
+            // if x == 1 && y == 2 { .. }
+            //                 +
+            let actual_lhs = self.check_expr(rhs_expr);
+            let may_eq = self.may_coerce(rhs_ty, actual_lhs) || refs_can_coerce(rhs_ty, actual_lhs);
+            (Applicability::MaybeIncorrect, may_eq)
+        } else if let ExprKind::Binary(
+            Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+            lhs_expr,
+            _,
+        ) = rhs.kind
+        {
+            // if x == 1 && y == 2 { .. }
+            //       +
+            let actual_rhs = self.check_expr(lhs_expr);
+            let may_eq = self.may_coerce(actual_rhs, lhs_ty) || refs_can_coerce(actual_rhs, lhs_ty);
+            (Applicability::MaybeIncorrect, may_eq)
+        } else {
+            (Applicability::MaybeIncorrect, false)
+        };
+
+        if !lhs.is_syntactic_place_expr()
+            && lhs.is_approximately_pattern()
+            && !matches!(lhs.kind, hir::ExprKind::Lit(_))
+        {
+            // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
+            if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+            {
+                err.span_suggestion_verbose(
+                    expr.span.shrink_to_lo(),
+                    "you might have meant to use pattern matching",
+                    "let ",
+                    applicability,
+                );
+            };
+        }
+        if eq {
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                "you might have meant to compare for equality",
+                '=',
+                applicability,
+            );
+        }
+
+        // If the assignment expression itself is ill-formed, don't
+        // bother emitting another error
+        err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error())
     }
 
     pub(super) fn check_expr_let(
@@ -1744,7 +1751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to tell them that in the diagnostic. Does not affect typeck.
         let is_constable = match element.kind {
             hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
+                ty::FnDef(def_id, _) if tcx.is_stable_const_fn(def_id) => traits::IsConstable::Fn,
                 _ => traits::IsConstable::No,
             },
             hir::ExprKind::Path(qpath) => {
@@ -1989,7 +1996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
-            let fru_tys = if self.tcx.features().type_changing_struct_update {
+            let fru_tys = if self.tcx.features().type_changing_struct_update() {
                 if adt.is_struct() {
                     // Make some fresh generic parameters for our ADT type.
                     let fresh_args = self.fresh_args_for_item(base_expr.span, adt.did());
@@ -2757,12 +2764,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_ident.span,
             "field not available in `impl Future`, but it is available in its `Output`",
         );
-        err.span_suggestion_verbose(
-            base.span.shrink_to_hi(),
-            "consider `await`ing on the `Future` and access the field of its `Output`",
-            ".await",
-            Applicability::MaybeIncorrect,
-        );
+        match self.tcx.coroutine_kind(self.body_id) {
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                err.span_suggestion_verbose(
+                    base.span.shrink_to_hi(),
+                    "consider `await`ing on the `Future` to access the field",
+                    ".await",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {
+                let mut span: MultiSpan = base.span.into();
+                span.push_span_label(self.tcx.def_span(self.body_id), "this is not `async`");
+                err.span_note(
+                    span,
+                    "this implements `Future` and its output type has the field, \
+                    but the future cannot be awaited in a synchronous function",
+                );
+            }
+        }
     }
 
     fn ban_nonexisting_field(
@@ -3532,7 +3552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    if !self.tcx.features().offset_of_enum {
+                    if !self.tcx.features().offset_of_enum() {
                         rustc_session::parse::feature_err(
                             &self.tcx.sess,
                             sym::offset_of_enum,
@@ -3622,7 +3642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let field_ty = self.field_ty(expr.span, field, args);
 
-                        if self.tcx.features().offset_of_slice {
+                        if self.tcx.features().offset_of_slice() {
                             self.require_type_has_static_alignment(
                                 field_ty,
                                 expr.span,
@@ -3655,7 +3675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && field.name == sym::integer(index)
                     {
                         if let Some(&field_ty) = tys.get(index) {
-                            if self.tcx.features().offset_of_slice {
+                            if self.tcx.features().offset_of_slice() {
                                 self.require_type_has_static_alignment(
                                     field_ty,
                                     expr.span,

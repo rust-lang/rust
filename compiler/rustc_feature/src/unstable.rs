@@ -6,11 +6,6 @@ use rustc_span::symbol::{Symbol, sym};
 
 use super::{Feature, to_nonzero};
 
-pub struct UnstableFeature {
-    pub feature: Feature,
-    pub set_enabled: fn(&mut Features),
-}
-
 #[derive(PartialEq)]
 enum FeatureStatus {
     Default,
@@ -30,86 +25,98 @@ macro_rules! status_to_enum {
     };
 }
 
+/// A set of features to be used by later passes.
+///
+/// There are two ways to check if a language feature `foo` is enabled:
+/// - Directly with the `foo` method, e.g. `if tcx.features().foo() { ... }`.
+/// - With the `enabled` method, e.g. `if tcx.features.enabled(sym::foo) { ... }`.
+///
+/// The former is preferred. `enabled` should only be used when the feature symbol is not a
+/// constant, e.g. a parameter, or when the feature is a library feature.
+#[derive(Clone, Default, Debug)]
+pub struct Features {
+    /// `#![feature]` attrs for language features, for error reporting.
+    enabled_lang_features: Vec<EnabledLangFeature>,
+    /// `#![feature]` attrs for non-language (library) features.
+    enabled_lib_features: Vec<EnabledLibFeature>,
+    /// `enabled_lang_features` + `enabled_lib_features`.
+    enabled_features: FxHashSet<Symbol>,
+}
+
+/// Information about an enabled language feature.
+#[derive(Debug, Copy, Clone)]
+pub struct EnabledLangFeature {
+    /// Name of the feature gate guarding the language feature.
+    pub gate_name: Symbol,
+    /// Span of the `#[feature(...)]` attribute.
+    pub attr_sp: Span,
+    /// If the lang feature is stable, the version number when it was stabilized.
+    pub stable_since: Option<Symbol>,
+}
+
+/// Information abhout an enabled library feature.
+#[derive(Debug, Copy, Clone)]
+pub struct EnabledLibFeature {
+    pub gate_name: Symbol,
+    pub attr_sp: Span,
+}
+
+impl Features {
+    /// `since` should be set for stable features that are nevertheless enabled with a `#[feature]`
+    /// attribute, indicating since when they are stable.
+    pub fn set_enabled_lang_feature(&mut self, lang_feat: EnabledLangFeature) {
+        self.enabled_lang_features.push(lang_feat);
+        self.enabled_features.insert(lang_feat.gate_name);
+    }
+
+    pub fn set_enabled_lib_feature(&mut self, lib_feat: EnabledLibFeature) {
+        self.enabled_lib_features.push(lib_feat);
+        self.enabled_features.insert(lib_feat.gate_name);
+    }
+
+    /// Returns a list of [`EnabledLangFeature`] with info about:
+    ///
+    /// - Feature gate name.
+    /// - The span of the `#[feature]` attribute.
+    /// - For stable language features, version info for when it was stabilized.
+    pub fn enabled_lang_features(&self) -> &Vec<EnabledLangFeature> {
+        &self.enabled_lang_features
+    }
+
+    pub fn enabled_lib_features(&self) -> &Vec<EnabledLibFeature> {
+        &self.enabled_lib_features
+    }
+
+    pub fn enabled_features(&self) -> &FxHashSet<Symbol> {
+        &self.enabled_features
+    }
+
+    /// Is the given feature enabled (via `#[feature(...)]`)?
+    pub fn enabled(&self, feature: Symbol) -> bool {
+        self.enabled_features.contains(&feature)
+    }
+}
+
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Unstable language features that are being implemented or being
         /// considered for acceptance (stabilization) or removal.
-        pub const UNSTABLE_FEATURES: &[UnstableFeature] = &[
-            $(UnstableFeature {
-                feature: Feature {
-                    name: sym::$feature,
-                    since: $ver,
-                    issue: to_nonzero($issue),
-                },
-                // Sets this feature's corresponding bool within `features`.
-                set_enabled: |features| features.$feature = true,
+        pub const UNSTABLE_LANG_FEATURES: &[Feature] = &[
+            $(Feature {
+                name: sym::$feature,
+                since: $ver,
+                issue: to_nonzero($issue),
             }),+
         ];
 
-        const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
-
-        /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
-        pub struct Features {
-            /// `#![feature]` attrs for language features, for error reporting.
-            /// "declared" here means that the feature is actually enabled in the current crate.
-            pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
-            /// `#![feature]` attrs for non-language (library) features.
-            /// "declared" here means that the feature is actually enabled in the current crate.
-            pub declared_lib_features: Vec<(Symbol, Span)>,
-            /// `declared_lang_features` + `declared_lib_features`.
-            pub declared_features: FxHashSet<Symbol>,
-            /// Active state of individual features (unstable only).
-            $(
-                $(#[doc = $doc])*
-                pub $feature: bool
-            ),+
-        }
-
         impl Features {
-            pub fn set_declared_lang_feature(
-                &mut self,
-                symbol: Symbol,
-                span: Span,
-                since: Option<Symbol>
-            ) {
-                self.declared_lang_features.push((symbol, span, since));
-                self.declared_features.insert(symbol);
-            }
-
-            pub fn set_declared_lib_feature(&mut self, symbol: Symbol, span: Span) {
-                self.declared_lib_features.push((symbol, span));
-                self.declared_features.insert(symbol);
-            }
-
-            /// This is intended for hashing the set of active features.
-            ///
-            /// The expectation is that this produces much smaller code than other alternatives.
-            ///
-            /// Note that the total feature count is pretty small, so this is not a huge array.
-            #[inline]
-            pub fn all_features(&self) -> [u8; NUM_FEATURES] {
-                [$(self.$feature as u8),+]
-            }
-
-            /// Is the given feature explicitly declared, i.e. named in a
-            /// `#![feature(...)]` within the code?
-            pub fn declared(&self, feature: Symbol) -> bool {
-                self.declared_features.contains(&feature)
-            }
-
-            /// Is the given feature active (enabled by the user)?
-            ///
-            /// Panics if the symbol doesn't correspond to a declared feature.
-            pub fn active(&self, feature: Symbol) -> bool {
-                match feature {
-                    $( sym::$feature => self.$feature, )*
-
-                    _ => panic!("`{}` was not listed in `declare_features`", feature),
+            $(
+                pub fn $feature(&self) -> bool {
+                    self.enabled_features.contains(&sym::$feature)
                 }
-            }
+            )*
 
             /// Some features are known to be incomplete and using them is likely to have
             /// unanticipated results, such as compiler crashes. We warn the user about these
@@ -119,8 +126,11 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
-                    // Accepted/removed features aren't in this file but are never incomplete.
-                    _ if self.declared_features.contains(&feature) => false,
+                    _ if self.enabled_features.contains(&feature) => {
+                        // Accepted/removed features and library features aren't in this file but
+                        // are never incomplete.
+                        false
+                    }
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
@@ -132,7 +142,7 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
-                    _ if self.declared_features.contains(&feature) => {
+                    _ if self.enabled_features.contains(&feature) => {
                         // This could be accepted/removed, or a libs feature.
                         // Accepted/removed features aren't in this file but are never internal
                         // (a removed feature might have been internal, but that's now irrelevant).
@@ -228,7 +238,7 @@ declare_features! (
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Helps with formatting for `group_imports = "StdExternalCrate"`.
-    (unstable, unqualified_local_imports, "CURRENT_RUSTC_VERSION", None),
+    (unstable, unqualified_local_imports, "1.83.0", None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -266,7 +276,7 @@ declare_features! (
     /// Renamed from `object_safe_for_dispatch`.
     ///
     /// [^1]: Formerly known as "object safe".
-    (unstable, dyn_compatible_for_dispatch, "CURRENT_RUSTC_VERSION", Some(43561)),
+    (unstable, dyn_compatible_for_dispatch, "1.83.0", Some(43561)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
     /// Allows using `#[link_name="llvm.*"]`.
@@ -360,7 +370,7 @@ declare_features! (
     /// Allows inherent and trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
-    (unstable, arbitrary_self_types_pointers, "CURRENT_RUSTC_VERSION", Some(44874)),
+    (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -380,7 +390,7 @@ declare_features! (
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
-    (unstable, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
+    (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -440,8 +450,6 @@ declare_features! (
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
     /// Allows deref patterns.
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
-    /// Allows deriving `SmartPointer` traits
-    (unstable, derive_smart_pointer, "1.79.0", Some(123430)),
     /// Controls errors in trait implementations.
     (unstable, do_not_recommend, "1.67.0", Some(51992)),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -498,7 +506,7 @@ declare_features! (
     /// Allows `if let` guard in match arms.
     (unstable, if_let_guard, "1.47.0", Some(51114)),
     /// Rescoping temporaries in `if let` to align with Rust 2024.
-    (unstable, if_let_rescope, "CURRENT_RUSTC_VERSION", Some(124085)),
+    (unstable, if_let_rescope, "1.83.0", Some(124085)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
@@ -563,11 +571,11 @@ declare_features! (
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Experimental features that make `Pin` more ergonomic.
-    (incomplete, pin_ergonomics, "CURRENT_RUSTC_VERSION", Some(130494)),
+    (incomplete, pin_ergonomics, "1.83.0", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<..>` precise capturign on impl Trait in traits.
-    (unstable, precise_capturing_in_traits, "CURRENT_RUSTC_VERSION", Some(130044)),
+    (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
@@ -580,17 +588,12 @@ declare_features! (
     (incomplete, repr128, "1.16.0", Some(56071)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (unstable, repr_simd, "1.4.0", Some(27731)),
-    /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
-    /// be used to describe E or vise-versa.
-    (unstable, result_ffi_guarantees, "1.80.0", Some(110503)),
     /// Allows bounding the return type of AFIT/RPITIT.
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
     (unstable, sha512_sm_x86, "1.82.0", Some(126624)),
-    /// Shortern the tail expression lifetime
-    (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).
@@ -598,7 +601,7 @@ declare_features! (
     /// Allows attributes on expressions and non-item statements.
     (unstable, stmt_expr_attributes, "1.6.0", Some(15701)),
     /// Allows lints part of the strict provenance effort.
-    (unstable, strict_provenance, "1.61.0", Some(95228)),
+    (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows the use of `#[target_feature]` on safe functions.

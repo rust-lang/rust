@@ -75,6 +75,7 @@ use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, TypeTrace, ValuePairs};
+use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -145,21 +146,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_mismatched_types(
         &self,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
+        self.report_and_explain_type_error(
+            TypeTrace::types(cause, true, expected, actual),
+            param_env,
+            err,
+        )
     }
 
     pub fn report_mismatched_consts(
         &self,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
+        self.report_and_explain_type_error(
+            TypeTrace::consts(cause, true, expected, actual),
+            param_env,
+            err,
+        )
     }
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
@@ -1127,18 +1138,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// the message in `secondary_span` as the primary label, and apply the message that would
     /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
     /// E0271, like `tests/ui/issues/issue-39970.stderr`.
-    #[instrument(
-        level = "debug",
-        skip(self, diag, secondary_span, swap_secondary_and_primary, prefer_label)
-    )]
+    #[instrument(level = "debug", skip(self, diag, secondary_span, prefer_label))]
     pub fn note_type_err(
         &self,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
-        secondary_span: Option<(Span, Cow<'static, str>)>,
-        mut values: Option<ValuePairs<'tcx>>,
+        secondary_span: Option<(Span, Cow<'static, str>, bool)>,
+        mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
-        swap_secondary_and_primary: bool,
         prefer_label: bool,
     ) {
         let span = cause.span();
@@ -1245,8 +1252,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let (expected_found, exp_found, is_simple_error, values) = match values {
             None => (None, Mismatch::Fixed("type"), false, None),
-            Some(values) => {
-                let values = self.resolve_vars_if_possible(values);
+            Some(ty::ParamEnvAnd { param_env, value: values }) => {
+                let mut values = self.resolve_vars_if_possible(values);
+                if self.next_trait_solver() {
+                    values = deeply_normalize_for_diagnostics(self, param_env, values);
+                }
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
@@ -1304,7 +1314,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 diag.span_note(span, msg);
             }
         };
-        if let Some((sp, msg)) = secondary_span {
+        if let Some((secondary_span, secondary_msg, swap_secondary_and_primary)) = secondary_span {
             if swap_secondary_and_primary {
                 let terr = if let Some(infer::ValuePairs::Terms(ExpectedFound {
                     expected, ..
@@ -1314,11 +1324,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     terr.to_string(self.tcx)
                 };
-                label_or_note(sp, terr);
-                label_or_note(span, msg);
+                label_or_note(secondary_span, terr);
+                label_or_note(span, secondary_msg);
             } else {
                 label_or_note(span, terr.to_string(self.tcx));
-                label_or_note(sp, msg);
+                label_or_note(secondary_span, secondary_msg);
             }
         } else if let Some(values) = values
             && let Some((e, f)) = values.ty()
@@ -1777,6 +1787,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
@@ -1788,7 +1799,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.type_error_additional_suggestions(&trace, terr),
         );
         let mut diag = self.dcx().create_err(failure_code);
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
+        self.note_type_err(
+            &mut diag,
+            &trace.cause,
+            None,
+            Some(param_env.and(trace.values)),
+            terr,
+            false,
+        );
         diag
     }
 

@@ -1,0 +1,22 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specializing-constness.rs:1:30
+   |
+LL | #![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
+error: cannot specialize on const impl with non-const impl
+  --> $DIR/specializing-constness.rs:23:1
+   |
+LL | impl<T: Spec + Sup> A for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

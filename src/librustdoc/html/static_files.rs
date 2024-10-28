@@ -3,11 +3,8 @@
 //! All the static files are included here for centralized access in case anything other than the
 //! HTML rendering code (say, the theme checker) needs to access one of these files.
 
-use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::{fmt, str};
-
-use rustc_data_structures::fx::FxHasher;
 
 pub(crate) struct StaticFile {
     pub(crate) filename: PathBuf,
@@ -15,8 +12,8 @@ pub(crate) struct StaticFile {
 }
 
 impl StaticFile {
-    fn new(filename: &str, bytes: &'static [u8]) -> StaticFile {
-        Self { filename: static_filename(filename, bytes), bytes }
+    fn new(filename: &str, bytes: &'static [u8], sha256: &'static str) -> StaticFile {
+        Self { filename: static_filename(filename, sha256), bytes }
     }
 
     pub(crate) fn minified(&self) -> Vec<u8> {
@@ -58,15 +55,9 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
     filename.into()
 }
 
-pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
+pub(crate) fn static_filename(filename: &str, sha256: &str) -> PathBuf {
     let filename = filename.rsplit('/').next().unwrap();
-    suffix_path(filename, &static_suffix(contents))
-}
-
-fn static_suffix(bytes: &[u8]) -> String {
-    let mut hasher = FxHasher::default();
-    hasher.write(bytes);
-    format!("-{:016x}", hasher.finish())
+    suffix_path(filename, &sha256)
 }
 
 macro_rules! static_files {
@@ -75,8 +66,9 @@ macro_rules! static_files {
             $(pub $field: StaticFile,)+
         }
 
+        // sha256 files are generated in build.rs
         pub(crate) static STATIC_FILES: std::sync::LazyLock<StaticFiles> = std::sync::LazyLock::new(|| StaticFiles {
-            $($field: StaticFile::new($file_path, include_bytes!($file_path)),)+
+            $($field: StaticFile::new($file_path, include_bytes!($file_path), include_str!(concat!(env!("OUT_DIR"), "/", $file_path, ".sha256"))),)+
         });
 
         pub(crate) fn for_each<E>(f: impl Fn(&StaticFile) -> Result<(), E>) -> Result<(), E> {

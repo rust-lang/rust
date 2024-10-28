@@ -828,15 +828,14 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Returns the `release` clock of the current thread.
+    /// Calls the callback with the "release" clock of the current thread.
     /// Other threads can acquire this clock in the future to establish synchronization
     /// with this program point.
-    fn release_clock<'a>(&'a self) -> Option<Ref<'a, VClock>>
-    where
-        'tcx: 'a,
-    {
+    ///
+    /// The closure will only be invoked if data race handling is on.
+    fn release_clock<R>(&self, callback: impl FnOnce(&VClock) -> R) -> Option<R> {
         let this = self.eval_context_ref();
-        Some(this.machine.data_race.as_ref()?.release_clock(&this.machine.threads))
+        Some(this.machine.data_race.as_ref()?.release_clock(&this.machine.threads, callback))
     }
 
     /// Acquire the given clock into the current thread, establishing synchronization with
@@ -1728,7 +1727,7 @@ impl GlobalState {
         let current_index = self.active_thread_index(thread_mgr);
 
         // Store the terminaion clock.
-        let terminaion_clock = self.release_clock(thread_mgr).clone();
+        let terminaion_clock = self.release_clock(thread_mgr, |clock| clock.clone());
         self.thread_info.get_mut()[current_thread].termination_vector_clock =
             Some(terminaion_clock);
 
@@ -1778,21 +1777,23 @@ impl GlobalState {
         clocks.clock.join(clock);
     }
 
-    /// Returns the `release` clock of the current thread.
+    /// Calls the given closure with the "release" clock of the current thread.
     /// Other threads can acquire this clock in the future to establish synchronization
     /// with this program point.
-    pub fn release_clock<'tcx>(&self, threads: &ThreadManager<'tcx>) -> Ref<'_, VClock> {
+    pub fn release_clock<'tcx, R>(
+        &self,
+        threads: &ThreadManager<'tcx>,
+        callback: impl FnOnce(&VClock) -> R,
+    ) -> R {
         let thread = threads.active_thread();
         let span = threads.active_thread_ref().current_span();
-        // We increment the clock each time this happens, to ensure no two releases
-        // can be confused with each other.
         let (index, mut clocks) = self.thread_state_mut(thread);
+        let r = callback(&clocks.clock);
+        // Increment the clock, so that all following events cannot be confused with anything that
+        // occurred before the release. Crucially, the callback is invoked on the *old* clock!
         clocks.increment_clock(index, span);
-        drop(clocks);
-        // To return a read-only view, we need to release the RefCell
-        // and borrow it again.
-        let (_index, clocks) = self.thread_state(thread);
-        Ref::map(clocks, |c| &c.clock)
+
+        r
     }
 
     fn thread_index(&self, thread: ThreadId) -> VectorIdx {

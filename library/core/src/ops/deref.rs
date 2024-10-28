@@ -15,7 +15,7 @@
 ///
 /// Types that implement `Deref` or `DerefMut` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).
@@ -42,7 +42,7 @@
 /// 1. a value of the type transparently behaves like a value of the target
 ///    type;
 /// 1. the implementation of the deref function is cheap; and
-/// 1. users of the type will not be surprised by any deref coercion behaviour.
+/// 1. users of the type will not be surprised by any deref coercion behavior.
 ///
 /// In general, deref traits **should not** be implemented if:
 ///
@@ -185,7 +185,7 @@ impl<T: ?Sized> Deref for &mut T {
 ///
 /// Types that implement `DerefMut` or `Deref` are often called "smart
 /// pointers" and the mechanism of deref coercion has been specifically designed
-/// to facilitate the pointer-like behaviour that name suggests. Often, the
+/// to facilitate the pointer-like behavior that name suggests. Often, the
 /// purpose of a "smart pointer" type is to change the ownership semantics
 /// of a contained value (for example, [`Rc`][rc] or [`Cow`][cow]) or the
 /// storage semantics of a contained value (for example, [`Box`][box]).
@@ -297,15 +297,21 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
-#[lang = "receiver"]
-#[unstable(feature = "receiver_trait", issue = "none")]
+///
+/// This trait will shortly be removed and replaced with a more generic
+/// facility based around the current "arbitrary self types" unstable feature.
+/// That new facility will use a replacement trait called `Receiver` which is
+/// why this is now named `LegacyReceiver`.
+#[cfg_attr(bootstrap, lang = "receiver")]
+#[cfg_attr(not(bootstrap), lang = "legacy_receiver")]
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
-pub trait Receiver {
+pub trait LegacyReceiver {
     // Empty.
 }
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &T {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for &mut T {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for &mut T {}

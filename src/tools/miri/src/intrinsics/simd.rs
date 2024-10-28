@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::FloatTy;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 use rustc_target::abi::{Endian, HasDataLayout};
@@ -245,17 +245,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             // This does NaN adjustments.
-                            let val = this.binary_op(mir_op, &left, &right).map_err(|err| {
-                                match err.kind() {
-                                    &InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
+                            let val = this.binary_op(mir_op, &left, &right).map_err_kind(|kind| {
+                                match kind {
+                                    InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
                                         // This resets the interpreter backtrace, but it's not worth avoiding that.
                                         let shift_amount = match shift_amount {
                                             Either::Left(v) => v.to_string(),
                                             Either::Right(v) => v.to_string(),
                                         };
-                                        err_ub_format!("overflowing shift by {shift_amount} in `simd_{intrinsic_name}` in lane {i}").into()
+                                        err_ub_format!("overflowing shift by {shift_amount} in `simd_{intrinsic_name}` in lane {i}")
                                     }
-                                    _ => err
+                                    kind => kind
                                 }
                             })?;
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
@@ -631,12 +631,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
-                let index = generic_args[2]
-                    .expect_const()
-                    .eval(*this.tcx, this.param_env(), this.tcx.span)
-                    .unwrap()
-                    .1
-                    .unwrap_branch();
+                let index =
+                    generic_args[2].expect_const().try_to_valtree().unwrap().0.unwrap_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);

@@ -26,23 +26,23 @@ fn main() {
             }
 
             "exec-test2" => {
-                Command::new("/path/to/nowhere").exec();
+                let _ = Command::new("/path/to/nowhere").exec();
                 println!("passed");
             }
 
             "exec-test3" => {
-                Command::new(&me).arg("bad\0").exec();
+                let _ = Command::new(&me).arg("bad\0").exec();
                 println!("passed");
             }
 
             "exec-test4" => {
-                Command::new(&me).current_dir("/path/to/nowhere").exec();
+                let _ = Command::new(&me).current_dir("/path/to/nowhere").exec();
                 println!("passed");
             }
 
             "exec-test5" => {
                 env::set_var("VARIABLE", "ABC");
-                Command::new("definitely-not-a-real-binary").env("VARIABLE", "XYZ").exec();
+                let _ =  Command::new("definitely-not-a-real-binary").env("VARIABLE", "XYZ").exec();
                 assert_eq!(env::var("VARIABLE").unwrap(), "ABC");
                 println!("passed");
             }

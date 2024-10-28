@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_hir::{GenericBound, Generics, PolyTraitRef, TraitBoundModifier, WherePredicate};
+use rustc_hir::{GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, BoundPolarity, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{ClauseKind, PredicatePolarity};
 use rustc_session::declare_lint_pass;
@@ -40,7 +40,6 @@ struct Bound<'tcx> {
     ident: Ident,
 
     trait_bound: &'tcx PolyTraitRef<'tcx>,
-    modifier: TraitBoundModifier,
 
     predicate_pos: usize,
     bound_pos: usize,
@@ -65,11 +64,10 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
                     .iter()
                     .enumerate()
                     .filter_map(move |(bound_pos, bound)| match bound {
-                        &GenericBound::Trait(ref trait_bound, modifier) => Some(Bound {
+                        GenericBound::Trait(trait_bound) => Some(Bound {
                             param,
                             ident,
                             trait_bound,
-                            modifier,
                             predicate_pos,
                             bound_pos,
                         }),
@@ -120,13 +118,13 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
         let maybe_sized_params: DefIdMap<_> = type_param_bounds(generics)
             .filter(|bound| {
                 bound.trait_bound.trait_ref.trait_def_id() == Some(sized_trait)
-                    && bound.modifier == TraitBoundModifier::Maybe
+                    && matches!(bound.trait_bound.modifiers.polarity, BoundPolarity::Maybe(_))
             })
             .map(|bound| (bound.param, bound))
             .collect();
 
         for bound in type_param_bounds(generics) {
-            if bound.modifier == TraitBoundModifier::None
+            if bound.trait_bound.modifiers == TraitBoundModifiers::NONE
                 && let Some(sized_bound) = maybe_sized_params.get(&bound.param)
                 && let Some(path) = path_to_sized_bound(cx, bound.trait_bound)
             {

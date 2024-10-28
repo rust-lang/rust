@@ -20,6 +20,14 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
+#[derive(Diagnostic)]
+#[diag(passes_autodiff_attr)]
+pub(crate) struct AutoDiffAttr {
+    #[primary_span]
+    #[label]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub(crate) struct OuterCrateLevelAttr;
@@ -68,9 +76,15 @@ pub(crate) struct CoverageNotFnOrClosure {
     pub defn_span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_optimize_not_fn_or_closure)]
-pub(crate) struct OptimizeNotFnOrClosure;
+#[derive(Diagnostic)]
+#[diag(passes_optimize_invalid_target)]
+pub(crate) struct OptimizeInvalidTarget {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+    pub on_crate: bool,
+}
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
@@ -306,6 +320,27 @@ pub(crate) struct DocTestUnknownAny {
 pub(crate) struct DocTestUnknownSpotlight {
     pub path: String,
     #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_test_unknown_passes)]
+#[note]
+#[help]
+#[note(passes_no_op_note)]
+pub(crate) struct DocTestUnknownPasses {
+    pub path: String,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_test_unknown_plugins)]
+#[note]
+#[note(passes_no_op_note)]
+pub(crate) struct DocTestUnknownPlugins {
+    pub path: String,
+    #[label]
     pub span: Span,
 }
 
@@ -1539,11 +1574,19 @@ pub(crate) struct DuplicateFeatureErr {
     pub span: Span,
     pub feature: Symbol,
 }
+
 #[derive(Diagnostic)]
 #[diag(passes_missing_const_err)]
 pub(crate) struct MissingConstErr {
     #[primary_span]
     #[help]
+    pub fn_sig_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_const_stable_not_stable)]
+pub(crate) struct ConstStableNotStable {
+    #[primary_span]
     pub fn_sig_span: Span,
     #[label]
     pub const_span: Span,

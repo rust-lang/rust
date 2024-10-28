@@ -186,7 +186,6 @@ impl<'tcx> GenericsBuilder<'tcx> {
             param_def_id_to_index,
             has_self,
             has_late_bound_regions: sig_generics.has_late_bound_regions,
-            host_effect_index: sig_generics.host_effect_index,
         }
     }
 }
@@ -279,8 +278,6 @@ impl<'tcx> PredicatesBuilder<'tcx> {
         ty::GenericPredicates {
             parent: self.parent,
             predicates: self.tcx.arena.alloc_from_iter(preds),
-            // FIXME(fn_delegation): Support effects.
-            effects_min_tys: ty::List::empty(),
         }
     }
 }
@@ -471,10 +468,6 @@ fn check_constraints<'tcx>(
             callee_span: tcx.def_span(sig_id),
         }));
     };
-
-    if tcx.has_host_param(sig_id) {
-        emit("delegation to a function with effect parameter is not supported yet");
-    }
 
     if let Some(local_sig_id) = sig_id.as_local()
         && tcx.hir().opt_delegation_sig_id(local_sig_id).is_some()

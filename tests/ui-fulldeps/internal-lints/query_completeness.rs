@@ -1,6 +1,4 @@
 //@ compile-flags: -Z unstable-options
-// #[cfg(bootstrap)]: We can stop ignoring next beta bump; afterward this ALWAYS should run.
-//@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 #![feature(rustc_private)]
 #![deny(rustc::untracked_query_information)]
 

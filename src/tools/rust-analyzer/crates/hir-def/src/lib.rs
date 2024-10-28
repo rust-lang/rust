@@ -71,7 +71,7 @@ use std::{
 
 use base_db::{
     impl_intern_key,
-    salsa::{self, InternValueTrivial},
+    ra_salsa::{self, InternValueTrivial},
     CrateId,
 };
 use hir_expand::{
@@ -206,85 +206,85 @@ macro_rules! impl_loc {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FunctionId(salsa::InternId);
+pub struct FunctionId(ra_salsa::InternId);
 type FunctionLoc = AssocItemLoc<Function>;
 impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
 impl_loc!(FunctionLoc, id: Function, container: ItemContainerId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct StructId(salsa::InternId);
+pub struct StructId(ra_salsa::InternId);
 type StructLoc = ItemLoc<Struct>;
 impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 impl_loc!(StructLoc, id: Struct, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct UnionId(salsa::InternId);
+pub struct UnionId(ra_salsa::InternId);
 pub type UnionLoc = ItemLoc<Union>;
 impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 impl_loc!(UnionLoc, id: Union, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct EnumId(salsa::InternId);
+pub struct EnumId(ra_salsa::InternId);
 pub type EnumLoc = ItemLoc<Enum>;
 impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 impl_loc!(EnumLoc, id: Enum, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConstId(salsa::InternId);
+pub struct ConstId(ra_salsa::InternId);
 type ConstLoc = AssocItemLoc<Const>;
 impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 impl_loc!(ConstLoc, id: Const, container: ItemContainerId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StaticId(salsa::InternId);
+pub struct StaticId(ra_salsa::InternId);
 pub type StaticLoc = AssocItemLoc<Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 impl_loc!(StaticLoc, id: Static, container: ItemContainerId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TraitId(salsa::InternId);
+pub struct TraitId(ra_salsa::InternId);
 pub type TraitLoc = ItemLoc<Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
 impl_loc!(TraitLoc, id: Trait, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TraitAliasId(salsa::InternId);
+pub struct TraitAliasId(ra_salsa::InternId);
 pub type TraitAliasLoc = ItemLoc<TraitAlias>;
 impl_intern!(TraitAliasId, TraitAliasLoc, intern_trait_alias, lookup_intern_trait_alias);
 impl_loc!(TraitAliasLoc, id: TraitAlias, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeAliasId(salsa::InternId);
+pub struct TypeAliasId(ra_salsa::InternId);
 type TypeAliasLoc = AssocItemLoc<TypeAlias>;
 impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
 impl_loc!(TypeAliasLoc, id: TypeAlias, container: ItemContainerId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ImplId(salsa::InternId);
+pub struct ImplId(ra_salsa::InternId);
 type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 impl_loc!(ImplLoc, id: Impl, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct UseId(salsa::InternId);
+pub struct UseId(ra_salsa::InternId);
 type UseLoc = ItemLoc<Use>;
 impl_intern!(UseId, UseLoc, intern_use, lookup_intern_use);
 impl_loc!(UseLoc, id: Use, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ExternCrateId(salsa::InternId);
+pub struct ExternCrateId(ra_salsa::InternId);
 type ExternCrateLoc = ItemLoc<ExternCrate>;
 impl_intern!(ExternCrateId, ExternCrateLoc, intern_extern_crate, lookup_intern_extern_crate);
 impl_loc!(ExternCrateLoc, id: ExternCrate, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ExternBlockId(salsa::InternId);
+pub struct ExternBlockId(ra_salsa::InternId);
 type ExternBlockLoc = ItemLoc<ExternBlock>;
 impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
 impl_loc!(ExternBlockLoc, id: ExternBlock, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariantId(salsa::InternId);
+pub struct EnumVariantId(ra_salsa::InternId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
@@ -296,7 +296,7 @@ impl_intern!(EnumVariantId, EnumVariantLoc, intern_enum_variant, lookup_intern_e
 impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct Macro2Id(salsa::InternId);
+pub struct Macro2Id(ra_salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro2Loc {
     pub container: ModuleId,
@@ -309,7 +309,7 @@ impl_intern!(Macro2Id, Macro2Loc, intern_macro2, lookup_intern_macro2);
 impl_loc!(Macro2Loc, id: Macro2, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct MacroRulesId(salsa::InternId);
+pub struct MacroRulesId(ra_salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroRulesLoc {
     pub container: ModuleId,
@@ -338,7 +338,7 @@ pub enum MacroExpander {
     BuiltInEager(EagerExpander),
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ProcMacroId(salsa::InternId);
+pub struct ProcMacroId(ra_salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcMacroLoc {
     pub container: CrateRootModuleId,
@@ -351,7 +351,7 @@ impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_ma
 impl_loc!(ProcMacroLoc, id: Function, container: CrateRootModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct BlockId(salsa::InternId);
+pub struct BlockId(ra_salsa::InternId);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BlockLoc {
     ast_id: AstId<ast::BlockExpr>,
@@ -363,7 +363,7 @@ impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 /// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
 /// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct ConstBlockId(salsa::InternId);
+pub struct ConstBlockId(ra_salsa::InternId);
 impl_intern!(ConstBlockId, ConstBlockLoc, intern_anonymous_const, lookup_intern_anonymous_const);
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
@@ -803,7 +803,7 @@ impl Clone for Box<dyn OpaqueInternableThing> {
 /// length (like `[u8; 2 + 2]`). These constants are body owner and are a variant of `DefWithBodyId`. These
 /// are not called `AnonymousConstId` to prevent confusion with [`ConstBlockId`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct InTypeConstId(salsa::InternId);
+pub struct InTypeConstId(ra_salsa::InternId);
 impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
 
 // We would like to set `derive(PartialEq)`

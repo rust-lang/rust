@@ -1708,7 +1708,8 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.incoming_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.incoming_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1745,7 +1746,8 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.outgoing_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -2201,14 +2203,14 @@ fn run_rustfmt(
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
             let mut cmd = match target_spec {
-                Some(TargetSpec::Cargo(spec)) => {
-                    // approach: if the command name contains a path separator, join it with the workspace root.
+                Some(TargetSpec::Cargo(_)) => {
+                    // approach: if the command name contains a path separator, join it with the project root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        spec.workspace_root.join(cmd).into()
+                        snap.config.root_path().join(cmd).into()
                     } else {
                         cmd
                     };

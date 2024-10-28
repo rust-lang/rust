@@ -290,7 +290,7 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
-  will always fail and `0.0` means it will never fail. Note than setting it to
+  will always fail and `0.0` means it will never fail. Note that setting it to
   `1.0` will likely cause hangs, since it means programs using
   `compare_exchange_weak` cannot make progress.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
@@ -392,11 +392,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   but reports to the program that it did actually write. This is useful when you
   are not interested in the actual program's output, but only want to see Miri's
   errors and warnings.
-* `-Zmiri-panic-on-unsupported` will makes some forms of unsupported functionality,
-  such as FFI and unsupported syscalls, panic within the context of the emulated
-  application instead of raising an error within the context of Miri (and halting
-  execution). Note that code might not expect these operations to ever panic, so
-  this flag can lead to strange (mis)behavior.
 * `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
   recurse below references.
 * `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into

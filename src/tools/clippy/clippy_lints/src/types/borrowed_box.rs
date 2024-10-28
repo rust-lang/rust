@@ -82,7 +82,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
 // Returns true if given type is `Any` trait.
 fn is_any_trait(cx: &LateContext<'_>, t: &hir::Ty<'_>) -> bool {
     if let TyKind::TraitObject(traits, ..) = t.kind {
-        return traits.iter().any(|(bound, _)| {
+        return traits.iter().any(|bound| {
             if let Some(trait_did) = bound.trait_ref.trait_def_id()
                 && cx.tcx.is_diagnostic_item(sym::Any, trait_did)
             {

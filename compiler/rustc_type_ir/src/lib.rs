@@ -1,11 +1,11 @@
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_ty_tykind)]
+#![allow(rustc::usage_of_type_ir_inherent)]
 #![cfg_attr(
     feature = "nightly",
     feature(associated_type_defaults, never_type, rustc_attrs, negative_impls)
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(not(bootstrap), allow(rustc::usage_of_type_ir_inherent))]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
@@ -43,7 +43,6 @@ mod macros;
 mod binder;
 mod canonical;
 mod const_kind;
-mod effects;
 mod flags;
 mod generic_arg;
 mod infer_ctxt;
@@ -67,7 +66,6 @@ pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use effects::*;
 pub use flags::*;
 pub use generic_arg::*;
 pub use infer_ctxt::*;

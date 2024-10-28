@@ -107,7 +107,14 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         initializeDebugSessionTrackingAndRebuild(ctx);
     }
 
-    await ctx.start();
+    if (ctx.config.initializeStopped) {
+        ctx.setServerStatus({
+            health: "stopped",
+        });
+    } else {
+        await ctx.start();
+    }
+
     return ctx;
 }
 

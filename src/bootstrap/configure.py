@@ -72,6 +72,7 @@ v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
 o("llvm-enzyme", "llvm.enzyme", "build LLVM with enzyme")
+o("llvm-offload", "llvm.offload", "build LLVM with gpu offload support")
 o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
 o("debug-assertions-std", "rust.debug-assertions-std", "build the standard library with debugging assertions")
@@ -193,7 +194,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
         if option.value:
             print('\t{:30} {}'.format('--{}=VAL'.format(option.name), option.desc))
         else:
-            print('\t{:30} {}'.format('--enable-{}  OR  --disable-{}'.format(option.name, option.name), option.desc))
+            print('\t--enable-{:25} OR --disable-{}'.format(option.name, option.name))
+            print('\t\t' + option.desc)
     print('')
     print('This configure script is a thin configuration shim over the true')
     print('configuration system, `config.toml`. You can explore the comments')

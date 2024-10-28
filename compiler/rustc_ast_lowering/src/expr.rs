@@ -575,7 +575,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
-                if self.tcx.features().never_patterns {
+                if self.tcx.features().never_patterns() {
                     // If the feature is off we already emitted the error after parsing.
                     let suggestion = span.shrink_to_hi();
                     self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
@@ -640,7 +640,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_span(span),
                     Some(self.allow_gen_future.clone()),
                 );
-                let resume_ty = self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span);
+                let resume_ty =
+                    self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span, None);
                 let input_ty = hir::Ty {
                     hir_id: self.next_id(),
                     kind: hir::TyKind::Path(resume_ty),
@@ -716,7 +717,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         outer_hir_id: HirId,
         inner_hir_id: HirId,
     ) {
-        if self.tcx.features().async_fn_track_caller
+        if self.tcx.features().async_fn_track_caller()
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
@@ -1571,7 +1572,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
             }
             Some(hir::CoroutineKind::Coroutine(_)) => {
-                if !self.tcx.features().coroutines {
+                if !self.tcx.features().coroutines() {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess,
                         sym::coroutines,
@@ -1583,7 +1584,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 false
             }
             None => {
-                if !self.tcx.features().coroutines {
+                if !self.tcx.features().coroutines() {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess,
                         sym::coroutines,
@@ -2065,7 +2066,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lang_item: hir::LangItem,
         name: Symbol,
     ) -> hir::Expr<'hir> {
-        let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span));
+        let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
         let path = hir::ExprKind::Path(hir::QPath::TypeRelative(
             self.arena.alloc(self.ty(span, hir::TyKind::Path(qpath))),
             self.arena.alloc(hir::PathSegment::new(

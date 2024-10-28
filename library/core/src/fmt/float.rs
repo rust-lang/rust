@@ -196,39 +196,40 @@ where
 }
 
 macro_rules! floating {
-    ($ty:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Debug for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_general_debug(fmt, self)
+    ($($ty:ident)*) => {
+        $(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl Debug for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_general_debug(fmt, self)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Display for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_decimal_display(fmt, self)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl Display for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_decimal_display(fmt, self)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl LowerExp for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, false)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl LowerExp for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_exponential_common(fmt, self, false)
+                }
             }
-        }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl UpperExp for $ty {
-            fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_exponential_common(fmt, self, true)
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl UpperExp for $ty {
+                fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+                    float_to_exponential_common(fmt, self, true)
+                }
             }
-        }
+        )*
     };
 }
 
-floating! { f32 }
-floating! { f64 }
+floating! { f32 f64 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for f16 {

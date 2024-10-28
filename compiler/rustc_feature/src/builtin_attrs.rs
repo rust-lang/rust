@@ -12,33 +12,31 @@ use crate::{Features, Stability};
 
 type GateFn = fn(&Features) -> bool;
 
-macro_rules! cfg_fn {
-    ($field: ident) => {
-        (|features| features.$field) as GateFn
-    };
-}
-
 pub type GatedCfg = (Symbol, Symbol, GateFn);
 
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
-    (sym::overflow_checks, sym::cfg_overflow_checks, cfg_fn!(cfg_overflow_checks)),
-    (sym::ub_checks, sym::cfg_ub_checks, cfg_fn!(cfg_ub_checks)),
-    (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
+    (sym::overflow_checks, sym::cfg_overflow_checks, Features::cfg_overflow_checks),
+    (sym::ub_checks, sym::cfg_ub_checks, Features::cfg_ub_checks),
+    (sym::target_thread_local, sym::cfg_target_thread_local, Features::cfg_target_thread_local),
     (
         sym::target_has_atomic_equal_alignment,
         sym::cfg_target_has_atomic_equal_alignment,
-        cfg_fn!(cfg_target_has_atomic_equal_alignment),
+        Features::cfg_target_has_atomic_equal_alignment,
     ),
-    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
-    (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
-    (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
-    (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
-    (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
+    (
+        sym::target_has_atomic_load_store,
+        sym::cfg_target_has_atomic,
+        Features::cfg_target_has_atomic,
+    ),
+    (sym::sanitize, sym::cfg_sanitize, Features::cfg_sanitize),
+    (sym::version, sym::cfg_version, Features::cfg_version),
+    (sym::relocation_model, sym::cfg_relocation_model, Features::cfg_relocation_model),
+    (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
+    (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     // this is consistent with naming of the compiler flag it's for
-    (sym::fmt_debug, sym::fmt_debug, cfg_fn!(fmt_debug)),
+    (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -220,7 +218,7 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
         }
     };
     (unsafe $attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
@@ -231,7 +229,7 @@ macro_rules! gated {
             safety: AttributeSafety::Unsafe,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
         }
     };
     ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $gate:ident, $msg:expr $(,)?) => {
@@ -242,7 +240,7 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)),
+            gate: Gated(Stability::Unstable, sym::$gate, $msg, Features::$gate),
         }
     };
     ($attr:ident, $typ:expr, $tpl:expr, $duplicates:expr, $encode_cross_crate:expr, $msg:expr $(,)?) => {
@@ -253,7 +251,7 @@ macro_rules! gated {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)),
+            gate: Gated(Stability::Unstable, sym::$attr, $msg, Features::$attr),
         }
     };
 }
@@ -282,7 +280,7 @@ macro_rules! rustc_attr {
             safety: AttributeSafety::Normal,
             template: $tpl,
             duplicates: $duplicates,
-            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)),
+            gate: Gated(Stability::Unstable, sym::rustc_attrs, $msg, Features::rustc_attrs),
         }
     };
 }
@@ -620,11 +618,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        rustc_allow_const_fn_unstable, Normal,
-        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
-        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
-    ),
-    gated!(
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
@@ -752,6 +745,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(NameValueStr: "transparent|semitransparent|opaque"), ErrorFollowing,
         EncodeCrossCrate::Yes, "used internally for testing macro hygiene",
     ),
+    rustc_attr!(
+        rustc_autodiff, Normal,
+        template!(Word, List: r#""...""#), DuplicatesOk,
+        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+    ),
 
     // ==========================================================================
     // Internal attributes, Diagnostics related:
@@ -836,8 +834,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
     rustc_attr!(
-        rustc_runtime, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        rustc_const_stable_indirect, Normal,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+    ),
+    gated!(
+        rustc_allow_const_fn_unstable, Normal,
+        template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
     ),
 
     // ==========================================================================
@@ -930,7 +933,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             Stability::Unstable,
             sym::rustc_attrs,
             "diagnostic items compiler internal support for linting",
-            cfg_fn!(rustc_attrs),
+            Features::rustc_attrs,
         ),
     },
     gated!(
@@ -1188,7 +1191,7 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
 pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
     match sym {
         sym::on_unimplemented => true,
-        sym::do_not_recommend => features.do_not_recommend,
+        sym::do_not_recommend => features.do_not_recommend(),
         _ => false,
     }
 }

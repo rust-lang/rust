@@ -83,11 +83,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(Some(body));
                 }
 
-                this.handle_unsupported_foreign_item(format!(
+                throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                     "can't call foreign function `{link_name}` on OS `{os}`",
                     os = this.tcx.sess.target.os,
-                ))?;
-                return interp_ok(None);
+                )));
             }
         }
 
@@ -290,11 +289,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err(|_e| {
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
                         "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
-                    .into()
                 })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
             }
@@ -449,8 +447,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
                     if this.target_os_is_unix() {
-                        let einval = this.eval_libc("ENOMEM");
-                        this.set_last_error(einval)?;
+                        this.set_last_error(LibcError("ENOMEM"))?;
                     }
                     this.write_null(dest)?;
                 }
@@ -466,8 +463,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     // On size overflow, return null and, on Unix, set errno.
                     if this.target_os_is_unix() {
-                        let einval = this.eval_libc("ENOMEM");
-                        this.set_last_error(einval)?;
+                        this.set_last_error(LibcError("ENOMEM"))?;
                     }
                     this.write_null(dest)?;
                 }
@@ -488,8 +484,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
                     if this.target_os_is_unix() {
-                        let einval = this.eval_libc("ENOMEM");
-                        this.set_last_error(einval)?;
+                        this.set_last_error(LibcError("ENOMEM"))?;
                     }
                     this.write_null(dest)?;
                 }

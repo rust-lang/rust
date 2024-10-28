@@ -18,6 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,7 +41,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
-use rustc_trait_selection::traits::PredicateObligation;
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };
@@ -1035,7 +1035,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn unsized_feature_enabled(&self) -> bool {
         let features = self.tcx().features();
-        features.unsized_locals || features.unsized_fn_params
+        features.unsized_locals() || features.unsized_fn_params()
     }
 
     /// Equate the inferred type and the annotated type for user type annotations
@@ -1128,7 +1128,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
-                self.param_env,
                 proj,
                 |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
@@ -1919,7 +1918,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
-                if len.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
                             // These are always okay: direct use of a const, or a value that can evidently be copied.
@@ -2940,7 +2939,7 @@ impl NormalizeLocation for Location {
 pub(super) struct InstantiateOpaqueType<'tcx> {
     pub base_universe: Option<ty::UniverseIndex>,
     pub region_constraints: Option<RegionConstraintData<'tcx>>,
-    pub obligations: Vec<PredicateObligation<'tcx>>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 
 impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {

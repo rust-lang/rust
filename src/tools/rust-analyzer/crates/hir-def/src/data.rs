@@ -148,6 +148,10 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_safe(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_SAFE_KW)
+    }
+
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
     }
@@ -506,14 +510,17 @@ impl ExternCrateDeclData {
         let crate_id = if name == sym::self_.clone() {
             Some(krate)
         } else {
-            db.crate_def_map(krate)
-                .extern_prelude()
-                .find(|&(prelude_name, ..)| *prelude_name == name)
-                .map(|(_, (root, _))| root.krate())
+            db.crate_graph()[krate].dependencies.iter().find_map(|dep| {
+                if dep.name.symbol() == name.symbol() {
+                    Some(dep.crate_id)
+                } else {
+                    None
+                }
+            })
         };
 
         Arc::new(Self {
-            name: extern_crate.name.clone(),
+            name,
             visibility: item_tree[extern_crate.visibility].clone(),
             alias: extern_crate.alias.clone(),
             crate_id,
@@ -564,6 +571,8 @@ pub struct StaticData {
     pub visibility: RawVisibility,
     pub mutable: bool,
     pub is_extern: bool,
+    pub has_safe_kw: bool,
+    pub has_unsafe_kw: bool,
 }
 
 impl StaticData {
@@ -578,6 +587,8 @@ impl StaticData {
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
+            has_safe_kw: statik.has_safe_kw,
+            has_unsafe_kw: statik.has_unsafe_kw,
         })
     }
 }

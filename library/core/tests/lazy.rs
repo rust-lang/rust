@@ -114,6 +114,7 @@ fn lazy_type_inference() {
 }
 
 #[test]
+#[cfg(panic = "unwind")]
 #[should_panic = "LazyCell instance has previously been poisoned"]
 fn lazy_force_mut_panic() {
     let mut lazy = LazyCell::<String>::new(|| panic!());

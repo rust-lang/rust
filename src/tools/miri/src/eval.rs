@@ -129,8 +129,6 @@ pub struct MiriConfig {
     /// If `Some`, enable the `measureme` profiler, writing results to a file
     /// with the specified prefix.
     pub measureme_out: Option<String>,
-    /// Panic when unsupported functionality is encountered.
-    pub panic_on_unsupported: bool,
     /// Which style to use for printing backtraces.
     pub backtrace_style: BacktraceStyle,
     /// Which provenance to use for int2ptr casts
@@ -183,7 +181,6 @@ impl Default for MiriConfig {
             track_outdated_loads: false,
             cmpxchg_weak_failure_rate: 0.8, // 80%
             measureme_out: None,
-            panic_on_unsupported: false,
             backtrace_style: BacktraceStyle::Short,
             provenance_mode: ProvenanceMode::Default,
             mute_stdout_stderr: false,
@@ -476,7 +473,7 @@ pub fn eval_entry<'tcx>(
         }
         // Check for memory leaks.
         info!("Additional static roots: {:?}", ecx.machine.static_roots);
-        let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
+        let leaks = ecx.take_leaked_allocations(|ecx| &ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
             tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");

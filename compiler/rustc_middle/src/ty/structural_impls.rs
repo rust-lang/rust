@@ -264,8 +264,6 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::Safety,
-    ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
@@ -274,6 +272,11 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::CtfeProvenance,
     interpret::Scalar,
     rustc_target::abi::Size,
+}
+
+TrivialLiftImpls! {
+    ::rustc_hir::Safety,
+    ::rustc_target::spec::abi::Abi,
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,3 @@
-//@ revisions: current next
-//@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] compile-flags: -Znext-solver
-
 struct MyType;
 trait MyTrait<S> {}
 
@@ -18,6 +14,6 @@ impl<S: Iterator> MyTrait<S> for (Box<<(MyType,) as Mirror>::Assoc>, S::Item) {}
 //~^ ERROR conflicting implementations of trait `MyTrait<_>` for type `(Box<(MyType,)>,
 //~| NOTE conflicting implementation for `(Box<(MyType,)>,
 //~| NOTE upstream crates may add a new impl of trait `std::marker::Copy` for type `std::boxed::Box<(MyType,)>` in future versions
-//[next]~| NOTE upstream crates may add a new impl of trait `std::clone::Clone` for type `std::boxed::Box<(MyType,)>` in future versions
+//~| NOTE upstream crates may add a new impl of trait `std::clone::Clone` for type `std::boxed::Box<(MyType,)>` in future versions
 
 fn main() {}

@@ -948,8 +948,8 @@ impl<'a> Parser<'a> {
             {
                 return Ok((false, seg.ident, seg.args.as_deref().cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
-                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifiers::NONE)] =
-                    bounds.as_slice()
+                && let [ast::GenericBound::Trait(trait_ref)] = bounds.as_slice()
+                && trait_ref.modifiers == ast::TraitBoundModifiers::NONE
                 && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
             {
                 return Ok((true, seg.ident, seg.args.as_deref().cloned()));

@@ -25,14 +25,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         return;
     }
 
-    let args: Vec<_> = match expr.kind {
-        ExprKind::Call(_, args) => args.iter().collect(),
-        ExprKind::MethodCall(_, receiver, args, _) => std::iter::once(receiver).chain(args.iter()).collect(),
+    let (reciever, args) = match expr.kind {
+        ExprKind::Call(_, args) => (None, args),
+        ExprKind::MethodCall(_, receiver, args, _) => (Some(receiver), args),
         _ => return,
     };
 
-    let args_to_recover = args
+    let args_to_recover = reciever
         .into_iter()
+        .chain(args)
         .filter(|arg| {
             if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
                 !matches!(

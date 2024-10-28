@@ -29,6 +29,7 @@ use crate::{
     db::{HirDatabase, InternedClosure},
     error_lifetime, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
+    infer::coerce::CoerceNever,
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
     to_chalk_trait_id,
@@ -65,7 +66,7 @@ impl InferenceContext<'_> {
         }
 
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
-        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
+        let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty, CoerceNever::Yes);
 
         // Coroutines are not Fn* so return early.
         if matches!(closure_ty.kind(Interner), TyKind::Coroutine(..)) {

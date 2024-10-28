@@ -25,6 +25,7 @@ use rustc_span::{DUMMY_SP, Span};
 // FIXME: Remove this import and import via `solve::`
 pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
 use smallvec::{SmallVec, smallvec};
+use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
@@ -625,14 +626,14 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>),
+    Param(ThinVec<N>),
 
     /// Successful resolution for a builtin impl.
-    Builtin(BuiltinImplSource, Vec<N>),
+    Builtin(BuiltinImplSource, ThinVec<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
-    pub fn nested_obligations(self) -> Vec<N> {
+    pub fn nested_obligations(self) -> ThinVec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
@@ -686,7 +687,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub args: GenericArgsRef<'tcx>,
-    pub nested: Vec<N>,
+    pub nested: ThinVec<N>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]

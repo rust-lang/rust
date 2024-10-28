@@ -383,7 +383,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///     "Foo(10, ..)",
     /// );
     /// ```
-    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
             if self.fields > 0 {
@@ -626,7 +626,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///     "{1, 2, ..}",
     /// );
     /// ```
-    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.inner.result = self.inner.result.and_then(|_| {
             if self.inner.has_fields {
@@ -818,7 +818,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///     "[1, 2, ..]",
     /// );
     /// ```
-    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.inner.result.and_then(|_| {
             if self.inner.has_fields {
@@ -1146,7 +1146,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     r#"{"A": 10, "B": 11, ..}"#,
     /// );
     /// ```
-    #[stable(feature = "debug_more_non_exhaustive", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "debug_more_non_exhaustive", since = "1.83.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
             assert!(!self.has_key, "attempted to finish a map with a partial entry");

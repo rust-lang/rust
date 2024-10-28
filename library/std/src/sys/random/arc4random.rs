@@ -12,6 +12,7 @@
 #[cfg(not(any(
     target_os = "haiku",
     target_os = "illumos",
+    target_os = "rtems",
     target_os = "solaris",
     target_os = "vita",
 )))]
@@ -21,6 +22,7 @@ use libc::arc4random_buf;
 #[cfg(any(
     target_os = "haiku", // See https://git.haiku-os.org/haiku/tree/headers/compatibility/bsd/stdlib.h
     target_os = "illumos", // See https://www.illumos.org/man/3C/arc4random
+    target_os = "rtems", // See https://docs.rtems.org/branches/master/bsp-howto/getentropy.html
     target_os = "solaris", // See https://docs.oracle.com/cd/E88353_01/html/E37843/arc4random-3c.html
     target_os = "vita", // See https://github.com/vitasdk/newlib/blob/b89e5bc183b516945f9ee07eef483ecb916e45ff/newlib/libc/include/stdlib.h#L74
 ))]

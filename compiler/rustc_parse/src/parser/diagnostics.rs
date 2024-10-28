@@ -2113,7 +2113,7 @@ impl<'a> Parser<'a> {
             && let Some(poly) = bounds
                 .iter()
                 .filter_map(|bound| match bound {
-                    ast::GenericBound::Trait(poly, _) => Some(poly),
+                    ast::GenericBound::Trait(poly) => Some(poly),
                     _ => None,
                 })
                 .last()

@@ -670,11 +670,11 @@ def StdRcSummaryProvider(valobj, dict):
 class StdRcSyntheticProvider:
     """Pretty-printer for alloc::rc::Rc<T> and alloc::sync::Arc<T>
 
-    struct Rc<T> { ptr: NonNull<RcBox<T>>, ... }
+    struct Rc<T> { ptr: NonNull<RcInner<T>>, ... }
     rust 1.31.1: struct NonNull<T> { pointer: NonZero<*const T> }
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
-    struct RcBox<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
+    struct RcInner<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
     struct Cell<T> { value: UnsafeCell<T> }
     struct UnsafeCell<T> { value: T }
 

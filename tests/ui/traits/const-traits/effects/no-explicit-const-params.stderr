@@ -1,0 +1,73 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/no-explicit-const-params.rs:1:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:22:5
+   |
+LL |     foo::<false>();
+   |     ^^^--------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:3:10
+   |
+LL | const fn foo() {}
+   |          ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:24:12
+   |
+LL |     <() as Bar<false>>::bar();
+   |            ^^^------- help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:6:7
+   |
+LL | trait Bar {
+   |       ^^^
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:15:5
+   |
+LL |     foo::<true>();
+   |     ^^^-------- help: remove the unnecessary generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:3:10
+   |
+LL | const fn foo() {}
+   |          ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params.rs:17:12
+   |
+LL |     <() as Bar<true>>::bar();
+   |            ^^^------ help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/no-explicit-const-params.rs:6:7
+   |
+LL | trait Bar {
+   |       ^^^
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0107`.

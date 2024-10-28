@@ -1028,7 +1028,7 @@ impl ProjectionElem {
             ProjectionElem::Field(_idx, fty) => Ok(*fty),
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => Self::index_ty(ty),
             ProjectionElem::Subslice { from, to, from_end } => {
-                Self::subslice_ty(ty, from, to, from_end)
+                Self::subslice_ty(ty, *from, *to, *from_end)
             }
             ProjectionElem::Downcast(_) => Ok(ty),
             ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
@@ -1039,13 +1039,13 @@ impl ProjectionElem {
         ty.kind().builtin_index().ok_or_else(|| error!("Cannot index non-array type: {ty:?}"))
     }
 
-    fn subslice_ty(ty: Ty, from: &u64, to: &u64, from_end: &bool) -> Result<Ty, Error> {
+    fn subslice_ty(ty: Ty, from: u64, to: u64, from_end: bool) -> Result<Ty, Error> {
         let ty_kind = ty.kind();
         match ty_kind {
             TyKind::RigidTy(RigidTy::Slice(..)) => Ok(ty),
             TyKind::RigidTy(RigidTy::Array(inner, _)) if !from_end => Ty::try_new_array(
                 inner,
-                to.checked_sub(*from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
+                to.checked_sub(from).ok_or_else(|| error!("Subslice overflow: {from}..{to}"))?,
             ),
             TyKind::RigidTy(RigidTy::Array(inner, size)) => {
                 let size = size.eval_target_usize()?;

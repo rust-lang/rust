@@ -227,13 +227,13 @@ fn infer_pattern_match_ergonomics() {
             37..41 'A(n)': A<i32>
             39..40 'n': &'? i32
             44..49 '&A(1)': &'? A<i32>
-            45..46 'A': extern "rust-call" A<i32>(i32) -> A<i32>
+            45..46 'A': fn A<i32>(i32) -> A<i32>
             45..49 'A(1)': A<i32>
             47..48 '1': i32
             59..63 'A(n)': A<i32>
             61..62 'n': &'? mut i32
             66..75 '&mut A(1)': &'? mut A<i32>
-            71..72 'A': extern "rust-call" A<i32>(i32) -> A<i32>
+            71..72 'A': fn A<i32>(i32) -> A<i32>
             71..75 'A(1)': A<i32>
             73..74 '1': i32
         "#]],
@@ -548,18 +548,18 @@ impl Foo {
             56..64 'Self(s,)': Foo
             61..62 's': &'? usize
             67..75 '&Foo(0,)': &'? Foo
-            68..71 'Foo': extern "rust-call" Foo(usize) -> Foo
+            68..71 'Foo': fn Foo(usize) -> Foo
             68..75 'Foo(0,)': Foo
             72..73 '0': usize
             89..97 'Self(s,)': Foo
             94..95 's': &'? mut usize
             100..112 '&mut Foo(0,)': &'? mut Foo
-            105..108 'Foo': extern "rust-call" Foo(usize) -> Foo
+            105..108 'Foo': fn Foo(usize) -> Foo
             105..112 'Foo(0,)': Foo
             109..110 '0': usize
             126..134 'Self(s,)': Foo
             131..132 's': usize
-            137..140 'Foo': extern "rust-call" Foo(usize) -> Foo
+            137..140 'Foo': fn Foo(usize) -> Foo
             137..144 'Foo(0,)': Foo
             141..142 '0': usize
         "#]],
@@ -933,7 +933,7 @@ fn foo(foo: Foo) {
             48..51 'foo': Foo
             62..84 'const ... 32) }': Foo
             68..84 '{ Foo(... 32) }': Foo
-            70..73 'Foo': extern "rust-call" Foo(usize) -> Foo
+            70..73 'Foo': fn Foo(usize) -> Foo
             70..82 'Foo(15 + 32)': Foo
             74..76 '15': usize
             74..81 '15 + 32': usize

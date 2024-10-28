@@ -275,4 +275,19 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `./x setup editor` added, replacing `./x setup vscode` and adding support for vim, emacs and helix.",
     },
+    ChangeInfo {
+        change_id: 131838,
+        severity: ChangeSeverity::Info,
+        summary: "Allow setting `--jobs` in config.toml with `build.jobs`.",
+    },
+    ChangeInfo {
+        change_id: 131181,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.compiletest-diff-tool` that adds support for a custom differ for compiletest",
+    },
+    ChangeInfo {
+        change_id: 131513,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
+    },
 ];

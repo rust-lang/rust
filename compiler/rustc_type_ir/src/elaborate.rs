@@ -4,7 +4,6 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
-use crate::lang_items::TraitSolverLangItem;
 use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
@@ -130,70 +129,6 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     return;
                 }
 
-                // HACK(effects): The following code is required to get implied bounds for effects associated
-                // types to work with super traits.
-                //
-                // Suppose `data` is a trait predicate with the form `<T as Tr>::Fx: EffectsCompat<somebool>`
-                // and we know that `trait Tr: ~const SuperTr`, we need to elaborate this predicate into
-                // `<T as SuperTr>::Fx: EffectsCompat<somebool>`.
-                //
-                // Since the semantics for elaborating bounds about effects is equivalent to elaborating
-                // bounds about super traits (elaborate `T: Tr` into `T: SuperTr`), we place effects elaboration
-                // next to super trait elaboration.
-                if cx.is_lang_item(data.def_id(), TraitSolverLangItem::EffectsCompat)
-                    && matches!(self.mode, Filter::All)
-                {
-                    // first, ensure that the predicate we've got looks like a `<T as Tr>::Fx: EffectsCompat<somebool>`.
-                    if let ty::Alias(ty::AliasTyKind::Projection, alias_ty) = data.self_ty().kind()
-                    {
-                        // look for effects-level bounds that look like `<Self as Tr>::Fx: TyCompat<<Self as SuperTr>::Fx>`
-                        // on the trait, which is proof to us that `Tr: ~const SuperTr`. We're looking for bounds on the
-                        // associated trait, so we use `explicit_implied_predicates_of` since it gives us more than just
-                        // `Self: SuperTr` bounds.
-                        let bounds = cx.explicit_implied_predicates_of(cx.parent(alias_ty.def_id));
-
-                        // instantiate the implied bounds, so we get `<T as Tr>::Fx` and not `<Self as Tr>::Fx`.
-                        let elaborated = bounds.iter_instantiated(cx, alias_ty.args).filter_map(
-                            |(clause, _)| {
-                                let ty::ClauseKind::Trait(tycompat_bound) =
-                                    clause.kind().skip_binder()
-                                else {
-                                    return None;
-                                };
-                                if !cx.is_lang_item(
-                                    tycompat_bound.def_id(),
-                                    TraitSolverLangItem::EffectsTyCompat,
-                                ) {
-                                    return None;
-                                }
-
-                                // extract `<T as SuperTr>::Fx` from the `TyCompat` bound.
-                                let supertrait_effects_ty =
-                                    tycompat_bound.trait_ref.args.type_at(1);
-                                let ty::Alias(ty::AliasTyKind::Projection, supertrait_alias_ty) =
-                                    supertrait_effects_ty.kind()
-                                else {
-                                    return None;
-                                };
-
-                                // The self types (`T`) must be equal for `<T as Tr>::Fx` and `<T as SuperTr>::Fx`.
-                                if supertrait_alias_ty.self_ty() != alias_ty.self_ty() {
-                                    return None;
-                                };
-
-                                // replace the self type in the original bound `<T as Tr>::Fx: EffectsCompat<somebool>`
-                                // to the effects type of the super trait. (`<T as SuperTr>::Fx`)
-                                let elaborated_bound = data.with_self_ty(cx, supertrait_effects_ty);
-                                Some(
-                                    elaboratable
-                                        .child(bound_clause.rebind(elaborated_bound).upcast(cx)),
-                                )
-                            },
-                        );
-                        self.extend_deduped(elaborated);
-                    }
-                }
-
                 let map_to_child_clause =
                     |(index, (clause, span)): (usize, (I::Clause, I::Span))| {
                         elaboratable.child_with_derived_cause(
@@ -220,6 +155,16 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
+            // `T: ~const Trait` implies `T: ~const Supertrait`.
+            ty::ClauseKind::HostEffect(data) => self.extend_deduped(
+                cx.implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
+                    elaboratable.child(
+                        trait_ref
+                            .to_host_effect_clause(cx, data.host)
+                            .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
+                    )
+                }),
+            ),
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that

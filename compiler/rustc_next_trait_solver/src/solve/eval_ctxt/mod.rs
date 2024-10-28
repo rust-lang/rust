@@ -283,15 +283,15 @@ where
 
         let mut ecx = EvalCtxt {
             delegate,
-            variables: canonical_input.variables,
+            variables: canonical_input.canonical.variables,
             var_values,
             is_normalizes_to_goal: false,
             predefined_opaques_in_body: input.predefined_opaques_in_body,
-            max_input_universe: canonical_input.max_universe,
+            max_input_universe: canonical_input.canonical.max_universe,
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values, input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -442,6 +442,9 @@ where
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     self.compute_trait_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                    self.compute_host_effect_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })
@@ -983,7 +986,7 @@ where
             hidden_ty,
             &mut goals,
         );
-        self.add_goals(GoalSource::Misc, goals);
+        self.add_goals(GoalSource::AliasWellFormed, goals);
     }
 
     // Do something for each opaque/hidden pair defined with `def_id` in the

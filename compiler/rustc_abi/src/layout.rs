@@ -11,6 +11,12 @@ use crate::{
     Variants, WrappingRange,
 };
 
+#[cfg(feature = "nightly")]
+mod ty;
+
+#[cfg(feature = "nightly")]
+pub use ty::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
+
 // A variant is absent if it's uninhabited and only has ZST fields.
 // Present uninhabited variants only require space for their fields,
 // but *not* an encoding of the discriminant (e.g., a tag value).
@@ -35,7 +41,7 @@ enum NicheBias {
     End,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutCalculatorError<F> {
     /// An unsized type was found in a location where a sized type was expected.
     ///
@@ -50,6 +56,36 @@ pub enum LayoutCalculatorError<F> {
 
     /// A union had no fields.
     EmptyUnion,
+
+    /// The fields or variants have irreconcilable reprs
+    ReprConflict,
+}
+
+impl<F> LayoutCalculatorError<F> {
+    pub fn without_payload(&self) -> LayoutCalculatorError<()> {
+        match self {
+            LayoutCalculatorError::UnexpectedUnsized(_) => {
+                LayoutCalculatorError::UnexpectedUnsized(())
+            }
+            LayoutCalculatorError::SizeOverflow => LayoutCalculatorError::SizeOverflow,
+            LayoutCalculatorError::EmptyUnion => LayoutCalculatorError::EmptyUnion,
+            LayoutCalculatorError::ReprConflict => LayoutCalculatorError::ReprConflict,
+        }
+    }
+
+    /// Format an untranslated diagnostic for this type
+    ///
+    /// Intended for use by rust-analyzer, as neither it nor `rustc_abi` depend on fluent infra.
+    pub fn fallback_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            LayoutCalculatorError::UnexpectedUnsized(_) => {
+                "an unsized type was found where a sized type was expected"
+            }
+            LayoutCalculatorError::SizeOverflow => "size overflow",
+            LayoutCalculatorError::EmptyUnion => "type is a union with no fields",
+            LayoutCalculatorError::ReprConflict => "type has an invalid repr",
+        })
+    }
 }
 
 type LayoutCalculatorResult<FieldIdx, VariantIdx, F> =
@@ -485,6 +521,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         let dl = self.cx.data_layout();
+        // bail if the enum has an incoherent repr that cannot be computed
+        if repr.packed() {
+            return Err(LayoutCalculatorError::ReprConflict);
+        }
 
         let calculate_niche_filling_layout = || -> Option<TmpLayout<FieldIdx, VariantIdx>> {
             if dont_niche_optimize_enum {

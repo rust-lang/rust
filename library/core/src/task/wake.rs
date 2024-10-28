@@ -321,7 +321,7 @@ impl<'a> ContextBuilder<'a> {
     /// Creates a ContextBuilder from a Waker.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_waker", since = "1.82.0"))]
     pub const fn from_waker(waker: &'a Waker) -> Self {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
@@ -379,7 +379,7 @@ impl<'a> ContextBuilder<'a> {
     /// Builds the `Context`.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
-    #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_waker", since = "1.82.0"))]
     pub const fn build(self) -> Context<'a> {
         let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
         Context { waker, local_waker, ext: AssertUnwindSafe(ext), _marker, _marker2 }
@@ -519,8 +519,8 @@ impl Waker {
     /// [`Wake`]: ../../alloc/task/trait.Wake.html
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
+    #[rustc_const_stable(feature = "waker_getters", since = "1.83.0")]
     pub const unsafe fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
         Waker { waker: RawWaker { data, vtable } }
     }
@@ -584,7 +584,7 @@ impl Waker {
     /// Gets the `data` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
     pub fn data(&self) -> *const () {
         self.waker.data
     }
@@ -592,7 +592,7 @@ impl Waker {
     /// Gets the `vtable` pointer used to create this `Waker`.
     #[inline]
     #[must_use]
-    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "waker_getters", since = "1.83.0")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
     }

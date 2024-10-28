@@ -1,0 +1,36 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/const-bounds-non-const-trait.rs:2:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: using `#![feature(effects)]` without enabling next trait solver globally
+   |
+   = note: the next trait solver must be enabled globally for the effects feature to work correctly
+   = help: use `-Znext-solver` to enable
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-bounds-non-const-trait.rs:6:28
+   |
+LL | const fn perform<T: ~const NonConst>() {}
+   |                            ^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-bounds-non-const-trait.rs:6:28
+   |
+LL | const fn perform<T: ~const NonConst>() {}
+   |                            ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-bounds-non-const-trait.rs:10:21
+   |
+LL | fn operate<T: const NonConst>() {}
+   |                     ^^^^^^^^
+
+error: aborting due to 4 previous errors; 1 warning emitted
+

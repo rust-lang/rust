@@ -1,6 +1,7 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
+use std::any::Any;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -321,7 +322,7 @@ impl ProvenanceExtra {
 }
 
 /// Extra per-allocation data
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AllocExtra<'tcx> {
     /// Global state of the borrow tracker, if enabled.
     pub borrow_tracker: Option<borrow_tracker::AllocState>,
@@ -336,11 +337,24 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
+    /// Synchronization primitives like to attach extra data to particular addresses. We store that
+    /// inside the relevant allocation, to ensure that everything is removed when the allocation is
+    /// freed.
+    /// This maps offsets to synchronization-primitive-specific data.
+    pub sync: FxHashMap<Size, Box<dyn Any>>,
+}
+
+// We need a `Clone` impl because the machine passes `Allocation` through `Cow`...
+// but that should never end up actually cloning our `AllocExtra`.
+impl<'tcx> Clone for AllocExtra<'tcx> {
+    fn clone(&self) -> Self {
+        panic!("our allocations should never be cloned");
+    }
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _, sync: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -495,11 +509,6 @@ pub struct MiriMachine<'tcx> {
     /// Cache of `Instance` exported under the given `Symbol` name.
     /// `None` means no `Instance` exported under the given name is found.
     pub(crate) exported_symbols_cache: FxHashMap<Symbol, Option<Instance<'tcx>>>,
-
-    /// Whether to raise a panic in the context of the evaluated process when unsupported
-    /// functionality is encountered. If `false`, an error is propagated in the Miri application context
-    /// instead (default behavior)
-    pub(crate) panic_on_unsupported: bool,
 
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
@@ -667,7 +676,6 @@ impl<'tcx> MiriMachine<'tcx> {
             profiler,
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
-            panic_on_unsupported: config.panic_on_unsupported,
             backtrace_style: config.backtrace_style,
             local_crates,
             extern_statics: FxHashMap::default(),
@@ -807,7 +815,6 @@ impl VisitProvenance for MiriMachine<'_> {
             profiler: _,
             string_cache: _,
             exported_symbols_cache: _,
-            panic_on_unsupported: _,
             backtrace_style: _,
             local_crates: _,
             rng: _,
@@ -1186,7 +1193,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .insert(id, (ecx.machine.current_span(), None));
         }
 
-        interp_ok(AllocExtra { borrow_tracker, data_race, weak_memory, backtrace })
+        interp_ok(AllocExtra {
+            borrow_tracker,
+            data_race,
+            weak_memory,
+            backtrace,
+            sync: FxHashMap::default(),
+        })
     }
 
     fn adjust_alloc_root_pointer(

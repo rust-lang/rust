@@ -635,7 +635,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_rust_2024_migration_desugared_pats(&mut self, hir_id: hir::HirId) {
-        if self
+        if let Some(is_hard_error) = self
             .fcx
             .typeck_results
             .borrow_mut()
@@ -645,7 +645,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             debug!(
                 "node is a pat whose match ergonomics are desugared by the Rust 2024 migration lint"
             );
-            self.typeck_results.rust_2024_migration_desugared_pats_mut().insert(hir_id);
+            self.typeck_results
+                .rust_2024_migration_desugared_pats_mut()
+                .insert(hir_id, is_hard_error);
         }
     }
 
@@ -828,7 +830,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         value = tcx.fold_regions(value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.
-        if tcx.features().generic_const_exprs {
+        if tcx.features().generic_const_exprs() {
             value =
                 value.fold_with(&mut EagerlyNormalizeConsts { tcx, param_env: self.fcx.param_env });
         }

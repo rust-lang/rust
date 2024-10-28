@@ -14,7 +14,7 @@ use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
 pub(crate) const RUN_LINTS: Pass =
-    Pass { name: "run-lints", run: run_lints, description: "runs some of rustdoc's lints" };
+    Pass { name: "run-lints", run: Some(run_lints), description: "runs some of rustdoc's lints" };
 
 struct Linter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,

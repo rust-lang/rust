@@ -1208,7 +1208,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
         }
 
-        if self.tcx().features().return_type_notation
+        if self.tcx().features().return_type_notation()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx().opt_rpitit_info(def_id)
             && let ty::Alias(_, alias_ty) =
@@ -1956,7 +1956,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         define_scoped_cx!(self);
 
         match constness {
-            ty::BoundConstness::NotConst => {}
             ty::BoundConstness::Const => {
                 p!("const ");
             }
@@ -2948,7 +2947,10 @@ impl<'tcx> ty::TraitPredicate<'tcx> {
 }
 
 #[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
-pub struct TraitPredPrintWithBoundConstness<'tcx>(ty::TraitPredicate<'tcx>, ty::BoundConstness);
+pub struct TraitPredPrintWithBoundConstness<'tcx>(
+    ty::TraitPredicate<'tcx>,
+    Option<ty::BoundConstness>,
+);
 
 impl<'tcx> fmt::Debug for TraitPredPrintWithBoundConstness<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2966,7 +2968,7 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
 
     fn print_with_bound_constness(
         self,
-        constness: ty::BoundConstness,
+        constness: Option<ty::BoundConstness>,
     ) -> ty::Binder<'tcx, TraitPredPrintWithBoundConstness<'tcx>> {
         self.map_bound(|trait_pred| TraitPredPrintWithBoundConstness(trait_pred, constness))
     }
@@ -3073,6 +3075,15 @@ define_print! {
         p!(print(self.trait_ref.print_trait_sugared()))
     }
 
+    ty::HostEffectPredicate<'tcx> {
+        let constness = match self.host {
+            ty::HostPolarity::Const => { "const" }
+            ty::HostPolarity::Maybe => { "~const" }
+        };
+        p!(print(self.trait_ref.self_ty()), ": {constness} ");
+        p!(print(self.trait_ref.print_trait_sugared()))
+    }
+
     ty::TypeAndMut<'tcx> {
         p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
@@ -3085,6 +3096,7 @@ define_print! {
             ty::ClauseKind::RegionOutlives(predicate) => p!(print(predicate)),
             ty::ClauseKind::TypeOutlives(predicate) => p!(print(predicate)),
             ty::ClauseKind::Projection(predicate) => p!(print(predicate)),
+            ty::ClauseKind::HostEffect(predicate) => p!(print(predicate)),
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 p!("the constant `", print(ct), "` has type `", print(ty), "`")
             },
@@ -3206,7 +3218,9 @@ define_print_and_forward_display! {
 
     TraitPredPrintWithBoundConstness<'tcx> {
         p!(print(self.0.trait_ref.self_ty()), ": ");
-        p!(pretty_print_bound_constness(self.1));
+        if let Some(constness) = self.1 {
+            p!(pretty_print_bound_constness(constness));
+        }
         if let ty::PredicatePolarity::Negative = self.0.polarity {
             p!("!");
         }

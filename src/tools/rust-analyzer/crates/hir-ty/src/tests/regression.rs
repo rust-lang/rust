@@ -645,7 +645,7 @@ fn issue_4953() {
         "#,
         expect![[r#"
             58..72 '{ Self(0i64) }': Foo
-            60..64 'Self': extern "rust-call" Foo(i64) -> Foo
+            60..64 'Self': fn Foo(i64) -> Foo
             60..70 'Self(0i64)': Foo
             65..69 '0i64': i64
         "#]],
@@ -659,7 +659,7 @@ fn issue_4953() {
         "#,
         expect![[r#"
             64..78 '{ Self(0i64) }': Foo<i64>
-            66..70 'Self': extern "rust-call" Foo<i64>(i64) -> Foo<i64>
+            66..70 'Self': fn Foo<i64>(i64) -> Foo<i64>
             66..76 'Self(0i64)': Foo<i64>
             71..75 '0i64': i64
         "#]],
@@ -859,7 +859,7 @@ fn main() {
             94..96 '{}': ()
             109..160 '{     ...10); }': ()
             119..120 's': S<i32>
-            123..124 'S': extern "rust-call" S<i32>() -> S<i32>
+            123..124 'S': fn S<i32>() -> S<i32>
             123..126 'S()': S<i32>
             132..133 's': S<i32>
             132..144 's.g(|_x| {})': ()
@@ -1616,7 +1616,7 @@ fn main() {
             37..48 'S(.., a, b)': S
             43..44 'a': usize
             46..47 'b': {unknown}
-            51..52 'S': extern "rust-call" S(usize) -> S
+            51..52 'S': fn S(usize) -> S
             51..55 'S(1)': S
             53..54 '1': usize
             65..75 '(.., a, b)': (i32, {unknown})

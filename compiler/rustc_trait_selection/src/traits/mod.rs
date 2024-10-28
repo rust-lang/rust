@@ -114,7 +114,7 @@ impl<'tcx> Debug for FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
-    Cycle(Vec<PredicateObligation<'tcx>>),
+    Cycle(PredicateObligations<'tcx>),
     Select(SelectionError<'tcx>),
     Project(MismatchedProjectionTypes<'tcx>),
     Subtype(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
@@ -346,7 +346,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|predicate| {
-            if tcx.features().generic_const_exprs {
+            if tcx.features().generic_const_exprs() {
                 return predicate;
             }
 
@@ -368,7 +368,7 @@ pub fn normalize_param_env_or_error<'tcx>(
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    c.normalize(self.0, ty::ParamEnv::empty())
+                    c.normalize_internal(self.0, ty::ParamEnv::empty())
                 }
             }
 
@@ -562,11 +562,20 @@ fn is_impossible_associated_item(
 
     let generics = tcx.generics_of(trait_item_def_id);
     let predicates = tcx.predicates_of(trait_item_def_id);
+
+    // Be conservative in cases where we have `W<T: ?Sized>` and a method like `Self: Sized`,
+    // since that method *may* have some substitutions where the predicates hold.
+    //
+    // This replicates the logic we use in coherence.
+    let infcx =
+        tcx.infer_ctxt().ignoring_regions().with_next_trait_solver(true).intercrate(true).build();
+    let param_env = ty::ParamEnv::empty();
+    let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
+
     let impl_trait_ref = tcx
         .impl_trait_ref(impl_def_id)
         .expect("expected impl to correspond to trait")
-        .instantiate_identity();
-    let param_env = tcx.param_env(impl_def_id);
+        .instantiate(tcx, fresh_args);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
@@ -580,16 +589,9 @@ fn is_impossible_associated_item(
         })
     });
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
-    for obligation in predicates_for_trait {
-        // Ignore overflow error, to be conservative.
-        if let Ok(result) = infcx.evaluate_obligation(&obligation)
-            && !result.may_apply()
-        {
-            return true;
-        }
-    }
-    false
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligations(predicates_for_trait);
+    !ocx.select_where_possible().is_empty()
 }
 
 pub fn provide(providers: &mut Providers) {

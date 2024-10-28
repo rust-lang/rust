@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `u32: ~const Plus` is not satisfied
+  --> $DIR/call-const-trait-method-fail.rs:27:5
+   |
+LL |     a.plus(b)
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

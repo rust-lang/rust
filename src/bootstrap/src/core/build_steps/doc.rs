@@ -170,7 +170,14 @@ impl<P: Step> Step for RustbookSrc<P> {
                 builder.add_rustc_lib_path(compiler, &mut rustbook_cmd);
             }
 
-            rustbook_cmd.arg("build").arg(&src).arg("-d").arg(&out).run(builder);
+            rustbook_cmd
+                .arg("build")
+                .arg(&src)
+                .arg("-d")
+                .arg(&out)
+                .arg("--rust-root")
+                .arg(&builder.src)
+                .run(builder);
 
             for lang in &self.languages {
                 let out = out.join(lang);

@@ -49,6 +49,10 @@ passes_attr_crate_level =
 passes_attr_only_in_functions =
     `{$attr}` attribute can only be used on functions
 
+passes_autodiff_attr =
+    `#[autodiff]` should be applied to a function
+    .label = not a function
+
 passes_both_ffi_const_and_pure =
     `#[ffi_const]` function cannot be `#[ffi_pure]`
 
@@ -94,6 +98,10 @@ passes_collapse_debuginfo =
 
 passes_confusables = attribute should be applied to an inherent method
     .label = not an inherent method
+
+passes_const_stable_not_stable =
+    attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
+    .label = attribute specified here
 
 passes_continue_labeled_block =
     `continue` pointing to a labeled block
@@ -241,6 +249,19 @@ passes_doc_test_unknown_include =
     unknown `doc` attribute `{$path}`
     .suggestion = use `doc = include_str!` instead
 
+passes_doc_test_unknown_passes =
+    unknown `doc` attribute `{$path}`
+    .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
+    .label = no longer functions
+    .help = you may want to use `doc(document_private_items)`
+    .no_op_note = `doc({$path})` is now a no-op
+
+passes_doc_test_unknown_plugins =
+    unknown `doc` attribute `{$path}`
+    .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
+    .label = no longer functions
+    .no_op_note = `doc({$path})` is now a no-op
+
 passes_doc_test_unknown_spotlight =
     unknown `doc` attribute `{$path}`
     .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
@@ -252,7 +273,7 @@ passes_duplicate_diagnostic_item_in_crate =
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
 passes_duplicate_feature_err =
-    the feature `{$feature}` has already been declared
+    the feature `{$feature}` has already been enabled
 
 passes_duplicate_lang_item =
     found duplicate lang item `{$lang_item_name}`
@@ -448,10 +469,10 @@ passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
+
 passes_missing_const_err =
-    attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
+    attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
     .help = make the function or method const
-    .label = attribute specified here
 
 passes_missing_const_stab_attr =
     {$descr} has missing const stability attribute
@@ -549,9 +570,9 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
-passes_optimize_not_fn_or_closure =
-    attribute should be applied to function or closure
-    .label = not a function or closure
+passes_optimize_invalid_target =
+    attribute applied to an invalid target
+    .label = invalid target
 
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`

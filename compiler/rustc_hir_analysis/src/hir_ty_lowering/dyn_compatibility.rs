@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 use super::HirTyLowerer;
 use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+    GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -30,7 +30,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
+        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
         representation: DynKind,
     ) -> Ty<'tcx> {
@@ -39,8 +39,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
-            if *modifier == hir::TraitBoundModifier::Maybe {
+        for trait_bound in hir_trait_bounds.iter().rev() {
+            if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
                 continue;
             }
             if let GenericArgCountResult {
@@ -50,13 +50,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             } = self.lower_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
-                ty::BoundConstness::NotConst,
+                None,
                 ty::PredicatePolarity::Positive,
                 dummy_self,
                 &mut bounds,
-                // True so we don't populate `bounds` with associated type bounds, even
-                // though they're disallowed from object types.
-                OnlySelfBounds(true),
+                PredicateFilter::SelfOnly,
             ) {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
@@ -64,7 +62,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.clauses(tcx) {
+        for (pred, span) in bounds.clauses() {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
@@ -80,7 +78,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::ConstArgHasType(..)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => {
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::HostEffect(..) => {
                     span_bug!(span, "did not expect {pred} clause in object bounds");
                 }
             }
@@ -260,10 +259,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     })
                     .collect();
-                let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
@@ -293,7 +291,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .emit();
                 }
 
-                ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
+                ty::ExistentialTraitRef::new(tcx, trait_ref.def_id, args)
             })
         });
 

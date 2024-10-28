@@ -346,7 +346,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         None
                     }
                 }
-                ty::Array(ty, len) => match len.try_eval_target_usize(cx.tcx, cx.param_env) {
+                ty::Array(ty, len) => match len.try_to_target_usize(cx.tcx) {
                     // If the array is empty we don't lint, to avoid false positives
                     Some(0) | None => None,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
@@ -1025,8 +1025,8 @@ pub(crate) struct UnusedParens {
     parens_in_cast_in_lt: Vec<ast::NodeId>,
 }
 
-impl UnusedParens {
-    pub(crate) fn new() -> Self {
+impl Default for UnusedParens {
+    fn default() -> Self {
         Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
     }
 }

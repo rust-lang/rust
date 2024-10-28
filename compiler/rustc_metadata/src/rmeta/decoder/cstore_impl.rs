@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::mem;
 
-use rustc_ast as ast;
 use rustc_attr::Deprecation;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -275,6 +274,8 @@ provide! { tcx, def_id, other, cdata,
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
+    const_conditions => { table }
+    implied_const_bounds => { table_defaulted_array }
     coerce_unsized_info => {
         Ok(cdata
             .root
@@ -330,7 +331,6 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_type_for_effects => { table }
     associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -437,9 +437,6 @@ provide! { tcx, def_id, other, cdata,
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     provide_cstore_hooks(providers);
-    // FIXME(#44234) - almost all of these queries have no sub-queries and
-    // therefore no actual inputs, they're just reading tables calculated in
-    // resolve! Does this work? Unsure! That's what the issue is about
     providers.queries = rustc_middle::query::Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
@@ -594,27 +591,16 @@ impl CStore {
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, tcx));
-        }
-
-        let span = data.get_span(id.index, sess);
-
-        LoadedMacro::MacroDef(
-            ast::Item {
+            LoadedMacro::ProcMacro(data.load_proc_macro(id.index, tcx))
+        } else {
+            LoadedMacro::MacroDef {
+                def: data.get_macro(id.index, sess),
                 ident: data.item_ident(id.index, sess),
-                id: ast::DUMMY_NODE_ID,
-                span,
                 attrs: data.get_item_attrs(id.index, sess).collect(),
-                kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
-                vis: ast::Visibility {
-                    span: span.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
-                    tokens: None,
-                },
-                tokens: None,
-            },
-            data.root.edition,
-        )
+                span: data.get_span(id.index, sess),
+                edition: data.root.edition,
+            }
+        }
     }
 
     pub fn def_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {

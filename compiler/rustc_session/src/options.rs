@@ -403,7 +403,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "a comma separated list of solver configurations: `globally` (default), and `coherence`";
+        "either `globally` (when used without an argument), `coherence` (default) or `no`";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -1123,27 +1123,16 @@ mod parse {
         }
     }
 
-    pub(crate) fn parse_next_solver_config(
-        slot: &mut Option<NextSolverConfig>,
-        v: Option<&str>,
-    ) -> bool {
+    pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
-            let mut coherence = false;
-            let mut globally = true;
-            for c in config.split(',') {
-                match c {
-                    "globally" => globally = true,
-                    "coherence" => {
-                        globally = false;
-                        coherence = true;
-                    }
-                    _ => return false,
-                }
-            }
-
-            *slot = Some(NextSolverConfig { coherence: coherence || globally, globally });
+            *slot = match config {
+                "no" => NextSolverConfig { coherence: false, globally: false },
+                "coherence" => NextSolverConfig { coherence: true, globally: false },
+                "globally" => NextSolverConfig { coherence: true, globally: true },
+                _ => return false,
+            };
         } else {
-            *slot = Some(NextSolverConfig { coherence: true, globally: true });
+            *slot = NextSolverConfig { coherence: true, globally: true };
         }
 
         true
@@ -1914,7 +1903,7 @@ options! {
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
-    next_solver: Option<NextSolverConfig> = (None, parse_next_solver_config, [TRACKED],
+    next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
@@ -2011,6 +2000,11 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
+        in registers EAX, EDX, and ECX instead of on the stack for\
+        \"C\", \"cdecl\", and \"stdcall\" fn.\
+        It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],

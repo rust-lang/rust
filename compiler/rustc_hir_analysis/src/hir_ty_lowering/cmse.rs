@@ -1,8 +1,8 @@
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
+use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, ParamEnv, TyCtxt};
-use rustc_span::Span;
 use rustc_target::spec::abi;
 
 use crate::errors;
@@ -17,61 +17,104 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     abi: abi::Abi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
-    if let abi::Abi::CCmseNonSecureCall = abi {
-        let hir_node = tcx.hir_node(hir_id);
-        let hir::Node::Ty(hir::Ty {
-            span: bare_fn_span,
-            kind: hir::TyKind::BareFn(bare_fn_ty),
-            ..
-        }) = hir_node
-        else {
-            let span = match tcx.parent_hir_node(hir_id) {
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::ForeignMod { .. }, span, ..
-                }) => *span,
-                _ => tcx.hir().span(hir_id),
+    let abi_name = abi.name();
+
+    match abi {
+        abi::Abi::CCmseNonSecureCall => {
+            let hir_node = tcx.hir_node(hir_id);
+            let hir::Node::Ty(hir::Ty {
+                span: bare_fn_span,
+                kind: hir::TyKind::BareFn(bare_fn_ty),
+                ..
+            }) = hir_node
+            else {
+                let span = match tcx.parent_hir_node(hir_id) {
+                    hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::ForeignMod { .. },
+                        span,
+                        ..
+                    }) => *span,
+                    _ => tcx.hir().span(hir_id),
+                };
+                struct_span_code_err!(
+                    tcx.dcx(),
+                    span,
+                    E0781,
+                    "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
+                )
+                .emit();
+                return;
             };
-            struct_span_code_err!(
-                tcx.dcx(),
-                span,
-                E0781,
-                "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
-            )
-            .emit();
-            return;
-        };
 
-        match is_valid_cmse_inputs(tcx, fn_sig) {
-            Ok(Ok(())) => {}
-            Ok(Err(index)) => {
-                // fn(x: u32, u32, u32, u16, y: u16) -> u32,
-                //                           ^^^^^^
-                let span = bare_fn_ty.param_names[index]
-                    .span
-                    .to(bare_fn_ty.decl.inputs[index].span)
-                    .to(bare_fn_ty.decl.inputs.last().unwrap().span);
-                let plural = bare_fn_ty.param_names.len() - index != 1;
-                dcx.emit_err(errors::CmseCallInputsStackSpill { span, plural });
-            }
-            Err(layout_err) => {
-                if let Some(err) = cmse_layout_err(layout_err, *bare_fn_span) {
-                    dcx.emit_err(err);
+            match is_valid_cmse_inputs(tcx, fn_sig) {
+                Ok(Ok(())) => {}
+                Ok(Err(index)) => {
+                    // fn(x: u32, u32, u32, u16, y: u16) -> u32,
+                    //                           ^^^^^^
+                    let span = bare_fn_ty.param_names[index]
+                        .span
+                        .to(bare_fn_ty.decl.inputs[index].span)
+                        .to(bare_fn_ty.decl.inputs.last().unwrap().span);
+                    let plural = bare_fn_ty.param_names.len() - index != 1;
+                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi_name });
+                }
+                Err(layout_err) => {
+                    if should_emit_generic_error(abi, layout_err) {
+                        dcx.emit_err(errors::CmseCallGeneric { span: *bare_fn_span });
+                    }
                 }
             }
+
+            match is_valid_cmse_output(tcx, fn_sig) {
+                Ok(true) => {}
+                Ok(false) => {
+                    let span = bare_fn_ty.decl.output.span();
+                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi_name });
+                }
+                Err(layout_err) => {
+                    if should_emit_generic_error(abi, layout_err) {
+                        dcx.emit_err(errors::CmseCallGeneric { span: *bare_fn_span });
+                    }
+                }
+            };
         }
+        abi::Abi::CCmseNonSecureEntry => {
+            let hir_node = tcx.hir_node(hir_id);
+            let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
+                // might happen when this ABI is used incorrectly. That will be handled elsewhere
+                return;
+            };
 
-        match is_valid_cmse_output(tcx, fn_sig) {
-            Ok(true) => {}
-            Ok(false) => {
-                let span = bare_fn_ty.decl.output.span();
-                dcx.emit_err(errors::CmseCallOutputStackSpill { span });
-            }
-            Err(layout_err) => {
-                if let Some(err) = cmse_layout_err(layout_err, *bare_fn_span) {
-                    dcx.emit_err(err);
+            match is_valid_cmse_inputs(tcx, fn_sig) {
+                Ok(Ok(())) => {}
+                Ok(Err(index)) => {
+                    // fn f(x: u32, y: u32, z: u32, w: u16, q: u16) -> u32,
+                    //                                      ^^^^^^
+                    let span = decl.inputs[index].span.to(decl.inputs.last().unwrap().span);
+                    let plural = decl.inputs.len() - index != 1;
+                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi_name });
+                }
+                Err(layout_err) => {
+                    if should_emit_generic_error(abi, layout_err) {
+                        dcx.emit_err(errors::CmseEntryGeneric { span: *fn_sig_span });
+                    }
                 }
             }
-        };
+
+            match is_valid_cmse_output(tcx, fn_sig) {
+                Ok(true) => {}
+                Ok(false) => {
+                    let span = decl.output.span();
+                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi_name });
+                }
+                Err(layout_err) => {
+                    if should_emit_generic_error(abi, layout_err) {
+                        dcx.emit_err(errors::CmseEntryGeneric { span: *fn_sig_span });
+                    }
+                }
+            };
+        }
+        _ => (),
     }
 }
 
@@ -152,22 +195,22 @@ fn is_valid_cmse_output<'tcx>(
     Ok(ret_ty == tcx.types.i64 || ret_ty == tcx.types.u64 || ret_ty == tcx.types.f64)
 }
 
-fn cmse_layout_err<'tcx>(
-    layout_err: &'tcx LayoutError<'tcx>,
-    span: Span,
-) -> Option<crate::errors::CmseCallGeneric> {
+fn should_emit_generic_error<'tcx>(abi: abi::Abi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
     use LayoutError::*;
 
     match layout_err {
         Unknown(ty) => {
-            if ty.is_impl_trait() {
-                None // prevent double reporting of this error
-            } else {
-                Some(errors::CmseCallGeneric { span })
+            match abi {
+                abi::Abi::CCmseNonSecureCall => {
+                    // prevent double reporting of this error
+                    !ty.is_impl_trait()
+                }
+                abi::Abi::CCmseNonSecureEntry => true,
+                _ => bug!("invalid ABI: {abi}"),
             }
         }
         SizeOverflow(..) | NormalizationFailure(..) | ReferencesError(..) | Cycle(..) => {
-            None // not our job to report these
+            false // not our job to report these
         }
     }
 }

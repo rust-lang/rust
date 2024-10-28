@@ -1,7 +1,8 @@
+use crate::helpers::check_min_arg_count;
 use crate::*;
 
 /// Implementation of the SYS_futex syscall.
-/// `args` is the arguments *after* the syscall number.
+/// `args` is the arguments *including* the syscall number.
 pub fn futex<'tcx>(
     this: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
@@ -15,12 +16,7 @@ pub fn futex<'tcx>(
     // may or may not be left out from the `syscall()` call.
     // Therefore we don't use `check_arg_count` here, but only check for the
     // number of arguments to fall within a range.
-    let [addr, op, val, ..] = args else {
-        throw_ub_format!(
-            "incorrect number of arguments for `futex` syscall: got {}, expected at least 3",
-            args.len()
-        );
-    };
+    let [_, addr, op, val] = check_min_arg_count("`syscall(SYS_futex, ...)`", args)?;
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (int *addr, int op, int val).
@@ -54,42 +50,31 @@ pub fn futex<'tcx>(
         op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
-            let bitset = if wait_bitset {
-                let [_, _, _, timeout, uaddr2, bitset, ..] = args else {
-                    throw_ub_format!(
-                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT_BITSET`: got {}, expected at least 6",
-                        args.len()
-                    );
-                };
+            let (timeout, bitset) = if wait_bitset {
+                let [_, _, _, _, timeout, uaddr2, bitset] =
+                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`", args)?;
                 let _timeout = this.read_pointer(timeout)?;
                 let _uaddr2 = this.read_pointer(uaddr2)?;
-                this.read_scalar(bitset)?.to_u32()?
+                (timeout, this.read_scalar(bitset)?.to_u32()?)
             } else {
-                if args.len() < 4 {
-                    throw_ub_format!(
-                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 4",
-                        args.len()
-                    );
-                }
-                u32::MAX
+                let [_, _, _, _, timeout] =
+                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", args)?;
+                (timeout, u32::MAX)
             };
 
             if bitset == 0 {
-                this.set_last_error(LibcError("EINVAL"))?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                this.set_last_error_and_return(LibcError("EINVAL"), dest)?;
                 return interp_ok(());
             }
 
-            let timeout = this.deref_pointer_as(&args[3], this.libc_ty_layout("timespec"))?;
+            let timeout = this.deref_pointer_as(timeout, this.libc_ty_layout("timespec"))?;
             let timeout = if this.ptr_is_null(timeout.ptr())? {
                 None
             } else {
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
-                        this.set_last_error(LibcError("EINVAL"))?;
-                        this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                        return interp_ok(());
+                        return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                     }
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
@@ -165,14 +150,12 @@ pub fn futex<'tcx>(
                     Scalar::from_target_isize(0, this), // retval_succ
                     Scalar::from_target_isize(-1, this), // retval_timeout
                     dest.clone(),
-                    this.eval_libc("ETIMEDOUT"),
+                    this.eval_libc("ETIMEDOUT"), // errno_timeout
                 );
             } else {
                 // The futex value doesn't match the expected value, so we return failure
                 // right away without sleeping: -1 and errno set to EAGAIN.
-                let eagain = this.eval_libc("EAGAIN");
-                this.set_last_error(eagain)?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
+                return this.set_last_error_and_return(LibcError("EAGAIN"), dest);
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -183,12 +166,8 @@ pub fn futex<'tcx>(
         // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
         op if op == futex_wake || op == futex_wake_bitset => {
             let bitset = if op == futex_wake_bitset {
-                let [_, _, _, timeout, uaddr2, bitset, ..] = args else {
-                    throw_ub_format!(
-                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAKE_BITSET`: got {}, expected at least 6",
-                        args.len()
-                    );
-                };
+                let [_, _, _, _, timeout, uaddr2, bitset] =
+                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`", args)?;
                 let _timeout = this.read_pointer(timeout)?;
                 let _uaddr2 = this.read_pointer(uaddr2)?;
                 this.read_scalar(bitset)?.to_u32()?
@@ -196,9 +175,7 @@ pub fn futex<'tcx>(
                 u32::MAX
             };
             if bitset == 0 {
-                this.set_last_error(LibcError("EINVAL"))?;
-                this.write_scalar(Scalar::from_target_isize(-1, this), dest)?;
-                return interp_ok(());
+                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller

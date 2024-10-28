@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:22:5
+   |
+LL |     T::b();
+   |     ^^^^^^
+
+error[E0277]: the trait bound `T: ~const Bar` is not satisfied
+  --> $DIR/trait-where-clause-const.rs:24:5
+   |
+LL |     T::c::<T>();
+   |     ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

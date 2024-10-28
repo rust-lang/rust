@@ -1,8 +1,7 @@
 use std::iter;
 
-use rustc_abi::Float::*;
-use rustc_abi::Primitive::{Float, Pointer};
-use rustc_abi::{Abi, AddressSpace, PointerKind, Scalar, Size};
+use rustc_abi::Primitive::Pointer;
+use rustc_abi::{Abi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -14,8 +13,7 @@ use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
-    RiscvInterruptKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, RiscvInterruptKind,
 };
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
@@ -679,6 +677,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
     let tcx = cx.tcx();
 
     if abi == SpecAbi::Rust || abi == SpecAbi::RustCall || abi == SpecAbi::RustIntrinsic {
+        fn_abi.adjust_for_rust_abi(cx, abi);
+
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
@@ -689,88 +689,9 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 &[]
             };
 
-        let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, arg_idx: Option<usize>| {
+        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
             if arg.is_ignore() {
-                return;
-            }
-
-            // Avoid returning floats in x87 registers on x86 as loading and storing from x87
-            // registers will quiet signalling NaNs.
-            if tcx.sess.target.arch == "x86"
-                && arg_idx.is_none()
-                // Intrinsics themselves are not actual "real" functions, so theres no need to
-                // change their ABIs.
-                && abi != SpecAbi::RustIntrinsic
-            {
-                match arg.layout.abi {
-                    // Handle similar to the way arguments with an `Abi::Aggregate` abi are handled
-                    // below, by returning arguments up to the size of a pointer (32 bits on x86)
-                    // cast to an appropriately sized integer.
-                    Abi::Scalar(s) if s.primitive() == Float(F32) => {
-                        // Same size as a pointer, return in a register.
-                        arg.cast_to(Reg::i32());
-                        return;
-                    }
-                    Abi::Scalar(s) if s.primitive() == Float(F64) => {
-                        // Larger than a pointer, return indirectly.
-                        arg.make_indirect();
-                        return;
-                    }
-                    Abi::ScalarPair(s1, s2)
-                        if matches!(s1.primitive(), Float(F32 | F64))
-                            || matches!(s2.primitive(), Float(F32 | F64)) =>
-                    {
-                        // Larger than a pointer, return indirectly.
-                        arg.make_indirect();
-                        return;
-                    }
-                    _ => {}
-                };
-            }
-
-            match arg.layout.abi {
-                Abi::Aggregate { .. } => {}
-
-                // This is a fun case! The gist of what this is doing is
-                // that we want callers and callees to always agree on the
-                // ABI of how they pass SIMD arguments. If we were to *not*
-                // make these arguments indirect then they'd be immediates
-                // in LLVM, which means that they'd used whatever the
-                // appropriate ABI is for the callee and the caller. That
-                // means, for example, if the caller doesn't have AVX
-                // enabled but the callee does, then passing an AVX argument
-                // across this boundary would cause corrupt data to show up.
-                //
-                // This problem is fixed by unconditionally passing SIMD
-                // arguments through memory between callers and callees
-                // which should get them all to agree on ABI regardless of
-                // target feature sets. Some more information about this
-                // issue can be found in #44367.
-                //
-                // Note that the intrinsic ABI is exempt here as
-                // that's how we connect up to LLVM and it's unstable
-                // anyway, we control all calls to it in libstd.
-                Abi::Vector { .. }
-                    if abi != SpecAbi::RustIntrinsic && tcx.sess.target.simd_types_indirect =>
-                {
-                    arg.make_indirect();
-                    return;
-                }
-
-                _ => return,
-            }
-            // Compute `Aggregate` ABI.
-
-            let is_indirect_not_on_stack =
-                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
-            assert!(is_indirect_not_on_stack, "{:?}", arg);
-
-            let size = arg.layout.size;
-            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
-                // We want to pass small aggregates as immediates, but using
-                // an LLVM aggregate type for this leads to bad optimizations,
-                // so we pick an appropriately sized integer type instead.
-                arg.cast_to(Reg { kind: RegKind::Integer, size });
+                continue;
             }
 
             // If we deduced that this parameter was read-only, add that to the attribute list now.
@@ -778,9 +699,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
             // The `readonly` parameter only applies to pointers, so we can only do this if the
             // argument was passed indirectly. (If the argument is passed directly, it's an SSA
             // value, so it's implicitly immutable.)
-            if let (Some(arg_idx), &mut PassMode::Indirect { ref mut attrs, .. }) =
-                (arg_idx, &mut arg.mode)
-            {
+            if let &mut PassMode::Indirect { ref mut attrs, .. } = &mut arg.mode {
                 // The `deduced_param_attrs` list could be empty if this is a type of function
                 // we can't deduce any parameters for, so make sure the argument index is in
                 // bounds.
@@ -791,11 +710,6 @@ fn fn_abi_adjust_for_abi<'tcx>(
                     }
                 }
             }
-        };
-
-        fixup(&mut fn_abi.ret, None);
-        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
-            fixup(arg, Some(arg_idx));
         }
     } else {
         fn_abi
@@ -822,10 +736,10 @@ fn make_thin_self_ptr<'tcx>(
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 
-        // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+        // In the case of Rc<Self>, we need to explicitly pass a *mut RcInner<Self>
         // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
         // elsewhere in the compiler as a method on a `dyn Trait`.
-        // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+        // To get the type `*mut RcInner<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut wide_pointer_layout = layout;
         while !wide_pointer_layout.ty.is_unsafe_ptr() && !wide_pointer_layout.ty.is_ref() {
@@ -838,7 +752,7 @@ fn make_thin_self_ptr<'tcx>(
         wide_pointer_layout.ty
     };
 
-    // we now have a type like `*mut RcBox<dyn Trait>`
+    // we now have a type like `*mut RcInner<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
     let unit_ptr_ty = Ty::new_mut_ptr(tcx, tcx.types.unit);

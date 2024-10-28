@@ -17,6 +17,7 @@ cfg_if::cfg_if! {
         target_os = "illumos",
         target_os = "netbsd",
         target_os = "openbsd",
+        target_os = "rtems",
         target_os = "solaris",
         target_os = "vita",
     ))] {
@@ -39,6 +40,7 @@ cfg_if::cfg_if! {
         mod horizon;
         pub use horizon::fill_bytes;
     } else if #[cfg(any(
+        target_os = "aix",
         target_os = "hurd",
         target_os = "l4re",
         target_os = "nto",

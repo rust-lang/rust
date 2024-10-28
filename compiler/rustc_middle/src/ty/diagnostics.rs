@@ -70,7 +70,7 @@ impl<'tcx> Ty<'tcx> {
     /// ADTs with no type arguments.
     pub fn is_simple_text(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            Adt(def, args) => args.non_erasable_generics(tcx, def.did()).next().is_none(),
+            Adt(_, args) => args.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(tcx),
             _ => self.is_simple_ty(),
         }
@@ -192,7 +192,8 @@ fn suggest_changing_unsized_bound(
             .iter()
             .enumerate()
             .filter(|(_, bound)| {
-                if let hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe) = bound
+                if let hir::GenericBound::Trait(poly) = bound
+                    && let hir::BoundPolarity::Maybe(_) = poly.modifiers.polarity
                     && poly.trait_ref.trait_def_id() == def_id
                 {
                     true
@@ -590,9 +591,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     fn visit_const(&mut self, c: Const<'tcx>) -> Self::Result {
         match c.kind() {
             ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
-
-            // effect variables are always suggestable, because they are not visible
-            ConstKind::Infer(InferConst::EffectVar(_)) => {}
 
             ConstKind::Infer(..)
             | ConstKind::Bound(..)

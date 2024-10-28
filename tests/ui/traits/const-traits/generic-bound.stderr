@@ -1,0 +1,20 @@
+error: const `impl` for trait `Add` which is not marked with `#[const_trait]`
+  --> $DIR/generic-bound.rs:16:15
+   |
+LL | impl<T> const std::ops::Add for S<T> {
+   |               ^^^^^^^^^^^^^
+   |
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+
+error[E0015]: cannot call non-const operator in constant functions
+  --> $DIR/generic-bound.rs:25:5
+   |
+LL |     arg + arg
+   |     ^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

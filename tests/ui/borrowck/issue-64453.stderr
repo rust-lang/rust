@@ -1,12 +1,3 @@
-error: `Arguments::<'a>::new_const` is not yet stable as a const fn
-  --> $DIR/issue-64453.rs:4:31
-   |
-LL | static settings_dir: String = format!("");
-   |                               ^^^^^^^^^^^
-   |
-   = help: add `#![feature(const_fmt_arguments_new)]` to the crate attributes to enable
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0015]: cannot call non-const fn `format` in statics
   --> $DIR/issue-64453.rs:4:31
    |
@@ -18,7 +9,7 @@ LL | static settings_dir: String = format!("");
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of static item `settings_dir`
-  --> $DIR/issue-64453.rs:14:37
+  --> $DIR/issue-64453.rs:13:37
    |
 LL |     let settings_data = from_string(settings_dir);
    |                                     ^^^^^^^^^^^^ move occurs because `settings_dir` has type `String`, which does not implement the `Copy` trait
@@ -28,7 +19,7 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let settings_data = from_string(settings_dir.clone());
    |                                                 ++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0015, E0507.
 For more information about an error, try `rustc --explain E0015`.

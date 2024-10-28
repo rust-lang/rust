@@ -792,6 +792,7 @@ pub(crate) fn orig_range_with_focus_r(
             .definition_range(db)
     };
 
+    // FIXME: Also make use of the syntax context to determine which site we are at?
     let value_range = InFile::new(hir_file, value).original_node_file_range_opt(db);
     let ((call_site_range, call_site_focus), def_site) =
         match InFile::new(hir_file, name).original_node_file_range_opt(db) {

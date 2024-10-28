@@ -16,7 +16,7 @@ use crate::passes::Pass;
 
 pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
     name: "propagate-stability",
-    run: propagate_stability,
+    run: Some(propagate_stability),
     description: "propagates stability to child items",
 };
 

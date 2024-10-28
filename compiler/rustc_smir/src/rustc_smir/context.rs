@@ -161,8 +161,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn predicates_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.predicates_of(def_id);
+        let GenericPredicates { parent, predicates } = tables.tcx.predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
@@ -183,8 +182,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     ) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.explicit_predicates_of(def_id);
+        let GenericPredicates { parent, predicates } = tables.tcx.explicit_predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
@@ -406,7 +404,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let mir_const = cnst.internal(&mut *tables, tcx);
         mir_const
-            .try_eval_target_usize(tables.tcx, ParamEnv::empty())
+            .try_to_target_usize(tables.tcx)
             .ok_or_else(|| Error::new(format!("Const `{cnst:?}` cannot be encoded as u64")))
     }
 

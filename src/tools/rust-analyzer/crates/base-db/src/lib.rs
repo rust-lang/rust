@@ -5,8 +5,8 @@ mod input;
 
 use std::panic;
 
+use ra_salsa::Durability;
 use rustc_hash::FxHashMap;
-use salsa::Durability;
 use span::EditionedFileId;
 use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
@@ -20,7 +20,7 @@ pub use crate::{
         TargetLayoutLoadResult,
     },
 };
-pub use salsa::{self, Cancelled};
+pub use ra_salsa::{self, Cancelled};
 pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, VfsPath};
 
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -28,11 +28,11 @@ pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 #[macro_export]
 macro_rules! impl_intern_key {
     ($name:ident) => {
-        impl $crate::salsa::InternKey for $name {
-            fn from_intern_id(v: $crate::salsa::InternId) -> Self {
+        impl $crate::ra_salsa::InternKey for $name {
+            fn from_intern_id(v: $crate::ra_salsa::InternId) -> Self {
                 $name(v)
             }
-            fn as_intern_id(&self) -> $crate::salsa::InternId {
+            fn as_intern_id(&self) -> $crate::ra_salsa::InternId {
                 self.0
             }
         }
@@ -55,30 +55,30 @@ pub trait FileLoader {
 
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
-#[salsa::query_group(SourceDatabaseStorage)]
+#[ra_salsa::query_group(SourceDatabaseStorage)]
 pub trait SourceDatabase: FileLoader + std::fmt::Debug {
-    #[salsa::input]
+    #[ra_salsa::input]
     fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
 
     /// Text of the file.
-    #[salsa::lru]
+    #[ra_salsa::lru]
     fn file_text(&self, file_id: FileId) -> Arc<str>;
 
     /// Parses the file into the syntax tree.
-    #[salsa::lru]
+    #[ra_salsa::lru]
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
     fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
 
     /// The crate graph.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 
-    #[salsa::input]
+    #[ra_salsa::input]
     fn crate_workspace_data(&self) -> Arc<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>;
 
-    #[salsa::transparent]
+    #[ra_salsa::transparent]
     fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
 }
 
@@ -126,14 +126,14 @@ fn file_text(db: &dyn SourceDatabase, file_id: FileId) -> Arc<str> {
 
 /// We don't want to give HIR knowledge of source roots, hence we extract these
 /// methods into a separate DB.
-#[salsa::query_group(SourceRootDatabaseStorage)]
+#[ra_salsa::query_group(SourceRootDatabaseStorage)]
 pub trait SourceRootDatabase: SourceDatabase {
     /// Path to a file, relative to the root of its source root.
     /// Source root of the file.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn file_source_root(&self, file_id: FileId) -> SourceRootId;
     /// Contents of the source root.
-    #[salsa::input]
+    #[ra_salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
     /// Crates whose root fool is in `id`.

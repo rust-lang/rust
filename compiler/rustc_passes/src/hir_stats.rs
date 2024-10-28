@@ -122,7 +122,9 @@ impl<'k> StatCollector<'k> {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
+        nodes.sort_by_cached_key(|(label, node)| {
+            (node.stats.count * node.stats.size, label.to_owned())
+        });
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
@@ -579,6 +581,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Array,
             Ptr,
             Ref,
+            PinnedRef,
             BareFn,
             Never,
             Tup,

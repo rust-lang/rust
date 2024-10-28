@@ -6,6 +6,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![feature(rustdoc_internals)]
+#![feature(track_path)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 

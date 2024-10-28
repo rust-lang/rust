@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
                 "-Vgcc_ntox86_cxx",
             ]),
             env: "nto70".into(),
+            vendor: "pc".into(),
             stack_probes: StackProbeType::Inline,
             ..base::nto_qnx::opts()
         },

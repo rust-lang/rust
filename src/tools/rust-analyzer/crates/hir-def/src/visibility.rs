@@ -139,13 +139,11 @@ impl Visibility {
         let def_map_block = def_map.block_id();
         loop {
             match (to_module.block, def_map_block) {
-                // to_module is not a block, so there is no parent def map to use
+                // `to_module` is not a block, so there is no parent def map to use.
                 (None, _) => (),
+                // `to_module` is at `def_map`'s block, no need to move further.
                 (Some(a), Some(b)) if a == b => {
                     cov_mark::hit!(is_visible_from_same_block_def_map);
-                    if let Some(parent) = def_map.parent() {
-                        to_module = parent;
-                    }
                 }
                 _ => {
                     if let Some(parent) = to_module.def_map(db).parent() {

@@ -340,13 +340,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let param_env_and_self_ty = self.canonicalize_query(
+        let query_input = self.canonicalize_query(
             ParamEnvAnd { param_env: self.param_env, value: self_ty },
             &mut orig_values,
         );
 
         let steps = match mode {
-            Mode::MethodCall => self.tcx.method_autoderef_steps(param_env_and_self_ty),
+            Mode::MethodCall => self.tcx.method_autoderef_steps(query_input),
             Mode::Path => self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
@@ -355,11 +355,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let infcx = &self.infcx;
                 let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
-                    infcx.instantiate_canonical(span, &param_env_and_self_ty);
-                debug!(
-                    "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
-                    param_env_and_self_ty, self_ty
-                );
+                    infcx.instantiate_canonical(span, &query_input.canonical);
+                debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
                         self_ty: self.make_query_response_ignoring_pending_obligations(
@@ -407,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     mode,
                 }));
             } else if bad_ty.reached_raw_pointer
-                && !self.tcx.features().arbitrary_self_types_pointers
+                && !self.tcx.features().arbitrary_self_types_pointers()
                 && !self.tcx.sess.at_least_rust_2018()
             {
                 // this case used to be allowed by the compiler,
@@ -432,8 +429,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     ty::Infer(ty::TyVar(_)) => {
-                        let raw_ptr_call =
-                            bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types;
+                        let raw_ptr_call = bad_ty.reached_raw_pointer
+                            && !self.tcx.features().arbitrary_self_types();
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_id,
                             span,
@@ -816,7 +813,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => None,
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::HostEffect(..) => None,
             }
         });
 
@@ -1149,7 +1147,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
 
                     ty::Adt(def, args)
-                        if self.tcx.features().pin_ergonomics
+                        if self.tcx.features().pin_ergonomics()
                             && self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) =>
                     {
                         // make sure this is a pinned reference (and not a `Pin<Box>` or something)
@@ -1198,7 +1196,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if !self.tcx.features().pin_ergonomics {
+        if !self.tcx.features().pin_ergonomics() {
             return None;
         }
 

@@ -11,6 +11,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
@@ -279,7 +280,7 @@ fn equate_impl_headers<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl1: &ty::ImplHeader<'tcx>,
     impl2: &ty::ImplHeader<'tcx>,
-) -> Option<Vec<PredicateObligation<'tcx>>> {
+) -> Option<PredicateObligations<'tcx>> {
     let result =
         match (impl1.trait_ref, impl2.trait_ref) {
             (Some(impl1_ref), Some(impl2_ref)) => infcx
@@ -297,6 +298,7 @@ fn equate_impl_headers<'tcx>(
 }
 
 /// The result of [fn impl_intersection_has_impossible_obligation].
+#[derive(Debug)]
 enum IntersectionHasImpossibleObligations<'tcx> {
     Yes,
     No {
@@ -327,6 +329,7 @@ enum IntersectionHasImpossibleObligations<'tcx> {
 /// of the two impls above to be empty.
 ///
 /// Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
+#[instrument(level = "debug", skip(selcx), ret)]
 fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],
@@ -491,7 +494,7 @@ fn plug_infer_with_placeholders<'tcx>(
                 else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
-                assert_eq!(obligations, &[]);
+                assert_eq!(obligations.len(), 0);
             } else {
                 ty.super_visit_with(self);
             }
@@ -514,7 +517,7 @@ fn plug_infer_with_placeholders<'tcx>(
                 else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
                 };
-                assert_eq!(obligations, &[]);
+                assert_eq!(obligations.len(), 0);
             } else {
                 ct.super_visit_with(self);
             }
@@ -545,7 +548,7 @@ fn plug_infer_with_placeholders<'tcx>(
                     else {
                         bug!("we always expect to be able to plug an infer var with placeholder")
                     };
-                    assert_eq!(obligations, &[]);
+                    assert_eq!(obligations.len(), 0);
                 }
             }
         }

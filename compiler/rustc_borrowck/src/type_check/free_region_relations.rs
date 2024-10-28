@@ -280,7 +280,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             }
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .param_env
-                .and(type_op::normalize::Normalize::new(ty))
+                .and(type_op::normalize::Normalize { value: ty })
                 .fully_perform(self.infcx, span)
                 .unwrap_or_else(|guar| TypeOpOutput {
                     output: Ty::new_error(self.infcx.tcx, guar),
@@ -318,7 +318,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
                 let result: Result<_, ErrorGuaranteed> = self
                     .param_env
-                    .and(type_op::normalize::Normalize::new(ty))
+                    .and(type_op::normalize::Normalize { value: ty })
                     .fully_perform(self.infcx, span);
                 let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
                     continue;
@@ -373,7 +373,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env
-            .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
+            .and(type_op::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx, span)
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;

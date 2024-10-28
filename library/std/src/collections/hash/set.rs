@@ -1244,7 +1244,7 @@ pub struct Iter<'a, K: 'a> {
     base: base::Iter<'a, K>,
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K> Default for Iter<'_, K> {
     #[inline]
     fn default() -> Self {
@@ -1273,7 +1273,7 @@ pub struct IntoIter<K> {
     base: base::IntoIter<K>,
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K> Default for IntoIter<K> {
     #[inline]
     fn default() -> Self {

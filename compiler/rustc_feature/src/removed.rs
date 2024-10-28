@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_FEATURES: &[RemovedFeature] = &[
+        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,
@@ -85,6 +85,8 @@ declare_features! (
     /// Allows default type parameters to influence type inference.
     (removed, default_type_parameter_fallback, "1.82.0", Some(27336),
      Some("never properly implemented; requires significant design work")),
+    /// Allows deriving traits as per `SmartPointer` specification
+    (removed, derive_smart_pointer, "1.79.0", Some(123430), Some("replaced by `CoercePointee`")),
     /// Allows using `#[doc(keyword = "...")]`.
     (removed, doc_keyword, "1.28.0", Some(51315),
      Some("merged into `#![feature(rustdoc_internals)]`")),
@@ -156,7 +158,7 @@ declare_features! (
     (removed, no_stack_check, "1.0.0", None, None),
     /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
-    (removed, object_safe_for_dispatch, "CURRENT_RUSTC_VERSION", Some(43561),
+    (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
@@ -221,7 +223,7 @@ declare_features! (
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None),
     /// Allows unnamed fields of struct and union type
-    (removed, unnamed_fields, "CURRENT_RUSTC_VERSION", Some(49804), Some("feature needs redesign")),
+    (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),

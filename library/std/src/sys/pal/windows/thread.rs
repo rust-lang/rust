@@ -99,7 +99,7 @@ impl Thread {
         }
         // Attempt to use high-precision sleep (Windows 10, version 1803+).
         // On error fallback to the standard `Sleep` function.
-        // Also preserves the zero duration behaviour of `Sleep`.
+        // Also preserves the zero duration behavior of `Sleep`.
         if dur.is_zero() || high_precision_sleep(dur).is_err() {
             unsafe { c::Sleep(super::dur2timeout(dur)) }
         }

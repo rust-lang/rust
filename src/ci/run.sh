@@ -47,11 +47,6 @@ source "$ci_dir/shared.sh"
 
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-# suppress change-tracker warnings on CI
-if [ "$CI" != "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
-fi
-
 # If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
 # switch to in-tree rustc.
 if [ "$FORCE_CI_RUSTC" == "" ]; then

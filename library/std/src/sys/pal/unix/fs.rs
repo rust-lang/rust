@@ -189,7 +189,7 @@ cfg_has_statx! {{
             // See: https://github.com/rust-lang/rust/issues/65662
             //
             // FIXME what about transient conditions like `ENOMEM`?
-            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
+            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
                 .err()
                 .and_then(|e| e.raw_os_error());
             if err2 == Some(libc::EFAULT) {
@@ -910,7 +910,7 @@ impl DirEntry {
                 fd,
                 name,
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1194,7 +1194,7 @@ impl File {
                 fd,
                 c"".as_ptr() as *const c_char,
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1538,7 +1538,7 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+        #[cfg(target_os = "freebsd")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let info = Box::<libc::kinfo_file>::new_zeroed();
             let mut info = unsafe { info.assume_init() };
@@ -1566,7 +1566,7 @@ impl fmt::Debug for File {
         #[cfg(not(any(
             target_os = "linux",
             target_os = "vxworks",
-            all(target_os = "freebsd", target_arch = "x86_64"),
+            target_os = "freebsd",
             target_os = "netbsd",
             target_os = "illumos",
             target_os = "solaris",
@@ -1767,7 +1767,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
                 libc::AT_FDCWD,
                 p.as_ptr(),
                 libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1786,7 +1786,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
                 libc::AT_FDCWD,
                 p.as_ptr(),
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }

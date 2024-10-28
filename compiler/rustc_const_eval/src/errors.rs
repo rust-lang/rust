@@ -9,12 +9,12 @@ use rustc_errors::{
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::interpret::{
-    CheckInAllocMsg, CtfeProvenance, ExpectedKind, InterpError, InvalidMetaKind,
+    CheckInAllocMsg, CtfeProvenance, ExpectedKind, InterpErrorKind, InvalidMetaKind,
     InvalidProgramInfo, Misalignment, Pointer, PointerKind, ResourceExhaustionInfo,
     UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::WrappingRange;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 
@@ -44,11 +44,15 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable)]
-pub(crate) struct UnstableInStable {
+#[diag(const_eval_unstable_in_stable_exposed)]
+pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
+    #[help(const_eval_is_function_call)]
+    pub is_function_call: bool,
+    /// Need to duplicate the field so that fluent also provides it as a variable...
+    pub is_function_call2: bool,
     #[suggestion(
         const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
@@ -118,6 +122,34 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_intrinsic)]
+#[help]
+pub(crate) struct UnstableIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_const_fn_exposed)]
+#[help]
+pub(crate) struct UnmarkedConstFnExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_intrinsic_exposed)]
+#[help]
+pub(crate) struct UnmarkedIntrinsicExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_mutable_ref_escaping, code = E0764)]
 pub(crate) struct MutableRefEscaping {
     #[primary_span]
@@ -150,6 +182,15 @@ pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
     pub def_path_str: String,
+    pub kind: ConstContext,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_non_const_intrinsic)]
+pub(crate) struct NonConstIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
     pub kind: ConstContext,
 }
 
@@ -835,23 +876,23 @@ impl ReportErrorExt for UnsupportedOpInfo {
     }
 }
 
-impl<'tcx> ReportErrorExt for InterpError<'tcx> {
+impl<'tcx> ReportErrorExt for InterpErrorKind<'tcx> {
     fn diagnostic_message(&self) -> DiagMessage {
         match self {
-            InterpError::UndefinedBehavior(ub) => ub.diagnostic_message(),
-            InterpError::Unsupported(e) => e.diagnostic_message(),
-            InterpError::InvalidProgram(e) => e.diagnostic_message(),
-            InterpError::ResourceExhaustion(e) => e.diagnostic_message(),
-            InterpError::MachineStop(e) => e.diagnostic_message(),
+            InterpErrorKind::UndefinedBehavior(ub) => ub.diagnostic_message(),
+            InterpErrorKind::Unsupported(e) => e.diagnostic_message(),
+            InterpErrorKind::InvalidProgram(e) => e.diagnostic_message(),
+            InterpErrorKind::ResourceExhaustion(e) => e.diagnostic_message(),
+            InterpErrorKind::MachineStop(e) => e.diagnostic_message(),
         }
     }
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
-            InterpError::UndefinedBehavior(ub) => ub.add_args(diag),
-            InterpError::Unsupported(e) => e.add_args(diag),
-            InterpError::InvalidProgram(e) => e.add_args(diag),
-            InterpError::ResourceExhaustion(e) => e.add_args(diag),
-            InterpError::MachineStop(e) => e.add_args(&mut |name, value| {
+            InterpErrorKind::UndefinedBehavior(ub) => ub.add_args(diag),
+            InterpErrorKind::Unsupported(e) => e.add_args(diag),
+            InterpErrorKind::InvalidProgram(e) => e.add_args(diag),
+            InterpErrorKind::ResourceExhaustion(e) => e.add_args(diag),
+            InterpErrorKind::MachineStop(e) => e.add_args(&mut |name, value| {
                 diag.arg(name, value);
             }),
         }

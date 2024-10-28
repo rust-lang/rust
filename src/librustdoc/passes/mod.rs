@@ -47,7 +47,7 @@ pub(crate) use self::lint::RUN_LINTS;
 #[derive(Copy, Clone)]
 pub(crate) struct Pass {
     pub(crate) name: &'static str,
-    pub(crate) run: fn(clean::Crate, &mut DocContext<'_>) -> clean::Crate,
+    pub(crate) run: Option<fn(clean::Crate, &mut DocContext<'_>) -> clean::Crate>,
     pub(crate) description: &'static str,
 }
 

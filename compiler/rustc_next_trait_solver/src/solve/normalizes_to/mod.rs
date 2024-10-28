@@ -15,7 +15,7 @@ use crate::solve::assembly::{self, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult,
+    NoSolution, QueryResult, Reveal,
 };
 
 impl<D, I> EvalCtxt<'_, D>
@@ -37,10 +37,61 @@ where
         match normalize_result {
             Ok(res) => Ok(res),
             Err(NoSolution) => {
-                let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                self.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                self.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                    let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
+                    this.add_rigid_constraints(param_env, alias)?;
+                    this.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
+                    this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                })
             }
+        }
+    }
+
+    /// Register any obligations that are used to validate that an alias should be
+    /// treated as rigid.
+    ///
+    /// An alias may be considered rigid if it fails normalization, but we also don't
+    /// want to consider aliases that are not well-formed to be rigid simply because
+    /// they fail normalization.
+    ///
+    /// For example, some `<T as Trait>::Assoc` where `T: Trait` does not hold, or an
+    /// opaque type whose hidden type doesn't actually satisfy the opaque item bounds.
+    fn add_rigid_constraints(
+        &mut self,
+        param_env: I::ParamEnv,
+        rigid_alias: ty::AliasTerm<I>,
+    ) -> Result<(), NoSolution> {
+        let cx = self.cx();
+        match rigid_alias.kind(cx) {
+            // Projections are rigid only if their trait ref holds,
+            // and the GAT where-clauses hold.
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                let trait_ref = rigid_alias.trait_ref(cx);
+                self.add_goal(GoalSource::AliasWellFormed, Goal::new(cx, param_env, trait_ref));
+                Ok(())
+            }
+            ty::AliasTermKind::OpaqueTy => {
+                match param_env.reveal() {
+                    // In user-facing mode, paques are only rigid if we may not define it.
+                    Reveal::UserFacing => {
+                        if rigid_alias
+                            .def_id
+                            .as_local()
+                            .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
+                        {
+                            Err(NoSolution)
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    // Opaques are never rigid in reveal-all mode.
+                    Reveal::All => Err(NoSolution),
+                }
+            }
+            // FIXME(generic_const_exprs): we would need to support generic consts here
+            ty::AliasTermKind::UnevaluatedConst => Err(NoSolution),
+            // Inherent and weak types are never rigid. This type must not be well-formed.
+            ty::AliasTermKind::WeakTy | ty::AliasTermKind::InherentTy => Err(NoSolution),
         }
     }
 
@@ -124,6 +175,7 @@ where
                     ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
 
                     // Add GAT where clauses from the trait's definition
+                    // FIXME: We don't need these, since these are the type's own WF obligations.
                     ecx.add_goals(
                         GoalSource::Misc,
                         cx.own_predicates_of(goal.predicate.def_id())
@@ -139,6 +191,14 @@ where
         } else {
             Err(NoSolution)
         }
+    }
+
+    fn consider_additional_alias_assumptions(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+        _alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>> {
+        vec![]
     }
 
     fn consider_impl_candidate(
@@ -179,7 +239,8 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
-            // Add GAT where clauses from the trait's definition
+            // Add GAT where clauses from the trait's definition.
+            // FIXME: We don't need these, since these are the type's own WF obligations.
             ecx.add_goals(
                 GoalSource::Misc,
                 cx.own_predicates_of(goal.predicate.def_id())
@@ -857,68 +918,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         panic!("`TransmuteFrom` does not have an associated type: {:?}", goal)
-    }
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        let ty::Tuple(types) = goal.predicate.self_ty().kind() else {
-            return Err(NoSolution);
-        };
-
-        let cx = ecx.cx();
-
-        let mut first_non_maybe = None;
-        let mut non_maybe_count = 0;
-        for ty in types.iter() {
-            if !matches!(ty::EffectKind::try_from_ty(cx, ty), Some(ty::EffectKind::Maybe)) {
-                first_non_maybe.get_or_insert(ty);
-                non_maybe_count += 1;
-            }
-        }
-
-        match non_maybe_count {
-            0 => {
-                let ty = ty::EffectKind::Maybe.to_ty(cx);
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-            1 => {
-                let ty = first_non_maybe.unwrap();
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-            _ => {
-                let mut min = ty::EffectKind::Maybe;
-
-                for ty in types.iter() {
-                    // We can't find the intersection if the types used are generic.
-                    //
-                    // FIXME(effects): do we want to look at where clauses to get some
-                    // clue for the case where generic types are being used?
-                    let Some(kind) = ty::EffectKind::try_from_ty(cx, ty) else {
-                        return Err(NoSolution);
-                    };
-
-                    let Some(result) = ty::EffectKind::intersection(min, kind) else {
-                        return Err(NoSolution);
-                    };
-
-                    min = result;
-                }
-
-                let ty = min.to_ty(cx);
-                ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_term(goal, ty.into());
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-        }
     }
 }
 

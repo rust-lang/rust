@@ -50,7 +50,8 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -84,7 +85,9 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 // and unwinds anyway, we will hit the "unwinding out of nounwind function" guard,
 // which causes a "panic in a function that cannot unwind".
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
     #[inline] // this should always be inlined into `panic_nounwind_fmt`
     #[track_caller]
@@ -131,7 +134,8 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 #[lang = "panic"] // used by lints and miri for panics
 pub const fn panic(expr: &'static str) -> ! {
     // Use Arguments::new_const instead of format_args!("{expr}") to potentially
@@ -169,7 +173,8 @@ macro_rules! panic_const {
                 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
                 #[cfg_attr(feature = "panic_immediate_abort", inline)]
                 #[track_caller]
-                #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+                #[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+                #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
                 #[lang = stringify!($lang)]
                 pub const fn $lang() -> ! {
                     // Use Arguments::new_const instead of format_args!("{expr}") to potentially
@@ -216,7 +221,8 @@ panic_const! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ false);
 }
@@ -232,7 +238,8 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
 #[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn panic_explicit() -> ! {
     panic_display(&"explicit panic");
 }
@@ -249,7 +256,8 @@ pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "panic_str_2015"]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
 }
@@ -259,7 +267,8 @@ pub const fn panic_str_2015(expr: &str) -> ! {
 #[rustc_do_not_const_check] // hooked by const-eval
 // enforce a &&str argument in const-check and hook this by const-eval
 #[rustc_const_panic_str]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
@@ -327,8 +336,9 @@ fn panic_in_cleanup() -> ! {
 }
 
 /// This function is used instead of panic_fmt in const eval.
-#[lang = "const_panic_fmt"]
-#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[lang = "const_panic_fmt"] // needed by const-eval machine to replace calls to `panic_fmt` lang item
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "panic_internals", issue = "none"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         // The panic_display function is hooked by const eval.

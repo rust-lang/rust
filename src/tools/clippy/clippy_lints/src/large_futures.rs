@@ -57,7 +57,7 @@ impl_lint_pass!(LargeFuture => [LARGE_FUTURES]);
 impl<'tcx> LateLintPass<'tcx> for LargeFuture {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Match(scrutinee, _, MatchSource::AwaitDesugar) = expr.kind
-            && let ExprKind::Call(func, [arg, ..]) = scrutinee.kind
+            && let ExprKind::Call(func, [arg]) = scrutinee.kind
             && let ExprKind::Path(QPath::LangItem(LangItem::IntoFutureIntoFuture, ..)) = func.kind
             && !expr.span.from_expansion()
             && let ty = cx.typeck_results().expr_ty(arg)

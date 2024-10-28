@@ -2,7 +2,7 @@
 
 fn main() {
     println!("{");
-    //~^ ERROR invalid format string: expected `'}'` but string was terminated
+    //~^ ERROR invalid format string: expected `}` but string was terminated
     println!("{{}}");
     println!("}");
     //~^ ERROR invalid format string: unmatched `}` found
@@ -13,11 +13,11 @@ fn main() {
     let _ = format!("{a:._$}", a = "", _ = 0);
     //~^ ERROR invalid format string: invalid argument name `_`
     let _ = format!("{");
-    //~^ ERROR invalid format string: expected `'}'` but string was terminated
+    //~^ ERROR invalid format string: expected `}` but string was terminated
     let _ = format!("}");
     //~^ ERROR invalid format string: unmatched `}` found
     let _ = format!("{\\}");
-    //~^ ERROR invalid format string: expected `'}'`, found `'\'`
+    //~^ ERROR invalid format string: expected `}`, found `\`
     let _ = format!("\n\n\n{\n\n\n");
     //~^ ERROR invalid format string
     let _ = format!(r###"

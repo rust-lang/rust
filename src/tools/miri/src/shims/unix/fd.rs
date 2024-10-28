@@ -9,6 +9,7 @@ use std::rc::{Rc, Weak};
 
 use rustc_target::abi::Size;
 
+use crate::helpers::check_min_arg_count;
 use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
@@ -422,7 +423,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
     }
@@ -431,7 +432,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         if new_fd_num != old_fd_num {
             // Close new_fd if it is previously opened.
@@ -447,7 +448,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn flock(&mut self, fd_num: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
         // We need to check that there aren't unsupported options in `op`.
@@ -481,56 +482,62 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let [fd_num, cmd, ..] = args else {
-            throw_ub_format!(
-                "incorrect number of arguments for fcntl: got {}, expected at least 2",
-                args.len()
-            );
-        };
+        let [fd_num, cmd] = check_min_arg_count("fcntl", args)?;
+
         let fd_num = this.read_scalar(fd_num)?.to_i32()?;
         let cmd = this.read_scalar(cmd)?.to_i32()?;
 
+        let f_getfd = this.eval_libc_i32("F_GETFD");
+        let f_dupfd = this.eval_libc_i32("F_DUPFD");
+        let f_dupfd_cloexec = this.eval_libc_i32("F_DUPFD_CLOEXEC");
+
         // We only support getting the flags for a descriptor.
-        if cmd == this.eval_libc_i32("F_GETFD") {
-            // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
-            // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
-            // always sets this flag when opening a file. However we still need to check that the
-            // file itself is open.
-            interp_ok(Scalar::from_i32(if this.machine.fds.is_fd_num(fd_num) {
-                this.eval_libc_i32("FD_CLOEXEC")
-            } else {
-                this.fd_not_found()?
-            }))
-        } else if cmd == this.eval_libc_i32("F_DUPFD")
-            || cmd == this.eval_libc_i32("F_DUPFD_CLOEXEC")
-        {
-            // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
-            // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
-            // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
-            // thus they can share the same implementation here.
-            let [_, _, start, ..] = args else {
-                throw_ub_format!(
-                    "incorrect number of arguments for fcntl with cmd=`F_DUPFD`/`F_DUPFD_CLOEXEC`: got {}, expected at least 3",
-                    args.len()
-                );
-            };
-            let start = this.read_scalar(start)?.to_i32()?;
-
-            match this.machine.fds.get(fd_num) {
-                Some(fd) =>
-                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start))),
-                None => interp_ok(Scalar::from_i32(this.fd_not_found()?)),
+        match cmd {
+            cmd if cmd == f_getfd => {
+                // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
+                // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
+                // always sets this flag when opening a file. However we still need to check that the
+                // file itself is open.
+                if !this.machine.fds.is_fd_num(fd_num) {
+                    this.set_last_error_and_return_i32(LibcError("EBADF"))
+                } else {
+                    interp_ok(this.eval_libc("FD_CLOEXEC"))
+                }
             }
-        } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC") {
-            // Reject if isolation is enabled.
-            if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-                this.reject_in_isolation("`fcntl`", reject_with)?;
-                return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
-            }
+            cmd if cmd == f_dupfd || cmd == f_dupfd_cloexec => {
+                // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
+                // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
+                // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
+                // thus they can share the same implementation here.
+                let cmd_name = if cmd == f_dupfd {
+                    "fcntl(fd, F_DUPFD, ...)"
+                } else {
+                    "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
+                };
 
-            this.ffullsync_fd(fd_num)
-        } else {
-            throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
+                let [_, _, start] = check_min_arg_count(cmd_name, args)?;
+                let start = this.read_scalar(start)?.to_i32()?;
+
+                if let Some(fd) = this.machine.fds.get(fd_num) {
+                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
+                } else {
+                    this.set_last_error_and_return_i32(LibcError("EBADF"))
+                }
+            }
+            cmd if this.tcx.sess.target.os == "macos"
+                && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
+            {
+                // Reject if isolation is enabled.
+                if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+                    this.reject_in_isolation("`fcntl`", reject_with)?;
+                    return this.set_last_error_and_return_i32(ErrorKind::PermissionDenied);
+                }
+
+                this.ffullsync_fd(fd_num)
+            }
+            cmd => {
+                throw_unsup_format!("fcntl: unsupported command {cmd:#x}");
+            }
         }
     }
 
@@ -540,23 +547,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
 
         let Some(fd) = this.machine.fds.remove(fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let result = fd.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
-    }
-
-    /// Function used when a file descriptor does not exist. It returns `Ok(-1)`and sets
-    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
-    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
-    /// types (like `read`, that returns an `i64`).
-    fn fd_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
-        let this = self.eval_context_mut();
-        let ebadf = this.eval_libc("EBADF");
-        this.set_last_error(ebadf)?;
-        interp_ok((-1).into())
     }
 
     /// Read data from `fd` into buffer specified by `buf` and `count`.
@@ -592,9 +588,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We temporarily dup the FD to be able to retain mutable access to `this`.
         let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
-            let res: i32 = this.fd_not_found()?;
-            this.write_int(res, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
         trace!("read: FD mapped to {fd:?}");
@@ -639,9 +633,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            let res: i32 = this.fd_not_found()?;
-            this.write_int(res, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
         match offset {

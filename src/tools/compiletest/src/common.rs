@@ -338,8 +338,8 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` when a rustdoc test fails
-    pub has_tidy: bool,
+    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    pub has_html_tidy: bool,
 
     /// whether to run `enzyme` autodiff tests
     pub has_enzyme: bool,
@@ -376,6 +376,7 @@ pub struct Config {
     pub only_modified: bool,
 
     pub target_cfgs: OnceLock<TargetCfgs>,
+    pub builtin_cfg_names: OnceLock<HashSet<String>>,
 
     pub nocapture: bool,
 
@@ -387,6 +388,9 @@ pub struct Config {
     /// True if the profiler runtime is enabled for this target.
     /// Used by the "needs-profiler-runtime" directive in test files.
     pub profiler_runtime: bool,
+
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub diff_command: Option<String>,
 }
 
 impl Config {
@@ -438,6 +442,11 @@ impl Config {
 
     pub fn can_unwind(&self) -> bool {
         self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
+    /// Get the list of builtin, 'well known' cfg names
+    pub fn builtin_cfg_names(&self) -> &HashSet<String> {
+        self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
     }
 
     pub fn has_threads(&self) -> bool {
@@ -651,6 +660,18 @@ pub enum Endian {
     Big,
 }
 
+fn builtin_cfg_names(config: &Config) -> HashSet<String> {
+    rustc_output(
+        config,
+        &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .chain(std::iter::once(String::from("test")))
+    .collect()
+}
+
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
     let mut command = Command::new(&config.rustc_path);
     add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
@@ -759,14 +780,8 @@ pub fn output_testname_unique(
 /// test/revision should reside. Example:
 ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
-    // In run-make tests, constructing a relative path + unique testname causes a double layering
-    // since revisions are not supported, causing unnecessary nesting.
-    if config.mode == Mode::RunMake {
-        output_relative_path(config, &testpaths.relative_dir)
-    } else {
-        output_relative_path(config, &testpaths.relative_dir)
-            .join(output_testname_unique(config, testpaths, revision))
-    }
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
 }
 
 /// Absolute path to the base filename used as output for the given

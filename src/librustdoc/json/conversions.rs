@@ -552,20 +552,18 @@ impl FromClean<clean::GenericBound> for GenericBound {
 }
 
 pub(crate) fn from_trait_bound_modifier(
-    modifier: rustc_hir::TraitBoundModifier,
+    modifiers: rustc_hir::TraitBoundModifiers,
 ) -> TraitBoundModifier {
-    use rustc_hir::TraitBoundModifier::*;
-    match modifier {
-        None => TraitBoundModifier::None,
-        Maybe => TraitBoundModifier::Maybe,
-        MaybeConst => TraitBoundModifier::MaybeConst,
-        // FIXME(const_trait_impl): Create rjt::TBM::Const and map to it once always-const bounds
-        // are less experimental.
-        Const => TraitBoundModifier::None,
-        // FIXME(negative-bounds): This bound should be rendered negative, but
-        // since that's experimental, maybe let's not add it to the rustdoc json
-        // API just now...
-        Negative => TraitBoundModifier::None,
+    use rustc_hir as hir;
+    let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+    match (constness, polarity) {
+        (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
+        (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,
+        (hir::BoundConstness::Maybe(_), hir::BoundPolarity::Positive) => {
+            TraitBoundModifier::MaybeConst
+        }
+        // FIXME: Fill out the rest of this matrix.
+        _ => TraitBoundModifier::None,
     }
 }
 
@@ -672,12 +670,12 @@ impl FromClean<clean::Trait> for Trait {
         let tcx = renderer.tcx;
         let is_auto = trait_.is_auto(tcx);
         let is_unsafe = trait_.safety(tcx) == rustc_hir::Safety::Unsafe;
-        let is_object_safe = trait_.is_object_safe(tcx);
+        let is_dyn_compatible = trait_.is_dyn_compatible(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
             is_unsafe,
-            is_object_safe,
+            is_dyn_compatible,
             items: renderer.ids(items),
             generics: generics.into_json(renderer),
             bounds: bounds.into_json(renderer),

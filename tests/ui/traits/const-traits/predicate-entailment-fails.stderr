@@ -1,0 +1,66 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/predicate-entailment-fails.rs:2:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:15:31
+   |
+LL |     type Bar<T> where T: ~const Bar;
+   |     ----------- definition of `Bar` from trait
+...
+LL |     type Bar<T> = () where T: const Bar;
+   |                               ^^^^^^^^^ impl has extra requirement `T: const Bar`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:18:26
+   |
+LL |     fn foo<T>() where T: ~const Bar;
+   |     -------------------------------- definition of `foo` from trait
+...
+LL |     fn foo<T>() where T: const Bar {}
+   |                          ^^^^^^^^^ impl has extra requirement `T: const Bar`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:29:31
+   |
+LL |     type Bar<T> where T: Bar;
+   |     ----------- definition of `Bar` from trait
+...
+LL |     type Bar<T> = () where T: const Bar;
+   |                               ^^^^^^^^^ impl has extra requirement `T: const Bar`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:32:26
+   |
+LL |     fn foo<T>() where T: Bar;
+   |     ------------------------- definition of `foo` from trait
+...
+LL |     fn foo<T>() where T: const Bar {}
+   |                          ^^^^^^^^^ impl has extra requirement `T: const Bar`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:36:31
+   |
+LL |     type Bar<T> where T: Bar;
+   |     ----------- definition of `Bar` from trait
+...
+LL |     type Bar<T> = () where T: ~const Bar;
+   |                               ^^^^^^^^^^ impl has extra requirement `T: ~const Bar`
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/predicate-entailment-fails.rs:39:26
+   |
+LL |     fn foo<T>() where T: Bar;
+   |     ------------------------- definition of `foo` from trait
+...
+LL |     fn foo<T>() where T: ~const Bar {}
+   |                          ^^^^^^^^^^ impl has extra requirement `T: ~const Bar`
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0276`.

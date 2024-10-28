@@ -132,7 +132,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align)
+            ub_checks::is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &*ptr::slice_from_raw_parts(data, len)
@@ -171,8 +171,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "CURRENT_RUSTC_VERSION")]
-#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
@@ -187,7 +186,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align)
+            ub_checks::is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)
@@ -204,8 +203,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_stable(feature = "const_slice_from_ref", since = "CURRENT_RUSTC_VERSION")]
-#[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
+#[rustc_const_stable(feature = "const_slice_from_ref", since = "1.83.0")]
 #[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)

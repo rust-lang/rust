@@ -11,9 +11,8 @@
 #![feature(let_chains)]
 #![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
-#![feature(strict_provenance)]
-#![feature(exposed_provenance)]
 #![feature(pointer_is_aligned_to)]
+#![feature(unqualified_local_imports)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -42,13 +41,12 @@
 )]
 #![warn(
     rust_2018_idioms,
+    unqualified_local_imports,
     clippy::cast_possible_wrap, // unsigned -> signed
     clippy::cast_sign_loss, // signed -> unsigned
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
-#![cfg_attr(not(bootstrap), feature(unqualified_local_imports))]
-#![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
@@ -149,7 +147,7 @@ pub use crate::range_map::RangeMap;
 pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
-pub use crate::shims::io_error::{EvalContextExt as _, LibcError};
+pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;

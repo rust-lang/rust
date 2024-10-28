@@ -1095,6 +1095,7 @@ fn main() {
 
     #[test]
     fn field_enum_cross_file() {
+        // FIXME: The import is missing
         check_assist(
             bool_to_enum,
             r#"
@@ -1132,7 +1133,7 @@ fn foo() {
 }
 
 //- /main.rs
-use foo::{Bool, Foo};
+use foo::Foo;
 
 mod foo;
 

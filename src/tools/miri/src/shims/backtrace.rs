@@ -5,6 +5,7 @@ use rustc_span::{BytePos, Loc, Symbol, hygiene};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
+use crate::helpers::check_min_arg_count;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -39,11 +40,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
 
-        let flags = if let Some(flags_op) = args.first() {
-            this.read_scalar(flags_op)?.to_u64()?
-        } else {
-            throw_ub_format!("expected at least 1 argument")
-        };
+        let [flags] = check_min_arg_count("miri_get_backtrace", args)?;
+        let flags = this.read_scalar(flags)?.to_u64()?;
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {

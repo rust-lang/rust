@@ -105,9 +105,11 @@ async function getDebugConfiguration(
         const commandCCpp: string = createCommandLink("ms-vscode.cpptools");
         const commandCodeLLDB: string = createCommandLink("vadimcn.vscode-lldb");
         const commandNativeDebug: string = createCommandLink("webfreak.debug");
+        const commandLLDBDap: string = createCommandLink("llvm-vs-code-extensions.lldb-dap");
 
         await vscode.window.showErrorMessage(
             `Install [CodeLLDB](command:${commandCodeLLDB} "Open CodeLLDB")` +
+                `, [lldb-dap](command:${commandLLDBDap} "Open lldb-dap")` +
                 `, [C/C++](command:${commandCCpp} "Open C/C++") ` +
                 `or [Native Debug](command:${commandNativeDebug} "Open Native Debug") for debugging.`,
         );
@@ -149,9 +151,24 @@ async function getDebugConfiguration(
     const env = prepareEnv(inheritEnv, runnable.label, runnableArgs, config.runnablesExtraEnv);
     const executable = await getDebugExecutable(runnableArgs, env);
     let sourceFileMap = debugOptions.sourceFileMap;
+
     if (sourceFileMap === "auto") {
         sourceFileMap = {};
-        await discoverSourceFileMap(sourceFileMap, env, wsFolder);
+        const computedSourceFileMap = await discoverSourceFileMap(env, wsFolder);
+
+        if (computedSourceFileMap) {
+            // lldb-dap requires passing the source map as an array of two element arrays.
+            // the two element array contains a source and destination pathname.
+            // TODO: remove lldb-dap-specific post-processing once
+            // https://github.com/llvm/llvm-project/pull/106919/ is released in the extension.
+            if (provider.type === "lldb-dap") {
+                provider.additional["sourceMap"] = [
+                    [computedSourceFileMap?.source, computedSourceFileMap?.destination],
+                ];
+            } else {
+                sourceFileMap[computedSourceFileMap.source] = computedSourceFileMap.destination;
+            }
+        }
     }
 
     const debugConfig = getDebugConfig(
@@ -186,11 +203,15 @@ async function getDebugConfiguration(
     return debugConfig;
 }
 
+type SourceFileMap = {
+    source: string;
+    destination: string;
+};
+
 async function discoverSourceFileMap(
-    sourceFileMap: Record<string, string>,
     env: Record<string, string>,
     cwd: string,
-) {
+): Promise<SourceFileMap | undefined> {
     const sysroot = env["RUSTC_TOOLCHAIN"];
     if (sysroot) {
         // let's try to use the default toolchain
@@ -200,9 +221,11 @@ async function discoverSourceFileMap(
         const commitHash = rx.exec(data)?.[1];
         if (commitHash) {
             const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
-            sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+            return { source: rustlib, destination: rustlib };
         }
     }
+
+    return;
 }
 
 type PropertyFetcher<Config, Input, Key extends keyof Config> = (
@@ -215,15 +238,26 @@ type DebugConfigProvider<Type extends string, DebugConfig extends BaseDebugConfi
     runnableArgsProperty: PropertyFetcher<DebugConfig, ra.CargoRunnableArgs, keyof DebugConfig>;
     sourceFileMapProperty?: keyof DebugConfig;
     type: Type;
-    additional?: Record<string, unknown>;
+    additional: Record<string, unknown>;
 };
 
 type KnownEnginesType = (typeof knownEngines)[keyof typeof knownEngines];
 const knownEngines: {
+    "llvm-vs-code-extensions.lldb-dap": DebugConfigProvider<"lldb-dap", LldbDapDebugConfig>;
     "vadimcn.vscode-lldb": DebugConfigProvider<"lldb", CodeLldbDebugConfig>;
     "ms-vscode.cpptools": DebugConfigProvider<"cppvsdbg" | "cppdbg", CCppDebugConfig>;
     "webfreak.debug": DebugConfigProvider<"gdb", NativeDebugConfig>;
 } = {
+    "llvm-vs-code-extensions.lldb-dap": {
+        type: "lldb-dap",
+        executableProperty: "program",
+        environmentProperty: (env) => ["env", Object.entries(env).map(([k, v]) => `${k}=${v}`)],
+        runnableArgsProperty: (runnableArgs: ra.CargoRunnableArgs) => [
+            "args",
+            runnableArgs.executableArgs,
+        ],
+        additional: {},
+    },
     "vadimcn.vscode-lldb": {
         type: "lldb",
         executableProperty: "program",
@@ -335,6 +369,13 @@ type CCppDebugConfig = {
         MIMode: "lldb";
     };
 } & BaseDebugConfig<"cppvsdbg" | "cppdbg">;
+
+type LldbDapDebugConfig = {
+    program: string;
+    args: string[];
+    env: string[];
+    sourceMap: [string, string][];
+} & BaseDebugConfig<"lldb-dap">;
 
 type CodeLldbDebugConfig = {
     program: string;

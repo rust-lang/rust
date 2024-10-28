@@ -207,13 +207,13 @@ pub(crate) fn get_stabilization_version() -> String {
 
 fn get_test_file_contents(lint_name: &str, msrv: bool) -> String {
     let mut test = formatdoc!(
-        r#"
+        r"
         #![warn(clippy::{lint_name})]
 
         fn main() {{
             // test code goes here
         }}
-    "#
+    "
     );
 
     if msrv {
@@ -272,23 +272,23 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     result.push_str(&if enable_msrv {
         formatdoc!(
-            r#"
+            r"
             use clippy_config::msrvs::{{self, Msrv}};
             use clippy_config::Conf;
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
             use rustc_session::impl_lint_pass;
 
-        "#
+        "
         )
     } else {
         formatdoc!(
-            r#"
+            r"
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}}};
             use rustc_session::declare_lint_pass;
 
-        "#
+        "
         )
     });
 
@@ -296,7 +296,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     result.push_str(&if enable_msrv {
         formatdoc!(
-            r#"
+            r"
             pub struct {name_camel} {{
                 msrv: Msrv,
             }}
@@ -315,15 +315,15 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
             // TODO: Add MSRV level to `clippy_config/src/msrvs.rs` if needed.
             // TODO: Update msrv config comment in `clippy_config/src/conf.rs`
-        "#
+        "
         )
     } else {
         formatdoc!(
-            r#"
+            r"
             declare_lint_pass!({name_camel} => [{name_upper}]);
 
             impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
-        "#
+        "
         )
     });
 
@@ -416,7 +416,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     } else {
         let _: fmt::Result = writedoc!(
             lint_file_contents,
-            r#"
+            r"
                 use rustc_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};
@@ -425,7 +425,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
                 pub(super) fn check(cx: &{context_import}{pass_lifetimes}) {{
                     todo!();
                 }}
-           "#
+           "
         );
     }
 

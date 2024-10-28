@@ -100,7 +100,7 @@ mod prim_bool {}
 ///
 /// Both match arms must produce values of type [`u32`], but since `break` never produces a value
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
+/// behavior of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
 /// [`exit`]: ../std/process/fn.exit.html
@@ -134,7 +134,7 @@ mod prim_bool {}
 ///
 /// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
 /// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
-/// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
+/// [`Ok`] variant. This illustrates another behavior of `!` - it can be used to "delete" certain
 /// enum variants from generic types like `Result`.
 ///
 /// ## Infinite loops
@@ -351,7 +351,7 @@ mod prim_never {}
 /// ```
 ///
 /// ```no_run
-/// // Undefined behaviour
+/// // Undefined behavior
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
@@ -505,9 +505,11 @@ impl () {}
 ///
 /// *[See also the `std::ptr` module](ptr).*
 ///
-/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
-/// dereferenced (using the `*` operator), it must be non-null and aligned.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns. Raw pointers
+/// can be out-of-bounds, unaligned, or [`null`]. However, when loading from or storing to a raw
+/// pointer, it must be [valid] for the given access and aligned. When using a field expression,
+/// tuple index expression, or array/slice index expression on a raw pointer, it follows the rules
+/// of [in-bounds pointer arithmetic][`offset`].
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
@@ -566,7 +568,7 @@ impl () {}
 /// Instead of coercing a reference to a raw pointer, you can use the macros
 /// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
 /// These macros allow you to create raw pointers to fields to which you cannot
-/// create a reference (without causing undefined behaviour), such as an
+/// create a reference (without causing undefined behavior), such as an
 /// unaligned field. This might be necessary if packed structs or uninitialized
 /// memory is involved.
 ///
@@ -613,6 +615,7 @@ impl () {}
 /// [`offset`]: pointer::offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
+/// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
@@ -1450,7 +1453,7 @@ mod prim_usize {}
 /// <code>&[bool]</code> can only point to an allocation containing the integer values `1`
 /// ([`true`](../std/keyword.true.html)) or `0` ([`false`](../std/keyword.false.html)), but
 /// creating a <code>&[bool]</code> that points to an allocation containing
-/// the value `3` causes undefined behaviour.
+/// the value `3` causes undefined behavior.
 /// In fact, <code>[Option]\<&T></code> has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
@@ -1781,9 +1784,11 @@ mod prim_ref {}
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
-///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
-///   Furthermore, if `U` satisfies the requirements [outlined here](result/index.html#representation),
-///   then `T` and `Result<T, U>` and `Result<U, T>` are all ABI-compatible.
+///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
+///   requirements, then `T` and `E` are ABI-compatible. Such an enum `E` is called "option-like".
+///   - The enum `E` has exactly two variants.
+///   - One variant has exactly one field, of type `T`.
+///   - All fields of the other variant are zero-sized with 1-byte alignment.
 ///
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///

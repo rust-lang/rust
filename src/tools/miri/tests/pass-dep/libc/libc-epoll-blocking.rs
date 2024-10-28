@@ -161,7 +161,7 @@ fn test_epoll_race() {
         // Write to the eventfd instance.
         let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
         let res = unsafe { libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-        // read returns number of bytes that have been read, which is always 8.
+        // write returns number of bytes written, which is always 8.
         assert_eq!(res, 8);
     });
     thread::yield_now();

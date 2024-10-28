@@ -224,6 +224,7 @@ pub struct Config {
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_enzyme: bool,
+    pub llvm_offload: bool,
     pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -368,6 +369,9 @@ pub struct Config {
     /// The paths to work with. For example: with `./x check foo bar` we get
     /// `paths=["foo", "bar"]`.
     pub paths: Vec<PathBuf>,
+
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub compiletest_diff_tool: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -611,6 +615,9 @@ impl Target {
         let mut target: Self = Default::default();
         if triple.contains("-none") || triple.contains("nvptx") || triple.contains("switch") {
             target.no_std = true;
+        }
+        if triple.contains("emscripten") {
+            target.runner = Some("node".into());
         }
         target
     }
@@ -888,6 +895,8 @@ define_config! {
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        jobs: Option<u32> = "jobs",
+        compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
     }
 }
 
@@ -930,6 +939,7 @@ define_config! {
         use_libcxx: Option<bool> = "use-libcxx",
         use_linker: Option<String> = "use-linker",
         allow_old_toolchain: Option<bool> = "allow-old-toolchain",
+        offload: Option<bool> = "offload",
         polly: Option<bool> = "polly",
         clang: Option<bool> = "clang",
         enable_warnings: Option<bool> = "enable-warnings",
@@ -993,7 +1003,7 @@ impl<'de> Deserialize<'de> for RustOptimize {
 
 struct OptimizeVisitor;
 
-impl<'de> serde::de::Visitor<'de> for OptimizeVisitor {
+impl serde::de::Visitor<'_> for OptimizeVisitor {
     type Value = RustOptimize;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1068,7 +1078,7 @@ impl<'de> Deserialize<'de> for LldMode {
     {
         struct LldModeVisitor;
 
-        impl<'de> serde::de::Visitor<'de> for LldModeVisitor {
+        impl serde::de::Visitor<'_> for LldModeVisitor {
             type Value = LldMode;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1286,7 +1296,6 @@ impl Config {
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
-        config.jobs = Some(threads_from_config(flags.jobs as u32));
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
@@ -1508,7 +1517,11 @@ impl Config {
             metrics: _,
             android_ndk,
             optimized_compiler_builtins,
+            jobs,
+            compiletest_diff_tool,
         } = toml.build.unwrap_or_default();
+
+        config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
         if let Some(file_build) = build {
             config.build = TargetSelection::from_user(&file_build);
@@ -1636,6 +1649,7 @@ impl Config {
         // we'll infer default values for them later
         let mut llvm_tests = None;
         let mut llvm_enzyme = None;
+        let mut llvm_offload = None;
         let mut llvm_plugins = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -1873,6 +1887,7 @@ impl Config {
                 use_libcxx,
                 use_linker,
                 allow_old_toolchain,
+                offload,
                 polly,
                 clang,
                 enable_warnings,
@@ -1889,6 +1904,7 @@ impl Config {
             set(&mut config.ninja_in_file, ninja);
             llvm_tests = tests;
             llvm_enzyme = enzyme;
+            llvm_offload = offload;
             llvm_plugins = plugins;
             set(&mut config.llvm_optimize, optimize_toml);
             set(&mut config.llvm_thin_lto, thin_lto);
@@ -1910,6 +1926,7 @@ impl Config {
             set(&mut config.llvm_use_libcxx, use_libcxx);
             config.llvm_use_linker.clone_from(&use_linker);
             config.llvm_allow_old_toolchain = allow_old_toolchain.unwrap_or(false);
+            config.llvm_offload = offload.unwrap_or(false);
             config.llvm_polly = polly.unwrap_or(false);
             config.llvm_clang = clang.unwrap_or(false);
             config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
@@ -2086,6 +2103,7 @@ impl Config {
 
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
+        config.llvm_offload = llvm_offload.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
 
@@ -2152,6 +2170,7 @@ impl Config {
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
+        config.compiletest_diff_tool = compiletest_diff_tool;
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
@@ -2748,25 +2767,25 @@ impl Config {
             }
         };
 
-        let files_to_track = &[
-            self.src.join("compiler"),
-            self.src.join("library"),
-            self.src.join("src/version"),
-            self.src.join("src/stage0"),
-            self.src.join("src/ci/channel"),
-        ];
+        let files_to_track =
+            &["compiler", "library", "src/version", "src/stage0", "src/ci/channel"];
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit =
-            get_closest_merge_commit(Some(&self.src), &self.git_config(), files_to_track).unwrap();
-        if commit.is_empty() {
-            println!("ERROR: could not find commit hash for downloading rustc");
-            println!("HELP: maybe your repository history is too shallow?");
-            println!("HELP: consider disabling `download-rustc`");
-            println!("HELP: or fetch enough history to include one upstream commit");
-            crate::exit!(1);
-        }
+        let commit = match self.last_modified_commit(files_to_track, "download-rustc", if_unchanged)
+        {
+            Some(commit) => commit,
+            None => {
+                if if_unchanged {
+                    return None;
+                }
+                println!("ERROR: could not find commit hash for downloading rustc");
+                println!("HELP: maybe your repository history is too shallow?");
+                println!("HELP: consider disabling `download-rustc`");
+                println!("HELP: or fetch enough history to include one upstream commit");
+                crate::exit!(1);
+            }
+        };
 
         if CiEnv::is_ci() && {
             let head_sha =
@@ -2781,31 +2800,7 @@ impl Config {
             return None;
         }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let has_changes = !t!(helpers::git(Some(&self.src))
-            .args(["diff-index", "--quiet", &commit])
-            .arg("--")
-            .args(files_to_track)
-            .as_command_mut()
-            .status())
-        .success();
-        if has_changes {
-            if if_unchanged {
-                if self.is_verbose() {
-                    println!(
-                        "WARNING: saw changes to compiler/ or library/ since {commit}; \
-                            ignoring `download-rustc`"
-                    );
-                }
-                return None;
-            }
-            println!(
-                "WARNING: `download-rustc` is enabled, but there are changes to \
-                    compiler/ or library/"
-            );
-        }
-
-        Some(commit.to_string())
+        Some(commit)
     }
 
     fn parse_download_ci_llvm(
@@ -2876,14 +2871,7 @@ impl Config {
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
         let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", &commit, "--"]);
-
-        // Handle running from a directory other than the top level
-        let top_level = &self.src;
-
-        for path in modified_paths {
-            git.arg(top_level.join(path));
-        }
+        git.args(["diff-index", "--quiet", &commit, "--"]).args(modified_paths);
 
         let has_changes = !t!(git.as_command_mut().status()).success();
         if has_changes {
@@ -2975,6 +2963,7 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
         use_libcxx,
         use_linker,
         allow_old_toolchain,
+        offload,
         polly,
         clang,
         enable_warnings,
@@ -2997,6 +2986,7 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
     err!(current_llvm_config.use_libcxx, use_libcxx);
     err!(current_llvm_config.use_linker, use_linker);
     err!(current_llvm_config.allow_old_toolchain, allow_old_toolchain);
+    err!(current_llvm_config.offload, offload);
     err!(current_llvm_config.polly, polly);
     err!(current_llvm_config.clang, clang);
     err!(current_llvm_config.build_config, build_config);

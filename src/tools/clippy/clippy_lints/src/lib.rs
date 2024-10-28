@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
@@ -56,13 +57,15 @@ extern crate rustc_trait_selection;
 extern crate thin_vec;
 
 #[macro_use]
-extern crate clippy_utils;
+mod declare_clippy_lint;
+
 #[macro_use]
-extern crate declare_clippy_lint;
+extern crate clippy_utils;
 
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+pub mod ctfe; // Very important lint, do not remove (rust#125116)
 pub mod declared_lints;
 pub mod deprecated_lints;
 
@@ -203,6 +206,7 @@ mod manual_clamp;
 mod manual_div_ceil;
 mod manual_float_methods;
 mod manual_hash_one;
+mod manual_ignore_case_cmp;
 mod manual_is_ascii_check;
 mod manual_is_power_of_two;
 mod manual_let_else;
@@ -360,6 +364,7 @@ mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
 mod unnecessary_box_returns;
+mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
@@ -391,7 +396,7 @@ mod zero_sized_map_values;
 mod zombie_processes;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use clippy_config::{Conf, get_configuration_metadata};
+use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
@@ -519,8 +524,9 @@ impl LintInfo {
 
 pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
+
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
-        println!("{}", info.explanation);
+        println!("{}", sanitize_explanation(info.explanation));
         // Check if the lint has configuration
         let mut mdconf = get_configuration_metadata();
         let name = name.to_ascii_lowercase();
@@ -599,6 +605,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             Box::new(utils::internal_lints::almost_standard_lint_formulation::AlmostStandardFormulation::new())
         });
     }
+
+    store.register_late_pass(|_| Box::new(ctfe::ClippyCtfe));
 
     store.register_late_pass(move |_| Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(conf)));
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
@@ -896,7 +904,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(manual_range_patterns::ManualRangePatterns));
     store.register_early_pass(|| Box::new(visibility::Visibility));
     store.register_late_pass(move |_| Box::new(tuple_array_conversions::TupleArrayConversions::new(conf)));
-    store.register_late_pass(|_| Box::new(manual_float_methods::ManualFloatMethods));
+    store.register_late_pass(move |_| Box::new(manual_float_methods::ManualFloatMethods::new(conf)));
     store.register_late_pass(|_| Box::new(four_forward_slashes::FourForwardSlashes));
     store.register_late_pass(|_| Box::new(error_impl_error::ErrorImplError));
     store.register_late_pass(move |_| Box::new(absolute_paths::AbsolutePaths::new(conf)));
@@ -941,5 +949,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     store.register_late_pass(|_| Box::new(non_zero_suggestions::NonZeroSuggestions));
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
+    store.register_late_pass(|_| Box::new(manual_ignore_case_cmp::ManualIgnoreCaseCmp));
+    store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

@@ -8,7 +8,6 @@ use arrayvec::ArrayVec;
 use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
-use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -641,12 +640,11 @@ impl Item {
             asyncness: ty::Asyncness,
         ) -> hir::FnHeader {
             let sig = tcx.fn_sig(def_id).skip_binder();
-            let constness =
-                if tcx.is_const_fn(def_id) || is_unstable_const_fn(tcx, def_id).is_some() {
-                    hir::Constness::Const
-                } else {
-                    hir::Constness::NotConst
-                };
+            let constness = if tcx.is_const_fn(def_id) {
+                hir::Constness::Const
+            } else {
+                hir::Constness::NotConst
+            };
             let asyncness = match asyncness {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
@@ -664,9 +662,7 @@ impl Item {
                         safety
                     },
                     abi,
-                    constness: if tcx.is_const_fn(def_id)
-                        || is_unstable_const_fn(tcx, def_id).is_some()
-                    {
+                    constness: if tcx.is_const_fn(def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
@@ -966,8 +962,8 @@ pub(crate) trait AttributesExt {
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
-        let doc_cfg_active = tcx.features().doc_cfg;
-        let doc_auto_cfg_active = tcx.features().doc_auto_cfg;
+        let doc_cfg_active = tcx.features().doc_cfg();
+        let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
 
         fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
             let mut iter = it.into_iter();
@@ -1228,15 +1224,14 @@ impl Attributes {
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
-                    match l.lit().unwrap().kind {
-                        ast::LitKind::Str(s, _) => {
-                            aliases.insert(s);
-                        }
-                        _ => unreachable!(),
+                    if let Some(lit) = l.lit()
+                        && let ast::LitKind::Str(s, _) = lit.kind
+                    {
+                        aliases.insert(s);
                     }
                 }
-            } else {
-                aliases.insert(attr.value_str().unwrap());
+            } else if let Some(value) = attr.value_str() {
+                aliases.insert(value);
             }
         }
         aliases.into_iter().collect::<Vec<_>>().into()
@@ -1258,7 +1253,7 @@ impl Eq for Attributes {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {
-    TraitBound(PolyTrait, hir::TraitBoundModifier),
+    TraitBound(PolyTrait, hir::TraitBoundModifiers),
     Outlives(Lifetime),
     /// `use<'a, T>` precise-capturing bound syntax
     Use(Vec<Symbol>),
@@ -1266,19 +1261,22 @@ pub(crate) enum GenericBound {
 
 impl GenericBound {
     pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifier::None)
+        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifier::Maybe)
+        Self::sized_with(cx, hir::TraitBoundModifiers {
+            polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+            constness: hir::BoundConstness::Never,
+        })
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
+    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
-        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
+        GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifiers)
     }
 
     pub(crate) fn is_trait_bound(&self) -> bool {
@@ -1286,8 +1284,10 @@ impl GenericBound {
     }
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
-        use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self
+        if let GenericBound::TraitBound(
+            PolyTrait { ref trait_, .. },
+            rustc_hir::TraitBoundModifiers::NONE,
+        ) = *self
             && Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
         {
             return true;
@@ -1362,8 +1362,7 @@ impl GenericParamDef {
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
-            GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { synthetic: is_host_effect, .. } => is_host_effect,
+            GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
             GenericParamDefKind::Type { synthetic, .. } => synthetic,
         }
     }
@@ -1450,7 +1449,7 @@ impl Trait {
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
     }
-    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
+    pub(crate) fn is_dyn_compatible(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.is_dyn_compatible(self.def_id)
     }
 }

@@ -346,13 +346,13 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                     .cx
                     .qpath_res(p, hir_id)
                     .opt_def_id()
-                    .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                    .map_or(false, |id| self.cx.tcx.is_const_fn(id)) => {},
                 ExprKind::MethodCall(..)
                     if self
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                        .map_or(false, |id| self.cx.tcx.is_const_fn(id)) => {},
                 ExprKind::Binary(_, lhs, rhs)
                     if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
                         && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},

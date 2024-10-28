@@ -267,6 +267,7 @@
 #![allow(unused_features)]
 //
 // Features:
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -278,7 +279,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_mut_refs))]
+#![cfg_attr(bootstrap, feature(strict_provenance))]
+#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -288,6 +290,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
+#![feature(const_float_methods)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -335,7 +338,6 @@
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
-#![feature(exposed_provenance)]
 #![feature(extend_one)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
@@ -361,8 +363,8 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
-#![feature(strict_provenance)]
 #![feature(strict_provenance_atomic_ptr)]
+#![feature(sync_unsafe_cell)]
 #![feature(ub_checks)]
 // tidy-alphabetical-end
 //
@@ -414,9 +416,6 @@
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
 #![feature(const_hash)]
-#![feature(const_ip)]
-#![feature(const_ipv4)]
-#![feature(const_ipv6)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
@@ -627,7 +626,13 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
-
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "124509")]
+/// This module provides support for automatic differentiation.
+pub mod autodiff {
+    /// This macro handles automatic differentiation.
+    pub use core::autodiff::autodiff;
+}
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.

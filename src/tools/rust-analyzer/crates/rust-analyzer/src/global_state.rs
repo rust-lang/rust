@@ -51,6 +51,11 @@ pub(crate) struct FetchWorkspaceResponse {
     pub(crate) force_crate_graph_reload: bool,
 }
 
+pub(crate) struct FetchBuildDataResponse {
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) build_scripts: Vec<anyhow::Result<WorkspaceBuildScripts>>,
+}
+
 // Enforces drop order
 pub(crate) struct Handle<H, C> {
     pub(crate) handle: H,
@@ -152,8 +157,7 @@ pub(crate) struct GlobalState {
 
     // op queues
     pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
-    pub(crate) fetch_build_data_queue:
-        OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
+    pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
     pub(crate) prime_caches_queue: OpQueue,
     pub(crate) discover_workspace_queue: OpQueue,

@@ -1,13 +1,11 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{
-    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, Body, Location, Place, TerminatorEdges};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, Forward, GenKill, Results, ResultsVisitable};
+use rustc_mir_dataflow::{Analysis, Forward, GenKill, Results, ResultsVisitable};
 use tracing::debug;
 
 use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
@@ -22,9 +20,9 @@ pub(crate) struct BorrowckResults<'a, 'tcx> {
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
 pub(crate) struct BorrowckDomain<'a, 'tcx> {
-    pub(crate) borrows: <Borrows<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
-    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as AnalysisDomain<'tcx>>::Domain,
+    pub(crate) borrows: <Borrows<'a, 'tcx> as Analysis<'tcx>>::Domain,
+    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
+    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
 }
 
 impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
@@ -427,7 +425,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
         &self,
-        trans: &mut impl GenKill<BorrowIndex>,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
         location: Location,
     ) {
         // NOTE: The state associated with a given `location`
@@ -447,7 +445,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     /// Kill any borrows that conflict with `place`.
-    fn kill_borrows_on_place(&self, trans: &mut impl GenKill<BorrowIndex>, place: Place<'tcx>) {
+    fn kill_borrows_on_place(
+        &self,
+        trans: &mut <Self as Analysis<'tcx>>::Domain,
+        place: Place<'tcx>,
+    ) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
         let other_borrows_of_local = self
@@ -486,7 +488,14 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
+/// Forward dataflow computation of the set of borrows that are in scope at a particular location.
+/// - we gen the introduced loans
+/// - we kill loans on locals going out of (regular) scope
+/// - we kill the loans going out of their region's NLL scope: in NLL terms, the frontier where a
+///   region stops containing the CFG points reachable from the issuing location.
+/// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
+///   `a.b.c` when `a` is overwritten.
+impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     type Domain = BitSet<BorrowIndex>;
 
     const NAME: &'static str = "borrows";
@@ -500,34 +509,19 @@ impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect.
     }
-}
 
-/// Forward dataflow computation of the set of borrows that are in scope at a particular location.
-/// - we gen the introduced loans
-/// - we kill loans on locals going out of (regular) scope
-/// - we kill the loans going out of their region's NLL scope: in NLL terms, the frontier where a
-///   region stops containing the CFG points reachable from the issuing location.
-/// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
-///   `a.b.c` when `a` is overwritten.
-impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
-    type Idx = BorrowIndex;
-
-    fn domain_size(&self, _: &mir::Body<'tcx>) -> usize {
-        self.borrow_set.len()
-    }
-
-    fn before_statement_effect(
+    fn apply_before_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn statement_effect(
+    fn apply_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -573,7 +567,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         }
     }
 
-    fn before_terminator_effect(
+    fn apply_before_terminator_effect(
         &mut self,
         trans: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
@@ -582,7 +576,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(trans, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_terminator_effect<'mir>(
         &mut self,
         trans: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -598,14 +592,6 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             }
         }
         terminator.edges()
-    }
-
-    fn call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: mir::BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
     }
 }
 

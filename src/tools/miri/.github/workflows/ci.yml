@@ -1,11 +1,7 @@
 name: CI
 
 on:
-  push:
-    # Run in PRs and for bors, but not on master.
-    branches:
-      - 'auto'
-      - 'try'
+  merge_group:
   pull_request:
     branches:
       - 'master'
@@ -38,7 +34,7 @@ jobs:
       # The `style` job only runs on Linux; this makes sure the Windows-host-specific
       # code is also covered by clippy.
       - name: Check clippy
-        if: matrix.os == 'windows-latest'
+        if: ${{ matrix.os == 'windows-latest' }}
         run: ./miri clippy -- -D warnings
 
       - name: Test Miri
@@ -62,27 +58,25 @@ jobs:
       - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" ./miri doc --document-private-items
 
-  # These jobs doesn't actually test anything, but they're only used to tell
-  # bors the build completed, as there is no practical way to detect when a
-  # workflow is successful listening to webhooks only.
-  #
+  # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
-  end-success:
-    name: bors build finished
-    runs-on: ubuntu-latest
+  # And they should be added below in `cron-fail-notify` as well.
+  conclusion:
     needs: [build, style]
-    if: github.event.pusher.name == 'bors' && success()
-    steps:
-      - name: mark the job as a success
-        run: exit 0
-  end-failure:
-    name: bors build finished
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [build, style]
-    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     steps:
-      - name: mark the job as a failure
-        run: exit 1
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+            # Print the dependent jobs to see them in the CI log
+            jq -C <<< '${{ toJson(needs) }}'
+            # Check if all jobs that we depend on (in the needs array) were successful.
+            jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
 
   cron-fail-notify:
     name: cronjob failure notification
@@ -93,7 +87,7 @@ jobs:
         # ... and create a PR.
         pull-requests: write
     needs: [build, style]
-    if: github.event_name == 'schedule' && failure()
+    if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification
       - name: Install zulip-send
@@ -145,7 +139,7 @@ jobs:
           git push -u origin $BRANCH
       - name: Create Pull Request
         run: |
-          PR=$(gh pr create -B master --title 'Automatic Rustup' --body '')
+          PR=$(gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.')
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
             --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
             --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."

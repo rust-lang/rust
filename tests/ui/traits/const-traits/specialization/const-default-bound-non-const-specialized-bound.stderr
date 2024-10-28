@@ -1,0 +1,11 @@
+error: cannot specialize on const impl with non-const impl
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:28:1
+   |
+LL | / impl<T> Bar for T
+LL | | where
+LL | |     T: Foo, //FIXME ~ ERROR missing `~const` qualifier
+LL | |     T: Specialize,
+   | |__________________^
+
+error: aborting due to 1 previous error
+

@@ -12,10 +12,11 @@ use std::{
 use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
 use ide::{
-    AssistConfig, CallableSnippets, CompletionConfig, CompletionFieldsToResolve, DiagnosticsConfig,
-    ExprFillDefaultMode, GenericParameterHints, HighlightConfig, HighlightRelatedConfig,
-    HoverConfig, HoverDocFormat, InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig,
-    MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope, SourceRootId,
+    AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
+    CompletionFieldsToResolve, DiagnosticsConfig, ExprFillDefaultMode, GenericParameterHints,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
+    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+    Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -262,7 +263,7 @@ config_data! {
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = false,
 
-        /// Exclude tests from find-all-references.
+        /// Exclude tests from find-all-references and call-hierarchy.
         references_excludeTests: bool = false,
 
         /// Inject additional highlighting into doc comments.
@@ -1390,6 +1391,10 @@ impl Config {
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
+    }
+
+    pub fn call_hierarchy(&self) -> CallHierarchyConfig {
+        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned() }
     }
 
     pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {

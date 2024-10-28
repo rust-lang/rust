@@ -295,6 +295,7 @@ pub(crate) struct FnQualifierInExtern {
     pub span: Span,
     #[label]
     pub block: Span,
+    pub kw: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -413,13 +414,6 @@ pub(crate) struct PatternFnPointer {
 #[derive(Diagnostic)]
 #[diag(ast_passes_trait_object_single_bound, code = E0226)]
 pub(crate) struct TraitObjectBound {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_impl_trait_path, code = E0667)]
-pub(crate) struct ImplTraitPath {
     #[primary_span]
     pub span: Span,
 }

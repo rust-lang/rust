@@ -16,7 +16,7 @@ use crate::passes::{ImplStripper, Pass};
 
 pub(crate) const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
-    run: strip_hidden,
+    run: Some(strip_hidden),
     description: "strips all `#[doc(hidden)]` items from the output",
 };
 

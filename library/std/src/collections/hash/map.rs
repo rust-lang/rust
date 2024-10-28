@@ -1438,7 +1438,7 @@ impl<K, V> Clone for Iter<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for Iter<'_, K, V> {
     #[inline]
     fn default() -> Self {
@@ -1484,7 +1484,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for IterMut<'_, K, V> {
     #[inline]
     fn default() -> Self {
@@ -1522,7 +1522,7 @@ impl<K, V> IntoIter<K, V> {
     }
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for IntoIter<K, V> {
     #[inline]
     fn default() -> Self {
@@ -1562,7 +1562,7 @@ impl<K, V> Clone for Keys<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for Keys<'_, K, V> {
     #[inline]
     fn default() -> Self {
@@ -1609,7 +1609,7 @@ impl<K, V> Clone for Values<'_, K, V> {
     }
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for Values<'_, K, V> {
     #[inline]
     fn default() -> Self {
@@ -1705,7 +1705,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for ValuesMut<'_, K, V> {
     #[inline]
     fn default() -> Self {
@@ -1735,7 +1735,7 @@ pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for IntoKeys<K, V> {
     #[inline]
     fn default() -> Self {
@@ -1765,7 +1765,7 @@ pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
 }
 
-#[stable(feature = "default_iters_hash", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "default_iters_hash", since = "1.83.0")]
 impl<K, V> Default for IntoValues<K, V> {
     #[inline]
     fn default() -> Self {
@@ -2865,7 +2865,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "entry_insert", since = "1.83.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         match self {
             Occupied(mut entry) => {
@@ -3152,7 +3152,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[inline]
-    #[stable(feature = "entry_insert", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "entry_insert", since = "1.83.0")]
     pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         let base = self.base.insert_entry(value);
         OccupiedEntry { base }

@@ -471,7 +471,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Don't forget to mark "initially live" locals as live.
             self.storage_live_for_always_live_locals()?;
         };
-        res.inspect_err(|_| {
+        res.inspect_err_kind(|_| {
             // Don't show the incomplete stack frame in the error stacktrace.
             self.stack_mut().pop();
         })

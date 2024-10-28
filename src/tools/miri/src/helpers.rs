@@ -14,7 +14,6 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
@@ -224,14 +223,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Evaluates the scalar at the specified path.
-    fn eval_path(&self, path: &[&str]) -> OpTy<'tcx> {
+    fn eval_path(&self, path: &[&str]) -> MPlaceTy<'tcx> {
         let this = self.eval_context_ref();
         let instance = resolve_path(*this.tcx, path, Namespace::ValueNS);
         // We don't give a span -- this isn't actually used directly by the program anyway.
-        let const_val = this.eval_global(instance).unwrap_or_else(|err| {
+        this.eval_global(instance).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
-        });
-        const_val.into()
+        })
     }
     fn eval_path_scalar(&self, path: &[&str]) -> Scalar {
         let this = self.eval_context_ref();
@@ -949,21 +947,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         crate_name == "std" || crate_name == "std_miri_test"
     }
 
-    /// Handler that should be called when an unsupported foreign item is encountered.
-    /// This function will either panic within the context of the emulated application
-    /// or return an error in the Miri process context
-    fn handle_unsupported_foreign_item(&mut self, error_msg: String) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        if this.machine.panic_on_unsupported {
-            // message is slightly different here to make automated analysis easier
-            let error_msg = format!("unsupported Miri functionality: {error_msg}");
-            this.start_panic(error_msg.as_ref(), mir::UnwindAction::Continue)?;
-            interp_ok(())
-        } else {
-            throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(error_msg));
-        }
-    }
-
     fn check_abi_and_shim_symbol_clash(
         &mut self,
         abi: Abi,
@@ -1194,6 +1177,21 @@ where
         return interp_ok(ops);
     }
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+}
+
+/// Check that the number of args is at least the minumim what we expect.
+pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
+    name: &'a str,
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+    if let Some((ops, _)) = args.split_first_chunk() {
+        return interp_ok(ops);
+    }
+    throw_ub_format!(
+        "incorrect number of arguments for `{name}`: got {}, expected at least {}",
+        args.len(),
+        N
+    )
 }
 
 pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {

@@ -22,7 +22,7 @@ impl Debug for Place {
 }
 
 pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -> io::Result<()> {
-    write!(writer, "fn {}(", name)?;
+    write!(writer, "fn {name}(")?;
     body.arg_locals()
         .iter()
         .enumerate()
@@ -54,7 +54,7 @@ pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -
         .iter()
         .enumerate()
         .map(|(index, block)| -> io::Result<()> {
-            writeln!(writer, "    bb{}: {{", index)?;
+            writeln!(writer, "    bb{index}: {{")?;
             let _ = block
                 .statements
                 .iter()
@@ -75,7 +75,7 @@ pub(crate) fn function_body<W: Write>(writer: &mut W, body: &Body, name: &str) -
 fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::Result<()> {
     match statement {
         StatementKind::Assign(place, rval) => {
-            write!(writer, "        {:?} = ", place)?;
+            write!(writer, "        {place:?} = ")?;
             pretty_rvalue(writer, rval)?;
             writeln!(writer, ";")
         }
@@ -165,7 +165,7 @@ fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind)
         Abort => write!(writer, "{INDENT}abort"),
         Return => write!(writer, "{INDENT}return"),
         Unreachable => write!(writer, "{INDENT}unreachable"),
-        Drop { place, .. } => write!(writer, "{INDENT}drop({:?})", place),
+        Drop { place, .. } => write!(writer, "{INDENT}drop({place:?})"),
         Call { func, args, destination, .. } => {
             write!(writer, "{INDENT}{:?} = {}(", destination, pretty_operand(func))?;
             let mut args_iter = args.iter();
@@ -189,7 +189,9 @@ fn pretty_terminator_head<W: Write>(writer: &mut W, terminator: &TerminatorKind)
 fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
     use self::TerminatorKind::*;
     match terminator {
-        Resume | Abort | Return | Unreachable => vec![],
+        Call { target: None, unwind: UnwindAction::Cleanup(_), .. }
+        | InlineAsm { destination: None, .. } => vec!["unwind".into()],
+        Resume | Abort | Return | Unreachable | Call { target: None, unwind: _, .. } => vec![],
         Goto { .. } => vec!["".to_string()],
         SwitchInt { targets, .. } => targets
             .branches()
@@ -197,19 +199,15 @@ fn pretty_successor_labels(terminator: &TerminatorKind) -> Vec<String> {
             .chain(iter::once("otherwise".into()))
             .collect(),
         Drop { unwind: UnwindAction::Cleanup(_), .. } => vec!["return".into(), "unwind".into()],
-        Drop { unwind: _, .. } => vec!["return".into()],
         Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["return".into(), "unwind".into()]
         }
-        Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
-        Call { target: None, unwind: UnwindAction::Cleanup(_), .. } => vec!["unwind".into()],
-        Call { target: None, unwind: _, .. } => vec![],
+        Drop { unwind: _, .. } | Call { target: Some(_), unwind: _, .. } => vec!["return".into()],
         Assert { unwind: UnwindAction::Cleanup(_), .. } => {
             vec!["success".into(), "unwind".into()]
         }
         Assert { unwind: _, .. } => vec!["success".into()],
         InlineAsm { destination: Some(_), .. } => vec!["goto".into(), "unwind".into()],
-        InlineAsm { destination: None, .. } => vec!["unwind".into()],
     }
 }
 
@@ -304,10 +302,10 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
 fn pretty_operand(operand: &Operand) -> String {
     match operand {
         Operand::Copy(copy) => {
-            format!("{:?}", copy)
+            format!("{copy:?}")
         }
         Operand::Move(mv) => {
-            format!("move {:?}", mv)
+            format!("move {mv:?}")
         }
         Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
     }
@@ -344,13 +342,13 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             write!(writer, "Checked{:?}({}, {})", bin, pretty_operand(op1), pretty_operand(op2))
         }
         Rvalue::CopyForDeref(deref) => {
-            write!(writer, "CopyForDeref({:?})", deref)
+            write!(writer, "CopyForDeref({deref:?})")
         }
         Rvalue::Discriminant(place) => {
-            write!(writer, "discriminant({:?})", place)
+            write!(writer, "discriminant({place:?})")
         }
         Rvalue::Len(len) => {
-            write!(writer, "len({:?})", len)
+            write!(writer, "len({len:?})")
         }
         Rvalue::Ref(_, borrowkind, place) => {
             let kind = match borrowkind {
@@ -359,17 +357,17 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
                 BorrowKind::Fake(FakeBorrowKind::Shallow) => "&fake shallow ",
                 BorrowKind::Mut { .. } => "&mut ",
             };
-            write!(writer, "{kind}{:?}", place)
+            write!(writer, "{kind}{place:?}")
         }
         Rvalue::Repeat(op, cnst) => {
             write!(writer, "{} \" \" {}", pretty_operand(op), pretty_ty_const(cnst))
         }
         Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {
-            write!(writer, "thread_local_ref{:?}", item)
+            write!(writer, "thread_local_ref{item:?}")
         }
         Rvalue::NullaryOp(nul, ty) => {
-            write!(writer, "{:?} {} \" \"", nul, ty)
+            write!(writer, "{nul:?} {ty} \" \"")
         }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{} \" \" {:?}", pretty_operand(op), un)

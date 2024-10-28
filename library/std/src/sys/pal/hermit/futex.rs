@@ -3,9 +3,14 @@ use crate::ptr::null;
 use crate::sync::atomic::AtomicU32;
 use crate::time::Duration;
 
+/// An atomic for use as a futex that is at least 32-bits but may be larger
+pub type Futex = AtomicU32;
+/// Must be the underlying type of Futex
+pub type Primitive = u32;
+
 /// An atomic for use as a futex that is at least 8-bits but may be larger.
-pub type SmallAtomic = AtomicU32;
-/// Must be the underlying type of SmallAtomic
+pub type SmallFutex = AtomicU32;
+/// Must be the underlying type of SmallFutex
 pub type SmallPrimitive = u32;
 
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {

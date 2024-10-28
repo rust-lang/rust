@@ -12,7 +12,7 @@ fn check() {
         assert_eq!(libc::pthread_mutex_init(&mut m as *mut _, std::ptr::null()), 0);
 
         let mut m2 = m; // move the mutex
-        libc::pthread_mutex_lock(&mut m2 as *mut _); //~[init] ERROR: pthread_mutex_t can't be moved after first use
+        libc::pthread_mutex_lock(&mut m2 as *mut _); //~[init] ERROR: can't be moved after first use
     }
 }
 
@@ -23,6 +23,6 @@ fn check() {
         libc::pthread_mutex_lock(&mut m as *mut _);
 
         let mut m2 = m; // move the mutex
-        libc::pthread_mutex_unlock(&mut m2 as *mut _); //~[static_initializer] ERROR: pthread_mutex_t can't be moved after first use
+        libc::pthread_mutex_unlock(&mut m2 as *mut _); //~[static_initializer] ERROR: can't be moved after first use
     }
 }

@@ -643,8 +643,7 @@ fn run_test(
     } else {
         cmd = Command::new(&output_file);
         if doctest.is_multiple_tests {
-            cmd.arg("*doctest-bin-path");
-            cmd.arg(&output_file);
+            cmd.env("RUSTDOC_DOCTEST_BIN_PATH", &output_file);
         }
     }
     if let Some(run_directory) = &rustdoc_options.test_run_directory {

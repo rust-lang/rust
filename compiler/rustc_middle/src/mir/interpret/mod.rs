@@ -36,7 +36,7 @@ pub use self::allocation::{
 pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
     EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, ExpectedKind,
-    InterpError, InterpErrorInfo, InterpResult, InvalidMetaKind, InvalidProgramInfo,
+    InterpErrorInfo, InterpErrorKind, InterpResult, InvalidMetaKind, InvalidProgramInfo,
     MachineStopType, Misalignment, PointerKind, ReportedErrorInfo, ResourceExhaustionInfo,
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
     ValidationErrorKind, interp_ok,

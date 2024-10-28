@@ -35,8 +35,7 @@ impl Visitable for Ty {
         match self.kind() {
             super::ty::TyKind::RigidTy(ty) => ty.visit(visitor)?,
             super::ty::TyKind::Alias(_, alias) => alias.args.visit(visitor)?,
-            super::ty::TyKind::Param(_) => {}
-            super::ty::TyKind::Bound(_, _) => {}
+            super::ty::TyKind::Param(_) | super::ty::TyKind::Bound(_, _) => {}
         }
         ControlFlow::Continue(())
     }
@@ -48,8 +47,7 @@ impl Visitable for TyConst {
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
         match &self.kind {
-            crate::ty::TyConstKind::Param(_) => {}
-            crate::ty::TyConstKind::Bound(_, _) => {}
+            crate::ty::TyConstKind::Param(_) | crate::ty::TyConstKind::Bound(_, _) => {}
             crate::ty::TyConstKind::Unevaluated(_, args) => args.visit(visitor)?,
             crate::ty::TyConstKind::Value(ty, alloc) => {
                 alloc.visit(visitor)?;
@@ -166,17 +164,17 @@ impl Visitable for RigidTy {
                 reg.visit(visitor);
                 ty.visit(visitor)
             }
-            RigidTy::FnDef(_, args) => args.visit(visitor),
+            RigidTy::Adt(_, args)
+            | RigidTy::Closure(_, args)
+            | RigidTy::Coroutine(_, args, _)
+            | RigidTy::CoroutineWitness(_, args)
+            | RigidTy::FnDef(_, args) => args.visit(visitor),
             RigidTy::FnPtr(sig) => sig.visit(visitor),
-            RigidTy::Closure(_, args) => args.visit(visitor),
-            RigidTy::Coroutine(_, args, _) => args.visit(visitor),
-            RigidTy::CoroutineWitness(_, args) => args.visit(visitor),
             RigidTy::Dynamic(pred, r, _) => {
                 pred.visit(visitor)?;
                 r.visit(visitor)
             }
             RigidTy::Tuple(fields) => fields.visit(visitor),
-            RigidTy::Adt(_, args) => args.visit(visitor),
         }
     }
 }

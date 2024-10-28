@@ -2,18 +2,19 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
+use rustc_data_structures::thinvec::ExtractIf;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
-    ObligationCauseCode, PredicateObligation, SelectionError, TraitEngine,
+    ObligationCauseCode, PredicateObligation, PredicateObligations, SelectionError, TraitEngine,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
-use tracing::instrument;
+use tracing::{instrument, trace};
 
 use super::Certainty;
 use super::delegate::SolverDelegate;
@@ -49,8 +50,8 @@ struct ObligationStorage<'tcx> {
     /// We cannot eagerly return these as error so we instead store them here
     /// to avoid recomputing them each time `select_where_possible` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
-    overflowed: Vec<PredicateObligation<'tcx>>,
-    pending: Vec<PredicateObligation<'tcx>>,
+    overflowed: PredicateObligations<'tcx>,
+    pending: PredicateObligations<'tcx>,
 }
 
 impl<'tcx> ObligationStorage<'tcx> {
@@ -58,13 +59,13 @@ impl<'tcx> ObligationStorage<'tcx> {
         self.pending.push(obligation);
     }
 
-    fn clone_pending(&self) -> Vec<PredicateObligation<'tcx>> {
+    fn clone_pending(&self) -> PredicateObligations<'tcx> {
         let mut obligations = self.pending.clone();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
 
-    fn take_pending(&mut self) -> Vec<PredicateObligation<'tcx>> {
+    fn take_pending(&mut self) -> PredicateObligations<'tcx> {
         let mut obligations = mem::take(&mut self.pending);
         obligations.append(&mut self.overflowed);
         obligations
@@ -81,7 +82,8 @@ impl<'tcx> ObligationStorage<'tcx> {
             // we get all obligations involved in the overflow. We pretty much check: if
             // we were to do another step of `select_where_possible`, which goals would
             // change.
-            self.overflowed.extend(self.pending.extract_if(|o| {
+            // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
+            self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
                 let goal = o.clone().into();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No)
@@ -197,14 +199,11 @@ where
         errors
     }
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+    fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
 
-    fn drain_unstalled_obligations(
-        &mut self,
-        _: &InferCtxt<'tcx>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+    fn drain_unstalled_obligations(&mut self, _: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
         self.obligations.take_pending()
     }
 }
@@ -402,6 +401,7 @@ impl<'tcx> BestObligation<'tcx> {
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::InstantiateHigherRanked
+                                            | GoalSource::AliasWellFormed
                                     ) && match self.consider_ambiguities {
                                         true => {
                                             matches!(
@@ -414,6 +414,13 @@ impl<'tcx> BestObligation<'tcx> {
                                 },
                             )
                         })
+                    });
+                }
+
+                // Prefer a non-rigid candidate if there is one.
+                if candidates.len() > 1 {
+                    candidates.retain(|candidate| {
+                        !matches!(candidate.kind(), inspect::ProbeKind::RigidAlias { .. })
                     });
                 }
             }
@@ -430,8 +437,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         self.obligation.cause.span
     }
 
+    #[instrument(level = "trace", skip(self, goal), fields(goal = ?goal.goal()))]
     fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
         let candidates = self.non_trivial_candidates(goal);
+        trace!(candidates = ?candidates.iter().map(|c| c.kind()).collect::<Vec<_>>());
+
         let [candidate] = candidates.as_slice() else {
             return ControlFlow::Break(self.obligation.clone());
         };
@@ -465,17 +475,13 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(
-                ty::ClauseKind::WellFormed(_) | ty::ClauseKind::Projection(..),
-            )
-            | ty::PredicateKind::AliasRelate(..) => ChildMode::PassThrough,
-            _ => {
-                return ControlFlow::Break(self.obligation.clone());
-            }
+            _ => ChildMode::PassThrough,
         };
 
         let mut impl_where_bound_count = 0;
         for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+            trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
+
             let make_obligation = |cause| Obligation {
                 cause,
                 param_env: nested_goal.goal().param_env,
@@ -502,7 +508,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::PassThrough, _) => {
+                (ChildMode::PassThrough, _) | (_, GoalSource::AliasWellFormed) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }

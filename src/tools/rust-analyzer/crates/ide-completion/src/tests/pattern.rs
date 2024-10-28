@@ -923,3 +923,21 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn private_item_in_module_in_function_body() {
+    check_empty(
+        r#"
+fn main() {
+    mod foo {
+        struct Private;
+        pub struct Public;
+    }
+    foo::$0
+}
+"#,
+        expect![[r#"
+            st Public Public
+        "#]],
+    );
+}

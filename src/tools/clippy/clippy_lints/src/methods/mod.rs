@@ -4046,7 +4046,7 @@ declare_clippy_lint! {
     /// Checks the usage of `.get().is_some()` or `.get().is_none()` on std map types.
     ///
     /// ### Why is this bad?
-    /// It can be done in one call with `.contains()`/`.contains_keys()`.
+    /// It can be done in one call with `.contains()`/`.contains_key()`.
     ///
     /// ### Example
     /// ```no_run
@@ -5182,6 +5182,7 @@ impl ShouldImplTraitCase {
 }
 
 #[rustfmt::skip]
+#[expect(clippy::large_const_arrays, reason = "`Span` is not sync, so this can't be static")]
 const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::ops::Add", "add",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
     ShouldImplTraitCase::new("std::convert::AsMut", "as_mut",  1,  FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),

@@ -9,12 +9,12 @@ LL |     fn add(&mut self, n: u64) -> u64 {
 help: the accessed tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
-LL |     let _res = f.add(unsafe {
-   |                ^
+LL |     let res = f.add(unsafe {
+   |               ^
 help: the accessed tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x8]
   --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
-LL |         *inner = 42;
+LL |         *alias = 42;
    |         ^^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
@@ -22,13 +22,12 @@ LL |         *inner = 42;
 note: inside `main`
   --> tests/fail/tree_borrows/write-during-2phase.rs:LL:CC
    |
-LL |       let _res = f.add(unsafe {
-   |  ________________^
-LL | |         let n = f.0;
+LL |       let res = f.add(unsafe {
+   |  _______________^
 LL | |         // This is the access at fault, but it's not immediately apparent because
 LL | |         // the reference that got invalidated is not under a Protector.
-LL | |         *inner = 42;
-LL | |         n
+LL | |         *alias = 42;
+LL | |         0
 LL | |     });
    | |______^
 

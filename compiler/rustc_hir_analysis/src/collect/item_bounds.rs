@@ -13,6 +13,7 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::predicates_of::assert_only_contains_predicates_from;
+use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 
 /// For associated types we include both bounds written on the type
@@ -36,9 +37,19 @@ fn associated_type_bounds<'tcx>(
     );
 
     let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
+    let mut bounds = Bounds::default();
+    icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
     // Associated types are implicitly sized unless a `?Sized` bound is found
-    icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+    match filter {
+        PredicateFilter::All
+        | PredicateFilter::SelfOnly
+        | PredicateFilter::SelfThatDefines(_)
+        | PredicateFilter::SelfAndAssociatedTypeBounds => {
+            icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+        }
+        // `ConstIfConst` is only interested in `~const` bounds.
+        PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
+    }
 
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
@@ -56,7 +67,7 @@ fn associated_type_bounds<'tcx>(
             )
         });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses(tcx).chain(bounds_from_parent));
+    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(
         "associated_type_bounds({}) = {:?}",
         tcx.def_path_str(assoc_item_def_id.to_def_id()),
@@ -107,10 +118,19 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
             } else {
                 // Only collect *self* type bounds if the filter is for self.
                 match filter {
-                    PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {
+                    PredicateFilter::All => {}
+                    PredicateFilter::SelfOnly => {
                         return None;
                     }
-                    PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {}
+                    PredicateFilter::SelfThatDefines(_)
+                    | PredicateFilter::SelfConstIfConst
+                    | PredicateFilter::SelfAndAssociatedTypeBounds
+                    | PredicateFilter::ConstIfConst => {
+                        unreachable!(
+                            "invalid predicate filter for \
+                            `remap_gat_vars_and_recurse_into_nested_projections`"
+                        )
+                    }
                 }
 
                 clause_ty = alias_ty.self_ty();
@@ -303,12 +323,23 @@ fn opaque_type_bounds<'tcx>(
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
     ty::print::with_reduced_queries!({
         let icx = ItemCtxt::new(tcx, opaque_def_id);
-        let mut bounds = icx.lowerer().lower_mono_bounds(item_ty, hir_bounds, filter);
+        let mut bounds = Bounds::default();
+        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
-        icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+        match filter {
+            PredicateFilter::All
+            | PredicateFilter::SelfOnly
+            | PredicateFilter::SelfThatDefines(_)
+            | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                // Associated types are implicitly sized unless a `?Sized` bound is found
+                icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+            }
+            //`ConstIfConst` is only interested in `~const` bounds.
+            PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
+        }
         debug!(?bounds);
 
-        tcx.arena.alloc_from_iter(bounds.clauses(tcx))
+        tcx.arena.alloc_from_iter(bounds.clauses())
     })
 }
 

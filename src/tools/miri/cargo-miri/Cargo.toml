@@ -26,4 +26,4 @@ rustc-build-sysroot = "0.5.4"
 serde = { version = "1.0.185", features = ["derive"] }
 
 [build-dependencies]
-rustc_tools_util = "0.3"
+rustc_tools_util = "0.4"

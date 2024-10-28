@@ -442,7 +442,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let features = self.tcx.features();
-        if features.ref_pat_eat_one_layer_2024 || features.ref_pat_eat_one_layer_2024_structural {
+        if features.ref_pat_eat_one_layer_2024() || features.ref_pat_eat_one_layer_2024_structural()
+        {
             def_br = def_br.cap_ref_mutability(max_ref_mutbl.as_mutbl());
             if def_br == ByRef::Yes(Mutability::Not) {
                 max_ref_mutbl = MutblCap::Not;
@@ -490,7 +491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if self.tcx.features().string_deref_patterns
+        if self.tcx.features().string_deref_patterns()
             && let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind
         {
             let tcx = self.tcx;
@@ -675,10 +676,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bm = match user_bind_annot {
             BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
                 if pat.span.at_least_rust_2024()
-                    && (self.tcx.features().ref_pat_eat_one_layer_2024
-                        || self.tcx.features().ref_pat_eat_one_layer_2024_structural)
+                    && (self.tcx.features().ref_pat_eat_one_layer_2024()
+                        || self.tcx.features().ref_pat_eat_one_layer_2024_structural())
                 {
-                    if !self.tcx.features().mut_ref {
+                    if !self.tcx.features().mut_ref() {
                         feature_err(
                             &self.tcx.sess,
                             sym::mut_ref,
@@ -690,16 +691,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     BindingMode(def_br, Mutability::Mut)
                 } else {
-                    // `mut` resets binding mode on edition <= 2021
-                    self.typeck_results
+                    // `mut` resets the binding mode on edition <= 2021
+                    *self
+                        .typeck_results
                         .borrow_mut()
                         .rust_2024_migration_desugared_pats_mut()
-                        .insert(pat_info.top_info.hir_id);
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => user_bind_annot,
+            BindingMode(ByRef::Yes(_), _) => {
+                if matches!(def_br, ByRef::Yes(_)) {
+                    // `ref`/`ref mut` overrides the binding mode on edition <= 2021
+                    *self
+                        .typeck_results
+                        .borrow_mut()
+                        .rust_2024_migration_desugared_pats_mut()
+                        .entry(pat_info.top_info.hir_id)
+                        .or_default() |= pat.span.at_least_rust_2024();
+                }
+                user_bind_annot
+            }
         };
 
         if bm.0 == ByRef::Yes(Mutability::Mut)
@@ -1767,7 +1781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if inexistent_fields.len() == 1 {
                     match pat_field.pat.kind {
                         PatKind::Lit(expr)
-                            if !self.can_coerce(
+                            if !self.may_coerce(
                                 self.typeck_results.borrow().expr_ty(expr),
                                 self.field_ty(field.span, field_def, args),
                             ) => {}
@@ -2139,8 +2153,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let features = tcx.features();
-        let ref_pat_eat_one_layer_2024 = features.ref_pat_eat_one_layer_2024;
-        let ref_pat_eat_one_layer_2024_structural = features.ref_pat_eat_one_layer_2024_structural;
+        let ref_pat_eat_one_layer_2024 = features.ref_pat_eat_one_layer_2024();
+        let ref_pat_eat_one_layer_2024_structural =
+            features.ref_pat_eat_one_layer_2024_structural();
 
         let no_ref_mut_behind_and =
             ref_pat_eat_one_layer_2024 || ref_pat_eat_one_layer_2024_structural;
@@ -2204,14 +2219,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Reset binding mode on old editions
-
             if pat_info.binding_mode != ByRef::No {
                 pat_info.binding_mode = ByRef::No;
-
-                self.typeck_results
+                *self
+                    .typeck_results
                     .borrow_mut()
                     .rust_2024_migration_desugared_pats_mut()
-                    .insert(pat_info.top_info.hir_id);
+                    .entry(pat_info.top_info.hir_id)
+                    .or_default() |= pat.span.at_least_rust_2024();
             }
         }
 
@@ -2262,6 +2277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (err, err)
             }
         };
+
         self.check_pat(inner, inner_ty, pat_info);
         ref_ty
     }

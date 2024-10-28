@@ -51,6 +51,9 @@ impl BuiltinAttrExpander {
     pub fn is_bench(self) -> bool {
         matches!(self, BuiltinAttrExpander::Bench)
     }
+    pub fn is_test_case(self) -> bool {
+        matches!(self, BuiltinAttrExpander::TestCase)
+    }
 }
 
 register_builtin! {

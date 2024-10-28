@@ -123,7 +123,6 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         UNSTABLE_NAME_COLLISIONS,
         UNSTABLE_SYNTAX_PRE_EXPANSION,
-        UNSUPPORTED_CALLING_CONVENTIONS,
         UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
         UNUSED_ASSIGNMENTS,
         UNUSED_ASSOCIATED_TYPE_BOUNDS,
@@ -156,7 +155,7 @@ declare_lint! {
     ///
     /// ```rust
     /// #![forbid(warnings)]
-    /// #![deny(bad_style)]
+    /// #![warn(bad_style)]
     ///
     /// fn main() {}
     /// ```
@@ -378,7 +377,8 @@ declare_lint! {
     /// will not overflow.
     pub ARITHMETIC_OVERFLOW,
     Deny,
-    "arithmetic operation overflows"
+    "arithmetic operation overflows",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -402,7 +402,8 @@ declare_lint! {
     /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
-    "operation will cause a panic at runtime"
+    "operation will cause a panic at runtime",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -633,7 +634,8 @@ declare_lint! {
     /// is only available in a newer version.
     pub UNKNOWN_LINTS,
     Warn,
-    "unrecognized lint attribute"
+    "unrecognized lint attribute",
+    @eval_always = true
 }
 
 declare_lint! {
@@ -1651,7 +1653,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2021
-    /// #![feature(ref_pat_eat_one_layer_2024)]
     /// #![warn(rust_2024_incompatible_pat)]
     ///
     /// if let Some(&a) = &Some(&0u8) {
@@ -1672,12 +1673,10 @@ declare_lint! {
     pub RUST_2024_INCOMPATIBLE_PAT,
     Allow,
     "detects patterns whose meaning will change in Rust 2024",
-    @feature_gate = ref_pat_eat_one_layer_2024;
-    // FIXME uncomment below upon stabilization
-    /*@future_incompatible = FutureIncompatibleInfo {
+    @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
         reference: "123076",
-    };*/
+    };
 }
 
 declare_lint! {
@@ -1871,7 +1870,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// # #[cfg_attr(bootstrap)] compile_error!(); // Remove this in bootstrap bump.
     /// #![deny(elided_named_lifetimes)]
     /// struct Foo;
     /// impl Foo {
@@ -2671,7 +2669,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2705,7 +2702,7 @@ declare_lint! {
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",
-    @feature_gate = strict_provenance;
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
@@ -2715,7 +2712,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(strict_provenance)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -2751,7 +2747,7 @@ declare_lint! {
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",
-    @feature_gate = strict_provenance;
+    @feature_gate = strict_provenance_lints;
 }
 
 declare_lint! {
@@ -3794,53 +3790,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_calling_conventions` lint is output whenever there is a use of the
-    /// `stdcall`, `fastcall`, `thiscall`, `vectorcall` calling conventions (or their unwind
-    /// variants) on targets that cannot meaningfully be supported for the requested target.
-    ///
-    /// For example `stdcall` does not make much sense for a x86_64 or, more apparently, powerpc
-    /// code, because this calling convention was never specified for those targets.
-    ///
-    /// Historically MSVC toolchains have fallen back to the regular C calling convention for
-    /// targets other than x86, but Rust doesn't really see a similar need to introduce a similar
-    /// hack across many more targets.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs specific targets)
-    /// extern "stdcall" fn stdcall() {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: use of calling convention not supported on this target
-    ///   --> $DIR/unsupported.rs:39:1
-    ///    |
-    /// LL | extern "stdcall" fn stdcall() {}
-    ///    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///    |
-    ///    = note: `#[warn(unsupported_calling_conventions)]` on by default
-    ///    = warning: this was previously accepted by the compiler but is being phased out;
-    ///               it will become a hard error in a future release!
-    ///    = note: for more information, see issue ...
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// On most of the targets the behaviour of `stdcall` and similar calling conventions is not
-    /// defined at all, but was previously accepted due to a bug in the implementation of the
-    /// compiler.
-    pub UNSUPPORTED_CALLING_CONVENTIONS,
-    Warn,
-    "use of unsupported calling convention",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
-        reference: "issue #87678 <https://github.com/rust-lang/rust/issues/87678>",
-    };
-}
-
-declare_lint! {
     /// The `unsupported_fn_ptr_calling_conventions` lint is output whenever there is a use of
     /// a target dependent calling convention on a target that does not support this calling
     /// convention on a function pointer.
@@ -3859,7 +3808,7 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: use of calling convention not supported on this target on function pointer
+    /// warning: the calling convention `"stdcall"` is not supported on this target
     ///   --> $DIR/unsupported.rs:34:15
     ///    |
     /// LL | fn stdcall_ptr(f: extern "stdcall" fn()) {

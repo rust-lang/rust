@@ -6,20 +6,14 @@
 //! other phases of the compiler, which are generally required to hold in order
 //! to compile the program at all.
 //!
-//! Most lints can be written as [LintPass] instances. These run after
+//! Most lints can be written as [`LintPass`] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
 //! within [rustc_session::lint::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load external lint plugins, as is done for Clippy.
 //!
-//! Some of rustc's lints are defined elsewhere in the compiler and work by
-//! calling `add_lint()` on the overall `Session` object. This works when
-//! it happens before the main lint pass, which emits the lints stored by
-//! `add_lint()`. To emit lints after the main lint pass (from codegen, for
-//! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
-//! in `context.rs`.
-//!
-//! Some code also exists in [rustc_session::lint], [rustc_middle::lint].
+//! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
+//! overview of how lints are implemented.
 //!
 //! ## Note
 //!
@@ -170,7 +164,7 @@ early_lint_methods!(
     [
         pub BuiltinCombinedEarlyLintPass,
         [
-            UnusedParens: UnusedParens::new(),
+            UnusedParens: UnusedParens::default(),
             UnusedBraces: UnusedBraces,
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
@@ -178,7 +172,7 @@ early_lint_methods!(
             AnonymousParameters: AnonymousParameters,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
-            DeprecatedAttr: DeprecatedAttr::new(),
+            DeprecatedAttr: DeprecatedAttr::default(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
@@ -199,7 +193,6 @@ late_lint_methods!(
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
-            HardwiredLints: HardwiredLints,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
             InvalidFromUtf8: InvalidFromUtf8,
@@ -280,6 +273,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&foreign_modules::get_lints());
+    store.register_lints(&HardwiredLints::lint_vec());
 
     add_lint_group!(
         "nonstandard_style",
@@ -598,28 +592,29 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see PR #125380 \
          <https://github.com/rust-lang/rust/pull/125380> for more information",
     );
+    store.register_removed("unsupported_calling_conventions", "converted into hard error");
 }
 
 fn register_internals(store: &mut LintStore) {
-    store.register_lints(&LintPassImpl::get_lints());
+    store.register_lints(&LintPassImpl::lint_vec());
     store.register_early_pass(|| Box::new(LintPassImpl));
-    store.register_lints(&DefaultHashTypes::get_lints());
+    store.register_lints(&DefaultHashTypes::lint_vec());
     store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
-    store.register_lints(&QueryStability::get_lints());
+    store.register_lints(&QueryStability::lint_vec());
     store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&ExistingDocKeyword::get_lints());
+    store.register_lints(&ExistingDocKeyword::lint_vec());
     store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
-    store.register_lints(&TyTyKind::get_lints());
+    store.register_lints(&TyTyKind::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
-    store.register_lints(&TypeIr::get_lints());
+    store.register_lints(&TypeIr::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TypeIr));
-    store.register_lints(&Diagnostics::get_lints());
+    store.register_lints(&Diagnostics::lint_vec());
     store.register_late_mod_pass(|_| Box::new(Diagnostics));
-    store.register_lints(&BadOptAccess::get_lints());
+    store.register_lints(&BadOptAccess::lint_vec());
     store.register_late_mod_pass(|_| Box::new(BadOptAccess));
-    store.register_lints(&PassByValue::get_lints());
+    store.register_lints(&PassByValue::lint_vec());
     store.register_late_mod_pass(|_| Box::new(PassByValue));
-    store.register_lints(&SpanUseEqCtxt::get_lints());
+    store.register_lints(&SpanUseEqCtxt::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and

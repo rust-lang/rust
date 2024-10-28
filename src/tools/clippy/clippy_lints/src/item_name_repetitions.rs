@@ -50,11 +50,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Detects type names that are prefixed or suffixed by the
-    /// containing module's name.
+    /// Detects public item names that are prefixed or suffixed by the
+    /// containing public module's name.
     ///
     /// ### Why is this bad?
-    /// It requires the user to type the module name twice.
+    /// It requires the user to type the module name twice in each usage,
+    /// especially if they choose to import the module rather than its contents.
+    ///
+    /// Lack of such repetition is also the style used in the Rust standard library;
+    /// e.g. `io::Error` and `fmt::Error` rather than `io::IoError` and `fmt::FmtError`;
+    /// and `array::from_ref` rather than `array::array_from_ref`.
+    ///
+    /// ### Known issues
+    /// Glob re-exports are ignored; e.g. this will not warn even though it should:
+    ///
+    /// ```no_run
+    /// pub mod foo {
+    ///     mod iteration {
+    ///         pub struct FooIter {}
+    ///     }
+    ///     pub use iteration::*; // creates the path `foo::FooIter`
+    /// }
+    /// ```
     ///
     /// ### Example
     /// ```no_run
@@ -71,7 +88,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.33.0"]
     pub MODULE_NAME_REPETITIONS,
-    pedantic,
+    restriction,
     "type names prefixed/postfixed with their containing module's name"
 }
 
@@ -389,12 +406,12 @@ impl LateLintPass<'_> for ItemNameRepetitions {
         let item_name = item.ident.name.as_str();
         let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
-            if let [.., (mod_name, mod_camel, owner_id)] = &*self.modules {
+            if let [.., (mod_name, mod_camel, mod_owner_id)] = &*self.modules {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
                     if mod_name == &item.ident.name
                         && let ItemKind::Mod(..) = item.kind
-                        && (!self.allow_private_module_inception || cx.tcx.visibility(owner_id.def_id).is_public())
+                        && (!self.allow_private_module_inception || cx.tcx.visibility(mod_owner_id.def_id).is_public())
                     {
                         span_lint(
                             cx,
@@ -403,9 +420,13 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                             "module has the same name as its containing module",
                         );
                     }
+
                     // The `module_name_repetitions` lint should only trigger if the item has the module in its
                     // name. Having the same name is accepted.
-                    if cx.tcx.visibility(item.owner_id).is_public() && item_camel.len() > mod_camel.len() {
+                    if cx.tcx.visibility(item.owner_id).is_public()
+                        && cx.tcx.visibility(mod_owner_id.def_id).is_public()
+                        && item_camel.len() > mod_camel.len()
+                    {
                         let matching = count_match_start(mod_camel, &item_camel);
                         let rmatching = count_match_end(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();

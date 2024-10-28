@@ -3044,7 +3044,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if local {
                     err.note("all local variables must have a statically known size");
                 }
-                if !tcx.features().unsized_locals {
+                if !tcx.features().unsized_locals() {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
@@ -3074,11 +3074,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     match ty.kind {
                         hir::TyKind::TraitObject(traits, _, _) => {
                             let (span, kw) = match traits {
-                                [(first, _), ..] if first.span.lo() == ty.span.lo() => {
+                                [first, ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
                                     (ty.span.shrink_to_lo(), "dyn ")
                                 }
-                                [(first, _), ..] => (ty.span.until(first.span), ""),
+                                [first, ..] => (ty.span.until(first.span), ""),
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;
@@ -3125,7 +3125,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("all function arguments must have a statically known size");
                 }
                 if tcx.sess.opts.unstable_features.is_nightly_build()
-                    && !tcx.features().unsized_fn_params
+                    && !tcx.features().unsized_fn_params()
                 {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
@@ -3594,52 +3594,64 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        if let Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) =
-            self.tcx.coroutine_kind(obligation.cause.body_id)
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let impls_future = self.type_implements_trait(
+            future_trait,
+            [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
+            obligation.param_env,
+        );
+        if !impls_future.must_apply_modulo_regions() {
+            return;
+        }
+
+        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+        // `<T as Future>::Output`
+        let projection_ty = trait_pred.map_bound(|trait_pred| {
+            Ty::new_projection(
+                self.tcx,
+                item_def_id,
+                // Future::Output has no args
+                [trait_pred.self_ty()],
+            )
+        });
+        let InferOk { value: projection_ty, .. } =
+            self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
+
+        debug!(
+            normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
+        );
+        let try_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
+        );
+        debug!(try_trait_obligation = ?try_obligation);
+        if self.predicate_may_hold(&try_obligation)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+            && snippet.ends_with('?')
         {
-            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
-
-            let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-            let impls_future = self.type_implements_trait(
-                future_trait,
-                [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
-                obligation.param_env,
-            );
-            if !impls_future.must_apply_modulo_regions() {
-                return;
-            }
-
-            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-            // `<T as Future>::Output`
-            let projection_ty = trait_pred.map_bound(|trait_pred| {
-                Ty::new_projection(
-                    self.tcx,
-                    item_def_id,
-                    // Future::Output has no args
-                    [trait_pred.self_ty()],
-                )
-            });
-            let InferOk { value: projection_ty, .. } =
-                self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
-
-            debug!(
-                normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
-            );
-            let try_obligation = self.mk_trait_obligation_with_new_self_ty(
-                obligation.param_env,
-                trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
-            );
-            debug!(try_trait_obligation = ?try_obligation);
-            if self.predicate_may_hold(&try_obligation)
-                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                && snippet.ends_with('?')
-            {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
-                    "consider `await`ing on the `Future`",
-                    ".await",
-                    Applicability::MaybeIncorrect,
-                );
+            match self.tcx.coroutine_kind(obligation.cause.body_id) {
+                Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {
+                    let mut span: MultiSpan = span.with_lo(span.hi() - BytePos(1)).into();
+                    span.push_span_label(
+                        self.tcx.def_span(obligation.cause.body_id),
+                        "this is not `async`",
+                    );
+                    err.span_note(
+                        span,
+                        "this implements `Future` and its output type supports \
+                        `?`, but the future cannot be awaited in a synchronous function",
+                    );
+                }
             }
         }
     }
@@ -3701,12 +3713,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                         _ => None,
                     };
-                    // Also add host param, if present
-                    let host = self.tcx.generics_of(trait_pred.def_id()).host_effect_index.map(|idx| trait_pred.skip_binder().trait_ref.args[idx]);
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
                         trait_ref: ty::TraitRef::new(self.tcx,
                             trait_pred.def_id(),
-                            [field_ty].into_iter().chain(trait_args).chain(host),
+                            [field_ty].into_iter().chain(trait_args),
                         ),
                         ..*tr
                     });
@@ -4500,7 +4510,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
-        if self.tcx.features().return_type_notation {
+        if self.tcx.features().return_type_notation() {
             return;
         }
 
@@ -5162,7 +5172,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
     let async_span = tcx.sess.source_map().span_extend_while_whitespace(async_span);
 
     let future = tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
-    let [hir::GenericBound::Trait(trait_ref, _)] = future.bounds else {
+    let [hir::GenericBound::Trait(trait_ref)] = future.bounds else {
         // `async fn` should always lower to a single bound... but don't ICE.
         return None;
     };

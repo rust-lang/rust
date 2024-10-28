@@ -1497,7 +1497,7 @@ fn check_field_tys_sized<'tcx>(
 ) {
     // No need to check if unsized_locals/unsized_fn_params is disabled,
     // since we will error during typeck.
-    if !tcx.features().unsized_locals && !tcx.features().unsized_fn_params {
+    if !tcx.features().unsized_locals() && !tcx.features().unsized_fn_params() {
         return;
     }
 
@@ -1957,7 +1957,8 @@ fn check_must_not_suspend_ty<'tcx>(
             let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
             check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
                 descr_pre,
-                plural_len: len.try_eval_target_usize(tcx, param_env).unwrap_or(0) as usize + 1,
+                // FIXME(must_not_suspend): This is wrong. We should handle printing unevaluated consts.
+                plural_len: len.try_to_target_usize(tcx).unwrap_or(0) as usize + 1,
                 ..data
             })
         }

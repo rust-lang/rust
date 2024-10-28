@@ -12,6 +12,7 @@ use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
 use std::{fmt, iter, mem};
 
+use rustc_abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -48,7 +49,6 @@ use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::fold::TypeFoldable;
@@ -78,10 +78,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo, ParamConst,
-    ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
-    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    GenericArgsRef, GenericParamDefKind, HostPolarity, ImplPolarity, List, ListWithCachedTypeInfo,
+    ParamConst, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -279,6 +279,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.debug_assert_args_compatible(def_id, args);
     }
 
+    /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
+    /// are compatible with the `DefId`. Since we're missing a `Self` type, stick on
+    /// a dummy self type and forward to `debug_assert_args_compatible`.
+    fn debug_assert_existential_args_compatible(
+        self,
+        def_id: Self::DefId,
+        args: Self::GenericArgs,
+    ) {
+        // FIXME: We could perhaps add a `skip: usize` to `debug_assert_args_compatible`
+        // to avoid needing to reintern the set of args...
+        if cfg!(debug_assertions) {
+            self.debug_assert_args_compatible(
+                def_id,
+                self.mk_args_from_iter(
+                    [self.types.trait_object_dummy_self.into()].into_iter().chain(args.iter()),
+                ),
+            );
+        }
+    }
+
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -361,6 +381,28 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+    }
+
+    fn is_const_impl(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
+    fn const_conditions(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.const_conditions(def_id).instantiate_identity(self).into_iter().map(|(c, _)| c),
+        )
+    }
+
+    fn implied_const_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
+        ty::EarlyBinder::bind(
+            self.implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+        )
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
@@ -626,13 +668,6 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     DynMetadata,
-    EffectsCompat,
-    EffectsIntersection,
-    EffectsIntersectionOutput,
-    EffectsMaybe,
-    EffectsNoRuntime,
-    EffectsRuntime,
-    EffectsTyCompat,
     Fn,
     FnMut,
     FnOnce,
@@ -690,15 +725,15 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
     fn generic_const_exprs(self) -> bool {
-        self.generic_const_exprs
+        self.generic_const_exprs()
     }
 
     fn coroutine_clone(self) -> bool {
-        self.coroutine_clone
+        self.coroutine_clone()
     }
 
     fn associated_const_equality(self) -> bool {
-        self.associated_const_equality
+        self.associated_const_equality()
     }
 }
 
@@ -2176,7 +2211,7 @@ macro_rules! nop_slice_lift {
 nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
 
 TrivialLiftImpls! {
-    ImplPolarity, PredicatePolarity, Promoted
+    ImplPolarity, PredicatePolarity, Promoted, HostPolarity,
 }
 
 macro_rules! sty_debug_print {
@@ -3085,38 +3120,24 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Whether the `def_id` counts as const fn in the current crate, considering all active
-    /// feature gates
-    pub fn is_const_fn(self, def_id: DefId) -> bool {
-        if self.is_const_fn_raw(def_id) {
-            match self.lookup_const_stability(def_id) {
-                Some(stability) if stability.is_const_unstable() => {
-                    // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                    // corresponding feature gate.
-                    self.features().declared(stability.feature)
-                }
-                // functions without const stability are either stable user written
-                // const fn or the user is using feature gates and we thus don't
-                // care what they do
-                _ => true,
+    /// Whether `def_id` is a stable const fn (i.e., doesn't need any feature gates to be called).
+    ///
+    /// When this is `false`, the function may still be callable as a `const fn` due to features
+    /// being enabled!
+    pub fn is_stable_const_fn(self, def_id: DefId) -> bool {
+        self.is_const_fn(def_id)
+            && match self.lookup_const_stability(def_id) {
+                None => true, // a fn in a non-staged_api crate
+                Some(stability) if stability.is_const_stable() => true,
+                _ => false,
             }
-        } else {
-            false
-        }
     }
 
+    // FIXME(effects): Please remove this. It's a footgun.
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
-    pub fn is_const_trait_impl_raw(self, def_id: DefId) -> bool {
-        let Some(local_def_id) = def_id.as_local() else { return false };
-        let node = self.hir_node_by_def_id(local_def_id);
-
-        matches!(
-            node,
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
-                ..
-            }) if matches!(constness, hir::Constness::Const)
-        )
+    pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
+        self.def_kind(def_id) == DefKind::Impl { of_trait: true }
+            && self.constness(def_id) == hir::Constness::Const
     }
 
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
@@ -3128,11 +3149,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally)
+        self.sess.opts.unstable_opts.next_solver.globally
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.coherence)
+        self.sess.opts.unstable_opts.next_solver.coherence
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

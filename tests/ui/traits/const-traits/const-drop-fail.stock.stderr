@@ -1,0 +1,34 @@
+error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
+  --> $DIR/const-drop-fail.rs:19:12
+   |
+LL | impl const Drop for ConstImplWithDropGlue {
+   |            ^^^^
+   |
+   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: adding a non-const method body in the future would be a breaking change
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop-fail.rs:23:26
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                          ^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-drop-fail.rs:23:26
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                          ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/const-drop-fail.rs:23:36
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                                    ^      - value is dropped here
+   |                                    |
+   |                                    the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

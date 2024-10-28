@@ -1,18 +1,7 @@
-//! Implementation of lint checking.
+//! Implementation of the late lint pass.
 //!
-//! The lint checking is mostly consolidated into one pass which runs
-//! after all other analyses. Throughout compilation, lint warnings
-//! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an ID of the node that the lint is being added to. The
-//! lint isn't actually emitted at that time because it is unknown what the
-//! actual lint level at that location is.
-//!
-//! To actually emit lint warnings/errors, a separate pass is used.
-//! A context keeps track of the current state of all lint levels.
-//! Upon entering a node of the ast which can modify the lint settings, the
-//! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon. As the ast is traversed, this keeps track of the current lint level
-//! for all lint attributes.
+//! The late lint pass Works on HIR nodes, towards the end of analysis (after
+//! borrow checking, etc.). These lints have full type information available.
 
 use std::any::Any;
 use std::cell::Cell;
@@ -26,11 +15,12 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::LintPass;
+use rustc_session::lint::builtin::HardwiredLints;
 use rustc_span::Span;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
-use crate::{LateContext, LateLintPass, LintStore};
+use crate::{LateContext, LateLintPass, LintId, LintStore};
 
 /// Extract the [`LintStore`] from [`Session`].
 ///
@@ -326,6 +316,9 @@ impl LintPass for RuntimeCombinedLateLintPass<'_, '_> {
     fn name(&self) -> &'static str {
         panic!()
     }
+    fn get_lints(&self) -> crate::LintVec {
+        panic!()
+    }
 }
 
 macro_rules! impl_late_lint_pass {
@@ -361,13 +354,20 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let late_module_passes = &unerased_lint_store(tcx.sess).late_module_passes;
-    if late_module_passes.is_empty() {
+    let store = unerased_lint_store(tcx.sess);
+
+    if store.late_module_passes.is_empty() {
         late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
     } else {
-        let mut passes: Vec<_> = late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+        let builtin_lints = Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>;
+        let mut binding = store
+            .late_module_passes
+            .iter()
+            .map(|mk_pass| (mk_pass)(tcx))
+            .chain(std::iter::once(builtin_lints))
+            .collect::<Vec<_>>();
+
+        let pass = RuntimeCombinedLateLintPass { passes: binding.as_mut_slice() };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
 }
@@ -398,7 +398,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 
 fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     // Note: `passes` is often empty.
-    let mut passes: Vec<_> =
+    let passes: Vec<_> =
         unerased_lint_store(tcx.sess).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
 
     if passes.is_empty() {
@@ -416,7 +416,18 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         only_module: false,
     };
 
-    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+
+    let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
+        .into_iter()
+        .filter(|pass| {
+            let lints = (**pass).get_lints();
+            !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+        })
+        .collect();
+
+    filtered_passes.push(Box::new(HardwiredLints));
+    let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
     late_lint_crate_inner(tcx, context, pass);
 }
 

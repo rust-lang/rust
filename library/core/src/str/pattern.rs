@@ -57,9 +57,9 @@ use crate::{cmp, fmt};
 /// [`Searcher`] type, which does the actual work of finding
 /// occurrences of the pattern in a string.
 ///
-/// Depending on the type of the pattern, the behaviour of methods like
+/// Depending on the type of the pattern, the behavior of methods like
 /// [`str::find`] and [`str::contains`] can change. The table below describes
-/// some of those behaviours.
+/// some of those behaviors.
 ///
 /// | Pattern type             | Match condition                           |
 /// |--------------------------|-------------------------------------------|
@@ -160,6 +160,21 @@ pub trait Pattern: Sized {
             None
         }
     }
+
+    /// Returns the pattern as utf-8 bytes if possible.
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        None
+    }
+}
+/// Result of calling [`Pattern::as_utf8_pattern()`].
+/// Can be used for inspecting the contents of a [`Pattern`] in cases
+/// where the underlying representation can be represented as UTF-8.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Utf8Pattern<'a> {
+    /// Type returned by String and str types.
+    StringPattern(&'a [u8]),
+    /// Type returned by char types.
+    CharPattern(char),
 }
 
 // Searcher
@@ -599,6 +614,11 @@ impl Pattern for char {
     {
         self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
     }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::CharPattern(*self))
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1021,6 +1041,11 @@ impl<'b> Pattern for &'b str {
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::StringPattern(self.as_bytes()))
     }
 }
 
