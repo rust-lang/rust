@@ -108,6 +108,7 @@ jobs:
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: rustup target add wasm32-unknown-unknown
+    - uses: Swatinem/rust-cache@v2
     - run: cargo build --target wasm32-unknown-unknown
 
   builtins:
@@ -117,6 +118,7 @@ jobs:
     - uses: actions/checkout@master
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
+    - uses: Swatinem/rust-cache@v2
     - run: cargo build -p cb
 
   benchmarks:
@@ -126,6 +128,7 @@ jobs:
     - uses: actions/checkout@master
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
+    - uses: Swatinem/rust-cache@v2
     - name: Download musl source
       run: ./ci/download-musl.sh
     - run: cargo bench --all
@@ -143,6 +146,7 @@ jobs:
         echo "MSRV=$msrv" >> "$GITHUB_ENV"
     - name: Install Rust
       run: rustup update "$MSRV" --no-self-update && rustup default "$MSRV"
+    - uses: Swatinem/rust-cache@v2
     - run: cargo build -p libm
 
   rustfmt:
