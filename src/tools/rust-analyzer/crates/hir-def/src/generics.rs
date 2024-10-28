@@ -451,7 +451,7 @@ pub(crate) struct GenericParamsCollector {
 impl GenericParamsCollector {
     pub(crate) fn fill(
         &mut self,
-        lower_ctx: &LowerCtx<'_>,
+        lower_ctx: &mut LowerCtx<'_>,
         node: &dyn HasGenericParams,
         add_param_attrs: impl FnMut(
             Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
@@ -468,7 +468,7 @@ impl GenericParamsCollector {
 
     pub(crate) fn fill_bounds(
         &mut self,
-        lower_ctx: &LowerCtx<'_>,
+        lower_ctx: &mut LowerCtx<'_>,
         type_bounds: Option<ast::TypeBoundList>,
         target: Either<TypeRefId, LifetimeRef>,
     ) {
@@ -479,7 +479,7 @@ impl GenericParamsCollector {
 
     fn fill_params(
         &mut self,
-        lower_ctx: &LowerCtx<'_>,
+        lower_ctx: &mut LowerCtx<'_>,
         params: ast::GenericParamList,
         mut add_param_attrs: impl FnMut(
             Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
@@ -535,7 +535,11 @@ impl GenericParamsCollector {
         }
     }
 
-    fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx<'_>, where_clause: ast::WhereClause) {
+    fn fill_where_predicates(
+        &mut self,
+        lower_ctx: &mut LowerCtx<'_>,
+        where_clause: ast::WhereClause,
+    ) {
         for pred in where_clause.predicates() {
             let target = if let Some(type_ref) = pred.ty() {
                 Either::Left(TypeRef::from_ast(lower_ctx, type_ref))
@@ -569,7 +573,7 @@ impl GenericParamsCollector {
 
     fn add_where_predicate_from_bound(
         &mut self,
-        lower_ctx: &LowerCtx<'_>,
+        lower_ctx: &mut LowerCtx<'_>,
         bound: ast::TypeBound,
         hrtb_lifetimes: Option<&[Name]>,
         target: Either<TypeRefId, LifetimeRef>,
@@ -670,8 +674,9 @@ impl GenericParamsCollector {
                 {
                     let (mut macro_types_map, mut macro_types_source_map) =
                         (TypesMap::default(), TypesSourceMap::default());
-                    let ctx = expander.ctx(db, &mut macro_types_map, &mut macro_types_source_map);
-                    let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
+                    let mut ctx =
+                        expander.ctx(db, &mut macro_types_map, &mut macro_types_source_map);
+                    let type_ref = TypeRef::from_ast(&mut ctx, expanded.tree());
                     self.fill_implicit_impl_trait_args(
                         db,
                         generics_types_map,
