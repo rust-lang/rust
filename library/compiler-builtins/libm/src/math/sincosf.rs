@@ -17,11 +17,11 @@
 use super::{k_cosf, k_sinf, rem_pio2f};
 
 /* Small multiples of pi/2 rounded to double precision. */
-const PI_2: f32 = 0.5 * 3.1415926535897931160E+00;
-const S1PIO2: f32 = 1.0 * PI_2; /* 0x3FF921FB, 0x54442D18 */
-const S2PIO2: f32 = 2.0 * PI_2; /* 0x400921FB, 0x54442D18 */
-const S3PIO2: f32 = 3.0 * PI_2; /* 0x4012D97C, 0x7F3321D2 */
-const S4PIO2: f32 = 4.0 * PI_2; /* 0x401921FB, 0x54442D18 */
+const PI_2: f64 = 0.5 * 3.1415926535897931160E+00;
+const S1PIO2: f64 = 1.0 * PI_2; /* 0x3FF921FB, 0x54442D18 */
+const S2PIO2: f64 = 2.0 * PI_2; /* 0x400921FB, 0x54442D18 */
+const S3PIO2: f64 = 3.0 * PI_2; /* 0x4012D97C, 0x7F3321D2 */
+const S4PIO2: f64 = 4.0 * PI_2; /* 0x401921FB, 0x54442D18 */
 
 /// Both the sine and cosine of `x` (f32).
 ///
@@ -59,21 +59,21 @@ pub fn sincosf(x: f32) -> (f32, f32) {
         if ix <= 0x4016cbe3 {
             /* |x| ~<= 3pi/4 */
             if sign {
-                s = -k_cosf((x + S1PIO2) as f64);
-                c = k_sinf((x + S1PIO2) as f64);
+                s = -k_cosf(x as f64 + S1PIO2);
+                c = k_sinf(x as f64 + S1PIO2);
             } else {
-                s = k_cosf((S1PIO2 - x) as f64);
-                c = k_sinf((S1PIO2 - x) as f64);
+                s = k_cosf(S1PIO2 - x as f64);
+                c = k_sinf(S1PIO2 - x as f64);
             }
         }
         /* -sin(x+c) is not correct if x+c could be 0: -0 vs +0 */
         else {
             if sign {
-                s = -k_sinf((x + S2PIO2) as f64);
-                c = -k_cosf((x + S2PIO2) as f64);
+                s = -k_sinf(x as f64 + S2PIO2);
+                c = -k_cosf(x as f64 + S2PIO2);
             } else {
-                s = -k_sinf((x - S2PIO2) as f64);
-                c = -k_cosf((x - S2PIO2) as f64);
+                s = -k_sinf(x as f64 - S2PIO2);
+                c = -k_cosf(x as f64 - S2PIO2);
             }
         }
 
@@ -85,19 +85,19 @@ pub fn sincosf(x: f32) -> (f32, f32) {
         if ix <= 0x40afeddf {
             /* |x| ~<= 7*pi/4 */
             if sign {
-                s = k_cosf((x + S3PIO2) as f64);
-                c = -k_sinf((x + S3PIO2) as f64);
+                s = k_cosf(x as f64 + S3PIO2);
+                c = -k_sinf(x as f64 + S3PIO2);
             } else {
-                s = -k_cosf((x - S3PIO2) as f64);
-                c = k_sinf((x - S3PIO2) as f64);
+                s = -k_cosf(x as f64 - S3PIO2);
+                c = k_sinf(x as f64 - S3PIO2);
             }
         } else {
             if sign {
-                s = k_sinf((x + S4PIO2) as f64);
-                c = k_cosf((x + S4PIO2) as f64);
+                s = k_sinf(x as f64 + S4PIO2);
+                c = k_cosf(x as f64 + S4PIO2);
             } else {
-                s = k_sinf((x - S4PIO2) as f64);
-                c = k_cosf((x - S4PIO2) as f64);
+                s = k_sinf(x as f64 - S4PIO2);
+                c = k_cosf(x as f64 - S4PIO2);
             }
         }
 
@@ -131,14 +131,6 @@ pub fn sincosf(x: f32) -> (f32, f32) {
 #[cfg(test)]
 mod tests {
     use super::sincosf;
-    use crate::_eqf;
-
-    #[test]
-    fn with_pi() {
-        let (s, c) = sincosf(core::f32::consts::PI);
-        _eqf(s.abs(), 0.0).unwrap();
-        _eqf(c, -1.0).unwrap();
-    }
 
     #[test]
     fn rotational_symmetry() {
