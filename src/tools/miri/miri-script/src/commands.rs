@@ -172,7 +172,8 @@ impl Command {
             Command::Install { flags } => Self::install(flags),
             Command::Build { flags } => Self::build(flags),
             Command::Check { flags } => Self::check(flags),
-            Command::Test { bless, flags, target } => Self::test(bless, flags, target),
+            Command::Test { bless, flags, target, coverage } =>
+                Self::test(bless, flags, target, coverage),
             Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
                 Self::run(dep, verbose, many_seeds, target, edition, flags),
             Command::Doc { flags } => Self::doc(flags),
@@ -458,8 +459,19 @@ impl Command {
         Ok(())
     }
 
-    fn test(bless: bool, mut flags: Vec<String>, target: Option<String>) -> Result<()> {
+    fn test(
+        bless: bool,
+        mut flags: Vec<String>,
+        target: Option<String>,
+        coverage: bool,
+    ) -> Result<()> {
         let mut e = MiriEnv::new()?;
+
+        let coverage = coverage.then_some(crate::coverage::CoverageReport::new()?);
+
+        if let Some(report) = &coverage {
+            report.add_env_vars(&mut e)?;
+        }
 
         // Prepare a sysroot. (Also builds cargo-miri, which we need.)
         e.build_miri_sysroot(/* quiet */ false, target.as_deref())?;
@@ -479,6 +491,11 @@ impl Command {
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
         e.test(".", &flags)?;
+
+        if let Some(coverage) = &coverage {
+            coverage.show_coverage_report(&e)?;
+        }
+
         Ok(())
     }
 
