@@ -29,11 +29,39 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
-      run: rustup update nightly && rustup default nightly
+      run: rustup update nightly --no-self-update && rustup default nightly
     - run: rustup target add ${{ matrix.target }}
     - run: rustup target add x86_64-unknown-linux-musl
     - run: cargo generate-lockfile
     - run: ./ci/run-docker.sh ${{ matrix.target }}
+
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: rustup target add wasm32-unknown-unknown
+    - run: cargo build --target wasm32-unknown-unknown
+
+  cb:
+    name: "The compiler-builtins crate works"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: cargo build -p cb
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly --no-self-update && rustup default nightly
+    - run: cargo bench --all
 
   msrv:
     name: Check MSRV
@@ -47,9 +75,8 @@ jobs:
         echo "MSRV: $msrv"
         echo "MSRV=$msrv" >> "$GITHUB_ENV"
     - name: Install Rust
-      run: rustup update "$MSRV" && rustup default "$MSRV"
+      run: rustup update "$MSRV" --no-self-update && rustup default "$MSRV"
     - run: cargo build -p libm
-
 
   rustfmt:
     name: Rustfmt
@@ -57,44 +84,20 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
-      run: rustup update nightly && rustup default nightly && rustup component add rustfmt
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
+        rustup component add rustfmt
     - run: cargo fmt -- --check
-
-  wasm:
-    name: WebAssembly
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly && rustup default nightly
-    - run: rustup target add wasm32-unknown-unknown
-    - run: cargo build --target wasm32-unknown-unknown
-
-  cb:
-    name: "The compiler-builtins crate works"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly && rustup default nightly
-    - run: cargo build -p cb
-
-  benchmarks:
-    name: Benchmarks
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly && rustup default nightly
-    - run: cargo bench --all
 
   success:
     needs:
       - docker
-      - rustfmt
       - wasm
       - cb
       - benchmarks
+      - msrv
+      - rustfmt
     runs-on: ubuntu-latest
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
