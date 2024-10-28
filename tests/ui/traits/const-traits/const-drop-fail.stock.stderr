@@ -8,16 +8,16 @@ LL | impl const Drop for ConstImplWithDropGlue {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-fail.rs:23:26
+  --> $DIR/const-drop-fail.rs:23:19
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                          ^^^^^^^^
+   |                   ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-fail.rs:23:26
+  --> $DIR/const-drop-fail.rs:23:19
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                          ^^^^^^^^
+   |                   ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

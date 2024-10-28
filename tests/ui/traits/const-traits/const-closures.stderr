@@ -1,56 +1,56 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:8:19
+  --> $DIR/const-closures.rs:8:12
    |
 LL |         F: ~const FnOnce() -> u8,
-   |                   ^^^^^^^^^^^^^^
+   |            ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:9:19
+  --> $DIR/const-closures.rs:9:12
    |
 LL |         F: ~const FnMut() -> u8,
-   |                   ^^^^^^^^^^^^^
+   |            ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:10:19
+  --> $DIR/const-closures.rs:10:12
    |
 LL |         F: ~const Fn() -> u8,
-   |                   ^^^^^^^^^^
+   |            ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:8:19
+  --> $DIR/const-closures.rs:8:12
    |
 LL |         F: ~const FnOnce() -> u8,
-   |                   ^^^^^^^^^^^^^^
+   |            ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:9:19
+  --> $DIR/const-closures.rs:9:12
    |
 LL |         F: ~const FnMut() -> u8,
-   |                   ^^^^^^^^^^^^^
+   |            ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:10:19
+  --> $DIR/const-closures.rs:10:12
    |
 LL |         F: ~const Fn() -> u8,
-   |                   ^^^^^^^^^^
+   |            ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:23:27
+  --> $DIR/const-closures.rs:23:20
    |
 LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
-   |                           ^^^^^^^^^^
+   |                    ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closures.rs:23:27
+  --> $DIR/const-closures.rs:23:20
    |
 LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
-   |                           ^^^^^^^^^^
+   |                    ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

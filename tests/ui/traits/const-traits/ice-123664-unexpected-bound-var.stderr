@@ -4,16 +4,16 @@ error: using `#![feature(effects)]` without enabling next trait solver globally
    = help: use `-Znext-solver` to enable
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-123664-unexpected-bound-var.rs:4:34
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
    |
 LL | const fn with_positive<F: ~const Fn()>() {}
-   |                                  ^^^^
+   |                           ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/ice-123664-unexpected-bound-var.rs:4:34
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
    |
 LL | const fn with_positive<F: ~const Fn()>() {}
-   |                                  ^^^^
+   |                           ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

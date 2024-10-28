@@ -17,30 +17,30 @@ LL | impl const PartialEq for S {
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-dup-bound.rs:20:44
+  --> $DIR/call-generic-method-dup-bound.rs:20:37
    |
 LL | const fn equals_self<T: PartialEq + ~const PartialEq>(t: &T) -> bool {
-   |                                            ^^^^^^^^^
+   |                                     ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-dup-bound.rs:20:44
+  --> $DIR/call-generic-method-dup-bound.rs:20:37
    |
 LL | const fn equals_self<T: PartialEq + ~const PartialEq>(t: &T) -> bool {
-   |                                            ^^^^^^^^^
+   |                                     ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-dup-bound.rs:27:37
+  --> $DIR/call-generic-method-dup-bound.rs:27:30
    |
 LL | const fn equals_self2<T: A + ~const PartialEq>(t: &T) -> bool {
-   |                                     ^^^^^^^^^
+   |                              ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/call-generic-method-dup-bound.rs:27:37
+  --> $DIR/call-generic-method-dup-bound.rs:27:30
    |
 LL | const fn equals_self2<T: A + ~const PartialEq>(t: &T) -> bool {
-   |                                     ^^^^^^^^^
+   |                              ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
