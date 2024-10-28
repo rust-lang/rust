@@ -56,19 +56,6 @@ LL | const fn a<T: ~const Destruct>(_: T) {}
    |                                |
    |                                the destructor for this type cannot be evaluated in constant functions
 
-error[E0015]: cannot call non-const fn `<T as SomeTrait>::foo` in constant functions
-  --> $DIR/const-drop.rs:69:13
-   |
-LL |             T::foo();
-   |             ^^^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
+error: aborting due to 7 previous errors
 
-error: aborting due to 8 previous errors
-
-Some errors have detailed explanations: E0015, E0493.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0493`.

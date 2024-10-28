@@ -1,6 +1,5 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
 use rustc_errors::Diag;
 use rustc_errors::codes::*;
@@ -71,24 +70,36 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     }
 }
 
-/// A function call where the callee is not marked as `const`.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct FnCallNonConst<'tcx> {
-    pub caller: LocalDefId,
+#[derive(Debug)]
+pub(crate) struct TraitCallNonConst<'tcx> {
     pub callee: DefId,
     pub args: GenericArgsRef<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
-    pub feature: Option<Symbol>,
 }
+impl<'tcx> NonConstOp<'tcx> for TraitCallNonConst<'tcx> {
+    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
+        if ccx
+            .tcx
+            .trait_of_item(self.callee)
+            .is_some_and(|trait_def_id| ccx.tcx.is_const_trait(trait_def_id))
+        {
+            Status::Unstable {
+                gate: sym::const_trait_impl,
+                safe_to_expose_on_stable: false,
+                is_function_call: true,
+            }
+        } else {
+            Status::Forbidden
+        }
+    }
 
-impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
-    // FIXME: make this translatable
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[allow(rustc::untranslatable_diagnostic)]
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
-        let FnCallNonConst { caller, callee, args, span, call_source, feature } = *self;
-        let ConstCx { tcx, param_env, body, .. } = *ccx;
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _span: Span) -> Diag<'tcx> {
+        let TraitCallNonConst { callee, args, span, call_source } = *self;
+        let ConstCx { tcx, param_env, .. } = *ccx;
+        let caller = ccx.def_id();
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
             let trait_ref = TraitRef::from_method(tcx, trait_id, args);
@@ -113,6 +124,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 }
                 ty::Adt(..) => {
+                    // FIXME(effects): Don't use select here.
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
@@ -270,9 +282,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
-            _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) => {
-                ccx.dcx().create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() })
-            }
             _ => ccx.dcx().create_err(errors::NonConstFnCall {
                 span,
                 def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
@@ -286,13 +295,55 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             ccx.const_kind(),
         ));
 
-        if let Some(feature) = feature {
+        if let ConstContext::Static(_) = ccx.const_kind() {
+            err.note(fluent_generated::const_eval_lazy_lock);
+        }
+
+        if tcx
+            .trait_of_item(self.callee)
+            .is_some_and(|trait_def_id| tcx.is_const_trait(trait_def_id))
+        {
             ccx.tcx.disabled_nightly_features(
                 &mut err,
-                body.source.def_id().as_local().map(|local| ccx.tcx.local_def_id_to_hir_id(local)),
-                [(String::new(), feature)],
+                Some(ccx.tcx.local_def_id_to_hir_id(ccx.def_id())),
+                [(String::new(), sym::const_trait_impl)],
             );
         }
+
+        err
+    }
+}
+
+/// A function call where the callee is not marked as `const`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct FnCallNonConst<'tcx> {
+    pub callee: DefId,
+    pub args: GenericArgsRef<'tcx>,
+    pub span: Span,
+}
+
+impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
+        let FnCallNonConst { callee, args, span } = *self;
+        let tcx = ccx.tcx;
+
+        let mut err = if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) {
+            ccx.dcx().create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() })
+        } else {
+            ccx.dcx().create_err(errors::NonConstFnCall {
+                span,
+                def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
+                kind: ccx.const_kind(),
+            })
+        };
+
+        err.note(format!(
+            "calls in {}s are limited to constant functions, \
+             tuple structs and tuple variants",
+            ccx.const_kind(),
+        ));
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note(fluent_generated::const_eval_lazy_lock);
