@@ -25,6 +25,7 @@ use tracing::{debug, info};
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
+use crate::common::AsCCharPtr;
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
@@ -604,7 +605,7 @@ pub(crate) fn run_pass_manager(
     unsafe {
         if !llvm::LLVMRustHasModuleFlag(
             module.module_llvm.llmod(),
-            "LTOPostLink".as_ptr().cast(),
+            "LTOPostLink".as_c_char_ptr(),
             11,
         ) {
             llvm::LLVMRustAddModuleFlagU32(
