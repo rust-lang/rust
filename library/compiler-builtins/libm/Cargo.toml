@@ -18,9 +18,17 @@ default = []
 
 # This tells the compiler to assume that a Nightly toolchain is being used and
 # that it should activate any useful Nightly things accordingly.
-unstable = []
+unstable = ["unstable-intrinsics"]
+
+# Enable calls to functions in `core::intrinsics`
+unstable-intrinsics = []
 
 # Used to prevent using any intrinsics or arch-specific code.
+#
+# HACK: this is a negative feature which is generally a bad idea in Cargo, but
+# we need it to be able to forbid other features when this crate is used in
+# Rust dependencies. Setting this overrides all features that may enable
+# hard float operations.
 force-soft-floats = []
 
 [workspace]
