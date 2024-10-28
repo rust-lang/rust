@@ -273,6 +273,8 @@ pub trait Interner:
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool;
 
+    fn trait_has_impl_which_may_shadow_dyn(self, trait_def_id: Self::DefId) -> bool;
+
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;

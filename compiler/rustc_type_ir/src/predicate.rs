@@ -433,6 +433,10 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
     pub fn item_def_id(&self) -> I::DefId {
         self.skip_binder().def_id
     }
+
+    pub fn trait_def_id(self, interner: I) -> I::DefId {
+        interner.parent(self.skip_binder().def_id)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

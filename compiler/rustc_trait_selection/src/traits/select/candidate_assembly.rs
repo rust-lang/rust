@@ -832,7 +832,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "assemble_candidates_from_object_ty",
         );
 
-        if !self.tcx().trait_def(obligation.predicate.def_id()).implement_via_object {
+        let tcx = self.tcx();
+        if !tcx.trait_def(obligation.predicate.def_id()).implement_via_object {
             return;
         }
 
@@ -853,9 +854,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                         if let Some(principal) = data.principal() {
                             if !self.infcx.tcx.features().dyn_compatible_for_dispatch() {
-                                principal.with_self_ty(self.tcx(), self_ty)
-                            } else if self.tcx().is_dyn_compatible(principal.def_id()) {
-                                principal.with_self_ty(self.tcx(), self_ty)
+                                principal.with_self_ty(tcx, self_ty)
+                            } else if tcx.is_dyn_compatible(principal.def_id()) {
+                                principal.with_self_ty(tcx, self_ty)
                             } else {
                                 return;
                             }
@@ -879,7 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // correct trait, but also the correct type parameters.
                 // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
                 // but `Foo` is declared as `trait Foo: Bar<u32>`.
-                let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
+                let candidate_supertraits = util::supertraits(tcx, principal_trait_ref)
                     .enumerate()
                     .filter(|&(_, upcast_trait_ref)| {
                         self.infcx.probe(|_| {
@@ -890,6 +891,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             )
                             .is_ok()
                         })
+                    })
+                    .filter(|(_, trait_ref)| {
+                        !tcx.trait_has_impl_which_may_shadow_dyn(trait_ref.def_id())
                     })
                     .map(|(idx, _)| ObjectCandidate(idx));
 

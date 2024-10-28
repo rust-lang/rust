@@ -14,6 +14,7 @@ pub mod specialization_graph;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::Obligation;
 use rustc_middle::bug;
@@ -594,4 +595,59 @@ fn report_conflicting_impls<'tcx>(
             Ok(())
         }
     }
+}
+
+pub(super) fn trait_has_impl_which_may_shadow_dyn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+) -> bool {
+    // We only care about trait objects which have associated types.
+    if !tcx
+        .associated_items(trait_def_id)
+        .in_definition_order()
+        .any(|item| item.kind == ty::AssocKind::Type)
+    {
+        return false;
+    }
+
+    let mut has_impl = false;
+    tcx.for_each_impl(trait_def_id, |impl_def_id| {
+        if has_impl {
+            return;
+        }
+
+        let self_ty = tcx
+            .impl_trait_ref(impl_def_id)
+            .expect("impl must have trait ref")
+            .instantiate_identity()
+            .self_ty();
+        if self_ty.is_known_rigid() {
+            return;
+        }
+
+        let sized_trait = tcx.require_lang_item(LangItem::Sized, None);
+        if tcx
+            .param_env(impl_def_id)
+            .caller_bounds()
+            .iter()
+            .filter_map(|clause| clause.as_trait_clause())
+            .any(|bound| bound.def_id() == sized_trait && bound.self_ty().skip_binder() == self_ty)
+        {
+            return;
+        }
+
+        if let ty::Alias(ty::Projection, alias_ty) = self_ty.kind()
+            && tcx
+                .item_super_predicates(alias_ty.def_id)
+                .iter_identity()
+                .filter_map(|clause| clause.as_trait_clause())
+                .any(|bound| bound.def_id() == sized_trait)
+        {
+            return;
+        }
+
+        has_impl = true;
+    });
+
+    has_impl
 }

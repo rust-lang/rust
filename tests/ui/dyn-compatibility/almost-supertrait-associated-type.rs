@@ -7,6 +7,7 @@ fn transmute<T, U>(t: T) -> U {
     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
     //~^ ERROR the trait `Foo` cannot be made into an object
     //~| ERROR the trait `Foo` cannot be made into an object
+    //~| ERROR the trait bound `dyn Foo<T, U>: Super<ActuallySuper>` is not satisfied
 }
 
 struct ActuallySuper;
