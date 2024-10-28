@@ -116,9 +116,9 @@ enum MutexKind {
     ErrorCheck,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct PthreadMutex {
-    id: MutexId,
+    mutex_ref: MutexRef,
     kind: MutexKind,
 }
 
@@ -175,15 +175,13 @@ fn mutex_create<'tcx>(
 ) -> InterpResult<'tcx, PthreadMutex> {
     let mutex = ecx.deref_pointer(mutex_ptr)?;
     let id = ecx.machine.sync.mutex_create();
-    let data = PthreadMutex { id, kind };
-    ecx.lazy_sync_init(&mutex, mutex_init_offset(ecx)?, data)?;
+    let data = PthreadMutex { mutex_ref: id, kind };
+    ecx.lazy_sync_init(&mutex, mutex_init_offset(ecx)?, data.clone())?;
     interp_ok(data)
 }
 
-/// Returns the `MutexId` of the mutex stored at `mutex_op`.
-///
-/// `mutex_get_id` will also check if the mutex has been moved since its first use and
-/// return an error if it has.
+/// Returns the mutex data stored at the address that `mutex_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
 fn mutex_get_data<'tcx, 'a>(
     ecx: &'a mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
@@ -196,7 +194,7 @@ fn mutex_get_data<'tcx, 'a>(
         |ecx| {
             let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
             let id = ecx.machine.sync.mutex_create();
-            interp_ok(PthreadMutex { id, kind })
+            interp_ok(PthreadMutex { mutex_ref: id, kind })
         },
     )
 }
@@ -502,10 +500,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mutex = mutex_get_data(this, mutex_op)?;
 
-        let ret = if this.mutex_is_locked(mutex.id) {
-            let owner_thread = this.mutex_get_owner(mutex.id);
+        let ret = if this.mutex_is_locked(&mutex.mutex_ref) {
+            let owner_thread = this.mutex_get_owner(&mutex.mutex_ref);
             if owner_thread != this.active_thread() {
-                this.mutex_enqueue_and_block(mutex.id, Some((Scalar::from_i32(0), dest.clone())));
+                this.mutex_enqueue_and_block(
+                    &mutex.mutex_ref,
+                    Some((Scalar::from_i32(0), dest.clone())),
+                );
                 return interp_ok(());
             } else {
                 // Trying to acquire the same mutex again.
@@ -517,14 +518,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MutexKind::Normal => throw_machine_stop!(TerminationInfo::Deadlock),
                     MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(mutex.id);
+                        this.mutex_lock(&mutex.mutex_ref);
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(mutex.id);
+            this.mutex_lock(&mutex.mutex_ref);
             0
         };
         this.write_scalar(Scalar::from_i32(ret), dest)?;
@@ -536,8 +537,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mutex = mutex_get_data(this, mutex_op)?;
 
-        interp_ok(Scalar::from_i32(if this.mutex_is_locked(mutex.id) {
-            let owner_thread = this.mutex_get_owner(mutex.id);
+        interp_ok(Scalar::from_i32(if this.mutex_is_locked(&mutex.mutex_ref) {
+            let owner_thread = this.mutex_get_owner(&mutex.mutex_ref);
             if owner_thread != this.active_thread() {
                 this.eval_libc_i32("EBUSY")
             } else {
@@ -545,14 +546,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck =>
                         this.eval_libc_i32("EBUSY"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(mutex.id);
+                        this.mutex_lock(&mutex.mutex_ref);
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(mutex.id);
+            this.mutex_lock(&mutex.mutex_ref);
             0
         }))
     }
@@ -562,7 +563,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mutex = mutex_get_data(this, mutex_op)?;
 
-        if let Some(_old_locked_count) = this.mutex_unlock(mutex.id)? {
+        if let Some(_old_locked_count) = this.mutex_unlock(&mutex.mutex_ref)? {
             // The mutex was locked by the current thread.
             interp_ok(Scalar::from_i32(0))
         } else {
@@ -591,7 +592,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // since we make the field unint below.
         let mutex = mutex_get_data(this, mutex_op)?;
 
-        if this.mutex_is_locked(mutex.id) {
+        if this.mutex_is_locked(&mutex.mutex_ref) {
             throw_ub_format!("destroyed a locked mutex");
         }
 
@@ -823,11 +824,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let data = cond_get_data(this, cond_op)?;
-        let mutex_id = mutex_get_data(this, mutex_op)?.id;
+        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref;
 
         this.condvar_wait(
             data.id,
-            mutex_id,
+            mutex_ref,
             None, // no timeout
             Scalar::from_i32(0),
             Scalar::from_i32(0), // retval_timeout -- unused
@@ -847,7 +848,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let data = cond_get_data(this, cond_op)?;
-        let mutex_id = mutex_get_data(this, mutex_op)?.id;
+        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref;
 
         // Extract the timeout.
         let duration = match this
@@ -870,7 +871,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.condvar_wait(
             data.id,
-            mutex_id,
+            mutex_ref,
             Some((timeout_clock, TimeoutAnchor::Absolute, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout

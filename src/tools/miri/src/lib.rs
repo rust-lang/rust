@@ -121,7 +121,7 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceId};
 pub use crate::concurrency::sync::{
-    CondvarId, EvalContextExt as _, MutexId, RwLockId, SynchronizationObjects,
+    CondvarId, EvalContextExt as _, MutexRef, RwLockId, SynchronizationObjects,
 };
 pub use crate::concurrency::thread::{
     BlockReason, EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, TimeoutAnchor,

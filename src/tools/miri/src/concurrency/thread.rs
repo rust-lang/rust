@@ -162,7 +162,7 @@ pub enum BlockReason {
     /// Waiting for time to pass.
     Sleep,
     /// Blocked on a mutex.
-    Mutex(MutexId),
+    Mutex,
     /// Blocked on a condition variable.
     Condvar(CondvarId),
     /// Blocked on a reader-writer lock.
