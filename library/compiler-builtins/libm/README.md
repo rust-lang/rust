@@ -34,6 +34,10 @@ To run all benchmarks:
 
 Please check [CONTRIBUTING.md](CONTRIBUTING.md)
 
+## Minimum Rust version policy
+
+This crate supports rustc 1.63 and newer.
+
 ## License
 
 Usage is licensed under the MIT license ([LICENSE-MIT](LICENSE-MIT) or
