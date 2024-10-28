@@ -698,12 +698,9 @@ fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
     let feature = s
         .strip_prefix(&['+', '-'][..])
         .unwrap_or_else(|| sess.dcx().emit_fatal(InvalidTargetFeaturePrefix { feature: s }));
-    if s.is_empty() {
-        return None;
-    }
     // Rustc-specific feature requests like `+crt-static` or `-crt-static`
     // are not passed down to LLVM.
-    if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+    if s.is_empty() || RUSTC_SPECIFIC_FEATURES.contains(&feature) {
         return None;
     }
     Some(feature)
