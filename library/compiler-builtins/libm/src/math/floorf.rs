@@ -5,14 +5,12 @@ use core::f32;
 /// Finds the nearest integer less than or equal to `x`.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn floorf(x: f32) -> f32 {
-    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
-    // `f32.floor` native instruction, so we can leverage this for both code size
-    // and speed.
-    llvm_intrinsically_optimized! {
-        #[cfg(target_arch = "wasm32")] {
-            return unsafe { ::core::intrinsics::floorf32(x) }
-        }
+    select_implementation! {
+        name: floorf,
+        use_intrinsic: target_arch = "wasm32",
+        args: x,
     }
+
     let mut ui = x.to_bits();
     let e = (((ui >> 23) as i32) & 0xff) - 0x7f;
 

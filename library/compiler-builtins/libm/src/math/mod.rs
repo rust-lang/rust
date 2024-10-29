@@ -74,18 +74,6 @@ macro_rules! div {
     };
 }
 
-// FIXME: phase this out, to be replaced by the more flexible `select_implementation`
-macro_rules! llvm_intrinsically_optimized {
-    (#[cfg($($clause:tt)*)] $e:expr) => {
-        #[cfg(all(intrinsics_enabled, not(feature = "force-soft-floats"), $($clause)*))]
-        {
-            if true { // thwart the dead code lint
-                $e
-            }
-        }
-    };
-}
-
 // Private modules
 #[macro_use]
 mod support;

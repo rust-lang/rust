@@ -2,14 +2,12 @@ use core::f64;
 
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn trunc(x: f64) -> f64 {
-    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
-    // `f64.trunc` native instruction, so we can leverage this for both code size
-    // and speed.
-    llvm_intrinsically_optimized! {
-        #[cfg(target_arch = "wasm32")] {
-            return unsafe { ::core::intrinsics::truncf64(x) }
-        }
+    select_implementation! {
+        name: trunc,
+        use_intrinsic: target_arch = "wasm32",
+        args: x,
     }
+
     let x1p120 = f64::from_bits(0x4770000000000000); // 0x1p120f === 2 ^ 120
 
     let mut i: u64 = x.to_bits();
