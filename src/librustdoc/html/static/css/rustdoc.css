@@ -2214,20 +2214,25 @@ details.toggle:not([open]) > summary .docblock {
 	max-height: calc(1.5em + 0.75em);
 	overflow-y: hidden;
 }
-details.toggle:not([open]) > summary .docblock::after {
-	content: '';
+details.toggle:not([open]) > summary .docblock > :first-child {
+	max-width: calc(100% - 1em);
+	overflow: hidden;
+	width: fit-content;
+	white-space: nowrap;
+	position: relative;
+	padding-right: 1em;
+}
+details.toggle:not([open]) > summary .docblock > :first-child::after {
+	content: "…";
 	position: absolute;
-	bottom: 0;
-	left: 0;
 	right: 0;
-	pointer-events: none;
-	background: linear-gradient(
-		to top,
-		var(--scrape-example-code-wrapper-background-start),
-		var(--scrape-example-code-wrapper-background-end)
-	);
-	height: 0.7em;
+	top: 0;
+	bottom: 0;
 	z-index: 1;
+	background-color: var(--main-background-color);
+	/* In case this ends up in a heading or a `<code>` item. */
+	font-weight: normal;
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
 }
 details.toggle > summary .docblock {
 	margin-top: 0.75em;
