@@ -128,7 +128,6 @@ pub(crate) fn type_check<'a, 'tcx>(
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: Rc<DenseLocationMap>,
-    upvars: &[&ty::CapturedPlace<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
@@ -171,7 +170,6 @@ pub(crate) fn type_check<'a, 'tcx>(
         all_facts,
         borrow_set,
         constraints: &mut constraints,
-        upvars,
     };
 
     checker.check_user_type_annotations();
@@ -852,7 +850,6 @@ struct TypeChecker<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    upvars: &'a [&'a ty::CapturedPlace<'tcx>],
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -2631,8 +2628,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
+        let def = self.body.source.def_id().expect_local();
+        let upvars = tcx.closure_captures(def);
         let field =
-            path_utils::is_upvar_field_projection(tcx, self.upvars, borrowed_place.as_ref(), body);
+            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {

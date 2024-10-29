@@ -85,7 +85,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    upvars: &[&ty::CapturedPlace<'tcx>],
     consumer_options: Option<ConsumerOptions>,
 ) -> NllOutput<'tcx> {
     let is_polonius_legacy_enabled = infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
@@ -112,7 +111,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             flow_inits,
             move_data,
             Rc::clone(&elements),
-            upvars,
         );
 
     // Create the region inference context, taking ownership of the

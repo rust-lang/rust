@@ -217,7 +217,6 @@ fn do_mir_borrowck<'tcx>(
         &mut flow_inits,
         &move_data,
         &borrow_set,
-        tcx.closure_captures(def),
         consumer_options,
     );
 
