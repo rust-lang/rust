@@ -1,5 +1,6 @@
 //! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
+use rustc_abi::Variants;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
@@ -9,7 +10,6 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_target::abi::{Abi, Variants};
 use tracing::trace;
 
 pub(super) struct UnreachableEnumBranching;
@@ -65,7 +65,7 @@ fn variant_discriminants<'tcx>(
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
-                (layout.abi != Abi::Uninhabited)
+                (!layout.is_uninhabited())
                     .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),

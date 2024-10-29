@@ -10,7 +10,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(tcx, cx.param_env) {
-        assert!(layout.abi.is_uninhabited());
+        assert!(layout.is_uninhabited());
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
@@ -262,9 +262,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                 )
             }
             // Skip empty variants.
-            if variant.size == Size::ZERO
-                || variant.fields.count() == 0
-                || variant.abi.is_uninhabited()
+            if variant.size == Size::ZERO || variant.fields.count() == 0 || variant.is_uninhabited()
             {
                 // These are never actually accessed anyway, so we can skip the coherence check
                 // for them. They also fail that check, since they have

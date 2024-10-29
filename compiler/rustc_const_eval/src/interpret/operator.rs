@@ -315,7 +315,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = left.to_scalar().to_pointer(self)?;
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
                 let pointee_layout = self.layout_of(pointee_ty)?;
-                assert!(pointee_layout.abi.is_sized());
+                assert!(pointee_layout.is_sized());
 
                 // The size always fits in `i64` as it can be at most `isize::MAX`.
                 let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
@@ -518,14 +518,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         interp_ok(match null_op {
             SizeOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
                 }
                 let val = layout.size.bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
             AlignOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
                 }
                 let val = layout.align.abi.bytes();
