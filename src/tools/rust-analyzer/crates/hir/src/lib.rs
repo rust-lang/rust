@@ -34,7 +34,10 @@ pub mod term_search;
 
 mod display;
 
-use std::{mem::discriminant, ops::ControlFlow};
+use std::{
+    mem::discriminant,
+    ops::{ControlFlow, Not},
+};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin};
@@ -2695,6 +2698,18 @@ impl Trait {
 
     pub fn dyn_compatibility(&self, db: &dyn HirDatabase) -> Option<DynCompatibilityViolation> {
         hir_ty::dyn_compatibility::dyn_compatibility(db, self.id)
+    }
+
+    pub fn dyn_compatibility_all_violations(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<Vec<DynCompatibilityViolation>> {
+        let mut violations = vec![];
+        hir_ty::dyn_compatibility::dyn_compatibility_with_callback(db, self.id, &mut |violation| {
+            violations.push(violation);
+            ControlFlow::Continue(())
+        });
+        violations.is_empty().not().then_some(violations)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {

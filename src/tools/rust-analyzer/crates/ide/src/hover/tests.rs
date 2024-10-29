@@ -347,9 +347,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl Fn(i32) -> i32
             ```
+            ___
+            size = 8, align = 8, niches = 1
 
             ## Captures
             * `x` by immutable borrow
@@ -369,9 +371,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 0, align = 1
+            {closure#0}
             impl Fn(i32) -> i32
             ```
+            ___
+            size = 0, align = 1
 
             ## Captures
             This closure captures nothing
@@ -402,9 +406,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 16 (0x10), align = 8, niches = 1
+            {closure#0}
             impl FnOnce()
             ```
+            ___
+            size = 16 (0x10), align = 8, niches = 1
 
             ## Captures
             * `x.f1` by move
@@ -430,9 +436,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl FnMut()
             ```
+            ___
+            size = 8, align = 8, niches = 1
 
             ## Captures
             * `x` by mutable borrow
@@ -454,9 +462,11 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl FnOnce() -> S2
             ```
+            ___
+            size = 8, align = 8, niches = 1
             Coerced to: &impl FnOnce() -> S2
 
             ## Captures
@@ -550,9 +560,12 @@ fn main() {
             *iter*
 
             ```rust
-            // size = 8, align = 4
             let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>>
             ```
+
+            ---
+
+            size = 8, align = 4
         "#]],
     );
 }
@@ -792,9 +805,12 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ```
 
             ```rust
-            // size = 1, align = 1, offset = 6
             field_a: u8
             ```
+
+            ---
+
+            size = 1, align = 1, offset = 6
         "#]],
     );
 }
@@ -840,9 +856,12 @@ fn main() {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub field_a: u32
             ```
+
+            ---
+
+            size = 4, align = 4, offset = 0
         "#]],
     );
 }
@@ -905,11 +924,14 @@ struct Foo$0(pub u32) where u32: Copy;
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo(pub u32)
             where
                 u32: Copy,
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -928,11 +950,14 @@ struct Foo$0 { field: u32 }
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo {
                 field: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check(
@@ -947,7 +972,6 @@ struct Foo$0 where u32: Copy { field: u32 }
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo
             where
                 u32: Copy,
@@ -955,6 +979,10 @@ struct Foo$0 where u32: Copy { field: u32 }
                 field: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -974,13 +1002,16 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
             }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -996,11 +1027,14 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo {
                 a: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1016,7 +1050,6 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 16 (0x10), align = 4
             struct Foo {
                 a: u32,
                 b: i32,
@@ -1024,6 +1057,10 @@ fn hover_record_struct_limit() {
                 /* … */
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1039,9 +1076,12 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1057,9 +1097,12 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo { /* … */ }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
 
@@ -1077,9 +1120,12 @@ fn hover_record_struct_limit() {
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Foo {}
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -1099,9 +1145,12 @@ fn hover_record_variant_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A { a: u32, b: i32, c: i32, }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1117,9 +1166,12 @@ fn hover_record_variant_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             A { a: u32, }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1135,9 +1187,12 @@ fn hover_record_variant_limit() {
             ```
 
             ```rust
-            // size = 16 (0x10), align = 4
             A { a: u32, b: i32, c: i32, /* … */ }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1153,9 +1208,12 @@ fn hover_record_variant_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1171,9 +1229,12 @@ fn hover_record_variant_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A { /* … */ }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
 }
@@ -1191,12 +1252,15 @@ fn hover_enum_limit() {
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo {
                 A,
                 B,
             }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1210,12 +1274,15 @@ fn hover_enum_limit() {
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo {
                 A,
                 /* … */
             }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1229,9 +1296,12 @@ fn hover_enum_limit() {
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo { /* … */ }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1245,9 +1315,12 @@ fn hover_enum_limit() {
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1270,7 +1343,6 @@ fn hover_enum_limit() {
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4, niches = 4294967288
             enum Enum {
                 Variant {},
                 Variant2 { /* … */ },
@@ -1282,6 +1354,10 @@ fn hover_enum_limit() {
                 /* … */
             }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4, niches = 4294967288
         "#]],
     );
 }
@@ -1299,12 +1375,15 @@ fn hover_union_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo {
                 a: u32,
                 b: i32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1318,12 +1397,15 @@ fn hover_union_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo {
                 a: u32,
                 /* … */
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1337,9 +1419,12 @@ fn hover_union_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo { /* … */ }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1353,9 +1438,12 @@ fn hover_union_limit() {
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -1374,11 +1462,14 @@ struct Foo$0 where u32: Copy;
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Foo
             where
                 u32: Copy,
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -1544,9 +1635,12 @@ fn main() {
             *zz*
 
             ```rust
-            // size = 8, align = 4
             let zz: Test<i32>
             ```
+
+            ---
+
+            size = 8, align = 4
         "#]],
     );
     check_hover_range(
@@ -1596,9 +1690,12 @@ fn main() { let b$0ar = Some(12); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             let bar: Option<i32>
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -1680,9 +1777,12 @@ fn hover_for_local_variable_pat() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -1709,9 +1809,12 @@ fn hover_for_param_edge() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -1754,9 +1857,12 @@ fn main() { let foo_$0test = Thing::new(); }
             *foo_test*
 
             ```rust
-            // size = 4, align = 4
             let foo_test: Thing
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -2362,9 +2468,12 @@ fn test_hover_function_pointer_show_identifiers() {
             ```
 
             ```rust
-            // size = 8, align = 8, niches = 1
             type foo = fn(a: i32, b: i32) -> i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -2381,9 +2490,12 @@ fn test_hover_function_pointer_no_identifier() {
             ```
 
             ```rust
-            // size = 8, align = 8, niches = 1
             type foo = fn(i32, i32) -> i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -2621,9 +2733,12 @@ pub struct B$0ar
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Bar
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -2649,9 +2764,12 @@ pub struct B$0ar
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Bar
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -2739,9 +2857,12 @@ fn test_hover_layout_of_variant() {
             ```
 
             ```rust
-            // size = 4, align = 2
             Variant1(u8, u16)
             ```
+
+            ---
+
+            size = 4, align = 2
         "#]],
     );
 }
@@ -2782,9 +2903,12 @@ struct S$0<T>(core::marker::PhantomData<T>);
             ```
 
             ```rust
-            // size = 0, align = 1
             struct S<T>(PhantomData<T>)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -2804,12 +2928,15 @@ fn test_hover_layout_of_enum() {
             ```
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 254
             enum Foo {
                 Variant1( /* … */ ),
                 Variant2( /* … */ ),
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 254
         "#]],
     );
 }
@@ -4121,9 +4248,12 @@ fn main() {
             *f*
 
             ```rust
-            // size = 8, align = 8, niches = 1
             let f: &i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
             ---
 
             ```rust
@@ -4131,9 +4261,12 @@ fn main() {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             f: i32
             ```
+
+            ---
+
+            size = 4, align = 4, offset = 0
         "#]],
     );
 }
@@ -4153,9 +4286,12 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = 1, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4175,9 +4311,12 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = {const}, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4198,9 +4337,12 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = VAL, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4219,9 +4361,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<1>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4240,9 +4385,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<0>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4261,9 +4409,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<-1>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4282,9 +4433,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<true>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4303,9 +4457,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<'🦀'>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4323,9 +4480,12 @@ impl Foo {
             *self*
 
             ```rust
-            // size = 8, align = 8, niches = 1
             self: &Foo
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -4344,9 +4504,12 @@ impl Foo {
             *self*
 
             ```rust
-            // size = 0, align = 1
             self: Arc<Foo>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4743,9 +4906,12 @@ type Fo$0o2 = Foo<2>;
             ```
 
             ```rust
-            // size = 0, align = 1
             type Foo2 = Foo<2>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4786,9 +4952,12 @@ enum E {
             ```
 
             ```rust
-            // size = 1, align = 1
             A = 8
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4812,9 +4981,12 @@ enum E {
             ```
 
             ```rust
-            // size = 1, align = 1
             A = 12 (0xC)
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4839,9 +5011,12 @@ enum E {
             ```
 
             ```rust
-            // size = 1, align = 1
             B = 2
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4866,9 +5041,12 @@ enum E {
             ```
 
             ```rust
-            // size = 1, align = 1
             B = 5
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -5786,9 +5964,12 @@ fn main() {
             *tile4*
 
             ```rust
-            // size = 32 (0x20), align = 4
             let tile4: [u32; 8]
             ```
+
+            ---
+
+            size = 32 (0x20), align = 4
         "#]],
     );
 }
@@ -7082,9 +7263,12 @@ enum Enum {
             ```
 
             ```rust
-            // size = 4, align = 4
             RecordV { field: u32, }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -7105,9 +7289,12 @@ enum Enum {
             ```
 
             ```rust
-            // size = 4, align = 4
             field: u32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -7772,9 +7959,12 @@ fn test() {
             *s*
 
             ```rust
-            // size = 0, align = 1
             let s: S
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8349,10 +8539,16 @@ fn main(notable$0: u32) {}
             *notable*
 
             ```rust
-            // Implements notable traits: Notable<Assoc = &str, Assoc2 = char>
-            // size = 4, align = 4
             notable: u32
             ```
+
+            ---
+
+            Implements notable traits: Notable\<Assoc = &str, Assoc2 = char>
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -8381,7 +8577,6 @@ impl Iterator for S {
             ```
 
             ```rust
-            // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
             struct S
             ```
         "#]],
@@ -8440,9 +8635,12 @@ extern "C" {
             ```
 
             ```rust
-            // size = 0, align = 1
             type Ty
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8468,9 +8666,10 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
             S
-            ```"#]],
+            ```
+            ___
+            Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>"#]],
     );
 }
 
@@ -8580,11 +8779,14 @@ struct Pedro$0<'a> {
             ```
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             struct Pedro<'a> {
                 hola: &str,
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 1
         "#]],
     )
 }
@@ -8617,9 +8819,12 @@ fn main(a$0: T) {}
             *a*
 
             ```rust
-            // size = 0, align = 1
             a: T
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8667,9 +8872,12 @@ fn main() {
             *x*
 
             ```rust
-            // size = 0, align = 1
             let x: fn f<S, i32>()
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8998,9 +9206,12 @@ type A$0 = B;
             ```
 
             ```rust
-            // size = 0, align = 1
             type A = B
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -9028,9 +9239,12 @@ type A$0 = B;
             ```
 
             ```rust
-            // size = 0, align = 1
             type A = B
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -9059,9 +9273,12 @@ type A$0 = B;
             ```
 
             ```rust
-            // size = 0, align = 1
             type A = B
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -9088,9 +9305,12 @@ type A$0 = B;
             ```
 
             ```rust
-            // size = 0, align = 1
             type A = B
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 
@@ -9146,9 +9366,12 @@ trait Compat$0 {}
             ```
 
             ```rust
-            // Is Dyn compatible
             trait Compat
             ```
+
+            ---
+
+            Is Dyn compatible
         "#]],
     );
     check(
@@ -9165,9 +9388,12 @@ trait UnCompat$0 {
             ```
 
             ```rust
-            // Is not Dyn compatible due to having a method `f` that is not dispatchable due to missing a receiver
             trait UnCompat
             ```
+
+            ---
+
+            Is not Dyn compatible due to having a method `f` that is not dispatchable due to missing a receiver
         "#]],
     );
     check(
