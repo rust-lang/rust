@@ -696,7 +696,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
-        errno_timeout: Scalar,
+        errno_timeout: IoError,
     ) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
@@ -713,7 +713,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval_succ: Scalar,
                     retval_timeout: Scalar,
                     dest: MPlaceTy<'tcx>,
-                    errno_timeout: Scalar,
+                    errno_timeout: IoError,
                 }
                 @unblock = |this| {
                     let futex = this.machine.sync.futexes.get(&addr).unwrap();
