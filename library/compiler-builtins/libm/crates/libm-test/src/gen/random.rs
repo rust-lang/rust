@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use super::CachedInput;
-use crate::GenerateInput;
+use crate::{CheckCtx, GenerateInput};
 
 const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
 
@@ -40,9 +40,10 @@ static TEST_CASES_JN: LazyLock<CachedInput> = LazyLock::new(|| {
     let mut cases = (&*TEST_CASES).clone();
 
     // These functions are extremely slow, limit them
-    cases.inputs_i32.truncate((NTESTS / 1000).max(80));
-    cases.inputs_f32.truncate((NTESTS / 1000).max(80));
-    cases.inputs_f64.truncate((NTESTS / 1000).max(80));
+    let ntests_jn = (NTESTS / 1000).max(80);
+    cases.inputs_i32.truncate(ntests_jn);
+    cases.inputs_f32.truncate(ntests_jn);
+    cases.inputs_f64.truncate(ntests_jn);
 
     // It is easy to overflow the stack with these in debug mode
     let max_iterations = if cfg!(optimizations_enabled) && cfg!(target_pointer_width = "64") {
@@ -105,11 +106,10 @@ fn make_test_cases(ntests: usize) -> CachedInput {
 }
 
 /// Create a test case iterator.
-pub fn get_test_cases<RustArgs>(fname: &str) -> impl Iterator<Item = RustArgs>
+pub fn get_test_cases<RustArgs>(ctx: &CheckCtx) -> impl Iterator<Item = RustArgs>
 where
     CachedInput: GenerateInput<RustArgs>,
 {
-    let inputs = if fname == "jn" || fname == "jnf" { &TEST_CASES_JN } else { &TEST_CASES };
-
-    CachedInput::get_cases(inputs)
+    let inputs = if ctx.fname == "jn" || ctx.fname == "jnf" { &TEST_CASES_JN } else { &TEST_CASES };
+    inputs.get_cases()
 }

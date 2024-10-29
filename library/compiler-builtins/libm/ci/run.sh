@@ -35,6 +35,22 @@ case "$target" in
     *) extra_flags="$extra_flags --features libm-test/build-musl" ;;
 esac
 
+# Configure which targets test against MPFR
+case "$target" in
+    # MSVC cannot link MPFR
+    *windows-msvc*) ;;
+    # FIXME: MinGW should be able to build MPFR, but setup in CI is nontrivial.
+    *windows-gnu*) ;;
+    # Targets that aren't cross compiled work fine
+    # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
+    # support rolls out.
+    x86_64*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+    # i686 works fine, i586 does not
+    i686*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+    # Apple aarch64 is native
+    aarch64*apple*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+esac
+
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
 # <https://github.com/rust-lang/rust/issues/128944>
 case "$target" in
