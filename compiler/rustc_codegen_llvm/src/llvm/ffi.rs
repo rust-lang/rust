@@ -85,7 +85,7 @@ pub enum LLVMMachineType {
     ARM = 0x01c0,
 }
 
-/// LLVM's Module::ModFlagBehavior, defined in llvm/include/llvm/IR/Module.h.
+/// Must match the layout of `LLVMRustModuleFlagMergeBehavior`.
 ///
 /// When merging modules (e.g. during LTO), their metadata flags are combined. Conflicts are
 /// resolved according to the merge behaviors specified here. Flags differing only in merge
@@ -93,9 +93,13 @@ pub enum LLVMMachineType {
 ///
 /// In order for Rust-C LTO to work, we must specify behaviors compatible with Clang. Notably,
 /// 'Error' and 'Warning' cannot be mixed for a given flag.
+///
+/// There is a stable LLVM-C version of this enum (`LLVMModuleFlagBehavior`),
+/// but as of LLVM 19 it does not support all of the enum values in the unstable
+/// C++ API.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum LLVMModFlagBehavior {
+pub enum ModuleFlagMergeBehavior {
     Error = 1,
     Warning = 2,
     Require = 3,
@@ -1829,17 +1833,19 @@ unsafe extern "C" {
     /// "compatible" means depends on the merge behaviors involved.
     pub fn LLVMRustAddModuleFlagU32(
         M: &Module,
-        merge_behavior: LLVMModFlagBehavior,
-        name: *const c_char,
-        value: u32,
+        MergeBehavior: ModuleFlagMergeBehavior,
+        Name: *const c_char,
+        NameLen: size_t,
+        Value: u32,
     );
 
     pub fn LLVMRustAddModuleFlagString(
         M: &Module,
-        merge_behavior: LLVMModFlagBehavior,
-        name: *const c_char,
-        value: *const c_char,
-        value_len: size_t,
+        MergeBehavior: ModuleFlagMergeBehavior,
+        Name: *const c_char,
+        NameLen: size_t,
+        Value: *const c_char,
+        ValueLen: size_t,
     );
 
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;

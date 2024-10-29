@@ -853,17 +853,60 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
-extern "C" void LLVMRustAddModuleFlagU32(LLVMModuleRef M,
-                                         Module::ModFlagBehavior MergeBehavior,
-                                         const char *Name, uint32_t Value) {
-  unwrap(M)->addModuleFlag(MergeBehavior, Name, Value);
+// FFI equivalent of LLVM's `llvm::Module::ModFlagBehavior`.
+// Must match the layout of
+// `rustc_codegen_llvm::llvm::ffi::ModuleFlagMergeBehavior`.
+//
+// There is a stable LLVM-C version of this enum (`LLVMModuleFlagBehavior`),
+// but as of LLVM 19 it does not support all of the enum values in the unstable
+// C++ API.
+enum class LLVMRustModuleFlagMergeBehavior {
+  Error = 1,
+  Warning = 2,
+  Require = 3,
+  Override = 4,
+  Append = 5,
+  AppendUnique = 6,
+  Max = 7,
+  Min = 8,
+};
+
+static Module::ModFlagBehavior
+fromRust(LLVMRustModuleFlagMergeBehavior Behavior) {
+  switch (Behavior) {
+  case LLVMRustModuleFlagMergeBehavior::Error:
+    return Module::ModFlagBehavior::Error;
+  case LLVMRustModuleFlagMergeBehavior::Warning:
+    return Module::ModFlagBehavior::Warning;
+  case LLVMRustModuleFlagMergeBehavior::Require:
+    return Module::ModFlagBehavior::Require;
+  case LLVMRustModuleFlagMergeBehavior::Override:
+    return Module::ModFlagBehavior::Override;
+  case LLVMRustModuleFlagMergeBehavior::Append:
+    return Module::ModFlagBehavior::Append;
+  case LLVMRustModuleFlagMergeBehavior::AppendUnique:
+    return Module::ModFlagBehavior::AppendUnique;
+  case LLVMRustModuleFlagMergeBehavior::Max:
+    return Module::ModFlagBehavior::Max;
+  case LLVMRustModuleFlagMergeBehavior::Min:
+    return Module::ModFlagBehavior::Min;
+  }
+  report_fatal_error("bad LLVMRustModuleFlagMergeBehavior");
+}
+
+extern "C" void
+LLVMRustAddModuleFlagU32(LLVMModuleRef M,
+                         LLVMRustModuleFlagMergeBehavior MergeBehavior,
+                         const char *Name, size_t NameLen, uint32_t Value) {
+  unwrap(M)->addModuleFlag(fromRust(MergeBehavior), StringRef(Name, NameLen),
+                           Value);
 }
 
 extern "C" void LLVMRustAddModuleFlagString(
-    LLVMModuleRef M, Module::ModFlagBehavior MergeBehavior, const char *Name,
-    const char *Value, size_t ValueLen) {
+    LLVMModuleRef M, LLVMRustModuleFlagMergeBehavior MergeBehavior,
+    const char *Name, size_t NameLen, const char *Value, size_t ValueLen) {
   unwrap(M)->addModuleFlag(
-      MergeBehavior, Name,
+      fromRust(MergeBehavior), StringRef(Name, NameLen),
       MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 

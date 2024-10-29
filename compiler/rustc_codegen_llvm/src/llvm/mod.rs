@@ -352,3 +352,32 @@ impl Drop for OperandBundleDef<'_> {
         }
     }
 }
+
+pub(crate) fn add_module_flag_u32(
+    module: &Module,
+    merge_behavior: ModuleFlagMergeBehavior,
+    key: &str,
+    value: u32,
+) {
+    unsafe {
+        LLVMRustAddModuleFlagU32(module, merge_behavior, key.as_c_char_ptr(), key.len(), value);
+    }
+}
+
+pub(crate) fn add_module_flag_str(
+    module: &Module,
+    merge_behavior: ModuleFlagMergeBehavior,
+    key: &str,
+    value: &str,
+) {
+    unsafe {
+        LLVMRustAddModuleFlagString(
+            module,
+            merge_behavior,
+            key.as_c_char_ptr(),
+            key.len(),
+            value.as_c_char_ptr(),
+            value.len(),
+        );
+    }
+}
