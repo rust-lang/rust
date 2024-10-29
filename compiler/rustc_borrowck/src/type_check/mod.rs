@@ -174,7 +174,7 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     checker.check_user_type_annotations();
 
-    let mut verifier = TypeVerifier::new(&mut checker, promoted);
+    let mut verifier = TypeVerifier { cx: &mut checker, promoted, last_span: body.span };
     verifier.visit_body(body);
 
     checker.typeck_mir(body);
@@ -465,13 +465,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(
-        cx: &'a mut TypeChecker<'b, 'tcx>,
-        promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
-    ) -> Self {
-        TypeVerifier { promoted, last_span: cx.body.span, cx }
-    }
-
     fn body(&self) -> &Body<'tcx> {
         self.cx.body
     }
