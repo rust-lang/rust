@@ -1872,15 +1872,17 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
+        // Drop the weak ref collectively held by all strong references when this
+        // variable goes out of scope. This ensures that the memory is deallocated
+        // even if the destructor of `T` panics.
+        // Take a reference to `self.alloc` instead of cloning because 1. it'll last long
+        // enough, and 2. you should be able to drop `Arc`s with unclonable allocators
+        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+
         // Destroy the data at this time, even though we must not free the box
         // allocation itself (there might still be weak pointers lying around).
-        unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
-
-        // Drop the weak ref collectively held by all strong references
-        // Take a reference to `self.alloc` instead of cloning because 1. it'll
-        // last long enough, and 2. you should be able to drop `Arc`s with
-        // unclonable allocators
-        drop(Weak { ptr: self.ptr, alloc: &self.alloc });
+        // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
+        unsafe { ptr::drop_in_place(&mut (*self.ptr.as_ptr()).data) };
     }
 
     /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
