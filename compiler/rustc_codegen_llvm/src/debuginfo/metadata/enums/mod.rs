@@ -13,7 +13,7 @@ use rustc_target::abi::{FieldIdx, TagEncoding, VariantIdx, Variants};
 
 use super::type_map::{DINodeCreationResult, UniqueTypeId};
 use super::{SmallVec, size_and_align_of};
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub};
 use crate::debuginfo::metadata::{
     UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
@@ -106,7 +106,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
             let value = [value as u64, (value >> 64) as u64];
             Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                 DIB(cx),
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
                 value.as_ptr(),
                 size.bits() as libc::c_uint,
@@ -119,7 +119,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateEnumerationType(
             DIB(cx),
             containing_scope,
-            type_name.as_ptr().cast(),
+            type_name.as_c_char_ptr(),
             type_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,

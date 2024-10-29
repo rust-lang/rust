@@ -14,7 +14,7 @@ use rustc_target::abi::Size;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::coverageinfo::map_data::FunctionCoverageCollector;
 use crate::llvm;
 
@@ -236,7 +236,7 @@ fn create_pgo_func_name_var<'ll, 'tcx>(
     unsafe {
         llvm::LLVMRustCoverageCreatePGOFuncNameVar(
             llfn,
-            mangled_fn_name.as_ptr().cast(),
+            mangled_fn_name.as_c_char_ptr(),
             mangled_fn_name.len(),
         )
     }
@@ -248,7 +248,7 @@ pub(crate) fn write_filenames_section_to_buffer<'a>(
 ) {
     let (pointers, lengths) = filenames
         .into_iter()
-        .map(|s: &str| (s.as_ptr().cast(), s.len()))
+        .map(|s: &str| (s.as_c_char_ptr(), s.len()))
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
     unsafe {
@@ -291,7 +291,7 @@ pub(crate) fn write_mapping_to_buffer(
 }
 
 pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
-    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
+    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_c_char_ptr(), bytes.len()) }
 }
 
 pub(crate) fn mapping_version() -> u32 {
