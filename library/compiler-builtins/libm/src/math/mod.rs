@@ -74,16 +74,37 @@ macro_rules! div {
     };
 }
 
-macro_rules! llvm_intrinsically_optimized {
-    (#[cfg($($clause:tt)*)] $e:expr) => {
-        #[cfg(all(intrinsics_enabled, not(feature = "force-soft-floats"), $($clause)*))]
-        {
-            if true { // thwart the dead code lint
-                $e
-            }
-        }
-    };
-}
+// Private modules
+#[macro_use]
+mod support;
+mod arch;
+mod expo2;
+mod fenv;
+mod k_cos;
+mod k_cosf;
+mod k_expo2;
+mod k_expo2f;
+mod k_sin;
+mod k_sinf;
+mod k_tan;
+mod k_tanf;
+mod rem_pio2;
+mod rem_pio2_large;
+mod rem_pio2f;
+
+// Private re-imports
+use self::expo2::expo2;
+use self::k_cos::k_cos;
+use self::k_cosf::k_cosf;
+use self::k_expo2::k_expo2;
+use self::k_expo2f::k_expo2f;
+use self::k_sin::k_sin;
+use self::k_sinf::k_sinf;
+use self::k_tan::k_tan;
+use self::k_tanf::k_tanf;
+use self::rem_pio2::rem_pio2;
+use self::rem_pio2_large::rem_pio2_large;
+use self::rem_pio2f::rem_pio2f;
 
 // Public modules
 mod acos;
@@ -300,35 +321,6 @@ pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
-
-// Private modules
-mod expo2;
-mod fenv;
-mod k_cos;
-mod k_cosf;
-mod k_expo2;
-mod k_expo2f;
-mod k_sin;
-mod k_sinf;
-mod k_tan;
-mod k_tanf;
-mod rem_pio2;
-mod rem_pio2_large;
-mod rem_pio2f;
-
-// Private re-imports
-use self::expo2::expo2;
-use self::k_cos::k_cos;
-use self::k_cosf::k_cosf;
-use self::k_expo2::k_expo2;
-use self::k_expo2f::k_expo2f;
-use self::k_sin::k_sin;
-use self::k_sinf::k_sinf;
-use self::k_tan::k_tan;
-use self::k_tanf::k_tanf;
-use self::rem_pio2::rem_pio2;
-use self::rem_pio2_large::rem_pio2_large;
-use self::rem_pio2f::rem_pio2f;
 
 #[inline]
 fn get_high_word(x: f64) -> u32 {

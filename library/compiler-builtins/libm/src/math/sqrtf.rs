@@ -16,18 +16,12 @@
 /// The square root of `x` (f32).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sqrtf(x: f32) -> f32 {
-    // On wasm32 we know that LLVM's intrinsic will compile to an optimized
-    // `f32.sqrt` native instruction, so we can leverage this for both code size
-    // and speed.
-    llvm_intrinsically_optimized! {
-        #[cfg(target_arch = "wasm32")] {
-            return if x < 0.0 {
-                ::core::f32::NAN
-            } else {
-                unsafe { ::core::intrinsics::sqrtf32(x) }
-            }
-        }
+    select_implementation! {
+        name: sqrtf,
+        use_intrinsic: target_arch = "wasm32",
+        args: x,
     }
+
     #[cfg(all(target_feature = "sse", not(feature = "force-soft-floats")))]
     {
         // Note: This path is unlikely since LLVM will usually have already
