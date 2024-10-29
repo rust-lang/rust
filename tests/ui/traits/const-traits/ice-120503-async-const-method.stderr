@@ -55,11 +55,6 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error[E0425]: cannot find function `main8` in this scope
   --> $DIR/ice-120503-async-const-method.rs:12:9
    |
@@ -69,7 +64,7 @@ LL |         main8().await;
 LL | fn main() {}
    | --------- similarly named function `main` defined here
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0379, E0407, E0425.
 For more information about an error, try `rustc --explain E0379`.

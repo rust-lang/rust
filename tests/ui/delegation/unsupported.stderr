@@ -1,8 +1,3 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error[E0391]: cycle detected when computing type of `opaque::<impl at $DIR/unsupported.rs:26:5: 26:24>::{synthetic#0}`
   --> $DIR/unsupported.rs:27:25
    |
@@ -89,7 +84,7 @@ LL |     reuse Trait::foo;
    |
    = note: cannot satisfy `_: effects::Trait`
 
-error: aborting due to 5 previous errors; 2 warnings emitted
+error: aborting due to 4 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0283, E0391.
 For more information about an error, try `rustc --explain E0283`.
