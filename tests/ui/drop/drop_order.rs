@@ -4,8 +4,8 @@
 //@ [edition2021] edition: 2021
 //@ [edition2024] compile-flags: -Z unstable-options
 //@ [edition2024] edition: 2024
+
 #![feature(let_chains)]
-#![cfg_attr(edition2024, feature(if_let_rescope))]
 
 use std::cell::RefCell;
 use std::convert::TryInto;
