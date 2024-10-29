@@ -71,25 +71,21 @@ where
 }
 
 /// A solver for dataflow problems.
-pub struct Engine<'mir, 'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    tcx: TyCtxt<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    entry_sets: IndexVec<BasicBlock, A::Domain>,
-    pass_name: Option<&'static str>,
-    analysis: A,
-}
+pub struct Engine;
 
-impl<'mir, 'tcx, A, D> Engine<'mir, 'tcx, A>
-where
-    A: Analysis<'tcx, Domain = D>,
-    D: Clone + JoinSemiLattice,
-{
+impl Engine {
     /// Creates a new `Engine` to solve a dataflow problem with an arbitrary transfer
     /// function.
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, analysis: A) -> Self {
+    pub(crate) fn iterate_to_fixpoint<'mir, 'tcx, A>(
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        mut analysis: A,
+        pass_name: Option<&'static str>,
+    ) -> Results<'tcx, A>
+    where
+        A: Analysis<'tcx>,
+        A::Domain: DebugWithContext<A> + Clone + JoinSemiLattice,
+    {
         let mut entry_sets =
             IndexVec::from_fn_n(|_| analysis.bottom_value(body), body.basic_blocks.len());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
@@ -98,25 +94,6 @@ where
         {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
-
-        Engine { analysis, tcx, body, pass_name: None, entry_sets }
-    }
-
-    /// Adds an identifier to the graphviz output for this particular run of a dataflow analysis.
-    ///
-    /// Some analyses are run multiple times in the compilation pipeline. Give them a `pass_name`
-    /// to differentiate them. Otherwise, only the results for the latest run will be saved.
-    pub fn pass_name(mut self, name: &'static str) -> Self {
-        self.pass_name = Some(name);
-        self
-    }
-
-    /// Computes the fixpoint for this dataflow problem and returns it.
-    pub fn iterate_to_fixpoint(self) -> Results<'tcx, A>
-    where
-        A::Domain: DebugWithContext<A>,
-    {
-        let Engine { mut analysis, body, mut entry_sets, tcx, pass_name } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
