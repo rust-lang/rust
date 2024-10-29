@@ -40,6 +40,7 @@ mod async_closures;
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;
+mod dangling;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
@@ -59,7 +60,6 @@ mod levels;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
-mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -85,6 +85,7 @@ mod unused;
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
+use dangling::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -97,7 +98,6 @@ use invalid_from_utf8::*;
 use let_underscore::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
-use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -225,7 +225,7 @@ late_lint_methods!(
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ShadowedIntoIter: ShadowedIntoIter,
             DropTraitConstraints: DropTraitConstraints,
-            TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+            DanglingPointers: DanglingPointers,
             NonPanicFmt: NonPanicFmt,
             NoopMethodCall: NoopMethodCall,
             EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
@@ -350,6 +350,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("non_fmt_panic", "non_fmt_panics");
     store.register_renamed("unused_tuple_struct_fields", "dead_code");
     store.register_renamed("static_mut_ref", "static_mut_refs");
+    store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
