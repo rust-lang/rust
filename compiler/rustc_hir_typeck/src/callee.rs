@@ -1,4 +1,4 @@
-use std::{iter, slice};
+use std::iter;
 
 use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ident::with_dummy_span(method_name),
                 trait_def_id,
                 adjusted_ty,
-                opt_input_type.as_ref().map(slice::from_ref),
+                opt_input_type,
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
