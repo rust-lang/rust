@@ -1,0 +1,26 @@
+error: expected identifier, found keyword `use`
+  --> $DIR/feature-gate-ergonomic-clones.rs:2:7
+   |
+LL |     x.use
+   |       ^^^ expected identifier, found keyword
+   |
+help: escape `use` to use it as an identifier
+   |
+LL |     x.r#use
+   |       ++
+
+error: expected expression, found keyword `use`
+  --> $DIR/feature-gate-ergonomic-clones.rs:10:14
+   |
+LL |     let s2 = use || {
+   |              ^^^ expected expression
+
+error[E0610]: `i32` is a primitive type and therefore doesn't have fields
+  --> $DIR/feature-gate-ergonomic-clones.rs:2:7
+   |
+LL |     x.use
+   |       ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0610`.
