@@ -2385,9 +2385,9 @@ unsafe extern "C" {
     pub fn LLVMRustThinLTOBufferThinLinkDataLen(M: &ThinLTOBuffer) -> size_t;
     pub fn LLVMRustCreateThinLTOData(
         Modules: *const ThinLTOModule,
-        NumModules: c_uint,
+        NumModules: size_t,
         PreservedSymbols: *const *const c_char,
-        PreservedSymbolsLen: c_uint,
+        PreservedSymbolsLen: size_t,
     ) -> Option<&'static mut ThinLTOData>;
     pub fn LLVMRustPrepareThinLTORename(
         Data: &ThinLTOData,
