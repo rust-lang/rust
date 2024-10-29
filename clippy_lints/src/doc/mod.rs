@@ -1,3 +1,5 @@
+#![allow(clippy::lint_without_lint_pass)]
+
 mod lazy_continuation;
 mod too_long_first_doc_paragraph;
 
@@ -33,6 +35,7 @@ use std::ops::Range;
 use url::Url;
 
 mod empty_line_after;
+mod include_in_doc_without_cfg;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
@@ -532,6 +535,29 @@ declare_clippy_lint! {
     "empty line after doc comments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if included files in doc comments are included only for `cfg(doc)`.
+    ///
+    /// ### Why is this bad?
+    /// These files are not useful for compilation but will still be included.
+    /// Also, if any of these non-source code file is updated, it will trigger a
+    /// recompilation.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// #![doc = include_str!("some_file.md")]
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #![cfg_attr(doc, doc = include_str!("some_file.md"))]
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub DOC_INCLUDE_WITHOUT_CFG,
+    pedantic,
+    "check if files included in documentation are behind `cfg(doc)`"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -561,6 +587,7 @@ impl_lint_pass!(Documentation => [
     EMPTY_LINE_AFTER_OUTER_ATTR,
     EMPTY_LINE_AFTER_DOC_COMMENTS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
+    DOC_INCLUDE_WITHOUT_CFG,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
@@ -690,6 +717,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
+    include_in_doc_without_cfg::check(cx, attrs);
     if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }

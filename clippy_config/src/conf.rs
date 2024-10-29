@@ -154,7 +154,7 @@ macro_rules! define_Conf {
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $($(#[doc = $doc])+ pub $name: $ty,)*
+            $($(#[cfg_attr(doc, doc = $doc)])+ pub $name: $ty,)*
         }
 
         mod defaults {
