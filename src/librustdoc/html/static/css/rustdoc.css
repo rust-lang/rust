@@ -230,7 +230,7 @@ h4.code-header {
 	padding: 0;
 	white-space: pre-wrap;
 }
-.structfield {
+.structfield, .sub-variant-field {
 	margin: 0.6em 0;
 }
 

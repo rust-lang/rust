@@ -1,6 +1,7 @@
 // This test checks that fields are displayed as expected (one by line) and they are surrounded
 // by margins.
 
+store-value: (margin, "9.6px")
 define-function: (
     "check-fields",
     [path, selector_1, selector_2],
@@ -12,8 +13,8 @@ define-function: (
 
         // Check the margins.
         assert-css: (".structfield.section-header", {
-            "margin-top": "9.6px",
-            "margin-bottom": "9.6px",
+            "margin-top": |margin|,
+            "margin-bottom": |margin|,
             "margin-left": "0px",
             "margin-right": "0px",
         }, ALL)
@@ -41,9 +42,9 @@ store-position: ("#variant\.B\.field\.b", {"y": b_y})
 assert: |a_y| < |b_y|
 
 // Check the margins.
-assert-css: (".sub-variant-field .section-header", {
-    "margin-top": "0px",
-    "margin-bottom": "0px",
-    "margin-left": "0px",
+assert-css: (".sub-variant-field", {
+    "margin-top": |margin|,
+    "margin-bottom": |margin|,
+    "margin-left": "24px",
     "margin-right": "0px",
 }, ALL)
