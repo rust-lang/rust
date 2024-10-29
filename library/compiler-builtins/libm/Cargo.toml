@@ -14,7 +14,10 @@ exclude = ["/ci/", "/.github/workflows/"]
 rust-version = "1.63"
 
 [features]
-default = []
+default = ["arch"]
+
+# Enable architecture-specific features such as SIMD or assembly routines.
+arch = []
 
 # This tells the compiler to assume that a Nightly toolchain is being used and
 # that it should activate any useful Nightly things accordingly.
