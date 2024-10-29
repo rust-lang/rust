@@ -1251,12 +1251,12 @@ getFirstDefinitionForLinker(const GlobalValueSummaryList &GVSummaryList) {
 // here is basically the same as before threads are spawned in the `run`
 // function of `lib/LTO/ThinLTOCodeGenerator.cpp`.
 extern "C" LLVMRustThinLTOData *
-LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, int num_modules,
-                          const char **preserved_symbols, int num_symbols) {
+LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
+                          const char **preserved_symbols, size_t num_symbols) {
   auto Ret = std::make_unique<LLVMRustThinLTOData>();
 
   // Load each module's summary and merge it into one combined index
-  for (int i = 0; i < num_modules; i++) {
+  for (size_t i = 0; i < num_modules; i++) {
     auto module = &modules[i];
     auto buffer = StringRef(module->data, module->len);
     auto mem_buffer = MemoryBufferRef(buffer, module->identifier);
@@ -1275,7 +1275,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, int num_modules,
 
   // Convert the preserved symbols set from string to GUID, this is then needed
   // for internalization.
-  for (int i = 0; i < num_symbols; i++) {
+  for (size_t i = 0; i < num_symbols; i++) {
     auto GUID = GlobalValue::getGUID(preserved_symbols[i]);
     Ret->GUIDPreservedSymbols.insert(GUID);
   }
