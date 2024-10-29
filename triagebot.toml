@@ -725,9 +725,6 @@ please modify the tool then regenerate the library source file with the tool
 instead of editing the library source file manually.
 """
 
-[mentions."src/librustdoc/clean/types.rs"]
-cc = ["@camelid"]
-
 [mentions."src/librustdoc/html/static"]
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
