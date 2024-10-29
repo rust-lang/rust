@@ -67,6 +67,7 @@ mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
 mod mut_mutex_lock;
+mod needless_as_bytes;
 mod needless_character_iteration;
 mod needless_collect;
 mod needless_option_as_deref;
@@ -4166,6 +4167,31 @@ declare_clippy_lint! {
     "calling `.first().is_some()` or `.first().is_none()` instead of `.is_empty()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// It detects useless calls to `str::as_bytes()` before calling `len()` or `is_empty()`.
+    ///
+    /// ### Why is this bad?
+    /// The `len()` and `is_empty()` methods are also directly available on strings, and they
+    /// return identical results. In particular, `len()` on a string returns the number of
+    /// bytes.
+    ///
+    /// ### Example
+    /// ```
+    /// let len = "some string".as_bytes().len();
+    /// let b = "some string".as_bytes().is_empty();
+    /// ```
+    /// Use instead:
+    /// ```
+    /// let len = "some string".len();
+    /// let b = "some string".is_empty();
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub NEEDLESS_AS_BYTES,
+    complexity,
+    "detect useless calls to `as_bytes()`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4327,6 +4353,7 @@ impl_lint_pass!(Methods => [
     NEEDLESS_CHARACTER_ITERATION,
     MANUAL_INSPECT,
     UNNECESSARY_MIN_OR_MAX,
+    NEEDLESS_AS_BYTES,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4764,8 +4791,14 @@ impl Methods {
                     unit_hash::check(cx, expr, recv, arg);
                 },
                 ("is_empty", []) => {
-                    if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
-                        redundant_as_str::check(cx, expr, recv, as_str_span, span);
+                    match method_call(recv) {
+                        Some(("as_bytes", prev_recv, [], _, _)) => {
+                            needless_as_bytes::check(cx, "is_empty", recv, prev_recv, expr.span);
+                        },
+                        Some(("as_str", recv, [], as_str_span, _)) => {
+                            redundant_as_str::check(cx, expr, recv, as_str_span, span);
+                        },
+                        _ => {},
                     }
                     is_empty::check(cx, expr, recv);
                 },
@@ -4793,6 +4826,11 @@ impl Methods {
                             iter_overeager_cloned::Op::LaterCloned,
                             false,
                         );
+                    }
+                },
+                ("len", []) => {
+                    if let Some(("as_bytes", prev_recv, [], _, _)) = method_call(recv) {
+                        needless_as_bytes::check(cx, "len", recv, prev_recv, expr.span);
                     }
                 },
                 ("lock", []) => {

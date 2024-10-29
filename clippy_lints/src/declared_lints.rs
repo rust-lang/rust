@@ -424,6 +424,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::methods::MAP_UNWRAP_OR_INFO,
     crate::methods::MUT_MUTEX_LOCK_INFO,
     crate::methods::NAIVE_BYTECOUNT_INFO,
+    crate::methods::NEEDLESS_AS_BYTES_INFO,
     crate::methods::NEEDLESS_CHARACTER_ITERATION_INFO,
     crate::methods::NEEDLESS_COLLECT_INFO,
     crate::methods::NEEDLESS_OPTION_AS_DEREF_INFO,
