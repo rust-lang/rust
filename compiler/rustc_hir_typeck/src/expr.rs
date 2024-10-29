@@ -55,6 +55,9 @@ use crate::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Check an expr with an expectation type, and also demand that the expr's
+    /// evaluated type is a subtype of the expectation at the end. This is a
+    /// *hard* requirement.
     pub(crate) fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -97,6 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// Check an expr with an expectation type, and also demand that the expr's
+    /// evaluated type is a coercible to the expectation at the end. This is a
+    /// *hard* requirement.
     pub(super) fn check_expr_coercible_to_type(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -108,6 +114,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_coerce(expr, ty, expected, expected_ty_expr, AllowTwoPhase::No)
     }
 
+    /// Check an expr with an expectation type. Don't actually enforce that expectation
+    /// is related to the expr's evaluated type via subtyping or coercion. This is
+    /// usually called because we want to do that subtype/coerce call manually for better
+    /// diagnostics.
     pub(super) fn check_expr_with_hint(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -116,6 +126,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation(expr, ExpectHasType(expected))
     }
 
+    /// Check an expr with an expectation type, and also [`Needs`] which will
+    /// prompt typeck to convert any implicit immutable derefs to mutable derefs.
     fn check_expr_with_expectation_and_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -133,10 +145,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// Check an expr with no expectations.
     pub(super) fn check_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
         self.check_expr_with_expectation(expr, NoExpectation)
     }
 
+    /// Check an expr with no expectations, but with [`Needs`] which will
+    /// prompt typeck to convert any implicit immutable derefs to mutable derefs.
     pub(super) fn check_expr_with_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -145,16 +160,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
-    /// Invariant:
-    /// If an expression has any sub-expressions that result in a type error,
-    /// inspecting that expression's type with `ty.references_error()` will return
-    /// true. Likewise, if an expression is known to diverge, inspecting its
-    /// type with `ty::type_is_bot` will return true (n.b.: since Rust is
-    /// strict, _|_ can appear in the type of an expression that does not,
-    /// itself, diverge: for example, fn() -> _|_.)
-    /// Note that inspecting a type's structure *directly* may expose the fact
-    /// that there are actually multiple representations for `Error`, so avoid
-    /// that when err needs to be handled differently.
+    /// Check an expr with an expectation type which may be used to eagerly
+    /// guide inference when evaluating that expr.
     #[instrument(skip(self, expr), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
@@ -164,8 +171,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation_and_args(expr, expected, None)
     }
 
-    /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
-    /// `ExprKind::Call` when evaluating its callee when it is an `ExprKind::Path`.
+    /// Same as [`Self::check_expr_with_expectation`], but allows us to pass in
+    /// the arguments of a [`ExprKind::Call`] when evaluating its callee that
+    /// is an [`ExprKind::Path`]. We use this to refine the spans for certain
+    /// well-formedness guarantees for the path expr.
     pub(super) fn check_expr_with_expectation_and_args(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
