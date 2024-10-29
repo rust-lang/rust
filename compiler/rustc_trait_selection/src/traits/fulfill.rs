@@ -17,6 +17,7 @@ use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
 use thin_vec::ThinVec;
 use tracing::{debug, debug_span, instrument};
 
+use super::effects::{self, HostEffectObligation};
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
@@ -402,8 +403,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     )
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
-                    ProcessResult::Changed(Default::default())
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
+                    let host_obligation = obligation.with(infcx.tcx, data);
+
+                    self.process_host_obligation(
+                        host_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(data)) => {
@@ -851,6 +857,27 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(FulfillmentErrorCode::Project(e))
+            }
+        }
+    }
+
+    fn process_host_obligation(
+        &mut self,
+        host_obligation: HostEffectObligation<'tcx>,
+        stalled_on: &mut Vec<TyOrConstInferVar>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        match effects::evaluate_host_effect_obligation(&mut self.selcx, &host_obligation) {
+            Ok(nested) => ProcessResult::Changed(mk_pending(nested)),
+            Err(effects::EvaluationFailure::Ambiguous) => {
+                stalled_on.clear();
+                stalled_on.extend(args_infer_vars(
+                    &self.selcx,
+                    ty::Binder::dummy(host_obligation.predicate.trait_ref.args),
+                ));
+                ProcessResult::Unchanged
+            }
+            Err(effects::EvaluationFailure::NoSolution) => {
+                ProcessResult::Error(FulfillmentErrorCode::Select(SelectionError::Unimplemented))
             }
         }
     }

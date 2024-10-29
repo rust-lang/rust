@@ -49,7 +49,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{ProjectionCacheKey, Unimplemented};
+use crate::traits::{ProjectionCacheKey, Unimplemented, effects};
 
 mod _match;
 mod candidate_assembly;
@@ -645,11 +645,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
-                    // FIXME(effects): It should be relatively straightforward to implement
-                    // old trait solver support for `HostEffect` bounds; or at least basic
-                    // support for them.
-                    todo!()
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
+                    self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
+                        match effects::evaluate_host_effect_obligation(
+                            self,
+                            &obligation.with(self.tcx(), data),
+                        ) {
+                            Ok(nested) => {
+                                self.evaluate_predicates_recursively(previous_stack, nested)
+                            }
+                            Err(effects::EvaluationFailure::Ambiguous) => Ok(EvaluatedToAmbig),
+                            Err(effects::EvaluationFailure::NoSolution) => Ok(EvaluatedToErr),
+                        }
+                    })
                 }
 
                 ty::PredicateKind::Subtype(p) => {

@@ -7,16 +7,11 @@ LL | #![feature(const_trait_impl, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: cannot specialize on const impl with non-const impl
   --> $DIR/const-default-impl-non-const-specialized-impl.rs:19:1
    |
 LL | impl Value for FortyTwo {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
