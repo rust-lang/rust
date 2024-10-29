@@ -1197,7 +1197,7 @@ impl OpenOptions {
 
     /// Sets the option for truncating a previous file.
     ///
-    /// If a file is successfully opened with this option set it will truncate
+    /// If a file is successfully opened with this option set to true, it will truncate
     /// the file to 0 length if it already exists.
     ///
     /// The file must be opened with write access for truncate to work.
