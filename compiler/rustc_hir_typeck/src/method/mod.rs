@@ -324,35 +324,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(pick)
     }
 
-    pub(super) fn obligation_for_method(
-        &self,
-        cause: ObligationCause<'tcx>,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        opt_input_types: Option<&[Ty<'tcx>]>,
-    ) -> (traits::PredicateObligation<'tcx>, ty::GenericArgsRef<'tcx>) {
-        // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| {
-            match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
-                GenericParamDefKind::Type { .. } => {
-                    if param.index == 0 {
-                        return self_ty.into();
-                    } else if let Some(input_types) = opt_input_types {
-                        return input_types[param.index as usize - 1].into();
-                    }
-                }
-            }
-            self.var_for_def(cause.span, param)
-        });
-
-        let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, args);
-
-        // Construct an obligation
-        let poly_trait_ref = ty::Binder::dummy(trait_ref);
-        (traits::Obligation::new(self.tcx, cause, self.param_env, poly_trait_ref), args)
-    }
-
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
@@ -365,24 +336,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        opt_input_types: Option<&[Ty<'tcx>]>,
+        opt_rhs_ty: Option<Ty<'tcx>>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        let (obligation, args) =
-            self.obligation_for_method(cause, trait_def_id, self_ty, opt_input_types);
-        self.construct_obligation_for_trait(m_name, trait_def_id, obligation, args)
-    }
+        // Construct a trait-reference `self_ty : Trait<input_tys>`
+        let args = GenericArgs::for_item(self.tcx, trait_def_id, |param, _| match param.kind {
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {
+                unreachable!("did not expect operator trait to have lifetime/const")
+            }
+            GenericParamDefKind::Type { .. } => {
+                if param.index == 0 {
+                    self_ty.into()
+                } else if let Some(rhs_ty) = opt_rhs_ty {
+                    assert_eq!(param.index, 1, "did not expect >1 param on operator trait");
+                    rhs_ty.into()
+                } else {
+                    // FIXME: We should stop passing `None` for the failure case
+                    // when probing for call exprs. I.e. `opt_rhs_ty` should always
+                    // be set when it needs to be.
+                    self.var_for_def(cause.span, param)
+                }
+            }
+        });
 
-    // FIXME(#18741): it seems likely that we can consolidate some of this
-    // code with the other method-lookup code. In particular, the second half
-    // of this method is basically the same as confirmation.
-    fn construct_obligation_for_trait(
-        &self,
-        m_name: Ident,
-        trait_def_id: DefId,
-        obligation: traits::PredicateObligation<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(?obligation);
+        let obligation = traits::Obligation::new(
+            self.tcx,
+            cause,
+            self.param_env,
+            ty::TraitRef::new_from_args(self.tcx, trait_def_id, args),
+        );
 
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
@@ -406,8 +387,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = PredicateObligations::new();
 
-        // FIXME(effects): revisit when binops get `#[const_trait]`
-
         // Instantiate late-bound regions and instantiate the trait
         // parameters into the method type to get the actual method type.
         //
@@ -418,12 +397,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig =
             self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
 
-        let InferOk { value, obligations: o } =
+        let InferOk { value: fn_sig, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(fn_sig);
-        let fn_sig = {
-            obligations.extend(o);
-            value
-        };
+        obligations.extend(o);
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
@@ -435,13 +411,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
-        let InferOk { value, obligations: o } =
+        let InferOk { value: bounds, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(bounds);
-        let bounds = {
-            obligations.extend(o);
-            value
-        };
-
+        obligations.extend(o);
         assert!(!bounds.has_escaping_bound_vars());
 
         let predicates_cause = obligation.cause.clone();
@@ -454,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Also add an obligation for the method type being well-formed.
         let method_ty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
         debug!(
-            "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
+            "lookup_method_in_trait: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation
         );
         obligations.push(traits::Obligation::new(
@@ -467,7 +439,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
 
         let callee = MethodCallee { def_id, args, sig: fn_sig };
-
         debug!("callee = {:?}", callee);
 
         Some(InferOk { obligations, value: callee })
