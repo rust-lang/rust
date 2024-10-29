@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>
   --> $DIR/dyn-incompatibility.rs:12:12
    |
 LL |     copy::<dyn Setup<From=T>>(t)
-   |            ^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`, which is required by `dyn Setup<From = T>: Setup`
+   |            ^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`
    |
    = note: required because it appears within the type `dyn Setup<From = T>`
 note: required by a bound in `copy`
@@ -35,7 +35,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied in `dyn Setup<From = T>
   --> $DIR/dyn-incompatibility.rs:12:5
    |
 LL |     copy::<dyn Setup<From=T>>(t)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`, which is required by `dyn Setup<From = T>: Setup`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `dyn Setup<From = T>`, the trait `Copy` is not implemented for `T`
    |
    = note: required because it appears within the type `dyn Setup<From = T>`
 help: consider restricting type parameter `T`

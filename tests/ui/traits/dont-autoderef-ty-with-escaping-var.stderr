@@ -8,7 +8,7 @@ error[E0277]: the trait bound `for<'a> &'a mut Vec<&'a u32>: Foo<'static, i32>` 
   --> $DIR/dont-autoderef-ty-with-escaping-var.rs:17:6
    |
 LL |     <i32 as RefFoo<i32>>::ref_foo(unknown);
-   |      ^^^ the trait `for<'a> Foo<'static, i32>` is not implemented for `&'a mut Vec<&'a u32>`, which is required by `i32: RefFoo<i32>`
+   |      ^^^ the trait `for<'a> Foo<'static, i32>` is not implemented for `&'a mut Vec<&'a u32>`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/dont-autoderef-ty-with-escaping-var.rs:3:1
