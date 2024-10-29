@@ -861,7 +861,11 @@ pub struct TypeAndMut<I: Interner> {
 pub struct FnSig<I: Interner> {
     pub inputs_and_output: I::Tys,
     pub c_variadic: bool,
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub safety: I::Safety,
+    #[type_visitable(ignore)]
+    #[type_foldable(identity)]
     pub abi: I::Abi,
 }
 

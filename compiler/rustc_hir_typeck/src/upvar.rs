@@ -488,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(?closure_hir_id, ?args, ?final_upvar_tys);
 
-        if self.tcx.features().unsized_locals || self.tcx.features().unsized_fn_params {
+        if self.tcx.features().unsized_locals() || self.tcx.features().unsized_fn_params() {
             for capture in
                 self.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
             {
@@ -2457,7 +2457,7 @@ fn truncate_capture_for_optimization(
 ) -> (Place<'_>, ty::UpvarCapture) {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
-    // Find the right-most deref (if any). All the projections that come after this
+    // Find the rightmost deref (if any). All the projections that come after this
     // are fields or other "in-place pointer adjustments"; these refer therefore to
     // data owned by whatever pointer is being dereferenced here.
     let idx = place.projections.iter().rposition(|proj| ProjectionKind::Deref == proj.kind);

@@ -364,6 +364,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .err_ctxt()
                 .report_mismatched_types(
                     &cause,
+                    param_env,
                     mk_ptr(mt_b.ty),
                     target,
                     ty::error::TypeError::Mutability,

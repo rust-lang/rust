@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::{
     UndefinedBehaviorInfo, UnsupportedOpInfo, ValidationErrorInfo,
 };
 use rustc_middle::ty::{self, Mutability, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::WrappingRange;
 use rustc_target::abi::call::AdjustForForeignAbiError;
 
@@ -44,11 +44,15 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable)]
-pub(crate) struct UnstableInStable {
+#[diag(const_eval_unstable_in_stable_exposed)]
+pub(crate) struct UnstableInStableExposed {
     pub gate: String,
     #[primary_span]
     pub span: Span,
+    #[help(const_eval_is_function_call)]
+    pub is_function_call: bool,
+    /// Need to duplicate the field so that fluent also provides it as a variable...
+    pub is_function_call2: bool,
     #[suggestion(
         const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
@@ -118,6 +122,34 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_intrinsic)]
+#[help]
+pub(crate) struct UnstableIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_const_fn_exposed)]
+#[help]
+pub(crate) struct UnmarkedConstFnExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_unmarked_intrinsic_exposed)]
+#[help]
+pub(crate) struct UnmarkedIntrinsicExposed {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_mutable_ref_escaping, code = E0764)]
 pub(crate) struct MutableRefEscaping {
     #[primary_span]
@@ -150,6 +182,15 @@ pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
     pub def_path_str: String,
+    pub kind: ConstContext,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_non_const_intrinsic)]
+pub(crate) struct NonConstIntrinsic {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
     pub kind: ConstContext,
 }
 

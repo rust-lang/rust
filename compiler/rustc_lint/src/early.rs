@@ -1,18 +1,8 @@
-//! Implementation of lint checking.
+//! Implementation of the early lint pass.
 //!
-//! The lint checking is mostly consolidated into one pass which runs
-//! after all other analyses. Throughout compilation, lint warnings
-//! can be added via the `add_lint` method on the Session structure. This
-//! requires a span and an ID of the node that the lint is being added to. The
-//! lint isn't actually emitted at that time because it is unknown what the
-//! actual lint level at that location is.
-//!
-//! To actually emit lint warnings/errors, a separate pass is used.
-//! A context keeps track of the current state of all lint levels.
-//! Upon entering a node of the ast which can modify the lint settings, the
-//! previous lint state is pushed onto a stack and the ast is then recursed
-//! upon. As the ast is traversed, this keeps track of the current lint level
-//! for all lint attributes.
+//! The early lint pass works on AST nodes after macro expansion and name
+//! resolution, just before AST lowering. These lints are for purely
+//! syntactical lints.
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
@@ -121,6 +111,18 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
+            // Explicitly check for lints associated with 'closure_id', since
+            // it does not have a corresponding AST node
+            match e.kind {
+                ast::ExprKind::Closure(box ast::Closure {
+                    coroutine_kind: Some(coroutine_kind),
+                    ..
+                }) => {
+                    cx.check_id(coroutine_kind.closure_id());
+                }
+                _ => {}
+            }
+            lint_callback!(cx, check_expr_post, e);
         })
     }
 
@@ -190,7 +192,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: Ident) {
+    fn visit_ident(&mut self, ident: &Ident) {
         lint_callback!(self, check_ident, ident);
     }
 
@@ -212,21 +214,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             lint_callback!(cx, check_arm, a);
             ast_visit::walk_arm(cx, a);
         })
-    }
-
-    fn visit_expr_post(&mut self, e: &'a ast::Expr) {
-        // Explicitly check for lints associated with 'closure_id', since
-        // it does not have a corresponding AST node
-        match e.kind {
-            ast::ExprKind::Closure(box ast::Closure {
-                coroutine_kind: Some(coroutine_kind),
-                ..
-            }) => {
-                self.check_id(coroutine_kind.closure_id());
-            }
-            _ => {}
-        }
-        lint_callback!(self, check_expr_post, e);
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {
@@ -310,6 +297,9 @@ struct RuntimeCombinedEarlyLintPass<'a> {
 #[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
     fn name(&self) -> &'static str {
+        panic!()
+    }
+    fn get_lints(&self) -> crate::LintVec {
         panic!()
     }
 }

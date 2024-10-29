@@ -66,7 +66,7 @@ impl Drop for AllocatedCondvar {
             // On DragonFly pthread_cond_destroy() returns EINVAL if called on
             // a condvar that was just initialized with
             // libc::PTHREAD_COND_INITIALIZER. Once it is used or
-            // pthread_cond_init() is called, this behaviour no longer occurs.
+            // pthread_cond_init() is called, this behavior no longer occurs.
             debug_assert!(r == 0 || r == libc::EINVAL);
         } else {
             debug_assert_eq!(r, 0);

@@ -1,0 +1,11 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/dont-observe-host-opaque.rs:4:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

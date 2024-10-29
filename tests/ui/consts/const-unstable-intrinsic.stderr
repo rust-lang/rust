@@ -1,0 +1,127 @@
+error[E0658]: use of unstable library feature 'unstable'
+  --> $DIR/const-unstable-intrinsic.rs:17:9
+   |
+LL |         unstable_intrinsic::old_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'unstable'
+  --> $DIR/const-unstable-intrinsic.rs:20:9
+   |
+LL |         unstable_intrinsic::old_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'unstable'
+  --> $DIR/const-unstable-intrinsic.rs:23:9
+   |
+LL |         unstable_intrinsic::new_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'unstable'
+  --> $DIR/const-unstable-intrinsic.rs:26:9
+   |
+LL |         unstable_intrinsic::new_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #42 <https://github.com/rust-lang/rust/issues/42> for more information
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: cannot call non-const intrinsic `size_of_val` in constant functions
+  --> $DIR/const-unstable-intrinsic.rs:17:9
+   |
+LL |         unstable_intrinsic::old_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `min_align_of_val` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:20:9
+   |
+LL |         unstable_intrinsic::old_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+
+error: intrinsic `unstable_intrinsic::new_way::size_of_val` cannot be (indirectly) exposed to stable
+  --> $DIR/const-unstable-intrinsic.rs:23:9
+   |
+LL |         unstable_intrinsic::new_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_indirect]` (but this requires team approval)
+
+error: `min_align_of_val` is not yet stable as a const intrinsic
+  --> $DIR/const-unstable-intrinsic.rs:26:9
+   |
+LL |         unstable_intrinsic::new_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+
+error: cannot call non-const intrinsic `size_of_val` in constant functions
+  --> $DIR/const-unstable-intrinsic.rs:30:9
+   |
+LL |         old_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:32:9
+   |
+LL |         old_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(local)]
+LL | const fn const_main() {
+   |
+
+error: intrinsic `new_way::size_of_val` cannot be (indirectly) exposed to stable
+  --> $DIR/const-unstable-intrinsic.rs:34:9
+   |
+LL |         new_way::size_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_indirect]` (but this requires team approval)
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:36:9
+   |
+LL |         new_way::min_align_of_val(&x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn const_main() {
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(local)]
+LL | const fn const_main() {
+   |
+
+error: cannot call non-const intrinsic `copy` in constant functions
+  --> $DIR/const-unstable-intrinsic.rs:74:14
+   |
+LL |     unsafe { copy(src, dst, count) }
+   |              ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

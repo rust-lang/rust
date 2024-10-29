@@ -1165,39 +1165,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
-    fn instrprof_increment(
-        &mut self,
-        fn_name: &'ll Value,
-        hash: &'ll Value,
-        num_counters: &'ll Value,
-        index: &'ll Value,
-    ) {
-        debug!(
-            "instrprof_increment() with args ({:?}, {:?}, {:?}, {:?})",
-            fn_name, hash, num_counters, index
-        );
-
-        let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
-        let llty = self.cx.type_func(
-            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_i32()],
-            self.cx.type_void(),
-        );
-        let args = &[fn_name, hash, num_counters, index];
-        let args = self.check_call("call", llty, llfn, args);
-
-        unsafe {
-            let _ = llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llty,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                [].as_ptr(),
-                0 as c_uint,
-            );
-        }
-    }
-
     fn call(
         &mut self,
         llty: &'ll Type,
@@ -1667,6 +1634,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         kcfi_bundle
     }
 
+    /// Emits a call to `llvm.instrprof.increment`. Used by coverage instrumentation.
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn instrprof_increment(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        num_counters: &'ll Value,
+        index: &'ll Value,
+    ) {
+        self.call_intrinsic("llvm.instrprof.increment", &[fn_name, hash, num_counters, index]);
+    }
+
     /// Emits a call to `llvm.instrprof.mcdc.parameters`.
     ///
     /// This doesn't produce any code directly, but is used as input by
@@ -1676,40 +1655,21 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ///
     /// [`CodeGenPGO::emitMCDCParameters`]:
     ///     https://github.com/rust-lang/llvm-project/blob/5399a24/clang/lib/CodeGen/CodeGenPGO.cpp#L1124
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_parameters(
         &mut self,
         fn_name: &'ll Value,
         hash: &'ll Value,
         bitmap_bits: &'ll Value,
     ) {
-        debug!("mcdc_parameters() with args ({:?}, {:?}, {:?})", fn_name, hash, bitmap_bits);
-
         assert!(
             crate::llvm_util::get_version() >= (19, 0, 0),
             "MCDC intrinsics require LLVM 19 or later"
         );
-
-        let llfn = unsafe { llvm::LLVMRustGetInstrProfMCDCParametersIntrinsic(self.cx().llmod) };
-        let llty = self.cx.type_func(
-            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32()],
-            self.cx.type_void(),
-        );
-        let args = &[fn_name, hash, bitmap_bits];
-        let args = self.check_call("call", llty, llfn, args);
-
-        unsafe {
-            let _ = llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llty,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                [].as_ptr(),
-                0 as c_uint,
-            );
-        }
+        self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[fn_name, hash, bitmap_bits]);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_tvbitmap_update(
         &mut self,
         fn_name: &'ll Value,
@@ -1717,39 +1677,21 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         bitmap_index: &'ll Value,
         mcdc_temp: &'ll Value,
     ) {
-        debug!(
-            "mcdc_tvbitmap_update() with args ({:?}, {:?}, {:?}, {:?})",
-            fn_name, hash, bitmap_index, mcdc_temp
-        );
         assert!(
             crate::llvm_util::get_version() >= (19, 0, 0),
             "MCDC intrinsics require LLVM 19 or later"
         );
-
-        let llfn =
-            unsafe { llvm::LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(self.cx().llmod) };
-        let llty = self.cx.type_func(
-            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_ptr()],
-            self.cx.type_void(),
-        );
         let args = &[fn_name, hash, bitmap_index, mcdc_temp];
-        let args = self.check_call("call", llty, llfn, args);
-        unsafe {
-            let _ = llvm::LLVMRustBuildCall(
-                self.llbuilder,
-                llty,
-                llfn,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
-                [].as_ptr(),
-                0 as c_uint,
-            );
-        }
+        self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", args);
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn mcdc_condbitmap_reset(&mut self, mcdc_temp: &'ll Value) {
         self.store(self.const_i32(0), mcdc_temp, self.tcx.data_layout.i32_align.abi);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
-        debug!("mcdc_condbitmap_update() with args ({:?}, {:?})", cond_index, mcdc_temp);
         assert!(
             crate::llvm_util::get_version() >= (19, 0, 0),
             "MCDC intrinsics require LLVM 19 or later"

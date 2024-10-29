@@ -1,5 +1,6 @@
 use std::default::Default;
 use std::iter;
+use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -865,7 +866,9 @@ impl SyntaxExtension {
             })
             .unwrap_or_else(|| (None, helper_attrs));
         let stability = attr::find_stability(sess, attrs, span);
-        let const_stability = attr::find_const_stability(sess, attrs, span);
+        // We set `is_const_fn` false to avoid getting any implicit const stability.
+        let const_stability =
+            attr::find_const_stability(sess, attrs, span, /* is_const_fn */ false);
         let body_stability = attr::find_body_stability(sess, attrs);
         if let Some((_, sp)) = const_stability {
             sess.dcx().emit_err(errors::MacroConstStability {
@@ -1293,7 +1296,12 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
         base_path.push(path);
         Ok(base_path)
     } else {
-        Ok(path)
+        // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
+        // which can happen when `concat!` is used to join paths.
+        match path.components().next() {
+            Some(Prefix(prefix)) if prefix.kind().is_verbatim() => Ok(path.components().collect()),
+            _ => Ok(path),
+        }
     }
 }
 

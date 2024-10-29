@@ -27,10 +27,9 @@ impl<T> ExpectedFound<T> {
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,
-    ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
-    PolarityMismatch(ExpectedFound<ty::PredicatePolarity>),
-    SafetyMismatch(ExpectedFound<I::Safety>),
-    AbiMismatch(ExpectedFound<I::Abi>),
+    PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::PredicatePolarity>),
+    SafetyMismatch(#[type_visitable(ignore)] ExpectedFound<I::Safety>),
+    AbiMismatch(#[type_visitable(ignore)] ExpectedFound<I::Abi>),
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
@@ -73,9 +72,9 @@ impl<I: Interner> TypeError<I> {
     pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | ConstnessMismatch(_)
-            | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | ArgumentSorts(..) | Sorts(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
+            | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
+            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | ArgumentMutability(_)

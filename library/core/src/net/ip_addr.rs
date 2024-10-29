@@ -373,6 +373,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0)).is_benchmarking(), true);
     /// ```
     #[unstable(feature = "ip", issue = "27709")]
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[must_use]
     #[inline]
     pub const fn is_benchmarking(&self) -> bool {

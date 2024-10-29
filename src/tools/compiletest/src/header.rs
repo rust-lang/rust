@@ -57,7 +57,7 @@ impl EarlyProps {
             &mut poisoned,
             testfile,
             rdr,
-            &mut |DirectiveLine { directive: ln, .. }| {
+            &mut |DirectiveLine { raw_directive: ln, .. }| {
                 parse_and_update_aux(config, ln, &mut props.aux);
                 config.parse_and_update_revisions(testfile, ln, &mut props.revisions);
             },
@@ -344,8 +344,8 @@ impl TestProps {
                 &mut poisoned,
                 testfile,
                 file,
-                &mut |DirectiveLine { header_revision, directive: ln, .. }| {
-                    if header_revision.is_some() && header_revision != test_revision {
+                &mut |directive @ DirectiveLine { raw_directive: ln, .. }| {
+                    if !directive.applies_to_test_revision(test_revision) {
                         return;
                     }
 
@@ -678,28 +678,35 @@ impl TestProps {
     }
 }
 
-/// Extract an `(Option<line_revision>, directive)` directive from a line if comment is present.
-///
-/// See [`DirectiveLine`] for a diagram.
-pub fn line_directive<'line>(
+/// If the given line begins with the appropriate comment prefix for a directive,
+/// returns a struct containing various parts of the directive.
+fn line_directive<'line>(
+    line_number: usize,
     comment: &str,
     original_line: &'line str,
-) -> Option<(Option<&'line str>, &'line str)> {
+) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
     let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
 
+    let revision;
+    let raw_directive;
+
     if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
         // A comment like `//@[foo]` only applies to revision `foo`.
-        let Some((line_revision, directive)) = after_open_bracket.split_once(']') else {
+        let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
                 "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
             )
         };
 
-        Some((Some(line_revision), directive.trim_start()))
+        revision = Some(line_revision);
+        raw_directive = after_close_bracket.trim_start();
     } else {
-        Some((None, after_comment))
-    }
+        revision = None;
+        raw_directive = after_comment;
+    };
+
+    Some(DirectiveLine { line_number, revision, raw_directive })
 }
 
 // To prevent duplicating the list of commmands between `compiletest`,`htmldocck` and `jsondocck`,
@@ -730,28 +737,37 @@ const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
 const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
     &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
 
-/// The broken-down contents of a line containing a test header directive,
+/// The (partly) broken-down contents of a line containing a test directive,
 /// which [`iter_header`] passes to its callback function.
 ///
 /// For example:
 ///
 /// ```text
 /// //@ compile-flags: -O
-///     ^^^^^^^^^^^^^^^^^ directive
+///     ^^^^^^^^^^^^^^^^^ raw_directive
 ///
 /// //@ [foo] compile-flags: -O
-///      ^^^                    header_revision
-///           ^^^^^^^^^^^^^^^^^ directive
+///      ^^^                    revision
+///           ^^^^^^^^^^^^^^^^^ raw_directive
 /// ```
 struct DirectiveLine<'ln> {
     line_number: usize,
-    /// Some header directives start with a revision name in square brackets
+    /// Some test directives start with a revision name in square brackets
     /// (e.g. `[foo]`), and only apply to that revision of the test.
     /// If present, this field contains the revision name (e.g. `foo`).
-    header_revision: Option<&'ln str>,
-    /// The main part of the header directive, after removing the comment prefix
+    revision: Option<&'ln str>,
+    /// The main part of the directive, after removing the comment prefix
     /// and the optional revision specifier.
-    directive: &'ln str,
+    ///
+    /// This is "raw" because the directive's name and colon-separated value
+    /// (if present) have not yet been extracted or checked.
+    raw_directive: &'ln str,
+}
+
+impl<'ln> DirectiveLine<'ln> {
+    fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
+        self.revision.is_none() || self.revision == test_revision
+    }
 }
 
 pub(crate) struct CheckDirectiveResult<'ln> {
@@ -819,8 +835,8 @@ fn iter_header(
             "ignore-cross-compile",
         ];
         // Process the extra implied directives, with a dummy line number of 0.
-        for directive in extra_directives {
-            it(DirectiveLine { line_number: 0, header_revision: None, directive });
+        for raw_directive in extra_directives {
+            it(DirectiveLine { line_number: 0, revision: None, raw_directive });
         }
     }
 
@@ -847,24 +863,21 @@ fn iter_header(
             return;
         }
 
-        let Some((header_revision, non_revisioned_directive_line)) = line_directive(comment, ln)
-        else {
+        let Some(directive_line) = line_directive(line_number, comment, ln) else {
             continue;
         };
 
         // Perform unknown directive check on Rust files.
         if testfile.extension().map(|e| e == "rs").unwrap_or(false) {
-            let directive_ln = non_revisioned_directive_line.trim();
-
             let CheckDirectiveResult { is_known_directive, trailing_directive } =
-                check_directive(directive_ln, mode, ln);
+                check_directive(directive_line.raw_directive, mode, ln);
 
             if !is_known_directive {
                 *poisoned = true;
 
                 eprintln!(
                     "error: detected unknown compiletest test directive `{}` in {}:{}",
-                    directive_ln,
+                    directive_line.raw_directive,
                     testfile.display(),
                     line_number,
                 );
@@ -888,11 +901,7 @@ fn iter_header(
             }
         }
 
-        it(DirectiveLine {
-            line_number,
-            header_revision,
-            directive: non_revisioned_directive_line,
-        });
+        it(directive_line);
     }
 }
 
@@ -1292,8 +1301,8 @@ pub fn make_test_description<R: Read>(
         &mut local_poisoned,
         path,
         src,
-        &mut |DirectiveLine { header_revision, directive: ln, line_number }| {
-            if header_revision.is_some() && header_revision != test_revision {
+        &mut |directive @ DirectiveLine { line_number, raw_directive: ln, .. }| {
+            if !directive.applies_to_test_revision(test_revision) {
                 return;
             }
 

@@ -360,6 +360,7 @@ fn check_opaque_type_well_formed<'tcx>(
                 .err_ctxt()
                 .report_mismatched_types(
                     &ObligationCause::misc(definition_span, def_id),
+                    param_env,
                     opaque_ty,
                     definition_ty,
                     err,

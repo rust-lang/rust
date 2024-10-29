@@ -219,8 +219,8 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
                     llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
-                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
                 }
+                llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
                 (s.to_owned(), g)
             })
             .1;

@@ -154,17 +154,10 @@ struct LoweringContext<'a, 'hir> {
     /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<LocalDefIdMap<LocalDefId>>,
-
-    host_param_id: Option<LocalDefId>,
-    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(
-        tcx: TyCtxt<'hir>,
-        resolver: &'a mut ResolverAstLowering,
-        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
         Self {
             // Pseudo-globals.
             tcx,
@@ -193,7 +186,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller {
+            allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
                 [sym::gen_future].into()
@@ -204,8 +197,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
-            host_param_id: None,
-            ast_index,
         }
     }
 
@@ -1035,7 +1026,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span,
                             })
                         };
-                        if !self.tcx.features().return_type_notation
+                        if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
                             add_feature_diagnostics(
@@ -1160,7 +1151,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
-                    TyKind::Infer if self.tcx.features().generic_arg_infer => {
+                    TyKind::Infer if self.tcx.features().generic_arg_infer() => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
@@ -1500,7 +1491,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // is enabled. We don't check the span of the edition, since this is done
         // on a per-opaque basis to account for nested opaques.
         let always_capture_in_scope = match origin {
-            _ if self.tcx.features().lifetime_capture_rules_2024 => true,
+            _ if self.tcx.features().lifetime_capture_rules_2024() => true,
             hir::OpaqueTyOrigin::TyAlias { .. } => true,
             hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
             hir::OpaqueTyOrigin::AsyncFn { .. } => {
@@ -1519,7 +1510,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Feature gate for RPITIT + use<..>
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl: Some(_), .. } => {
-                if !self.tcx.features().precise_capturing_in_traits
+                if !self.tcx.features().precise_capturing_in_traits()
                     && let Some(span) = bounds.iter().find_map(|bound| match *bound {
                         ast::GenericBound::Use(_, span) => Some(span),
                         _ => None,
@@ -1956,7 +1947,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::Trait(hir::PolyTraitRef {
             bound_generic_params: &[],
-            modifiers: hir::TraitBoundModifier::None,
+            modifiers: hir::TraitBoundModifiers::NONE,
             trait_ref: hir::TraitRef {
                 path: self.make_lang_item_path(trait_lang_item, opaque_ty_span, Some(bound_args)),
                 hir_ref_id: self.next_id(),
@@ -2054,11 +2045,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(
-            param,
-            source,
-            attr::contains_name(&param.attrs, sym::rustc_runtime),
-        );
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2078,7 +2065,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         param: &GenericParam,
         source: hir::GenericParamSource,
-        is_host_effect: bool,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2144,7 +2130,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, is_host_effect, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default, synthetic: false },
                 )
             }
         }
@@ -2270,7 +2256,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer {
+                if self.tcx.features().generic_arg_infer() {
                     hir::ArrayLen::Infer(hir::InferArg {
                         hir_id: self.lower_node_id(c.id),
                         span: self.lower_span(c.value.span),
@@ -2445,22 +2431,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifiers(
         &mut self,
         modifiers: TraitBoundModifiers,
-    ) -> hir::TraitBoundModifier {
-        // Invalid modifier combinations will cause an error during AST validation.
-        // Arbitrarily pick a placeholder for them to make compilation proceed.
-        match (modifiers.constness, modifiers.polarity) {
-            (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
-            (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
-            (BoundConstness::Never, BoundPolarity::Negative(_)) => {
-                if self.tcx.features().negative_bounds {
-                    hir::TraitBoundModifier::Negative
-                } else {
-                    hir::TraitBoundModifier::None
-                }
-            }
-            (BoundConstness::Always(_), _) => hir::TraitBoundModifier::Const,
-            (BoundConstness::Maybe(_), _) => hir::TraitBoundModifier::MaybeConst,
-        }
+    ) -> hir::TraitBoundModifiers {
+        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
     }
 
     // Helper methods for building HIR.
@@ -2626,7 +2598,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
-                            modifiers: hir::TraitBoundModifier::None,
+                            modifiers: hir::TraitBoundModifiers::NONE,
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
                         };

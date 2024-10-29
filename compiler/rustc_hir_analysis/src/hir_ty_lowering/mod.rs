@@ -81,6 +81,12 @@ pub enum PredicateFilter {
     /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
     /// and `<Self as Tr>::A: B`.
     SelfAndAssociatedTypeBounds,
+
+    /// Filter only the `~const` bounds, which are lowered into `HostEffect` clauses.
+    ConstIfConst,
+
+    /// Filter only the `~const` bounds which are *also* in the supertrait position.
+    SelfConstIfConst,
 }
 
 #[derive(Debug)]
@@ -652,7 +658,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
-        constness: Option<ty::BoundConstness>,
+        constness: hir::BoundConstness,
         polarity: ty::PredicatePolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
@@ -675,11 +681,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
-        if let Some(constness) = constness
+        if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
             && !self.tcx().is_const_trait(trait_def_id)
         {
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span: trait_ref.path.span,
+                span,
                 modifier: constness.as_str(),
             });
         }
@@ -693,16 +699,49 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             bound_vars,
         );
 
-        debug!(?poly_trait_ref);
-        bounds.push_trait_bound(
-            tcx,
-            self.item_def_id().to_def_id(),
-            poly_trait_ref,
-            span,
-            polarity,
-            constness,
-            predicate_filter,
-        );
+        match predicate_filter {
+            PredicateFilter::All
+            | PredicateFilter::SelfOnly
+            | PredicateFilter::SelfThatDefines(..)
+            | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                debug!(?poly_trait_ref);
+                bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+
+                match constness {
+                    hir::BoundConstness::Always(span) => {
+                        if polarity == ty::PredicatePolarity::Positive {
+                            bounds.push_const_bound(
+                                tcx,
+                                poly_trait_ref,
+                                ty::HostPolarity::Const,
+                                span,
+                            );
+                        }
+                    }
+                    hir::BoundConstness::Maybe(_) => {
+                        // We don't emit a const bound here, since that would mean that we
+                        // unconditionally need to prove a `HostEffect` predicate, even when
+                        // the predicates are being instantiated in a non-const context. This
+                        // is instead handled in the `const_conditions` query.
+                    }
+                    hir::BoundConstness::Never => {}
+                }
+            }
+            // On the flip side, when filtering `ConstIfConst` bounds, we only need to convert
+            // `~const` bounds. All other predicates are handled in their respective queries.
+            //
+            // Note that like `PredicateFilter::SelfOnly`, we don't need to do any filtering
+            // here because we only call this on self bounds, and deal with the recursive case
+            // in `lower_assoc_item_constraint`.
+            PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => match constness {
+                hir::BoundConstness::Maybe(span) => {
+                    if polarity == ty::PredicatePolarity::Positive {
+                        bounds.push_const_bound(tcx, poly_trait_ref, ty::HostPolarity::Maybe, span);
+                    }
+                }
+                hir::BoundConstness::Always(_) | hir::BoundConstness::Never => {}
+            },
+        }
 
         let mut dup_constraints = FxIndexMap::default();
         for constraint in trait_segment.args().constraints {
@@ -1164,15 +1203,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.emit()
                 } else if let Err(reported) = qself_ty.error_reported() {
                     reported
-                } else if let ty::Alias(ty::Opaque, alias_ty) = qself_ty.kind() {
-                    // `<impl Trait as OtherTrait>::Assoc` makes no sense.
-                    struct_span_code_err!(
-                        self.dcx(),
-                        tcx.def_span(alias_ty.def_id),
-                        E0667,
-                        "`impl Trait` is not allowed in path parameters"
-                    )
-                    .emit() // Already reported in an earlier stage.
                 } else {
                     self.maybe_report_similar_assoc_fn(span, qself_ty, qself)?;
 
@@ -1241,7 +1271,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
         // errors (#108491) which mask the feature-gate error, needlessly confusing users
         // who use IATs by accident (#113265).
-        if !tcx.features().inherent_associated_types {
+        if !tcx.features().inherent_associated_types() {
             return Ok(None);
         }
 

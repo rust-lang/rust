@@ -110,14 +110,14 @@ fn push_debuginfo_type_name<'tcx>(
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
-                        push_generic_params_internal(tcx, args, def.did(), output, visited);
+                        push_generic_params_internal(tcx, args, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
                 push_item_name(tcx, def.did(), qualified, output);
-                push_generic_params_internal(tcx, args, def.did(), output, visited);
+                push_generic_params_internal(tcx, args, output, visited);
             }
         }
         ty::Tuple(component_types) => {
@@ -251,13 +251,8 @@ fn push_debuginfo_type_name<'tcx>(
                 let principal =
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
-                let principal_has_generic_params = push_generic_params_internal(
-                    tcx,
-                    principal.args,
-                    principal.def_id,
-                    output,
-                    visited,
-                );
+                let principal_has_generic_params =
+                    push_generic_params_internal(tcx, principal.args, output, visited);
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -538,13 +533,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
             tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
-        push_generic_params_internal(
-            tcx,
-            trait_ref.args,
-            trait_ref.def_id,
-            &mut vtable_name,
-            &mut visited,
-        );
+        push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
     } else {
         vtable_name.push('_');
     }
@@ -647,12 +636,11 @@ fn push_unqualified_item_name(
 fn push_generic_params_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
-    def_id: DefId,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
     assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
-    let mut args = args.non_erasable_generics(tcx, def_id).peekable();
+    let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;
     }
@@ -736,12 +724,11 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
 pub fn push_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
-    def_id: DefId,
     output: &mut String,
 ) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, args, def_id, output, &mut visited);
+    push_generic_params_internal(tcx, args, output, &mut visited);
 }
 
 fn push_closure_or_coroutine_name<'tcx>(
@@ -786,7 +773,7 @@ fn push_closure_or_coroutine_name<'tcx>(
     // FIXME(async_closures): This is probably not going to be correct w.r.t.
     // multiple coroutine flavors. Maybe truncate to (parent + 1)?
     let args = args.truncate_to(tcx, generics);
-    push_generic_params_internal(tcx, args, enclosing_fn_def_id, output, visited);
+    push_generic_params_internal(tcx, args, output, visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {

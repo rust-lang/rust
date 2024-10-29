@@ -645,6 +645,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
+                    // FIXME(effects): It should be relatively straightforward to implement
+                    // old trait solver support for `HostEffect` bounds; or at least basic
+                    // support for them.
+                    todo!()
+                }
+
                 ty::PredicateKind::Subtype(p) => {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
@@ -865,7 +872,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let tcx = self.tcx();
                     assert!(
-                        tcx.features().generic_const_exprs,
+                        tcx.features().generic_const_exprs(),
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
 
@@ -1821,8 +1828,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             |cand: ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
-        // to anything else.
+        // or `DiscriminantKindCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -2195,7 +2201,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 match self.tcx().coroutine_movability(coroutine_def_id) {
                     hir::Movability::Static => None,
                     hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone {
+                        if self.tcx().features().coroutine_clone() {
                             let resolved_upvars =
                                 self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                             let resolved_witness =

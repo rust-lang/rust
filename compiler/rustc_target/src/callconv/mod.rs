@@ -1,12 +1,15 @@
-use std::fmt;
 use std::str::FromStr;
+use std::{fmt, iter};
 
 pub use rustc_abi::{Reg, RegKind};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
-use crate::abi::{self, Abi, Align, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
+use crate::abi::{
+    self, Abi, AddressSpace, Align, HasDataLayout, Pointer, Size, TyAbiInterface, TyAndLayout,
+};
+use crate::spec::abi::Abi as SpecAbi;
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -631,7 +634,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
     ) -> Result<(), AdjustForForeignAbiError>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
-        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt,
+        C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
     {
         if abi == spec::abi::Abi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
@@ -643,14 +646,18 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch[..] {
             "x86" => {
-                let flavor = if let spec::abi::Abi::Fastcall { .. }
-                | spec::abi::Abi::Vectorcall { .. } = abi
-                {
-                    x86::Flavor::FastcallOrVectorcall
-                } else {
-                    x86::Flavor::General
+                let (flavor, regparm) = match abi {
+                    spec::abi::Abi::Fastcall { .. } | spec::abi::Abi::Vectorcall { .. } => {
+                        (x86::Flavor::FastcallOrVectorcall, None)
+                    }
+                    spec::abi::Abi::C { .. }
+                    | spec::abi::Abi::Cdecl { .. }
+                    | spec::abi::Abi::Stdcall { .. } => {
+                        (x86::Flavor::General, cx.x86_abi_opt().regparm)
+                    }
+                    _ => (x86::Flavor::General, None),
                 };
-                x86::compute_abi_info(cx, self, flavor);
+                x86::compute_abi_info(cx, self, x86::X86Options { flavor, regparm });
             }
             "x86_64" => match abi {
                 spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
@@ -715,6 +722,118 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
 
         Ok(())
+    }
+
+    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: SpecAbi)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout + HasTargetSpec,
+    {
+        let spec = cx.target_spec();
+        match &spec.arch[..] {
+            "x86" => x86::compute_rust_abi_info(cx, self, abi),
+            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
+            "loongarch64" => loongarch::compute_rust_abi_info(cx, self, abi),
+            _ => {}
+        };
+
+        for (arg_idx, arg) in self
+            .args
+            .iter_mut()
+            .enumerate()
+            .map(|(idx, arg)| (Some(idx), arg))
+            .chain(iter::once((None, &mut self.ret)))
+        {
+            if arg.is_ignore() {
+                continue;
+            }
+
+            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+                // Return values larger than 2 registers using a return area
+                // pointer. LLVM and Cranelift disagree about how to return
+                // values that don't fit in the registers designated for return
+                // values. LLVM will force the entire return value to be passed
+                // by return area pointer, while Cranelift will look at each IR level
+                // return value independently and decide to pass it in a
+                // register or not, which would result in the return value
+                // being passed partially in registers and partially through a
+                // return area pointer.
+                //
+                // While Cranelift may need to be fixed as the LLVM behavior is
+                // generally more correct with respect to the surface language,
+                // forcing this behavior in rustc itself makes it easier for
+                // other backends to conform to the Rust ABI and for the C ABI
+                // rustc already handles this behavior anyway.
+                //
+                // In addition LLVM's decision to pass the return value in
+                // registers or using a return area pointer depends on how
+                // exactly the return type is lowered to an LLVM IR type. For
+                // example `Option<u128>` can be lowered as `{ i128, i128 }`
+                // in which case the x86_64 backend would use a return area
+                // pointer, or it could be passed as `{ i32, i128 }` in which
+                // case the x86_64 backend would pass it in registers by taking
+                // advantage of an LLVM ABI extension that allows using 3
+                // registers for the x86_64 sysv call conv rather than the
+                // officially specified 2 registers.
+                //
+                // FIXME: Technically we should look at the amount of available
+                // return registers rather than guessing that there are 2
+                // registers for return values. In practice only a couple of
+                // architectures have less than 2 return registers. None of
+                // which supported by Cranelift.
+                //
+                // NOTE: This adjustment is only necessary for the Rust ABI as
+                // for other ABI's the calling convention implementations in
+                // rustc_target already ensure any return value which doesn't
+                // fit in the available amount of return registers is passed in
+                // the right way for the current target.
+                arg.make_indirect();
+                continue;
+            }
+
+            match arg.layout.abi {
+                Abi::Aggregate { .. } => {}
+
+                // This is a fun case! The gist of what this is doing is
+                // that we want callers and callees to always agree on the
+                // ABI of how they pass SIMD arguments. If we were to *not*
+                // make these arguments indirect then they'd be immediates
+                // in LLVM, which means that they'd used whatever the
+                // appropriate ABI is for the callee and the caller. That
+                // means, for example, if the caller doesn't have AVX
+                // enabled but the callee does, then passing an AVX argument
+                // across this boundary would cause corrupt data to show up.
+                //
+                // This problem is fixed by unconditionally passing SIMD
+                // arguments through memory between callers and callees
+                // which should get them all to agree on ABI regardless of
+                // target feature sets. Some more information about this
+                // issue can be found in #44367.
+                //
+                // Note that the intrinsic ABI is exempt here as
+                // that's how we connect up to LLVM and it's unstable
+                // anyway, we control all calls to it in libstd.
+                Abi::Vector { .. } if abi != SpecAbi::RustIntrinsic && spec.simd_types_indirect => {
+                    arg.make_indirect();
+                    continue;
+                }
+
+                _ => continue,
+            }
+            // Compute `Aggregate` ABI.
+
+            let is_indirect_not_on_stack =
+                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+            assert!(is_indirect_not_on_stack);
+
+            let size = arg.layout.size;
+            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
+                // We want to pass small aggregates as immediates, but using
+                // an LLVM aggregate type for this leads to bad optimizations,
+                // so we pick an appropriately sized integer type instead.
+                arg.cast_to(Reg { kind: RegKind::Integer, size });
+            }
+        }
     }
 }
 

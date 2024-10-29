@@ -15,9 +15,7 @@ use crate::solve::{
     CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
 };
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    search_graph, {self as ty},
-};
+use crate::{self as ty, search_graph};
 
 pub trait Interner:
     Sized
@@ -26,6 +24,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
+    + IrPrint<ty::HostEffectPredicate<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>
@@ -173,6 +172,10 @@ pub trait Interner:
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
+    /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
+    /// are compatible with the `DefId`.
+    fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -225,6 +228,16 @@ pub trait Interner:
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
+
+    fn is_const_impl(self, def_id: Self::DefId) -> bool;
+    fn const_conditions(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+    fn implied_const_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 

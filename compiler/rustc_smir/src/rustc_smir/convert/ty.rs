@@ -68,7 +68,7 @@ impl<'tcx> Stable<'tcx> for ty::ExistentialTraitRef<'tcx> {
     type T = stable_mir::ty::ExistentialTraitRef;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let ty::ExistentialTraitRef { def_id, args } = self;
+        let ty::ExistentialTraitRef { def_id, args, .. } = self;
         stable_mir::ty::ExistentialTraitRef {
             def_id: tables.trait_def(*def_id),
             generic_args: args.stable(tables),
@@ -95,7 +95,7 @@ impl<'tcx> Stable<'tcx> for ty::ExistentialProjection<'tcx> {
     type T = stable_mir::ty::ExistentialProjection;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let ty::ExistentialProjection { def_id, args, term } = self;
+        let ty::ExistentialProjection { def_id, args, term, .. } = self;
         stable_mir::ty::ExistentialProjection {
             def_id: tables.trait_def(*def_id),
             generic_args: args.stable(tables),
@@ -588,7 +588,6 @@ impl<'tcx> Stable<'tcx> for ty::Generics {
                 .has_late_bound_regions
                 .as_ref()
                 .map(|late_bound_regions| late_bound_regions.stable(tables)),
-            host_effect_index: self.host_effect_index,
         }
     }
 }
@@ -603,7 +602,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDefKind {
             ty::GenericParamDefKind::Type { has_default, synthetic } => {
                 GenericParamDefKind::Type { has_default: *has_default, synthetic: *synthetic }
             }
-            ty::GenericParamDefKind::Const { has_default, is_host_effect: _, synthetic: _ } => {
+            ty::GenericParamDefKind::Const { has_default, synthetic: _ } => {
                 GenericParamDefKind::Const { has_default: *has_default }
             }
         }
@@ -689,6 +688,9 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
             }
             ClauseKind::ConstEvaluatable(const_) => {
                 stable_mir::ty::ClauseKind::ConstEvaluatable(const_.stable(tables))
+            }
+            ClauseKind::HostEffect(..) => {
+                todo!()
             }
         }
     }

@@ -173,7 +173,7 @@ pub unsafe trait GlobalAlloc {
     /// # Safety
     ///
     /// The caller has to ensure that `layout` has non-zero size. Like `alloc`
-    /// zero sized `layout` can result in undefined behaviour.
+    /// zero sized `layout` can result in undefined behavior.
     /// However the allocated block of memory is guaranteed to be initialized.
     ///
     /// # Errors
@@ -234,7 +234,7 @@ pub unsafe trait GlobalAlloc {
     ///   does not overflow `isize` (i.e., the rounded value must be less than or
     ///   equal to `isize::MAX`).
     ///
-    /// If these are not followed, undefined behaviour can result.
+    /// If these are not followed, undefined behavior can result.
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g., guarantee a sentinel address or a null pointer

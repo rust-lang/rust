@@ -10,7 +10,8 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -734,7 +735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
-            if !tcx.features().unsized_fn_params {
+            if !tcx.features().unsized_fn_params() {
                 // We want to remove some Sized bounds from std functions,
                 // but don't want to expose the removal to stable Rust.
                 // i.e., we don't want to allow
@@ -1750,7 +1751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to tell them that in the diagnostic. Does not affect typeck.
         let is_constable = match element.kind {
             hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
+                ty::FnDef(def_id, _) if tcx.is_stable_const_fn(def_id) => traits::IsConstable::Fn,
                 _ => traits::IsConstable::No,
             },
             hir::ExprKind::Path(qpath) => {
@@ -1995,7 +1996,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
-            let fru_tys = if self.tcx.features().type_changing_struct_update {
+            let fru_tys = if self.tcx.features().type_changing_struct_update() {
                 if adt.is_struct() {
                     // Make some fresh generic parameters for our ADT type.
                     let fresh_args = self.fresh_args_for_item(base_expr.span, adt.did());
@@ -2026,7 +2027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     }
                                     Err(_) => {
                                         span_bug!(
-                                            cause.span(),
+                                            cause.span,
                                             "subtyping remaining fields of type changing FRU failed: {target_ty} != {fru_ty}: {}::{}",
                                             variant.name,
                                             ident.name,
@@ -2763,12 +2764,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_ident.span,
             "field not available in `impl Future`, but it is available in its `Output`",
         );
-        err.span_suggestion_verbose(
-            base.span.shrink_to_hi(),
-            "consider `await`ing on the `Future` and access the field of its `Output`",
-            ".await",
-            Applicability::MaybeIncorrect,
-        );
+        match self.tcx.coroutine_kind(self.body_id) {
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                err.span_suggestion_verbose(
+                    base.span.shrink_to_hi(),
+                    "consider `await`ing on the `Future` to access the field",
+                    ".await",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {
+                let mut span: MultiSpan = base.span.into();
+                span.push_span_label(self.tcx.def_span(self.body_id), "this is not `async`");
+                err.span_note(
+                    span,
+                    "this implements `Future` and its output type has the field, \
+                    but the future cannot be awaited in a synchronous function",
+                );
+            }
+        }
     }
 
     fn ban_nonexisting_field(
@@ -3538,7 +3552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    if !self.tcx.features().offset_of_enum {
+                    if !self.tcx.features().offset_of_enum() {
                         rustc_session::parse::feature_err(
                             &self.tcx.sess,
                             sym::offset_of_enum,
@@ -3628,7 +3642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let field_ty = self.field_ty(expr.span, field, args);
 
-                        if self.tcx.features().offset_of_slice {
+                        if self.tcx.features().offset_of_slice() {
                             self.require_type_has_static_alignment(
                                 field_ty,
                                 expr.span,
@@ -3661,7 +3675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && field.name == sym::integer(index)
                     {
                         if let Some(&field_ty) = tys.get(index) {
-                            if self.tcx.features().offset_of_slice {
+                            if self.tcx.features().offset_of_slice() {
                                 self.require_type_has_static_alignment(
                                     field_ty,
                                     expr.span,

@@ -1393,7 +1393,6 @@ pub struct Generics {
     pub param_def_id_to_index: Vec<(GenericDef, u32)>,
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
-    pub host_effect_index: Option<usize>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

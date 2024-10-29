@@ -319,6 +319,13 @@ pub(crate) struct RustcPromotablePairing {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_rustc_const_stable_indirect_pairing)]
+pub(crate) struct RustcConstStableIndirectPairing {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_rustc_allowed_unstable_pairing, code = E0789)]
 pub(crate) struct RustcAllowedUnstablePairing {
     #[primary_span]

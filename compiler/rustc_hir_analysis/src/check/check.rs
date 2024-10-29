@@ -1166,7 +1166,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    if adt.is_union() && !tcx.features().transparent_unions {
+    if adt.is_union() && !tcx.features().transparent_unions() {
         feature_err(
             &tcx.sess,
             sym::transparent_unions,
@@ -1301,7 +1301,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     let repr_type_ty = def.repr().discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.features().repr128 {
+        if !tcx.features().repr128() {
             feature_err(
                 &tcx.sess,
                 sym::repr128,

@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncFnInTrait {
             && let hir::IsAsync::Async(async_span) = sig.header.asyncness
         {
             // RTN can be used to bound `async fn` in traits in a better way than "always"
-            if cx.tcx.features().return_type_notation {
+            if cx.tcx.features().return_type_notation() {
                 return;
             }
 

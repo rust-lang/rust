@@ -119,7 +119,7 @@
 //! when given a `.bat` file as the application to run, it will automatically
 //! convert that into running `cmd.exe /c` with the batch file as the next argument.
 //!
-//! For historical reasons Rust currently preserves this behaviour when using
+//! For historical reasons Rust currently preserves this behavior when using
 //! [`Command::new`], and escapes the arguments according to `cmd.exe` rules.
 //! Due to the complexity of `cmd.exe` argument handling, it might not be
 //! possible to safely escape some special characters, and using them will result
@@ -2318,7 +2318,7 @@ pub fn exit(code: i32) -> ! {
 /// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
 /// Likewise, C stdio buffers will (on most platforms) not be flushed.
 ///
-/// This is in contrast to the default behaviour of [`panic!`] which unwinds
+/// This is in contrast to the default behavior of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
 /// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,

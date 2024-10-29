@@ -1,10 +1,20 @@
-error: `foo` is not yet stable as a const fn
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
   --> $DIR/dont_promote_unstable_const_fn.rs:14:25
    |
 LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
    |
-   = help: add `#![feature(foo)]` to the crate attributes to enable
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar() -> u32 { foo() }
+   |
+help: otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+   |
+LL + #[rustc_allow_const_fn_unstable(foo)]
+LL | const fn bar() -> u32 { foo() }
+   |
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:17:28

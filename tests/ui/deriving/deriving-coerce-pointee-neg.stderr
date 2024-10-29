@@ -1,0 +1,119 @@
+error: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+  --> $DIR/deriving-coerce-pointee-neg.rs:6:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `CoercePointee` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-coerce-pointee-neg.rs:12:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `CoercePointee` can only be derived on `struct`s with at least one field
+  --> $DIR/deriving-coerce-pointee-neg.rs:19:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+  --> $DIR/deriving-coerce-pointee-neg.rs:26:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits
+  --> $DIR/deriving-coerce-pointee-neg.rs:31:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits
+  --> $DIR/deriving-coerce-pointee-neg.rs:40:39
+   |
+LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
+   |                                       ^                     ^
+
+error: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+  --> $DIR/deriving-coerce-pointee-neg.rs:43:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `derive(CoercePointee)` requires T to be marked `?Sized`
+  --> $DIR/deriving-coerce-pointee-neg.rs:51:36
+   |
+LL | struct NoMaybeSized<'a, #[pointee] T> {
+   |                                    ^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:59:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:69:33
+   |
+LL |                     struct UhOh<#[pointee] T>(T);
+   |                                 ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:83:21
+   |
+LL |         struct UhOh<#[pointee] T>(T);
+   |                     ^^^^^^^^^^
+
+error: the `#[pointee]` attribute may only be used on generic parameters
+  --> $DIR/deriving-coerce-pointee-neg.rs:98:25
+   |
+LL |             struct UhOh<#[pointee] T>(T);
+   |                         ^^^^^^^^^^
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:15:16
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:15:31
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   |                               ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:22:20
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                    ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:22:35
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

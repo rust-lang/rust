@@ -6,20 +6,14 @@
 //! other phases of the compiler, which are generally required to hold in order
 //! to compile the program at all.
 //!
-//! Most lints can be written as [LintPass] instances. These run after
+//! Most lints can be written as [`LintPass`] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
 //! within [rustc_session::lint::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load external lint plugins, as is done for Clippy.
 //!
-//! Some of rustc's lints are defined elsewhere in the compiler and work by
-//! calling `add_lint()` on the overall `Session` object. This works when
-//! it happens before the main lint pass, which emits the lints stored by
-//! `add_lint()`. To emit lints after the main lint pass (from codegen, for
-//! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
-//! in `context.rs`.
-//!
-//! Some code also exists in [rustc_session::lint], [rustc_middle::lint].
+//! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
+//! overview of how lints are implemented.
 //!
 //! ## Note
 //!
@@ -46,6 +40,7 @@ mod async_closures;
 mod async_fn_in_trait;
 pub mod builtin;
 mod context;
+mod dangling;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
@@ -65,7 +60,6 @@ mod levels;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
-mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -91,6 +85,7 @@ mod unused;
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
+use dangling::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -103,7 +98,6 @@ use invalid_from_utf8::*;
 use let_underscore::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
-use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -170,7 +164,7 @@ early_lint_methods!(
     [
         pub BuiltinCombinedEarlyLintPass,
         [
-            UnusedParens: UnusedParens::new(),
+            UnusedParens: UnusedParens::default(),
             UnusedBraces: UnusedBraces,
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
@@ -178,7 +172,7 @@ early_lint_methods!(
             AnonymousParameters: AnonymousParameters,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             NonCamelCaseTypes: NonCamelCaseTypes,
-            DeprecatedAttr: DeprecatedAttr::new(),
+            DeprecatedAttr: DeprecatedAttr::default(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
@@ -199,7 +193,6 @@ late_lint_methods!(
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
-            HardwiredLints: HardwiredLints,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
             InvalidFromUtf8: InvalidFromUtf8,
@@ -232,7 +225,7 @@ late_lint_methods!(
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ShadowedIntoIter: ShadowedIntoIter,
             DropTraitConstraints: DropTraitConstraints,
-            TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+            DanglingPointers: DanglingPointers,
             NonPanicFmt: NonPanicFmt,
             NoopMethodCall: NoopMethodCall,
             EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
@@ -280,6 +273,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
     store.register_lints(&foreign_modules::get_lints());
+    store.register_lints(&HardwiredLints::lint_vec());
 
     add_lint_group!(
         "nonstandard_style",
@@ -356,6 +350,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("non_fmt_panic", "non_fmt_panics");
     store.register_renamed("unused_tuple_struct_fields", "dead_code");
     store.register_renamed("static_mut_ref", "static_mut_refs");
+    store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -602,25 +597,25 @@ fn register_builtins(store: &mut LintStore) {
 }
 
 fn register_internals(store: &mut LintStore) {
-    store.register_lints(&LintPassImpl::get_lints());
+    store.register_lints(&LintPassImpl::lint_vec());
     store.register_early_pass(|| Box::new(LintPassImpl));
-    store.register_lints(&DefaultHashTypes::get_lints());
+    store.register_lints(&DefaultHashTypes::lint_vec());
     store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
-    store.register_lints(&QueryStability::get_lints());
+    store.register_lints(&QueryStability::lint_vec());
     store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&ExistingDocKeyword::get_lints());
+    store.register_lints(&ExistingDocKeyword::lint_vec());
     store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
-    store.register_lints(&TyTyKind::get_lints());
+    store.register_lints(&TyTyKind::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
-    store.register_lints(&TypeIr::get_lints());
+    store.register_lints(&TypeIr::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TypeIr));
-    store.register_lints(&Diagnostics::get_lints());
+    store.register_lints(&Diagnostics::lint_vec());
     store.register_late_mod_pass(|_| Box::new(Diagnostics));
-    store.register_lints(&BadOptAccess::get_lints());
+    store.register_lints(&BadOptAccess::lint_vec());
     store.register_late_mod_pass(|_| Box::new(BadOptAccess));
-    store.register_lints(&PassByValue::get_lints());
+    store.register_lints(&PassByValue::lint_vec());
     store.register_late_mod_pass(|_| Box::new(PassByValue));
-    store.register_lints(&SpanUseEqCtxt::get_lints());
+    store.register_lints(&SpanUseEqCtxt::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and

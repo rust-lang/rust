@@ -287,6 +287,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Subtype(ref expected_found, ref err) => self
                 .report_mismatched_types(
                     &error.obligation.cause,
+                    error.obligation.param_env,
                     expected_found.expected,
                     expected_found.found,
                     *err,
@@ -295,6 +296,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
+                    error.obligation.param_env,
                     expected_found.expected,
                     expected_found.found,
                     *err,
@@ -303,6 +305,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(..)
                 | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
+                    let mut long_ty_file = None;
                     self.note_obligation_cause_code(
                         error.obligation.cause.body_id,
                         &mut diag,
@@ -311,7 +314,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         code,
                         &mut vec![],
                         &mut Default::default(),
+                        &mut long_ty_file,
                     );
+                    if let Some(file) = long_ty_file {
+                        diag.note(format!(
+                            "the full name for the type has been written to '{}'",
+                            file.display(),
+                        ));
+                        diag.note(
+                            "consider using `--verbose` to print the full type name to the console",
+                        );
+                    }
                 }
                 diag.emit()
             }

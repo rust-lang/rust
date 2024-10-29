@@ -372,7 +372,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..) => {
+                | ty::PredicateKind::ConstEquate(..)
+                // FIXME(effects): We may need to do this using the higher-ranked
+                // pred instead of just instantiating it with placeholders b/c of
+                // higher-ranked implied bound issues in the old solver.
+                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
                     let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe(binder));
                     let mut obligations = PredicateObligations::with_capacity(1);
                     obligations.push(obligation.with(infcx.tcx, pred));
@@ -396,6 +400,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         trait_obligation,
                         &mut pending_obligation.stalled_on,
                     )
+                }
+
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
+                    ProcessResult::Changed(Default::default())
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(data)) => {
@@ -450,7 +458,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ty::ConstKind::Infer(var) => {
                             let var = match var {
                                 ty::InferConst::Var(vid) => TyOrConstInferVar::Const(vid),
-                                ty::InferConst::EffectVar(vid) => TyOrConstInferVar::Effect(vid),
                                 ty::InferConst::Fresh(_) => {
                                     bug!("encountered fresh const in fulfill")
                                 }
@@ -598,7 +605,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let tcx = self.selcx.tcx();
                     assert!(
-                        tcx.features().generic_const_exprs,
+                        tcx.features().generic_const_exprs(),
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
                     // FIXME: we probably should only try to unify abstract constants

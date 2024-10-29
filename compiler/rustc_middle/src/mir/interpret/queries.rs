@@ -116,7 +116,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // @lcnr believes that successfully evaluating even though there are
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
-                    if !self.features().generic_const_exprs && ct.args.has_non_region_param() {
+                    if !self.features().generic_const_exprs() && ct.args.has_non_region_param() {
                         let def_kind = self.def_kind(instance.def_id());
                         assert!(
                             matches!(

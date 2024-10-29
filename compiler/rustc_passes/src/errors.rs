@@ -324,6 +324,27 @@ pub(crate) struct DocTestUnknownSpotlight {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_doc_test_unknown_passes)]
+#[note]
+#[help]
+#[note(passes_no_op_note)]
+pub(crate) struct DocTestUnknownPasses {
+    pub path: String,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_test_unknown_plugins)]
+#[note]
+#[note(passes_no_op_note)]
+pub(crate) struct DocTestUnknownPlugins {
+    pub path: String,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(passes_doc_test_unknown_include)]
 pub(crate) struct DocTestUnknownInclude {
     pub path: String,
@@ -544,6 +565,15 @@ pub(crate) struct ReprIdent {
 pub(crate) struct ReprConflicting {
     #[primary_span]
     pub hint_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_repr_align_greater_than_target_max, code = E0589)]
+#[note]
+pub(crate) struct InvalidReprAlignForTarget {
+    #[primary_span]
+    pub span: Span,
+    pub size: u64,
 }
 
 #[derive(LintDiagnostic)]
@@ -1553,11 +1583,19 @@ pub(crate) struct DuplicateFeatureErr {
     pub span: Span,
     pub feature: Symbol,
 }
+
 #[derive(Diagnostic)]
 #[diag(passes_missing_const_err)]
 pub(crate) struct MissingConstErr {
     #[primary_span]
     #[help]
+    pub fn_sig_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_const_stable_not_stable)]
+pub(crate) struct ConstStableNotStable {
+    #[primary_span]
     pub fn_sig_span: Span,
     #[label]
     pub const_span: Span,

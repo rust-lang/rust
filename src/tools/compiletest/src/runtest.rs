@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -67,13 +67,21 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     // Error mode is a global variable, so lock it so only one thread will change it
     let _lock = LOCK.lock().unwrap();
 
-    // Tell Windows to not show any UI on errors (such as terminating abnormally).
-    // This is important for running tests, since some of them use abnormal
-    // termination by design. This mode is inherited by all child processes.
+    // Tell Windows to not show any UI on errors (such as terminating abnormally). This is important
+    // for running tests, since some of them use abnormal termination by design. This mode is
+    // inherited by all child processes.
+    //
+    // Note that `run-make` tests require `SEM_FAILCRITICALERRORS` in addition to suppress Windows
+    // Error Reporting (WER) error dialogues that come from "critical failures" such as missing
+    // DLLs.
+    //
+    // See <https://github.com/rust-lang/rust/issues/132092> and
+    // <https://learn.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-seterrormode?redirectedfrom=MSDN>.
     unsafe {
-        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+        // read inherited flags
+        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let old_mode = THREAD_ERROR_MODE(old_mode);
-        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
+        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
         r
@@ -477,6 +485,9 @@ impl<'test> TestCx<'test> {
                 panic!(
                     "error: redundant cfg argument `{normalized_revision}` is already created by the revision"
                 );
+            }
+            if self.config.builtin_cfg_names().contains(&normalized_revision) {
+                panic!("error: revision `{normalized_revision}` collides with a builtin cfg");
             }
             cmd.args(cfg_arg);
         }
@@ -1085,6 +1096,10 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
+    fn has_aux_dir(&self) -> bool {
+        !self.props.aux.builds.is_empty() || !self.props.aux.crates.is_empty()
+    }
+
     fn aux_output_dir(&self) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1638,7 +1653,11 @@ impl<'test> TestCx<'test> {
         }
 
         if let LinkToAux::Yes = link_to_aux {
-            rustc.arg("-L").arg(self.aux_output_dir_name());
+            // if we pass an `-L` argument to a directory that doesn't exist,
+            // macOS ld emits warnings which disrupt the .stderr files
+            if self.has_aux_dir() {
+                rustc.arg("-L").arg(self.aux_output_dir_name());
+            }
         }
 
         rustc.args(&self.props.compile_flags);
@@ -2459,7 +2478,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
+    fn compare_output(&self, stream: &str, actual: &str, expected: &str) -> usize {
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2499,56 +2518,66 @@ impl<'test> TestCx<'test> {
             (expected, actual)
         };
 
-        if !self.config.bless {
-            if expected.is_empty() {
-                println!("normalized {}:\n{}\n", kind, actual);
-            } else {
-                println!("diff of {}:\n", kind);
-                print!("{}", write_diff(expected, actual, 3));
-            }
-        }
-
-        let mode = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
-        let output_file = self
+        // Write the actual output to a file in build/
+        let test_name = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
+        let actual_path = self
             .output_base_name()
             .with_extra_extension(self.revision.unwrap_or(""))
-            .with_extra_extension(mode)
-            .with_extra_extension(kind);
+            .with_extra_extension(test_name)
+            .with_extra_extension(stream);
 
-        let mut files = vec![output_file];
-        if self.config.bless {
+        if let Err(err) = fs::write(&actual_path, &actual) {
+            self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
+        }
+        println!("Saved the actual {stream} to {actual_path:?}");
+
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if !self.config.bless {
+            if expected.is_empty() {
+                println!("normalized {}:\n{}\n", stream, actual);
+            } else {
+                println!("diff of {stream}:\n");
+                if let Some(diff_command) = self.config.diff_command.as_deref() {
+                    let mut args = diff_command.split_whitespace();
+                    let name = args.next().unwrap();
+                    match Command::new(name)
+                        .args(args)
+                        .args([&expected_path, &actual_path])
+                        .output()
+                    {
+                        Err(err) => {
+                            self.fatal(&format!(
+                                "failed to call custom diff command `{diff_command}`: {err}"
+                            ));
+                        }
+                        Ok(output) => {
+                            let output = String::from_utf8_lossy(&output.stdout);
+                            print!("{output}");
+                        }
+                    }
+                } else {
+                    print!("{}", write_diff(expected, actual, 3));
+                }
+            }
+        } else {
             // Delete non-revision .stderr/.stdout file if revisions are used.
             // Without this, we'd just generate the new files and leave the old files around.
             if self.revision.is_some() {
                 let old =
-                    expected_output_path(self.testpaths, None, &self.config.compare_mode, kind);
+                    expected_output_path(self.testpaths, None, &self.config.compare_mode, stream);
                 self.delete_file(&old);
             }
-            files.push(expected_output_path(
-                self.testpaths,
-                self.revision,
-                &self.config.compare_mode,
-                kind,
-            ));
-        }
 
-        for output_file in &files {
-            if actual.is_empty() {
-                self.delete_file(output_file);
-            } else if let Err(err) = fs::write(&output_file, &actual) {
-                self.fatal(&format!(
-                    "failed to write {} to `{}`: {}",
-                    kind,
-                    output_file.display(),
-                    err,
-                ));
+            if let Err(err) = fs::write(&expected_path, &actual) {
+                self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
             }
+            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
-        println!("\nThe actual {0} differed from the expected {0}.", kind);
-        for output_file in files {
-            println!("Actual {} saved to {}", kind, output_file.display());
-        }
+        println!("\nThe actual {0} differed from the expected {0}.", stream);
+
         if self.config.bless { 0 } else { 1 }
     }
 

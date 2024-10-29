@@ -163,7 +163,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = this.tcx;
 
-        if tcx.features().unsized_fn_params {
+        if tcx.features().unsized_fn_params() {
             let ty = expr.ty;
             let param_env = this.param_env;
 

@@ -189,7 +189,7 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
             ProjectAndUnifyResult::Holds(obligations)
                 if old_universe != new_universe
-                    && selcx.tcx().features().generic_associated_types_extended =>
+                    && selcx.tcx().features().generic_associated_types_extended() =>
             {
                 // If the `generic_associated_types_extended` feature is active, then we ignore any
                 // obligations references lifetimes from any universe greater than or equal to the
@@ -1180,7 +1180,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                             selcx.tcx(),
                                             selcx.tcx().require_lang_item(
                                                 LangItem::Sized,
-                                                Some(obligation.cause.span()),
+                                                Some(obligation.cause.span),
                                             ),
                                             [self_ty],
                                         ),
@@ -1600,7 +1600,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                 let sized_predicate = ty::TraitRef::new(
                     tcx,
-                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span())),
+                    tcx.require_lang_item(LangItem::Sized, Some(obligation.cause.span)),
                     [self_ty],
                 );
                 obligations.push(obligation.with(tcx, sized_predicate));
