@@ -199,7 +199,7 @@ fn is_ref_iterable<'tcx>(
                     kind: Adjust::Deref(_), ..
                 },
                 Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                     target,
                 },
                 ..,
@@ -236,7 +236,7 @@ fn is_ref_iterable<'tcx>(
             },
             &[
                 Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                     target,
                 },
                 ..,

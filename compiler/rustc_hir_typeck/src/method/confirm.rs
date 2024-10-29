@@ -200,10 +200,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 // for two-phase borrows.
                 let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
 
-                adjustments.push(Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                    target,
-                });
+                adjustments
+                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target });
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
@@ -250,7 +248,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     _ => bug!("Cannot adjust receiver type for reborrowing pin of {target:?}"),
                 };
 
-                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(region, mutbl), target });
+                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(mutbl), target });
             }
             None => {}
         }
