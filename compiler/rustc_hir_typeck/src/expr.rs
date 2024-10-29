@@ -161,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_args(expr, expected, &[], None)
+        self.check_expr_with_expectation_and_args(expr, expected, None)
     }
 
     /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
@@ -170,8 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        args: &'tcx [hir::Expr<'tcx>],
-        call: Option<&'tcx hir::Expr<'tcx>>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         if self.tcx().sess.verbose_internals() {
             // make this code only run with -Zverbose-internals because it is probably slow
@@ -216,9 +215,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
+            // Intercept the callee path expr and give it better spans.
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
-            ) => self.check_expr_path(qpath, expr, Some(args), call),
+            ) => self.check_expr_path(qpath, expr, call_expr_and_args),
             _ => self.check_expr_kind(expr, expected),
         });
         let ty = self.resolve_vars_if_possible(ty);
@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Path(QPath::LangItem(lang_item, _)) => {
                 self.check_lang_item_path(lang_item, expr)
             }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, None, None),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, None),
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
@@ -681,8 +681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &'tcx hir::QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
-        call: Option<&'tcx hir::Expr<'tcx>>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
@@ -712,7 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     segs,
                     opt_ty,
                     res,
-                    call.map_or(expr.span, |e| e.span),
+                    call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
                 )
@@ -751,7 +750,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
-                    let span = args.and_then(|args| args.get(i)).map_or(expr.span, |arg| arg.span);
+                    let span = call_expr_and_args
+                        .and_then(|(_, args)| args.get(i))
+                        .map_or(expr.span, |arg| arg.span);
                     let input = self.instantiate_binder_with_fresh_vars(
                         span,
                         infer::BoundRegionConversionTime::FnCall,
@@ -777,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             self.require_type_is_sized_deferred(
                 output,
-                call.map_or(expr.span, |e| e.span),
+                call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                 ObligationCauseCode::SizedCallReturnType,
             );
         }
