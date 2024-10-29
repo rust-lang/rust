@@ -1694,9 +1694,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
         match macro_kind {
-            MacroKind::Bang => self.dummy_ext_bang.clone(),
-            MacroKind::Derive => self.dummy_ext_derive.clone(),
-            MacroKind::Attr => self.non_macro_attr.ext.clone(),
+            MacroKind::Bang => Lrc::clone(&self.dummy_ext_bang),
+            MacroKind::Derive => Lrc::clone(&self.dummy_ext_derive),
+            MacroKind::Attr => Lrc::clone(&self.non_macro_attr.ext),
         }
     }
 
