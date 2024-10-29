@@ -1803,6 +1803,7 @@ supported_targets! {
 
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
+    ("wasm32v1-none", wasm32v1_none),
     ("wasm32-wasi", wasm32_wasi),
     ("wasm32-wasip1", wasm32_wasip1),
     ("wasm32-wasip2", wasm32_wasip2),
@@ -2094,6 +2095,18 @@ pub enum WasmCAbi {
 
 pub trait HasWasmCAbiOpt {
     fn wasm_c_abi_opt(&self) -> WasmCAbi;
+}
+
+/// x86 (32-bit) abi options.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct X86Abi {
+    /// On x86-32 targets, the regparm N causes the compiler to pass arguments
+    /// in registers EAX, EDX, and ECX instead of on the stack.
+    pub regparm: Option<u32>,
+}
+
+pub trait HasX86AbiOpt {
+    fn x86_abi_opt(&self) -> X86Abi;
 }
 
 type StaticCow<T> = Cow<'static, T>;

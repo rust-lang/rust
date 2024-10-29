@@ -281,7 +281,14 @@ impl<'tcx> Cx<'tcx> {
                 .unwrap_or_else(|e| panic!("could not compute layout for {param_env_ty:?}: {e:?}"))
                 .size;
 
-            let lit = ScalarInt::try_from_uint(discr_offset as u128, size).unwrap();
+            let (lit, overflowing) = ScalarInt::truncate_from_uint(discr_offset as u128, size);
+            if overflowing {
+                // An erroneous enum with too many variants for its repr will emit E0081 and E0370
+                self.tcx.dcx().span_delayed_bug(
+                    source.span,
+                    "overflowing enum wasn't rejected by hir analysis",
+                );
+            }
             let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
             let offset = self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
 
@@ -777,7 +784,7 @@ impl<'tcx> Cx<'tcx> {
                 if_then_scope: region::Scope {
                     id: then.hir_id.local_id,
                     data: {
-                        if expr.span.at_least_rust_2024() && tcx.features().if_let_rescope {
+                        if expr.span.at_least_rust_2024() && tcx.features().if_let_rescope() {
                             region::ScopeData::IfThenRescope
                         } else {
                             region::ScopeData::IfThen

@@ -1177,7 +1177,7 @@ struct PlaceInfo<'tcx> {
     /// The projection used to go from parent to this node (only None for root).
     proj_elem: Option<TrackElem>,
 
-    /// The left-most child.
+    /// The leftmost child.
     first_child: Option<PlaceIndex>,
 
     /// Index of the sibling to the right of this node.

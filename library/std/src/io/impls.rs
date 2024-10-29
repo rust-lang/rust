@@ -453,12 +453,58 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(n)
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        let (front, back) = self.as_slices();
+
+        // Use only the front buffer if it is big enough to fill `buf`, else use
+        // the back buffer too.
+        match buf.split_at_mut_checked(front.len()) {
+            None => buf.copy_from_slice(&front[..buf.len()]),
+            Some((buf_front, buf_back)) => match back.split_at_checked(buf_back.len()) {
+                Some((back, _)) => {
+                    buf_front.copy_from_slice(front);
+                    buf_back.copy_from_slice(back);
+                }
+                None => {
+                    self.clear();
+                    return Err(io::Error::READ_EXACT_EOF);
+                }
+            },
+        }
+
+        self.drain(..buf.len());
+        Ok(())
+    }
+
     #[inline]
     fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let (ref mut front, _) = self.as_slices();
         let n = cmp::min(cursor.capacity(), front.len());
         Read::read_buf(front, cursor)?;
         self.drain(..n);
+        Ok(())
+    }
+
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let len = cursor.capacity();
+        let (front, back) = self.as_slices();
+
+        match front.split_at_checked(cursor.capacity()) {
+            Some((front, _)) => cursor.append(front),
+            None => {
+                cursor.append(front);
+                match back.split_at_checked(cursor.capacity()) {
+                    Some((back, _)) => cursor.append(back),
+                    None => {
+                        cursor.append(back);
+                        self.clear();
+                        return Err(io::Error::READ_EXACT_EOF);
+                    }
+                }
+            }
+        }
+
+        self.drain(..len);
         Ok(())
     }
 

@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             cpu: "generic-rv32".into(),
             max_atomic_width: Some(32),
             features: "+m,+a".into(),
+            llvm_abiname: "ilp32".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,

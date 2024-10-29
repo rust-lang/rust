@@ -178,9 +178,9 @@ pub struct Instant(time::Instant);
 /// system.
 ///
 /// A `SystemTime` does not count leap seconds.
-/// `SystemTime::now()`'s behaviour around a leap second
+/// `SystemTime::now()`'s behavior around a leap second
 /// is the same as the operating system's wall clock.
-/// The precise behaviour near a leap second
+/// The precise behavior near a leap second
 /// (e.g. whether the clock appears to run slow or fast, or stop, or jump)
 /// depends on platform and configuration,
 /// so should not be relied on.

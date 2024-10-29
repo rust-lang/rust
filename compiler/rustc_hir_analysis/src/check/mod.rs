@@ -612,7 +612,7 @@ pub fn check_function_signature<'tcx>(
         match err {
             TypeError::ArgumentMutability(i)
             | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
-            _ => cause.span(),
+            _ => cause.span,
         }
     }
 
@@ -646,10 +646,10 @@ pub fn check_function_signature<'tcx>(
                 &mut diag,
                 &cause,
                 None,
-                Some(infer::ValuePairs::PolySigs(ExpectedFound {
+                Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
                     expected: expected_sig,
                     found: actual_sig,
-                })),
+                }))),
                 err,
                 false,
             );

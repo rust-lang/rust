@@ -423,7 +423,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
     }
@@ -432,7 +432,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         if new_fd_num != old_fd_num {
             // Close new_fd if it is previously opened.
@@ -448,7 +448,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn flock(&mut self, fd_num: i32, op: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
         // We need to check that there aren't unsupported options in `op`.
@@ -498,11 +498,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
                 // always sets this flag when opening a file. However we still need to check that the
                 // file itself is open.
-                interp_ok(Scalar::from_i32(if this.machine.fds.is_fd_num(fd_num) {
-                    this.eval_libc_i32("FD_CLOEXEC")
+                if !this.machine.fds.is_fd_num(fd_num) {
+                    this.set_last_error_and_return_i32(LibcError("EBADF"))
                 } else {
-                    this.fd_not_found()?
-                }))
+                    interp_ok(this.eval_libc("FD_CLOEXEC"))
+                }
             }
             cmd if cmd == f_dupfd || cmd == f_dupfd_cloexec => {
                 // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
@@ -521,7 +521,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(fd) = this.machine.fds.get(fd_num) {
                     interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
                 } else {
-                    interp_ok(Scalar::from_i32(this.fd_not_found()?))
+                    this.set_last_error_and_return_i32(LibcError("EBADF"))
                 }
             }
             cmd if this.tcx.sess.target.os == "macos"
@@ -547,23 +547,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
 
         let Some(fd) = this.machine.fds.remove(fd_num) else {
-            return interp_ok(Scalar::from_i32(this.fd_not_found()?));
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
         let result = fd.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
-    }
-
-    /// Function used when a file descriptor does not exist. It returns `Ok(-1)`and sets
-    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
-    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
-    /// types (like `read`, that returns an `i64`).
-    fn fd_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
-        let this = self.eval_context_mut();
-        let ebadf = this.eval_libc("EBADF");
-        this.set_last_error(ebadf)?;
-        interp_ok((-1).into())
     }
 
     /// Read data from `fd` into buffer specified by `buf` and `count`.
@@ -599,9 +588,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We temporarily dup the FD to be able to retain mutable access to `this`.
         let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
-            let res: i32 = this.fd_not_found()?;
-            this.write_int(res, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
         trace!("read: FD mapped to {fd:?}");
@@ -646,9 +633,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            let res: i32 = this.fd_not_found()?;
-            this.write_int(res, dest)?;
-            return interp_ok(());
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
         match offset {

@@ -223,11 +223,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
             }
-            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star => {
+            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star() => {
                 return self.coerce_dyn_star(a, b, predicates, region);
             }
             ty::Adt(pin, _)
-                if self.tcx.features().pin_ergonomics
+                if self.tcx.features().pin_ergonomics()
                     && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
             {
                 return self.coerce_pin(a, b);
@@ -698,7 +698,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         if let Some((sub, sup)) = has_trait_upcasting_coercion
-            && !self.tcx().features().trait_upcasting
+            && !self.tcx().features().trait_upcasting()
         {
             // Renders better when we erase regions, since they're not really the point here.
             let (sub, sup) = self.tcx.erase_regions((sub, sup));
@@ -712,7 +712,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             err.emit();
         }
 
-        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion() {
             feature_err(
                 &self.tcx.sess,
                 sym::unsized_tuple_coercion,
@@ -732,7 +732,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> CoerceResult<'tcx> {
-        if !self.tcx.features().dyn_star {
+        if !self.tcx.features().dyn_star() {
             return Err(TypeError::Mismatch);
         }
 
@@ -1695,7 +1695,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             blk_id,
                             expression,
                         );
-                        if !fcx.tcx.features().unsized_locals {
+                        if !fcx.tcx.features().unsized_locals() {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
@@ -1709,7 +1709,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             return_expr_id,
                             expression,
                         );
-                        if !fcx.tcx.features().unsized_locals {
+                        if !fcx.tcx.features().unsized_locals() {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }
@@ -1723,6 +1723,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     }) => {
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
+                            fcx.param_env,
                             expected,
                             found,
                             coercion_error,
@@ -1752,6 +1753,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     }) => {
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
+                            fcx.param_env,
                             expected,
                             found,
                             coercion_error,
@@ -1787,6 +1789,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     _ => {
                         err = fcx.err_ctxt().report_mismatched_types(
                             cause,
+                            fcx.param_env,
                             expected,
                             found,
                             coercion_error,
@@ -1897,7 +1900,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         block_or_return_id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Diag<'infcx> {
-        let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
+        let mut err =
+            fcx.err_ctxt().report_mismatched_types(cause, fcx.param_env, expected, found, ty_err);
 
         let due_to_block = matches!(fcx.tcx.hir_node(block_or_return_id), hir::Node::Block(..));
 

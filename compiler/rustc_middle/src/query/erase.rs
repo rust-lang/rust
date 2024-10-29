@@ -370,6 +370,7 @@ tcx_lifetime! {
     rustc_middle::ty::FnSig,
     rustc_middle::ty::GenericArg,
     rustc_middle::ty::GenericPredicates,
+    rustc_middle::ty::ConstConditions,
     rustc_middle::ty::inhabitedness::InhabitedPredicate,
     rustc_middle::ty::Instance,
     rustc_middle::ty::InstanceKind,

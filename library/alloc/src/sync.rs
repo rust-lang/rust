@@ -18,7 +18,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
-use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, Receiver};
+use core::ops::{CoerceUnsized, Deref, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull};
@@ -804,7 +804,7 @@ impl<T, A: Allocator> Arc<T, A> {
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
             // in order to synchronize with the `compare_exchange_weak` in `Weak::upgrade`.
             //
-            // "Acquire" ordering is not required. When considering the possible behaviours
+            // "Acquire" ordering is not required. When considering the possible behaviors
             // of `data_fn` we only need to look at what it could do with a reference to a
             // non-upgradeable `Weak`:
             // - It can *clone* the `Weak`, increasing the weak reference count.
@@ -2189,8 +2189,8 @@ unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Arc<T, A> {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for Arc<T> {}
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for Arc<T> {}
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
@@ -2788,7 +2788,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// drop(strong);
     /// // But not any more. We can do weak.as_ptr(), but accessing the pointer would lead to
-    /// // undefined behaviour.
+    /// // undefined behavior.
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///
@@ -3447,13 +3447,16 @@ impl<T: Default> Default for Arc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     fn default() -> Arc<T> {
-        let x = Box::into_raw(Box::write(Box::new_uninit(), ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data: T::default(),
-        }));
-        // SAFETY: `Box::into_raw` consumes the `Box` and never returns null
-        unsafe { Self::from_inner(NonNull::new_unchecked(x)) }
+        unsafe {
+            Self::from_inner(
+                Box::leak(Box::write(Box::new_uninit(), ArcInner {
+                    strong: atomic::AtomicUsize::new(1),
+                    weak: atomic::AtomicUsize::new(1),
+                    data: T::default(),
+                }))
+                .into(),
+            )
+        }
     }
 }
 

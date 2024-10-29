@@ -1025,8 +1025,8 @@ pub(crate) struct UnusedParens {
     parens_in_cast_in_lt: Vec<ast::NodeId>,
 }
 
-impl UnusedParens {
-    pub(crate) fn new() -> Self {
+impl Default for UnusedParens {
+    fn default() -> Self {
         Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
     }
 }

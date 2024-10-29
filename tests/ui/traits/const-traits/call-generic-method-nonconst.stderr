@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `S: const Foo` is not satisfied
+  --> $DIR/call-generic-method-nonconst.rs:25:22
+   |
+LL | pub const EQ: bool = equals_self(&S);
+   |                      ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -346,7 +346,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|predicate| {
-            if tcx.features().generic_const_exprs {
+            if tcx.features().generic_const_exprs() {
                 return predicate;
             }
 

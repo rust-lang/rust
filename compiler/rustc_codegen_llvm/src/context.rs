@@ -80,6 +80,7 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
 
     pub isize_ty: &'ll Type,
 
+    /// Extra codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
@@ -592,11 +593,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self.statics_to_rauw
     }
 
+    /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
-    pub(crate) fn coverage_context(
-        &self,
-    ) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
-        self.coverage_cx.as_ref()
+    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
+        self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }
 
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
@@ -605,7 +605,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unsafe {
             let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
             llvm::LLVMSetInitializer(g, array);
-            llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+            llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
             llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
         }
     }
@@ -1099,6 +1099,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
+            if crate::llvm_util::get_version() >= (19, 0, 0) {
+                ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
+                ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
+            }
         }
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);

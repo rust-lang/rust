@@ -721,7 +721,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::IntTy::*;
 
         if self.cast_ty.is_dyn_star() {
-            if fcx.tcx.features().dyn_star {
+            if fcx.tcx.features().dyn_star() {
                 span_bug!(self.span, "should be handled by `coerce`");
             } else {
                 // Report "casting is invalid" rather than "non-primitive cast"
@@ -876,19 +876,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // A<dyn Src<...> + SrcAuto> -> B<dyn Dst<...> + DstAuto>. need to make sure
                     // - `Src` and `Dst` traits are the same
                     // - traits have the same generic arguments
-                    // - `SrcAuto` is a superset of `DstAuto`
-                    (Some(src_principal), Some(dst_principal)) => {
+                    // - projections are the same
+                    // - `SrcAuto` (+auto traits implied by `Src`) is a superset of `DstAuto`
+                    //
+                    // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
+                    // and is unaffected by this check.
+                    (Some(src_principal), Some(_)) => {
                         let tcx = fcx.tcx;
-
-                        // Check that the traits are actually the same.
-                        // The `dyn Src = dyn Dst` check below would suffice,
-                        // but this may produce a better diagnostic.
-                        //
-                        // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
-                        // and is unaffected by this check.
-                        if src_principal.def_id() != dst_principal.def_id() {
-                            return Err(CastError::DifferingKinds { src_kind, dst_kind });
-                        }
 
                         // We need to reconstruct trait object types.
                         // `m_src` and `m_dst` won't work for us here because they will potentially
@@ -912,8 +906,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             ty::Dyn,
                         ));
 
-                        // `dyn Src = dyn Dst`, this checks for matching traits/generics
-                        // This is `demand_eqtype`, but inlined to give a better error.
+                        // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
+                        // This is `fcx.demand_eqtype`, but inlined to give a better error.
                         let cause = fcx.misc(self.span);
                         if fcx
                             .at(&cause, fcx.param_env)
@@ -965,8 +959,35 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // dyn Auto -> dyn Auto'? ok.
                     (None, None) => Ok(CastKind::PtrPtrCast),
 
-                    // dyn Trait -> dyn Auto? should be ok, but we used to not allow it.
-                    // FIXME: allow this
+                    // dyn Trait -> dyn Auto? not ok (for now).
+                    //
+                    // Although dropping the principal is already allowed for unsizing coercions
+                    // (e.g. `*const (dyn Trait + Auto)` to `*const dyn Auto`), dropping it is
+                    // currently **NOT** allowed for (non-coercion) ptr-to-ptr casts (e.g
+                    // `*const Foo` to `*const Bar` where `Foo` has a `dyn Trait + Auto` tail
+                    // and `Bar` has a `dyn Auto` tail), because the underlying MIR operations
+                    // currently work very differently:
+                    //
+                    // * A MIR unsizing coercion on raw pointers to trait objects (`*const dyn Src`
+                    //   to `*const dyn Dst`) is currently equivalent to downcasting the source to
+                    //   the concrete sized type that it was originally unsized from first (via a
+                    //   ptr-to-ptr cast from `*const Src` to `*const T` with `T: Sized`) and then
+                    //   unsizing this thin pointer to the target type (unsizing `*const T` to
+                    //   `*const Dst`). In particular, this means that the pointer's metadata
+                    //   (vtable) will semantically change, e.g. for const eval and miri, even
+                    //   though the vtables will always be merged for codegen.
+                    //
+                    // * A MIR ptr-to-ptr cast is currently equivalent to a transmute and does not
+                    //   change the pointer metadata (vtable) at all.
+                    //
+                    // In addition to this potentially surprising difference between coercion and
+                    // non-coercion casts, casting away the principal with a MIR ptr-to-ptr cast
+                    // is currently considered undefined behavior:
+                    //
+                    // As a validity invariant of pointers to trait objects, we currently require
+                    // that the principal of the vtable in the pointer metadata exactly matches
+                    // the principal of the pointee type, where "no principal" is also considered
+                    // a kind of principal.
                     (Some(_), None) => Err(CastError::DifferingKinds { src_kind, dst_kind }),
 
                     // dyn Auto -> dyn Trait? not ok.

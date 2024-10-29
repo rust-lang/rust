@@ -298,7 +298,7 @@ define!(
 );
 define!(
     "mir_unwind_unreachable",
-    /// An unwind action that triggers undefined behaviour.
+    /// An unwind action that triggers undefined behavior.
     fn UnwindUnreachable() -> UnwindActionArg
 );
 define!(

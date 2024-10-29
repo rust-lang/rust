@@ -273,7 +273,7 @@ impl ExitStatus {
         // We don't know what someone who calls into_raw() will do with this value, but it should
         // have the conventional Unix representation. Despite the fact that this is not
         // standardised in SuS or POSIX, all Unix systems encode the signal and exit status the
-        // same way. (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behaviour on every
+        // same way. (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behavior on every
         // Unix.)
         //
         // The caller of `std::os::unix::into_raw` is probably wanting a Unix exit status, and may

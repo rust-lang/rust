@@ -29,6 +29,7 @@ use rustc_hir::def_id::{
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
+use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{QueryCache, QueryMode, QueryState, try_get_cached};
@@ -422,6 +423,11 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
+    query lints_that_dont_need_to_run(_: ()) -> &'tcx FxIndexSet<LintId> {
+        arena_cache
+        desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
+    }
+
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
         desc { |tcx| "getting the expansion that defined `{}`", tcx.def_path_str(key) }
         separate_provide_extern
@@ -683,6 +689,24 @@ rustc_queries! {
         }
     }
 
+    query const_conditions(
+        key: DefId
+    ) -> ty::ConstConditions<'tcx> {
+        desc { |tcx| "computing the conditions for `{}` to be considered const",
+            tcx.def_path_str(key)
+        }
+        separate_provide_extern
+    }
+
+    query implied_const_bounds(
+        key: DefId
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
+        desc { |tcx| "computing the implied `~const` bounds for `{}`",
+            tcx.def_path_str(key)
+        }
+        separate_provide_extern
+    }
+
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(
@@ -723,12 +747,11 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a const fn, use the `is_const_fn` to know whether your crate
-    /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
-    /// not have the feature gate active).
+    /// Returns `true` if this is a const fn / const impl.
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
-    /// `is_const_fn` function. Consider using `is_const_fn` or `is_const_fn_raw` instead.
+    /// higher-level functions. Consider using `is_const_fn` or `is_const_trait_impl` instead.
+    /// Also note that neither of them takes into account feature gates and stability.
     query constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
@@ -851,12 +874,6 @@ rustc_queries! {
     query associated_types_for_impl_traits_in_associated_fn(fn_def_id: DefId) -> &'tcx [DefId] {
         desc { |tcx| "creating associated items for opaque types returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
-        separate_provide_extern
-    }
-
-    query associated_type_for_effects(def_id: DefId) -> Option<DefId> {
-        desc { |tcx| "creating associated items for effects in `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 

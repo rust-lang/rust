@@ -3,12 +3,11 @@ use std::collections::hash_map::Entry;
 use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
-use rustc_ast as ast;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{DUMMY_NODE_ID, NodeId};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -370,34 +369,32 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 pub fn compile_declarative_macro(
     sess: &Session,
     features: &Features,
-    def: &ast::Item,
+    macro_def: &ast::MacroDef,
+    ident: Ident,
+    attrs: &[ast::Attribute],
+    span: Span,
+    node_id: NodeId,
     edition: Edition,
 ) -> (SyntaxExtension, Vec<(usize, Span)>) {
-    debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
             features,
             SyntaxExtensionKind::LegacyBang(expander),
-            def.span,
+            span,
             Vec::new(),
             edition,
-            def.ident.name,
-            &def.attrs,
-            def.id != DUMMY_NODE_ID,
+            ident.name,
+            attrs,
+            node_id != DUMMY_NODE_ID,
         )
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
 
     let dcx = sess.dcx();
-    let lhs_nm = Ident::new(sym::lhs, def.span);
-    let rhs_nm = Ident::new(sym::rhs, def.span);
+    let lhs_nm = Ident::new(sym::lhs, span);
+    let rhs_nm = Ident::new(sym::rhs, span);
     let tt_spec = Some(NonterminalKind::TT);
-
-    let macro_def = match &def.kind {
-        ast::ItemKind::MacroDef(def) => def,
-        _ => unreachable!(),
-    };
     let macro_rules = macro_def.macro_rules;
 
     // Parse the macro_rules! invocation
@@ -410,25 +407,22 @@ pub fn compile_declarative_macro(
     let argument_gram = vec![
         mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
             tts: vec![
-                mbe::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
-                mbe::TokenTree::token(token::FatArrow, def.span),
-                mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
+                mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
+                mbe::TokenTree::token(token::FatArrow, span),
+                mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
             ],
-            separator: Some(Token::new(
-                if macro_rules { token::Semi } else { token::Comma },
-                def.span,
-            )),
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
+            separator: Some(Token::new(if macro_rules { token::Semi } else { token::Comma }, span)),
+            kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
             num_captures: 2,
         }),
         // to phase into semicolon-termination instead of semicolon-separation
         mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
             tts: vec![mbe::TokenTree::token(
                 if macro_rules { token::Semi } else { token::Comma },
-                def.span,
+                span,
             )],
             separator: None,
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, def.span),
+            kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
             num_captures: 0,
         }),
     ];
@@ -460,7 +454,7 @@ pub fn compile_declarative_macro(
                 };
 
                 let s = parse_failure_msg(&token, track.get_expected_token());
-                let sp = token.span.substitute_dummy(def.span);
+                let sp = token.span.substitute_dummy(span);
                 let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
                 annotate_doc_comment(&mut err, sess.source_map(), sp);
@@ -468,7 +462,7 @@ pub fn compile_declarative_macro(
                 return dummy_syn_ext(guar);
             }
             Error(sp, msg) => {
-                let guar = sess.dcx().span_err(sp.substitute_dummy(def.span), msg);
+                let guar = sess.dcx().span_err(sp.substitute_dummy(span), msg);
                 return dummy_syn_ext(guar);
             }
             ErrorReported(guar) => {
@@ -489,7 +483,7 @@ pub fn compile_declarative_macro(
                         &TokenStream::new(vec![tt.clone()]),
                         true,
                         sess,
-                        def.id,
+                        node_id,
                         features,
                         edition,
                     )
@@ -497,13 +491,13 @@ pub fn compile_declarative_macro(
                     .unwrap();
                     // We don't handle errors here, the driver will abort
                     // after parsing/expansion. We can report every error in every macro this way.
-                    check_emission(check_lhs_nt_follows(sess, def, &tt));
+                    check_emission(check_lhs_nt_follows(sess, node_id, &tt));
                     return tt;
                 }
-                sess.dcx().span_bug(def.span, "wrong-structured lhs")
+                sess.dcx().span_bug(span, "wrong-structured lhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.dcx().span_bug(def.span, "wrong-structured lhs"),
+        _ => sess.dcx().span_bug(span, "wrong-structured lhs"),
     };
 
     let rhses = match &argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
@@ -515,17 +509,17 @@ pub fn compile_declarative_macro(
                         &TokenStream::new(vec![tt.clone()]),
                         false,
                         sess,
-                        def.id,
+                        node_id,
                         features,
                         edition,
                     )
                     .pop()
                     .unwrap();
                 }
-                sess.dcx().span_bug(def.span, "wrong-structured rhs")
+                sess.dcx().span_bug(span, "wrong-structured rhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.dcx().span_bug(def.span, "wrong-structured rhs"),
+        _ => sess.dcx().span_bug(span, "wrong-structured rhs"),
     };
 
     for rhs in &rhses {
@@ -537,15 +531,9 @@ pub fn compile_declarative_macro(
         check_emission(check_lhs_no_empty_seq(sess, slice::from_ref(lhs)));
     }
 
-    check_emission(macro_check::check_meta_variables(
-        &sess.psess,
-        def.id,
-        def.span,
-        &lhses,
-        &rhses,
-    ));
+    check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
-    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
+    let (transparency, transparency_error) = attr::find_transparency(attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
             dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
@@ -564,7 +552,7 @@ pub fn compile_declarative_macro(
 
     // Compute the spans of the macro rules for unused rule linting.
     // Also, we are only interested in non-foreign macros.
-    let rule_spans = if def.id != DUMMY_NODE_ID {
+    let rule_spans = if node_id != DUMMY_NODE_ID {
         lhses
             .iter()
             .zip(rhses.iter())
@@ -590,15 +578,15 @@ pub fn compile_declarative_macro(
                 mbe::TokenTree::Delimited(.., delimited) => {
                     mbe::macro_parser::compute_locs(&delimited.tts)
                 }
-                _ => sess.dcx().span_bug(def.span, "malformed macro lhs"),
+                _ => sess.dcx().span_bug(span, "malformed macro lhs"),
             }
         })
         .collect();
 
     let expander = Box::new(MacroRulesMacroExpander {
-        name: def.ident,
-        span: def.span,
-        node_id: def.id,
+        name: ident,
+        span,
+        node_id,
         transparency,
         lhses,
         rhses,
@@ -608,13 +596,13 @@ pub fn compile_declarative_macro(
 
 fn check_lhs_nt_follows(
     sess: &Session,
-    def: &ast::Item,
+    node_id: NodeId,
     lhs: &mbe::TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(.., delimited) = lhs {
-        check_matcher(sess, def, &delimited.tts)
+        check_matcher(sess, node_id, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         Err(sess.dcx().span_err(lhs.span(), msg))
@@ -686,12 +674,12 @@ fn check_rhs(sess: &Session, rhs: &mbe::TokenTree) -> Result<(), ErrorGuaranteed
 
 fn check_matcher(
     sess: &Session,
-    def: &ast::Item,
+    node_id: NodeId,
     matcher: &[mbe::TokenTree],
 ) -> Result<(), ErrorGuaranteed> {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix)?;
+    check_matcher_core(sess, node_id, &first_sets, matcher, &empty_suffix)?;
     Ok(())
 }
 
@@ -1028,7 +1016,7 @@ impl<'tt> TokenSet<'tt> {
 // see `FirstSets::new`.
 fn check_matcher_core<'tt>(
     sess: &Session,
-    def: &ast::Item,
+    node_id: NodeId,
     first_sets: &FirstSets<'tt>,
     matcher: &'tt [mbe::TokenTree],
     follow: &TokenSet<'tt>,
@@ -1082,7 +1070,7 @@ fn check_matcher_core<'tt>(
                     token::CloseDelim(d.delim),
                     span.close,
                 ));
-                check_matcher_core(sess, def, first_sets, &d.tts, &my_suffix)?;
+                check_matcher_core(sess, node_id, first_sets, &d.tts, &my_suffix)?;
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 
@@ -1114,7 +1102,7 @@ fn check_matcher_core<'tt>(
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next = check_matcher_core(sess, def, first_sets, &seq_rep.tts, my_suffix)?;
+                let next = check_matcher_core(sess, node_id, first_sets, &seq_rep.tts, my_suffix)?;
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
@@ -1144,7 +1132,7 @@ fn check_matcher_core<'tt>(
                     // macro. (See #86567.)
                     // Macros defined in the current crate have a real node id,
                     // whereas macros from an external crate have a dummy id.
-                    if def.id != DUMMY_NODE_ID
+                    if node_id != DUMMY_NODE_ID
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,

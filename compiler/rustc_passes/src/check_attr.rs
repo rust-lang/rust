@@ -34,6 +34,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -262,7 +263,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::cfg_attr
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
-                    | sym::pointee // FIXME(derive_smart_pointer)
+                    | sym::pointee // FIXME(derive_coerce_pointee)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items
                     | sym::repr // handled elsewhere to restrict to type decls items
@@ -918,12 +919,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
         match item_kind {
             Some(ItemKind::Impl(i)) => {
-                let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
-                    || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
-                        bare_fn_ty.decl.inputs.len() == 1
-                    } else {
-                        false
-                    }
+                let is_valid = doc_fake_variadic_is_allowed_self_ty(i.self_ty)
                     || if let Some(&[hir::GenericArg::Type(ty)]) = i
                         .of_trait
                         .as_ref()
@@ -1183,19 +1179,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         sym::masked => self.check_doc_masked(attr, meta, hir_id, target),
 
-                        // no_default_passes: deprecated
-                        // passes: deprecated
-                        // plugins: removed, but rustdoc warns about it itself
-                        sym::cfg
-                        | sym::hidden
-                        | sym::no_default_passes
-                        | sym::notable_trait
-                        | sym::passes
-                        | sym::plugins => {}
+                        sym::cfg | sym::hidden | sym::notable_trait => {}
 
                         sym::rust_logo => {
                             if self.check_attr_crate_level(attr, meta, hir_id)
-                                && !self.tcx.features().rustdoc_internals
+                                && !self.tcx.features().rustdoc_internals()
                             {
                                 feature_err(
                                     &self.tcx.sess,
@@ -1239,6 +1227,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                         },
                                         sugg: (attr.meta().unwrap().span, applicability),
                                     },
+                                );
+                            } else if i_meta.has_name(sym::passes)
+                                || i_meta.has_name(sym::no_default_passes)
+                            {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    errors::DocTestUnknownPasses { path, span: i_meta.span },
+                                );
+                            } else if i_meta.has_name(sym::plugins) {
+                                self.tcx.emit_node_span_lint(
+                                    INVALID_DOC_ATTRIBUTES,
+                                    hir_id,
+                                    i_meta.span,
+                                    errors::DocTestUnknownPlugins { path, span: i_meta.span },
                                 );
                             } else {
                                 self.tcx.emit_node_span_lint(
@@ -1766,7 +1770,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 sym::align => {
                     if let (Target::Fn | Target::Method(MethodKind::Inherent), false) =
-                        (target, self.tcx.features().fn_align)
+                        (target, self.tcx.features().fn_align())
                     {
                         feature_err(
                             &self.tcx.sess,
@@ -1782,7 +1786,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | Target::Union
                         | Target::Enum
                         | Target::Fn
-                        | Target::Method(_) => continue,
+                        | Target::Method(_) => {}
                         _ => {
                             self.dcx().emit_err(
                                 errors::AttrApplication::StructEnumFunctionMethodUnion {
@@ -1792,6 +1796,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             );
                         }
                     }
+
+                    self.check_align_value(hint);
                 }
                 sym::packed => {
                     if target != Target::Struct && target != Target::Union {
@@ -1886,6 +1892,45 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 errors::ReprConflictingLint,
             );
+        }
+    }
+
+    fn check_align_value(&self, item: &MetaItemInner) {
+        match item.singleton_lit_list() {
+            Some((
+                _,
+                MetaItemLit {
+                    kind: ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed), ..
+                },
+            )) => {
+                let val = literal.get() as u64;
+                if val > 2_u64.pow(29) {
+                    // for values greater than 2^29, a different error will be emitted, make sure that happens
+                    self.dcx().span_delayed_bug(
+                        item.span(),
+                        "alignment greater than 2^29 should be errored on elsewhere",
+                    );
+                } else {
+                    // only do this check when <= 2^29 to prevent duplicate errors:
+                    // alignment greater than 2^29 not supported
+                    // alignment is too large for the current target
+
+                    let max =
+                        Size::from_bits(self.tcx.sess.target.pointer_width).signed_int_max() as u64;
+                    if val > max {
+                        self.dcx().emit_err(errors::InvalidReprAlignForTarget {
+                            span: item.span(),
+                            size: max,
+                        });
+                    }
+                }
+            }
+
+            // if the attribute is malformed, singleton_lit_list may not be of the expected type or may be None
+            // but an error will have already been emitted, so this code should just skip such attributes
+            Some((_, _)) | None => {
+                self.dcx().span_delayed_bug(item.span(), "malformed repr(align(N))");
+            }
         }
     }
 
@@ -1994,7 +2039,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) {
         match target {
             Target::Fn | Target::Method(_)
-                if self.tcx.is_const_fn_raw(hir_id.expect_owner().to_def_id()) => {}
+                if self.tcx.is_const_fn(hir_id.expect_owner().to_def_id()) => {}
             // FIXME(#80564): We permit struct fields and match arms to have an
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
@@ -2292,10 +2337,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &mut diag,
                 &cause,
                 None,
-                Some(ValuePairs::PolySigs(ExpectedFound {
+                Some(param_env.and(ValuePairs::PolySigs(ExpectedFound {
                     expected: ty::Binder::dummy(expected_sig),
                     found: ty::Binder::dummy(sig),
-                })),
+                }))),
                 terr,
                 false,
             );
@@ -2621,4 +2666,21 @@ fn check_duplicates(
             }
         },
     }
+}
+
+fn doc_fake_variadic_is_allowed_self_ty(self_ty: &hir::Ty<'_>) -> bool {
+    matches!(&self_ty.kind, hir::TyKind::Tup([_]))
+        || if let hir::TyKind::BareFn(bare_fn_ty) = &self_ty.kind {
+            bare_fn_ty.decl.inputs.len() == 1
+        } else {
+            false
+        }
+        || (if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &self_ty.kind
+            && let Some(&[hir::GenericArg::Type(ty)]) =
+                path.segments.last().map(|last| last.args().args)
+        {
+            doc_fake_variadic_is_allowed_self_ty(ty)
+        } else {
+            false
+        })
 }

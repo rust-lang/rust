@@ -95,11 +95,10 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         // whether we are sharing generics or not. The important thing here is
         // that the visibility we apply to the declaration is the same one that
         // has been applied to the definition (wherever that definition may be).
-        unsafe {
-            llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            let is_generic =
-                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some();
+        llvm::set_linkage(llfn, llvm::Linkage::ExternalLinkage);
+        unsafe {
+            let is_generic = instance.args.non_erasable_generics().next().is_some();
 
             let is_hidden = if is_generic {
                 // This is a monomorphization of a generic function.
@@ -136,7 +135,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
                         || !cx.tcx.is_reachable_non_generic(instance_def_id))
             };
             if is_hidden {
-                llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                llvm::set_visibility(llfn, llvm::Visibility::Hidden);
             }
 
             // MinGW: For backward compatibility we rely on the linker to decide whether it

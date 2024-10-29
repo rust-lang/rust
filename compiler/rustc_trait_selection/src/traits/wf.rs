@@ -170,6 +170,10 @@ pub fn clause_obligations<'tcx>(
         ty::ClauseKind::Trait(t) => {
             wf.compute_trait_pred(t, Elaborate::None);
         }
+        ty::ClauseKind::HostEffect(..) => {
+            // Technically the well-formedness of this predicate is implied by
+            // the corresponding trait predicate it should've been generated beside.
+        }
         ty::ClauseKind::RegionOutlives(..) => {}
         ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
             wf.compute(ty.into());
@@ -836,7 +840,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // obligations that don't refer to Self and
                 // checking those
 
-                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch;
+                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch();
 
                 if !defer_to_coercion {
                     if let Some(principal) = data.principal_def_id() {
@@ -1021,6 +1025,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                     }
                 }
                 ty::ClauseKind::Trait(_)
+                | ty::ClauseKind::HostEffect(..)
                 | ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)

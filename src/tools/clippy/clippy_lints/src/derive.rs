@@ -324,7 +324,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     // If the current self type doesn't implement Copy (due to generic constraints), search to see if
     // there's a Copy impl for any instance of the adt.
     if !is_copy(cx, ty) {
-        if ty_subs.non_erasable_generics(cx.tcx, ty_adt.did()).next().is_some() {
+        if ty_subs.non_erasable_generics().next().is_some() {
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
                 impls.iter().any(|&id| {
                     matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)

@@ -65,6 +65,7 @@ impl<'tcx> UniverseInfo<'tcx> {
             UniverseInfoInner::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
                     &cause,
+                    mbcx.param_env,
                     expected,
                     found,
                     TypeError::RegionsPlaceholderMismatch,
@@ -480,12 +481,11 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         .try_report_from_nll()
         .or_else(|| {
             if let SubregionOrigin::Subtype(trace) = cause {
-                Some(
-                    infcx.err_ctxt().report_and_explain_type_error(
-                        *trace,
-                        TypeError::RegionsPlaceholderMismatch,
-                    ),
-                )
+                Some(infcx.err_ctxt().report_and_explain_type_error(
+                    *trace,
+                    infcx.tcx.param_env(generic_param_scope),
+                    TypeError::RegionsPlaceholderMismatch,
+                ))
             } else {
                 None
             }

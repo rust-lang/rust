@@ -135,6 +135,43 @@ In case it's useful, here are some [instructions] for tackling these sorts of is
 """
 label = "O-rfl"
 
+[ping.wasm]
+alias = ["webassembly"]
+message = """\
+Hey WASM notification group! This issue or PR could use some WebAssembly-specific
+guidance. Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/wasm.html
+"""
+label = "O-wasm"
+
+[ping.wasi]
+message = """\
+Hey WASI notification group! This issue or PR could use some WASI-specific guidance.
+Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/wasi.html
+"""
+label = "O-wasi"
+
+[ping.emscripten]
+message = """\
+Hey Emscripten notification group! This issue or PR could use some Emscripten-specific
+guidance. Could one of you weigh in? Thanks <3
+
+(In case it's useful, here are some [instructions] for tackling these sorts of
+issues).
+
+[instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/emscripten.html
+"""
+label = "O-emscripten"
+
 [prioritize]
 label = "I-prioritize"
 
@@ -1081,7 +1118,7 @@ project-const-traits = [
 project-stable-mir = [
     "@celinval",
     "@oli-obk",
-    "@ouz-a",
+    "@scottmcm",
 ]
 
 project-exploit-mitigations = [

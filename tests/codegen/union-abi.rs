@@ -131,7 +131,7 @@ pub fn test_CUnionU128(_: CUnionU128) {
 pub union UnionBool {
     b: bool,
 }
-// CHECK: define {{(dso_local )?}}noundef zeroext i1 @test_UnionBool(i8 %b)
+// CHECK: define {{(dso_local )?}}noundef zeroext i1 @test_UnionBool(i8{{.*}} %b)
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool {
     unsafe { b.b }

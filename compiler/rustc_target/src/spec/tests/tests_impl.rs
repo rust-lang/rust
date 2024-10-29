@@ -121,7 +121,13 @@ impl Target {
         // Check dynamic linking stuff
         // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
         // hexagon: when targeting QuRT, that OS can load dynamic libraries.
-        if self.os == "none" && (self.arch != "bpf" && self.arch != "hexagon") {
+        // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
+        if self.os == "none"
+            && (self.arch != "bpf"
+                && self.arch != "hexagon"
+                && self.arch != "wasm32"
+                && self.arch != "wasm64")
+        {
             assert!(!self.dynamic_linking);
         }
         if self.only_cdylib
@@ -151,6 +157,17 @@ impl Target {
         // Check crt static stuff
         if self.crt_static_default || self.crt_static_allows_dylibs {
             assert!(self.crt_static_respected);
+        }
+
+        // Check that RISC-V targets always specify which ABI they use.
+        match &*self.arch {
+            "riscv32" => {
+                assert_matches!(&*self.llvm_abiname, "ilp32" | "ilp32f" | "ilp32d" | "ilp32e")
+            }
+            "riscv64" => {
+                assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q")
+            }
+            _ => {}
         }
     }
 

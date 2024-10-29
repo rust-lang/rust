@@ -147,7 +147,7 @@ pub use crate::range_map::RangeMap;
 pub use crate::shims::EmulateItemResult;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
-pub use crate::shims::io_error::{EvalContextExt as _, LibcError};
+pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;

@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
-use super::{ProcRes, TestCx};
+use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
@@ -329,6 +329,7 @@ impl TestCx<'_> {
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
             .arg("--edition=2021")
             .arg(&self.testpaths.file.join("rmake.rs"))
+            .arg("-Cprefer-dynamic")
             // Provide necessary library search paths for rustc.
             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
@@ -514,8 +515,8 @@ impl TestCx<'_> {
             }
         }
 
-        let (Output { stdout, stderr, status }, truncated) =
-            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `rmake`"));
+        let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
+        let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
         if !status.success() {
             let res = ProcRes {
                 status,

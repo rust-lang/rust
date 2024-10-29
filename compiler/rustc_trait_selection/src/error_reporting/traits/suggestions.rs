@@ -3,6 +3,7 @@
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
+use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_data_structures::fx::FxHashSet;
@@ -2703,6 +2704,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Add a note for the item obligation that remains - normally a note pointing to the
         // bound that introduced the obligation (e.g. `T: Send`).
         debug!(?next_code);
+        let mut long_ty_file = None;
         self.note_obligation_cause_code(
             obligation.cause.body_id,
             err,
@@ -2711,6 +2713,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             next_code.unwrap(),
             &mut Vec::new(),
             &mut Default::default(),
+            &mut long_ty_file,
         );
     }
 
@@ -2723,11 +2726,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
+        long_ty_file: &mut Option<PathBuf>,
     ) where
         T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {
-        let mut long_ty_file = None;
-
         let tcx = self.tcx;
         let predicate = predicate.upcast(tcx);
         let suggest_remove_deref = |err: &mut Diag<'_, G>, expr: &hir::Expr<'_>| {
@@ -2957,9 +2959,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::Coercion { source, target } => {
                 let source =
-                    tcx.short_ty_string(self.resolve_vars_if_possible(source), &mut long_ty_file);
+                    tcx.short_ty_string(self.resolve_vars_if_possible(source), long_ty_file);
                 let target =
-                    tcx.short_ty_string(self.resolve_vars_if_possible(target), &mut long_ty_file);
+                    tcx.short_ty_string(self.resolve_vars_if_possible(target), long_ty_file);
                 err.note(with_forced_trimmed_paths!(format!(
                     "required for the cast from `{source}` to `{target}`",
                 )));
@@ -3044,7 +3046,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if local {
                     err.note("all local variables must have a statically known size");
                 }
-                if !tcx.features().unsized_locals {
+                if !tcx.features().unsized_locals() {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
@@ -3125,7 +3127,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.note("all function arguments must have a statically known size");
                 }
                 if tcx.sess.opts.unstable_features.is_nightly_build()
-                    && !tcx.features().unsized_fn_params
+                    && !tcx.features().unsized_fn_params()
                 {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
@@ -3249,7 +3251,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
 
                 if !is_upvar_tys_infer_tuple {
-                    let ty_str = tcx.short_ty_string(ty, &mut long_ty_file);
+                    let ty_str = tcx.short_ty_string(ty, long_ty_file);
                     let msg = format!("required because it appears within the type `{ty_str}`");
                     match ty.kind() {
                         ty::Adt(def, _) => match tcx.opt_item_ident(def.did()) {
@@ -3327,6 +3329,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             &data.parent_code,
                             obligated_types,
                             seen_requirements,
+                            long_ty_file,
                         )
                     });
                 } else {
@@ -3339,6 +3342,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             cause_code.peel_derives(),
                             obligated_types,
                             seen_requirements,
+                            long_ty_file,
                         )
                     });
                 }
@@ -3347,8 +3351,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
-                let self_ty_str = tcx
-                    .short_ty_string(parent_trait_pred.skip_binder().self_ty(), &mut long_ty_file);
+                let self_ty_str =
+                    tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty(), long_ty_file);
                 let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
@@ -3444,10 +3448,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         count,
                         pluralize!(count)
                     ));
-                    let self_ty = tcx.short_ty_string(
-                        parent_trait_pred.skip_binder().self_ty(),
-                        &mut long_ty_file,
-                    );
+                    let self_ty = tcx
+                        .short_ty_string(parent_trait_pred.skip_binder().self_ty(), long_ty_file);
                     err.note(format!(
                         "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()
@@ -3463,6 +3465,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
+                        long_ty_file,
                     )
                 });
             }
@@ -3479,6 +3482,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
+                        long_ty_file,
                     )
                 });
             }
@@ -3493,6 +3497,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         nested,
                         obligated_types,
                         seen_requirements,
+                        long_ty_file,
                     )
                 });
                 let mut multispan = MultiSpan::from(span);
@@ -3523,6 +3528,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         parent_code,
                         obligated_types,
                         seen_requirements,
+                        long_ty_file,
                     )
                 });
             }
@@ -3562,7 +3568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, hir_id)) = expr_info {
-                    let expr_ty = self.tcx.short_ty_string(expr_ty, &mut long_ty_file);
+                    let expr_ty = self.tcx.short_ty_string(expr_ty, long_ty_file);
                     let expr = self.infcx.tcx.hir().expect_expr(hir_id);
                     err.span_label(
                         expr.span,
@@ -3573,14 +3579,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     suggest_remove_deref(err, &expr);
                 }
             }
-        }
-
-        if let Some(file) = long_ty_file {
-            err.note(format!(
-                "the full name for the type has been written to '{}'",
-                file.display(),
-            ));
-            err.note("consider using `--verbose` to print the full type name to the console");
         }
     }
 
@@ -3594,52 +3592,64 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        if let Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) =
-            self.tcx.coroutine_kind(obligation.cause.body_id)
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let impls_future = self.type_implements_trait(
+            future_trait,
+            [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
+            obligation.param_env,
+        );
+        if !impls_future.must_apply_modulo_regions() {
+            return;
+        }
+
+        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+        // `<T as Future>::Output`
+        let projection_ty = trait_pred.map_bound(|trait_pred| {
+            Ty::new_projection(
+                self.tcx,
+                item_def_id,
+                // Future::Output has no args
+                [trait_pred.self_ty()],
+            )
+        });
+        let InferOk { value: projection_ty, .. } =
+            self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
+
+        debug!(
+            normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
+        );
+        let try_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
+        );
+        debug!(try_trait_obligation = ?try_obligation);
+        if self.predicate_may_hold(&try_obligation)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+            && snippet.ends_with('?')
         {
-            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
-
-            let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-            let impls_future = self.type_implements_trait(
-                future_trait,
-                [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
-                obligation.param_env,
-            );
-            if !impls_future.must_apply_modulo_regions() {
-                return;
-            }
-
-            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-            // `<T as Future>::Output`
-            let projection_ty = trait_pred.map_bound(|trait_pred| {
-                Ty::new_projection(
-                    self.tcx,
-                    item_def_id,
-                    // Future::Output has no args
-                    [trait_pred.self_ty()],
-                )
-            });
-            let InferOk { value: projection_ty, .. } =
-                self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
-
-            debug!(
-                normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
-            );
-            let try_obligation = self.mk_trait_obligation_with_new_self_ty(
-                obligation.param_env,
-                trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
-            );
-            debug!(try_trait_obligation = ?try_obligation);
-            if self.predicate_may_hold(&try_obligation)
-                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                && snippet.ends_with('?')
-            {
-                err.span_suggestion_verbose(
-                    span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
-                    "consider `await`ing on the `Future`",
-                    ".await",
-                    Applicability::MaybeIncorrect,
-                );
+            match self.tcx.coroutine_kind(obligation.cause.body_id) {
+                Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                    err.span_suggestion_verbose(
+                        span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {
+                    let mut span: MultiSpan = span.with_lo(span.hi() - BytePos(1)).into();
+                    span.push_span_label(
+                        self.tcx.def_span(obligation.cause.body_id),
+                        "this is not `async`",
+                    );
+                    err.span_note(
+                        span,
+                        "this implements `Future` and its output type supports \
+                        `?`, but the future cannot be awaited in a synchronous function",
+                    );
+                }
             }
         }
     }
@@ -4498,7 +4508,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) {
         // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
-        if self.tcx.features().return_type_notation {
+        if self.tcx.features().return_type_notation() {
             return;
         }
 

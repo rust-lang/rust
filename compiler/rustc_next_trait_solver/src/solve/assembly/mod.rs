@@ -100,6 +100,15 @@ where
         })
     }
 
+    /// Assemble additional assumptions for an alias that are not included
+    /// in the item bounds of the alias. For now, this is limited to the
+    /// `implied_const_bounds` for an associated type.
+    fn consider_additional_alias_assumptions(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        alias_ty: ty::AliasTy<I>,
+    ) -> Vec<Candidate<I>>;
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -270,11 +279,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>>;
-
-    fn consider_builtin_effects_intersection_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -481,9 +485,6 @@ where
                 Some(TraitSolverLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::EffectsIntersection) => {
-                    G::consider_builtin_effects_intersection_candidate(self, goal)
-                }
                 _ => Err(NoSolution),
             }
         };
@@ -601,6 +602,8 @@ where
                 [],
             ));
         }
+
+        candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
 
         if kind != ty::Projection {
             return;

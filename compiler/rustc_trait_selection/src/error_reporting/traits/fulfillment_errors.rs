@@ -156,8 +156,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             (leaf_trait_predicate, &obligation)
                         };
 
-                        let (main_trait_predicate, leaf_trait_predicate, predicate_constness) = self.get_effects_trait_pred_override(main_trait_predicate, leaf_trait_predicate, span);
-
                         let main_trait_ref = main_trait_predicate.to_poly_trait_ref();
                         let leaf_trait_ref = leaf_trait_predicate.to_poly_trait_ref();
 
@@ -228,7 +226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let err_msg = self.get_standard_error_message(
                             main_trait_predicate,
                             message,
-                            predicate_constness,
+                            None,
                             append_const_msg,
                             post_message,
                         );
@@ -287,13 +285,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 obligation.cause.code().peel_derives(),
                                 &mut err,
                             );
-                        }
-
-                        if tcx.is_lang_item(leaf_trait_ref.def_id(), LangItem::Drop)
-                            && matches!(predicate_constness, Some(ty::BoundConstness::ConstIfConst | ty::BoundConstness::Const))
-                        {
-                            err.note("`~const Drop` was renamed to `~const Destruct`");
-                            err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
                         }
 
                         let explanation = get_explanation_based_on_obligation(
@@ -539,6 +530,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         err
+                    }
+
+                    ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                        // FIXME(effects): We should recompute the predicate with `~const`
+                        // if it's `const`, and if it holds, explain that this bound only
+                        // *conditionally* holds. If that fails, we should also do selection
+                        // to drill this down to an impl or built-in source, so we can
+                        // point at it and explain that while the trait *is* implemented,
+                        // that implementation is not const.
+                        let err_msg = self.get_standard_error_message(
+                            bound_predicate.rebind(ty::TraitPredicate {
+                                trait_ref: predicate.trait_ref,
+                                polarity: ty::PredicatePolarity::Positive,
+                            }),
+                            None,
+                            Some(match predicate.host {
+                                ty::HostPolarity::Maybe => ty::BoundConstness::ConstIfConst,
+                                ty::HostPolarity::Const => ty::BoundConstness::Const,
+                            }),
+                            None,
+                            String::new(),
+                        );
+                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -1290,7 +1304,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (
                             Some((
                                 data.projection_term,
-                                false,
                                 self.resolve_vars_if_possible(normalized_term),
                                 data.term,
                             )),
@@ -1335,7 +1348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             derive_better_type_error(lhs, rhs)
                     {
                         (
-                            Some((lhs, true, self.resolve_vars_if_possible(expected_term), rhs)),
+                            Some((lhs, self.resolve_vars_if_possible(expected_term), rhs)),
                             better_type_err,
                         )
                     } else if let Some(rhs) = rhs.to_alias_term()
@@ -1343,7 +1356,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             derive_better_type_error(rhs, lhs)
                     {
                         (
-                            Some((rhs, true, self.resolve_vars_if_possible(expected_term), lhs)),
+                            Some((rhs, self.resolve_vars_if_possible(expected_term), lhs)),
                             better_type_err,
                         )
                     } else {
@@ -1354,7 +1367,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let msg = values
-                .and_then(|(predicate, _, normalized_term, expected_term)| {
+                .and_then(|(predicate, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
                 .unwrap_or_else(|| {
@@ -1431,8 +1444,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, _, normalized_ty, expected_ty)| {
-                    infer::ValuePairs::Terms(ExpectedFound::new(true, expected_ty, normalized_ty))
+                values.map(|(_, normalized_ty, expected_ty)| {
+                    obligation.param_env.and(infer::ValuePairs::Terms(ExpectedFound::new(
+                        true,
+                        expected_ty,
+                        normalized_ty,
+                    )))
                 }),
                 err,
                 false,
@@ -1818,6 +1835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
+                    let self_ty = impl_trait_ref.self_ty().to_string();
                     err.highlighted_help(vec![
                         StringPart::normal(format!(
                             "the trait `{}` ",
@@ -1825,16 +1843,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         )),
                         StringPart::highlighted("is"),
                         StringPart::normal(" implemented for `"),
-                        StringPart::highlighted(impl_trait_ref.self_ty().to_string()),
+                        if let [TypeError::Sorts(_)] = &terrs[..] {
+                            StringPart::normal(self_ty)
+                        } else {
+                            StringPart::highlighted(self_ty)
+                        },
                         StringPart::normal("`"),
                     ]);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
-                        err.help(format!(
-                            "for that trait implementation, expected `{}`, found `{}`",
-                            exp_found.expected, exp_found.found
-                        ));
+                        err.highlighted_help(vec![
+                            StringPart::normal("for that trait implementation, "),
+                            StringPart::normal("expected `"),
+                            StringPart::highlighted(exp_found.expected.to_string()),
+                            StringPart::normal("`, found `"),
+                            StringPart::highlighted(exp_found.found.to_string()),
+                            StringPart::normal("`"),
+                        ]);
                     }
 
                     true
@@ -2143,6 +2169,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
+            let mut long_ty_file = None;
             self.note_obligation_cause_code(
                 obligation.cause.body_id,
                 err,
@@ -2151,7 +2178,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code(),
                 &mut vec![],
                 &mut Default::default(),
+                &mut long_ty_file,
             );
+            if let Some(file) = long_ty_file {
+                err.note(format!(
+                    "the full name for the type has been written to '{}'",
+                    file.display(),
+                ));
+                err.note("consider using `--verbose` to print the full type name to the console");
+            }
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
@@ -2369,52 +2404,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 },
             }
         })
-    }
-
-    /// For effects predicates such as `<u32 as Add>::Effects: Compat<host>`, pretend that the
-    /// predicate that failed was `u32: Add`. Return the constness of such predicate to later
-    /// print as `u32: ~const Add`.
-    fn get_effects_trait_pred_override(
-        &self,
-        p: ty::PolyTraitPredicate<'tcx>,
-        leaf: ty::PolyTraitPredicate<'tcx>,
-        span: Span,
-    ) -> (ty::PolyTraitPredicate<'tcx>, ty::PolyTraitPredicate<'tcx>, Option<ty::BoundConstness>)
-    {
-        let trait_ref = p.to_poly_trait_ref();
-        if !self.tcx.is_lang_item(trait_ref.def_id(), LangItem::EffectsCompat) {
-            return (p, leaf, None);
-        }
-
-        let Some(ty::Alias(ty::AliasTyKind::Projection, projection)) =
-            trait_ref.self_ty().no_bound_vars().map(Ty::kind)
-        else {
-            return (p, leaf, None);
-        };
-
-        let constness = trait_ref.skip_binder().args.const_at(1);
-
-        let constness = if constness == self.tcx.consts.true_ || constness.is_ct_infer() {
-            None
-        } else if constness == self.tcx.consts.false_ {
-            Some(ty::BoundConstness::Const)
-        } else if matches!(constness.kind(), ty::ConstKind::Param(_)) {
-            Some(ty::BoundConstness::ConstIfConst)
-        } else {
-            self.dcx().span_bug(span, format!("Unknown constness argument: {constness:?}"));
-        };
-
-        let new_pred = p.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        let new_leaf = leaf.map_bound(|mut trait_pred| {
-            trait_pred.trait_ref = projection.trait_ref(self.tcx);
-            trait_pred
-        });
-
-        (new_pred, new_leaf, constness)
     }
 
     fn add_tuple_trait_message(
@@ -2654,6 +2643,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         self.report_and_explain_type_error(
             TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            obligation.param_env,
             terr,
         )
     }
@@ -2744,6 +2734,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             return Ok(self.report_and_explain_type_error(
                 TypeTrace::trait_refs(&obligation.cause, true, expected_trait_ref, found_trait_ref),
+                obligation.param_env,
                 ty::error::TypeError::Mismatch,
             ));
         }
@@ -3026,7 +3017,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Result<Diag<'a>, ErrorGuaranteed> {
-        if !self.tcx.features().generic_const_exprs {
+        if !self.tcx.features().generic_const_exprs() {
             let guar = self
                 .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")

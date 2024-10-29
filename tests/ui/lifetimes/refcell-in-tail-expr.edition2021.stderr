@@ -1,5 +1,5 @@
 error[E0597]: `cell` does not live long enough
-  --> $DIR/refcell-in-tail-expr.rs:12:27
+  --> $DIR/refcell-in-tail-expr.rs:10:27
    |
 LL |     let cell = std::cell::RefCell::new(0u8);
    |         ---- binding `cell` declared here

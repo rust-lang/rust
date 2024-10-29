@@ -50,7 +50,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::Layout<'tcx> {
 }
 
 impl<'tcx> Stable<'tcx>
-    for rustc_abi::LayoutS<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx>
+    for rustc_abi::LayoutData<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx>
 {
     type T = LayoutShape;
 

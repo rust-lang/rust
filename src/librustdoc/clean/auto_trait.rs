@@ -156,7 +156,7 @@ fn clean_param_env<'tcx>(
         .iter()
         .inspect(|param| {
             if cfg!(debug_assertions) {
-                debug_assert!(!param.is_anonymous_lifetime() && !param.is_host_effect());
+                debug_assert!(!param.is_anonymous_lifetime());
                 if let ty::GenericParamDefKind::Type { synthetic, .. } = param.kind {
                     debug_assert!(!synthetic && param.name != kw::SelfUpper);
                 }

@@ -1,0 +1,172 @@
+error: a dangling pointer will be produced because the temporary `CString` will be dropped
+  --> $DIR/types.rs:20:26
+   |
+LL |     declval::<CString>().as_ptr();
+   |     -------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/types.rs:1:9
+   |
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/types.rs:22:25
+   |
+LL |     declval::<String>().as_ptr();
+   |     ------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Vec<u8>` will be dropped
+  --> $DIR/types.rs:24:26
+   |
+LL |     declval::<Vec<u8>>().as_ptr();
+   |     -------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Vec<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<CString>` will be dropped
+  --> $DIR/types.rs:26:31
+   |
+LL |     declval::<Box<CString>>().as_ptr();
+   |     ------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<CString>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<CString>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<[u8]>` will be dropped
+  --> $DIR/types.rs:28:28
+   |
+LL |     declval::<Box<[u8]>>().as_ptr();
+   |     ---------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<[u8]>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<[u8]>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<str>` will be dropped
+  --> $DIR/types.rs:30:27
+   |
+LL |     declval::<Box<str>>().as_ptr();
+   |     --------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<str>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<str>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<CStr>` will be dropped
+  --> $DIR/types.rs:32:28
+   |
+LL |     declval::<Box<CStr>>().as_ptr();
+   |     ---------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<CStr>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<CStr>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `[u8; 10]` will be dropped
+  --> $DIR/types.rs:34:27
+   |
+LL |     declval::<[u8; 10]>().as_ptr();
+   |     --------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `[u8; 10]` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `[u8; 10]` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<[u8; 10]>` will be dropped
+  --> $DIR/types.rs:36:32
+   |
+LL |     declval::<Box<[u8; 10]>>().as_ptr();
+   |     -------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<[u8; 10]>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<[u8; 10]>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<Vec<u8>>` will be dropped
+  --> $DIR/types.rs:38:31
+   |
+LL |     declval::<Box<Vec<u8>>>().as_ptr();
+   |     ------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<Vec<u8>>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<Vec<u8>>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<String>` will be dropped
+  --> $DIR/types.rs:40:30
+   |
+LL |     declval::<Box<String>>().as_ptr();
+   |     ------------------------ ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<String>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<String>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<Box<Box<Box<[u8]>>>>` will be dropped
+  --> $DIR/types.rs:42:43
+   |
+LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
+   |     ------------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<Box<Box<Box<[u8]>>>>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<Box<Box<Box<[u8]>>>>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Cell<u8>` will be dropped
+  --> $DIR/types.rs:44:27
+   |
+LL |     declval::<Cell<u8>>().as_ptr();
+   |     --------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Cell<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Cell<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `MaybeUninit<u8>` will be dropped
+  --> $DIR/types.rs:46:34
+   |
+LL |     declval::<MaybeUninit<u8>>().as_ptr();
+   |     ---------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `MaybeUninit<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `MaybeUninit<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Vec<AsPtrFake>` will be dropped
+  --> $DIR/types.rs:48:33
+   |
+LL |     declval::<Vec<AsPtrFake>>().as_ptr();
+   |     --------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Vec<AsPtrFake>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<AsPtrFake>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 15 previous errors
+

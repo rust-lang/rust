@@ -29,6 +29,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     max_len,
+                    /* truncate */ false,
                 )?;
             }
             "pthread_get_name_np" => {

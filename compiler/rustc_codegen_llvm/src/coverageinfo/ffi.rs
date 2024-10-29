@@ -1,11 +1,9 @@
-use rustc_middle::mir::coverage::{
-    ConditionInfo, CounterId, CovTerm, DecisionInfo, ExpressionId, MappingKind, SourceRegion,
-};
+use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId, SourceRegion};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum CounterKind {
+pub(crate) enum CounterKind {
     Zero = 0,
     CounterValueReference = 1,
     Expression = 2,
@@ -25,9 +23,9 @@ pub enum CounterKind {
 /// Must match the layout of `LLVMRustCounter`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct Counter {
+pub(crate) struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
-    pub kind: CounterKind,
+    pub(crate) kind: CounterKind,
     id: u32,
 }
 
@@ -36,7 +34,7 @@ impl Counter {
     pub(crate) const ZERO: Self = Self { kind: CounterKind::Zero, id: 0 };
 
     /// Constructs a new `Counter` of kind `CounterValueReference`.
-    pub fn counter_value_reference(counter_id: CounterId) -> Self {
+    pub(crate) fn counter_value_reference(counter_id: CounterId) -> Self {
         Self { kind: CounterKind::CounterValueReference, id: counter_id.as_u32() }
     }
 
@@ -59,7 +57,7 @@ impl Counter {
 /// Must match the layout of `LLVMRustCounterExprKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum ExprKind {
+pub(crate) enum ExprKind {
     Subtract = 0,
     Add = 1,
 }
@@ -69,48 +67,13 @@ pub enum ExprKind {
 /// Must match the layout of `LLVMRustCounterExpression`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct CounterExpression {
-    pub kind: ExprKind,
-    pub lhs: Counter,
-    pub rhs: Counter,
+pub(crate) struct CounterExpression {
+    pub(crate) kind: ExprKind,
+    pub(crate) lhs: Counter,
+    pub(crate) rhs: Counter,
 }
 
-/// Corresponds to enum `llvm::coverage::CounterMappingRegion::RegionKind`.
-///
-/// Must match the layout of `LLVMRustCounterMappingRegionKind`.
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-enum RegionKind {
-    /// A CodeRegion associates some code with a counter
-    CodeRegion = 0,
-
-    /// An ExpansionRegion represents a file expansion region that associates
-    /// a source range with the expansion of a virtual source file, such as
-    /// for a macro instantiation or #include file.
-    ExpansionRegion = 1,
-
-    /// A SkippedRegion represents a source range with code that was skipped
-    /// by a preprocessor or similar means.
-    SkippedRegion = 2,
-
-    /// A GapRegion is like a CodeRegion, but its count is only set as the
-    /// line execution count when its the only region in the line.
-    GapRegion = 3,
-
-    /// A BranchRegion represents leaf-level boolean expressions and is
-    /// associated with two counters, each representing the number of times the
-    /// expression evaluates to true or false.
-    BranchRegion = 4,
-
-    /// A DecisionRegion represents a top-level boolean expression and is
-    /// associated with a variable length bitmap index and condition number.
-    MCDCDecisionRegion = 5,
-
-    /// A Branch Region can be extended to include IDs to facilitate MC/DC.
-    MCDCBranchRegion = 6,
-}
-
-mod mcdc {
+pub(crate) mod mcdc {
     use rustc_middle::mir::coverage::{ConditionId, ConditionInfo, DecisionInfo};
 
     /// Must match the layout of `LLVMRustMCDCDecisionParameters`.
@@ -121,8 +84,6 @@ mod mcdc {
         num_conditions: u16,
     }
 
-    // ConditionId in llvm is `unsigned int` at 18 while `int16_t` at
-    // [19](https://github.com/llvm/llvm-project/pull/81257).
     type LLVMConditionId = i16;
 
     /// Must match the layout of `LLVMRustMCDCBranchParameters`.
@@ -131,38 +92,6 @@ mod mcdc {
     pub(crate) struct BranchParameters {
         condition_id: LLVMConditionId,
         condition_ids: [LLVMConditionId; 2],
-    }
-
-    #[repr(C)]
-    #[derive(Clone, Copy, Debug)]
-    enum ParameterTag {
-        None = 0,
-        Decision = 1,
-        Branch = 2,
-    }
-    /// Same layout with `LLVMRustMCDCParameters`
-    #[repr(C)]
-    #[derive(Clone, Copy, Debug)]
-    pub(crate) struct Parameters {
-        tag: ParameterTag,
-        decision_params: DecisionParameters,
-        branch_params: BranchParameters,
-    }
-
-    impl Parameters {
-        pub(crate) fn none() -> Self {
-            Self {
-                tag: ParameterTag::None,
-                decision_params: Default::default(),
-                branch_params: Default::default(),
-            }
-        }
-        pub(crate) fn decision(decision_params: DecisionParameters) -> Self {
-            Self { tag: ParameterTag::Decision, decision_params, branch_params: Default::default() }
-        }
-        pub(crate) fn branch(branch_params: BranchParameters) -> Self {
-            Self { tag: ParameterTag::Branch, decision_params: Default::default(), branch_params }
-        }
     }
 
     impl From<ConditionInfo> for BranchParameters {
@@ -186,267 +115,68 @@ mod mcdc {
     }
 }
 
-/// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-/// coverage map, in accordance with the
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
-/// The struct composes fields representing the `Counter` type and value(s) (injected counter
-/// ID, or expression type and operands), the source file (an indirect index into a "filenames
-/// array", encoded separately), and source location (start and end positions of the represented
-/// code region).
+/// A span of source code coordinates to be embedded in coverage metadata.
 ///
-/// Corresponds to struct `llvm::coverage::CounterMappingRegion`.
-///
-/// Must match the layout of `LLVMRustCounterMappingRegion`.
-#[derive(Copy, Clone, Debug)]
+/// Must match the layout of `LLVMRustCoverageSpan`.
+#[derive(Clone, Debug)]
 #[repr(C)]
-pub struct CounterMappingRegion {
-    /// The counter type and type-dependent counter data, if any.
-    counter: Counter,
-
-    /// If the `RegionKind` is a `BranchRegion`, this represents the counter
-    /// for the false branch of the region.
-    false_counter: Counter,
-
-    mcdc_params: mcdc::Parameters,
-    /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
-    /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes
-    /// that, in turn, are used to look up the filename for this region.
+pub(crate) struct CoverageSpan {
+    /// Local index into the function's local-to-global file ID table.
+    /// The value at that index is itself an index into the coverage filename
+    /// table in the CGU's `__llvm_covmap` section.
     file_id: u32,
 
-    /// If the `RegionKind` is an `ExpansionRegion`, the `expanded_file_id` can be used to find
-    /// the mapping regions created as a result of macro expansion, by checking if their file id
-    /// matches the expanded file id.
-    expanded_file_id: u32,
-
-    /// 1-based starting line of the mapping region.
+    /// 1-based starting line of the source code span.
     start_line: u32,
-
-    /// 1-based starting column of the mapping region.
+    /// 1-based starting column of the source code span.
     start_col: u32,
-
-    /// 1-based ending line of the mapping region.
+    /// 1-based ending line of the source code span.
     end_line: u32,
-
-    /// 1-based ending column of the mapping region. If the high bit is set, the current
-    /// mapping region is a gap area.
+    /// 1-based ending column of the source code span. High bit must be unset.
     end_col: u32,
-
-    kind: RegionKind,
 }
 
-impl CounterMappingRegion {
-    pub(crate) fn from_mapping(
-        mapping_kind: &MappingKind,
-        local_file_id: u32,
-        source_region: &SourceRegion,
-    ) -> Self {
-        let &SourceRegion { file_name: _, start_line, start_col, end_line, end_col } =
-            source_region;
-        match *mapping_kind {
-            MappingKind::Code(term) => Self::code_region(
-                Counter::from_term(term),
-                local_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-            ),
-            MappingKind::Branch { true_term, false_term } => Self::branch_region(
-                Counter::from_term(true_term),
-                Counter::from_term(false_term),
-                local_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-            ),
-            MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
-                Self::mcdc_branch_region(
-                    Counter::from_term(true_term),
-                    Counter::from_term(false_term),
-                    mcdc_params,
-                    local_file_id,
-                    start_line,
-                    start_col,
-                    end_line,
-                    end_col,
-                )
-            }
-            MappingKind::MCDCDecision(decision_info) => Self::decision_region(
-                decision_info,
-                local_file_id,
-                start_line,
-                start_col,
-                end_line,
-                end_col,
-            ),
-        }
+impl CoverageSpan {
+    pub(crate) fn from_source_region(file_id: u32, code_region: &SourceRegion) -> Self {
+        let &SourceRegion { file_name: _, start_line, start_col, end_line, end_col } = code_region;
+        // Internally, LLVM uses the high bit of `end_col` to distinguish between
+        // code regions and gap regions, so it can't be used by the column number.
+        assert!(end_col & (1u32 << 31) == 0, "high bit of `end_col` must be unset: {end_col:#X}");
+        Self { file_id, start_line, start_col, end_line, end_col }
     }
+}
 
-    pub(crate) fn code_region(
-        counter: Counter,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            false_counter: Counter::ZERO,
-            mcdc_params: mcdc::Parameters::none(),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::CodeRegion,
-        }
-    }
+/// Must match the layout of `LLVMRustCoverageCodeRegion`.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub(crate) struct CodeRegion {
+    pub(crate) span: CoverageSpan,
+    pub(crate) counter: Counter,
+}
 
-    pub(crate) fn branch_region(
-        counter: Counter,
-        false_counter: Counter,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            false_counter,
-            mcdc_params: mcdc::Parameters::none(),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::BranchRegion,
-        }
-    }
+/// Must match the layout of `LLVMRustCoverageBranchRegion`.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub(crate) struct BranchRegion {
+    pub(crate) span: CoverageSpan,
+    pub(crate) true_counter: Counter,
+    pub(crate) false_counter: Counter,
+}
 
-    pub(crate) fn mcdc_branch_region(
-        counter: Counter,
-        false_counter: Counter,
-        condition_info: ConditionInfo,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            false_counter,
-            mcdc_params: mcdc::Parameters::branch(condition_info.into()),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::MCDCBranchRegion,
-        }
-    }
+/// Must match the layout of `LLVMRustCoverageMCDCBranchRegion`.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub(crate) struct MCDCBranchRegion {
+    pub(crate) span: CoverageSpan,
+    pub(crate) true_counter: Counter,
+    pub(crate) false_counter: Counter,
+    pub(crate) mcdc_branch_params: mcdc::BranchParameters,
+}
 
-    pub(crate) fn decision_region(
-        decision_info: DecisionInfo,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        let mcdc_params = mcdc::Parameters::decision(decision_info.into());
-
-        Self {
-            counter: Counter::ZERO,
-            false_counter: Counter::ZERO,
-            mcdc_params,
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::MCDCDecisionRegion,
-        }
-    }
-
-    // This function might be used in the future; the LLVM API is still evolving, as is coverage
-    // support.
-    #[allow(dead_code)]
-    pub(crate) fn expansion_region(
-        file_id: u32,
-        expanded_file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter: Counter::ZERO,
-            false_counter: Counter::ZERO,
-            mcdc_params: mcdc::Parameters::none(),
-            file_id,
-            expanded_file_id,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::ExpansionRegion,
-        }
-    }
-
-    // This function might be used in the future; the LLVM API is still evolving, as is coverage
-    // support.
-    #[allow(dead_code)]
-    pub(crate) fn skipped_region(
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter: Counter::ZERO,
-            false_counter: Counter::ZERO,
-            mcdc_params: mcdc::Parameters::none(),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::SkippedRegion,
-        }
-    }
-
-    // This function might be used in the future; the LLVM API is still evolving, as is coverage
-    // support.
-    #[allow(dead_code)]
-    pub(crate) fn gap_region(
-        counter: Counter,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            false_counter: Counter::ZERO,
-            mcdc_params: mcdc::Parameters::none(),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col: (1_u32 << 31) | end_col,
-            kind: RegionKind::GapRegion,
-        }
-    }
+/// Must match the layout of `LLVMRustCoverageMCDCDecisionRegion`.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub(crate) struct MCDCDecisionRegion {
+    pub(crate) span: CoverageSpan,
+    pub(crate) mcdc_decision_params: mcdc::DecisionParameters,
 }

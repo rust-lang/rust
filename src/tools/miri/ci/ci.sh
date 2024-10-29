@@ -154,7 +154,7 @@ case $HOST_TARGET in
     TEST_TARGET=i686-unknown-freebsd   run_tests_minimal $BASIC $UNIX time hashmap random threadname pthread fs libc-pipe
     TEST_TARGET=x86_64-unknown-illumos run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe
     TEST_TARGET=x86_64-pc-solaris      run_tests_minimal $BASIC $UNIX time hashmap random thread sync available-parallelism tls libc-pipe
-    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap pthread --skip threadname
+    TEST_TARGET=aarch64-linux-android  run_tests_minimal $BASIC $UNIX time hashmap threadname pthread
     TEST_TARGET=wasm32-wasip2          run_tests_minimal $BASIC wasm
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std

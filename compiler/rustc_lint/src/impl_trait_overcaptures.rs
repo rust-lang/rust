@@ -263,8 +263,8 @@ where
             && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
-            let new_capture_rules =
-                opaque_span.at_least_rust_2024() || self.tcx.features().lifetime_capture_rules_2024;
+            let new_capture_rules = opaque_span.at_least_rust_2024()
+                || self.tcx.features().lifetime_capture_rules_2024();
             if !new_capture_rules
                 && !opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..)))
             {

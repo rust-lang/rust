@@ -750,7 +750,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_diverging_default(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        if tcx.features().never_type_fallback { tcx.types.never } else { tcx.types.unit }
+        if tcx.features().never_type_fallback() { tcx.types.never } else { tcx.types.unit }
     }
 
     // lang and diagnostic tys

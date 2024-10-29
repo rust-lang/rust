@@ -133,7 +133,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         PartialOrd: partial_ord::expand_deriving_partial_ord,
         RustcDecodable: decodable::expand_deriving_rustc_decodable,
         RustcEncodable: encodable::expand_deriving_rustc_encodable,
-        SmartPointer: smart_ptr::expand_deriving_smart_ptr,
+        CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);

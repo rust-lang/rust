@@ -1,6 +1,9 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{Abi, Align, HasDataLayout, TyAbiInterface, TyAndLayout};
+use crate::abi::{
+    Abi, AddressSpace, Align, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
+};
 use crate::spec::HasTargetSpec;
+use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -8,7 +11,12 @@ pub(crate) enum Flavor {
     FastcallOrVectorcall,
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
+pub(crate) struct X86Options {
+    pub flavor: Flavor,
+    pub regparm: Option<u32>,
+}
+
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
@@ -128,58 +136,109 @@ where
         }
     }
 
-    if flavor == Flavor::FastcallOrVectorcall {
-        // Mark arguments as InReg like clang does it,
-        // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
+    fill_inregs(cx, fn_abi, opts, false);
+}
 
-        // Clang reference: lib/CodeGen/TargetInfo.cpp
-        // See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()
+pub(crate) fn fill_inregs<'a, Ty, C>(
+    cx: &C,
+    fn_abi: &mut FnAbi<'a, Ty>,
+    opts: X86Options,
+    rust_abi: bool,
+) where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    if opts.flavor != Flavor::FastcallOrVectorcall && opts.regparm.is_none_or(|x| x == 0) {
+        return;
+    }
+    // Mark arguments as InReg like clang does it,
+    // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
 
-        // IsSoftFloatABI is only set to true on ARM platforms,
-        // which in turn can't be x86?
+    // Clang reference: lib/CodeGen/TargetInfo.cpp
+    // See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()
 
-        let mut free_regs = 2;
+    // IsSoftFloatABI is only set to true on ARM platforms,
+    // which in turn can't be x86?
 
-        for arg in fn_abi.args.iter_mut() {
-            let attrs = match arg.mode {
-                PassMode::Ignore
-                | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
-                    continue;
-                }
-                PassMode::Direct(ref mut attrs) => attrs,
-                PassMode::Pair(..)
-                | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
-                | PassMode::Cast { .. } => {
-                    unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
-                }
-            };
+    // 2 for fastcall/vectorcall, regparm limited by 3 otherwise
+    let mut free_regs = opts.regparm.unwrap_or(2).into();
 
-            // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
-            assert_eq!(unit.size, arg.layout.size);
-            if unit.kind == RegKind::Float {
+    // For types generating PassMode::Cast, InRegs will not be set.
+    // Maybe, this is a FIXME
+    let has_casts = fn_abi.args.iter().any(|arg| matches!(arg.mode, PassMode::Cast { .. }));
+    if has_casts && rust_abi {
+        return;
+    }
+
+    for arg in fn_abi.args.iter_mut() {
+        let attrs = match arg.mode {
+            PassMode::Ignore | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => {
                 continue;
             }
-
-            let size_in_regs = (arg.layout.size.bits() + 31) / 32;
-
-            if size_in_regs == 0 {
-                continue;
+            PassMode::Direct(ref mut attrs) => attrs,
+            PassMode::Pair(..)
+            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ }
+            | PassMode::Cast { .. } => {
+                unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
             }
+        };
 
-            if size_in_regs > free_regs {
-                break;
+        // At this point we know this must be a primitive of sorts.
+        let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
+        assert_eq!(unit.size, arg.layout.size);
+        if matches!(unit.kind, RegKind::Float | RegKind::Vector) {
+            continue;
+        }
+
+        let size_in_regs = (arg.layout.size.bits() + 31) / 32;
+
+        if size_in_regs == 0 {
+            continue;
+        }
+
+        if size_in_regs > free_regs {
+            break;
+        }
+
+        free_regs -= size_in_regs;
+
+        if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
+            attrs.set(ArgAttribute::InReg);
+        }
+
+        if free_regs == 0 {
+            break;
+        }
+    }
+}
+
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    // Avoid returning floats in x87 registers on x86 as loading and storing from x87
+    // registers will quiet signalling NaNs. Also avoid using SSE registers since they
+    // are not always available (depending on target features).
+    if !fn_abi.ret.is_ignore()
+        // Intrinsics themselves are not actual "real" functions, so theres no need to change their ABIs.
+        && abi != SpecAbi::RustIntrinsic
+    {
+        let has_float = match fn_abi.ret.layout.abi {
+            Abi::Scalar(s) => matches!(s.primitive(), Float(_)),
+            Abi::ScalarPair(s1, s2) => {
+                matches!(s1.primitive(), Float(_)) || matches!(s2.primitive(), Float(_))
             }
-
-            free_regs -= size_in_regs;
-
-            if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
-                attrs.set(ArgAttribute::InReg);
+            _ => false, // anyway not passed via registers on x86
+        };
+        if has_float {
+            if fn_abi.ret.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
+                // Same size or smaller than pointer, return in a register.
+                fn_abi.ret.cast_to(Reg { kind: RegKind::Integer, size: fn_abi.ret.layout.size });
+            } else {
+                // Larger than a pointer, return indirectly.
+                fn_abi.ret.make_indirect();
             }
-
-            if free_regs == 0 {
-                break;
-            }
+            return;
         }
     }
 }

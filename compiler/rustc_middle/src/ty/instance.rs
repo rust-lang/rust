@@ -204,7 +204,7 @@ impl<'tcx> Instance<'tcx> {
         }
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        self.args.non_erasable_generics(tcx, self.def_id()).next()?;
+        self.args.non_erasable_generics().next()?;
 
         // compiler_builtins cannot use upstream monomorphizations.
         if tcx.is_compiler_builtins(LOCAL_CRATE) {
@@ -476,7 +476,6 @@ impl<'tcx> Instance<'tcx> {
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
         let args = GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
             ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-            ty::GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
             ty::GenericParamDefKind::Type { .. } => {
                 bug!("Instance::mono: {:?} has type parameters", def_id)
             }

@@ -1,9 +1,11 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
@@ -18,6 +20,30 @@ pub type Bool = c_uint;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
+
+/// Wrapper for a raw enum value returned from LLVM's C APIs.
+///
+/// For C enums returned by LLVM, it's risky to use a Rust enum as the return
+/// type, because it would be UB if a later version of LLVM adds a new enum
+/// value and returns it. Instead, return this raw wrapper, then convert to the
+/// Rust-side enum explicitly.
+#[repr(transparent)]
+pub struct RawEnum<T> {
+    value: u32,
+    /// We don't own or consume a `T`, but we can produce one.
+    _rust_side_type: PhantomData<fn() -> T>,
+}
+
+impl<T: TryFrom<u32>> RawEnum<T> {
+    #[track_caller]
+    pub(crate) fn to_rust(self) -> T
+    where
+        T::Error: Debug,
+    {
+        // If this fails, the Rust-side enum is out of sync with LLVM's enum.
+        T::try_from(self.value).expect("enum value returned by LLVM should be known")
+    }
+}
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
@@ -108,26 +134,36 @@ pub enum CallConv {
     AvrInterrupt = 85,
 }
 
-/// LLVMRustLinkage
-#[derive(Copy, Clone, PartialEq)]
+/// Must match the layout of `LLVMLinkage`.
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    WeakAnyLinkage = 4,
-    WeakODRLinkage = 5,
-    AppendingLinkage = 6,
-    InternalLinkage = 7,
-    PrivateLinkage = 8,
-    ExternalWeakLinkage = 9,
-    CommonLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    LinkOnceODRAutoHideLinkage = 4,
+    WeakAnyLinkage = 5,
+    WeakODRLinkage = 6,
+    AppendingLinkage = 7,
+    InternalLinkage = 8,
+    PrivateLinkage = 9,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLImportLinkage = 10,
+    #[deprecated = "marked obsolete by LLVM"]
+    DLLExportLinkage = 11,
+    ExternalWeakLinkage = 12,
+    #[deprecated = "marked obsolete by LLVM"]
+    GhostLinkage = 13,
+    CommonLinkage = 14,
+    LinkerPrivateLinkage = 15,
+    LinkerPrivateWeakLinkage = 16,
 }
 
-// LLVMRustVisibility
+/// Must match the layout of `LLVMVisibility`.
 #[repr(C)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, TryFromU32)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,
@@ -945,7 +981,11 @@ unsafe extern "C" {
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
+    pub fn LLVMGetLinkage(Global: &Value) -> RawEnum<Linkage>;
+    pub fn LLVMSetLinkage(Global: &Value, RustLinkage: Linkage);
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
+    pub fn LLVMGetVisibility(Global: &Value) -> RawEnum<Visibility>;
+    pub fn LLVMSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
@@ -1521,10 +1561,6 @@ unsafe extern "C" {
     ) -> bool;
 
     // Operations on global variables, functions, and aliases (globals)
-    pub fn LLVMRustGetLinkage(Global: &Value) -> Linkage;
-    pub fn LLVMRustSetLinkage(Global: &Value, RustLinkage: Linkage);
-    pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
-    pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
     pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
 
     // Operations on global variables
@@ -1615,10 +1651,6 @@ unsafe extern "C" {
     pub fn LLVMRustSetAllowReassoc(Instr: &Value);
 
     // Miscellaneous instructions
-    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCParametersIntrinsic(M: &Module) -> &Value;
-    pub fn LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(M: &Module) -> &Value;
-
     pub fn LLVMRustBuildCall<'a>(
         B: &Builder<'a>,
         Ty: &'a Type,
@@ -1744,7 +1776,7 @@ unsafe extern "C" {
     ) -> bool;
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
         Lengths: *const size_t,
@@ -1753,33 +1785,39 @@ unsafe extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteMappingToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: c_uint,
         Expressions: *const crate::coverageinfo::ffi::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *const crate::coverageinfo::ffi::CounterMappingRegion,
-        NumMappingRegions: c_uint,
+        CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
+        NumCodeRegions: c_uint,
+        BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
+        NumBranchRegions: c_uint,
+        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
+        NumMCDCBranchRegions: c_uint,
+        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
+        NumMCDCDecisionRegions: c_uint,
         BufferOut: &RustString,
     );
 
-    pub fn LLVMRustCoverageCreatePGOFuncNameVar(
+    pub(crate) fn LLVMRustCoverageCreatePGOFuncNameVar(
         F: &Value,
         FuncName: *const c_char,
         FuncNameLen: size_t,
     ) -> &Value;
-    pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
+    pub(crate) fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
 
-    pub fn LLVMRustCoverageMappingVersion() -> u32;
+    pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;

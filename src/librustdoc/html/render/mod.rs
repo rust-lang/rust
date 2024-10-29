@@ -1010,7 +1010,9 @@ fn render_stability_since_raw_with_extra(
                 // don't display const unstable if entirely unstable
                 None
             } else {
-                let unstable = if let Some(n) = issue {
+                let unstable = if let Some(n) = issue
+                    && let Some(feature) = feature
+                {
                     format!(
                         "<a \
                         href=\"https://github.com/rust-lang/rust/issues/{n}\" \
@@ -2010,9 +2012,9 @@ fn render_rightside(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, render
     );
     if let Some(link) = src_href {
         if has_stability {
-            write!(rightside, " · <a class=\"src\" href=\"{link}\">source</a>")
+            write!(rightside, " · <a class=\"src\" href=\"{link}\">Source</a>")
         } else {
-            write!(rightside, "<a class=\"src rightside\" href=\"{link}\">source</a>")
+            write!(rightside, "<a class=\"src rightside\" href=\"{link}\">Source</a>")
         }
     }
     if has_stability && has_src_ref {

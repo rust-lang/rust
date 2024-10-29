@@ -433,7 +433,8 @@ fn replace_vptr() {
 }
 
 fn drop_principal() {
-    use std::{alloc::Layout, any::Any};
+    use std::alloc::Layout;
+    use std::any::Any;
 
     const fn yeet_principal(x: Box<dyn Any + Send>) -> Box<dyn Send> {
         x

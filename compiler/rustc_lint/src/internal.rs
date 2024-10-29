@@ -427,9 +427,10 @@ declare_tool_lint! {
     /// More details on translatable diagnostics can be found
     /// [here](https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html).
     pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
-    Deny,
+    Allow,
     "prevent creation of diagnostics which cannot be translated",
-    report_in_external_macro: true
+    report_in_external_macro: true,
+    @eval_always = true
 }
 
 declare_tool_lint! {
@@ -440,9 +441,10 @@ declare_tool_lint! {
     /// More details on diagnostics implementations can be found
     /// [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
-    Deny,
+    Allow,
     "prevent diagnostic creation outside of `Diagnostic`/`Subdiagnostic`/`LintDiagnostic` impls",
-    report_in_external_macro: true
+    report_in_external_macro: true,
+    @eval_always = true
 }
 
 declare_lint_pass!(Diagnostics => [UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL]);

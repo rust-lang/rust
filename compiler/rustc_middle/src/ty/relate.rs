@@ -1,7 +1,5 @@
 use std::iter;
 
-use rustc_hir as hir;
-use rustc_target::spec::abi;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
@@ -118,26 +116,6 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
             }
         });
         tcx.mk_poly_existential_predicates_from_iter(v)
-    }
-}
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for hir::Safety {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        _relation: &mut R,
-        a: hir::Safety,
-        b: hir::Safety,
-    ) -> RelateResult<'tcx, hir::Safety> {
-        if a != b { Err(TypeError::SafetyMismatch(ExpectedFound::new(true, a, b))) } else { Ok(a) }
-    }
-}
-
-impl<'tcx> Relate<TyCtxt<'tcx>> for abi::Abi {
-    fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
-        _relation: &mut R,
-        a: abi::Abi,
-        b: abi::Abi,
-    ) -> RelateResult<'tcx, abi::Abi> {
-        if a == b { Ok(a) } else { Err(TypeError::AbiMismatch(ExpectedFound::new(true, a, b))) }
     }
 }
 
