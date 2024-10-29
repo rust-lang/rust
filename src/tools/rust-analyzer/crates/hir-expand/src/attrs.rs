@@ -26,6 +26,7 @@ use crate::{
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct RawAttrs {
+    // FIXME: This can become `Box<[Attr]>` if https://internals.rust-lang.org/t/layout-of-dst-box/21728?u=chrefr is accepted.
     entries: Option<ThinArc<(), Attr>>,
 }
 
@@ -168,6 +169,10 @@ impl RawAttrs {
             Some(ThinArc::from_header_and_iter((), new_attrs.into_iter()))
         };
         RawAttrs { entries }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_none()
     }
 }
 

@@ -120,7 +120,7 @@ pub struct DataVisitor<'a> {
     string: &'a mut String,
 }
 
-impl<'a> Visit for DataVisitor<'a> {
+impl Visit for DataVisitor<'_> {
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         write!(self.string, "{} = {:?} ", field.name(), value).unwrap();
     }

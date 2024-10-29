@@ -1,7 +1,7 @@
 use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn, FileRange};
+use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, AstNode};
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

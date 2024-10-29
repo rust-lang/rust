@@ -107,4 +107,34 @@ async fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn macro_expansion_can_refer_label_defined_before_macro_definition() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'bar: loop {
+        macro_rules! m {
+            () => { break 'bar };
+        }
+        m!();
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+fn foo() {
+    'bar: loop {
+        macro_rules! m {
+            () => { break 'bar };
+        }
+        'bar: loop {
+            m!();
+        }
+    }
+}
+"#,
+        );
+    }
 }

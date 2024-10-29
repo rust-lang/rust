@@ -3224,10 +3224,9 @@
                     {
                         "id": "setup",
                         "title": "Useful Setup Tips",
-                        "description": "There are a couple of things you might want to configure upfront to your tastes. We'll name a few here but be sure to check out the docs linked below!\n\n**Marking library sources as readonly**\n\nAdding the following to your settings.json will mark all Rust library sources as readonly:\n```json\n\"files.readonlyInclude\": {\n    \"**/.cargo/registry/src/**/*.rs\": true,\n    \"**/lib/rustlib/src/rust/library/**/*.rs\": true,\n},\n```\n\n**Check on Save**\n\nBy default, rust-analyzer will run `cargo check` on your codebase when you save a file, rendering diagnostics emitted by `cargo check` within your code. This can potentially collide with other `cargo` commands running concurrently, blocking them from running for a certain amount of time. In these cases it is recommended to disable the `rust-analyzer.checkOnSave` configuration and running the `rust-analyzer: Run flycheck` command on-demand instead.",
+                        "description": "There are a couple of things you might want to configure upfront to your tastes. We'll name a few here but be sure to check out the docs linked below!\n\n**Marking library sources as readonly**\n\nAdding the snippet on the right to your settings.json will mark all Rust library sources as readonly.\n\n**Check on Save**\n\nBy default, rust-analyzer will run ``cargo check`` on your codebase when you save a file, rendering diagnostics emitted by ``cargo check`` within your code. This can potentially collide with other ``cargo`` commands running concurrently, blocking them from running for a certain amount of time. In these cases it is recommended to disable the ``rust-analyzer.checkOnSave`` configuration and running the ``rust-analyzer: Run flycheck`` command on-demand instead.",
                         "media": {
-                            "image": "./icon.png",
-                            "altText": "rust-analyzer logo"
+                            "markdown": "./walkthrough-setup-tips.md"
                         }
                     },
                     {
@@ -3245,7 +3244,7 @@
                     {
                         "id": "faq",
                         "title": "FAQ",
-                        "description": "What are these code hints that are being inserted into my code?\n\nThese hints are called inlay hints which rust-analyzer support and are enabled by default in VSCode. If you wish to disable them you can do so via the `editor.inlayHints.enabled` setting.",
+                        "description": "What are these code hints that are being inserted into my code?\n\nThese hints are called inlay hints which rust-analyzer support and are enabled by default in VSCode. If you wish to disable them you can do so via the ``editor.inlayHints.enabled`` setting.",
                         "media": {
                             "image": "icon.png",
                             "altText": "rust-analyzer logo"

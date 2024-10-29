@@ -164,6 +164,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "syntax",
  "syntax-bridge",
+ "tracing",
  "tt",
 ]
 
@@ -556,6 +557,7 @@ dependencies = [
  "syntax-bridge",
  "test-fixture",
  "test-utils",
+ "text-size",
  "tracing",
  "triomphe",
  "tt",
@@ -670,7 +672,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "toolchain",
  "tracing",
  "triomphe",
@@ -692,7 +693,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -711,7 +711,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -743,7 +742,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -765,7 +763,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -784,7 +781,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "triomphe",
 ]
 
@@ -1497,9 +1493,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "879ece0781e3c1cb670b9f29775c81a43a16db789d1296fad6bc5c74065b2fac"
+checksum = "d5bc2cfc7264d84215a08875ef90a1d35f76b5c9ad1993515d2da7e4e40b2b4b"
 dependencies = [
  "bitflags 2.6.0",
  "ra-ap-rustc_index",
@@ -1508,9 +1504,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6910087ff89bb9f3db114bfcd86b5139042731fe7278d3ff4ceaa69a140154a7"
+checksum = "e8929140697812e5dd09e19cf446d85146332363f0dbc125d4214834c34ead96"
 dependencies = [
  "arrayvec",
  "ra-ap-rustc_index_macros",
@@ -1519,9 +1515,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b6f7bd12b678fbb37444ba77f3b0cfc13b7394a6dc7b0c799491fc9df0a9997"
+checksum = "514a3f5d04c8b4a2750f29746cc9abb1f78deb7e72e4ad1dc95bbc608f3db157"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1530,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "119bc05b5b6bc3e7f5b67ce8b8080e185da94bd83c447f91b6b3f3ecf60cbab1"
+checksum = "276fcb1205da071a0cd64416f3f0e198043c11f176c5b501a45dbf0cb33979f2"
 dependencies = [
  "unicode-properties",
  "unicode-xid",
@@ -1540,9 +1536,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70ed6150ae71d905c064dc88d7824ebb0fa81083f45d7477cba7b57176f2f635"
+checksum = "961b30b22cfac296b14b72e9f95e79c16cebc8c926872755fb1568a6c4243a62"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
@@ -1550,9 +1546,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.73.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e830862a0ec85fce211d34735315686bb8d6a12d418d6d735fb534aa1cd3293"
+checksum = "614232513814a4b714fea7f11345d31c0c277bca3089bb6ca1ec20870bfc022a"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.0.0",
@@ -1884,9 +1880,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "smol_str"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66eaf762c5af19db3108300515c8aa7a50efc90ff745f4c62288052ebf9fdd25"
+checksum = "9676b89cd56310a87b93dec47b11af744f34d5fc9f367b829474eec0a891350d"
 dependencies = [
  "borsh",
  "serde",
@@ -1978,7 +1974,6 @@ dependencies = [
  "smol_str",
  "stdx",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -2024,14 +2019,6 @@ dependencies = [
  "stdx",
  "text-size",
  "tracing",
-]
-
-[[package]]
-name = "text-edit"
-version = "0.0.0"
-dependencies = [
- "itertools",
- "text-size",
 ]
 
 [[package]]

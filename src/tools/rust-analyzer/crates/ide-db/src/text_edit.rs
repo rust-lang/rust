@@ -5,8 +5,8 @@
 //! rust-analyzer.
 
 use itertools::Itertools;
+pub use span::{TextRange, TextSize};
 use std::cmp::max;
-pub use text_size::{TextRange, TextSize};
 
 /// `InsertDelete` -- a single "atomic" change to text
 ///

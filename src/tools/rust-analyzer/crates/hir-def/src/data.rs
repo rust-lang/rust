@@ -6,7 +6,7 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefKind,
 };
-use intern::{sym, Interned, Symbol};
+use intern::{sym, Symbol};
 use la_arena::{Idx, RawIdx};
 use smallvec::SmallVec;
 use syntax::{ast, Parse};
@@ -25,7 +25,7 @@ use crate::{
         DefMap, MacroSubNs,
     },
     path::ImportAlias,
-    type_ref::{TraitRef, TypeBound, TypeRef},
+    type_ref::{TraitRef, TypeBound, TypeRefId, TypesMap},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, ExternCrateId, FunctionId, FunctionLoc,
     HasModule, ImplId, Intern, ItemContainerId, ItemLoc, Lookup, Macro2Id, MacroRulesId, ModuleId,
@@ -35,13 +35,14 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
-    pub params: Box<[Interned<TypeRef>]>,
-    pub ret_type: Interned<TypeRef>,
+    pub params: Box<[TypeRefId]>,
+    pub ret_type: TypeRefId,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,
     pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
     pub rustc_allow_incoherent_impl: bool,
+    pub types_map: Arc<TypesMap>,
     flags: FnFlags,
 }
 
@@ -110,13 +111,14 @@ impl FunctionData {
                 .filter(|&(idx, _)| {
                     item_tree.attrs(db, krate, attr_owner(idx)).is_cfg_enabled(cfg_options)
                 })
-                .filter_map(|(_, param)| param.type_ref.clone())
+                .filter_map(|(_, param)| param.type_ref)
                 .collect(),
-            ret_type: func.ret_type.clone(),
+            ret_type: func.ret_type,
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             visibility,
             abi: func.abi.clone(),
             legacy_const_generics_indices,
+            types_map: func.types_map.clone(),
             flags,
             rustc_allow_incoherent_impl,
         })
@@ -182,13 +184,14 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAliasData {
     pub name: Name,
-    pub type_ref: Option<Interned<TypeRef>>,
+    pub type_ref: Option<TypeRefId>,
     pub visibility: RawVisibility,
     pub is_extern: bool,
     pub rustc_has_incoherent_inherent_impls: bool,
     pub rustc_allow_incoherent_impl: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
-    pub bounds: Box<[Interned<TypeBound>]>,
+    pub bounds: Box<[TypeBound]>,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl TypeAliasData {
@@ -216,12 +219,13 @@ impl TypeAliasData {
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
-            type_ref: typ.type_ref.clone(),
+            type_ref: typ.type_ref,
             visibility,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             rustc_has_incoherent_inherent_impls,
             rustc_allow_incoherent_impl,
             bounds: typ.bounds.clone(),
+            types_map: typ.types_map.clone(),
         })
     }
 }
@@ -343,13 +347,14 @@ impl TraitAliasData {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ImplData {
-    pub target_trait: Option<Interned<TraitRef>>,
-    pub self_ty: Interned<TypeRef>,
+    pub target_trait: Option<TraitRef>,
+    pub self_ty: TypeRefId,
     pub items: Box<[AssocItemId]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
     pub macro_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl ImplData {
@@ -368,7 +373,7 @@ impl ImplData {
         let item_tree = tree_id.item_tree(db);
         let impl_def = &item_tree[tree_id.value];
         let target_trait = impl_def.target_trait.clone();
-        let self_ty = impl_def.self_ty.clone();
+        let self_ty = impl_def.self_ty;
         let is_negative = impl_def.is_negative;
         let is_unsafe = impl_def.is_unsafe;
 
@@ -387,6 +392,7 @@ impl ImplData {
                 is_negative,
                 is_unsafe,
                 macro_calls,
+                types_map: impl_def.types_map.clone(),
             }),
             DefDiagnostics::new(diagnostics),
         )
@@ -532,10 +538,11 @@ impl ExternCrateDeclData {
 pub struct ConstData {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub rustc_allow_incoherent_impl: bool,
     pub has_body: bool,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl ConstData {
@@ -556,10 +563,11 @@ impl ConstData {
 
         Arc::new(ConstData {
             name: konst.name.clone(),
-            type_ref: konst.type_ref.clone(),
+            type_ref: konst.type_ref,
             visibility,
             rustc_allow_incoherent_impl,
             has_body: konst.has_body,
+            types_map: konst.types_map.clone(),
         })
     }
 }
@@ -567,12 +575,13 @@ impl ConstData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticData {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
+    pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
     pub mutable: bool,
     pub is_extern: bool,
     pub has_safe_kw: bool,
     pub has_unsafe_kw: bool,
+    pub types_map: Arc<TypesMap>,
 }
 
 impl StaticData {
@@ -583,12 +592,13 @@ impl StaticData {
 
         Arc::new(StaticData {
             name: statik.name.clone(),
-            type_ref: statik.type_ref.clone(),
+            type_ref: statik.type_ref,
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             has_safe_kw: statik.has_safe_kw,
             has_unsafe_kw: statik.has_unsafe_kw,
+            types_map: statik.types_map.clone(),
         })
     }
 }

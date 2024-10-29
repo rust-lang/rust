@@ -657,7 +657,14 @@ TypeBoundList =
 TypeBound =
   Lifetime
 | ('~' 'const' | 'const')? 'async'? '?'? Type
-| 'use' GenericParamList
+| 'use' UseBoundGenericArgs
+
+UseBoundGenericArgs =
+ '<' (UseBoundGenericArg (',' UseBoundGenericArg)* ','?)? '>'
+
+UseBoundGenericArg =
+  Lifetime
+| NameRef
 
 //************************//
 //        Patterns        //
@@ -729,7 +736,7 @@ PathPat =
   Path
 
 OrPat =
-  (Pat ('|' Pat)* '|'?)
+  '|'? (Pat ('|' Pat)*)
 
 BoxPat =
   'box' Pat

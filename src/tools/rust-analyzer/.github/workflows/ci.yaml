@@ -1,14 +1,10 @@
-# Please make sure that the `needs` fields for both `end-success` and `end-failure`
+# Please make sure that the `needs` field for the `conclusion` job
 # are updated when adding new jobs!
 
 name: CI
 on:
   pull_request:
-  push:
-    branches:
-      - auto
-      - try
-      - automation/bors/try
+  merge_group:
 
 env:
   CARGO_INCREMENTAL: 0
@@ -237,20 +233,21 @@ jobs:
       - name: check for typos
         run: typos
 
-  end-success:
-    name: bors build finished
-    if: github.event.pusher.name == 'bors' && success()
-    runs-on: ubuntu-latest
+  conclusion:
     needs: [rust, rust-cross, typescript, typo-check]
-    steps:
-      - name: Mark the job as successful
-        run: exit 0
-
-  end-failure:
-    name: bors build finished
-    if: github.event.pusher.name == 'bors' && !success()
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    #
+    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [rust, rust-cross, typescript, typo-check]
     steps:
-      - name: Mark the job as a failure
-        run: exit 1
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

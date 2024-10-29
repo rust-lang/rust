@@ -1,9 +1,9 @@
 use hir::db::ExpandDatabase;
 use hir::HirFileIdExt;
+use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};
-use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -32,7 +32,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
     }
 
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
-    let expr = d.expr.value.to_node(&root);
+    let node = d.expr.value.to_node(&root);
+    let expr = node.syntax().ancestors().find_map(ast::Expr::cast)?;
 
     let node_to_add_unsafe_block = pick_best_node_to_add_unsafe_block(&expr)?;
 

@@ -18,6 +18,7 @@
         cfg_options: CfgOptions(
             [
                 "rust_analyzer",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -79,6 +80,7 @@
         cfg_options: CfgOptions(
             [
                 "rust_analyzer",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -148,6 +150,7 @@
         cfg_options: CfgOptions(
             [
                 "rust_analyzer",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -217,6 +220,7 @@
         cfg_options: CfgOptions(
             [
                 "rust_analyzer",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -287,6 +291,7 @@
             [
                 "feature=default",
                 "feature=std",
+                "true",
             ],
         ),
         potential_cfg_options: Some(
@@ -299,6 +304,7 @@
                     "feature=rustc-dep-of-std",
                     "feature=std",
                     "feature=use_std",
+                    "true",
                 ],
             ),
         ),

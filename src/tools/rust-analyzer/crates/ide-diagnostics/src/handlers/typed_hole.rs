@@ -3,13 +3,13 @@ use hir::{
     term_search::{term_search, TermSearchConfig, TermSearchCtx},
     ClosureStyle, HirDisplay, ImportPathConfig,
 };
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
     label::Label,
     source_change::SourceChange,
 };
 use itertools::Itertools;
-use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 

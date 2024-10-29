@@ -6,11 +6,13 @@ use std::{
 };
 
 use crossbeam_channel::{after, select, Receiver};
+use itertools::Itertools;
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
 use parking_lot::{Mutex, MutexGuard};
 use paths::{Utf8Path, Utf8PathBuf};
 use rust_analyzer::{
+    cli::flags,
     config::{Config, ConfigChange, ConfigErrors},
     lsp, main_loop,
 };
@@ -82,6 +84,46 @@ impl Project<'_> {
         }
         merge(&mut self.config, config);
         self
+    }
+
+    pub(crate) fn run_lsif(self) -> String {
+        let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
+            if self.root_dir_contains_symlink {
+                TestDir::new_symlink()
+            } else {
+                TestDir::new()
+            }
+        });
+
+        let FixtureWithProjectMeta {
+            fixture,
+            mini_core,
+            proc_macro_names,
+            toolchain,
+            target_data_layout: _,
+        } = FixtureWithProjectMeta::parse(self.fixture);
+        assert!(proc_macro_names.is_empty());
+        assert!(mini_core.is_none());
+        assert!(toolchain.is_none());
+
+        for entry in fixture {
+            let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+        }
+
+        let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
+        let mut buf = Vec::new();
+        flags::Lsif::run(
+            flags::Lsif {
+                path: tmp_dir_path.join(self.roots.iter().exactly_one().unwrap()).into(),
+                exclude_vendored_libraries: false,
+            },
+            &mut buf,
+            None,
+        )
+        .unwrap();
+        String::from_utf8(buf).unwrap()
     }
 
     pub(crate) fn server(self) -> Server {

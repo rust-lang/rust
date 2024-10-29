@@ -12,7 +12,7 @@ use syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
 
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 // Feature: On Enter
 //

@@ -122,7 +122,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
         let mut expn_text = String::new();
         if let Some(err) = exp.err {
-            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).0);
+            format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).message);
         }
         let (parse, token_map) = exp.value;
         if expect_errors {

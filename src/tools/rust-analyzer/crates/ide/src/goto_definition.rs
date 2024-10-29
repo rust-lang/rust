@@ -13,7 +13,6 @@ use ide_db::{
     RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
-
 use span::{Edition, FileId};
 use syntax::{
     ast::{self, HasLoopBody},
@@ -99,6 +98,7 @@ pub(crate) fn goto_definition(
                     return Some(vec![x]);
                 }
             }
+
             Some(
                 IdentClass::classify_node(sema, &parent)?
                     .definitions()
@@ -418,10 +418,10 @@ fn expr_to_nav(
 
 #[cfg(test)]
 mod tests {
+    use crate::fixture;
     use ide_db::FileRange;
     use itertools::Itertools;
-
-    use crate::fixture;
+    use syntax::SmolStr;
 
     #[track_caller]
     fn check(ra_fixture: &str) {
@@ -448,6 +448,170 @@ mod tests {
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    fn check_name(expected_name: &str, ra_fixture: &str) {
+        let (analysis, position, _) = fixture::annotations(ra_fixture);
+        let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
+        assert!(navs.len() < 2, "expected single navigation target but encountered {}", navs.len());
+        let Some(target) = navs.into_iter().next() else {
+            panic!("expected single navigation target but encountered none");
+        };
+        assert_eq!(target.name, SmolStr::new_inline(expected_name));
+    }
+
+    #[test]
+    fn goto_def_pat_range_to_inclusive() {
+        check_name(
+            "RangeToInclusive",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        ..$0='z' => true,
+        _ => false
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_to() {
+        check_name(
+            "RangeTo",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        .$0.'z' => true,
+        _ => false
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range() {
+        check_name(
+            "Range",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'.$0.'z' => true,
+        _ => false
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_inclusive() {
+        check_name(
+            "RangeInclusive",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'..$0='z' => true,
+        _ => false
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_pat_range_from() {
+        check_name(
+            "RangeFrom",
+            r#"
+//- minicore: range
+fn f(ch: char) -> bool {
+    match ch {
+        'a'..$0 => true,
+        _ => false
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range() {
+        check_name(
+            "Range",
+            r#"
+//- minicore: range
+let x = 0.$0.1;
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range_from() {
+        check_name(
+            "RangeFrom",
+            r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[0.$0.]
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range_inclusive() {
+        check_name(
+            "RangeInclusive",
+            r#"
+//- minicore: range
+let x = 0.$0.=1;
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range_full() {
+        check_name(
+            "RangeFull",
+            r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.]
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range_to() {
+        check_name(
+            "RangeTo",
+            r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.10]
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_expr_range_to_inclusive() {
+        check_name(
+            "RangeToInclusive",
+            r#"
+//- minicore: range
+fn f(arr: &[i32]) -> &[i32] {
+    &arr[.$0.=10]
+}
+"#,
+        );
     }
 
     #[test]
@@ -2835,6 +2999,26 @@ mod bar {
 mod m {}
 
 use foo::m;
+"#,
+        );
+    }
+
+    #[test]
+    fn macro_label_hygiene() {
+        check(
+            r#"
+macro_rules! m {
+    ($x:stmt) => {
+        'bar: loop { $x }
+    };
+}
+
+fn foo() {
+    'bar: loop {
+ // ^^^^
+        m!(continue 'bar$0);
+    }
+}
 "#,
         );
     }

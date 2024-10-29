@@ -1,10 +1,10 @@
 use hir::{db::ExpandDatabase, HirFileIdExt, InFile};
 use ide_db::source_change::SourceChange;
+use ide_db::text_edit::TextEdit;
 use syntax::{
     ast::{self, HasArgList},
     AstNode, TextRange,
 };
-use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
