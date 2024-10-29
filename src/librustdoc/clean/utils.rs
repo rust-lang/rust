@@ -24,7 +24,6 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
-use crate::html::format::visibility_to_src_with_space;
 
 #[cfg(test)]
 mod tests;
@@ -599,7 +598,7 @@ pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
-pub(super) fn render_macro_arms<'a>(
+fn render_macro_arms<'a>(
     tcx: TyCtxt<'_>,
     matchers: impl Iterator<Item = &'a TokenTree>,
     arm_delim: &str,
@@ -620,9 +619,6 @@ pub(super) fn display_macro_source(
     cx: &mut DocContext<'_>,
     name: Symbol,
     def: &ast::MacroDef,
-    def_id: DefId,
-    vis: ty::Visibility<DefId>,
-    is_doc_hidden: bool,
 ) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
@@ -632,18 +628,13 @@ pub(super) fn display_macro_source(
     } else {
         if matchers.len() <= 1 {
             format!(
-                "{vis}macro {name}{matchers} {{\n    ...\n}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
+                "macro {name}{matchers} {{\n    ...\n}}",
                 matchers = matchers
                     .map(|matcher| render_macro_matcher(cx.tcx, matcher))
                     .collect::<String>(),
             )
         } else {
-            format!(
-                "{vis}macro {name} {{\n{arms}}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
-                arms = render_macro_arms(cx.tcx, matchers, ","),
-            )
+            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ","))
         }
     }
 }

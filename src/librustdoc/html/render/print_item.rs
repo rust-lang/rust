@@ -35,7 +35,6 @@ use crate::html::format::{
     Buffer, Ending, PrintWithSpace, display_fn, join_with_double_colon, print_abi_with_space,
     print_constness_with_space, print_where_clause, visibility_print_with_space,
 };
-use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
@@ -1745,7 +1744,13 @@ fn item_variants(
 }
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
-    highlight::render_item_decl_with_highlighting(&t.source, w);
+    wrap_item(w, |w| {
+        // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
+        if !t.macro_rules {
+            write!(w, "{}", visibility_print_with_space(it, cx));
+        }
+        write!(w, "{}", Escape(&t.source));
+    });
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
