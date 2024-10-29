@@ -364,7 +364,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        if fn_abi.ret.layout.abi.is_uninhabited() {
+        if fn_abi.ret.layout.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
         }
 
