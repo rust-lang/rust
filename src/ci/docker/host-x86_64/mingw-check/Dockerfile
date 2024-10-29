@@ -51,7 +51,8 @@ ENV SCRIPT \
            /scripts/check-default-config-profiles.sh && \
            python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
            python3 ../x.py clippy bootstrap -Dwarnings && \
-           python3 ../x.py clippy compiler library -Aclippy::all -Dclippy::correctness && \
+           python3 ../x.py clippy library -Aclippy::all -Dclippy::correctness && \
+           python3 ../x.py clippy compiler -Aclippy::all -Dclippy::correctness -Dclippy::clone_on_ref_ptr && \
            python3 ../x.py build --stage 0 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \

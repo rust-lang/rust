@@ -364,7 +364,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     span,
                     concrete_ty,
                     r,
-                    choice_regions.clone(),
+                    Lrc::clone(&choice_regions),
                 )
             },
         });

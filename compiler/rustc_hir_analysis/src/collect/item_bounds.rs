@@ -367,20 +367,8 @@ pub(super) fn explicit_item_bounds_with_filter(
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
             let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
-            let item_ty = Ty::new_projection_from_args(
-                tcx,
-                def_id.to_def_id(),
-                ty::GenericArgs::identity_for_item(tcx, def_id),
-            );
-            let bounds = opaque_type_bounds(
-                tcx,
-                opaque_def_id.expect_local(),
-                opaque_ty.bounds,
-                item_ty,
-                opaque_ty.span,
-                filter,
-            );
-            assert_only_contains_predicates_from(filter, bounds, item_ty);
+            let bounds =
+                associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
             return ty::EarlyBinder::bind(bounds);
         }
         Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(

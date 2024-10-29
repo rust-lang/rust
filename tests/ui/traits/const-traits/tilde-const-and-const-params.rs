@@ -8,6 +8,7 @@ struct Foo<const N: usize>;
 impl<const N: usize> Foo<N> {
     fn add<A: ~const Add42>(self) -> Foo<{ A::add(N) }> {
         //~^ ERROR `~const` is not allowed here
+        //~| ERROR the trait bound `A: const Add42` is not satisfied
         Foo
     }
 }
@@ -25,6 +26,7 @@ impl const Add42 for () {
 
 fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
     //~^ ERROR `~const` is not allowed here
+    //~| ERROR the trait bound `A: const Add42` is not satisfied
     Foo
 }
 

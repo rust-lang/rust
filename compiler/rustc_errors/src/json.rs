@@ -367,9 +367,9 @@ impl Diagnostic {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}
         }
-        HumanEmitter::new(dst, je.fallback_bundle.clone())
+        HumanEmitter::new(dst, Lrc::clone(&je.fallback_bundle))
             .short_message(short)
-            .sm(Some(je.sm.clone()))
+            .sm(Some(Lrc::clone(&je.sm)))
             .fluent_bundle(je.fluent_bundle.clone())
             .diagnostic_width(je.diagnostic_width)
             .macro_backtrace(je.macro_backtrace)

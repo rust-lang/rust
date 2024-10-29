@@ -7,11 +7,6 @@ LL | #![feature(derive_const, effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
   --> $DIR/derive-const-non-const-type.rs:10:16
    |
@@ -33,6 +28,6 @@ LL | pub struct S(A);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0015`.

@@ -7,11 +7,6 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error: const `impl` for trait `Foo` which is not marked with `#[const_trait]`
   --> $DIR/spec-effectvar-ice.rs:11:15
    |
@@ -60,5 +55,5 @@ error: cannot specialize on trait `Specialize`
 LL | impl<T> const Foo for T where T: const Specialize {}
    |                                  ^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 

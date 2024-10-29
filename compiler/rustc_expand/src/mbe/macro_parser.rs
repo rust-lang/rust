@@ -622,7 +622,7 @@ impl TtParser {
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
-        self.cur_mps.push(MatcherPos { idx: 0, matches: self.empty_matches.clone() });
+        self.cur_mps.push(MatcherPos { idx: 0, matches: Rc::clone(&self.empty_matches) });
 
         loop {
             self.next_mps.clear();
