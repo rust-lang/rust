@@ -96,8 +96,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let mut all_facts =
         (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
-    let universal_regions = Rc::new(universal_regions);
-
     let elements = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
@@ -107,7 +105,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             param_env,
             body,
             promoted,
-            Rc::clone(&universal_regions),
+            universal_regions,
             location_table,
             borrow_set,
             &mut all_facts,
@@ -140,11 +138,10 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         body,
         borrow_set,
         move_data,
-        &universal_regions,
         &universal_region_relations,
     );
 
-    if let Some(guar) = universal_regions.tainted_by_errors() {
+    if let Some(guar) = universal_region_relations.universal_regions.tainted_by_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
         // outlives bounds that we may end up checking.
         outlives_constraints = Default::default();
@@ -157,7 +154,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let mut regioncx = RegionInferenceContext::new(
         infcx,
         var_origins,
-        universal_regions,
         placeholder_indices,
         universal_region_relations,
         outlives_constraints,

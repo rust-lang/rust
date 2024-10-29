@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_hir::def::DefKind;
@@ -23,7 +21,7 @@ use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
 pub(crate) struct UniversalRegionRelations<'tcx> {
-    universal_regions: Rc<UniversalRegions<'tcx>>,
+    pub(crate) universal_regions: UniversalRegions<'tcx>,
 
     /// Stores the outlives relations that are known to hold from the
     /// implied bounds, in-scope where-clauses, and that sort of
@@ -54,7 +52,7 @@ pub(crate) fn create<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
-    universal_regions: Rc<UniversalRegions<'tcx>>,
+    universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> CreateResult<'tcx> {
     UniversalRegionRelationsBuilder {
@@ -184,7 +182,7 @@ impl UniversalRegionRelations<'_> {
 struct UniversalRegionRelationsBuilder<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    universal_regions: Rc<UniversalRegions<'tcx>>,
+    universal_regions: UniversalRegions<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 
@@ -220,7 +218,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //   region `'r`, all of which are provided by our caller
         let fr_static = self.universal_regions.fr_static;
         let fr_fn_body = self.universal_regions.fr_fn_body;
-        for fr in self.universal_regions.universal_regions() {
+        for fr in self.universal_regions.universal_regions_iter() {
             debug!("build: relating free region {:?} to itself and to 'static", fr);
             self.relate_universal_regions(fr, fr);
             self.relate_universal_regions(fr_static, fr);

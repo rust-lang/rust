@@ -74,7 +74,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!(?opaque_type_key, ?concrete_type);
 
             let mut arg_regions: Vec<(ty::RegionVid, ty::Region<'_>)> =
-                vec![(self.universal_regions.fr_static, infcx.tcx.lifetimes.re_static)];
+                vec![(self.universal_regions().fr_static, infcx.tcx.lifetimes.re_static)];
 
             let opaque_type_key =
                 opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |region| {
@@ -88,12 +88,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         // the same name and simplifies subsequent handling.
                         // See [rustc-dev-guide chapter] § "Semantic lifetime equality".
                         NllRegionVariableOrigin::FreeRegion => self
-                            .universal_regions
                             .universal_regions()
+                            .universal_regions_iter()
                             .filter(|&ur| {
                                 // See [rustc-dev-guide chapter] § "Closure restrictions".
                                 !matches!(
-                                    self.universal_regions.region_classification(ur),
+                                    self.universal_regions().region_classification(ur),
                                     Some(RegionClassification::External)
                                 )
                             })

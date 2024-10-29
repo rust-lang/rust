@@ -121,7 +121,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    universal_regions: Rc<UniversalRegions<'tcx>>,
+    universal_regions: UniversalRegions<'tcx>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
@@ -150,7 +150,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         infcx,
         param_env,
         implicit_region_bound,
-        Rc::clone(&universal_regions),
+        universal_regions,
         &mut constraints,
     );
 
@@ -166,7 +166,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         known_type_outlives_obligations,
         implicit_region_bound,
         reported_errors: Default::default(),
-        universal_regions: &universal_regions,
+        universal_regions: &universal_region_relations.universal_regions,
         location_table,
         all_facts,
         borrow_set,
