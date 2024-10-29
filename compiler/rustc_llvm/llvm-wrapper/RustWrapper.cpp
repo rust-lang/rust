@@ -1231,7 +1231,7 @@ extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
   return dwarf::DW_OP_plus_uconst;
 }
 
-extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
+extern "C" uint64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
   return dwarf::DW_OP_LLVM_fragment;
 }
 
