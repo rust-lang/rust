@@ -41,7 +41,7 @@ body:
                             Block {
                                 targeted_by_break: false
                                 span: $DIR/thir-tree-match.rs:15:32: 21:2 (#0)
-                                region_scope: Node(25)
+                                region_scope: Node(3)
                                 safety_mode: Safe
                                 stmts: []
                                 expr:
@@ -51,8 +51,8 @@ body:
                                         span: $DIR/thir-tree-match.rs:16:5: 20:6 (#0)
                                         kind: 
                                             Scope {
-                                                region_scope: Node(3)
-                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).3))
+                                                region_scope: Node(4)
+                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).4))
                                                 value:
                                                     Expr {
                                                         ty: bool
@@ -67,8 +67,8 @@ body:
                                                                         span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
                                                                         kind: 
                                                                             Scope {
-                                                                                region_scope: Node(4)
-                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).4))
+                                                                                region_scope: Node(5)
+                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).5))
                                                                                 value:
                                                                                     Expr {
                                                                                         ty: Foo
@@ -123,16 +123,16 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(12))
+                                                                                temp_lifetime: Some(Node(13))
                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                 kind: 
                                                                                     Scope {
-                                                                                        region_scope: Node(13)
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).13))
+                                                                                        region_scope: Node(14)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).14))
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(12))
+                                                                                                temp_lifetime: Some(Node(13))
                                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0) }, neg: false)
@@ -140,8 +140,8 @@ body:
                                                                                             }
                                                                                     }
                                                                             }
-                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).12))
-                                                                        scope: Node(12)
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).13))
+                                                                        scope: Node(13)
                                                                         span: $DIR/thir-tree-match.rs:17:9: 17:40 (#0)
                                                                     }
                                                                     Arm {
@@ -175,16 +175,16 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(18))
+                                                                                temp_lifetime: Some(Node(19))
                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                 kind: 
                                                                                     Scope {
-                                                                                        region_scope: Node(19)
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).19))
+                                                                                        region_scope: Node(20)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).20))
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(18))
+                                                                                                temp_lifetime: Some(Node(19))
                                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0) }, neg: false)
@@ -192,8 +192,8 @@ body:
                                                                                             }
                                                                                     }
                                                                             }
-                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).18))
-                                                                        scope: Node(18)
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).19))
+                                                                        scope: Node(19)
                                                                         span: $DIR/thir-tree-match.rs:18:9: 18:32 (#0)
                                                                     }
                                                                     Arm {
@@ -219,16 +219,16 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(23))
+                                                                                temp_lifetime: Some(Node(24))
                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                 kind: 
                                                                                     Scope {
-                                                                                        region_scope: Node(24)
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).24))
+                                                                                        region_scope: Node(25)
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).25))
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(23))
+                                                                                                temp_lifetime: Some(Node(24))
                                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0) }, neg: false)
@@ -236,8 +236,8 @@ body:
                                                                                             }
                                                                                     }
                                                                             }
-                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).23))
-                                                                        scope: Node(23)
+                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).24))
+                                                                        scope: Node(24)
                                                                         span: $DIR/thir-tree-match.rs:19:9: 19:28 (#0)
                                                                     }
                                                                 ]
