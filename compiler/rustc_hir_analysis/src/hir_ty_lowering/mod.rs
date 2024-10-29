@@ -713,7 +713,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             bounds.push_const_bound(
                                 tcx,
                                 poly_trait_ref,
-                                ty::HostPolarity::Const,
+                                ty::BoundConstness::Const,
                                 span,
                             );
                         }
@@ -736,7 +736,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => match constness {
                 hir::BoundConstness::Maybe(span) => {
                     if polarity == ty::PredicatePolarity::Positive {
-                        bounds.push_const_bound(tcx, poly_trait_ref, ty::HostPolarity::Maybe, span);
+                        bounds.push_const_bound(
+                            tcx,
+                            poly_trait_ref,
+                            ty::BoundConstness::Maybe,
+                            span,
+                        );
                     }
                 }
                 hir::BoundConstness::Always(_) | hir::BoundConstness::Never => {}
