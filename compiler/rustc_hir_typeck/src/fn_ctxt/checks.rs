@@ -1565,7 +1565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // AST fragment checking
-    pub(in super::super) fn check_lit(
+    pub(in super::super) fn check_expr_lit(
         &self,
         lit: &hir::Lit,
         expected: Expectation<'tcx>,
@@ -1747,7 +1747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(blk) = decl.origin.try_get_else() {
             let previous_diverges = self.diverges.get();
-            let else_ty = self.check_block_with_expected(blk, NoExpectation);
+            let else_ty = self.check_expr_block(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
             if let Err(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
@@ -1805,7 +1805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
         let unit = self.tcx.types.unit;
-        let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
+        let ty = self.check_expr_block(blk, ExpectHasType(unit));
 
         // if the block produces a `!` value, that can always be
         // (effectively) coerced to unit.
@@ -1814,7 +1814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn check_block_with_expected(
+    pub(in super::super) fn check_expr_block(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,

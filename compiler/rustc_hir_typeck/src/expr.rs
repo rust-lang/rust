@@ -452,15 +452,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Lit(ref lit) => self.check_lit(lit, expected),
-            ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs, expected),
+            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
+            ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
             ExprKind::AssignOp(op, lhs, rhs) => {
-                self.check_binop_assign(expr, op, lhs, rhs, expected)
+                self.check_expr_binop_assign(expr, op, lhs, rhs, expected)
             }
-            ExprKind::Unary(unop, oprnd) => self.check_expr_unary(unop, oprnd, expected, expr),
+            ExprKind::Unary(unop, oprnd) => self.check_expr_unop(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
@@ -473,7 +473,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
                 self.check_expr_asm(asm)
             }
-            ExprKind::OffsetOf(container, fields) => self.check_offset_of(container, fields, expr),
+            ExprKind::OffsetOf(container, fields) => {
+                self.check_expr_offset_of(container, fields, expr)
+            }
             ExprKind::Break(destination, ref expr_opt) => {
                 self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
@@ -492,13 +494,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_loop(body, source, expected, expr)
             }
             ExprKind::Match(discrim, arms, match_src) => {
-                self.check_match(expr, discrim, arms, expected, match_src)
+                self.check_expr_match(expr, discrim, arms, expected, match_src)
             }
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
-            ExprKind::Block(body, _) => self.check_block_with_expected(body, expected),
-            ExprKind::Call(callee, args) => self.check_call(expr, callee, args, expected),
+            ExprKind::Block(body, _) => self.check_expr_block(body, expected),
+            ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
             ExprKind::MethodCall(segment, receiver, args, _) => {
-                self.check_method_call(expr, segment, receiver, args, expected)
+                self.check_expr_method_call(expr, segment, receiver, args, expected)
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
@@ -508,7 +510,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ascribed_ty
             }
             ExprKind::If(cond, then_expr, opt_else_expr) => {
-                self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
+                self.check_expr_if(cond, then_expr, opt_else_expr, expr.span, expected)
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
@@ -520,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Struct(qpath, fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            ExprKind::Field(base, field) => self.check_field(expr, base, field, expected),
+            ExprKind::Field(base, field) => self.check_expr_field(expr, base, field, expected),
             ExprKind::Index(base, idx, brackets_span) => {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
@@ -529,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_unary(
+    fn check_expr_unop(
         &self,
         unop: hir::UnOp,
         oprnd: &'tcx hir::Expr<'tcx>,
@@ -952,7 +954,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.ret_coercion_span.get().is_none() {
                 self.ret_coercion_span.set(Some(e.span));
             }
-            self.check_return_expr(e, true);
+            self.check_return_or_body_tail(e, true);
         } else {
             let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
             if self.ret_coercion_span.get().is_none() {
@@ -1015,7 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// `explicit_return` is `true` if we're checking an explicit `return expr`,
     /// and `false` if we're checking a trailing expression.
-    pub(super) fn check_return_expr(
+    pub(super) fn check_return_or_body_tail(
         &self,
         return_expr: &'tcx hir::Expr<'tcx>,
         explicit_return: bool,
@@ -1239,7 +1241,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // A generic function for checking the 'then' and 'else' clauses in an 'if'
     // or 'if-else' expression.
-    fn check_then_else(
+    fn check_expr_if(
         &self,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
@@ -1522,7 +1524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Checks a method call.
-    fn check_method_call(
+    fn check_expr_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
@@ -2574,7 +2576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Check field access expressions
-    fn check_field(
+    fn check_expr_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         base: &'tcx hir::Expr<'tcx>,
@@ -3515,8 +3517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let previous_diverges = self.diverges.get();
 
                     // The label blocks should have unit return value or diverge.
-                    let ty =
-                        self.check_block_with_expected(block, ExpectHasType(self.tcx.types.unit));
+                    let ty = self.check_expr_block(block, ExpectHasType(self.tcx.types.unit));
                     if !ty.is_never() {
                         self.demand_suptype(block.span, self.tcx.types.unit, ty);
                         diverge = false;
@@ -3531,7 +3532,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if diverge { self.tcx.types.never } else { self.tcx.types.unit }
     }
 
-    fn check_offset_of(
+    fn check_expr_offset_of(
         &self,
         container: &'tcx hir::Ty<'tcx>,
         fields: &[Ident],

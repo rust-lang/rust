@@ -63,7 +63,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(crate) fn check_call(
+    pub(crate) fn check_expr_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,

@@ -137,7 +137,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     }
 
     fcx.is_whole_body.set(true);
-    fcx.check_return_expr(body.value, false);
+    fcx.check_return_or_body_tail(body.value, false);
 
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't
