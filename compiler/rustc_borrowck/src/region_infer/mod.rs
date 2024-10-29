@@ -733,7 +733,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         // Now take member constraints into account.
-        let member_constraints = self.member_constraints.clone();
+        let member_constraints = Rc::clone(&self.member_constraints);
         for m_c_i in member_constraints.indices(scc_a) {
             self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
         }
@@ -1679,7 +1679,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
-        let member_constraints = self.member_constraints.clone();
+        let member_constraints = Rc::clone(&self.member_constraints);
         for m_c_i in member_constraints.all_indices() {
             debug!(?m_c_i);
             let m_c = &member_constraints[m_c_i];

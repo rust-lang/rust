@@ -134,7 +134,7 @@ impl<D: Deps> DepGraph<D> {
             encoder,
             record_graph,
             record_stats,
-            prev_graph.clone(),
+            Arc::clone(&prev_graph),
         );
 
         let colors = DepNodeColorMap::new(prev_graph_node_count);
