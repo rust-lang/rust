@@ -859,6 +859,7 @@ symbols! {
         eprint_macro,
         eprintln_macro,
         eq,
+        ergonomic_clones,
         ermsb_target_feature,
         exact_div,
         except,
