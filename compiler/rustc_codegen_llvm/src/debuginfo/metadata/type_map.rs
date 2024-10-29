@@ -9,7 +9,7 @@ use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_target::abi::{Align, Size, VariantIdx};
 
 use super::{SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
 use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
 use crate::llvm::{self};
@@ -191,7 +191,7 @@ pub(super) fn stub<'ll, 'tcx>(
                 llvm::LLVMRustDIBuilderCreateStructType(
                     DIB(cx),
                     containing_scope,
-                    name.as_ptr().cast(),
+                    name.as_c_char_ptr(),
                     name.len(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
@@ -202,7 +202,7 @@ pub(super) fn stub<'ll, 'tcx>(
                     empty_array,
                     0,
                     vtable_holder,
-                    unique_type_id_str.as_ptr().cast(),
+                    unique_type_id_str.as_c_char_ptr(),
                     unique_type_id_str.len(),
                 )
             }
@@ -211,7 +211,7 @@ pub(super) fn stub<'ll, 'tcx>(
             llvm::LLVMRustDIBuilderCreateUnionType(
                 DIB(cx),
                 containing_scope,
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
@@ -220,7 +220,7 @@ pub(super) fn stub<'ll, 'tcx>(
                 flags,
                 Some(empty_array),
                 0,
-                unique_type_id_str.as_ptr().cast(),
+                unique_type_id_str.as_c_char_ptr(),
                 unique_type_id_str.len(),
             )
         },

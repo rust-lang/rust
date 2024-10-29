@@ -415,7 +415,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         instance: Option<ty::Instance<'tcx>>,
     ) {
         let mut func_attrs = SmallVec::<[_; 3]>::new();
-        if self.ret.layout.abi.is_uninhabited() {
+        if self.ret.layout.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
         }
         if !self.can_unwind {
@@ -532,7 +532,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
         let mut func_attrs = SmallVec::<[_; 2]>::new();
-        if self.ret.layout.abi.is_uninhabited() {
+        if self.ret.layout.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
         }
         if !self.can_unwind {

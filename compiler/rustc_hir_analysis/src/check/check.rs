@@ -1,6 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
+use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
@@ -23,7 +24,6 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
@@ -172,7 +172,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             return;
         }
     };
-    if layout.abi.is_uninhabited() {
+    if layout.is_uninhabited() {
         tcx.node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),

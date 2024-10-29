@@ -31,7 +31,7 @@ use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::abi::FnAbi;
 use crate::builder::Builder;
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
@@ -364,7 +364,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        if fn_abi.ret.layout.abi.is_uninhabited() {
+        if fn_abi.ret.layout.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
         }
 
@@ -389,9 +389,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateMethod(
                 DIB(self),
                 containing_scope,
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
-                linkage_name.as_ptr().cast(),
+                linkage_name.as_c_char_ptr(),
                 linkage_name.len(),
                 file_metadata,
                 loc.line,
@@ -406,9 +406,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
-                linkage_name.as_ptr().cast(),
+                linkage_name.as_c_char_ptr(),
                 linkage_name.len(),
                 file_metadata,
                 loc.line,
@@ -494,7 +494,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                     DIB(cx),
                                     None,
-                                    name.as_ptr().cast(),
+                                    name.as_c_char_ptr(),
                                     name.len(),
                                     actual_type_metadata,
                                 ))
@@ -635,7 +635,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 DIB(self),
                 dwarf_tag,
                 scope_metadata,
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
                 file_metadata,
                 loc.line,

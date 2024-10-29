@@ -11,7 +11,6 @@ use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::Features;
-use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
@@ -27,8 +26,8 @@ use rustc_session::{LintStoreMarker, Session};
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::symbol::{Ident, Symbol, sym};
-use rustc_target::abi;
 use tracing::debug;
+use {rustc_abi as abi, rustc_hir as hir};
 
 use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;

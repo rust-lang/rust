@@ -1,5 +1,6 @@
 use std::assert_matches::debug_assert_matches;
 
+use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
@@ -8,7 +9,6 @@ use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintT
 use rustc_session::lint;
 use rustc_span::Symbol;
 use rustc_span::def_id::LocalDefId;
-use rustc_target::abi::FieldIdx;
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
 };

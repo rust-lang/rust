@@ -17,12 +17,12 @@ pub use self::IntPredicate::*;
 pub use self::Linkage::*;
 pub use self::MetadataType::*;
 pub use self::RealPredicate::*;
+pub use self::ffi::*;
+use crate::common::AsCCharPtr;
 
 pub mod archive_ro;
 pub mod diagnostic;
 mod ffi;
-
-pub use self::ffi::*;
 
 impl LLVMRustResult {
     pub fn into_result(self) -> Result<(), ()> {
@@ -53,9 +53,9 @@ pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
-            attr.as_ptr().cast(),
+            attr.as_c_char_ptr(),
             attr.len().try_into().unwrap(),
-            value.as_ptr().cast(),
+            value.as_c_char_ptr(),
             value.len().try_into().unwrap(),
         )
     }
@@ -65,7 +65,7 @@ pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
-            attr.as_ptr().cast(),
+            attr.as_c_char_ptr(),
             attr.len().try_into().unwrap(),
             std::ptr::null(),
             0,
@@ -294,7 +294,7 @@ pub fn get_value_name(value: &Value) -> &[u8] {
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
-        let data = name.as_ptr().cast();
+        let data = name.as_c_char_ptr();
         LLVMSetValueName2(value, data, name.len());
     }
 }
