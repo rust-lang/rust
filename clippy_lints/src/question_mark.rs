@@ -93,7 +93,7 @@ enum IfBlockType<'hir> {
 
 fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir Expr<'hir>> {
     if let Block {
-        stmts: &[],
+        stmts: [],
         expr: Some(els),
         ..
     } = block

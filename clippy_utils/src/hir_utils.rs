@@ -1189,11 +1189,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
                 self.hash_pat(pat);
             },
-            TyKind::Ptr(ref mut_ty) => {
+            TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::Ref(lifetime, ref mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(ref qpath) => self.hash_qpath(qpath),
+            TyKind::Path(qpath) => self.hash_qpath(qpath),
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);
             },

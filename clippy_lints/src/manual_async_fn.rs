@@ -169,7 +169,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
 }
 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
-    if let Some(Expr {
+    if let Some(&Expr {
         kind: ExprKind::Closure(&Closure { kind, body, .. }),
         ..
     }) = block.expr

@@ -21,8 +21,8 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
-        ExprKind::Closure(&Closure { body, .. }) => {
-            let body = cx.tcx.hir().body(body);
+        ExprKind::Closure(Closure { body, .. }) => {
+            let body = cx.tcx.hir().body(*body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
                 ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {

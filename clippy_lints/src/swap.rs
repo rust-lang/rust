@@ -392,7 +392,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
         for stmt in self.block.stmts {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
-                StmtKind::Let(LetStmt { ref init, .. }) => {
+                StmtKind::Let(LetStmt { init, .. }) => {
                     if let Some(init) = init.as_ref() {
                         v.visit_expr(init);
                     }

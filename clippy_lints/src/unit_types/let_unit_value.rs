@@ -194,7 +194,7 @@ fn needs_inferred_result_ty(
     let (id, receiver, args) = match e.kind {
         ExprKind::Call(
             Expr {
-                kind: ExprKind::Path(ref path),
+                kind: ExprKind::Path(path),
                 hir_id,
                 ..
             },

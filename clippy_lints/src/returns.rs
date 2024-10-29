@@ -347,7 +347,7 @@ fn check_final_expr<'tcx>(
     let peeled_drop_expr = expr.peel_drop_temps();
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
-        ExprKind::Ret(ref inner) => {
+        ExprKind::Ret(inner) => {
             // check if expr return nothing
             let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
                 extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)

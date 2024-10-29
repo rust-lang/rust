@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     .expect("lints must have a description field");
 
                 if let ExprKind::Lit(Spanned {
-                    node: LitKind::Str(ref sym, _),
+                    node: LitKind::Str(sym, _),
                     ..
                 }) = field.expr.kind
                 {
@@ -249,7 +249,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind
+        if let ast::AttrKind::Normal(attr_kind) = &attr.kind
             // Identify attribute
             && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
             && tool_name.ident.name == sym::clippy

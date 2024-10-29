@@ -689,11 +689,11 @@ pub fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> Vec<Res> {
 ///
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
-    let (base, path) = match *path {
+    let (base, path) = match path {
         [primitive] => {
             return vec![PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy)];
         },
-        [base, ref path @ ..] => (base, path),
+        [base, path @ ..] => (base, path),
         _ => return Vec::new(),
     };
 
@@ -935,7 +935,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             }
         },
         ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
-        ExprKind::Call(from_func, [ref arg]) => is_default_equivalent_from(cx, from_func, arg),
+        ExprKind::Call(from_func, [arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
@@ -948,7 +948,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
     {
         match arg.kind {
             ExprKind::Lit(hir::Lit {
-                node: LitKind::Str(ref sym, _),
+                node: LitKind::Str(sym, _),
                 ..
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
@@ -3460,7 +3460,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 pub fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
     matches!(
         cx.tcx.parent_hir_node(id),
-        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
+        Node::Stmt(..) | Node::Block(Block { stmts: [], .. })
     )
 }
 
