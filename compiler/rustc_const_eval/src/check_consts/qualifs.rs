@@ -2,11 +2,14 @@
 //!
 //! See the `Qualif` trait for more info.
 
+// FIXME(const_trait_impl): This API should be really reworked. It's dangerously general for
+// having basically only two use-cases that act in different ways.
+
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
@@ -59,19 +62,9 @@ pub trait Qualif {
     /// It also determines the `Qualif`s for primitive types.
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
 
-    /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
-    ///
-    /// By default, `Qualif`s propagate into ADTs in a structural way: An ADT only becomes
-    /// qualified if part of it is assigned a value with that `Qualif`. However, some ADTs *always*
-    /// have a certain `Qualif`, regardless of whether their fields have it. For example, a type
-    /// with a custom `Drop` impl is inherently `NeedsDrop`.
-    ///
-    /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> bool;
+    /// Returns `true` if the `Qualif` is not structural, i.e. that we should not recurse
+    /// into the operand.
+    fn is_non_structural<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool;
 
     /// Returns `true` if this `Qualif` behaves sructurally for pointers and references:
     /// the pointer/reference qualifies if and only if the pointee qualifies.
@@ -99,6 +92,11 @@ impl Qualif for HasMutInterior {
         // Avoid selecting for simple cases, such as builtin types.
         if ty.is_trivially_freeze() {
             return false;
+        }
+
+        // Avoid selecting for `UnsafeCell` either.
+        if ty.ty_adt_def().is_some_and(|adt| adt.is_unsafe_cell()) {
+            return true;
         }
 
         // We do not use `ty.is_freeze` here, because that requires revealing opaque types, which
@@ -129,11 +127,7 @@ impl Qualif for HasMutInterior {
         !errors.is_empty()
     }
 
-    fn in_adt_inherently<'tcx>(
-        _cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
+    fn is_non_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         adt.is_unsafe_cell()
@@ -144,6 +138,7 @@ impl Qualif for HasMutInterior {
     }
 }
 
+// FIXME(const_trait_impl): Get rid of this!
 /// Constant containing an ADT that implements `Drop`.
 /// This must be ruled out because implicit promotion would remove side-effects
 /// that occur as part of dropping that value. N.B., the implicit promotion has
@@ -163,11 +158,7 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.typing_env)
     }
 
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
+    fn is_non_structural<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         adt.has_dtor(cx.tcx)
     }
 
@@ -196,16 +187,32 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        // FIXME(const_trait_impl): Reimplement const drop checking.
-        NeedsDrop::in_any_value_of_ty(cx, ty)
+        if cx.tcx.features().const_trait_impl() {
+            let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+            let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.param_env));
+            let ocx = ObligationCtxt::new(&infcx);
+            ocx.register_obligation(Obligation::new(
+                cx.tcx,
+                ObligationCause::misc(cx.body.span, cx.def_id()),
+                cx.param_env,
+                ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
+                    .to_host_effect_clause(cx.tcx, match cx.const_kind() {
+                        rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+                        rustc_hir::ConstContext::Static(_)
+                        | rustc_hir::ConstContext::Const { .. } => ty::BoundConstness::Const,
+                    }),
+            ));
+            !ocx.select_all_or_error().is_empty()
+        } else {
+            NeedsDrop::in_any_value_of_ty(cx, ty)
+        }
     }
 
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
-        adt.has_non_const_dtor(cx.tcx)
+    fn is_non_structural<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+        // Even a `const` dtor may have `~const` bounds that may need to
+        // be satisfied, so this becomes non-structural as soon as the
+        // ADT gets a destructor at all.
+        adt.has_dtor(cx.tcx)
     }
 
     fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
@@ -261,14 +268,10 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(adt_did, _, args, ..) = **kind {
+            if let AggregateKind::Adt(adt_did, ..) = **kind {
                 let def = cx.tcx.adt_def(adt_did);
-                if Q::in_adt_inherently(cx, def, args) {
-                    return true;
-                }
-                // Don't do any value-based reasoning for unions.
-                if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
-                    return true;
+                if def.is_union() || Q::is_non_structural(cx, def) {
+                    return Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx));
                 }
             }
 

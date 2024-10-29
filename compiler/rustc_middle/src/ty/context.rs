@@ -384,6 +384,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_conditionally_const(def_id)
     }
 
+    fn alias_has_const_conditions(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
     fn const_conditions(
         self,
         def_id: DefId,
@@ -663,6 +667,7 @@ bidirectional_lang_item_map! {
     CoroutineYield,
     Destruct,
     DiscriminantKind,
+    Drop,
     DynMetadata,
     Fn,
     FnMut,

@@ -72,6 +72,14 @@ note: required by a bound in `t::ConstDropWithBound`
 LL |     pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
    |                                      ^^^^^ required by this bound in `ConstDropWithBound`
 
+error[E0493]: destructor of `S<'_>` cannot be evaluated at compile-time
+  --> $DIR/const-drop.rs:23:13
+   |
+LL |     let _ = S(&mut c);
+   |             ^^^^^^^^^- value is dropped here
+   |             |
+   |             the destructor for this type cannot be evaluated in constant functions
+
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:18:32
    |
@@ -86,7 +94,7 @@ error[E0277]: the trait bound `T: ~const SomeTrait` is not satisfied
 LL |             T::foo();
    |             ^^^^^^^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0277, E0493.
 For more information about an error, try `rustc --explain E0277`.

@@ -12,7 +12,7 @@ use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{EvalCtxt, Goal, NoSolution};
+use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 #[instrument(level = "trace", skip(ecx), ret)]
@@ -695,6 +695,78 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_) => return Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    }
+}
+
+pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+    let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
+
+    match self_ty.kind() {
+        // An ADT is `~const Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
+        ty::Adt(adt_def, args) => {
+            let mut const_conditions: Vec<_> = adt_def
+                .all_field_tys(cx)
+                .iter_instantiated(cx, args)
+                .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
+                .collect();
+            match adt_def.destructor(cx) {
+                // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
+                Some(AdtDestructorKind::NotConst) => return Err(NoSolution),
+                // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
+                Some(AdtDestructorKind::Const) => {
+                    let drop_def_id = cx.require_lang_item(TraitSolverLangItem::Drop);
+                    let drop_trait_ref = ty::TraitRef::new(cx, drop_def_id, [self_ty]);
+                    const_conditions.push(drop_trait_ref);
+                }
+                // No `Drop` impl, no need to require anything else.
+                None => {}
+            }
+            Ok(const_conditions)
+        }
+
+        ty::Array(ty, _) | ty::Pat(ty, _) | ty::Slice(ty) => {
+            Ok(vec![ty::TraitRef::new(cx, destruct_def_id, [ty])])
+        }
+
+        ty::Tuple(tys) => Ok(tys
+            .iter()
+            .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
+            .collect()),
+
+        // Trivially implement `~const Destruct`
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Never
+        | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::Error(_) => Ok(vec![]),
+
+        // Coroutines and closures could implement `~const Drop`,
+        // but they don't really need to right now.
+        ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _) => Err(NoSolution),
+
+        ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
+            Err(NoSolution)
+        }
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

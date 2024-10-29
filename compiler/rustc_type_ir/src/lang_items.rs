@@ -19,6 +19,7 @@ pub enum TraitSolverLangItem {
     CoroutineYield,
     Destruct,
     DiscriminantKind,
+    Drop,
     DynMetadata,
     Fn,
     FnMut,

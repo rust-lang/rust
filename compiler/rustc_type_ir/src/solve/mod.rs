@@ -326,3 +326,10 @@ impl MaybeCause {
         }
     }
 }
+
+/// Indicates that a `impl Drop for Adt` is `const` or not.
+#[derive(Debug)]
+pub enum AdtDestructorKind {
+    NotConst,
+    Const,
+}

@@ -18,6 +18,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
+use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
 use super::{
@@ -232,6 +233,13 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     fn is_fundamental(self) -> bool {
         self.is_fundamental()
     }
+
+    fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
+        Some(match self.destructor(tcx)?.constness {
+            hir::Constness::Const => AdtDestructorKind::Const,
+            hir::Constness::NotConst => AdtDestructorKind::NotConst,
+        })
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
@@ -400,10 +408,6 @@ impl<'tcx> AdtDef<'tcx> {
     /// Returns `true` if this type has a destructor.
     pub fn has_dtor(self, tcx: TyCtxt<'tcx>) -> bool {
         self.destructor(tcx).is_some()
-    }
-
-    pub fn has_non_const_dtor(self, tcx: TyCtxt<'tcx>) -> bool {
-        matches!(self.destructor(tcx), Some(Destructor { constness: hir::Constness::NotConst, .. }))
     }
 
     /// Asserts this is a struct or union and returns its unique variant.
