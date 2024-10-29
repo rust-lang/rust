@@ -172,8 +172,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // must be compatible. So we just accept everything with Pointer ABI as compatible,
         // even if this will accept some code that is not stably guaranteed to work.
         // This also handles function pointers.
-        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.abi {
-            abi::Abi::Scalar(s) => match s.primitive() {
+        let thin_pointer = |layout: TyAndLayout<'tcx>| match layout.backend_repr {
+            abi::BackendRepr::Scalar(s) => match s.primitive() {
                 abi::Primitive::Pointer(addr_space) => Some(addr_space),
                 _ => None,
             },

@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::Abi;
+use rustc_target::abi::BackendRepr;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -523,8 +523,8 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
 
     // e.g., `Rc<()>`
     let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
-    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.abi) {
-        Ok(Abi::Scalar(..)) => (),
+    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.backend_repr) {
+        Ok(BackendRepr::Scalar(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),
@@ -538,8 +538,8 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
     // e.g., `Rc<dyn Trait>`
     let trait_object_receiver =
         receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
-    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.abi) {
-        Ok(Abi::ScalarPair(..)) => (),
+    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.backend_repr) {
+        Ok(BackendRepr::ScalarPair(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),

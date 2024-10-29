@@ -81,8 +81,12 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
             let meta_items = attr.meta_item_list().unwrap_or_default();
             for meta_item in meta_items {
                 match meta_item.name_or_empty() {
+                    // FIXME: this never was about ABI and now this dump arg is confusing
                     sym::abi => {
-                        tcx.dcx().emit_err(LayoutAbi { span, abi: format!("{:?}", ty_layout.abi) });
+                        tcx.dcx().emit_err(LayoutAbi {
+                            span,
+                            abi: format!("{:?}", ty_layout.backend_repr),
+                        });
                     }
 
                     sym::align => {
