@@ -9,7 +9,7 @@ env:
 
 jobs:
   test:
-    name: Docker
+    name: Build and test
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -52,6 +52,9 @@ jobs:
           os: ubuntu-latest
         - target: x86_64-apple-darwin
           os: macos-13
+        - target: wasm32-unknown-unknown
+          os: ubuntu-latest
+          build_only: 1
         - target: i686-pc-windows-msvc
           os: windows-latest
         - target: x86_64-pc-windows-msvc
@@ -89,30 +92,19 @@ jobs:
 
     # Non-linux tests just use our raw script
     - name: Run locally
-      if: matrix.os != 'ubuntu-latest'
+      if: matrix.os != 'ubuntu-latest' || contains(matrix.target, 'wasm')
       shell: bash
       run: ./ci/run.sh ${{ matrix.target }}
 
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && !contains(matrix.target, 'wasm')
       run: |
         rustup target add x86_64-unknown-linux-musl
         cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
-  wasm:
-    name: WebAssembly
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: Install Rust
-      run: rustup update nightly --no-self-update && rustup default nightly
-    - run: rustup target add wasm32-unknown-unknown
-    - uses: Swatinem/rust-cache@v2
-    - run: cargo build --target wasm32-unknown-unknown
-
   builtins:
-    name: "The compiler-builtins crate works"
+    name: Check use with compiler-builtins
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -164,7 +156,6 @@ jobs:
   success:
     needs:
       - test
-      - wasm
       - builtins
       - benchmarks
       - msrv

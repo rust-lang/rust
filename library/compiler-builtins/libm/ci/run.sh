@@ -55,7 +55,7 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
     $cmd
     $cmd --features "unstable-intrinsics"
 
-    echo "can't run tests on $target"
+    echo "can't run tests on $target; skipping"
 else
     cmd="cargo test --all --target $target $extra_flags"
 
