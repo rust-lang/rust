@@ -419,6 +419,7 @@ pub(super) fn definition(
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
+    hovered_definition: bool,
     config: &HoverConfig,
     edition: Edition,
 ) -> Markup {
@@ -456,7 +457,7 @@ pub(super) fn definition(
         _ => def.label(db, edition),
     };
     let docs = def.docs(db, famous_defs, edition);
-    let value = (|| match def {
+    let value = || match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
@@ -494,9 +495,9 @@ pub(super) fn definition(
             Some(body.to_string())
         }
         _ => None,
-    })();
+    };
 
-    let layout_info = match def {
+    let layout_info = || match def {
         Definition::Field(it) => render_memory_layout(
             config.memory_layout,
             || it.layout(db),
@@ -529,12 +530,13 @@ pub(super) fn definition(
         _ => None,
     };
 
-    let dyn_compatibility_info = if let Definition::Trait(it) = def {
-        let mut dyn_compatibility_info = String::new();
-        render_dyn_compatibility(db, &mut dyn_compatibility_info, it.dyn_compatibility(db));
-        Some(dyn_compatibility_info)
-    } else {
-        None
+    let dyn_compatibility_info = || match def {
+        Definition::Trait(it) => {
+            let mut dyn_compatibility_info = String::new();
+            render_dyn_compatibility(db, &mut dyn_compatibility_info, it.dyn_compatibility(db));
+            Some(dyn_compatibility_info)
+        }
+        _ => None,
     };
 
     let mut desc = String::new();
@@ -542,16 +544,18 @@ pub(super) fn definition(
         desc.push_str(&notable_traits);
         desc.push('\n');
     }
-    if let Some(layout_info) = layout_info {
-        desc.push_str(&layout_info);
-        desc.push('\n');
-    }
-    if let Some(dyn_compatibility_info) = dyn_compatibility_info {
-        desc.push_str(&dyn_compatibility_info);
-        desc.push('\n');
+    if hovered_definition {
+        if let Some(layout_info) = layout_info() {
+            desc.push_str(&layout_info);
+            desc.push('\n');
+        }
+        if let Some(dyn_compatibility_info) = dyn_compatibility_info() {
+            desc.push_str(&dyn_compatibility_info);
+            desc.push('\n');
+        }
     }
     desc.push_str(&label);
-    if let Some(value) = value {
+    if let Some(value) = value() {
         desc.push_str(" = ");
         desc.push_str(&value);
     }
@@ -994,55 +998,53 @@ fn render_dyn_compatibility(
     safety: Option<DynCompatibilityViolation>,
 ) {
     let Some(osv) = safety else {
-        buf.push_str("// Dyn Compatible: Yes");
+        buf.push_str("// Is Dyn compatible");
         return;
     };
-    buf.push_str("// Dyn Compatible: No\n// - Reason: ");
+    buf.push_str("// Is not Dyn compatible due to ");
     match osv {
         DynCompatibilityViolation::SizedSelf => {
-            buf.push_str("has a `Self: Sized` bound");
+            buf.push_str("having a `Self: Sized` bound");
         }
         DynCompatibilityViolation::SelfReferential => {
-            buf.push_str("has a bound that references `Self`");
+            buf.push_str("having a bound that references `Self`");
         }
         DynCompatibilityViolation::Method(func, mvc) => {
             let name = hir::Function::from(func).name(db);
-            format_to!(
-                buf,
-                "has a method `{}` that is non dispatchable because of:\n//   - ",
-                name.as_str()
-            );
+            format_to!(buf, "having a method `{}` that is not dispatchable due to ", name.as_str());
             let desc = match mvc {
                 MethodViolationCode::StaticMethod => "missing a receiver",
-                MethodViolationCode::ReferencesSelfInput => "a parameter references `Self`",
-                MethodViolationCode::ReferencesSelfOutput => "the return type references `Self`",
+                MethodViolationCode::ReferencesSelfInput => "having a parameter referencing `Self`",
+                MethodViolationCode::ReferencesSelfOutput => "the return type referencing `Self`",
                 MethodViolationCode::ReferencesImplTraitInTrait => {
-                    "the return type contains `impl Trait`"
+                    "the return type containing `impl Trait`"
                 }
                 MethodViolationCode::AsyncFn => "being async",
                 MethodViolationCode::WhereClauseReferencesSelf => {
-                    "a where clause references `Self`"
+                    "a where clause referencing `Self`"
                 }
-                MethodViolationCode::Generic => "a non-lifetime generic parameter",
-                MethodViolationCode::UndispatchableReceiver => "a non-dispatchable receiver type",
+                MethodViolationCode::Generic => "having a const or type generic parameter",
+                MethodViolationCode::UndispatchableReceiver => {
+                    "having a non-dispatchable receiver type"
+                }
             };
             buf.push_str(desc);
         }
         DynCompatibilityViolation::AssocConst(const_) => {
             let name = hir::Const::from(const_).name(db);
             if let Some(name) = name {
-                format_to!(buf, "has an associated constant `{}`", name.as_str());
+                format_to!(buf, "having an associated constant `{}`", name.as_str());
             } else {
-                buf.push_str("has an associated constant");
+                buf.push_str("having an associated constant");
             }
         }
         DynCompatibilityViolation::GAT(alias) => {
             let name = hir::TypeAlias::from(alias).name(db);
-            format_to!(buf, "has a generic associated type `{}`", name.as_str());
+            format_to!(buf, "having a generic associated type `{}`", name.as_str());
         }
         DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
             let name = hir::Trait::from(super_trait).name(db);
-            format_to!(buf, "has a dyn incompatible supertrait `{}`", name.as_str());
+            format_to!(buf, "having a dyn incompatible supertrait `{}`", name.as_str());
         }
     }
 }

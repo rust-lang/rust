@@ -260,7 +260,6 @@ fn foo() {
             *local*
 
             ```rust
-            // size = 4, align = 4
             let local: i32
             ```
         "#]],
@@ -819,7 +818,6 @@ fn main() {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub field_a: u32
             ```
         "#]],
@@ -867,7 +865,6 @@ fn main() {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub 0: u32
             ```
         "#]],
@@ -888,7 +885,6 @@ fn foo(foo: Foo) {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub 0: u32
             ```
         "#]],
@@ -1670,7 +1666,6 @@ fn hover_for_local_variable() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
         "#]],
@@ -1700,7 +1695,6 @@ fn hover_local_var_edge() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
         "#]],
@@ -1985,7 +1979,6 @@ fn y() {
             *x*
 
             ```rust
-            // size = 4, align = 4
             let x: i32
             ```
         "#]],
@@ -2116,7 +2109,6 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             bar: u32
             ```
         "#]],
@@ -2135,7 +2127,6 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             bar: u32
             ```
         "#]],
@@ -2537,7 +2528,6 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -2574,7 +2564,6 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -2604,7 +2593,6 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -5750,7 +5738,6 @@ fn foo(e: E) {
             ```
 
             ```rust
-            // size = 0, align = 1
             A = 3
             ```
 
@@ -6036,7 +6023,6 @@ pub fn gimme() -> theitem::TheItem {
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct TheItem
             ```
 
@@ -6185,7 +6171,6 @@ mod string {
             ```
 
             ```rust
-            // size = 0, align = 1
             struct String
             ```
 
@@ -6948,7 +6933,6 @@ foo_macro!(
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Foo
             ```
 
@@ -6974,7 +6958,6 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            // size = 4, align = 4
             pub struct Foo(i32)
             ```
 
@@ -7175,7 +7158,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7195,7 +7177,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7219,9 +7200,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T { /* … */ }
             ```
         "#]],
@@ -7245,9 +7223,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7275,9 +7250,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7305,9 +7277,6 @@ impl T$0 for () {}
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7784,7 +7753,6 @@ fn test() {
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             f: u32
             ```
         "#]],
@@ -7825,7 +7793,6 @@ fn test() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             let foo: i32
             ```
         "#]],
@@ -7846,7 +7813,6 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7867,7 +7833,6 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7888,7 +7853,6 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7914,7 +7878,6 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -8419,7 +8382,6 @@ impl Iterator for S {
 
             ```rust
             // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
-            // size = 0, align = 1
             struct S
             ```
         "#]],
@@ -8678,7 +8640,6 @@ fn test() {
             *f*
 
             ```rust
-            // size = 0, align = 1
             let f: fn bar<3>(bool)
             ```
         "#]],
@@ -9159,7 +9120,6 @@ use a::A$0;
             ```
 
             ```rust
-            // size = 0, align = 1
             pub type A = B
             ```
 
@@ -9168,6 +9128,65 @@ use a::A$0;
             *This is the documentation for* `pub struct C`
 
             Docs for C
+        "#]],
+    );
+}
+
+#[test]
+fn dyn_compat() {
+    check(
+        r#"
+trait Compat$0 {}
+"#,
+        expect![[r#"
+            *Compat*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // Is Dyn compatible
+            trait Compat
+            ```
+        "#]],
+    );
+    check(
+        r#"
+trait UnCompat$0 {
+    fn f<T>() {}
+}
+"#,
+        expect![[r#"
+            *UnCompat*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // Is not Dyn compatible due to having a method `f` that is not dispatchable due to missing a receiver
+            trait UnCompat
+            ```
+        "#]],
+    );
+    check(
+        r#"
+trait UnCompat {
+    fn f<T>() {}
+}
+fn f<T: UnCompat$0>
+"#,
+        expect![[r#"
+            *UnCompat*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            trait UnCompat
+            ```
         "#]],
     );
 }
