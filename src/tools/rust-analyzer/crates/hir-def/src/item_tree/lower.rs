@@ -234,11 +234,11 @@ impl<'a> Ctx<'a> {
     fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<FileItemTreeId<Struct>> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let (fields, kind, attrs) = self.lower_fields(&strukt.kind(), &body_ctx);
+        let (fields, kind, attrs) = self.lower_fields(&strukt.kind(), &mut body_ctx);
         let (generic_params, generics_source_map) =
             self.lower_generic_params(HasImplicitSelf::No, strukt);
         types_map.shrink_to_fit();
@@ -273,7 +273,7 @@ impl<'a> Ctx<'a> {
     fn lower_fields(
         &mut self,
         strukt_kind: &ast::StructKind,
-        body_ctx: &LowerCtx<'_>,
+        body_ctx: &mut LowerCtx<'_>,
     ) -> (Box<[Field]>, FieldsShape, Vec<(usize, RawAttrs)>) {
         match strukt_kind {
             ast::StructKind::Record(it) => {
@@ -308,7 +308,11 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn lower_record_field(&mut self, field: &ast::RecordField, body_ctx: &LowerCtx<'_>) -> Field {
+    fn lower_record_field(
+        &mut self,
+        field: &ast::RecordField,
+        body_ctx: &mut LowerCtx<'_>,
+    ) -> Field {
         let name = match field.name() {
             Some(name) => name.as_name(),
             None => Name::missing(),
@@ -323,7 +327,7 @@ impl<'a> Ctx<'a> {
         &mut self,
         idx: usize,
         field: &ast::TupleField,
-        body_ctx: &LowerCtx<'_>,
+        body_ctx: &mut LowerCtx<'_>,
     ) -> Field {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
@@ -334,13 +338,13 @@ impl<'a> Ctx<'a> {
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
         let (fields, _, attrs) = match union.record_field_list() {
             Some(record_field_list) => {
-                self.lower_fields(&StructKind::Record(record_field_list), &body_ctx)
+                self.lower_fields(&StructKind::Record(record_field_list), &mut body_ctx)
             }
             None => (Box::default(), FieldsShape::Record, Vec::default()),
         };
@@ -409,12 +413,12 @@ impl<'a> Ctx<'a> {
     fn lower_variant(&mut self, variant: &ast::Variant) -> Idx<Variant> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let name = match variant.name() {
             Some(name) => name.as_name(),
             None => Name::missing(),
         };
-        let (fields, kind, attrs) = self.lower_fields(&variant.kind(), &body_ctx);
+        let (fields, kind, attrs) = self.lower_fields(&variant.kind(), &mut body_ctx);
         let ast_id = self.source_ast_id_map.ast_id(variant);
         types_map.shrink_to_fit();
         types_source_map.shrink_to_fit();
@@ -436,7 +440,7 @@ impl<'a> Ctx<'a> {
     fn lower_function(&mut self, func: &ast::Fn) -> Option<FileItemTreeId<Function>> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
 
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
@@ -457,7 +461,7 @@ impl<'a> Ctx<'a> {
                     RawAttrs::new(self.db.upcast(), &self_param, self.span_map()),
                 );
                 let self_type = match self_param.ty() {
-                    Some(type_ref) => TypeRef::from_ast(&body_ctx, type_ref),
+                    Some(type_ref) => TypeRef::from_ast(&mut body_ctx, type_ref),
                     None => {
                         let self_type = body_ctx.alloc_type_ref_desugared(TypeRef::Path(
                             Name::new_symbol_root(sym::Self_.clone()).into(),
@@ -492,7 +496,7 @@ impl<'a> Ctx<'a> {
                         Param { type_ref: None }
                     }
                     None => {
-                        let type_ref = TypeRef::from_ast_opt(&body_ctx, param.ty());
+                        let type_ref = TypeRef::from_ast_opt(&mut body_ctx, param.ty());
                         Param { type_ref: Some(type_ref) }
                     }
                 };
@@ -502,7 +506,7 @@ impl<'a> Ctx<'a> {
 
         let ret_type = match func.ret_type() {
             Some(rt) => match rt.ty() {
-                Some(type_ref) => TypeRef::from_ast(&body_ctx, type_ref),
+                Some(type_ref) => TypeRef::from_ast(&mut body_ctx, type_ref),
                 None if rt.thin_arrow_token().is_some() => body_ctx.alloc_error_type(),
                 None => body_ctx.alloc_type_ref_desugared(TypeRef::unit()),
             },
@@ -581,11 +585,11 @@ impl<'a> Ctx<'a> {
     ) -> Option<FileItemTreeId<TypeAlias>> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let name = type_alias.name()?.as_name();
-        let type_ref = type_alias.ty().map(|it| TypeRef::from_ast(&body_ctx, it));
+        let type_ref = type_alias.ty().map(|it| TypeRef::from_ast(&mut body_ctx, it));
         let visibility = self.lower_visibility(type_alias);
-        let bounds = self.lower_type_bounds(type_alias, &body_ctx);
+        let bounds = self.lower_type_bounds(type_alias, &mut body_ctx);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let (generic_params, generics_source_map) =
             self.lower_generic_params(HasImplicitSelf::No, type_alias);
@@ -612,9 +616,9 @@ impl<'a> Ctx<'a> {
     fn lower_static(&mut self, static_: &ast::Static) -> Option<FileItemTreeId<Static>> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let name = static_.name()?.as_name();
-        let type_ref = TypeRef::from_ast_opt(&body_ctx, static_.ty());
+        let type_ref = TypeRef::from_ast_opt(&mut body_ctx, static_.ty());
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
         let has_safe_kw = static_.safe_token().is_some();
@@ -639,9 +643,9 @@ impl<'a> Ctx<'a> {
     fn lower_const(&mut self, konst: &ast::Const) -> FileItemTreeId<Const> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         let name = konst.name().map(|it| it.as_name());
-        let type_ref = TypeRef::from_ast_opt(&body_ctx, konst.ty());
+        let type_ref = TypeRef::from_ast_opt(&mut body_ctx, konst.ty());
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         types_map.shrink_to_fit();
@@ -724,14 +728,14 @@ impl<'a> Ctx<'a> {
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> FileItemTreeId<Impl> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
 
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
         // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
         // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
         // equals itself.
-        let self_ty = TypeRef::from_ast_opt(&body_ctx, impl_def.self_ty());
-        let target_trait = impl_def.trait_().and_then(|tr| TraitRef::from_ast(&body_ctx, tr));
+        let self_ty = TypeRef::from_ast_opt(&mut body_ctx, impl_def.self_ty());
+        let target_trait = impl_def.trait_().and_then(|tr| TraitRef::from_ast(&mut body_ctx, tr));
         let is_negative = impl_def.excl_token().is_some();
         let is_unsafe = impl_def.unsafe_token().is_some();
 
@@ -870,13 +874,8 @@ impl<'a> Ctx<'a> {
     ) -> (Arc<GenericParams>, TypesSourceMap) {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
+        let mut body_ctx = self.body_ctx(&mut types_map, &mut types_source_map);
         debug_assert!(self.generic_param_attr_buffer.is_empty(),);
-        let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
-                               param| {
-            let attrs = RawAttrs::new(self.db.upcast(), &param, body_ctx.span_map());
-            debug_assert!(self.generic_param_attr_buffer.insert(item, attrs).is_none());
-        };
         body_ctx.take_impl_traits_bounds();
         let mut generics = GenericParamsCollector::default();
 
@@ -892,16 +891,19 @@ impl<'a> Ctx<'a> {
             );
             // add super traits as bounds on Self
             // i.e., `trait Foo: Bar` is equivalent to `trait Foo where Self: Bar`
-            generics.fill_bounds(
-                &body_ctx,
-                bounds,
-                Either::Left(body_ctx.alloc_type_ref_desugared(TypeRef::Path(
-                    Name::new_symbol_root(sym::Self_.clone()).into(),
-                ))),
-            );
+            let bound_target = Either::Left(body_ctx.alloc_type_ref_desugared(TypeRef::Path(
+                Name::new_symbol_root(sym::Self_.clone()).into(),
+            )));
+            generics.fill_bounds(&mut body_ctx, bounds, bound_target);
         }
 
-        generics.fill(&body_ctx, node, add_param_attrs);
+        let span_map = body_ctx.span_map().clone();
+        let add_param_attrs = |item: Either<LocalTypeOrConstParamId, LocalLifetimeParamId>,
+                               param| {
+            let attrs = RawAttrs::new(self.db.upcast(), &param, span_map.as_ref());
+            debug_assert!(self.generic_param_attr_buffer.insert(item, attrs).is_none());
+        };
+        generics.fill(&mut body_ctx, node, add_param_attrs);
 
         let generics = generics.finish(types_map, &mut types_source_map);
         (generics, types_source_map)
@@ -910,7 +912,7 @@ impl<'a> Ctx<'a> {
     fn lower_type_bounds(
         &mut self,
         node: &dyn ast::HasTypeBounds,
-        body_ctx: &LowerCtx<'_>,
+        body_ctx: &mut LowerCtx<'_>,
     ) -> Box<[TypeBound]> {
         match node.type_bound_list() {
             Some(bound_list) => {

@@ -465,13 +465,13 @@ impl<'a> TyLoweringContext<'a> {
                             let (mut types_map, mut types_source_map) =
                                 (TypesMap::default(), TypesSourceMap::default());
 
-                            let ctx = expander.ctx(
+                            let mut ctx = expander.ctx(
                                 self.db.upcast(),
                                 &mut types_map,
                                 &mut types_source_map,
                             );
                             // FIXME: Report syntax errors in expansion here
-                            let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
+                            let type_ref = TypeRef::from_ast(&mut ctx, expanded.tree());
 
                             drop(expander);
 
