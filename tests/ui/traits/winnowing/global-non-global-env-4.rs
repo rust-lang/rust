@@ -1,3 +1,5 @@
+//@ check-pass
+
 // A regression test for an edge case of candidate selection
 // in the old trait solver, see #132325 for more details. Unlike
 // the third test, this one has 3 impl candidates.
@@ -13,7 +15,7 @@ where
     (): Trait<T>,
     (): Trait<u32>,
 {
-    impls_trait(()) //~ ERROR mismatched types
+    impls_trait(())
 }
 
 fn main() {}
