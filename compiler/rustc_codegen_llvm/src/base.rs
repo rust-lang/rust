@@ -145,10 +145,8 @@ pub(crate) fn compile_codegen_unit(
 
 pub(crate) fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
     let Some(sect) = attrs.link_section else { return };
-    unsafe {
-        let buf = SmallCStr::new(sect.as_str());
-        llvm::LLVMSetSection(llval, buf.as_ptr());
-    }
+    let buf = SmallCStr::new(sect.as_str());
+    llvm::set_section(llval, &buf);
 }
 
 pub(crate) fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {

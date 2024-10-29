@@ -2416,6 +2416,7 @@ unsafe extern "C" {
         data: *const u8,
         len: usize,
         name: *const u8,
+        name_len: usize,
         out_len: &mut usize,
     ) -> *const u8;
 
