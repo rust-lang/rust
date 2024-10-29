@@ -25,7 +25,6 @@ use tracing::{debug, info};
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, save_temp_bitcode,
 };
-use crate::common::AsCCharPtr;
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
@@ -602,23 +601,9 @@ pub(crate) fn run_pass_manager(
     // This code is based off the code found in llvm's LTO code generator:
     //      llvm/lib/LTO/LTOCodeGenerator.cpp
     debug!("running the pass manager");
-    unsafe {
-        if !llvm::LLVMRustHasModuleFlag(
-            module.module_llvm.llmod(),
-            "LTOPostLink".as_c_char_ptr(),
-            11,
-        ) {
-            llvm::LLVMRustAddModuleFlagU32(
-                module.module_llvm.llmod(),
-                llvm::LLVMModFlagBehavior::Error,
-                c"LTOPostLink".as_ptr(),
-                1,
-            );
-        }
-        let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
-        let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage)?;
-    }
+    let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
+    let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
+    unsafe { write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) }?;
     debug!("lto done");
     Ok(())
 }

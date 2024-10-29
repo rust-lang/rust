@@ -91,45 +91,39 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     }
 
     pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe {
-            llvm::LLVMRustDIBuilderFinalize(self.builder);
-
-            if !sess.target.is_like_msvc {
-                // Debuginfo generation in LLVM by default uses a higher
-                // version of dwarf than macOS currently understands. We can
-                // instruct LLVM to emit an older version of dwarf, however,
-                // for macOS to understand. For more info see #11352
-                // This can be overridden using --llvm-opts -dwarf-version,N.
-                // Android has the same issue (#22398)
-                let dwarf_version = sess
-                    .opts
-                    .unstable_opts
-                    .dwarf_version
-                    .unwrap_or(sess.target.default_dwarf_version);
-                llvm::LLVMRustAddModuleFlagU32(
-                    self.llmod,
-                    llvm::LLVMModFlagBehavior::Warning,
-                    c"Dwarf Version".as_ptr(),
-                    dwarf_version,
-                );
-            } else {
-                // Indicate that we want CodeView debug information on MSVC
-                llvm::LLVMRustAddModuleFlagU32(
-                    self.llmod,
-                    llvm::LLVMModFlagBehavior::Warning,
-                    c"CodeView".as_ptr(),
-                    1,
-                )
-            }
-
-            // Prevent bitcode readers from deleting the debug info.
-            llvm::LLVMRustAddModuleFlagU32(
+        unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder) };
+        if !sess.target.is_like_msvc {
+            // Debuginfo generation in LLVM by default uses a higher
+            // version of dwarf than macOS currently understands. We can
+            // instruct LLVM to emit an older version of dwarf, however,
+            // for macOS to understand. For more info see #11352
+            // This can be overridden using --llvm-opts -dwarf-version,N.
+            // Android has the same issue (#22398)
+            let dwarf_version =
+                sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+            llvm::add_module_flag_u32(
                 self.llmod,
-                llvm::LLVMModFlagBehavior::Warning,
-                c"Debug Info Version".as_ptr(),
-                llvm::LLVMRustDebugMetadataVersion(),
+                llvm::ModuleFlagMergeBehavior::Warning,
+                "Dwarf Version",
+                dwarf_version,
+            );
+        } else {
+            // Indicate that we want CodeView debug information on MSVC
+            llvm::add_module_flag_u32(
+                self.llmod,
+                llvm::ModuleFlagMergeBehavior::Warning,
+                "CodeView",
+                1,
             );
         }
+
+        // Prevent bitcode readers from deleting the debug info.
+        llvm::add_module_flag_u32(
+            self.llmod,
+            llvm::ModuleFlagMergeBehavior::Warning,
+            "Debug Info Version",
+            unsafe { llvm::LLVMRustDebugMetadataVersion() },
+        );
     }
 }
 
