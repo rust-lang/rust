@@ -844,7 +844,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
-            self.known_type_outlives_obligations,
+            &self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
             category,
@@ -2790,7 +2790,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                self.known_type_outlives_obligations,
+                &self.known_type_outlives_obligations,
                 locations,
                 self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
