@@ -1099,8 +1099,13 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 
     let new_len_without_nul_in_bytes = (new.len() - 1).try_into().unwrap();
 
-    let struct_size = mem::size_of::<c::FILE_RENAME_INFO>() - mem::size_of::<u16>()
-        + new.len() * mem::size_of::<u16>();
+    // The last field of FILE_RENAME_INFO, the file name, is unsized,
+    // and FILE_RENAME_INFO has two padding bytes.
+    // Therefore we need to make sure to not allocate less than
+    // size_of::<c::FILE_RENAME_INFO>() bytes, which would be the case with
+    // 0 or 1 character paths + a null byte.
+    let struct_size = mem::size_of::<c::FILE_RENAME_INFO>()
+        .max(mem::offset_of!(c::FILE_RENAME_INFO, FileName) + new.len() * mem::size_of::<u16>());
 
     let struct_size: u32 = struct_size.try_into().unwrap();
 
@@ -1168,8 +1173,6 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     }
     .unwrap_or_else(|| create_file(0, 0))?;
 
-    // The last field of FILE_RENAME_INFO, the file name, is unsized.
-    // Therefore we need to subtract the size of one wide char.
     let layout = core::alloc::Layout::from_size_align(
         struct_size as _,
         mem::align_of::<c::FILE_RENAME_INFO>(),
