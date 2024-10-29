@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): ~const Foo` is not satisfied
+  --> $DIR/minicore-fn-fail.rs:19:5
+   |
+LL |     call_indirect(&foo::<()>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

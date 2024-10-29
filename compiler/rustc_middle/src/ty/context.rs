@@ -374,7 +374,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
-    fn is_const_impl(self, def_id: DefId) -> bool {
+    fn impl_is_const(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
+    fn fn_is_const(self, def_id: DefId) -> bool {
         self.is_conditionally_const(def_id)
     }
 

@@ -326,6 +326,9 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
             ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
         });
@@ -335,8 +338,6 @@ where
                 ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
             })
             .upcast(cx);
-        // A built-in `Fn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -364,6 +365,9 @@ where
                 // This region doesn't matter because we're throwing away the coroutine type
                 Region::new_static(cx),
             )?;
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
                 ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
@@ -380,8 +384,6 @@ where
                 ])
             })
             .upcast(cx);
-        // A built-in `AsyncFn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
