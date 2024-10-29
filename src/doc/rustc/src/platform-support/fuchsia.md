@@ -525,14 +525,6 @@ ${SDK_PATH}/tools/${ARCH}/ffx repository publish \
     pkg/repo
 ```
 
-Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
-
-```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
-    --repository hello-fuchsia \
-    pkg/repo
-```
-
 ## Running a Fuchsia component on an emulator
 
 At this point, we are ready to run our Fuchsia
@@ -590,7 +582,8 @@ Now, start a package repository server to serve our
 package to the emulator:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository server start
+${SDK_PATH}/tools/${ARCH}/ffx repository server start \
+    --background --repository hello-fuchsia --repo-path pkg-repo
 ```
 
 Once the repository server is up and running, register it with the target Fuchsia system running in the emulator:
