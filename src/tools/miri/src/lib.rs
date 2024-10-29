@@ -55,6 +55,7 @@ extern crate either;
 extern crate tracing;
 
 // The rustc crates we need
+extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_attr;
