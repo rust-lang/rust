@@ -1,6 +1,7 @@
 use std::fmt;
 use std::iter::once;
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -15,7 +16,6 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
