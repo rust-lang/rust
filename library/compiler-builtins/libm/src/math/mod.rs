@@ -302,6 +302,7 @@ pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
 // Private modules
+mod arch;
 mod expo2;
 mod fenv;
 mod k_cos;
