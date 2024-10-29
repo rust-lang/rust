@@ -250,7 +250,7 @@ def get_known_directive_names():
         os.path.join(
             # We go back to `src`.
             os.path.dirname(os.path.dirname(__file__)),
-            "tools/compiletest/src/command-list.rs",
+            "tools/compiletest/src/directive-list.rs",
         ),
         "r",
         encoding="utf8"
