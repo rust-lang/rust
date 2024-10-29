@@ -156,7 +156,11 @@ mod musl_serialized_tests {
             return;
         }
 
-        let files = fs::read_dir(math_src).unwrap().map(|f| f.unwrap().path()).collect::<Vec<_>>();
+        let files = fs::read_dir(math_src)
+            .unwrap()
+            .map(|f| f.unwrap().path())
+            .filter(file_needs_test)
+            .collect::<Vec<_>>();
 
         let mut math = Vec::new();
         for file in files {
@@ -185,6 +189,19 @@ mod musl_serialized_tests {
         // ... and now that we have both inputs and expected outputs, do a bunch
         // of codegen to create the unit tests which we'll actually execute.
         generate_unit_tests(&math);
+    }
+
+    /// Check whether a path within `src/math` should get tests generated.
+    fn file_needs_test(path: &PathBuf) -> bool {
+        // Skip directories
+        if path.is_dir() {
+            return false;
+        }
+
+        let fname = path.file_name().unwrap().to_str().unwrap();
+
+        // Musl doesn't support `f16` or `f128`
+        !(fname.contains("f16") || fname.contains("f128"))
     }
 
     /// A "poor man's" parser for the signature of a function

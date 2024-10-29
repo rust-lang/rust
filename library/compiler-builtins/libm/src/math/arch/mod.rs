@@ -7,3 +7,22 @@
 
 #[cfg(intrinsics_enabled)]
 pub mod intrinsics;
+
+// Most implementations should be defined here, to ensure they are not made available when
+// soft floats are required.
+#[cfg(arch_enabled)]
+cfg_if! {
+    if #[cfg(target_feature = "sse2")] {
+        mod i686;
+        pub use i686::{sqrt, sqrtf};
+    }
+}
+
+// There are certain architecture-specific implementations that are needed for correctness
+// even with `force-soft-float`. These are configured here.
+cfg_if! {
+    if #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))] {
+        mod i586;
+        pub use i586::{ceil, floor};
+    }
+}

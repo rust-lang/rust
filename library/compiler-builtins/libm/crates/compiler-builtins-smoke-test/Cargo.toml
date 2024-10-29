@@ -18,6 +18,7 @@ force-soft-floats = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
+  "cfg(arch_enabled)",
   "cfg(assert_no_panic)",
   "cfg(intrinsics_enabled)",
 ] }

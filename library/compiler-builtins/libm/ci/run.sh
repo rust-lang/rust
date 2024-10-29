@@ -64,6 +64,7 @@ fi
 
 # Make sure we can build with overriding features. We test the indibidual
 # features it controls separately.
+cargo check --no-default-features
 cargo check --features "force-soft-floats"
 
 if [ "${BUILD_ONLY:-}" = "1" ]; then

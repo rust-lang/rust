@@ -15,6 +15,7 @@ fn main() {
     }
 
     configure_intrinsics();
+    configure_arch();
 }
 
 /// Simplify the feature logic for enabling intrinsics so code only needs to use
@@ -26,5 +27,16 @@ fn configure_intrinsics() {
     // to disable.
     if cfg!(feature = "unstable-intrinsics") && !cfg!(feature = "force-soft-floats") {
         println!("cargo:rustc-cfg=intrinsics_enabled");
+    }
+}
+
+/// Simplify the feature logic for enabling arch-specific features so code only needs to use
+/// `cfg(arch_enabled)`.
+fn configure_arch() {
+    println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
+
+    // Enabled by default via the "arch" feature, `force-soft-floats` overrides to disable.
+    if cfg!(feature = "arch") && !cfg!(feature = "force-soft-floats") {
+        println!("cargo:rustc-cfg=arch_enabled");
     }
 }
