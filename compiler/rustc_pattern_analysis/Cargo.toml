@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 rustc-hash = "2.0.0"
+
+rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
@@ -29,6 +31,7 @@ tracing-tree = "0.3.0"
 [features]
 default = ["rustc"]
 rustc = [
+    "dep:rustc_abi",
     "dep:rustc_arena",
     "dep:rustc_data_structures",
     "dep:rustc_errors",
