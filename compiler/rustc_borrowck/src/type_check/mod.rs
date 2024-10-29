@@ -162,7 +162,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         last_span: body.span,
         body,
         user_type_annotations: &body.user_type_annotations,
-        region_bound_pairs: &region_bound_pairs,
+        region_bound_pairs,
         known_type_outlives_obligations,
         implicit_region_bound,
         reported_errors: Default::default(),
@@ -843,7 +843,7 @@ struct TypeChecker<'a, 'tcx> {
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
-    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    region_bound_pairs: RegionBoundPairs<'tcx>,
     known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
@@ -1025,7 +1025,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
             self.universal_regions,
-            self.region_bound_pairs,
+            &self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
             &self.known_type_outlives_obligations,
@@ -2787,7 +2787,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
-                self.region_bound_pairs,
+                &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
                 &self.known_type_outlives_obligations,
