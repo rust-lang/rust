@@ -57,7 +57,7 @@ LL | #[derive(Debug, Copy, Clone)]
    |          ----- in this derive macro expansion
 LL | pub struct AABB<K> {
 LL |     pub loc: Vector2<K>,
-   |     ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`, which is required by `Vector2<K>: Debug`
+   |     ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
 note: required for `Vector2<K>` to implement `Debug`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:10
@@ -130,7 +130,7 @@ LL | #[derive(Debug, Copy, Clone)]
    |                       ----- in this derive macro expansion
 ...
 LL |     pub size: Vector2<K>,
-   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`, which is required by `Vector2<K>: Clone`
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
 note: required for `Vector2<K>` to implement `Clone`
   --> $DIR/missing-bound-in-derive-copy-impl.rs:3:23

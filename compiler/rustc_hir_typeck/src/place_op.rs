@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If some lookup succeeded, install method in table
             let input_ty = self.next_ty_var(base_expr.span);
             let method =
-                self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
+                self.try_overloaded_place_op(expr.span, self_ty, Some(input_ty), PlaceOp::Index);
 
             if let Some(result) = method {
                 debug!("try_index_step: success, using overloaded indexing");
@@ -189,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        arg_tys: &[Ty<'tcx>],
+        opt_rhs_ty: Option<Ty<'tcx>>,
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
@@ -207,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ident::with_dummy_span(imm_op),
             imm_tr,
             base_ty,
-            Some(arg_tys),
+            opt_rhs_ty,
         )
     }
 
@@ -215,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        arg_tys: &[Ty<'tcx>],
+        opt_rhs_ty: Option<Ty<'tcx>>,
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
@@ -233,7 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ident::with_dummy_span(mut_op),
             mut_tr,
             base_ty,
-            Some(arg_tys),
+            opt_rhs_ty,
         )
     }
 
@@ -284,7 +284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && let Some(ok) = self.try_mutable_overloaded_place_op(
                             expr.span,
                             source,
-                            &[],
+                            None,
                             PlaceOp::Deref,
                         )
                     {
@@ -359,8 +359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(self.typeck_results.borrow().node_args(expr.hir_id).type_at(1))
             }
         };
-        let arg_tys = arg_ty.as_slice();
-        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
+        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_ty, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             // Couldn't find the mutable variant of the place op, keep the
