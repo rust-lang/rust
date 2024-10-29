@@ -153,12 +153,6 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    // FIXME(effects): remove once effects is implemented in old trait solver
-    // or if the next solver is stabilized.
-    if tcx.features().effects() && !tcx.next_trait_solver_globally() {
-        tcx.dcx().emit_err(errors::EffectsWithoutNextSolver);
-    }
-
     tcx.sess.time("coherence_checking", || {
         tcx.hir().par_for_each_module(|module| {
             let _ = tcx.ensure().check_mod_type_wf(module);

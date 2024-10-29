@@ -1,14 +1,15 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
-error[E0080]: evaluation of `foo::<()>::{constant#0}` failed
+error[E0277]: the trait bound `T: const Tr` is not satisfied
   --> $DIR/constifconst-call-in-const-position.rs:17:38
    |
 LL | const fn foo<T: ~const Tr>() -> [u8; T::a()] {
-   |                                      ^^^^^^ calling non-const function `<() as Tr>::a`
+   |                                      ^^^^^^
+
+error[E0277]: the trait bound `T: const Tr` is not satisfied
+  --> $DIR/constifconst-call-in-const-position.rs:18:9
+   |
+LL |     [0; T::a()]
+   |         ^^^^^^
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0277`.

@@ -1624,12 +1624,6 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_effects_without_next_solver)]
-#[note]
-#[help]
-pub(crate) struct EffectsWithoutNextSolver;
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_cmse_inputs_stack_spill, code = E0798)]
 #[note]
 pub(crate) struct CmseInputsStackSpill {
