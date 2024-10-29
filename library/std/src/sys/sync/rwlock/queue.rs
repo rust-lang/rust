@@ -476,16 +476,22 @@ impl RwLock {
         }
     }
 
+    /// # Safety
+    ///
+    /// * There must be threads queued on the lock.
+    /// * `state` must be a pointer to a node in a valid queue.
+    /// * There cannot be a `downgrade` in progress.
     #[cold]
     unsafe fn read_unlock_contended(&self, state: State) {
-        // The state was observed with acquire ordering above, so the current
-        // thread will observe all node initializations.
-
-        // FIXME this is a bit confusing
-        // SAFETY: Because new read-locks cannot be acquired while threads are queued, all
-        // queue-lock owners will observe the set `LOCKED` bit. And because no downgrade can be in
-        // progress (we checked above), they hence do not modify the queue, so the queue will not be
-        // removed from here.
+        // SAFETY:
+        // The state was observed with acquire ordering above, so the current thread will have
+        // observed all node initializations.
+        // We also know that no threads can be modifying the queue starting at `state`: because new
+        // read-locks cannot be acquired while there are any threads queued on the lock, all
+        // queue-lock owners will observe a set `LOCKED` bit in `self.state` and will not modify
+        // the queue. The other case that a thread could modify the queue is if a downgrade is in
+        // progress (removal of the entire queue), but since that is part of this function's safety
+        // contract, we can guarantee that no other threads can modify the queue.
         let tail = unsafe { find_tail_and_add_backlinks(to_node(state)).as_ref() };
 
         // The lock count is stored in the `next` field of `tail`.
@@ -515,10 +521,11 @@ impl RwLock {
     ///
     /// * The lock must be exclusively owned by this thread.
     /// * There must be threads queued on the lock.
+    /// * `state` must be a pointer to a node in a valid queue.
     /// * There cannot be a `downgrade` in progress.
     #[cold]
     unsafe fn unlock_contended(&self, state: State) {
-        debug_assert!(state.addr() & STATE == (QUEUED | LOCKED));
+        debug_assert_eq!(state.addr() & (DOWNGRADED | QUEUED | LOCKED), QUEUED | LOCKED);
 
         let mut current = state;
 
@@ -540,9 +547,10 @@ impl RwLock {
             // Atomically release the lock and try to acquire the queue lock.
             let next = current.map_addr(|addr| (addr & !LOCKED) | QUEUE_LOCKED);
             match self.state.compare_exchange_weak(current, next, AcqRel, Relaxed) {
+                // Now that we have the queue lock, we can wake up the next waiter.
                 Ok(_) => {
-                    // Now that we have the queue lock, we can wake up the next waiter.
-                    // SAFETY: This thread is exclusively owned by this thread.
+                    // SAFETY: This thread just acquired the queue lock, and this function's safety
+                    // contract requires that there are threads already queued on the lock.
                     unsafe { self.unlock_queue(next) };
                     return;
                 }
@@ -580,10 +588,11 @@ impl RwLock {
     /// # Safety
     ///
     /// * The lock must be write-locked by this thread.
+    /// * `state` must be a pointer to a node in a valid queue.
     /// * There must be threads queued on the lock.
     #[cold]
     unsafe fn downgrade_slow(&self, mut state: State) {
-        debug_assert!(state.addr() & (DOWNGRADED | QUEUED | LOCKED) == (QUEUED | LOCKED));
+        debug_assert_eq!(state.addr() & (DOWNGRADED | QUEUED | LOCKED), QUEUED | LOCKED);
 
         // Attempt to wake up all waiters by taking ownership of the entire waiter queue.
         loop {
@@ -612,7 +621,8 @@ impl RwLock {
                 let tail = unsafe { find_tail_and_add_backlinks(to_node(state)) };
 
                 // Wake up all waiters.
-                // SAFETY: `tail` was just computed, meaning the whole queue is linked.
+                // SAFETY: `tail` was just computed, meaning the whole queue is linked, and we have
+                // full ownership of the queue, so we have exclusive access.
                 unsafe { complete_all(tail) };
 
                 return;
@@ -626,11 +636,13 @@ impl RwLock {
     /// # Safety
     ///
     /// * The queue lock must be held by the current thread.
+    /// * `state` must be a pointer to a node in a valid queue.
     /// * There must be threads queued on the lock.
     unsafe fn unlock_queue(&self, mut state: State) {
         debug_assert_eq!(state.addr() & (QUEUED | QUEUE_LOCKED), QUEUED | QUEUE_LOCKED);
 
         loop {
+            // SAFETY: Since we have the queue lock, nobody else can be modifying the queue.
             let tail = unsafe { find_tail_and_add_backlinks(to_node(state)) };
 
             if state.addr() & (DOWNGRADED | LOCKED) == LOCKED {
