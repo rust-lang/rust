@@ -867,11 +867,6 @@ extern "C" void LLVMRustAddModuleFlagString(
       MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
 }
 
-extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
-                                      size_t Len) {
-  return unwrap(M)->getModuleFlag(StringRef(Name, Len)) != nullptr;
-}
-
 extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
                                           LLVMMetadataRef MD) {
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));

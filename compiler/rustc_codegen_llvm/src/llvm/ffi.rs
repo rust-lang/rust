@@ -1842,8 +1842,6 @@ unsafe extern "C" {
         value_len: size_t,
     );
 
-    pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
-
     pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
 
     pub fn LLVMRustDIBuilderDispose<'a>(Builder: &'a mut DIBuilder<'a>);
