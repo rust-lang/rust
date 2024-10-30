@@ -16,6 +16,7 @@
 use std::fmt::Write;
 
 use ast::token::TokenKind;
+use rustc_abi::BackendRepr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
@@ -40,7 +41,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::Abi;
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
@@ -2468,7 +2468,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
             if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
-                if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &layout.abi {
+                if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                    &layout.backend_repr
+                {
                     let range = scalar.valid_range(cx);
                     let msg = if !range.contains(0) {
                         "must be non-null"

@@ -85,6 +85,7 @@
 use std::borrow::Cow;
 
 use either::Either;
+use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
@@ -103,7 +104,6 @@ use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Abi, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -427,7 +427,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
-                } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+                } else if matches!(
+                    ty.backend_repr,
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                ) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let variant_dest = if let Some(variant) = variant {
                         self.ecx.project_downcast(&dest, variant).discard_err()?
@@ -573,12 +576,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     // limited transmutes: it only works between types with the same layout, and
                     // cannot transmute pointers to integers.
                     if value.as_mplace_or_imm().is_right() {
-                        let can_transmute = match (value.layout.abi, to.abi) {
-                            (Abi::Scalar(s1), Abi::Scalar(s2)) => {
+                        let can_transmute = match (value.layout.backend_repr, to.backend_repr) {
+                            (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => {
                                 s1.size(&self.ecx) == s2.size(&self.ecx)
                                     && !matches!(s1.primitive(), Primitive::Pointer(..))
                             }
-                            (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
+                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
                                 a1.size(&self.ecx) == a2.size(&self.ecx) &&
                                 b1.size(&self.ecx) == b2.size(&self.ecx) &&
                                 // The alignment of the second component determines its offset, so that also needs to match.
@@ -1241,7 +1244,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let as_bits = |value| {
             let constant = self.evaluated[value].as_ref()?;
-            if layout.abi.is_scalar() {
+            if layout.backend_repr.is_scalar() {
                 let scalar = self.ecx.read_scalar(constant).discard_err()?;
                 scalar.to_bits(constant.layout.size).discard_err()
             } else {
@@ -1497,12 +1500,12 @@ fn op_to_prop_const<'tcx>(
 
     // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
     // avoid.
-    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+    if !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
         return None;
     }
 
     // If this constant has scalar ABI, return it as a `ConstValue::Scalar`.
-    if let Abi::Scalar(abi::Scalar::Initialized { .. }) = op.layout.abi
+    if let BackendRepr::Scalar(abi::Scalar::Initialized { .. }) = op.layout.backend_repr
         && let Some(scalar) = ecx.read_scalar(op).discard_err()
     {
         if !scalar.try_to_scalar_int().is_ok() {

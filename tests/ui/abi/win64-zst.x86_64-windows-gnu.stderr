@@ -66,13 +66,13 @@ error: fn_abi_of(pass_zst) = FnAbi {
            },
            c_variadic: false,
            fixed_count: 1,
-           conv: C,
+           conv: X86_64Win64,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:63:1
+  --> $DIR/win64-zst.rs:24:1
    |
-LL | extern "C" fn pass_zst(_: ()) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "win64" fn pass_zst(_: ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

@@ -124,7 +124,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -232,7 +232,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

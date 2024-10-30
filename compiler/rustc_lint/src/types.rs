@@ -1,6 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
+use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::{Expr, ExprKind};
@@ -13,7 +14,6 @@ use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, source_map};
-use rustc_target::abi::{Abi, TagEncoding, Variants, WrappingRange};
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -776,8 +776,8 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             bug!("should be able to compute the layout of non-polymorphic type");
         }
 
-        let field_ty_abi = &field_ty_layout.ok()?.abi;
-        if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
+        let field_ty_abi = &field_ty_layout.ok()?.backend_repr;
+        if let BackendRepr::Scalar(field_ty_scalar) = field_ty_abi {
             match field_ty_scalar.valid_range(&tcx) {
                 WrappingRange { start: 0, end }
                     if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
