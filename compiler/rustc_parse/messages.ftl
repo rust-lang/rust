@@ -77,6 +77,8 @@ parse_box_syntax_removed_suggestion = use `Box::new()` instead
 
 parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
 
+parse_cannot_be_raw_lifetime = `{$ident}` cannot be a raw lifetime
+
 parse_catch_after_try = keyword `catch` cannot follow a `try` block
     .help = try using `match` on the result of the `try` block instead
 
