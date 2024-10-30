@@ -1,10 +1,7 @@
 //@ compile-flags: -O -Z merge-functions=disabled --edition=2021
 //@ only-x86_64
 // FIXME: Remove the `min-llvm-version`.
-//@ revisions: NINETEEN TWENTY
-//@[NINETEEN] min-llvm-version: 19
-//@[NINETEEN] ignore-llvm-version: 20-99
-//@[TWENTY] min-llvm-version: 20
+//@ min-llvm-version: 19
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]
@@ -16,12 +13,9 @@ use std::ptr::NonNull;
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // NINETEEN-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
-    // NINETEEN-NEXT: [[FIRST:%.*]] = select i1 [[TRUNC]], i32 %0
-    // NINETEEN-NEXT: insertvalue { i32, i32 } poison, i32 [[FIRST]], 0
-    // TWENTY-NEXT: insertvalue { i32, i32 } poison, i32 %0, 0
-    // CHECK-NEXT: insertvalue { i32, i32 }
-    // CHECK-NEXT: ret { i32, i32 }
+    // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
+    // CHECK-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %1, 1
+    // CHECK-NEXT: ret { i32, i32 } [[REG2]]
     match x {
         Some(x) => Some(x),
         None => None,
