@@ -5,7 +5,7 @@ LL |     let Foo::D(_y, _z) = x;
    |         ^^^^^^^^^^^^^^ pattern `Foo::A(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Foo` defined here
   --> $DIR/uninhabited-irrefutable.rs:20:6
    |

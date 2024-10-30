@@ -8,7 +8,7 @@ LL |     const A: i32 = 2;
    |     ------------ missing patterns are not covered because `A` is interpreted as a constant pattern, not a new variable
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
 help: introduce a variable instead
    |
