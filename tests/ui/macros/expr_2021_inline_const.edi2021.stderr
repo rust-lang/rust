@@ -1,4 +1,4 @@
-error: no rules expected the token `const`
+error: no rules expected keyword `const`
   --> $DIR/expr_2021_inline_const.rs:23:12
    |
 LL | macro_rules! m2021 {
@@ -13,7 +13,7 @@ note: while trying to match meta-variable `$e:expr_2021`
 LL |     ($e:expr_2021) => {
    |      ^^^^^^^^^^^^
 
-error: no rules expected the token `const`
+error: no rules expected keyword `const`
   --> $DIR/expr_2021_inline_const.rs:24:12
    |
 LL | macro_rules! m2024 {
