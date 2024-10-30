@@ -543,13 +543,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
-                if let abi::Abi::Scalar(scalar) = place.layout.abi {
+                if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
                 load
             });
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
-        } else if let abi::Abi::ScalarPair(a, b) = place.layout.abi {
+        } else if let abi::BackendRepr::ScalarPair(a, b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {

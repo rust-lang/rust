@@ -267,7 +267,7 @@ impl FlagComputation {
             }
             ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
                 trait_ref,
-                host: _,
+                constness: _,
             })) => {
                 self.add_args(trait_ref.args);
             }

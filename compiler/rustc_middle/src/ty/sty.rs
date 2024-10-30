@@ -1354,6 +1354,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),

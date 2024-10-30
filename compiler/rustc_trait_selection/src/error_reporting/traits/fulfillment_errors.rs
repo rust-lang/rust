@@ -545,10 +545,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 polarity: ty::PredicatePolarity::Positive,
                             }),
                             None,
-                            Some(match predicate.host {
-                                ty::HostPolarity::Maybe => ty::BoundConstness::ConstIfConst,
-                                ty::HostPolarity::Const => ty::BoundConstness::Const,
-                            }),
+                            Some(predicate.constness),
                             None,
                             String::new(),
                         );
@@ -2238,18 +2235,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     (None, _) => Some(cannot_do_this),
                     // suggested using default post message
                     (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
                         Some(AppendConstMessage::Default),
                     ) => Some(format!("{cannot_do_this} in const contexts")),
                     // overridden post message
                     (
-                        Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst),
+                        Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe),
                         Some(AppendConstMessage::Custom(custom_msg, _)),
                     ) => Some(format!("{cannot_do_this}{custom_msg}")),
                     // fallback to generic message
-                    (Some(ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst), None) => {
-                        None
-                    }
+                    (Some(ty::BoundConstness::Const | ty::BoundConstness::Maybe), None) => None,
                 }
             })
             .unwrap_or_else(|| {

@@ -9,11 +9,11 @@ use std::cell::RefCell;
 use std::fmt::Write;
 use std::{cmp, mem};
 
+use rustc_abi::{BackendRepr, Size};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasParamEnv;
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Size};
 
 use self::diagnostics::{RetagCause, RetagInfo};
 pub use self::item::{Item, Permission};
@@ -972,7 +972,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             RetagFields::OnlyScalar => {
                                 // Matching `ArgAbi::new` at the time of writing, only fields of
                                 // `Scalar` and `ScalarPair` ABI are considered.
-                                matches!(place.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))
+                                matches!(
+                                    place.layout.backend_repr,
+                                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                                )
                             }
                         };
                         if recurse {

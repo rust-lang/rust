@@ -3,7 +3,7 @@
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::ItemLocalId;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
 use crate::ty;
@@ -54,4 +54,6 @@ pub struct ResolveBoundVars {
     pub defs: SortedMap<ItemLocalId, ResolvedArg>,
 
     pub late_bound_vars: SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>>,
+
+    pub opaque_captured_lifetimes: LocalDefIdMap<Vec<(ResolvedArg, LocalDefId)>>,
 }

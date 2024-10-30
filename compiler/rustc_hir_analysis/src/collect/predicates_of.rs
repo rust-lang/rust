@@ -329,13 +329,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::OpaqueTy(..) = node {
-        let opaque_ty_node = tcx.parent_hir_node(hir_id);
-        let Node::Ty(&hir::Ty { kind: TyKind::OpaqueDef(_, lifetimes), .. }) = opaque_ty_node
-        else {
-            bug!("unexpected {opaque_ty_node:?}")
-        };
-        debug!(?lifetimes);
-
         compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
     }
@@ -716,7 +709,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                 match clause.kind().skip_binder() {
                     ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
                         trait_ref: _,
-                        host: ty::HostPolarity::Maybe,
+                        constness: ty::BoundConstness::Maybe,
                     }) => {}
                     _ => {
                         bug!(
@@ -732,8 +725,8 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                 match clause.kind().skip_binder() {
                     ty::ClauseKind::HostEffect(pred) => {
                         assert_eq!(
-                            pred.host,
-                            ty::HostPolarity::Maybe,
+                            pred.constness,
+                            ty::BoundConstness::Maybe,
                             "expected `~const` predicate when computing `{filter:?}` \
                             implied bounds: {clause:?}",
                         );
@@ -943,7 +936,7 @@ pub(super) fn const_conditions<'tcx>(
         bounds.push_const_bound(
             tcx,
             ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id())),
-            ty::HostPolarity::Maybe,
+            ty::BoundConstness::Maybe,
             DUMMY_SP,
         );
 
@@ -963,7 +956,7 @@ pub(super) fn const_conditions<'tcx>(
                 clause.kind().map_bound(|clause| match clause {
                     ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
                         trait_ref,
-                        host: ty::HostPolarity::Maybe,
+                        constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,
                     _ => bug!("converted {clause:?}"),
                 }),
@@ -1001,7 +994,7 @@ pub(super) fn implied_const_bounds<'tcx>(
                 clause.kind().map_bound(|clause| match clause {
                     ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
                         trait_ref,
-                        host: ty::HostPolarity::Maybe,
+                        constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,
                     _ => bug!("converted {clause:?}"),
                 }),

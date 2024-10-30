@@ -858,7 +858,7 @@ impl<'tcx> Map<'tcx> {
             // Allocate a value slot if it doesn't have one, and the user requested one.
             assert!(place_info.value_index.is_none());
             if let Ok(layout) = tcx.layout_of(param_env.and(place_info.ty))
-                && layout.abi.is_scalar()
+                && layout.backend_repr.is_scalar()
             {
                 place_info.value_index = Some(self.value_count.into());
                 self.value_count += 1;

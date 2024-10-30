@@ -131,8 +131,8 @@ impl<'tcx> CValue<'tcx> {
 
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
-                let (a_scalar, b_scalar) = match self.1.abi {
-                    Abi::ScalarPair(a, b) => (a, b),
+                let (a_scalar, b_scalar) = match self.1.backend_repr {
+                    BackendRepr::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("dyn_star_force_data_on_stack({:?})", self),
                 };
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
@@ -164,15 +164,15 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    /// Load a value with layout.abi of scalar
+    /// Load a value with layout.backend_repr of scalar
     #[track_caller]
     pub(crate) fn load_scalar(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> Value {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
-                let clif_ty = match layout.abi {
-                    Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
-                    Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
+                let clif_ty = match layout.backend_repr {
+                    BackendRepr::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
+                    BackendRepr::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
                         .by(u32::try_from(count).unwrap())
                         .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
@@ -187,14 +187,14 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    /// Load a value pair with layout.abi of scalar pair
+    /// Load a value pair with layout.backend_repr of scalar pair
     #[track_caller]
     pub(crate) fn load_scalar_pair(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
-                let (a_scalar, b_scalar) = match layout.abi {
-                    Abi::ScalarPair(a, b) => (a, b),
+                let (a_scalar, b_scalar) = match layout.backend_repr {
+                    BackendRepr::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("load_scalar_pair({:?})", self),
                 };
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
@@ -222,8 +222,8 @@ impl<'tcx> CValue<'tcx> {
         let layout = self.1;
         match self.0 {
             CValueInner::ByVal(_) => unreachable!(),
-            CValueInner::ByValPair(val1, val2) => match layout.abi {
-                Abi::ScalarPair(_, _) => {
+            CValueInner::ByValPair(val1, val2) => match layout.backend_repr {
+                BackendRepr::ScalarPair(_, _) => {
                     let val = match field.as_u32() {
                         0 => val1,
                         1 => val2,
@@ -232,7 +232,7 @@ impl<'tcx> CValue<'tcx> {
                     let field_layout = layout.field(&*fx, usize::from(field));
                     CValue::by_val(val, field_layout)
                 }
-                _ => unreachable!("value_field for ByValPair with abi {:?}", layout.abi),
+                _ => unreachable!("value_field for ByValPair with abi {:?}", layout.backend_repr),
             },
             CValueInner::ByRef(ptr, None) => {
                 let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
@@ -360,7 +360,7 @@ impl<'tcx> CValue<'tcx> {
     pub(crate) fn cast_pointer_to(self, layout: TyAndLayout<'tcx>) -> Self {
         assert!(matches!(self.layout().ty.kind(), ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
         assert!(matches!(layout.ty.kind(), ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
-        assert_eq!(self.layout().abi, layout.abi);
+        assert_eq!(self.layout().backend_repr, layout.backend_repr);
         CValue(self.0, layout)
     }
 }
@@ -609,8 +609,8 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         match self.inner {
             CPlaceInner::Var(_local, var) => {
-                let data = match from.1.abi {
-                    Abi::Scalar(_) => CValue(from.0, dst_layout).load_scalar(fx),
+                let data = match from.1.backend_repr {
+                    BackendRepr::Scalar(_) => CValue(from.0, dst_layout).load_scalar(fx),
                     _ => {
                         let (ptr, meta) = from.force_stack(fx);
                         assert!(meta.is_none());
@@ -621,8 +621,10 @@ impl<'tcx> CPlace<'tcx> {
                 transmute_scalar(fx, var, data, dst_ty);
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
-                let (data1, data2) = match from.1.abi {
-                    Abi::ScalarPair(_, _) => CValue(from.0, dst_layout).load_scalar_pair(fx),
+                let (data1, data2) = match from.1.backend_repr {
+                    BackendRepr::ScalarPair(_, _) => {
+                        CValue(from.0, dst_layout).load_scalar_pair(fx)
+                    }
                     _ => {
                         let (ptr, meta) = from.force_stack(fx);
                         assert!(meta.is_none());
@@ -635,7 +637,9 @@ impl<'tcx> CPlace<'tcx> {
             }
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
             CPlaceInner::Addr(to_ptr, None) => {
-                if dst_layout.size == Size::ZERO || dst_layout.abi == Abi::Uninhabited {
+                if dst_layout.size == Size::ZERO
+                    || dst_layout.backend_repr == BackendRepr::Uninhabited
+                {
                     return;
                 }
 
@@ -646,23 +650,28 @@ impl<'tcx> CPlace<'tcx> {
                     CValueInner::ByVal(val) => {
                         to_ptr.store(fx, val, flags);
                     }
-                    CValueInner::ByValPair(val1, val2) => match from.layout().abi {
-                        Abi::ScalarPair(a_scalar, b_scalar) => {
+                    CValueInner::ByValPair(val1, val2) => match from.layout().backend_repr {
+                        BackendRepr::ScalarPair(a_scalar, b_scalar) => {
                             let b_offset =
                                 scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                             to_ptr.store(fx, val1, flags);
                             to_ptr.offset(fx, b_offset).store(fx, val2, flags);
                         }
-                        _ => bug!("Non ScalarPair abi {:?} for ByValPair CValue", dst_layout.abi),
+                        _ => {
+                            bug!(
+                                "Non ScalarPair repr {:?} for ByValPair CValue",
+                                dst_layout.backend_repr
+                            )
+                        }
                     },
                     CValueInner::ByRef(from_ptr, None) => {
-                        match from.layout().abi {
-                            Abi::Scalar(_) => {
+                        match from.layout().backend_repr {
+                            BackendRepr::Scalar(_) => {
                                 let val = from.load_scalar(fx);
                                 to_ptr.store(fx, val, flags);
                                 return;
                             }
-                            Abi::ScalarPair(a_scalar, b_scalar) => {
+                            BackendRepr::ScalarPair(a_scalar, b_scalar) => {
                                 let b_offset =
                                     scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
                                 let (val1, val2) = from.load_scalar_pair(fx);

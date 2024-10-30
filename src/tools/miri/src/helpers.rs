@@ -349,8 +349,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         i: impl Into<i128>,
         dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(dest.layout().abi.is_scalar(), "write_int on non-scalar type {}", dest.layout().ty);
-        let val = if dest.layout().abi.is_signed() {
+        assert!(
+            dest.layout().backend_repr.is_scalar(),
+            "write_int on non-scalar type {}",
+            dest.layout().ty
+        );
+        let val = if dest.layout().backend_repr.is_signed() {
             Scalar::from_int(i, dest.layout().size)
         } else {
             // `unwrap` can only fail here if `i` is negative

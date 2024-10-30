@@ -497,11 +497,12 @@
 #debug = false
 
 # Whether to download the stage 1 and 2 compilers from CI.
-# This is mostly useful for tools; if you have changes to `compiler/` or `library/` they will be ignored.
+# This is useful if you are working on tools, doc-comments, or library (you will be able to build
+# the standard library without needing to build the compiler).
 #
-# Set this to "if-unchanged" to only download if the compiler and standard library have not been modified.
-# Set this to `true` to download unconditionally. This is useful if you are working on tools, doc-comments,
-# or library (you will be able to build the standard library without needing to build the compiler).
+# Set this to "if-unchanged" to only download if the compiler (and library if running on CI) have
+# not been modified.
+# Set this to `true` to download unconditionally.
 #download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0

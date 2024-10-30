@@ -47,7 +47,7 @@ fn match_candidate<'tcx>(
     obligation: &HostEffectObligation<'tcx>,
     candidate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, NoSolution> {
-    if !candidate.skip_binder().host.satisfies(obligation.predicate.host) {
+    if !candidate.skip_binder().constness.satisfies(obligation.predicate.constness) {
         return Err(NoSolution);
     }
 
@@ -135,7 +135,8 @@ fn evaluate_host_effect_from_selection_candiate<'tcx>(
                             .map(|(trait_ref, _)| {
                                 obligation.with(
                                     tcx,
-                                    trait_ref.to_host_effect_clause(tcx, obligation.predicate.host),
+                                    trait_ref
+                                        .to_host_effect_clause(tcx, obligation.predicate.constness),
                                 )
                             }),
                     );

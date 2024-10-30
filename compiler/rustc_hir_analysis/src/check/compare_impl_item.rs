@@ -218,7 +218,7 @@ fn compare_method_predicate_entailment<'tcx>(
                     tcx.const_conditions(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args),
                 )
                 .map(|(trait_ref, _)| {
-                    trait_ref.to_host_effect_clause(tcx, ty::HostPolarity::Maybe)
+                    trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe)
                 }),
         );
     }
@@ -272,7 +272,7 @@ fn compare_method_predicate_entailment<'tcx>(
                 tcx,
                 cause,
                 param_env,
-                const_condition.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                const_condition.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
             ));
         }
     }
@@ -1942,7 +1942,7 @@ fn compare_type_predicate_entailment<'tcx>(
                     tcx.const_conditions(trait_ty.def_id).instantiate_own(tcx, trait_to_impl_args),
                 )
                 .map(|(trait_ref, _)| {
-                    trait_ref.to_host_effect_clause(tcx, ty::HostPolarity::Maybe)
+                    trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe)
                 }),
         );
     }
@@ -1985,7 +1985,7 @@ fn compare_type_predicate_entailment<'tcx>(
                 tcx,
                 cause,
                 param_env,
-                const_condition.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                const_condition.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
             ));
         }
     }
@@ -2091,7 +2091,7 @@ pub(super) fn check_type_bounds<'tcx>(
                         tcx,
                         mk_cause(span),
                         param_env,
-                        c.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                        c.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
                     )
                 }),
         );

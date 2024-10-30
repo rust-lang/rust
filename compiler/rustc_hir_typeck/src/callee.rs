@@ -853,9 +853,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let host = match self.tcx.hir().body_const_context(self.body_id) {
             Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
-                ty::HostPolarity::Const
+                ty::BoundConstness::Const
             }
-            Some(hir::ConstContext::ConstFn) => ty::HostPolarity::Maybe,
+            Some(hir::ConstContext::ConstFn) => ty::BoundConstness::Maybe,
             None => return,
         };
 

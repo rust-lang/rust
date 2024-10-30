@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, Size, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -11,7 +12,6 @@ use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{Symbol, kw};
 use rustc_span::{BytePos, Span, hygiene};
-use rustc_target::abi::{Abi, FieldIdx, FieldsShape, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // be marked as a `LocalVariable` for MSVC debuggers to visualize
                         // their data correctly. (See #81894 & #88625)
                         let var_ty_layout = self.cx.layout_of(var_ty);
-                        if let Abi::ScalarPair(_, _) = var_ty_layout.abi {
+                        if let BackendRepr::ScalarPair(_, _) = var_ty_layout.backend_repr {
                             VariableKind::LocalVariable
                         } else {
                             VariableKind::ArgumentVariable(arg_index)
