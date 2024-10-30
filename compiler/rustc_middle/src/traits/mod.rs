@@ -92,16 +92,6 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: CRATE_DEF_ID, code: Default::default() }
     }
 
-    pub fn span(&self) -> Span {
-        match *self.code() {
-            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                arm_span,
-                ..
-            }) => arm_span,
-            _ => self.span,
-        }
-    }
-
     #[inline]
     pub fn code(&self) -> &ObligationCauseCode<'tcx> {
         &self.code
@@ -517,10 +507,17 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arm_block_id: Option<HirId>,
     pub prior_arm_ty: Ty<'tcx>,
     pub prior_arm_span: Span,
+    /// Span of the scrutinee of the match (the matched value).
     pub scrut_span: Span,
+    /// Source of the match, i.e. `match` or a desugaring.
     pub source: hir::MatchSource,
+    /// Span of the *whole* match expr.
+    pub expr_span: Span,
+    /// Spans of the previous arms except for those that diverge (i.e. evaluate to `!`).
+    ///
+    /// These are used for pointing out errors that may affect several arms.
     pub prior_non_diverging_arms: Vec<Span>,
-    // Is the expectation of this match expression an RPIT?
+    /// Is the expectation of this match expression an RPIT?
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `PathBuf: From<Cow<'_, str>>` is not satisfied
   --> $DIR/issue-90101.rs:6:10
    |
 LL |     func(Path::new("hello").to_path_buf().to_string_lossy(), "world")
-   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<Cow<'_, str>>` is not implemented for `PathBuf`, which is required by `Cow<'_, str>: Into<PathBuf>`
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<Cow<'_, str>>` is not implemented for `PathBuf`
    |     |
    |     required by a bound introduced by this call
    |

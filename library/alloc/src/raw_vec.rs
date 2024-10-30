@@ -103,7 +103,7 @@ impl<T> RawVec<T, Global> {
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     #[must_use]
-    #[rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81"))]
     pub const fn new() -> Self {
         Self::new_in(Global)
     }
@@ -179,7 +179,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[inline]
-    #[rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81"))]
     pub const fn new_in(alloc: A) -> Self {
         Self { inner: RawVecInner::new_in(alloc, align_of::<T>()), _marker: PhantomData }
     }
@@ -409,7 +409,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
-    #[rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81"))]
     const fn new_in(alloc: A, align: usize) -> Self {
         let ptr = unsafe { core::mem::transmute(align) };
         // `cap: 0` means "unallocated". zero-sized types are ignored.

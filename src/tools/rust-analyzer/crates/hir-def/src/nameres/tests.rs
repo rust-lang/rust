@@ -386,6 +386,52 @@ pub struct Arc;
 }
 
 #[test]
+fn extern_crate_reexport() {
+    check(
+        r#"
+//- /main.rs crate:main deps:importer
+use importer::*;
+use importer::extern_crate1::exported::*;
+use importer::allowed_reexport::*;
+use importer::extern_crate2::*;
+use importer::not_allowed_reexport1;
+use importer::not_allowed_reexport2;
+
+//- /importer.rs crate:importer deps:extern_crate1,extern_crate2
+extern crate extern_crate1;
+extern crate extern_crate2;
+
+pub use extern_crate1;
+pub use extern_crate1 as allowed_reexport;
+
+pub use ::extern_crate;
+pub use self::extern_crate as not_allowed_reexport1;
+pub use crate::extern_crate as not_allowed_reexport2;
+
+//- /extern_crate1.rs crate:extern_crate1
+pub mod exported {
+    pub struct PublicItem;
+    struct PrivateItem;
+}
+
+pub struct Exported;
+
+//- /extern_crate2.rs crate:extern_crate2
+pub struct NotExported;
+"#,
+        expect![[r#"
+            crate
+            Exported: t v
+            PublicItem: t v
+            allowed_reexport: t
+            exported: t
+            not_allowed_reexport1: _
+            not_allowed_reexport2: _
+        "#]],
+    );
+}
+
+#[test]
 fn extern_crate_rename_2015_edition() {
     check(
         r#"

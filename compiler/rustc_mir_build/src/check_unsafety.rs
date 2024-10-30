@@ -509,20 +509,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::RawBorrow { arg, .. } => {
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
-                // THIR desugars UNSAFE_STATIC into *UNSAFE_STATIC_REF, where
-                // UNSAFE_STATIC_REF holds the addr of the UNSAFE_STATIC, so: take two steps
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
-                    // FIXME(workingjubiee): we lack a clear reason to reject ThreadLocalRef here,
-                    // but we also have no conclusive reason to allow it either!
-                    && let ExprKind::StaticRef { .. } = self.thir[arg].kind
                 {
-                    // A raw ref to a place expr, even an "unsafe static", is okay!
-                    // We short-circuit to not recursively traverse this expression.
+                    // Taking a raw ref to a deref place expr is always safe.
+                    // Make sure the expression we're deref'ing is safe, though.
+                    visit::walk_expr(self, &self.thir[arg]);
                     return;
-                    // note: const_mut_refs enables this code, and it currently remains unsafe:
-                    // static mut BYTE: u8 = 0;
-                    // static mut BYTE_PTR: *mut u8 = unsafe { addr_of_mut!(BYTE) };
-                    // static mut DEREF_BYTE_PTR: *mut u8 = unsafe { addr_of_mut!(*BYTE_PTR) };
                 }
             }
             ExprKind::Deref { arg } => {

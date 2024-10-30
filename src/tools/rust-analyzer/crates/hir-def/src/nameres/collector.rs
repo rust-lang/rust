@@ -31,7 +31,7 @@ use crate::{
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
         self, AttrOwner, FieldsShape, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
-        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
+        ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
     },
     macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
@@ -985,12 +985,8 @@ impl DefCollector<'_> {
         for (name, res) in resolutions {
             match name {
                 Some(name) => {
-                    changed |= self.push_res_and_update_glob_vis(
-                        module_id,
-                        name,
-                        res.with_visibility(vis),
-                        import,
-                    );
+                    changed |=
+                        self.push_res_and_update_glob_vis(module_id, name, *res, vis, import);
                 }
                 None => {
                     let tr = match res.take_types() {
@@ -1043,10 +1039,11 @@ impl DefCollector<'_> {
             .collect::<Vec<_>>();
 
         for (glob_importing_module, glob_import_vis, use_) in glob_imports {
+            let vis = glob_import_vis.min(vis, &self.def_map).unwrap_or(glob_import_vis);
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
-                glob_import_vis,
+                vis,
                 Some(ImportType::Glob(use_)),
                 depth + 1,
             );
@@ -1058,8 +1055,44 @@ impl DefCollector<'_> {
         module_id: LocalModuleId,
         name: &Name,
         mut defs: PerNs,
+        vis: Visibility,
         def_import_type: Option<ImportType>,
     ) -> bool {
+        // `extern crate crate_name` things can be re-exported as `pub use crate_name`.
+        // But they cannot be re-exported as `pub use self::crate_name`, `pub use crate::crate_name`
+        // or `pub use ::crate_name`.
+        //
+        // This has been historically allowed, but may be not allowed in future
+        // https://github.com/rust-lang/rust/issues/127909
+        if let Some((_, v, it)) = defs.types.as_mut() {
+            let is_extern_crate_reimport_without_prefix = || {
+                let Some(ImportOrExternCrate::ExternCrate(_)) = it else {
+                    return false;
+                };
+                let Some(ImportType::Import(id)) = def_import_type else {
+                    return false;
+                };
+                let use_id = id.import.lookup(self.db).id;
+                let item_tree = use_id.item_tree(self.db);
+                let use_kind = item_tree[use_id.value].use_tree.kind();
+                let UseTreeKind::Single { path, .. } = use_kind else {
+                    return false;
+                };
+                path.segments().len() < 2
+            };
+            if is_extern_crate_reimport_without_prefix() {
+                *v = vis;
+            } else {
+                *v = v.min(vis, &self.def_map).unwrap_or(vis);
+            }
+        }
+        if let Some((_, v, _)) = defs.values.as_mut() {
+            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        }
+        if let Some((_, v, _)) = defs.macros.as_mut() {
+            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        }
+
         let mut changed = false;
 
         if let Some(ImportType::Glob(_)) = def_import_type {

@@ -171,12 +171,12 @@ where
 
 #[cfg(feature = "rustc")]
 pub(crate) mod rustc {
+    use rustc_abi::{
+        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
+    };
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, AdtDef, AdtKind, List, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
     use rustc_span::ErrorGuaranteed;
-    use rustc_target::abi::{
-        FieldIdx, FieldsShape, Layout, Size, TagEncoding, TyAndLayout, VariantIdx, Variants,
-    };
 
     use super::Tree;
     use crate::layout::rustc::{Def, Ref, layout_of};
@@ -206,7 +206,7 @@ pub(crate) mod rustc {
 
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
         pub(crate) fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx>) -> Result<Self, Err> {
-            use rustc_target::abi::HasDataLayout;
+            use rustc_abi::HasDataLayout;
             let layout = layout_of(cx, ty)?;
 
             if let Err(e) = ty.error_reported() {
@@ -339,9 +339,7 @@ pub(crate) mod rustc {
             // 2. enums that delegate their layout to a variant
             // 3. enums with multiple variants
             match layout.variants() {
-                Variants::Single { .. }
-                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
-                {
+                Variants::Single { .. } if layout.is_uninhabited() && layout.size == Size::ZERO => {
                     // The layout representation of uninhabited, ZST enums is
                     // defined to be like that of the `!` type, as opposed of a
                     // typical enum. Consequently, they cannot be descended into
@@ -446,7 +444,7 @@ pub(crate) mod rustc {
 
         /// Constructs a `Tree` representing the value of a enum tag.
         fn from_tag(tag: ScalarInt, tcx: TyCtxt<'tcx>) -> Self {
-            use rustc_target::abi::Endian;
+            use rustc_abi::Endian;
             let size = tag.size();
             let bits = tag.to_bits(size);
             let bytes: [u8; 16];

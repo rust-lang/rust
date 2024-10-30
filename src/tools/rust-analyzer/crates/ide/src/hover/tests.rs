@@ -289,19 +289,6 @@ m!(ab$0c);
             *abc*
 
             ```rust
-            test::module
-            ```
-
-            ```rust
-            fn abc()
-            ```
-
-            ---
-
-            Inner
-            ---
-
-            ```rust
             test
             ```
 
@@ -312,6 +299,19 @@ m!(ab$0c);
             ---
 
             Outer
+            ---
+
+            ```rust
+            test::module
+            ```
+
+            ```rust
+            fn abc()
+            ```
+
+            ---
+
+            Inner
         "#]],
     );
 }
@@ -9015,6 +9015,159 @@ foo!(BAR_$0);
             crate;
         })
         ```
+        "#]],
+    );
+}
+
+#[test]
+fn type_alias_without_docs() {
+    // Simple.
+    check(
+        r#"
+/// Docs for B
+struct B;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            type A = B
+            ```
+
+            ---
+
+            *This is the documentation for* `struct B`
+
+            Docs for B
+        "#]],
+    );
+
+    // Nested.
+    check(
+        r#"
+/// Docs for C
+struct C;
+
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            type A = B
+            ```
+
+            ---
+
+            *This is the documentation for* `struct C`
+
+            Docs for C
+        "#]],
+    );
+
+    // Showing the docs for aliased struct instead of intermediate type.
+    check(
+        r#"
+/// Docs for C
+struct C;
+
+/// Docs for B
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            type A = B
+            ```
+
+            ---
+
+            *This is the documentation for* `struct C`
+
+            Docs for C
+        "#]],
+    );
+
+    // No docs found.
+    check(
+        r#"
+struct C;
+
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            type A = B
+            ```
+        "#]],
+    );
+
+    // Multiple nested crate.
+    check(
+        r#"
+//- /lib.rs crate:c
+/// Docs for C
+pub struct C;
+
+//- /lib.rs crate:b deps:c
+pub use c::C;
+pub type B = C;
+
+//- /lib.rs crate:a deps:b
+pub use b::B;
+pub type A = B;
+
+//- /main.rs crate:main deps:a
+use a::A$0;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            a
+            ```
+
+            ```rust
+            // size = 0, align = 1
+            pub type A = B
+            ```
+
+            ---
+
+            *This is the documentation for* `pub struct C`
+
+            Docs for C
         "#]],
     );
 }

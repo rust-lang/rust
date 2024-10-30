@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
-use build_helper::git::get_closest_merge_commit;
-
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder;
@@ -10,7 +8,7 @@ use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun,
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{add_dylib_path, exe, git, t};
+use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -596,28 +594,11 @@ impl Step for Rustdoc {
             && target_compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
-            let commit = get_closest_merge_commit(
-                Some(&builder.config.src),
-                &builder.config.git_config(),
-                &[],
-            )
-            .unwrap();
+            let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
 
-            let librustdoc_src = builder.config.src.join("src/librustdoc");
-            let rustdoc_src = builder.config.src.join("src/tools/rustdoc");
-
-            // FIXME: The change detection logic here is quite similar to `Config::download_ci_rustc_commit`.
-            // It would be better to unify them.
-            let has_changes = !git(Some(&builder.config.src))
-                .allow_failure()
-                .run_always()
-                .args(["diff-index", "--quiet", &commit])
-                .arg("--")
-                .arg(librustdoc_src)
-                .arg(rustdoc_src)
-                .run(builder);
-
-            if !has_changes {
+            // Check if unchanged
+            if builder.config.last_modified_commit(files_to_track, "download-rustc", true).is_some()
+            {
                 let precompiled_rustdoc = builder
                     .config
                     .ci_rustc_dir()
@@ -1096,6 +1077,38 @@ tool_extended!((self, builder),
     Rls, "src/tools/rls", "rls", stable=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TestFloatParse {
+    pub host: TargetSelection,
+}
+
+impl Step for TestFloatParse {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/etc/test-float-parse")
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
+
+        builder.ensure(ToolBuild {
+            compiler,
+            target: bootstrap_host,
+            tool: "test-float-parse",
+            mode: Mode::ToolStd,
+            path: "src/etc/test-float-parse",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        });
+    }
+}
 
 impl Builder<'_> {
     /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for

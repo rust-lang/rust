@@ -1167,7 +1167,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// path.push(r"..\otherdir");
 /// path.push("system32");
 ///
-/// The behaviour of `PathBuf` may be changed to a panic on such inputs
+/// The behavior of `PathBuf` may be changed to a panic on such inputs
 /// in the future. [`Extend::extend`] should be used to add multi-part paths.
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1409,7 +1409,7 @@ impl PathBuf {
     /// (That is, it will have the same parent.)
     ///
     /// The argument is not sanitized, so can include separators. This
-    /// behaviour may be changed to a panic in the future.
+    /// behavior may be changed to a panic in the future.
     ///
     /// [`self.file_name`]: Path::file_name
     /// [`pop`]: PathBuf::pop

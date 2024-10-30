@@ -1,6 +1,7 @@
 use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
+use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
@@ -22,8 +23,7 @@ use rustc_middle::ty::{
     AdtDef, GenericArgKind, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
-use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
-use rustc_target::abi::FieldIdx;
+use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
@@ -36,36 +36,25 @@ use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_i
 use super::*;
 use crate::check::intrinsicck::InlineAsmCtxt;
 
-pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
-    match tcx.sess.target.is_abi_supported(abi) {
-        Some(true) => (),
-        Some(false) => {
-            struct_span_code_err!(
-                tcx.dcx(),
-                span,
-                E0570,
-                "`{abi}` is not a supported ABI for the current target",
-            )
-            .emit();
-        }
-        None => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message("use of calling convention not supported on this target");
-            });
-        }
+pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
+    if !tcx.sess.target.is_abi_supported(abi) {
+        struct_span_code_err!(
+            tcx.dcx(),
+            span,
+            E0570,
+            "`{abi}` is not a supported ABI for the current target",
+        )
+        .emit();
     }
 }
 
 pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
-    match tcx.sess.target.is_abi_supported(abi) {
-        Some(true) => (),
-        Some(false) | None => {
-            tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "the calling convention {abi} is not supported on this target"
-                ));
-            });
-        }
+    if !tcx.sess.target.is_abi_supported(abi) {
+        tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
+            lint.primary_message(format!(
+                "the calling convention {abi} is not supported on this target"
+            ));
+        });
     }
 }
 
@@ -183,7 +172,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             return;
         }
     };
-    if layout.abi.is_uninhabited() {
+    if layout.is_uninhabited() {
         tcx.node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
@@ -705,7 +694,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
-            check_abi(tcx, it.hir_id(), it.span, abi);
+            check_abi(tcx, it.span, abi);
 
             match abi {
                 Abi::RustIntrinsic => {
@@ -1177,7 +1166,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
-    if adt.is_union() && !tcx.features().transparent_unions {
+    if adt.is_union() && !tcx.features().transparent_unions() {
         feature_err(
             &tcx.sess,
             sym::transparent_unions,
@@ -1312,7 +1301,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     let repr_type_ty = def.repr().discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.features().repr128 {
+        if !tcx.features().repr128() {
             feature_err(
                 &tcx.sess,
                 sym::repr128,

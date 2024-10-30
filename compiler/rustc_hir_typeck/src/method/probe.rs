@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     mode,
                 }));
             } else if bad_ty.reached_raw_pointer
-                && !self.tcx.features().arbitrary_self_types_pointers
+                && !self.tcx.features().arbitrary_self_types_pointers()
                 && !self.tcx.sess.at_least_rust_2018()
             {
                 // this case used to be allowed by the compiler,
@@ -429,8 +429,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     ty::Infer(ty::TyVar(_)) => {
-                        let raw_ptr_call =
-                            bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types;
+                        let raw_ptr_call = bad_ty.reached_raw_pointer
+                            && !self.tcx.features().arbitrary_self_types();
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_id,
                             span,
@@ -813,7 +813,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::ClauseKind::Projection(_)
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => None,
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::HostEffect(..) => None,
             }
         });
 
@@ -1146,7 +1147,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
 
                     ty::Adt(def, args)
-                        if self.tcx.features().pin_ergonomics
+                        if self.tcx.features().pin_ergonomics()
                             && self.tcx.is_lang_item(def.did(), hir::LangItem::Pin) =>
                     {
                         // make sure this is a pinned reference (and not a `Pin<Box>` or something)
@@ -1195,7 +1196,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if !self.tcx.features().pin_ergonomics {
+        if !self.tcx.features().pin_ergonomics() {
             return None;
         }
 

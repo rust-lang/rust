@@ -1043,7 +1043,7 @@ macro_rules! wrapping_int_impl_unsigned {
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
-                       reason = "needs decision on wrapping behaviour")]
+                       reason = "needs decision on wrapping behavior")]
             pub fn next_power_of_two(self) -> Self {
                 Wrapping(self.0.wrapping_next_power_of_two())
             }

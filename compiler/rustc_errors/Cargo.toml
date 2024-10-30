@@ -7,6 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 annotate-snippets = "0.11"
 derive_setters = "0.1.6"
+rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }

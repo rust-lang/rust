@@ -457,10 +457,11 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
 }
 
-mod parse {
+pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value and start with
     /// `no-`. This style of option is deprecated.
@@ -657,7 +658,7 @@ mod parse {
     }
 
     pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
-        match v.and_then(|s| s.parse().ok()) {
+        let ret = match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
                 *slot = std::thread::available_parallelism().map_or(1, NonZero::<usize>::get);
                 true
@@ -667,7 +668,11 @@ mod parse {
                 true
             }
             None => false,
-        }
+        };
+        // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
+        // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
+        *slot = slot.clone().min(MAX_THREADS_CAP);
+        ret
     }
 
     /// Use this for any numeric option that has a static default.
@@ -2000,6 +2005,11 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
+        in registers EAX, EDX, and ECX instead of on the stack for\
+        \"C\", \"cdecl\", and \"stdcall\" fn.\
+        It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],

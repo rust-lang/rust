@@ -504,7 +504,7 @@ fn collect_items_rec<'tcx>(
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
     if tcx.dcx().err_count() > error_count
-        && starting_item.node.is_generic_fn(tcx)
+        && starting_item.node.is_generic_fn()
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
@@ -1522,7 +1522,6 @@ fn create_mono_items_for_default_impls<'tcx>(
     // it, to validate whether or not the impl is legal to instantiate at all.
     let only_region_params = |param: &ty::GenericParamDef, _: &_| match param.kind {
         GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-        GenericParamDefKind::Const { is_host_effect: true, .. } => tcx.consts.true_.into(),
         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
             unreachable!(
                 "`own_requires_monomorphization` check means that \

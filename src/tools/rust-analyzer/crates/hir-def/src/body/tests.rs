@@ -370,3 +370,37 @@ fn f(a: i32, b: u32) -> String {
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
 }
+
+#[test]
+fn destructuring_assignment_tuple_macro() {
+    // This is a funny one. `let m!()() = Bar()` is an error in rustc, because `m!()()` isn't a valid pattern,
+    // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
+    // assignments start their lives as expressions. So we have to do the same.
+
+    let (db, body, def) = lower(
+        r#"
+struct Bar();
+
+macro_rules! m {
+    () => { Bar };
+}
+
+fn foo() {
+    m!()() = Bar();
+}
+"#,
+    );
+
+    let (_, source_map) = db.body_with_source_map(def);
+    assert_eq!(source_map.diagnostics(), &[]);
+
+    for (_, def_map) in body.blocks(&db) {
+        assert_eq!(def_map.diagnostics(), &[]);
+    }
+
+    expect![[r#"
+        fn foo() -> () {
+            Bar() = Bar();
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}

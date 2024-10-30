@@ -50,16 +50,18 @@ SOURCE_FILE
           WHITESPACE " "
           TYPE_BOUND
             USE_KW "use"
-            GENERIC_PARAM_LIST
+            USE_BOUND_GENERIC_ARGS
               L_ANGLE "<"
-              LIFETIME_PARAM
-                LIFETIME
-                  LIFETIME_IDENT "'b"
+              LIFETIME
+                LIFETIME_IDENT "'b"
               COMMA ","
               WHITESPACE " "
-              TYPE_PARAM
-                NAME
-                  IDENT "T"
+              NAME_REF
+                IDENT "T"
+              COMMA ","
+              WHITESPACE " "
+              NAME_REF
+                SELF_TYPE_KW "Self"
               R_ANGLE ">"
     WHITESPACE " "
     BLOCK_EXPR

@@ -116,7 +116,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         return;
     }
 
-    let extended_abi_support = tcx.features().extended_varargs_abi_support;
+    let extended_abi_support = tcx.features().extended_varargs_abi_support();
     let conventions = match (extended_abi_support, abi.supports_varargs()) {
         // User enabled additional ABI support for varargs and function ABI matches those ones.
         (true, true) => return,
@@ -153,12 +153,6 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
-    // FIXME(effects): remove once effects is implemented in old trait solver
-    // or if the next solver is stabilized.
-    if tcx.features().effects && !tcx.next_trait_solver_globally() {
-        tcx.dcx().emit_err(errors::EffectsWithoutNextSolver);
-    }
-
     tcx.sess.time("coherence_checking", || {
         tcx.hir().par_for_each_module(|module| {
             let _ = tcx.ensure().check_mod_type_wf(module);
@@ -172,7 +166,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
     });
 
-    if tcx.features().rustc_attrs {
+    if tcx.features().rustc_attrs() {
         tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
         tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
         collect::dump::opaque_hidden_types(tcx);

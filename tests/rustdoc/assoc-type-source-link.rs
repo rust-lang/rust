@@ -8,7 +8,7 @@
 pub struct Bar;
 
 impl Bar {
-    //@ has - '//*[@id="implementations-list"]//*[@id="associatedtype.Y"]/a' 'source'
+    //@ has - '//*[@id="implementations-list"]//*[@id="associatedtype.Y"]/a' 'Source'
     //@ has - '//*[@id="implementations-list"]//*[@id="associatedtype.Y"]/a/@href' \
     // '../src/foo/assoc-type-source-link.rs.html#14'
     pub type Y = u8;
@@ -19,7 +19,7 @@ pub trait Foo {
 }
 
 impl Foo for Bar {
-    //@ has - '//*[@id="trait-implementations-list"]//*[@id="associatedtype.Z"]/a' 'source'
+    //@ has - '//*[@id="trait-implementations-list"]//*[@id="associatedtype.Z"]/a' 'Source'
     //@ has - '//*[@id="trait-implementations-list"]//*[@id="associatedtype.Z"]/a/@href' \
     // '../src/foo/assoc-type-source-link.rs.html#25'
     type Z = u8;

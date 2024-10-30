@@ -5,7 +5,6 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -61,30 +60,9 @@ pub(crate) fn from_target_feature(
                 return None;
             };
 
-            // Only allow features whose feature gates have been enabled.
+            // Only allow target features whose feature gates have been enabled.
             let allowed = match feature_gate.as_ref().copied() {
-                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
-                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
-                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
-                Some(sym::riscv_target_feature) => rust_features.riscv_target_feature,
-                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
-                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
-                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
-                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
-                Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
-                Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
-                Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
-                Some(sym::csky_target_feature) => rust_features.csky_target_feature,
-                Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
-                Some(sym::lahfsahf_target_feature) => rust_features.lahfsahf_target_feature,
-                Some(sym::prfchw_target_feature) => rust_features.prfchw_target_feature,
-                Some(sym::sha512_sm_x86) => rust_features.sha512_sm_x86,
-                Some(sym::x86_amx_intrinsics) => rust_features.x86_amx_intrinsics,
-                Some(sym::xop_target_feature) => rust_features.xop_target_feature,
-                Some(sym::s390x_target_feature) => rust_features.s390x_target_feature,
-                Some(name) => bug!("unknown target feature gate {}", name),
+                Some(name) => rust_features.enabled(name),
                 None => true,
             };
             if !allowed {

@@ -22,6 +22,11 @@ fn main() {
     .required(false)
     .value_parser(clap::value_parser!(String));
 
+    let root_arg = arg!(--"rust-root" <ROOT_DIR>
+"Path to the root of the rust source tree")
+    .required(false)
+    .value_parser(clap::value_parser!(PathBuf));
+
     let dir_arg = arg!([dir] "Root directory for the book\n\
                               (Defaults to the current directory when omitted)")
     .value_parser(clap::value_parser!(PathBuf));
@@ -37,6 +42,7 @@ fn main() {
                 .about("Build the book from the markdown files")
                 .arg(d_arg)
                 .arg(l_arg)
+                .arg(root_arg)
                 .arg(&dir_arg),
         )
         .subcommand(
@@ -96,7 +102,8 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
     }
 
     if book.config.get_preprocessor("spec").is_some() {
-        book.with_preprocessor(Spec::new());
+        let rust_root = args.get_one::<PathBuf>("rust-root").cloned();
+        book.with_preprocessor(Spec::new(rust_root)?);
     }
 
     book.build()?;

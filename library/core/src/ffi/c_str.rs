@@ -137,11 +137,11 @@ enum FromBytesWithNulErrorKind {
 
 // FIXME: const stability attributes should not be required here, I think
 impl FromBytesWithNulError {
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0"))]
     const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
-    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0"))]
     const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
@@ -464,7 +464,9 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
-    /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
+    /// # #![allow(unused_must_use)]
+    /// # #![cfg_attr(bootstrap, expect(temporary_cstring_as_ptr))]
+    /// # #![cfg_attr(not(bootstrap), expect(dangling_pointers_from_temporaries))]
     /// use std::ffi::CString;
     ///
     /// // Do not do this:
@@ -730,7 +732,7 @@ impl AsRef<CStr> for CStr {
 /// located within `isize::MAX` from `ptr`.
 #[inline]
 #[unstable(feature = "cstr_internals", issue = "none")]
-#[rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0"))]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const unsafe fn strlen(ptr: *const c_char) -> usize {
     const fn strlen_ct(s: *const c_char) -> usize {

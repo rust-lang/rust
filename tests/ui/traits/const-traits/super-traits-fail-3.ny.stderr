@@ -1,0 +1,49 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/super-traits-fail-3.rs:14:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/super-traits-fail-3.rs:14:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/super-traits-fail-3.rs:14:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/super-traits-fail-3.rs:14:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/super-traits-fail-3.rs:14:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+  --> $DIR/super-traits-fail-3.rs:25:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

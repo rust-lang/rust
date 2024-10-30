@@ -1198,7 +1198,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // const generics. Of course, `Struct` and `Enum` may contain ty params, too, but the
             // benefits of including them here outweighs the small number of false positives.
             Some(Res::Def(DefKind::Struct | DefKind::Enum, _))
-                if self.r.tcx.features().adt_const_params =>
+                if self.r.tcx.features().adt_const_params() =>
             {
                 Applicability::MaybeIncorrect
             }
@@ -2773,7 +2773,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // Avoid suggesting placing lifetime parameters on constant items unless the relevant
                     // feature is enabled. Suggest the parent item as a possible location if applicable.
                     if let LifetimeBinderKind::ConstItem = kind
-                        && !self.r.tcx().features().generic_const_items
+                        && !self.r.tcx().features().generic_const_items()
                     {
                         continue;
                     }
@@ -2934,7 +2934,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     .emit();
             }
             NoConstantGenericsReason::NonTrivialConstArg => {
-                assert!(!self.r.tcx.features().generic_const_exprs);
+                assert!(!self.r.tcx.features().generic_const_exprs());
                 self.r
                     .dcx()
                     .create_err(errors::ParamInNonTrivialAnonConst {

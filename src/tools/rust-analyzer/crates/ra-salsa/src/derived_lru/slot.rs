@@ -666,7 +666,7 @@ Please report this bug to https://github.com/salsa-rs/salsa/issues."
     }
 }
 
-impl<'me, Q, MP> Drop for PanicGuard<'me, Q, MP>
+impl<Q, MP> Drop for PanicGuard<'_, Q, MP>
 where
     Q: QueryFunction,
     MP: MemoizationPolicy<Q>,

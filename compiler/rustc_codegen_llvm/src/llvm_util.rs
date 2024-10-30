@@ -248,6 +248,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "pmuv3") => Some(LLVMFeature::new("perfmon")),
         ("aarch64", "paca") => Some(LLVMFeature::new("pauth")),
         ("aarch64", "pacg") => Some(LLVMFeature::new("pauth")),
+        ("aarch64", "pauth-lr") if get_version().0 < 19 => None,
         // Before LLVM 20 those two features were packaged together as b16b16
         ("aarch64", "sve-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
@@ -697,12 +698,9 @@ fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
     let feature = s
         .strip_prefix(&['+', '-'][..])
         .unwrap_or_else(|| sess.dcx().emit_fatal(InvalidTargetFeaturePrefix { feature: s }));
-    if s.is_empty() {
-        return None;
-    }
     // Rustc-specific feature requests like `+crt-static` or `-crt-static`
     // are not passed down to LLVM.
-    if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+    if s.is_empty() || RUSTC_SPECIFIC_FEATURES.contains(&feature) {
         return None;
     }
     Some(feature)

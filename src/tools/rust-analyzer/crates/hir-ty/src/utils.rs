@@ -123,7 +123,7 @@ pub(super) struct ClauseElaborator<'a> {
     seen: FxHashSet<WhereClause>,
 }
 
-impl<'a> ClauseElaborator<'a> {
+impl ClauseElaborator<'_> {
     fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
         self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
     }
@@ -163,10 +163,12 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
                 let is_trait = match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
-                        TypeRef::Path(p) => p.is_self_type(),
-                        _ => false,
-                    },
+                    WherePredicateTypeTarget::TypeRef(type_ref) => {
+                        match &generic_params.types_map[*type_ref] {
+                            TypeRef::Path(p) => p.is_self_type(),
+                            _ => false,
+                        }
+                    }
                     WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
                         Some(*local_id) == trait_self
                     }
@@ -257,10 +259,12 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
-    match func.lookup(db.upcast()).container {
+    let loc = func.lookup(db.upcast());
+    match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when it has
-            // `"rust-intrinsic"` ABI there are a few exceptions.
+            // Function in an `extern` block are always unsafe to call, except when
+            // it is marked as `safe` or it has `"rust-intrinsic"` ABI there are a
+            // few exceptions.
             let id = block.lookup(db.upcast()).id;
 
             let is_intrinsic =
@@ -270,8 +274,8 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
                 // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
                 !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
-                // Extern items are always unsafe
-                true
+                // Extern items without `safe` modifier are always unsafe
+                !data.is_safe()
             }
         }
         _ => false,

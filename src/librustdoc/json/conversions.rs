@@ -552,20 +552,18 @@ impl FromClean<clean::GenericBound> for GenericBound {
 }
 
 pub(crate) fn from_trait_bound_modifier(
-    modifier: rustc_hir::TraitBoundModifier,
+    modifiers: rustc_hir::TraitBoundModifiers,
 ) -> TraitBoundModifier {
-    use rustc_hir::TraitBoundModifier::*;
-    match modifier {
-        None => TraitBoundModifier::None,
-        Maybe => TraitBoundModifier::Maybe,
-        MaybeConst => TraitBoundModifier::MaybeConst,
-        // FIXME(const_trait_impl): Create rjt::TBM::Const and map to it once always-const bounds
-        // are less experimental.
-        Const => TraitBoundModifier::None,
-        // FIXME(negative-bounds): This bound should be rendered negative, but
-        // since that's experimental, maybe let's not add it to the rustdoc json
-        // API just now...
-        Negative => TraitBoundModifier::None,
+    use rustc_hir as hir;
+    let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+    match (constness, polarity) {
+        (hir::BoundConstness::Never, hir::BoundPolarity::Positive) => TraitBoundModifier::None,
+        (hir::BoundConstness::Never, hir::BoundPolarity::Maybe(_)) => TraitBoundModifier::Maybe,
+        (hir::BoundConstness::Maybe(_), hir::BoundPolarity::Positive) => {
+            TraitBoundModifier::MaybeConst
+        }
+        // FIXME: Fill out the rest of this matrix.
+        _ => TraitBoundModifier::None,
     }
 }
 

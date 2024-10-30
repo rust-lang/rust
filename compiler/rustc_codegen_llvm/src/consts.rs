@@ -19,7 +19,7 @@ use rustc_target::abi::{
 };
 use tracing::{debug, instrument, trace};
 
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::errors::{
     InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
 };
@@ -172,29 +172,27 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        unsafe {
-            // Declare a symbol `foo` with the desired linkage.
-            let g1 = cx.declare_global(sym, cx.type_i8());
-            llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
+        // Declare a symbol `foo` with the desired linkage.
+        let g1 = cx.declare_global(sym, cx.type_i8());
+        llvm::set_linkage(g1, base::linkage_to_llvm(linkage));
 
-            // Declare an internal global `extern_with_linkage_foo` which
-            // is initialized with the address of `foo`. If `foo` is
-            // discarded during linking (for example, if `foo` has weak
-            // linkage and there are no definitions), then
-            // `extern_with_linkage_foo` will instead be initialized to
-            // zero.
-            let mut real_name = "_rust_extern_with_linkage_".to_string();
-            real_name.push_str(sym);
-            let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
-                    span: cx.tcx.def_span(def_id),
-                    symbol_name: sym,
-                })
-            });
-            llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
-            llvm::LLVMSetInitializer(g2, g1);
-            g2
-        }
+        // Declare an internal global `extern_with_linkage_foo` which
+        // is initialized with the address of `foo`. If `foo` is
+        // discarded during linking (for example, if `foo` has weak
+        // linkage and there are no definitions), then
+        // `extern_with_linkage_foo` will instead be initialized to
+        // zero.
+        let mut real_name = "_rust_extern_with_linkage_".to_string();
+        real_name.push_str(sym);
+        let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
+            cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
+                span: cx.tcx.def_span(def_id),
+                symbol_name: sym,
+            })
+        });
+        llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
+        unsafe { llvm::LLVMSetInitializer(g2, g1) };
+        g2
     } else if cx.tcx.sess.target.arch == "x86"
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
@@ -224,23 +222,21 @@ impl<'ll> CodegenCx<'ll, '_> {
         align: Align,
         kind: Option<&str>,
     ) -> &'ll Value {
-        unsafe {
-            let gv = match kind {
-                Some(kind) if !self.tcx.sess.fewer_names() => {
-                    let name = self.generate_local_symbol_name(kind);
-                    let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
-                        bug!("symbol `{}` is already defined", name);
-                    });
-                    llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
-                    gv
-                }
-                _ => self.define_private_global(self.val_ty(cv)),
-            };
-            llvm::LLVMSetInitializer(gv, cv);
-            set_global_alignment(self, gv, align);
-            llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
-            gv
-        }
+        let gv = match kind {
+            Some(kind) if !self.tcx.sess.fewer_names() => {
+                let name = self.generate_local_symbol_name(kind);
+                let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
+                    bug!("symbol `{}` is already defined", name);
+                });
+                llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
+                gv
+            }
+            _ => self.define_private_global(self.val_ty(cv)),
+        };
+        unsafe { llvm::LLVMSetInitializer(gv, cv) };
+        set_global_alignment(self, gv, align);
+        llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        gv
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -292,9 +288,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = self.declare_global(sym, llty);
 
             if !self.tcx.is_reachable_non_generic(def_id) {
-                unsafe {
-                    llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
-                }
+                llvm::set_visibility(g, llvm::Visibility::Hidden);
             }
 
             g
@@ -312,7 +306,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        let dso_local = unsafe { self.should_assume_dso_local(g, true) };
+        let dso_local = self.should_assume_dso_local(g, true);
         if dso_local {
             unsafe {
                 llvm::LLVMRustSetDSOLocal(g, true);
@@ -401,18 +395,18 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 
-                let linkage = llvm::LLVMRustGetLinkage(g);
-                let visibility = llvm::LLVMRustGetVisibility(g);
+                let linkage = llvm::get_linkage(g);
+                let visibility = llvm::get_visibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
                     self.llmod,
-                    name.as_ptr().cast(),
+                    name.as_c_char_ptr(),
                     name.len(),
                     val_llty,
                 );
 
-                llvm::LLVMRustSetLinkage(new_g, linkage);
-                llvm::LLVMRustSetVisibility(new_g, visibility);
+                llvm::set_linkage(new_g, linkage);
+                llvm::set_visibility(new_g, visibility);
 
                 // The old global has had its name removed but is returned by
                 // get_static since it is in the instance cache. Provide an
@@ -457,7 +451,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
-                        section.as_str().as_ptr().cast(),
+                        section.as_str().as_c_char_ptr(),
                         section.as_str().len(),
                     );
                     assert!(alloc.provenance().ptrs().is_empty());
@@ -468,7 +462,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                     let bytes =
                         alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                     let alloc =
-                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_ptr().cast(), bytes.len());
+                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
                     let val = llvm::LLVMMetadataAsValue(self.llcx, meta);

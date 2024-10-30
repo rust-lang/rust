@@ -2,7 +2,7 @@ error[E0277]: `?` couldn't convert the error to `TryFromSliceError`
   --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |         -------^ the trait `From<&str>` is not implemented for `TryFromSliceError`, which is required by `Result<u32, TryFromSliceError>: FromResidual<Result<Infallible, &str>>`
+   |         -------^ the trait `From<&str>` is not implemented for `TryFromSliceError`
    |         |
    |         this can't be annotated with `?` because it has type `Result<_, &str>`
    |

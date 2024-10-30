@@ -1701,14 +1701,14 @@ fn f() {
 }
             "#,
             expect![[r#"
-                func Function FileId(0) 137..146 140..144
-
-                FileId(0) 161..165
-
-
                 func Function FileId(0) 137..146 140..144 module
 
                 FileId(0) 181..185
+
+
+                func Function FileId(0) 137..146 140..144
+
+                FileId(0) 161..165
             "#]],
         )
     }
@@ -2747,6 +2747,27 @@ impl Foo {
                 new Function FileId(0) 27..38 30..33
 
                 FileId(0) 131..134
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_included_file() {
+        check(
+            r#"
+//- minicore:include
+//- /lib.rs
+include!("foo.rs");
+fn howdy() {
+    let _ = FOO;
+}
+//- /foo.rs
+const FOO$0: i32 = 0;
+"#,
+            expect![[r#"
+                FOO Const FileId(1) 0..19 6..9
+
+                FileId(0) 45..48
             "#]],
         );
     }

@@ -446,7 +446,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 return;
         }
         if (status.message) {
-            statusBar.tooltip.appendText(status.message);
+            statusBar.tooltip.appendMarkdown(status.message);
         }
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendMarkdown("\n\n---\n\n");

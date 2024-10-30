@@ -135,6 +135,11 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         has_mods = true;
     }
 
+    if p.at_contextual_kw(T![safe]) {
+        p.eat_contextual_kw(T![safe]);
+        has_mods = true;
+    }
+
     if p.at(T![extern]) {
         has_extern = true;
         has_mods = true;
@@ -189,6 +194,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         T![fn] => fn_(p, m),
 
         T![const] if p.nth(1) != T!['{'] => consts::konst(p, m),
+        T![static] if matches!(p.nth(1), IDENT | T![_] | T![mut]) => consts::static_(p, m),
 
         T![trait] => traits::trait_(p, m),
         T![impl] => traits::impl_(p, m),

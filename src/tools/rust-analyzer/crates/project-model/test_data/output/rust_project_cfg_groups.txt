@@ -17,6 +17,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -56,6 +57,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -86,6 +88,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -116,6 +119,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -146,6 +150,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -193,6 +198,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -223,6 +229,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -318,6 +325,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -348,6 +356,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -378,6 +387,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -410,6 +420,7 @@
                 "group1_other_cfg=other_config",
                 "group2_cfg=yet_another_config",
                 "rust_analyzer",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -485,6 +496,7 @@
                 "group2_cfg=fourth_config",
                 "group2_cfg=yet_another_config",
                 "rust_analyzer",
+                "true",
                 "unrelated_cfg",
             ],
         ),

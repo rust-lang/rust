@@ -1,0 +1,13 @@
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [typeck] type-checking `Clone::clone_from`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [typeck] type-checking `test_const_eval_select`
+#1 [analysis] running analysis passes on this crate
+end of query stack

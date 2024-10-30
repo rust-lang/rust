@@ -3,7 +3,7 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::Body,
+    body::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
@@ -11,7 +11,7 @@ use hir_def::{
     ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
 };
 use hir_expand::Lookup;
-use stdx::{never, IsNoneOr};
+use stdx::never;
 use triomphe::Arc;
 
 use crate::{
@@ -80,7 +80,7 @@ pub(crate) fn path_to_const<'g>(
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let value = match mode {
@@ -287,7 +287,7 @@ pub(crate) fn const_eval_discriminant_variant(
     }
 
     let repr = db.enum_data(loc.parent).repr;
-    let is_signed = IsNoneOr::is_none_or(repr.and_then(|repr| repr.int), |int| int.is_signed());
+    let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(
         def,
@@ -319,7 +319,7 @@ pub(crate) fn eval_to_const(
             return true;
         }
         let mut r = false;
-        body[expr].walk_child_exprs(|idx| r |= has_closure(body, idx));
+        body.walk_child_exprs(expr, |idx| r |= has_closure(body, idx));
         r
     }
     if has_closure(ctx.body, expr) {

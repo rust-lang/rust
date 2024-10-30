@@ -19,7 +19,9 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     nameres::DefMap,
     path::{Path, PathKind},
-    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
+    type_ref::{
+        TraitBoundModifier, TypeBound, TypeRef, TypeRefId, TypesMap, TypesSourceMap, UseArgRef,
+    },
     visibility::Visibility,
     GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
     ModuleId, TraitId,
@@ -806,7 +808,7 @@ fn render_variant_after_name(
     memory_map: &MemoryMap,
 ) -> Result<(), HirDisplayError> {
     match data {
-        VariantData::Record(fields) | VariantData::Tuple(fields) => {
+        VariantData::Record { fields, .. } | VariantData::Tuple { fields, .. } => {
             let render_field = |f: &mut HirFormatter<'_>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
                 let ty = field_types[id].clone().substitute(Interner, subst);
@@ -817,7 +819,7 @@ fn render_variant_after_name(
                 render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)
             };
             let mut it = fields.iter();
-            if matches!(data, VariantData::Record(_)) {
+            if matches!(data, VariantData::Record { .. }) {
                 write!(f, " {{")?;
                 if let Some((id, data)) = it.next() {
                     write!(f, " {}: ", data.name.display(f.db.upcast(), f.edition()))?;
@@ -1897,100 +1899,150 @@ pub fn write_visibility(
     }
 }
 
-impl HirDisplay for TypeRef {
+pub trait HirDisplayWithTypesMap {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError>;
+}
+
+impl<T: ?Sized + HirDisplayWithTypesMap> HirDisplayWithTypesMap for &'_ T {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError> {
+        T::hir_fmt(&**self, f, types_map)
+    }
+}
+
+pub fn hir_display_with_types_map<'a, T: HirDisplayWithTypesMap + 'a>(
+    value: T,
+    types_map: &'a TypesMap,
+) -> impl HirDisplay + 'a {
+    TypesMapAdapter(value, types_map)
+}
+
+struct TypesMapAdapter<'a, T>(T, &'a TypesMap);
+
+impl<'a, T> TypesMapAdapter<'a, T> {
+    fn wrap(types_map: &'a TypesMap) -> impl Fn(T) -> TypesMapAdapter<'a, T> {
+        move |value| TypesMapAdapter(value, types_map)
+    }
+}
+
+impl<T: HirDisplayWithTypesMap> HirDisplay for TypesMapAdapter<'_, T> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        match self {
+        T::hir_fmt(&self.0, f, self.1)
+    }
+}
+
+impl HirDisplayWithTypesMap for TypeRefId {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError> {
+        match &types_map[*self] {
             TypeRef::Never => write!(f, "!")?,
             TypeRef::Placeholder => write!(f, "_")?,
             TypeRef::Tuple(elems) => {
                 write!(f, "(")?;
-                f.write_joined(elems, ", ")?;
+                f.write_joined(elems.iter().map(TypesMapAdapter::wrap(types_map)), ", ")?;
                 if elems.len() == 1 {
                     write!(f, ",")?;
                 }
                 write!(f, ")")?;
             }
-            TypeRef::Path(path) => path.hir_fmt(f)?,
+            TypeRef::Path(path) => path.hir_fmt(f, types_map)?,
             TypeRef::RawPtr(inner, mutability) => {
                 let mutability = match mutability {
                     hir_def::type_ref::Mutability::Shared => "*const ",
                     hir_def::type_ref::Mutability::Mut => "*mut ",
                 };
                 write!(f, "{mutability}")?;
-                inner.hir_fmt(f)?;
+                inner.hir_fmt(f, types_map)?;
             }
-            TypeRef::Reference(inner, lifetime, mutability) => {
-                let mutability = match mutability {
+            TypeRef::Reference(ref_) => {
+                let mutability = match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => "",
                     hir_def::type_ref::Mutability::Mut => "mut ",
                 };
                 write!(f, "&")?;
-                if let Some(lifetime) = lifetime {
+                if let Some(lifetime) = &ref_.lifetime {
                     write!(f, "{} ", lifetime.name.display(f.db.upcast(), f.edition()))?;
                 }
                 write!(f, "{mutability}")?;
-                inner.hir_fmt(f)?;
+                ref_.ty.hir_fmt(f, types_map)?;
             }
-            TypeRef::Array(inner, len) => {
+            TypeRef::Array(array) => {
                 write!(f, "[")?;
-                inner.hir_fmt(f)?;
-                write!(f, "; {}]", len.display(f.db.upcast(), f.edition()))?;
+                array.ty.hir_fmt(f, types_map)?;
+                write!(f, "; {}]", array.len.display(f.db.upcast(), f.edition()))?;
             }
             TypeRef::Slice(inner) => {
                 write!(f, "[")?;
-                inner.hir_fmt(f)?;
+                inner.hir_fmt(f, types_map)?;
                 write!(f, "]")?;
             }
-            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe, ref abi) => {
-                if is_unsafe {
+            TypeRef::Fn(fn_) => {
+                if fn_.is_unsafe() {
                     write!(f, "unsafe ")?;
                 }
-                if let Some(abi) = abi {
+                if let Some(abi) = fn_.abi() {
                     f.write_str("extern \"")?;
                     f.write_str(abi.as_str())?;
                     f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
-                if let Some(((_, return_type), function_parameters)) = parameters.split_last() {
+                if let Some(((_, return_type), function_parameters)) = fn_.params().split_last() {
                     for index in 0..function_parameters.len() {
                         let (param_name, param_type) = &function_parameters[index];
                         if let Some(name) = param_name {
                             write!(f, "{}: ", name.display(f.db.upcast(), f.edition()))?;
                         }
 
-                        param_type.hir_fmt(f)?;
+                        param_type.hir_fmt(f, types_map)?;
 
                         if index != function_parameters.len() - 1 {
                             write!(f, ", ")?;
                         }
                     }
-                    if is_varargs {
-                        write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
+                    if fn_.is_varargs() {
+                        write!(f, "{}...", if fn_.params().len() == 1 { "" } else { ", " })?;
                     }
                     write!(f, ")")?;
-                    match &return_type {
+                    match &types_map[*return_type] {
                         TypeRef::Tuple(tup) if tup.is_empty() => {}
                         _ => {
                             write!(f, " -> ")?;
-                            return_type.hir_fmt(f)?;
+                            return_type.hir_fmt(f, types_map)?;
                         }
                     }
                 }
             }
             TypeRef::ImplTrait(bounds) => {
                 write!(f, "impl ")?;
-                f.write_joined(bounds, " + ")?;
+                f.write_joined(bounds.iter().map(TypesMapAdapter::wrap(types_map)), " + ")?;
             }
             TypeRef::DynTrait(bounds) => {
                 write!(f, "dyn ")?;
-                f.write_joined(bounds, " + ")?;
+                f.write_joined(bounds.iter().map(TypesMapAdapter::wrap(types_map)), " + ")?;
             }
             TypeRef::Macro(macro_call) => {
-                let ctx = hir_def::lower::LowerCtx::new(f.db.upcast(), macro_call.file_id);
+                let (mut types_map, mut types_source_map) =
+                    (TypesMap::default(), TypesSourceMap::default());
+                let ctx = hir_def::lower::LowerCtx::new(
+                    f.db.upcast(),
+                    macro_call.file_id,
+                    &mut types_map,
+                    &mut types_source_map,
+                );
                 let macro_call = macro_call.to_node(f.db.upcast());
                 match macro_call.path() {
                     Some(path) => match Path::from_src(&ctx, path) {
-                        Some(path) => path.hir_fmt(f)?,
+                        Some(path) => path.hir_fmt(f, &types_map)?,
                         None => write!(f, "{{macro}}")?,
                     },
                     None => write!(f, "{{macro}}")?,
@@ -2003,15 +2055,19 @@ impl HirDisplay for TypeRef {
     }
 }
 
-impl HirDisplay for TypeBound {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+impl HirDisplayWithTypesMap for TypeBound {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError> {
         match self {
             TypeBound::Path(path, modifier) => {
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
                 }
-                path.hir_fmt(f)
+                path.hir_fmt(f, types_map)
             }
             TypeBound::Lifetime(lifetime) => {
                 write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
@@ -2023,19 +2079,36 @@ impl HirDisplay for TypeBound {
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(f.db.upcast(), edition)).format(", ")
                 )?;
-                path.hir_fmt(f)
+                path.hir_fmt(f, types_map)
+            }
+            TypeBound::Use(args) => {
+                let edition = f.edition();
+                write!(
+                    f,
+                    "use<{}> ",
+                    args.iter()
+                        .map(|it| match it {
+                            UseArgRef::Lifetime(lt) => lt.name.display(f.db.upcast(), edition),
+                            UseArgRef::Name(n) => n.display(f.db.upcast(), edition),
+                        })
+                        .format(", ")
+                )
             }
             TypeBound::Error => write!(f, "{{error}}"),
         }
     }
 }
 
-impl HirDisplay for Path {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+impl HirDisplayWithTypesMap for Path {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError> {
         match (self.type_anchor(), self.kind()) {
             (Some(anchor), _) => {
                 write!(f, "<")?;
-                anchor.hir_fmt(f)?;
+                anchor.hir_fmt(f, types_map)?;
                 write!(f, ">")?;
             }
             (_, PathKind::Plain) => {}
@@ -2078,7 +2151,7 @@ impl HirDisplay for Path {
         });
         if let Some(ty) = trait_self_ty {
             write!(f, "<")?;
-            ty.hir_fmt(f)?;
+            ty.hir_fmt(f, types_map)?;
             write!(f, " as ")?;
             // Now format the path of the trait...
         }
@@ -2094,21 +2167,26 @@ impl HirDisplay for Path {
                 if generic_args.desugared_from_fn {
                     // First argument will be a tuple, which already includes the parentheses.
                     // If the tuple only contains 1 item, write it manually to avoid the trailing `,`.
-                    if let hir_def::path::GenericArg::Type(TypeRef::Tuple(v)) =
-                        &generic_args.args[0]
-                    {
+                    let tuple = match generic_args.args[0] {
+                        hir_def::path::GenericArg::Type(ty) => match &types_map[ty] {
+                            TypeRef::Tuple(it) => Some(it),
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    if let Some(v) = tuple {
                         if v.len() == 1 {
                             write!(f, "(")?;
-                            v[0].hir_fmt(f)?;
+                            v[0].hir_fmt(f, types_map)?;
                             write!(f, ")")?;
                         } else {
-                            generic_args.args[0].hir_fmt(f)?;
+                            generic_args.args[0].hir_fmt(f, types_map)?;
                         }
                     }
-                    if let Some(ret) = &generic_args.bindings[0].type_ref {
-                        if !matches!(ret, TypeRef::Tuple(v) if v.is_empty()) {
+                    if let Some(ret) = generic_args.bindings[0].type_ref {
+                        if !matches!(&types_map[ret], TypeRef::Tuple(v) if v.is_empty()) {
                             write!(f, " -> ")?;
-                            ret.hir_fmt(f)?;
+                            ret.hir_fmt(f, types_map)?;
                         }
                     }
                     return Ok(());
@@ -2123,7 +2201,7 @@ impl HirDisplay for Path {
                     } else {
                         write!(f, ", ")?;
                     }
-                    arg.hir_fmt(f)?;
+                    arg.hir_fmt(f, types_map)?;
                 }
                 for binding in generic_args.bindings.iter() {
                     if first {
@@ -2136,11 +2214,14 @@ impl HirDisplay for Path {
                     match &binding.type_ref {
                         Some(ty) => {
                             write!(f, " = ")?;
-                            ty.hir_fmt(f)?
+                            ty.hir_fmt(f, types_map)?
                         }
                         None => {
                             write!(f, ": ")?;
-                            f.write_joined(binding.bounds.iter(), " + ")?;
+                            f.write_joined(
+                                binding.bounds.iter().map(TypesMapAdapter::wrap(types_map)),
+                                " + ",
+                            )?;
                         }
                     }
                 }
@@ -2162,10 +2243,14 @@ impl HirDisplay for Path {
     }
 }
 
-impl HirDisplay for hir_def::path::GenericArg {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+impl HirDisplayWithTypesMap for hir_def::path::GenericArg {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_>,
+        types_map: &TypesMap,
+    ) -> Result<(), HirDisplayError> {
         match self {
-            hir_def::path::GenericArg::Type(ty) => ty.hir_fmt(f),
+            hir_def::path::GenericArg::Type(ty) => ty.hir_fmt(f, types_map),
             hir_def::path::GenericArg::Const(c) => {
                 write!(f, "{}", c.display(f.db.upcast(), f.edition()))
             }

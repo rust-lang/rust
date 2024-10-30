@@ -219,7 +219,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     }
 
     /// "Intercept" a function call, because we have something special to do for it.
-    /// All `#[rustc_do_not_const_check]` functions should be hooked here.
+    /// All `#[rustc_do_not_const_check]` functions MUST be hooked here.
     /// If this returns `Some` function, which may be `instance` or a different function with
     /// compatible arguments, then evaluation should continue with that function.
     /// If this returns `None`, the function call has been handled and the function has returned.
@@ -395,7 +395,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool {
-        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks || layout.abi.is_uninhabited()
+        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks || layout.is_uninhabited()
     }
 
     fn load_mir(
@@ -431,8 +431,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
             // #[const_trait]. These *are* const-checked!
-            // FIXME: why does `is_const_fn_raw` not classify them as const?
-            if (!ecx.tcx.is_const_fn_raw(def) && !ecx.tcx.is_const_default_method(def))
+            // FIXME(effects): why does `is_const_fn` not classify them as const?
+            if (!ecx.tcx.is_const_fn(def) && !ecx.tcx.is_const_default_method(def))
                 || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
             {
                 // We certainly do *not* want to actually call the fn

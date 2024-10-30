@@ -3,6 +3,7 @@
 mod format_like;
 
 use hir::ItemInNs;
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
@@ -15,7 +16,6 @@ use syntax::{
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
 };
-use text_edit::TextEdit;
 
 use crate::{
     completions::postfix::format_like::add_format_like_completions,

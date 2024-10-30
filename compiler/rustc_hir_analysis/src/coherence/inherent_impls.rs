@@ -77,7 +77,7 @@ impl<'tcx> InherentCollect<'tcx> {
             return Ok(());
         }
 
-        if self.tcx.features().rustc_attrs {
+        if self.tcx.features().rustc_attrs() {
             let items = self.tcx.associated_item_def_ids(impl_def_id);
 
             if !self.tcx.has_attr(ty_def_id, sym::rustc_has_incoherent_inherent_impls) {
@@ -115,7 +115,7 @@ impl<'tcx> InherentCollect<'tcx> {
     ) -> Result<(), ErrorGuaranteed> {
         let items = self.tcx.associated_item_def_ids(impl_def_id);
         if !self.tcx.hir().rustc_coherence_is_core() {
-            if self.tcx.features().rustc_attrs {
+            if self.tcx.features().rustc_attrs() {
                 for &impl_item in items {
                     if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
                         let span = self.tcx.def_span(impl_def_id);

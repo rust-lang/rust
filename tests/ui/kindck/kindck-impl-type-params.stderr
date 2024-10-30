@@ -21,7 +21,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:16:13
    |
 LL |     let a = &t as &dyn Gettable<T>;
-   |             ^^ the trait `Copy` is not implemented for `T`, which is required by `S<T>: Gettable<T>`
+   |             ^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
@@ -59,7 +59,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:23:31
    |
 LL |     let a: &dyn Gettable<T> = &t;
-   |                               ^^ the trait `Copy` is not implemented for `T`, which is required by `S<T>: Gettable<T>`
+   |                               ^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
@@ -78,7 +78,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:36:13
    |
 LL |     let a = t as Box<dyn Gettable<String>>;
-   |             ^ the trait `Copy` is not implemented for `String`, which is required by `S<String>: Gettable<String>`
+   |             ^ the trait `Copy` is not implemented for `String`
    |
    = help: the trait `Gettable<T>` is implemented for `S<T>`
 note: required for `S<String>` to implement `Gettable<String>`
@@ -94,7 +94,7 @@ error[E0277]: the trait bound `Foo: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:44:37
    |
 LL |     let a: Box<dyn Gettable<Foo>> = t;
-   |                                     ^ the trait `Copy` is not implemented for `Foo`, which is required by `S<Foo>: Gettable<Foo>`
+   |                                     ^ the trait `Copy` is not implemented for `Foo`
    |
    = help: the trait `Gettable<T>` is implemented for `S<T>`
 note: required for `S<Foo>` to implement `Gettable<Foo>`

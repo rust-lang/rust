@@ -1,5 +1,6 @@
 use std::{fmt, iter};
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
@@ -10,7 +11,6 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use tracing::{debug, instrument};
 
 /// The value of an inserted drop flag.

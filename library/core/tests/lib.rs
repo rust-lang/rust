@@ -17,11 +17,13 @@
 #![feature(clone_to_uninit)]
 #![feature(const_align_of_val_raw)]
 #![feature(const_align_offset)]
+#![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
+#![feature(const_eval_select)]
 #![feature(const_hash)]
 #![feature(const_heap)]
-#![feature(const_likely)]
 #![feature(const_nonnull_new)]
+#![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
 #![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
@@ -46,11 +48,11 @@
 #![feature(get_many_mut)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(inline_const_pat)]
 #![feature(int_roundings)]
 #![feature(ip)]
 #![feature(ip_from)]
 #![feature(is_ascii_octdigit)]
-#![feature(isqrt)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_chain)]
@@ -103,6 +105,37 @@
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
+
+/// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
+macro_rules! assert_eq_const_safe {
+    ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
+        {
+            fn runtime() {
+                assert_eq!($left, $right, $($arg)*);
+            }
+            const fn compiletime() {
+                assert!(matches!($left, const { $right }));
+            }
+            core::intrinsics::const_eval_select((), compiletime, runtime)
+        }
+    };
+}
+
+/// Creates a test for runtime and a test for constant-time.
+macro_rules! test_runtime_and_compiletime {
+    ($(
+        $(#[$attr:meta])*
+        fn $test:ident() $block:block
+    )*) => {
+        $(
+            $(#[$attr])*
+            #[test]
+            fn $test() $block
+            $(#[$attr])*
+            const _: () = $block;
+        )*
+    }
+}
 
 mod alloc;
 mod any;

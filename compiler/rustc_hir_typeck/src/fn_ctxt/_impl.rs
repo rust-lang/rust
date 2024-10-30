@@ -1262,15 +1262,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()
                     }
-                    (
-                        &GenericParamDefKind::Const { has_default, is_host_effect, .. },
-                        GenericArg::Infer(inf),
-                    ) => {
-                        if has_default && is_host_effect {
-                            self.fcx.var_for_effect(param)
-                        } else {
-                            self.fcx.ct_infer(Some(param), inf.span).into()
-                        }
+                    (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                        self.fcx.ct_infer(Some(param), inf.span).into()
                     }
                     _ => unreachable!(),
                 }
@@ -1305,20 +1298,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, is_host_effect, .. } => {
+                    GenericParamDefKind::Const { has_default, .. } => {
                         if has_default {
-                            // N.B. this is a bit of a hack. `infer_args` is passed depending on
-                            // whether the user has provided generic args. E.g. for `Vec::new`
-                            // we would have to infer the generic types. However, for `Vec::<T>::new`
-                            // where the allocator param `A` has a default we will *not* infer. But
-                            // for effect params this is a different story: if the user has not written
-                            // anything explicit for the effect param, we always need to try to infer
-                            // it before falling back to default, such that a `const fn` such as
-                            // `needs_drop::<()>` can still be called in const contexts. (if we defaulted
-                            // instead of inferred, typeck would error)
-                            if is_host_effect {
-                                return self.fcx.var_for_effect(param);
-                            } else if !infer_args {
+                            if !infer_args {
                                 return tcx
                                     .const_param_default(param.def_id)
                                     .instantiate(tcx, preceding_args)
@@ -1486,7 +1468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return ty::Const::new_error(self.tcx, guar);
                 }
             }
-        } else if self.tcx.features().generic_const_exprs {
+        } else if self.tcx.features().generic_const_exprs() {
             ct.normalize_internal(self.tcx, self.param_env)
         } else {
             ct

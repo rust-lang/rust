@@ -5,7 +5,7 @@
 //! rejection from the App Store).
 //!
 //! Therefore, we need to look for other synchronization primitives. Luckily, Darwin
-//! supports semaphores, which allow us to implement the behaviour we need with
+//! supports semaphores, which allow us to implement the behavior we need with
 //! only one primitive (as opposed to a mutex-condvar pair). We use the semaphore
 //! provided by libdispatch, as the underlying Mach semaphore is only dubiously
 //! public.

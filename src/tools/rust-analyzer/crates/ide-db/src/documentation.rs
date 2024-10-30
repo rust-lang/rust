@@ -5,11 +5,11 @@ use hir::{
     resolve_doc_path_on, sym, AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
 };
 use itertools::Itertools;
+use span::{TextRange, TextSize};
 use syntax::{
     ast::{self, IsString},
     AstToken,
 };
-use text_edit::{TextRange, TextSize};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -1,5 +1,6 @@
 use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
+use ide_db::text_edit::TextEdit;
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
     ast::{
@@ -9,7 +10,6 @@ use syntax::{
     },
     AstNode, AstPtr, TextSize,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

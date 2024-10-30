@@ -191,7 +191,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
     pub(crate) fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -218,7 +220,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
     pub(crate) fn demand_coerce(
@@ -271,7 +275,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_if_possible(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
+        let mut err =
+            self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
         self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
 

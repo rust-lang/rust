@@ -439,12 +439,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // Reachability pass defines which functions are eligible for inlining. Generally inlining
         // other functions is incorrect because they could reference symbols that aren't exported.
-        let is_generic = callsite
-            .callee
-            .args
-            .non_erasable_generics(self.tcx, callsite.callee.def_id())
-            .next()
-            .is_some();
+        let is_generic = callsite.callee.args.non_erasable_generics().next().is_some();
         if !is_generic && !cross_crate_inlinable {
             return Err("not exported");
         }

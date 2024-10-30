@@ -1108,7 +1108,14 @@ fn classify_name_ref(
                     },
                     None => return None,
                 } },
-                ast::ExternItemList(_) => PathKind::Item { kind: ItemListKind::ExternBlock },
+                ast::ExternItemList(it) => {
+                    let exn_blk = it.syntax().parent().and_then(ast::ExternBlock::cast);
+                    PathKind::Item {
+                        kind: ItemListKind::ExternBlock {
+                            is_unsafe: exn_blk.and_then(|it| it.unsafe_token()).is_some(),
+                        }
+                    }
+                },
                 ast::SourceFile(_) => PathKind::Item { kind: ItemListKind::SourceFile },
                 _ => return None,
             }
@@ -1310,6 +1317,7 @@ fn classify_name_ref(
                         match token.kind() {
                             SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
                             SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
+                            SyntaxKind::SAFE_KW => qualifier_ctx.safe_tok = Some(token),
                             _ => {}
                         }
                     }

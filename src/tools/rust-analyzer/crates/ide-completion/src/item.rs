@@ -3,6 +3,7 @@
 use std::{fmt, mem};
 
 use hir::Mutability;
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     documentation::Documentation, imports::import_assets::LocatedImport, RootDatabase, SnippetCap,
     SymbolKind,
@@ -11,7 +12,6 @@ use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::{format_smolstr, Edition, SmolStr, TextRange, TextSize};
-use text_edit::TextEdit;
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx},
@@ -426,7 +426,7 @@ impl CompletionItem {
         self.lookup.as_str()
     }
 
-    pub fn ref_match(&self) -> Option<(String, text_edit::Indel, CompletionRelevance)> {
+    pub fn ref_match(&self) -> Option<(String, ide_db::text_edit::Indel, CompletionRelevance)> {
         // Relevance of the ref match should be the same as the original
         // match, but with exact type match set because self.ref_match
         // is only set if there is an exact type match.
@@ -436,7 +436,10 @@ impl CompletionItem {
         self.ref_match.map(|(mutability, offset)| {
             (
                 format!("&{}{}", mutability.as_keyword_for_ref(), self.label),
-                text_edit::Indel::insert(offset, format!("&{}", mutability.as_keyword_for_ref())),
+                ide_db::text_edit::Indel::insert(
+                    offset,
+                    format!("&{}", mutability.as_keyword_for_ref()),
+                ),
                 relevance,
             )
         })

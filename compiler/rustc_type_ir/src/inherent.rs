@@ -208,14 +208,14 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn rust() -> Self;
 
     /// Whether this ABI is `extern "Rust"`.
     fn is_rust(self) -> bool;
 }
 
-pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
+pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn safe() -> Self;
 
     fn is_safe(self) -> bool;
@@ -465,6 +465,14 @@ pub trait Clause<I: Interner<Clause = Self>>:
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
+            .transpose()
+    }
+
+    fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectPredicate<I>>> {
+        self.kind()
+            .map_bound(
+                |clause| if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None },
+            )
             .transpose()
     }
 

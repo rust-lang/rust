@@ -158,9 +158,7 @@ impl ExprCollector<'_> {
                                 AsmOperand::Const(self.collect_expr_opt(c.expr()))
                             }
                             ast::AsmOperand::AsmSym(s) => {
-                                let Some(path) =
-                                    s.path().and_then(|p| self.expander.parse_path(self.db, p))
-                                else {
+                                let Some(path) = s.path().and_then(|p| self.parse_path(p)) else {
                                     continue;
                                 };
                                 AsmOperand::Sym(path)

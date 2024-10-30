@@ -320,8 +320,9 @@ impl char {
     /// '1'.is_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_char_is_digit", issue = "132241")]
     #[inline]
-    pub fn is_digit(self, radix: u32) -> bool {
+    pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
     }
 
@@ -1770,7 +1771,7 @@ const fn len_utf16(code: u32) -> usize {
 /// Panics if the buffer is not large enough.
 /// A buffer of length four is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0")]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0"))]
 #[doc(hidden)]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]

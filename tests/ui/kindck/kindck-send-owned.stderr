@@ -4,7 +4,7 @@ error[E0277]: `*mut u8` cannot be sent between threads safely
 LL |     assert_send::<Box<*mut u8>>();
    |                   ^^^^^^^^^^^^ `*mut u8` cannot be sent between threads safely
    |
-   = help: the trait `Send` is not implemented for `*mut u8`, which is required by `Box<*mut u8>: Send`
+   = help: the trait `Send` is not implemented for `*mut u8`
    = note: required for `Unique<*mut u8>` to implement `Send`
 note: required because it appears within the type `Box<*mut u8>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL

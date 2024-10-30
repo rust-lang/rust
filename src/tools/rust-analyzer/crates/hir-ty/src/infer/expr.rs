@@ -9,8 +9,8 @@ use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKin
 use either::Either;
 use hir_def::{
     hir::{
-        ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, LabelId,
-        Literal, Pat, PatId, Statement, UnaryOp,
+        ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, ExprOrPatId,
+        LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs, Path},
@@ -188,6 +188,9 @@ impl InferenceContext<'_> {
             | Pat::ConstBlock(_)
             | Pat::Record { .. }
             | Pat::Missing => true,
+            Pat::Expr(_) => unreachable!(
+                "we don't call pat_guaranteed_to_constitute_read_for_never() with assignments"
+            ),
         }
     }
 
@@ -195,10 +198,14 @@ impl InferenceContext<'_> {
         match &self.body[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
-            Expr::Path(Path::Normal { type_anchor: Some(_), .. }) => false,
+            Expr::Path(Path::Normal(path)) => path.type_anchor().is_none(),
             Expr::Path(path) => self
                 .resolver
-                .resolve_path_in_value_ns_fully(self.db.upcast(), path)
+                .resolve_path_in_value_ns_fully(
+                    self.db.upcast(),
+                    path,
+                    self.body.expr_path_hygiene(expr),
+                )
                 .map_or(true, |res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
@@ -223,6 +230,7 @@ impl InferenceContext<'_> {
             | Expr::Const(..)
             | Expr::UnaryOp { .. }
             | Expr::BinaryOp { .. }
+            | Expr::Assignment { .. }
             | Expr::Yield { .. }
             | Expr::Cast { .. }
             | Expr::Async { .. }
@@ -374,7 +382,7 @@ impl InferenceContext<'_> {
                 // collect explicitly written argument types
                 for arg_type in arg_types.iter() {
                     let arg_ty = match arg_type {
-                        Some(type_ref) => self.make_ty(type_ref),
+                        Some(type_ref) => self.make_body_ty(*type_ref),
                         None => self.table.new_type_var(),
                     };
                     sig_tys.push(arg_ty);
@@ -382,7 +390,7 @@ impl InferenceContext<'_> {
 
                 // add return type
                 let ret_ty = match ret_type {
-                    Some(type_ref) => self.make_ty(type_ref),
+                    Some(type_ref) => self.make_body_ty(*type_ref),
                     None => self.table.new_type_var(),
                 };
                 if let ClosureKind::Async = closure_kind {
@@ -609,23 +617,7 @@ impl InferenceContext<'_> {
                     coerce.complete(self)
                 }
             }
-            Expr::Path(p) => {
-                let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
-                let ty = match self.infer_path(p, tgt_expr.into()) {
-                    Some(ty) => ty,
-                    None => {
-                        if matches!(p, Path::Normal { mod_path, .. } if mod_path.is_ident() || mod_path.is_self())
-                        {
-                            self.push_diagnostic(InferenceDiagnostic::UnresolvedIdent {
-                                expr: tgt_expr,
-                            });
-                        }
-                        self.err_ty()
-                    }
-                };
-                self.resolver.reset_to_guard(g);
-                ty
-            }
+            Expr::Path(p) => self.infer_expr_path(p, tgt_expr.into(), tgt_expr),
             &Expr::Continue { label } => {
                 if find_continuable(&mut self.breakables, label).is_none() {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
@@ -794,7 +786,7 @@ impl InferenceContext<'_> {
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
             Expr::Cast { expr, type_ref } => {
-                let cast_ty = self.make_ty(type_ref);
+                let cast_ty = self.make_body_ty(*type_ref);
                 let expr_ty = self.infer_expr(
                     *expr,
                     &Expectation::Castable(cast_ty.clone()),
@@ -892,36 +884,6 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
-                Some(BinaryOp::Assignment { op: None }) => {
-                    let lhs = *lhs;
-                    let is_ordinary = match &self.body[lhs] {
-                        Expr::Array(_)
-                        | Expr::RecordLit { .. }
-                        | Expr::Tuple { .. }
-                        | Expr::Underscore => false,
-                        Expr::Call { callee, .. } => !matches!(&self.body[*callee], Expr::Path(_)),
-                        _ => true,
-                    };
-
-                    // In ordinary (non-destructuring) assignments, the type of
-                    // `lhs` must be inferred first so that the ADT fields
-                    // instantiations in RHS can be coerced to it. Note that this
-                    // cannot happen in destructuring assignments because of how
-                    // they are desugared.
-                    if is_ordinary {
-                        // LHS of assignment doesn't constitute reads.
-                        let lhs_ty = self.infer_expr(lhs, &Expectation::none(), ExprIsRead::No);
-                        self.infer_expr_coerce(
-                            *rhs,
-                            &Expectation::has_type(lhs_ty),
-                            ExprIsRead::No,
-                        );
-                    } else {
-                        let rhs_ty = self.infer_expr(*rhs, &Expectation::none(), ExprIsRead::Yes);
-                        self.infer_assignee_expr(lhs, &rhs_ty);
-                    }
-                    self.result.standard_types.unit.clone()
-                }
                 Some(BinaryOp::LogicOp(_)) => {
                     let bool_ty = self.result.standard_types.bool_.clone();
                     self.infer_expr_coerce(
@@ -942,6 +904,35 @@ impl InferenceContext<'_> {
                 Some(op) => self.infer_overloadable_binop(*lhs, *op, *rhs, tgt_expr),
                 _ => self.err_ty(),
             },
+            &Expr::Assignment { target, value } => {
+                // In ordinary (non-destructuring) assignments, the type of
+                // `lhs` must be inferred first so that the ADT fields
+                // instantiations in RHS can be coerced to it. Note that this
+                // cannot happen in destructuring assignments because of how
+                // they are desugared.
+                let lhs_ty = match &self.body[target] {
+                    // LHS of assignment doesn't constitute reads.
+                    &Pat::Expr(expr) => {
+                        Some(self.infer_expr(expr, &Expectation::none(), ExprIsRead::No))
+                    }
+                    Pat::Path(path) => Some(self.infer_expr_path(path, target.into(), tgt_expr)),
+                    _ => None,
+                };
+
+                if let Some(lhs_ty) = lhs_ty {
+                    self.write_pat_ty(target, lhs_ty.clone());
+                    self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::No);
+                } else {
+                    let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
+                    let resolver_guard =
+                        self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                    self.inside_assignment = true;
+                    self.infer_top_pat(target, &rhs_ty);
+                    self.inside_assignment = false;
+                    self.resolver.reset_to_guard(resolver_guard);
+                }
+                self.result.standard_types.unit.clone()
+            }
             Expr::Range { lhs, rhs, range_type } => {
                 let lhs_ty =
                     lhs.map(|e| self.infer_expr_inner(e, &Expectation::none(), ExprIsRead::Yes));
@@ -981,7 +972,7 @@ impl InferenceContext<'_> {
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
                 }
             }
-            Expr::Index { base, index, is_assignee_expr } => {
+            Expr::Index { base, index } => {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none(), ExprIsRead::Yes);
                 let index_ty = self.infer_expr(*index, &Expectation::none(), ExprIsRead::Yes);
 
@@ -1017,23 +1008,11 @@ impl InferenceContext<'_> {
                         self.write_method_resolution(tgt_expr, func, subst);
                     }
                     let assoc = self.resolve_ops_index_output();
-                    let res = self.resolve_associated_type_with_params(
+                    self.resolve_associated_type_with_params(
                         self_ty.clone(),
                         assoc,
                         &[index_ty.clone().cast(Interner)],
-                    );
-
-                    if *is_assignee_expr {
-                        if let Some(index_trait) = self.resolve_lang_trait(LangItem::IndexMut) {
-                            let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
-                                .push(self_ty)
-                                .fill(|_| index_ty.clone().cast(Interner))
-                                .build();
-                            self.push_obligation(trait_ref.cast(Interner));
-                        }
-                    }
-
-                    res
+                    )
                 } else {
                     self.err_ty()
                 }
@@ -1151,9 +1130,7 @@ impl InferenceContext<'_> {
                 },
             },
             Expr::Underscore => {
-                // Underscore expressions may only appear in assignee expressions,
-                // which are handled by `infer_assignee_expr()`.
-                // Any other underscore expression is an error, we render a specialized diagnostic
+                // Underscore expression is an error, we render a specialized diagnostic
                 // to let the user know what type is expected though.
                 let expected = expected.to_option(&mut self.table).unwrap_or_else(|| self.err_ty());
                 self.push_diagnostic(InferenceDiagnostic::TypedHole {
@@ -1229,6 +1206,22 @@ impl InferenceContext<'_> {
             // Any expression that produces a value of type `!` must have diverged
             self.diverges = Diverges::Always;
         }
+        ty
+    }
+
+    fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatId, scope_id: ExprId) -> Ty {
+        let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, scope_id);
+        let ty = match self.infer_path(path, id) {
+            Some(ty) => ty,
+            None => {
+                if path.mod_path().is_some_and(|mod_path| mod_path.is_ident() || mod_path.is_self())
+                {
+                    self.push_diagnostic(InferenceDiagnostic::UnresolvedIdent { id });
+                }
+                self.err_ty()
+            }
+        };
+        self.resolver.reset_to_guard(g);
         ty
     }
 
@@ -1482,107 +1475,6 @@ impl InferenceContext<'_> {
         }
     }
 
-    pub(super) fn infer_assignee_expr(&mut self, lhs: ExprId, rhs_ty: &Ty) -> Ty {
-        let is_rest_expr = |expr| {
-            matches!(
-                &self.body[expr],
-                Expr::Range { lhs: None, rhs: None, range_type: RangeOp::Exclusive },
-            )
-        };
-
-        let rhs_ty = self.resolve_ty_shallow(rhs_ty);
-
-        let ty = match &self.body[lhs] {
-            Expr::Tuple { exprs, .. } => {
-                // We don't consider multiple ellipses. This is analogous to
-                // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = exprs.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
-                let exprs: Vec<_> = exprs.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
-
-                self.infer_tuple_pat_like(&rhs_ty, (), ellipsis, &exprs)
-            }
-            Expr::Call { callee, args, .. } => {
-                // Tuple structs
-                let path = match &self.body[*callee] {
-                    Expr::Path(path) => Some(path),
-                    _ => None,
-                };
-
-                // We don't consider multiple ellipses. This is analogous to
-                // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
-                let ellipsis = args.iter().position(|e| is_rest_expr(*e)).map(|it| it as u32);
-                let args: Vec<_> = args.iter().filter(|e| !is_rest_expr(**e)).copied().collect();
-
-                self.infer_tuple_struct_pat_like(path, &rhs_ty, (), lhs, ellipsis, &args)
-            }
-            Expr::Array(Array::ElementList { elements, .. }) => {
-                let elem_ty = match rhs_ty.kind(Interner) {
-                    TyKind::Array(st, _) => st.clone(),
-                    _ => self.err_ty(),
-                };
-
-                // There's no need to handle `..` as it cannot be bound.
-                let sub_exprs = elements.iter().filter(|e| !is_rest_expr(**e));
-
-                for e in sub_exprs {
-                    self.infer_assignee_expr(*e, &elem_ty);
-                }
-
-                match rhs_ty.kind(Interner) {
-                    TyKind::Array(_, _) => rhs_ty.clone(),
-                    // Even when `rhs_ty` is not an array type, this assignee
-                    // expression is inferred to be an array (of unknown element
-                    // type and length). This should not be just an error type,
-                    // because we are to compute the unifiability of this type and
-                    // `rhs_ty` in the end of this function to issue type mismatches.
-                    _ => TyKind::Array(
-                        self.err_ty(),
-                        crate::consteval::usize_const(self.db, None, self.resolver.krate()),
-                    )
-                    .intern(Interner),
-                }
-            }
-            Expr::RecordLit { path, fields, .. } => {
-                let subs = fields.iter().map(|f| (f.name.clone(), f.expr));
-
-                self.infer_record_pat_like(path.as_deref(), &rhs_ty, (), lhs, subs)
-            }
-            Expr::Underscore => rhs_ty.clone(),
-            _ => {
-                // `lhs` is a place expression, a unit struct, or an enum variant.
-                // LHS of assignment doesn't constitute reads.
-                let lhs_ty = self.infer_expr_inner(lhs, &Expectation::none(), ExprIsRead::No);
-
-                // This is the only branch where this function may coerce any type.
-                // We are returning early to avoid the unifiability check below.
-                let lhs_ty = self.insert_type_vars_shallow(lhs_ty);
-                let ty = match self.coerce(None, &rhs_ty, &lhs_ty, CoerceNever::Yes) {
-                    Ok(ty) => ty,
-                    Err(_) => {
-                        self.result.type_mismatches.insert(
-                            lhs.into(),
-                            TypeMismatch { expected: rhs_ty.clone(), actual: lhs_ty.clone() },
-                        );
-                        // `rhs_ty` is returned so no further type mismatches are
-                        // reported because of this mismatch.
-                        rhs_ty
-                    }
-                };
-                self.write_expr_ty(lhs, ty.clone());
-                return ty;
-            }
-        };
-
-        let ty = self.insert_type_vars_shallow(ty);
-        if !self.unify(&ty, &rhs_ty) {
-            self.result
-                .type_mismatches
-                .insert(lhs.into(), TypeMismatch { expected: rhs_ty.clone(), actual: ty.clone() });
-        }
-        self.write_expr_ty(lhs, ty.clone());
-        ty
-    }
-
     fn infer_overloadable_binop(
         &mut self,
         lhs: ExprId,
@@ -1706,7 +1598,7 @@ impl InferenceContext<'_> {
                         Statement::Let { pat, type_ref, initializer, else_branch } => {
                             let decl_ty = type_ref
                                 .as_ref()
-                                .map(|tr| this.make_ty(tr))
+                                .map(|&tr| this.make_body_ty(tr))
                                 .unwrap_or_else(|| this.table.new_type_var());
 
                             let ty = if let Some(expr) = initializer {
@@ -1764,7 +1656,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
 
@@ -2249,7 +2141,8 @@ impl InferenceContext<'_> {
                         kind_id,
                         args.next().unwrap(), // `peek()` is `Some(_)`, so guaranteed no panic
                         self,
-                        |this, type_ref| this.make_ty(type_ref),
+                        &self.body.types,
+                        |this, type_ref| this.make_body_ty(type_ref),
                         |this, c, ty| {
                             const_or_path_to_chalk(
                                 this.db,

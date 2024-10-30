@@ -34,6 +34,7 @@ use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
     LlvmSelfProfiler, selfprofile_after_pass_callback, selfprofile_before_pass_callback,
 };
+use crate::common::AsCCharPtr;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
     WithLlvmError, WriteBytecode,
@@ -596,9 +597,9 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_selfprofiler,
             selfprofile_before_pass_callback,
             selfprofile_after_pass_callback,
-            extra_passes.as_ptr().cast(),
+            extra_passes.as_c_char_ptr(),
             extra_passes.len(),
-            llvm_plugins.as_ptr().cast(),
+            llvm_plugins.as_c_char_ptr(),
             llvm_plugins.len(),
         )
     };
@@ -1042,8 +1043,8 @@ unsafe fn embed_bitcode(
             llvm::LLVMSetInitializer(llglobal, llconst);
 
             let section = bitcode_section_name(cgcx);
-            llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
-            llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+            llvm::LLVMSetSection(llglobal, section.as_c_char_ptr());
+            llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
             llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
             let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
@@ -1061,14 +1062,14 @@ unsafe fn embed_bitcode(
                 c".llvmcmd"
             };
             llvm::LLVMSetSection(llglobal, section.as_ptr());
-            llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+            llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
         } else {
             // We need custom section flags, so emit module-level inline assembly.
             let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
             let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
-            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_c_char_ptr(), asm.len());
             let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
-            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+            llvm::LLVMAppendModuleInlineAsm(llmod, asm.as_c_char_ptr(), asm.len());
         }
     }
 }
@@ -1096,7 +1097,7 @@ fn create_msvc_imps(
         let ptr_ty = Type::ptr_llcx(llcx);
         let globals = base::iter_globals(llmod)
             .filter(|&val| {
-                llvm::LLVMRustGetLinkage(val) == llvm::Linkage::ExternalLinkage
+                llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage
                     && llvm::LLVMIsDeclaration(val) == 0
             })
             .filter_map(|val| {
@@ -1115,7 +1116,7 @@ fn create_msvc_imps(
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
             llvm::LLVMSetInitializer(imp, val);
-            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
+            llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }
 

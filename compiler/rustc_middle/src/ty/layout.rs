@@ -4,7 +4,7 @@ use std::{cmp, fmt};
 
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutS,
+    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutData,
     PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout, Variants,
 };
 use rustc_error_messages::DiagMessage;
@@ -21,7 +21,9 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{FieldIdx, TyAbiInterface, VariantIdx, call};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, PanicStrategy, Target, WasmCAbi};
+use rustc_target::spec::{
+    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
+};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
@@ -344,7 +346,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
-                if layout.abi.is_sized() {
+                if layout.is_sized() {
                     return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
                 } else {
                     // Just to be safe, don't claim a known layout for unsized types.
@@ -396,7 +398,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     ),
                 }
             }
-            ty::Array(inner, len) if tcx.features().transmute_generic_consts => {
+            ty::Array(inner, len) if tcx.features().transmute_generic_consts() => {
                 let len_eval = len.try_to_target_usize(tcx);
                 if len_eval == Some(0) {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
@@ -544,6 +546,12 @@ impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        X86Abi { regparm: self.sess.opts.unstable_opts.regparm }
+    }
+}
+
 impl<'tcx> HasTyCtxt<'tcx> for TyCtxt<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -592,6 +600,12 @@ impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
 impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.calc.cx.wasm_c_abi_opt()
+    }
+}
+
+impl<'tcx> HasX86AbiOpt for LayoutCx<'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        self.calc.cx.x86_abi_opt()
     }
 }
 
@@ -737,7 +751,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutS {
+                tcx.mk_layout(LayoutData {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -774,7 +788,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };

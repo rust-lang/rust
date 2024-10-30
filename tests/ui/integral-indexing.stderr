@@ -4,7 +4,7 @@ error[E0277]: the type `[isize]` cannot be indexed by `u8`
 LL |     v[3u8];
    |       ^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[isize]>` is not implemented for `u8`, which is required by `Vec<isize>: Index<_>`
+   = help: the trait `SliceIndex<[isize]>` is not implemented for `u8`
    = help: the trait `SliceIndex<[isize]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u8`
    = note: required for `Vec<isize>` to implement `Index<u8>`
@@ -15,7 +15,7 @@ error[E0277]: the type `[isize]` cannot be indexed by `i8`
 LL |     v[3i8];
    |       ^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[isize]>` is not implemented for `i8`, which is required by `Vec<isize>: Index<_>`
+   = help: the trait `SliceIndex<[isize]>` is not implemented for `i8`
    = help: the trait `SliceIndex<[isize]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `i8`
    = note: required for `Vec<isize>` to implement `Index<i8>`
@@ -26,7 +26,7 @@ error[E0277]: the type `[isize]` cannot be indexed by `u32`
 LL |     v[3u32];
    |       ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[isize]>` is not implemented for `u32`, which is required by `Vec<isize>: Index<_>`
+   = help: the trait `SliceIndex<[isize]>` is not implemented for `u32`
    = help: the trait `SliceIndex<[isize]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u32`
    = note: required for `Vec<isize>` to implement `Index<u32>`
@@ -37,7 +37,7 @@ error[E0277]: the type `[isize]` cannot be indexed by `i32`
 LL |     v[3i32];
    |       ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[isize]>` is not implemented for `i32`, which is required by `Vec<isize>: Index<_>`
+   = help: the trait `SliceIndex<[isize]>` is not implemented for `i32`
    = help: the trait `SliceIndex<[isize]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `i32`
    = note: required for `Vec<isize>` to implement `Index<i32>`
@@ -48,7 +48,7 @@ error[E0277]: the type `[u8]` cannot be indexed by `u8`
 LL |     s.as_bytes()[3u8];
    |                  ^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[u8]>` is not implemented for `u8`, which is required by `[u8]: Index<_>`
+   = help: the trait `SliceIndex<[u8]>` is not implemented for `u8`
    = help: the trait `SliceIndex<[u8]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u8`
    = note: required for `[u8]` to implement `Index<u8>`
@@ -59,7 +59,7 @@ error[E0277]: the type `[u8]` cannot be indexed by `i8`
 LL |     s.as_bytes()[3i8];
    |                  ^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[u8]>` is not implemented for `i8`, which is required by `[u8]: Index<_>`
+   = help: the trait `SliceIndex<[u8]>` is not implemented for `i8`
    = help: the trait `SliceIndex<[u8]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `i8`
    = note: required for `[u8]` to implement `Index<i8>`
@@ -70,7 +70,7 @@ error[E0277]: the type `[u8]` cannot be indexed by `u32`
 LL |     s.as_bytes()[3u32];
    |                  ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`, which is required by `[u8]: Index<_>`
+   = help: the trait `SliceIndex<[u8]>` is not implemented for `u32`
    = help: the trait `SliceIndex<[u8]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u32`
    = note: required for `[u8]` to implement `Index<u32>`
@@ -81,7 +81,7 @@ error[E0277]: the type `[u8]` cannot be indexed by `i32`
 LL |     s.as_bytes()[3i32];
    |                  ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[u8]>` is not implemented for `i32`, which is required by `[u8]: Index<_>`
+   = help: the trait `SliceIndex<[u8]>` is not implemented for `i32`
    = help: the trait `SliceIndex<[u8]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `i32`
    = note: required for `[u8]` to implement `Index<i32>`

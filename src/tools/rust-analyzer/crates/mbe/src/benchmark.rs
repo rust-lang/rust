@@ -3,6 +3,7 @@
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
+use stdx::itertools::Itertools;
 use syntax::{
     ast::{self, HasName},
     AstNode,
@@ -27,9 +28,10 @@ fn benchmark_parse_macro_rules() {
     let hash: usize = {
         let _pt = bench("mbe parse macro rules");
         rules
-            .values()
-            .map(|it| {
-                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT).rules.len()
+            .into_iter()
+            .sorted_by_key(|(id, _)| id.clone())
+            .map(|(_, it)| {
+                DeclarativeMacro::parse_macro_rules(&it, |_| span::Edition::CURRENT).rules.len()
             })
             .sum()
     };
@@ -55,12 +57,13 @@ fn benchmark_expand_macro_rules() {
             })
             .sum()
     };
-    assert_eq!(hash, 69413);
+    assert_eq!(hash, 65720);
 }
 
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
+        .sorted_by_key(|(id, _)| id.clone())
         .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT)))
         .collect()
 }
@@ -93,7 +96,7 @@ fn invocation_fixtures(
     let mut seed = 123456789;
     let mut res = Vec::new();
 
-    for (name, it) in rules {
+    for (name, it) in rules.iter().sorted_by_key(|&(id, _)| id) {
         for rule in it.rules.iter() {
             // Generate twice
             for _ in 0..2 {

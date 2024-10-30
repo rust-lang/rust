@@ -2,7 +2,7 @@ error[E0277]: the trait bound `B: Clone` is not satisfied
   --> $DIR/issue-79224.rs:18:29
    |
 LL | impl<B: ?Sized> Display for Cow<'_, B> {
-   |                             ^^^^^^^^^^ the trait `Clone` is not implemented for `B`, which is required by `B: ToOwned`
+   |                             ^^^^^^^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
 help: consider further restricting this bound
@@ -14,7 +14,7 @@ error[E0277]: the trait bound `B: Clone` is not satisfied
   --> $DIR/issue-79224.rs:20:5
    |
 LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B`, which is required by `B: ToOwned`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
 help: consider further restricting this bound
@@ -26,7 +26,7 @@ error[E0277]: the trait bound `B: Clone` is not satisfied
   --> $DIR/issue-79224.rs:20:13
    |
 LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-   |             ^^^^ the trait `Clone` is not implemented for `B`, which is required by `B: ToOwned`
+   |             ^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
 help: consider further restricting this bound
@@ -44,7 +44,7 @@ LL | |
 LL | |
 LL | |         write!(f, "foo")
 LL | |     }
-   | |_____^ the trait `Clone` is not implemented for `B`, which is required by `B: ToOwned`
+   | |_____^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
 help: consider further restricting this bound

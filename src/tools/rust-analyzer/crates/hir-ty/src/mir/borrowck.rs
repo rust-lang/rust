@@ -167,6 +167,10 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -253,6 +257,10 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -548,6 +556,10 @@ fn mutability_of_locals(
                             }
                         }
                         Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                        Rvalue::ThreadLocalRef(n)
+                        | Rvalue::AddressOf(n)
+                        | Rvalue::BinaryOp(n)
+                        | Rvalue::NullaryOp(n) => match *n {},
                     }
                     if let Rvalue::Ref(
                         BorrowKind::Mut {

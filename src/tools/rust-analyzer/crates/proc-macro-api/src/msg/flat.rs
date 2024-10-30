@@ -401,7 +401,7 @@ struct Writer<'a, 'span, S: InternableSpan> {
     text: Vec<String>,
 }
 
-impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
+impl<'a, S: InternableSpan> Writer<'a, '_, S> {
     fn write(&mut self, root: &'a tt::Subtree<S>) {
         self.enqueue(root);
         while let Some((idx, subtree)) = self.work.pop_front() {
@@ -524,7 +524,7 @@ struct Reader<'span, S: InternableSpan> {
     span_data_table: &'span S::Table,
 }
 
-impl<'span, S: InternableSpan> Reader<'span, S> {
+impl<S: InternableSpan> Reader<'_, S> {
     pub(crate) fn read(self) -> tt::Subtree<S> {
         let mut res: Vec<Option<tt::Subtree<S>>> = vec![None; self.subtree.len()];
         let read_span = |id| S::span_for_token_id(self.span_data_table, id);

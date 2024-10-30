@@ -198,7 +198,10 @@ impl TestDB {
             .filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
-                let expr_id = source_map.node_expr(InFile::new(position.file_id.into(), &expr))?;
+                let expr_id = source_map
+                    .node_expr(InFile::new(position.file_id.into(), &expr))?
+                    .as_expr()
+                    .unwrap();
                 let scope = scopes.scope_for(expr_id).unwrap();
                 Some(scope)
             });

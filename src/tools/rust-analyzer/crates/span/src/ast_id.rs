@@ -224,9 +224,10 @@ impl AstIdMap {
         match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
             Some((&idx, &())) => ErasedFileAstId(idx.into_raw().into_u32()),
             None => panic!(
-                "Can't find {:?} in AstIdMap:\n{:?}",
+                "Can't find {:?} in AstIdMap:\n{:?}\n source text: {}",
                 item,
                 self.arena.iter().map(|(_id, i)| i).collect::<Vec<_>>(),
+                item
             ),
         }
     }

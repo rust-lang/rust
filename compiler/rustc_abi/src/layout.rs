@@ -7,7 +7,7 @@ use tracing::debug;
 
 use crate::{
     Abi, AbiAndPrefAlign, Align, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
-    LayoutS, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    LayoutData, Niche, NonZeroUsize, Primitive, ReprOptions, Scalar, Size, StructKind, TagEncoding,
     Variants, WrappingRange,
 };
 
@@ -26,9 +26,9 @@ fn absent<'a, FieldIdx, VariantIdx, F>(fields: &IndexSlice<FieldIdx, F>) -> bool
 where
     FieldIdx: Idx,
     VariantIdx: Idx,
-    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+    F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
 {
-    let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
+    let uninhabited = fields.iter().any(|f| f.is_uninhabited());
     // We cannot ignore alignment; that might lead us to entirely discard a variant and
     // produce an enum that is less aligned than it should be!
     let is_1zst = fields.iter().all(|f| f.is_1zst());
@@ -89,7 +89,7 @@ impl<F> LayoutCalculatorError<F> {
 }
 
 type LayoutCalculatorResult<FieldIdx, VariantIdx, F> =
-    Result<LayoutS<FieldIdx, VariantIdx>, LayoutCalculatorError<F>>;
+    Result<LayoutData<FieldIdx, VariantIdx>, LayoutCalculatorError<F>>;
 
 #[derive(Clone, Copy, Debug)]
 pub struct LayoutCalculator<Cx> {
@@ -105,7 +105,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         &self,
         a: Scalar,
         b: Scalar,
-    ) -> LayoutS<FieldIdx, VariantIdx> {
+    ) -> LayoutData<FieldIdx, VariantIdx> {
         let dl = self.cx.data_layout();
         let b_align = b.align(dl);
         let align = a.align(dl).max(b_align).max(dl.aggregate_align);
@@ -119,7 +119,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .chain(Niche::from_scalar(dl, Size::ZERO, a))
             .max_by_key(|niche| niche.available(dl));
 
-        LayoutS {
+        LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
@@ -138,7 +138,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
@@ -211,9 +211,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     pub fn layout_of_never_type<FieldIdx: Idx, VariantIdx: Idx>(
         &self,
-    ) -> LayoutS<FieldIdx, VariantIdx> {
+    ) -> LayoutData<FieldIdx, VariantIdx> {
         let dl = self.cx.data_layout();
-        LayoutS {
+        LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
@@ -229,7 +229,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -292,7 +292,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -384,7 +384,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::EmptyUnion);
         };
 
-        Ok(LayoutS {
+        Ok(LayoutData {
             variants: Variants::Single { index: only_variant_idx },
             fields: FieldsShape::Union(union_field_count),
             abi,
@@ -401,7 +401,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -501,7 +501,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         repr: &ReprOptions,
@@ -516,8 +516,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // overall LayoutS. Store the overall LayoutS
         // and the variant LayoutSs here until then.
         struct TmpLayout<FieldIdx: Idx, VariantIdx: Idx> {
-            layout: LayoutS<FieldIdx, VariantIdx>,
-            variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
+            layout: LayoutData<FieldIdx, VariantIdx>,
+            variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
         }
 
         let dl = self.cx.data_layout();
@@ -649,7 +649,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 Abi::Aggregate { sized: true }
             };
 
-            let layout = LayoutS {
+            let layout = LayoutData {
                 variants: Variants::Multiple {
                     tag: niche_scalar,
                     tag_encoding: TagEncoding::Niche {
@@ -681,7 +681,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let discr_type = repr.discr_type();
         let bits = Integer::from_attr(dl, discr_type).size().bits();
         for (i, mut val) in discriminants {
-            if !repr.c() && variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+            if !repr.c() && variants[i].iter().any(|f| f.is_uninhabited()) {
                 continue;
             }
             if discr_type.is_signed() {
@@ -958,7 +958,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag);
 
-        let tagged_layout = LayoutS {
+        let tagged_layout = LayoutData {
             variants: Variants::Multiple {
                 tag,
                 tag_encoding: TagEncoding::Direct,
@@ -1013,7 +1013,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
         fields: &IndexSlice<FieldIdx, F>,
@@ -1341,7 +1341,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             unadjusted_abi_align
         };
 
-        Ok(LayoutS {
+        Ok(LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             abi,
@@ -1357,10 +1357,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         'a,
         FieldIdx: Idx,
         VariantIdx: Idx,
-        F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     >(
         &self,
-        layout: &LayoutS<FieldIdx, VariantIdx>,
+        layout: &LayoutData<FieldIdx, VariantIdx>,
         fields: &IndexSlice<FieldIdx, F>,
     ) -> String {
         let dl = self.cx.data_layout();

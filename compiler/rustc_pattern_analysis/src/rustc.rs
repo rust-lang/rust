@@ -1,6 +1,7 @@
 use std::fmt;
 use std::iter::once;
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -15,7 +16,6 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -891,7 +891,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 print::write_slice_like(&mut s, &prefix, has_dot_dot, &suffix).unwrap();
                 s
             }
-            Never if self.tcx.features().never_patterns => "!".to_string(),
+            Never if self.tcx.features().never_patterns() => "!".to_string(),
             Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => "_".to_string(),
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
@@ -915,7 +915,7 @@ fn would_print_as_wildcard(tcx: TyCtxt<'_>, p: &WitnessPat<'_, '_>) -> bool {
         | Constructor::NonExhaustive
         | Constructor::Hidden
         | Constructor::PrivateUninhabited => true,
-        Constructor::Never if !tcx.features().never_patterns => true,
+        Constructor::Never if !tcx.features().never_patterns() => true,
         _ => false,
     }
 }
@@ -929,7 +929,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     type PatData = &'p Pat<'tcx>;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
-        self.tcx.features().exhaustive_patterns
+        self.tcx.features().exhaustive_patterns()
     }
 
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {

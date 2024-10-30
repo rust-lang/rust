@@ -295,7 +295,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut err = match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
-                let mut err = self.report_and_explain_type_error(trace, terr);
+                let mut err = self.report_and_explain_type_error(
+                    trace,
+                    self.tcx.param_env(generic_param_scope),
+                    terr,
+                );
                 match (*sub, *sup) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
@@ -646,7 +650,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
-                return self.report_and_explain_type_error(trace, terr);
+                return self.report_and_explain_type_error(
+                    trace,
+                    self.tcx.param_env(generic_param_scope),
+                    terr,
+                );
             }
             _ => {
                 return self.report_concrete_failure(
