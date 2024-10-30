@@ -2,6 +2,13 @@ use rustc_abi::ExternAbi;
 
 use crate::*;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ThreadNameResult {
+    Ok,
+    NameTooLong,
+    ThreadNotFound,
+}
+
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_create(
@@ -30,7 +37,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn pthread_join(&mut self, thread: &OpTy<'tcx>, retval: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+    fn pthread_join(
+        &mut self,
+        thread: &OpTy<'tcx>,
+        retval: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !this.ptr_is_null(this.read_pointer(retval)?)? {
@@ -38,22 +49,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
-        let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
-        this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
+        let thread = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let Ok(thread) = this.thread_id_try_from(thread) else {
+            return interp_ok(this.eval_libc("ESRCH"));
+        };
 
-        interp_ok(())
+        this.join_thread_exclusive(thread)?;
+
+        interp_ok(Scalar::from_u32(0))
     }
 
-    fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+    fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
-        this.detach_thread(
-            thread_id.try_into().expect("thread ID should fit in u32"),
-            /*allow_terminated_joined*/ false,
-        )?;
+        let thread = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
+        let Ok(thread) = this.thread_id_try_from(thread) else {
+            return interp_ok(this.eval_libc("ESRCH"));
+        };
+        this.detach_thread(thread, /*allow_terminated_joined*/ false)?;
 
-        interp_ok(())
+        interp_ok(Scalar::from_u32(0))
     }
 
     fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar> {
@@ -65,18 +80,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Set the name of the specified thread. If the name including the null terminator
     /// is longer or equals to `name_max_len`, then if `truncate` is set the truncated name
-    /// is used as the thread name, otherwise `false` is returned.
+    /// is used as the thread name, otherwise [`ThreadNameResult::NameTooLong`] is returned.
+    /// If the specified thread wasn't found, [`ThreadNameResult::ThreadNotFound`] is returned.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar,
         name: Scalar,
         name_max_len: usize,
         truncate: bool,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, ThreadNameResult> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
-        let thread = ThreadId::try_from(thread).unwrap();
+        let Ok(thread) = this.thread_id_try_from(thread) else {
+            return interp_ok(ThreadNameResult::ThreadNotFound);
+        };
         let name = name.to_pointer(this)?;
         let mut name = this.read_c_str(name)?.to_owned();
 
@@ -85,29 +103,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if truncate {
                 name.truncate(name_max_len.saturating_sub(1));
             } else {
-                return interp_ok(false);
+                return interp_ok(ThreadNameResult::NameTooLong);
             }
         }
 
         this.set_thread_name(thread, name);
 
-        interp_ok(true)
+        interp_ok(ThreadNameResult::Ok)
     }
 
     /// Get the name of the specified thread. If the thread name doesn't fit
     /// the buffer, then if `truncate` is set the truncated name is written out,
-    /// otherwise `false` is returned.
+    /// otherwise [`ThreadNameResult::NameTooLong`] is returned. If the specified
+    /// thread wasn't found, [`ThreadNameResult::ThreadNotFound`] is returned.
     fn pthread_getname_np(
         &mut self,
         thread: Scalar,
         name_out: Scalar,
         len: Scalar,
         truncate: bool,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, ThreadNameResult> {
         let this = self.eval_context_mut();
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
-        let thread = ThreadId::try_from(thread).unwrap();
+        let Ok(thread) = this.thread_id_try_from(thread) else {
+            return interp_ok(ThreadNameResult::ThreadNotFound);
+        };
         let name_out = name_out.to_pointer(this)?;
         let len = len.to_target_usize(this)?;
 
@@ -119,8 +140,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let (success, _written) = this.write_c_str(name, name_out, len)?;
+        let res = if success { ThreadNameResult::Ok } else { ThreadNameResult::NameTooLong };
 
-        interp_ok(success)
+        interp_ok(res)
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, ()> {
