@@ -20,7 +20,8 @@ use super::*;
 pub(super) fn mod_contents(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     attributes::inner_attrs(p);
     while !(p.at(EOF) || (p.at(T!['}']) && stop_on_r_curly)) {
-        item_or_macro(p, stop_on_r_curly);
+        // We can set `is_in_extern=true`, because it only allows `safe fn`, and there is no ambiguity here.
+        item_or_macro(p, stop_on_r_curly, true);
     }
 }
 
@@ -41,11 +42,11 @@ pub(super) const ITEM_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![;],
 ]);
 
-pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
+pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool, is_in_extern: bool) {
     let m = p.start();
     attributes::outer_attrs(p);
 
-    let m = match opt_item(p, m) {
+    let m = match opt_item(p, m, is_in_extern) {
         Ok(()) => {
             if p.at(T![;]) {
                 p.err_and_bump(
@@ -91,7 +92,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
 }
 
 /// Try to parse an item, completing `m` in case of success.
-pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
+pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
     let has_visibility = opt_visibility(p, false);
@@ -135,7 +136,9 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
         has_mods = true;
     }
 
-    if p.at_contextual_kw(T![safe]) {
+    // test safe_outside_of_extern
+    // fn foo() { safe = true; }
+    if is_in_extern && p.at_contextual_kw(T![safe]) {
         p.eat_contextual_kw(T![safe]);
         has_mods = true;
     }

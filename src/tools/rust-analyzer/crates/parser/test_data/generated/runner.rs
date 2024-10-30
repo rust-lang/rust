@@ -527,6 +527,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/return_type_syntax_in_path.rs");
     }
     #[test]
+    fn safe_outside_of_extern() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/safe_outside_of_extern.rs");
+    }
+    #[test]
     fn self_param() { run_and_expect_no_errors("test_data/parser/inline/ok/self_param.rs"); }
     #[test]
     fn self_param_outer_attr() {
