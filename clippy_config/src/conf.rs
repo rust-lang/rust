@@ -19,7 +19,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
     "MHz", "GHz", "THz",
     "AccessKit",
-    "CoreFoundation", "CoreGraphics", "CoreText",
+    "CoAP", "CoreFoundation", "CoreGraphics", "CoreText",
     "DevOps",
     "Direct2D", "Direct3D", "DirectWrite", "DirectX",
     "ECMAScript",

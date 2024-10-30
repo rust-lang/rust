@@ -56,7 +56,7 @@ fn test_units() {
 /// KiB MiB GiB TiB PiB EiB
 /// MHz GHz THz
 /// AccessKit
-/// CoreFoundation CoreGraphics CoreText
+/// CoAP CoreFoundation CoreGraphics CoreText
 /// Direct2D Direct3D DirectWrite DirectX
 /// ECMAScript
 /// GPLv2 GPLv3
