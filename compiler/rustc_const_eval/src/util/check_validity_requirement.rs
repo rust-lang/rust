@@ -1,9 +1,9 @@
+use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
-use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
 use crate::interpret::{InterpCx, MemoryKind};
@@ -111,12 +111,12 @@ fn check_validity_requirement_lax<'tcx>(
     };
 
     // Check the ABI.
-    let valid = match this.abi {
-        Abi::Uninhabited => false, // definitely UB
-        Abi::Scalar(s) => scalar_allows_raw_init(s),
-        Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-        Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
-        Abi::Aggregate { .. } => true, // Fields are checked below.
+    let valid = match this.backend_repr {
+        BackendRepr::Uninhabited => false, // definitely UB
+        BackendRepr::Scalar(s) => scalar_allows_raw_init(s),
+        BackendRepr::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+        BackendRepr::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+        BackendRepr::Memory { .. } => true, // Fields are checked below.
     };
     if !valid {
         // This is definitely not okay.

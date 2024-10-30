@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use rustc_abi::Primitive::{Float, Int, Pointer};
-use rustc_abi::{Abi, Align, FieldsShape, Scalar, Size, Variants};
+use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -17,13 +17,13 @@ fn uncached_llvm_type<'a, 'tcx>(
     layout: TyAndLayout<'tcx>,
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
 ) -> &'a Type {
-    match layout.abi {
-        Abi::Scalar(_) => bug!("handled elsewhere"),
-        Abi::Vector { element, count } => {
+    match layout.backend_repr {
+        BackendRepr::Scalar(_) => bug!("handled elsewhere"),
+        BackendRepr::Vector { element, count } => {
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalarPair(..) => {}
+        BackendRepr::Uninhabited | BackendRepr::Memory { .. } | BackendRepr::ScalarPair(..) => {}
     }
 
     let name = match layout.ty.kind() {
@@ -170,16 +170,21 @@ pub(crate) trait LayoutLlvmExt<'tcx> {
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
-        match self.abi {
-            Abi::Scalar(_) | Abi::Vector { .. } => true,
-            Abi::ScalarPair(..) | Abi::Uninhabited | Abi::Aggregate { .. } => false,
+        match self.backend_repr {
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
+            BackendRepr::ScalarPair(..) | BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
+                false
+            }
         }
     }
 
     fn is_llvm_scalar_pair(&self) -> bool {
-        match self.abi {
-            Abi::ScalarPair(..) => true,
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
+        match self.backend_repr {
+            BackendRepr::ScalarPair(..) => true,
+            BackendRepr::Uninhabited
+            | BackendRepr::Scalar(_)
+            | BackendRepr::Vector { .. }
+            | BackendRepr::Memory { .. } => false,
         }
     }
 
@@ -198,7 +203,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        if let Abi::Scalar(scalar) = self.abi {
+        if let BackendRepr::Scalar(scalar) = self.backend_repr {
             // Use a different cache for scalars because pointers to DSTs
             // can be either wide or thin (data pointers of wide pointers).
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
@@ -248,13 +253,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        match self.abi {
-            Abi::Scalar(scalar) => {
+        match self.backend_repr {
+            BackendRepr::Scalar(scalar) => {
                 if scalar.is_bool() {
                     return cx.type_i1();
                 }
             }
-            Abi::ScalarPair(..) => {
+            BackendRepr::ScalarPair(..) => {
                 // An immediate pair always contains just the two elements, without any padding
                 // filler, as it should never be stored to memory.
                 return cx.type_struct(
@@ -287,7 +292,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        let Abi::ScalarPair(a, b) = self.abi else {
+        let BackendRepr::ScalarPair(a, b) = self.backend_repr else {
             bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self);
         };
         let scalar = [a, b][index];

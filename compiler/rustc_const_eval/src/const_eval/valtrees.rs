@@ -1,10 +1,10 @@
+use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Abi, VariantIdx};
 use tracing::{debug, instrument, trace};
 
 use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
@@ -117,7 +117,7 @@ fn const_to_valtree_inner<'tcx>(
             let val = ecx.read_immediate(place).unwrap();
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
-            if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+            if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
                 return Err(ValTreeCreationError::NonSupportedType(ty));
             }
             let val = val.to_scalar();
@@ -311,7 +311,7 @@ pub fn valtree_to_const_value<'tcx>(
                 // Fast path to avoid some allocations.
                 return mir::ConstValue::ZeroSized;
             }
-            if layout.abi.is_scalar()
+            if layout.backend_repr.is_scalar()
                 && (matches!(ty.kind(), ty::Tuple(_))
                     || matches!(ty.kind(), ty::Adt(def, _) if def.is_struct()))
             {

@@ -1,6 +1,7 @@
 use std::sync::atomic::Ordering::Relaxed;
 
 use either::{Left, Right};
+use rustc_abi::{self as abi, BackendRepr};
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
@@ -12,7 +13,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{self, Abi};
 use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
@@ -174,8 +174,8 @@ pub(super) fn op_to_const<'tcx>(
     // type (it's used throughout the compiler and having it work just on literals is not enough)
     // and we want it to be fast (i.e., don't go to an `Allocation` and reconstruct the `Scalar`
     // from its byte-serialized form).
-    let force_as_immediate = match op.layout.abi {
-        Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
+    let force_as_immediate = match op.layout.backend_repr {
+        BackendRepr::Scalar(abi::Scalar::Initialized { .. }) => true,
         // We don't *force* `ConstValue::Slice` for `ScalarPair`. This has the advantage that if the
         // input `op` is a place, then turning it into a `ConstValue` and back into a `OpTy` will
         // not have to generate any duplicate allocations (we preserve the original `AllocId` in
