@@ -212,6 +212,7 @@ impl StaticIndex<'_> {
                         def,
                         &node,
                         None,
+                        false,
                         &hover_config,
                         edition,
                     )),
