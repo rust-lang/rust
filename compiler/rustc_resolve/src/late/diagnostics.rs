@@ -1206,7 +1206,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let PathSource::TupleStruct(_, _) = source else { return };
         let Some(Res::Def(DefKind::Fn, _)) = res else { return };
         err.primary_message("expected a pattern, found a function call");
-        err.note("function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>");
+        err.note("function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>");
     }
 
     fn suggest_changing_type_to_const_param(

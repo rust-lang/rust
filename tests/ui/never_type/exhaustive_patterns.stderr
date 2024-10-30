@@ -5,7 +5,7 @@ LL |     let Either::A(()) = foo();
    |         ^^^^^^^^^^^^^ pattern `Either::B(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Either<(), !>` defined here
   --> $DIR/exhaustive_patterns.rs:9:6
    |
