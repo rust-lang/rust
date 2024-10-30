@@ -211,13 +211,15 @@ impl str {
         }
     }
 
-    /// Finds the closest `x` not exceeding `index` where `is_char_boundary(x)` is `true`.
+    /// Finds the closest `x` not exceeding `index` where [`is_char_boundary(x)`] is `true`.
     ///
     /// This method can help you truncate a string so that it's still valid UTF-8, but doesn't
     /// exceed a given number of bytes. Note that this is done purely at the character level
     /// and can still visually split graphemes, even though the underlying characters aren't
     /// split. For example, the emoji 🧑‍🔬 (scientist) could be split so that the string only
     /// includes 🧑 (person) instead.
+    ///
+    /// [`is_char_boundary(x)`]: Self::is_char_boundary
     ///
     /// # Examples
     ///
@@ -247,7 +249,7 @@ impl str {
         }
     }
 
-    /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
+    /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
     ///
     /// If `index` is greater than the length of the string, this returns the length of the string.
     ///
@@ -255,7 +257,7 @@ impl str {
     /// for more details.
     ///
     /// [`floor_char_boundary`]: str::floor_char_boundary
-    ///
+    /// [`is_char_boundary(x)`]: Self::is_char_boundary
     ///
     /// # Examples
     ///
