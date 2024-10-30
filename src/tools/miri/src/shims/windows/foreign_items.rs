@@ -523,7 +523,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let thread = match Handle::from_scalar(handle, this)? {
                     Some(Handle::Thread(thread)) => thread,
                     Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.active_thread(),
-                    _ => this.invalid_handle("SetThreadDescription")?,
+                    _ => this.invalid_handle("GetThreadDescription")?,
                 };
                 // Looks like the default thread name is empty.
                 let name = this.get_thread_name(thread).unwrap_or(b"").to_owned();
