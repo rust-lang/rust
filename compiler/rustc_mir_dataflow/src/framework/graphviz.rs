@@ -97,11 +97,10 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let mut label = Vec::new();
         let mut cursor = self.cursor.borrow_mut();
         let mut fmt =
             BlockFormatter { cursor: &mut cursor, style: self.style, bg: Background::Light };
-        fmt.write_node_label(&mut label, *block).unwrap();
+        let label = fmt.write_node_label(*block).unwrap();
 
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
@@ -172,7 +171,9 @@ where
         bg
     }
 
-    fn write_node_label(&mut self, w: &mut impl io::Write, block: BasicBlock) -> io::Result<()> {
+    fn write_node_label(&mut self, block: BasicBlock) -> io::Result<Vec<u8>> {
+        use std::io::Write;
+
         //   Sample output:
         //   +-+-----------------------------------------------+
         // A |                      bb4                        |
@@ -198,6 +199,9 @@ where
         // children. This is because `xdot` seemed to have a hard time correctly propagating
         // attributes. Make sure to test the output before trying to remove the redundancy.
         // Notably, `align` was found to have no effect when applied only to <table>.
+
+        let mut v = vec![];
+        let w = &mut v;
 
         let table_fmt = concat!(
             " border=\"1\"",
@@ -327,7 +331,9 @@ where
             _ => {}
         };
 
-        write!(w, "</table>")
+        write!(w, "</table>")?;
+
+        Ok(v)
     }
 
     fn write_block_header_simple(
