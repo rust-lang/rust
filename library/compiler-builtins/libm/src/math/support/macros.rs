@@ -57,7 +57,7 @@ macro_rules! cfg_if {
 /// (`unstable-intrinsics`, `arch`, `force-soft-floats`), this macro handles that part.
 macro_rules! select_implementation {
     (
-        name: $fname:ident,
+        name: $fn_name:ident,
         // Configuration meta for when to use arch-specific implementation that requires hard
         // float ops
         $( use_arch: $use_arch:meta, )?
@@ -76,7 +76,7 @@ macro_rules! select_implementation {
         select_implementation! {
             @cfg $($use_arch_required)?;
             if true {
-                return  super::arch::$fname( $($arg),+ );
+                return  super::arch::$fn_name( $($arg),+ );
             }
         }
 
@@ -86,7 +86,7 @@ macro_rules! select_implementation {
             @cfg $($use_arch)?;
             // Wrap in `if true` to avoid unused warnings
             if true {
-                return  super::arch::$fname( $($arg),+ );
+                return  super::arch::$fn_name( $($arg),+ );
             }
         }
 
@@ -96,7 +96,7 @@ macro_rules! select_implementation {
         select_implementation! {
             @cfg $( $use_intrinsic )?;
             if true {
-                return  super::arch::intrinsics::$fname( $($arg),+ );
+                return  super::arch::intrinsics::$fn_name( $($arg),+ );
             }
         }
     };

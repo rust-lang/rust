@@ -33,17 +33,17 @@ pub struct CheckCtx {
     /// Allowed ULP deviation
     pub ulp: u32,
     /// Function name.
-    pub fname: &'static str,
+    pub fn_name: &'static str,
     /// Return the unsuffixed version of the function name.
-    pub canonical_name: &'static str,
+    pub base_name: &'static str,
     /// Source of truth for tests.
     pub basis: CheckBasis,
 }
 
 impl CheckCtx {
     pub fn new(ulp: u32, fname: &'static str, basis: CheckBasis) -> Self {
-        let canonical_fname = crate::canonical_name(fname);
-        Self { ulp, fname, canonical_name: canonical_fname, basis }
+        let base_name = crate::base_name(fname);
+        Self { ulp, fn_name: fname, base_name, basis }
     }
 }
 

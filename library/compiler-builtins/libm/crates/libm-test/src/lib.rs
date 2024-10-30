@@ -18,7 +18,7 @@ include!(concat!(env!("OUT_DIR"), "/all_files.rs"));
 
 /// Return the unsuffixed version of a function name; e.g. `abs` and `absf` both return `abs`,
 /// `lgamma_r` and `lgammaf_r` both return `lgamma_r`.
-pub fn canonical_name(name: &str) -> &str {
+pub fn base_name(name: &str) -> &str {
     let known_mappings = &[
         ("erff", "erf"),
         ("erf", "erf"),
