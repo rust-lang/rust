@@ -160,7 +160,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                 cx.implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
                     elaboratable.child(
                         trait_ref
-                            .to_host_effect_clause(cx, data.host)
+                            .to_host_effect_clause(cx, data.constness)
                             .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
                     )
                 }),
