@@ -659,7 +659,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
         constness: hir::BoundConstness,
-        polarity: ty::PredicatePolarity,
+        polarity: hir::BoundPolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         predicate_filter: PredicateFilter,
@@ -680,6 +680,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             trait_segment,
             Some(self_ty),
         );
+
+        let polarity = match polarity {
+            rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
+            rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+            rustc_ast::BoundPolarity::Maybe(_) => {
+                // No-op.
+                return arg_count;
+            }
+        };
 
         if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
             && !self.tcx().is_const_trait(trait_def_id)
