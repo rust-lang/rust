@@ -31,23 +31,6 @@ impl RatomlTest {
         roots: Vec<&str>,
         client_config: Option<serde_json::Value>,
     ) -> Self {
-        RatomlTest::new_with_lock(fixtures, roots, client_config, false)
-    }
-
-    fn new_locked(
-        fixtures: Vec<&str>,
-        roots: Vec<&str>,
-        client_config: Option<serde_json::Value>,
-    ) -> Self {
-        RatomlTest::new_with_lock(fixtures, roots, client_config, true)
-    }
-
-    fn new_with_lock(
-        fixtures: Vec<&str>,
-        roots: Vec<&str>,
-        client_config: Option<serde_json::Value>,
-        prelock: bool,
-    ) -> Self {
         let tmp_dir = TestDir::new();
         let tmp_path = tmp_dir.path().to_owned();
 
@@ -63,7 +46,7 @@ impl RatomlTest {
             project = project.with_config(client_config);
         }
 
-        let server = project.server_with_lock(prelock).wait_until_workspace_is_loaded();
+        let server = project.server_with_lock(true).wait_until_workspace_is_loaded();
 
         let mut case = Self { urls: vec![], server, tmp_path };
         let urls = fixtures.iter().map(|fixture| case.fixture_path(fixture)).collect::<Vec<_>>();
@@ -89,7 +72,7 @@ impl RatomlTest {
         let mut spl = spl.into_iter();
         if let Some(first) = spl.next() {
             if first == "$$CONFIG_DIR$$" {
-                path = Config::user_config_dir_path().unwrap().to_path_buf().into();
+                path = Config::user_config_dir_path().unwrap().into();
             } else {
                 path = path.join(first);
             }
@@ -307,7 +290,7 @@ fn ratoml_user_config_detected() {
         return;
     }
 
-    let server = RatomlTest::new_locked(
+    let server = RatomlTest::new(
         vec![
             r#"
 //- /$$CONFIG_DIR$$/rust-analyzer.toml
@@ -343,7 +326,7 @@ fn ratoml_create_user_config() {
         return;
     }
 
-    let mut server = RatomlTest::new_locked(
+    let mut server = RatomlTest::new(
         vec![
             r#"
 //- /p1/Cargo.toml
@@ -382,7 +365,7 @@ fn ratoml_modify_user_config() {
         return;
     }
 
-    let mut server = RatomlTest::new_locked(
+    let mut server = RatomlTest::new(
         vec![
             r#"
 //- /p1/Cargo.toml
@@ -423,7 +406,7 @@ fn ratoml_delete_user_config() {
         return;
     }
 
-    let mut server = RatomlTest::new_locked(
+    let mut server = RatomlTest::new(
         vec![
             r#"
 //- /p1/Cargo.toml

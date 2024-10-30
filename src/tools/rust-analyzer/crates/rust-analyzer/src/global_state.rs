@@ -392,13 +392,13 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
-                let user_config_path = {
-                    let mut p = Config::user_config_dir_path().unwrap().to_path_buf();
+                let user_config_path = (|| {
+                    let mut p = Config::user_config_dir_path()?;
                     p.push("rust-analyzer.toml");
-                    p
-                };
+                    Some(p)
+                })();
 
-                let user_config_abs_path = Some(user_config_path.as_path());
+                let user_config_abs_path = user_config_path.as_deref();
 
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();

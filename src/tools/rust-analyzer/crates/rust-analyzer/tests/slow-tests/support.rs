@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     env, fs,
-    sync::Once,
+    sync::{Once, OnceLock},
     time::Duration,
 };
 
@@ -140,13 +140,36 @@ impl Project<'_> {
     /// if there is a path to config dir in the test fixture. However, in certain cases we create a
     /// file in the config dir after server is run, something where our naive approach comes short.
     /// Using a `prelock` allows us to force a lock when we know we need it.
-    pub(crate) fn server_with_lock(self, prelock: bool) -> Server {
-        static CONFIG_DIR_LOCK: Mutex<()> = Mutex::new(());
+    pub(crate) fn server_with_lock(self, config_lock: bool) -> Server {
+        static CONFIG_DIR_LOCK: OnceLock<(Utf8PathBuf, Mutex<()>)> = OnceLock::new();
 
-        let mut config_dir_guard = if prelock {
-            let v = Some(CONFIG_DIR_LOCK.lock());
-            env::set_var("__TEST_RA_USER_CONFIG_DIR", TestDir::new().path());
-            v
+        let config_dir_guard = if config_lock {
+            Some({
+                let (path, mutex) = CONFIG_DIR_LOCK.get_or_init(|| {
+                    let value = TestDir::new().keep().path().to_owned();
+                    env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                    (value, Mutex::new(()))
+                });
+                #[allow(dyn_drop)]
+                (mutex.lock(), {
+                    Box::new({
+                        struct Dropper(Utf8PathBuf);
+                        impl Drop for Dropper {
+                            fn drop(&mut self) {
+                                for entry in fs::read_dir(&self.0).unwrap() {
+                                    let path = entry.unwrap().path();
+                                    if path.is_file() {
+                                        fs::remove_file(path).unwrap();
+                                    } else if path.is_dir() {
+                                        fs::remove_dir_all(path).unwrap();
+                                    }
+                                }
+                            }
+                        }
+                        Dropper(path.clone())
+                    }) as Box<dyn Drop>
+                })
+            })
         } else {
             None
         };
@@ -185,11 +208,6 @@ impl Project<'_> {
 
         for entry in fixture {
             if let Some(pth) = entry.path.strip_prefix("/$$CONFIG_DIR$$") {
-                if config_dir_guard.is_none() {
-                    config_dir_guard = Some(CONFIG_DIR_LOCK.lock());
-                    env::set_var("__TEST_RA_USER_CONFIG_DIR", TestDir::new().path());
-                }
-
                 let path = Config::user_config_dir_path().unwrap().join(&pth['/'.len_utf8()..]);
                 fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
@@ -293,12 +311,14 @@ pub(crate) struct Server {
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
-    _config_dir_guard: Option<MutexGuard<'static, ()>>,
+    #[allow(dyn_drop)]
+    _config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
 }
 
 impl Server {
+    #[allow(dyn_drop)]
     fn new(
-        config_dir_guard: Option<MutexGuard<'static, ()>>,
+        config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
         dir: TestDir,
         config: Config,
     ) -> Server {

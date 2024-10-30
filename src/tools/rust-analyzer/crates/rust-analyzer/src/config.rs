@@ -3,11 +3,7 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{
-    env, fmt, iter,
-    ops::Not,
-    sync::{LazyLock, OnceLock},
-};
+use std::{env, fmt, iter, ops::Not, sync::OnceLock};
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
@@ -805,16 +801,13 @@ impl std::ops::Deref for Config {
 
 impl Config {
     /// Path to the user configuration dir. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer` in Linux.
-    pub fn user_config_dir_path() -> Option<&'static AbsPath> {
-        static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
-            let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
-                std::path::PathBuf::from(path)
-            } else {
-                dirs::config_dir()?.join("rust-analyzer")
-            };
-            Some(AbsPathBuf::assert_utf8(user_config_path))
-        });
-        USER_CONFIG_PATH.as_deref()
+    pub fn user_config_dir_path() -> Option<AbsPathBuf> {
+        let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
+            std::path::PathBuf::from(path)
+        } else {
+            dirs::config_dir()?.join("rust-analyzer")
+        };
+        Some(AbsPathBuf::assert_utf8(user_config_path))
     }
 
     pub fn same_source_root_parent_map(
@@ -1254,7 +1247,7 @@ pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum RustfmtConfig {
     Rustfmt { extra_args: Vec<String>, enable_range_formatting: bool },
     CustomCommand { command: String, args: Vec<String> },

@@ -156,7 +156,7 @@ impl ProjectFolders {
     pub fn new(
         workspaces: &[ProjectWorkspace],
         global_excludes: &[AbsPathBuf],
-        user_config_dir_path: Option<&'static AbsPath>,
+        user_config_dir_path: Option<&AbsPath>,
     ) -> ProjectFolders {
         let mut res = ProjectFolders::default();
         let mut fsc = FileSetConfig::builder();
@@ -302,7 +302,7 @@ impl ProjectFolders {
                 p
             };
 
-            let file_set_roots: Vec<VfsPath> = vec![VfsPath::from(ratoml_path.to_owned())];
+            let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
             let entry = vfs::loader::Entry::Files(vec![ratoml_path.to_owned()]);
 
             res.watch.push(res.load.len());
