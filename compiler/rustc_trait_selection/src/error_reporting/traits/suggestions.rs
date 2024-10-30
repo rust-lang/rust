@@ -361,7 +361,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
-                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
                     if param_ty =>
                 {
                     // We skip the 0'th arg (self) because we do not want
@@ -424,10 +423,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _),
                     ..
-                })
-                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
-                    if !param_ty =>
-                {
+                }) if !param_ty => {
                     // Missing generic type parameter bound.
                     if suggest_arbitrary_trait_bound(
                         self.tcx,

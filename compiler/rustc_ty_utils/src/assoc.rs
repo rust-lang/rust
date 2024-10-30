@@ -190,7 +190,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
 
             impl<'tcx> Visitor<'tcx> for RPITVisitor {
                 fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-                    if let hir::TyKind::OpaqueDef(opaq, _) = ty.kind
+                    if let hir::TyKind::OpaqueDef(opaq) = ty.kind
                         && self.rpits.insert(opaq.def_id)
                     {
                         for bound in opaq.bounds {
