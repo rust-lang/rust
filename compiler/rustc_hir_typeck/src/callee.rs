@@ -847,7 +847,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This can be done as soon as we convert the standard library back to
         // using const traits, since if we were to enforce these conditions now,
         // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
-        if !self.tcx.features().effects() {
+        if !self.tcx.features().const_trait_impl() {
             return;
         }
 
