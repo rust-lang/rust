@@ -154,7 +154,7 @@ fn create_wrapper_function(
             .enumerate()
             .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret = llvm::LLVMRustBuildCall(
+        let ret = llvm::LLVMBuildCallWithOperandBundles(
             llbuilder,
             ty,
             callee,
@@ -162,6 +162,7 @@ fn create_wrapper_function(
             args.len() as c_uint,
             [].as_ptr(),
             0 as c_uint,
+            c"".as_ptr(),
         );
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {
