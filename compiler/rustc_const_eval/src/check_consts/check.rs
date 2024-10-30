@@ -363,7 +363,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     }
 
     fn revalidate_conditional_constness(
-        &self,
+        &mut self,
         callee: DefId,
         callee_args: ty::GenericArgsRef<'tcx>,
         call_source: CallSource,
@@ -374,10 +374,23 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
+        let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
+        // If there are any const conditions on this fn and `const_trait_impl`
+        // is not enabled, simply bail. We shouldn't be able to call conditionally
+        // const functions on stable.
+        if !const_conditions.is_empty() && !tcx.features().const_trait_impl() {
+            self.check_op(ops::FnCallNonConst {
+                callee,
+                args: callee_args,
+                span: call_span,
+                call_source,
+                feature: Some(sym::const_trait_impl),
+            });
+            return;
+        }
+
         let infcx = tcx.infer_ctxt().build(self.body.typing_mode(tcx));
         let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-
-        let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
 
         let body_id = self.body.source.def_id().expect_local();
         let host_polarity = match self.const_kind() {
@@ -621,7 +634,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 };
 
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
-                let caller = self.def_id();
 
                 let fn_ty = func.ty(body, tcx);
 
@@ -639,12 +651,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
-                self.revalidate_conditional_constness(
-                    callee,
-                    fn_args,
-                    call_source,
-                    terminator.source_info.span,
-                );
+                self.revalidate_conditional_constness(callee, fn_args, call_source, *fn_span);
 
                 let mut is_trait = false;
                 // Attempting to call a trait method?
@@ -684,7 +691,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             None
                         };
                         self.check_op(ops::FnCallNonConst {
-                            caller,
                             callee,
                             args: fn_args,
                             span: *fn_span,
@@ -774,7 +780,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Trait functions are not `const fn` so we have to skip them here.
                 if !tcx.is_const_fn(callee) && !is_trait {
                     self.check_op(ops::FnCallNonConst {
-                        caller,
                         callee,
                         args: fn_args,
                         span: *fn_span,

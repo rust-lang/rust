@@ -78,6 +78,12 @@ error[E0493]: destructor of `T` cannot be evaluated at compile-time
 LL | const fn a<T: ~const Destruct>(_: T) {}
    |                                ^ the destructor for this type cannot be evaluated in constant functions
 
+error[E0277]: the trait bound `T: ~const SomeTrait` is not satisfied
+  --> $DIR/const-drop.rs:69:13
+   |
+LL |             T::foo();
+   |             ^^^^^^^^
+
 error[E0015]: cannot call non-const fn `<T as SomeTrait>::foo` in constant functions
   --> $DIR/const-drop.rs:69:13
    |
@@ -90,7 +96,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0015, E0277, E0493.
 For more information about an error, try `rustc --explain E0015`.

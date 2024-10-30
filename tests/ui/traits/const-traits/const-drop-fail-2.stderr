@@ -29,6 +29,12 @@ LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
+error[E0277]: the trait bound `T: ~const A` is not satisfied
+  --> $DIR/const-drop-fail-2.rs:41:9
+   |
+LL |         T::a();
+   |         ^^^^^^
+
 error[E0015]: cannot call non-const fn `<T as A>::a` in constant functions
   --> $DIR/const-drop-fail-2.rs:41:9
    |
@@ -41,7 +47,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0015, E0493.
+Some errors have detailed explanations: E0015, E0277, E0493.
 For more information about an error, try `rustc --explain E0015`.
