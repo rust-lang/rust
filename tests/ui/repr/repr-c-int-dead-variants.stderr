@@ -190,7 +190,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                abi: Align(8 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -254,7 +254,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
                            abi: Align(8 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

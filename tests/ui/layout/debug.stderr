@@ -10,7 +10,7 @@ error: layout_of(E) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -48,7 +48,7 @@ error: layout_of(E) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -150,7 +150,7 @@ error: layout_of(U) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -337,7 +337,7 @@ error: layout_of(V) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -361,7 +361,7 @@ error: layout_of(W) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -385,7 +385,7 @@ error: layout_of(Y) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -409,7 +409,7 @@ error: layout_of(P1) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -433,7 +433,7 @@ error: layout_of(P2) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -457,7 +457,7 @@ error: layout_of(P3) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(
@@ -481,7 +481,7 @@ error: layout_of(P4) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Union(

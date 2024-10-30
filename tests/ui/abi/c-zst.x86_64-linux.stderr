@@ -9,7 +9,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Aggregate {
+                           abi: Memory {
                                sized: true,
                            },
                            fields: Arbitrary {
@@ -36,7 +36,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -58,7 +58,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:27:1
+  --> $DIR/c-zst.rs:63:1
    |
 LL | extern "C" fn pass_zst(_: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
