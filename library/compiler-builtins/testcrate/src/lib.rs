@@ -15,7 +15,6 @@
 #![no_std]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
-#![feature(isqrt)]
 
 pub mod bench;
 extern crate alloc;

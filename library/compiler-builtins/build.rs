@@ -532,10 +532,6 @@ mod c {
         if (target.arch == "aarch64" || target.arch == "arm64ec") && consider_float_intrinsics {
             sources.extend(&[
                 ("__comparetf2", "comparetf2.c"),
-                ("__floatditf", "floatditf.c"),
-                ("__floatsitf", "floatsitf.c"),
-                ("__floatunditf", "floatunditf.c"),
-                ("__floatunsitf", "floatunsitf.c"),
                 ("__fe_getround", "fp_mode.c"),
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
@@ -550,21 +546,11 @@ mod c {
         }
 
         if target.arch == "mips64" {
-            sources.extend(&[
-                ("__netf2", "comparetf2.c"),
-                ("__floatsitf", "floatsitf.c"),
-                ("__floatunsitf", "floatunsitf.c"),
-                ("__fe_getround", "fp_mode.c"),
-            ]);
+            sources.extend(&[("__netf2", "comparetf2.c"), ("__fe_getround", "fp_mode.c")]);
         }
 
         if target.arch == "loongarch64" {
-            sources.extend(&[
-                ("__netf2", "comparetf2.c"),
-                ("__floatsitf", "floatsitf.c"),
-                ("__floatunsitf", "floatunsitf.c"),
-                ("__fe_getround", "fp_mode.c"),
-            ]);
+            sources.extend(&[("__netf2", "comparetf2.c"), ("__fe_getround", "fp_mode.c")]);
         }
 
         // Remove the assembly implementations that won't compile for the target

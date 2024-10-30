@@ -233,12 +233,12 @@ of being added to Rust.
 - [x] fixunstfdi.c
 - [x] fixunstfsi.c
 - [x] fixunstfti.c
-- [ ] floatditf.c
-- [ ] floatsitf.c
-- [ ] floattitf.c
-- [ ] floatunditf.c
-- [ ] floatunsitf.c
-- [ ] floatuntitf.c
+- [x] floatditf.c
+- [x] floatsitf.c
+- [x] floattitf.c
+- [x] floatunditf.c
+- [x] floatunsitf.c
+- [x] floatuntitf.c
 - [x] multf3.c
 - [x] powitf2.c
 - [x] subtf3.c
