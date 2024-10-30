@@ -7,6 +7,7 @@ use parser::{SyntaxKind, T};
 use crate::{
     algo::{self, neighbor},
     ast::{self, edit::IndentLevel, make, HasGenericArgs, HasGenericParams},
+    syntax_editor::SyntaxEditor,
     ted::{self, Position},
     AstNode, AstToken, Direction, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -253,6 +254,29 @@ impl ast::GenericParamList {
             None => {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());
                 ted::insert(after_l_angle, generic_param.syntax());
+            }
+        }
+    }
+
+    pub fn syntax_editor_add_generic_param(
+        &self,
+        editor: &mut SyntaxEditor,
+        generic_param: ast::GenericParam,
+    ) {
+        match self.generic_params().last() {
+            Some(last_param) => {
+                let position = crate::syntax_editor::Position::after(last_param.syntax());
+                let elements = vec![
+                    make::token(T![,]).into(),
+                    make::tokens::single_space().into(),
+                    generic_param.syntax().clone().into(),
+                ];
+                editor.insert_all(position, elements);
+            }
+            None => {
+                let after_l_angle =
+                    crate::syntax_editor::Position::after(self.l_angle_token().unwrap());
+                editor.insert(after_l_angle, generic_param.syntax());
             }
         }
     }

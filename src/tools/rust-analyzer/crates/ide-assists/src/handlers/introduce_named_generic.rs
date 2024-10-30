@@ -56,13 +56,11 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             )
             .for_impl_trait_as_generic(&impl_trait_type);
 
-            let type_param = make
-                .type_param(make.name(&type_param_name), Some(type_bound_list))
-                .clone_for_update();
-            let new_ty = make.ty(&type_param_name).clone_for_update();
+            let type_param = make.type_param(make.name(&type_param_name), Some(type_bound_list));
+            let new_ty = make.ty(&type_param_name);
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_generic_param_list.add_generic_param(type_param.into());
+            fn_generic_param_list.syntax_editor_add_generic_param(&mut editor, type_param.into());
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generic_param) =

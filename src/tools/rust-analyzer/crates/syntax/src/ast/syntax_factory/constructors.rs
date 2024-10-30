@@ -2,7 +2,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, make, HasName},
+    ast::{self, make, HasName, HasTypeBounds},
     syntax_editor::SyntaxMappingBuilder,
     AstNode,
 };
@@ -15,7 +15,6 @@ impl SyntaxFactory {
     }
 
     pub fn ty(&self, text: &str) -> ast::Type {
-        // FIXME: Is there anything to map here?
         make::ty(text).clone_for_update()
     }
 
@@ -29,6 +28,12 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            if let Some(input) = bounds {
+                builder.map_node(
+                    input.syntax().clone(),
+                    ast.type_bound_list().unwrap().syntax().clone(),
+                );
+            }
             builder.finish(&mut mapping);
         }
 
