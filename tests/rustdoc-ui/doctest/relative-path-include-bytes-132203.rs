@@ -1,3 +1,4 @@
+//@ ignore-windows
 //@ revisions: edition2015 edition2024
 //@[edition2015]edition:2015
 //@[edition2015]check-fail
