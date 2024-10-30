@@ -2464,6 +2464,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         early_dcx.early_fatal("value for threads must be a positive non-zero integer");
     }
 
+    if unstable_opts.threads == parse::MAX_THREADS_CAP {
+        early_dcx.early_warn(format!("number of threads was capped at {}", parse::MAX_THREADS_CAP));
+    }
+
     let fuel = unstable_opts.fuel.is_some() || unstable_opts.print_fuel.is_some();
     if fuel && unstable_opts.threads > 1 {
         early_dcx.early_fatal("optimization fuel is incompatible with multiple threads");
