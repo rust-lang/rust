@@ -111,7 +111,9 @@ impl<'a> Parser<'a> {
 
         if self.eat_keyword(kw::If) {
             let cond = self.parse_expr()?;
-            Ok(self.mk_pat(pat.span.to(cond.span), PatKind::Guard(pat, cond)))
+            let span = pat.span.to(cond.span);
+            self.psess.gated_spans.gate(sym::guard_patterns, span);
+            Ok(self.mk_pat(span, PatKind::Guard(pat, cond)))
         } else {
             Ok(pat)
         }

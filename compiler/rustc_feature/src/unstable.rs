@@ -502,7 +502,7 @@ declare_features! (
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
-    (unstable, guard_patterns, "CURRENT_RUSTC_VERSION", Some(129967)),
+    (incomplete, guard_patterns, "CURRENT_RUSTC_VERSION", Some(129967)),
     /// Allows using `..=X` as a patterns in slices.
     (unstable, half_open_range_patterns_in_slices, "1.66.0", Some(67264)),
     /// Allows `if let` guard in match arms.
