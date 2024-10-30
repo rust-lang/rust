@@ -54,15 +54,6 @@ LL + #[const_trait]
 LL | trait NonConst {
    |
 
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/trait-fn-const.rs:2:30
-   |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0379`.

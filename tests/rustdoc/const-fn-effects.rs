@@ -1,6 +1,4 @@
 #![crate_name = "foo"]
-#![feature(effects)]
-#![allow(incomplete_features)]
 
 //@ has foo/fn.bar.html
 //@ has - '//pre[@class="rust item-decl"]' 'pub const fn bar() -> '

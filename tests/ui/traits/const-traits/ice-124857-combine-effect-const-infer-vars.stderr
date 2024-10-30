@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `i32`
-  --> $DIR/ice-124857-combine-effect-const-infer-vars.rs:11:1
+  --> $DIR/ice-124857-combine-effect-const-infer-vars.rs:10:1
    |
 LL | impl const Foo for i32 {}
    | ---------------------- first implementation here

@@ -4,7 +4,7 @@
 //@ compile-flags: -Znext-solver
 // FIXME(effects) check-pass
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 struct S;
 

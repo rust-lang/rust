@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 const fn test() -> impl ~const Fn() {
     //~^ ERROR `~const` can only be applied to `#[const_trait]` traits

@@ -7,13 +7,20 @@
 //@ compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
-#![feature(fundamental, marker_trait_attr)]
-#![feature(const_trait_impl, effects)]
+#![feature(
+    no_core,
+    lang_items,
+    unboxed_closures,
+    auto_traits,
+    intrinsics,
+    rustc_attrs,
+    fundamental,
+    marker_trait_attr,
+    const_trait_impl
+)]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
 #![no_core]
-#![stable(feature = "minicore", since = "1.0.0")]
 
 #[lang = "sized"]
 trait Sized {}

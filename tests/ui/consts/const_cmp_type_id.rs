@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![feature(const_type_id, const_trait_impl, effects)]
-#![allow(incomplete_features)]
+#![feature(const_type_id, const_trait_impl)]
 
 use std::any::TypeId;
 

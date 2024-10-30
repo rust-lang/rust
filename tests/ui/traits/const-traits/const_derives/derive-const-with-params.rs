@@ -2,7 +2,7 @@
 // FIXME(effects) check-pass
 
 #![feature(derive_const)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 #[derive_const(PartialEq)]
 pub struct Reverse<T>(T);

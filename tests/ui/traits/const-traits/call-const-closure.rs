@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ edition:2021
 
-#![feature(const_trait_impl, effects, const_closures)]
+#![feature(const_trait_impl, const_closures)]
 #![allow(incomplete_features)]
 
 #[const_trait]
