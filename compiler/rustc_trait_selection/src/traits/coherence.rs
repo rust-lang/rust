@@ -18,7 +18,7 @@ use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 use rustc_span::symbol::sym;
@@ -195,9 +195,8 @@ fn overlap<'tcx>(
     let infcx = tcx
         .infer_ctxt()
         .skip_leak_check(skip_leak_check.is_yes())
-        .intercrate(true)
         .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
-        .build();
+        .build(TypingMode::Coherence);
     let selcx = &mut SelectionContext::new(&infcx);
     if track_ambiguity_causes.is_yes() {
         selcx.enable_tracking_intercrate_ambiguity_causes();
@@ -419,7 +418,7 @@ fn impl_intersection_has_negative_obligation(
 
     // N.B. We need to unify impl headers *with* intercrate mode, even if proving negative predicates
     // do not need intercrate mode enabled.
-    let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
+    let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build(TypingMode::Coherence);
     let root_universe = infcx.universe();
     assert_eq!(root_universe, ty::UniverseIndex::ROOT);
 
@@ -570,7 +569,9 @@ fn try_prove_negated_where_clause<'tcx>(
     // the *existence* of a negative goal, not the non-existence of a positive goal.
     // Without this, we over-eagerly register coherence ambiguity candidates when
     // impl candidates do exist.
-    let ref infcx = root_infcx.fork_with_intercrate(false);
+    // FIXME(#132279): `TypingMode::non_body_analysis` is a bit questionable here as it
+    // would cause us to reveal opaque types to leak their auto traits.
+    let ref infcx = root_infcx.fork_with_typing_mode(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
     ocx.register_obligation(Obligation::new(
         infcx.tcx,
@@ -714,7 +715,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
 
             // It is only relevant that a goal is unknowable if it would have otherwise
             // failed.
-            let non_intercrate_infcx = infcx.fork_with_intercrate(false);
+            // FIXME(#132279): Forking with `TypingMode::non_body_analysis` is a bit questionable
+            // as it would allow us to reveal opaque types, potentially causing unexpected
+            // cycles.
+            let non_intercrate_infcx = infcx.fork_with_typing_mode(TypingMode::non_body_analysis());
             if non_intercrate_infcx.predicate_may_hold(&Obligation::new(
                 infcx.tcx,
                 ObligationCause::dummy(),

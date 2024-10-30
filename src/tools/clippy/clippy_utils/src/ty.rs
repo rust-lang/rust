@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr, TypingMode,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -268,7 +268,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         return false;
     }
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
     let args = args
         .into_iter()
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
@@ -362,7 +362,7 @@ fn is_normalizable_helper<'tcx>(
     }
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
     cache.insert(ty, false);
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
     let cause = ObligationCause::dummy();
     let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
         match ty.kind() {
@@ -1268,7 +1268,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         let cause = ObligationCause::dummy();
         match tcx
             .infer_ctxt()
-            .build()
+            .build(TypingMode::from_param_env(param_env))
             .at(&cause, param_env)
             .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
         {
@@ -1284,7 +1284,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 
 pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let cause = ObligationCause::dummy();
-    match tcx.infer_ctxt().build().at(&cause, param_env).query_normalize(ty) {
+    match tcx.infer_ctxt().build(TypingMode::from_param_env(param_env)).at(&cause, param_env).query_normalize(ty) {
         Ok(ty) => ty.value,
         Err(_) => ty,
     }

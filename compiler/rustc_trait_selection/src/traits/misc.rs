@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 
 use super::outlives_bounds::InferCtxtExt;
 use crate::regions::InferCtxtRegionExt;
@@ -143,7 +143,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     let mut infringing_inner_tys = vec![];
     for inner_ty in inner_tys {
         // We use an ocx per inner ty for better diagnostics
-        let infcx = tcx.infer_ctxt().build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
         ocx.register_bound(
@@ -200,7 +200,7 @@ pub fn all_fields_implement_trait<'tcx>(
     for variant in adt.variants() {
         for field in &variant.fields {
             // Do this per-field to get better error messages.
-            let infcx = tcx.infer_ctxt().build();
+            let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
             let unnormalized_ty = field.ty(tcx, args);

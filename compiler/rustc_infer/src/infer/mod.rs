@@ -38,11 +38,12 @@ use rustc_middle::ty::fold::{
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid,
+    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
+use rustc_type_ir::solve::Reveal;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -243,8 +244,9 @@ impl<'tcx> InferCtxtInner<'tcx> {
 pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
-    /// The `DefIds` of the opaque types that may have their hidden types constrained.
-    defining_opaque_types: &'tcx ty::List<LocalDefId>,
+    /// The mode of this inference context, see the struct documentation
+    /// for more details.
+    typing_mode: TypingMode<'tcx>,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -295,26 +297,6 @@ pub struct InferCtxt<'tcx> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<ty::UniverseIndex>,
-
-    /// During coherence we have to assume that other crates may add
-    /// additional impls which we currently don't know about.
-    ///
-    /// To deal with this evaluation, we should be conservative
-    /// and consider the possibility of impls from outside this crate.
-    /// This comes up primarily when resolving ambiguity. Imagine
-    /// there is some trait reference `$0: Bar` where `$0` is an
-    /// inference variable. If `intercrate` is true, then we can never
-    /// say for sure that this reference is not implemented, even if
-    /// there are *no impls at all for `Bar`*, because `$0` could be
-    /// bound to some type that in a downstream crate that implements
-    /// `Bar`.
-    ///
-    /// Outside of coherence, we set this to false because we are only
-    /// interested in types that the user could actually have written.
-    /// In other words, we consider `$0: Bar` to be unimplemented if
-    /// there is no type that the user could *actually name* that
-    /// would satisfy it. This avoids crippling inference, basically.
-    pub intercrate: bool,
 
     next_trait_solver: bool,
 
@@ -529,11 +511,8 @@ pub struct RegionObligation<'tcx> {
 /// Used to configure inference contexts before their creation.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    defining_opaque_types: &'tcx ty::List<LocalDefId>,
     considering_regions: bool,
     skip_leak_check: bool,
-    /// Whether we are in coherence mode.
-    intercrate: bool,
     /// Whether we should use the new trait solver in the local inference context,
     /// which affects things like which solver is used in `predicate_may_hold`.
     next_trait_solver: bool,
@@ -544,34 +523,16 @@ impl<'tcx> TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,
-            defining_opaque_types: ty::List::empty(),
             considering_regions: true,
             skip_leak_check: false,
-            intercrate: false,
             next_trait_solver: self.next_trait_solver_globally(),
         }
     }
 }
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
-    /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
-    /// you need to call this function. Otherwise the opaque type will be treated opaquely.
-    ///
-    /// It is only meant to be called in two places, for typeck
-    /// (via `Inherited::build`) and for the inference context used
-    /// in mir borrowck.
-    pub fn with_opaque_type_inference(mut self, defining_anchor: LocalDefId) -> Self {
-        self.defining_opaque_types = self.tcx.opaque_types_defined_by(defining_anchor);
-        self
-    }
-
     pub fn with_next_trait_solver(mut self, next_trait_solver: bool) -> Self {
         self.next_trait_solver = next_trait_solver;
-        self
-    }
-
-    pub fn intercrate(mut self, intercrate: bool) -> Self {
-        self.intercrate = intercrate;
         self
     }
 
@@ -600,24 +561,17 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.defining_opaque_types = input.defining_opaque_types;
-        let infcx = self.build();
+        let infcx = self.build(input.typing_mode);
         let (value, args) = infcx.instantiate_canonical(span, &input.canonical);
         (infcx, value, args)
     }
 
-    pub fn build(&mut self) -> InferCtxt<'tcx> {
-        let InferCtxtBuilder {
-            tcx,
-            defining_opaque_types,
-            considering_regions,
-            skip_leak_check,
-            intercrate,
-            next_trait_solver,
-        } = *self;
+    pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
+        let InferCtxtBuilder { tcx, considering_regions, skip_leak_check, next_trait_solver } =
+            *self;
         InferCtxt {
             tcx,
-            defining_opaque_types,
+            typing_mode,
             considering_regions,
             skip_leak_check,
             inner: RefCell::new(InferCtxtInner::new()),
@@ -628,7 +582,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),
-            intercrate,
             next_trait_solver,
             obligation_inspector: Cell::new(None),
         }
@@ -659,12 +612,28 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
-    pub fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types
-    }
-
     pub fn next_trait_solver(&self) -> bool {
         self.next_trait_solver
+    }
+
+    #[inline(always)]
+    pub fn typing_mode(
+        &self,
+        param_env_for_debug_assertion: ty::ParamEnv<'tcx>,
+    ) -> TypingMode<'tcx> {
+        if cfg!(debug_assertions) {
+            match (param_env_for_debug_assertion.reveal(), self.typing_mode) {
+                (Reveal::All, TypingMode::PostAnalysis)
+                | (Reveal::UserFacing, TypingMode::Coherence | TypingMode::Analysis { .. }) => {}
+                (r, t) => unreachable!("TypingMode x Reveal mismatch: {r:?} {t:?}"),
+            }
+        }
+        self.typing_mode
+    }
+
+    #[inline(always)]
+    pub fn typing_mode_unchecked(&self) -> TypingMode<'tcx> {
+        self.typing_mode
     }
 
     pub fn freshen<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
@@ -1029,8 +998,12 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
-        let Some(id) = id.into().as_local() else { return false };
-        self.defining_opaque_types.contains(&id)
+        match self.typing_mode_unchecked() {
+            TypingMode::Analysis { defining_opaque_types } => {
+                id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
+            }
+            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+        }
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
