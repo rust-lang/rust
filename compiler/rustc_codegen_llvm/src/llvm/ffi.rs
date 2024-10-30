@@ -3,6 +3,7 @@
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ptr;
 
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
 use rustc_macros::TryFromU32;
@@ -708,8 +709,9 @@ unsafe extern "C" {
 }
 #[repr(C)]
 pub struct RustArchiveMember<'a>(InvariantOpaque<'a>);
+/// Opaque pointee of `LLVMOperandBundleRef`.
 #[repr(C)]
-pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
+pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
@@ -1538,6 +1540,50 @@ unsafe extern "C" {
 
     pub fn LLVMGetOrInsertComdat(M: &Module, Name: *const c_char) -> &Comdat;
     pub fn LLVMSetComdat(V: &Value, C: &Comdat);
+
+    pub(crate) fn LLVMCreateOperandBundle(
+        Tag: *const c_char,
+        TagLen: size_t,
+        Args: *const &'_ Value,
+        NumArgs: c_uint,
+    ) -> *mut OperandBundle<'_>;
+    pub(crate) fn LLVMDisposeOperandBundle(Bundle: ptr::NonNull<OperandBundle<'_>>);
+
+    pub(crate) fn LLVMBuildCallWithOperandBundles<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildInvokeWithOperandBundles<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Then: &'a BasicBlock,
+        Catch: &'a BasicBlock,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildCallBr<'a>(
+        B: &Builder<'a>,
+        Ty: &'a Type,
+        Fn: &'a Value,
+        DefaultDest: &'a BasicBlock,
+        IndirectDests: *const &'a BasicBlock,
+        NumIndirectDests: c_uint,
+        Args: *const &'a Value,
+        NumArgs: c_uint,
+        Bundles: *const &OperandBundle<'a>,
+        NumBundles: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -1623,47 +1669,11 @@ unsafe extern "C" {
         AttrsLen: size_t,
     );
 
-    pub fn LLVMRustBuildInvoke<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        Then: &'a BasicBlock,
-        Catch: &'a BasicBlock,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
-
-    pub fn LLVMRustBuildCallBr<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        DefaultDest: &'a BasicBlock,
-        IndirectDests: *const &'a BasicBlock,
-        NumIndirectDests: c_uint,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-        Name: *const c_char,
-    ) -> &'a Value;
-
     pub fn LLVMRustSetFastMath(Instr: &Value);
     pub fn LLVMRustSetAlgebraicMath(Instr: &Value);
     pub fn LLVMRustSetAllowReassoc(Instr: &Value);
 
     // Miscellaneous instructions
-    pub fn LLVMRustBuildCall<'a>(
-        B: &Builder<'a>,
-        Ty: &'a Type,
-        Fn: &'a Value,
-        Args: *const &'a Value,
-        NumArgs: c_uint,
-        OpBundles: *const &OperandBundleDef<'a>,
-        NumOpBundles: c_uint,
-    ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
         B: &Builder<'a>,
         Dst: &'a Value,
@@ -2357,13 +2367,6 @@ unsafe extern "C" {
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
-    pub fn LLVMRustBuildOperandBundleDef(
-        Name: *const c_char,
-        Inputs: *const &'_ Value,
-        NumInputs: c_uint,
-    ) -> &mut OperandBundleDef<'_>;
-    pub fn LLVMRustFreeOperandBundleDef<'a>(Bundle: &'a mut OperandBundleDef<'a>);
-
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub fn LLVMRustSetModulePICLevel(M: &Module);
@@ -2416,6 +2419,7 @@ unsafe extern "C" {
         data: *const u8,
         len: usize,
         name: *const u8,
+        name_len: usize,
         out_len: &mut usize,
     ) -> *const u8;
 

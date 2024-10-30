@@ -37,8 +37,7 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     always_live.union(&borrowed_locals);
 
     let mut live = MaybeTransitiveLiveLocals::new(&always_live)
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // For blocks with a call terminator, if an argument copy can be turned into a move,
