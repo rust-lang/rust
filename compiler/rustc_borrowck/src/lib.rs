@@ -34,7 +34,7 @@ use rustc_infer::infer::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{
@@ -440,7 +440,7 @@ pub struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let infcx = tcx.infer_ctxt().with_opaque_type_inference(def_id).build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
     }
 

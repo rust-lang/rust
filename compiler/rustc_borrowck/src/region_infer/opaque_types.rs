@@ -9,6 +9,7 @@ use rustc_macros::extension;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgs, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypingMode,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -340,14 +341,13 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Znext-solver): We probably should use `&[]` instead of
-    // and prepopulate this `InferCtxt` with known opaque values, rather than
-    // allowing opaque types to be defined and checking them after the fact.
+    // FIXME(#132279): This should eventually use the already defined hidden types
+    // instead. Alternatively we'll entirely remove this function given we also check
+    // the opaque in `check_opaque_meets_bounds` later.
     let infcx = tcx
         .infer_ctxt()
         .with_next_trait_solver(next_trait_solver)
-        .with_opaque_type_inference(parent_def_id)
-        .build();
+        .build(TypingMode::analysis_in_body(tcx, parent_def_id));
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let identity_args = GenericArgs::identity_for_item(tcx, def_id);
 
@@ -517,7 +517,9 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
             },
         );
 
-        let infcx = tcx.infer_ctxt().build();
+        // FIXME(#132279): It feels wrong to use `non_body_analysis` here given that we're
+        // in a body here.
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = ObligationCtxt::new(&infcx);
 
         let wf_tys = ocx.assumed_wf_types(param_env, parent).unwrap_or_else(|_| {

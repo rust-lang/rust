@@ -14,7 +14,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, Upcast,
+    TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
@@ -718,7 +718,7 @@ fn receiver_is_dispatchable<'tcx>(
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     // the receiver is dispatchable iff the obligation holds
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }

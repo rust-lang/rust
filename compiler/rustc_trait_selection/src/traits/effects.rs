@@ -1,8 +1,9 @@
 use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt};
 use rustc_infer::traits::{ImplSource, Obligation, PredicateObligation};
+use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::{span_bug, ty};
+use rustc_middle::ty::{self, TypingMode};
 use rustc_type_ir::solve::NoSolution;
 use thin_vec::ThinVec;
 
@@ -19,7 +20,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if selcx.infcx.intercrate {
+    if matches!(selcx.infcx.typing_mode(obligation.param_env), TypingMode::Coherence) {
         span_bug!(
             obligation.cause.span,
             "should not select host obligation in old solver in intercrate mode"

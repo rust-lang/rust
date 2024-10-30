@@ -54,7 +54,6 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
 use tracing::{debug, trace};
 
@@ -170,15 +169,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         tracked.get(self)
     }
 
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R {
-        match mode {
-            SolverMode::Normal => f(&mut *self.new_solver_evaluation_cache.lock()),
-            SolverMode::Coherence => f(&mut *self.new_solver_coherence_evaluation_cache.lock()),
-        }
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
+        f(&mut *self.new_solver_evaluation_cache.lock())
     }
 
     fn evaluation_is_concurrent(&self) -> bool {
@@ -628,6 +620,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         binder: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
         self.anonymize_bound_vars(binder)
+    }
+
+    fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::DefiningOpaqueTypes {
+        self.opaque_types_defined_by(defining_anchor)
     }
 }
 
@@ -1334,7 +1330,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
-    pub new_solver_coherence_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
@@ -1561,7 +1556,6 @@ impl<'tcx> TyCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
-            new_solver_coherence_evaluation_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),

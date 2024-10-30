@@ -13,7 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
+use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt, TypingMode};
 use thin_vec::ThinVec;
 use tracing::{debug, debug_span, instrument};
 
@@ -760,7 +760,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.is_intercrate() {
+        if obligation.predicate.is_global()
+            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -813,11 +815,13 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
-
-        if obligation.predicate.is_global() && !self.selcx.is_intercrate() {
+        let infcx = self.selcx.infcx;
+        if obligation.predicate.is_global()
+            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            if self.selcx.infcx.predicate_must_hold_considering_regions(obligation) {
+            if infcx.predicate_must_hold_considering_regions(obligation) {
                 if let Some(key) = ProjectionCacheKey::from_poly_projection_obligation(
                     &mut self.selcx,
                     &project_obligation,
@@ -825,8 +829,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                     // If `predicate_must_hold_considering_regions` succeeds, then we've
                     // evaluated all sub-obligations. We can therefore mark the 'root'
                     // obligation as complete, and skip evaluating sub-obligations.
-                    self.selcx
-                        .infcx
+                    infcx
                         .inner
                         .borrow_mut()
                         .projection_cache()

@@ -64,7 +64,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::Analysis;
@@ -1501,7 +1501,11 @@ fn check_field_tys_sized<'tcx>(
         return;
     }
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    // FIXME(#132279): @lcnr believes that we may want to support coroutines
+    // whose `Sized`-ness relies on the hidden types of opaques defined by the
+    // parent function. In this case we'd have to be able to reveal only these
+    // opaques here.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let param_env = tcx.param_env(def_id);
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);

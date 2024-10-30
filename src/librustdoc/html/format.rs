@@ -20,8 +20,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_metadata::creader::{CStore, LoadedMacro};
-use rustc_middle::ty;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::abi::Abi;
@@ -613,7 +612,7 @@ fn generate_item_def_id_path(
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
     if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
-        let infcx = tcx.infer_ctxt().build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         def_id = infcx
             .at(&ObligationCause::dummy(), tcx.param_env(def_id))
             .query_normalize(ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()))

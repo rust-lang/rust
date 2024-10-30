@@ -8,14 +8,14 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::inspect;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, Upcast as _, elaborate};
 use tracing::{debug, instrument};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, QueryResult, SolverMode,
+    MaybeCause, NoSolution, QueryResult,
 };
 
 /// A candidate is a possible way to prove a goal.
@@ -328,11 +328,12 @@ where
 
         let mut candidates = vec![];
 
-        if self.solver_mode() == SolverMode::Coherence {
+        if let TypingMode::Coherence = self.typing_mode(goal.param_env) {
             if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
                 return vec![candidate];
             }
         }
+
         self.assemble_impl_candidates(goal, &mut candidates);
 
         self.assemble_builtin_impl_candidates(goal, &mut candidates);
@@ -343,8 +344,11 @@ where
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
-        if self.solver_mode() == SolverMode::Normal {
-            self.discard_impls_shadowed_by_env(goal, &mut candidates);
+        match self.typing_mode(goal.param_env) {
+            TypingMode::Coherence => {}
+            TypingMode::Analysis { .. } | TypingMode::PostAnalysis => {
+                self.discard_impls_shadowed_by_env(goal, &mut candidates);
+            }
         }
 
         candidates
