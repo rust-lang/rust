@@ -400,10 +400,14 @@ impl<'c, 'tcx> PatCx<'c, 'tcx> {
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
-            hir::PatKind::Guard(subpat, condition) => PatKind::Guard {
-                subpattern: self.lower_pattern(subpat),
-                condition: self.cx.mirror_expr(condition),
-            },
+            hir::PatKind::Guard(subpat, condition) if self.cx.tcx.features().guard_patterns() => {
+                PatKind::Guard {
+                    subpattern: self.lower_pattern(subpat),
+                    condition: self.cx.mirror_expr(condition),
+                }
+            }
+            // FIXME(guard_patterns): remove this once MIR lowering doesn't ICE on guard patterns
+            hir::PatKind::Guard(subpat, _) => self.lower_pattern(subpat).kind,
 
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
