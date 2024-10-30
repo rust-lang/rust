@@ -96,13 +96,13 @@ where
             // the value with `None`, move it into the results cursor, move it
             // back out, and return it to the refcell wrapped in `Some`.
             let mut fmt = BlockFormatter {
-                results: results.take().unwrap().into_results_cursor(self.body),
+                cursor: results.take().unwrap().into_results_cursor(self.body),
                 style: self.style,
                 bg: Background::Light,
             };
 
             fmt.write_node_label(&mut label, *block).unwrap();
-            Some(fmt.results.into_results())
+            Some(fmt.cursor.into_results())
         });
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
@@ -155,7 +155,7 @@ struct BlockFormatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    results: ResultsCursor<'mir, 'tcx, A>,
+    cursor: ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
@@ -219,8 +219,8 @@ where
 
         // C: State at start of block
         self.bg = Background::Light;
-        self.results.seek_to_block_start(block);
-        let block_start_state = self.results.get().clone();
+        self.cursor.seek_to_block_start(block);
+        let block_start_state = self.cursor.get().clone();
         self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D + E: Statement and terminator transfer functions
@@ -228,12 +228,12 @@ where
 
         // F: State at end of block
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
 
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
-        self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
+        self.cursor.seek_to_block_end(block);
+        if self.cursor.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
                 mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
@@ -250,8 +250,8 @@ where
         match terminator.kind {
             mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -265,9 +265,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -275,8 +275,8 @@ where
 
             mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_coroutine_drop = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_coroutine_drop = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             resume,
@@ -290,9 +290,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_coroutine_drop,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -302,8 +302,8 @@ where
                 if !targets.is_empty() =>
             {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -317,9 +317,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -407,9 +407,9 @@ where
         block: BasicBlock,
     ) -> io::Result<()> {
         let diffs = StateDiffCollector::run(
-            self.results.body(),
+            self.cursor.body(),
             block,
-            self.results.mut_results(),
+            self.cursor.mut_results(),
             self.style,
         );
 
@@ -420,7 +420,7 @@ where
             if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
-        for (i, statement) in self.results.body()[block].statements.iter().enumerate() {
+        for (i, statement) in self.cursor.body()[block].statements.iter().enumerate() {
             let statement_str = format!("{statement:?}");
             let index_str = format!("{i}");
 
@@ -442,7 +442,7 @@ where
         assert!(diffs_after.is_empty());
         assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
         let mut terminator_str = String::new();
         terminator.kind.fmt_head(&mut terminator_str).unwrap();
 
@@ -492,8 +492,8 @@ where
         mir: &str,
     ) -> io::Result<()> {
         self.write_row(w, i, mir, |this, w, fmt| {
-            let state = this.results.get();
-            let analysis = this.results.analysis();
+            let state = this.cursor.get();
+            let analysis = this.cursor.analysis();
 
             // FIXME: The full state vector can be quite long. It would be nice to split on commas
             // and use some text wrapping algorithm.
