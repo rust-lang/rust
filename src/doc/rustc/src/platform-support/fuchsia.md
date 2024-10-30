@@ -7,17 +7,9 @@ updatable, and performant.
 
 ## Target maintainers
 
-The [Fuchsia team]:
+See [`fuchsia.toml`] in the `team` repository for current target maintainers.
 
-- Tyler Mandry ([@tmandry](https://github.com/tmandry))
-- David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Julia Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
-- Erick Tryzelaar ([@erickt](https://github.com/erickt))
-
-As the team evolves over time, the specific members listed here may differ from
-the members reported by the API. The API should be considered to be
-authoritative if this occurs. Instead of pinging individual members, use
-`@rustbot ping fuchsia` to contact the team on GitHub.
+[`fuchsia.toml`]: https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml
 
 ## Table of contents
 
