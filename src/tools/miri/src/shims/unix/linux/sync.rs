@@ -150,7 +150,7 @@ pub fn futex<'tcx>(
                     Scalar::from_target_isize(0, this), // retval_succ
                     Scalar::from_target_isize(-1, this), // retval_timeout
                     dest.clone(),
-                    this.eval_libc("ETIMEDOUT"), // errno_timeout
+                    LibcError("ETIMEDOUT"), // errno_timeout
                 );
             } else {
                 // The futex value doesn't match the expected value, so we return failure
