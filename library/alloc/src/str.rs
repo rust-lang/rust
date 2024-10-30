@@ -269,8 +269,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
-        // Fast path for ASCII to ASCII case.
-
+        // Fast path for replacing a single ASCII character with another.
         if let Some(from_byte) = match from.as_utf8_pattern() {
             Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
             Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
@@ -280,8 +279,13 @@ impl str {
                 return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
             }
         }
-
-        let mut result = String::new();
+        // Set result capacity to self.len() when from.len() <= to.len()
+        let default_capacity = match from.as_utf8_pattern() {
+            Some(Utf8Pattern::StringPattern(s)) if s.len() <= to.len() => self.len(),
+            Some(Utf8Pattern::CharPattern(c)) if c.len_utf8() <= to.len() => self.len(),
+            _ => 0,
+        };
+        let mut result = String::with_capacity(default_capacity);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
             result.push_str(unsafe { self.get_unchecked(last_end..start) });

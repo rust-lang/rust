@@ -9,7 +9,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
-    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind,
+    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
+    TyKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -125,6 +126,11 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
         self.inter_expr().eq_path_segments(left, right)
+    }
+
+    pub fn eq_modifiers(&mut self, left: TraitBoundModifiers, right: TraitBoundModifiers) -> bool {
+        std::mem::discriminant(&left.constness) == std::mem::discriminant(&right.constness)
+            && std::mem::discriminant(&left.polarity) == std::mem::discriminant(&right.polarity)
     }
 }
 
@@ -1141,6 +1147,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
         }
+    }
+
+    pub fn hash_modifiers(&mut self, modifiers: TraitBoundModifiers) {
+        let TraitBoundModifiers { constness, polarity } = modifiers;
+        std::mem::discriminant(&polarity).hash(&mut self.s);
+        std::mem::discriminant(&constness).hash(&mut self.s);
     }
 
     pub fn hash_stmt(&mut self, b: &Stmt<'_>) {

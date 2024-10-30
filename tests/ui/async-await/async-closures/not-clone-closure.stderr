@@ -2,7 +2,7 @@ error[E0277]: the trait bound `NotClonableUpvar: Clone` is not satisfied in `{as
   --> $DIR/not-clone-closure.rs:32:15
    |
 LL |     not_clone.clone();
-   |               ^^^^^ within `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`, which is required by `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}: Clone`
+   |               ^^^^^ within `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`
    |
 note: required because it's used within this closure
   --> $DIR/not-clone-closure.rs:29:21

@@ -1531,11 +1531,3 @@ fn macro_call_as_call_id_with_eager(
 pub struct UnresolvedMacro {
     pub path: hir_expand::mod_path::ModPath,
 }
-
-intern::impl_internable!(
-    crate::type_ref::TypeRef,
-    crate::type_ref::TraitRef,
-    crate::type_ref::TypeBound,
-    crate::path::GenericArgs,
-    generics::GenericParams,
-);

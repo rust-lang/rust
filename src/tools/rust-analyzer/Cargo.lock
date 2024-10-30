@@ -73,7 +73,7 @@ dependencies = [
  "intern",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lz4_flex",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "salsa",
  "semver",
  "span",
@@ -161,9 +161,10 @@ dependencies = [
  "expect-test",
  "intern",
  "oorandom",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "syntax",
  "syntax-bridge",
+ "tracing",
  "tt",
 ]
 
@@ -216,7 +217,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "chalk-solve",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "tracing",
 ]
 
@@ -232,7 +233,7 @@ dependencies = [
  "indexmap",
  "itertools",
  "petgraph",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "tracing",
 ]
 
@@ -513,7 +514,7 @@ dependencies = [
  "hir-ty",
  "intern",
  "itertools",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "smallvec",
  "span",
  "stdx",
@@ -547,7 +548,7 @@ dependencies = [
  "mbe",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "smallvec",
  "span",
@@ -556,6 +557,7 @@ dependencies = [
  "syntax-bridge",
  "test-fixture",
  "test-utils",
+ "text-size",
  "tracing",
  "triomphe",
  "tt",
@@ -577,7 +579,7 @@ dependencies = [
  "limit",
  "mbe",
  "parser",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "smallvec",
  "span",
  "stdx",
@@ -616,7 +618,7 @@ dependencies = [
  "ra-ap-rustc_abi",
  "ra-ap-rustc_index",
  "ra-ap-rustc_pattern_analysis",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "scoped-tls",
  "smallvec",
@@ -670,7 +672,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "toolchain",
  "tracing",
  "triomphe",
@@ -692,7 +693,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -711,7 +711,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -731,19 +730,18 @@ dependencies = [
  "indexmap",
  "itertools",
  "limit",
- "line-index 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "nohash-hasher",
  "parser",
  "profile",
  "rayon",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "span",
  "stdx",
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -765,7 +763,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "tracing",
 ]
 
@@ -784,7 +781,6 @@ dependencies = [
  "syntax",
  "test-fixture",
  "test-utils",
- "text-edit",
  "triomphe",
 ]
 
@@ -834,7 +830,7 @@ version = "0.0.0"
 dependencies = [
  "dashmap",
  "hashbrown",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "sptr",
  "triomphe",
 ]
@@ -939,7 +935,7 @@ version = "0.0.0"
 
 [[package]]
 name = "line-index"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "nohash-hasher",
  "oorandom",
@@ -948,9 +944,9 @@ dependencies = [
 
 [[package]]
 name = "line-index"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67d61795376ae2683928c218fda7d7d7db136fd38c06b7552904667f0d55580a"
+checksum = "3e27e0ed5a392a7f5ba0b3808a2afccff16c64933312c84b57618b49d1209bd2"
 dependencies = [
  "nohash-hasher",
  "text-size",
@@ -1051,7 +1047,7 @@ dependencies = [
  "intern",
  "parser",
  "ra-ap-rustc_lexer",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "smallvec",
  "span",
  "stdx",
@@ -1345,7 +1341,7 @@ dependencies = [
  "indexmap",
  "intern",
  "paths",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "serde",
  "serde_json",
  "span",
@@ -1435,7 +1431,7 @@ dependencies = [
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "semver",
  "serde",
  "serde_json",
@@ -1497,9 +1493,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6999d098000b98415939f13158dac78cb3eeeb7b0c073847f3e4b623866e27c"
+checksum = "d5bc2cfc7264d84215a08875ef90a1d35f76b5c9ad1993515d2da7e4e40b2b4b"
 dependencies = [
  "bitflags 2.6.0",
  "ra-ap-rustc_index",
@@ -1508,9 +1504,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae9fb312d942817dab10790881f555928c1f6a11a85186e8e573ad4a86c7d3be"
+checksum = "e8929140697812e5dd09e19cf446d85146332363f0dbc125d4214834c34ead96"
 dependencies = [
  "arrayvec",
  "ra-ap-rustc_index_macros",
@@ -1519,9 +1515,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "766e3990eb1066a06deefc561b5a01b32ca5c9211feea31cbf4ed50611519872"
+checksum = "514a3f5d04c8b4a2750f29746cc9abb1f78deb7e72e4ad1dc95bbc608f3db157"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1530,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4afa98eb7889c137d5a3f1cd189089e16da04d1e4837d358a67aa3dab10ffbe"
+checksum = "276fcb1205da071a0cd64416f3f0e198043c11f176c5b501a45dbf0cb33979f2"
 dependencies = [
  "unicode-properties",
  "unicode-xid",
@@ -1540,9 +1536,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9234c96ffb0565286790407fb7eb7f55ebf69267de4db382fdec0a17f14b0e2"
+checksum = "961b30b22cfac296b14b72e9f95e79c16cebc8c926872755fb1568a6c4243a62"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
@@ -1550,12 +1546,12 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.71.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "273d5f72926a58c7eea27aebc898d1d5b32d23d2342f692a94a2cf8746aa4a2f"
+checksum = "614232513814a4b714fea7f11345d31c0c277bca3089bb6ca1ec20870bfc022a"
 dependencies = [
  "ra-ap-rustc_index",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "smallvec",
  "tracing",
@@ -1640,7 +1636,7 @@ dependencies = [
  "countme",
  "hashbrown",
  "memoffset",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "text-size",
 ]
 
@@ -1680,7 +1676,7 @@ dependencies = [
  "profile",
  "project-model",
  "rayon",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "scip",
  "semver",
  "serde",
@@ -1718,6 +1714,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
+name = "rustc-hash"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "583034fd73374156e66797ed8e5b0d5690409c9226b22d87cb7f19821c05d152"
+
+[[package]]
 name = "rustc_apfloat"
 version = "0.2.1+llvm-462a31f5a5ab"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1746,7 +1748,7 @@ dependencies = [
  "oorandom",
  "parking_lot",
  "rand",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "salsa-macros",
  "smallvec",
  "tracing",
@@ -1878,9 +1880,9 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "smol_str"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66eaf762c5af19db3108300515c8aa7a50efc90ff745f4c62288052ebf9fdd25"
+checksum = "9676b89cd56310a87b93dec47b11af744f34d5fc9f367b829474eec0a891350d"
 dependencies = [
  "borsh",
  "serde",
@@ -1898,7 +1900,7 @@ version = "0.0.0"
 dependencies = [
  "hashbrown",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "salsa",
  "stdx",
  "syntax",
@@ -1967,12 +1969,11 @@ dependencies = [
  "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "rustc_apfloat",
  "smol_str",
  "stdx",
  "test-utils",
- "text-edit",
  "tracing",
  "triomphe",
 ]
@@ -1983,7 +1984,7 @@ version = "0.0.0"
 dependencies = [
  "intern",
  "parser",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "span",
  "stdx",
  "syntax",
@@ -2000,7 +2001,7 @@ dependencies = [
  "cfg",
  "hir-expand",
  "intern",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "span",
  "stdx",
  "test-utils",
@@ -2014,18 +2015,10 @@ dependencies = [
  "dissimilar",
  "paths",
  "profile",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "stdx",
  "text-size",
  "tracing",
-]
-
-[[package]]
-name = "text-edit"
-version = "0.0.0"
-dependencies = [
- "itertools",
- "text-size",
 ]
 
 [[package]]
@@ -2361,7 +2354,7 @@ dependencies = [
  "indexmap",
  "nohash-hasher",
  "paths",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "stdx",
  "tracing",
 ]
@@ -2374,7 +2367,7 @@ dependencies = [
  "notify",
  "paths",
  "rayon",
- "rustc-hash",
+ "rustc-hash 2.0.0",
  "stdx",
  "tracing",
  "vfs",

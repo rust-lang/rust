@@ -185,8 +185,9 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "131516")]
     #[inline]
-    pub fn is_char_boundary(&self, index: usize) -> bool {
+    pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
@@ -195,8 +196,8 @@ impl str {
             return true;
         }
 
-        match self.as_bytes().get(index) {
-            // For `None` we have two options:
+        if index >= self.len() {
+            // For `true` we have two options:
             //
             // - index == self.len()
             //   Empty strings are valid, so return true
@@ -205,9 +206,9 @@ impl str {
             //
             // The check is placed exactly here, because it improves generated
             // code on higher opt-levels. See PR #84751 for more details.
-            None => index == self.len(),
-
-            Some(&b) => b.is_utf8_char_boundary(),
+            index == self.len()
+        } else {
+            self.as_bytes()[index].is_utf8_char_boundary()
         }
     }
 
@@ -637,7 +638,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    pub fn split_at(&self, mid: usize) -> (&str, &str) {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
             Some(pair) => pair,
@@ -677,7 +679,8 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
@@ -716,11 +719,12 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    pub fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
-            Some(unsafe { (self.get_unchecked(0..mid), self.get_unchecked(mid..self.len())) })
+            Some(unsafe { self.split_at_unchecked(mid) })
         } else {
             None
         }
@@ -756,7 +760,9 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    pub fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
+    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_allow_const_fn_unstable(const_is_char_boundary)]
+    pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             // SAFETY: just checked that `mid` is on a char boundary.
@@ -772,7 +778,25 @@ impl str {
     ///
     /// The caller must ensure that `mid` is a valid byte offset from the start
     /// of the string and falls on the boundary of a UTF-8 code point.
-    unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
+    const unsafe fn split_at_unchecked(&self, mid: usize) -> (&str, &str) {
+        let len = self.len();
+        let ptr = self.as_ptr();
+        // SAFETY: caller guarantees `mid` is on a char boundary.
+        unsafe {
+            (
+                from_utf8_unchecked(slice::from_raw_parts(ptr, mid)),
+                from_utf8_unchecked(slice::from_raw_parts(ptr.add(mid), len - mid)),
+            )
+        }
+    }
+
+    /// Divides one string slice into two at an index.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `mid` is a valid byte offset from the start
+    /// of the string and falls on the boundary of a UTF-8 code point.
+    const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
         // SAFETY: caller guarantees `mid` is on a char boundary.

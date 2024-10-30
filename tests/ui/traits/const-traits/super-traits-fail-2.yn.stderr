@@ -1,0 +1,21 @@
+error: `~const` is not allowed here
+  --> $DIR/super-traits-fail-2.rs:12:12
+   |
+LL | trait Bar: ~const Foo {}
+   |            ^^^^^^
+   |
+note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+  --> $DIR/super-traits-fail-2.rs:12:1
+   |
+LL | trait Bar: ~const Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `T: ~const Foo` is not satisfied
+  --> $DIR/super-traits-fail-2.rs:21:5
+   |
+LL |     x.a();
+   |     ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

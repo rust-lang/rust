@@ -58,7 +58,7 @@ rustc_index::newtype_index! {
 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<FieldIdx, VariantIdx>>);
+pub struct Layout<'a>(pub Interned<'a, LayoutData<FieldIdx, VariantIdx>>);
 
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -68,8 +68,8 @@ impl<'a> fmt::Debug for Layout<'a> {
 }
 
 impl<'a> Deref for Layout<'a> {
-    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
+    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
         &self.0.0
     }
 }
@@ -142,8 +142,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for TyAndLayout<'a, Ty> {
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS<FieldIdx, VariantIdx>;
-    fn deref(&self) -> &&'a LayoutS<FieldIdx, VariantIdx> {
+    type Target = &'a LayoutData<FieldIdx, VariantIdx>;
+    fn deref(&self) -> &&'a LayoutData<FieldIdx, VariantIdx> {
         &self.layout.0.0
     }
 }

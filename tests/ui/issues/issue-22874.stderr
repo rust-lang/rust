@@ -13,7 +13,7 @@ error[E0277]: the size for values of type `[String]` cannot be known at compilat
 LL |     &table.rows[0]
    |      ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `[String]`, which is required by `[_]: Index<_>`
+   = help: the trait `Sized` is not implemented for `[String]`
    = note: required for `[[String]]` to implement `Index<_>`
 
 error: aborting due to 2 previous errors

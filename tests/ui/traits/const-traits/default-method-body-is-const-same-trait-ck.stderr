@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): ~const Tr` is not satisfied
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:10:9
+   |
+LL |         ().a()
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

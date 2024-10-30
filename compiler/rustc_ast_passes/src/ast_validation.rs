@@ -80,10 +80,6 @@ struct AstValidator<'a> {
 
     disallow_tilde_const: Option<TildeConstReason>,
 
-    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    /// or `Foo::Bar<impl Trait>`
-    is_impl_trait_banned: bool,
-
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
 
@@ -121,12 +117,6 @@ impl<'a> AstValidator<'a> {
         let old = mem::replace(&mut self.extern_mod_safety, Some(extern_mod_safety));
         f(self);
         self.extern_mod_safety = old;
-    }
-
-    fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_impl_trait_banned, true);
-        f(self);
-        self.is_impl_trait_banned = old;
     }
 
     fn with_tilde_const(
@@ -213,43 +203,12 @@ impl<'a> AstValidator<'a> {
                 .with_tilde_const(Some(TildeConstReason::TraitObject), |this| {
                     visit::walk_ty(this, t)
                 }),
-            TyKind::Path(qself, path) => {
-                // We allow these:
-                //  - `Option<impl Trait>`
-                //  - `option::Option<impl Trait>`
-                //  - `option::Option<T>::Foo<impl Trait>`
-                //
-                // But not these:
-                //  - `<impl Trait>::Foo`
-                //  - `option::Option<impl Trait>::Foo`.
-                //
-                // To implement this, we disallow `impl Trait` from `qself`
-                // (for cases like `<impl Trait>::Foo>`)
-                // but we allow `impl Trait` in `GenericArgs`
-                // iff there are no more PathSegments.
-                if let Some(qself) = qself {
-                    // `impl Trait` in `qself` is always illegal
-                    self.with_banned_impl_trait(|this| this.visit_ty(&qself.ty));
-                }
-
-                // Note that there should be a call to visit_path here,
-                // so if any logic is added to process `Path`s a call to it should be
-                // added both in visit_path and here. This code mirrors visit::walk_path.
-                for (i, segment) in path.segments.iter().enumerate() {
-                    // Allow `impl Trait` iff we're on the final path segment
-                    if i == path.segments.len() - 1 {
-                        self.visit_path_segment(segment);
-                    } else {
-                        self.with_banned_impl_trait(|this| this.visit_path_segment(segment));
-                    }
-                }
-            }
             _ => visit::walk_ty(self, t),
         }
     }
 
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ident) = field.ident
+        if let Some(ref ident) = field.ident
             && ident.name == kw::Underscore
         {
             self.visit_vis(&field.vis);
@@ -295,7 +254,8 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
-        let make_impl_const_sugg = if self.features.const_trait_impl
+        let const_trait_impl = self.features.const_trait_impl();
+        let make_impl_const_sugg = if const_trait_impl
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
@@ -308,13 +268,12 @@ impl<'a> AstValidator<'a> {
             None
         };
 
-        let make_trait_const_sugg = if self.features.const_trait_impl
-            && let TraitOrTraitImpl::Trait { span, constness: None } = parent
-        {
-            Some(span.shrink_to_lo())
-        } else {
-            None
-        };
+        let make_trait_const_sugg =
+            if const_trait_impl && let TraitOrTraitImpl::Trait { span, constness: None } = parent {
+                Some(span.shrink_to_lo())
+            } else {
+                None
+            };
 
         let parent_constness = parent.constness();
         self.dcx().emit_err(errors::TraitFnConst {
@@ -737,10 +696,6 @@ impl<'a> AstValidator<'a> {
                 }
             }
             TyKind::ImplTrait(_, bounds) => {
-                if self.is_impl_trait_banned {
-                    self.dcx().emit_err(errors::ImplTraitPath { span: ty.span });
-                }
-
                 if let Some(outer_impl_trait_sp) = self.outer_impl_trait {
                     self.dcx().emit_err(errors::NestedImplTrait {
                         span: ty.span,
@@ -899,7 +854,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     let disallowed = matches!(constness, Const::No)
                         .then(|| TildeConstReason::TraitImpl { span: item.span });
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
@@ -953,7 +908,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     this.with_tilde_const(
                         Some(TildeConstReason::Impl { span: item.span }),
                         |this| this.visit_generics(generics),
@@ -991,7 +946,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
+                self.visit_ident(&item.ident);
                 let kind =
                     FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
                 self.visit_fn(kind, item.span, item.id);
@@ -1058,7 +1013,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
                     // context for the supertraits.
                     this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
+                    this.visit_ident(&item.ident);
                     let disallowed = is_const_trait
                         .is_none()
                         .then(|| TildeConstReason::Trait { span: item.span });
@@ -1085,7 +1040,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Struct(vdata, generics) => match vdata {
                 VariantData::Struct { fields, .. } => {
                     self.visit_vis(&item.vis);
-                    self.visit_ident(item.ident);
+                    self.visit_ident(&item.ident);
                     self.visit_generics(generics);
                     // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
@@ -1101,7 +1056,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 match vdata {
                     VariantData::Struct { fields, .. } => {
                         self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
+                        self.visit_ident(&item.ident);
                         self.visit_generics(generics);
                         // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
@@ -1145,7 +1100,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias {
+                if self.features.lazy_type_alias() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
@@ -1286,7 +1241,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             GenericBound::Trait(trait_ref) => {
                 match (ctxt, trait_ref.modifiers.constness, trait_ref.modifiers.polarity) {
                     (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(
@@ -1299,7 +1254,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .emit();
                     }
                     (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_))
-                        if !self.features.more_maybe_bounds =>
+                        if !self.features.more_maybe_bounds() =>
                     {
                         self.sess
                             .create_feature_err(
@@ -1521,7 +1476,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     || matches!(sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
+                self.visit_ident(&item.ident);
                 let kind = FnKind::Fn(
                     FnCtxt::Assoc(ctxt),
                     item.ident,
@@ -1729,7 +1684,6 @@ pub fn check_crate(
         has_proc_macro_decls: false,
         outer_impl_trait: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
-        is_impl_trait_banned: false,
         extern_mod_safety: None,
         lint_buffer: lints,
     };

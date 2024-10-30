@@ -27,7 +27,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // discriminant, so we cannot do anything here.
         // When evaluating we will always error before even getting here, but ConstProp 'executes'
         // dead code, so we cannot ICE here.
-        if dest.layout().for_variant(self, variant_index).abi.is_uninhabited() {
+        if dest.layout().for_variant(self, variant_index).is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
@@ -86,7 +86,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
                     // for uninhabited variants.
-                    if op.layout().for_variant(self, index).abi.is_uninhabited() {
+                    if op.layout().for_variant(self, index).is_uninhabited() {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
                 }
@@ -203,7 +203,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
-        if op.layout().for_variant(self, index).abi.is_uninhabited() {
+        if op.layout().for_variant(self, index).is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantRead(index))
         }
         interp_ok(index)

@@ -1,4 +1,5 @@
 use hir::{sym, HasVisibility};
+use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -8,7 +9,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{ast, ted, AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr};
-use text_edit::TextRange;
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},

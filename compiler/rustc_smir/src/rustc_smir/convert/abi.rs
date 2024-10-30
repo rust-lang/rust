@@ -1,9 +1,9 @@
-//! Conversion of internal Rust compiler `rustc_target::abi` and `rustc_abi` items to stable ones.
+//! Conversion of internal Rust compiler `rustc_target` and `rustc_abi` items to stable ones.
 
 #![allow(rustc::usage_of_qualified_ty)]
 
 use rustc_middle::ty;
-use rustc_target::abi::call::Conv;
+use rustc_target::callconv::{self, Conv};
 use stable_mir::abi::{
     AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength, Layout,
     LayoutShape, PassMode, Primitive, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantsShape,
@@ -15,7 +15,7 @@ use stable_mir::ty::{Align, IndexedVal, VariantIdx};
 
 use crate::rustc_smir::{Stable, Tables};
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
+impl<'tcx> Stable<'tcx> for rustc_abi::VariantIdx {
     type T = VariantIdx;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         VariantIdx::to_val(self.as_usize())
@@ -33,7 +33,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for rustc_abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     type T = TyAndLayout;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -41,7 +41,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::TyAndLayout<'tcx, ty::Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::Layout<'tcx> {
+impl<'tcx> Stable<'tcx> for rustc_abi::Layout<'tcx> {
     type T = Layout;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -49,9 +49,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::Layout<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx>
-    for rustc_abi::LayoutS<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx>
-{
+impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx> {
     type T = LayoutShape;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -65,7 +63,7 @@ impl<'tcx> Stable<'tcx>
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for callconv::FnAbi<'tcx, ty::Ty<'tcx>> {
     type T = FnAbi;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -81,7 +79,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::call::ArgAbi<'tcx, ty::Ty<'tcx>> {
+impl<'tcx> Stable<'tcx> for callconv::ArgAbi<'tcx, ty::Ty<'tcx>> {
     type T = ArgAbi;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -93,7 +91,7 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::ArgAbi<'tcx, ty::Ty<'tcx>> 
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
+impl<'tcx> Stable<'tcx> for callconv::Conv {
     type T = CallConvention;
 
     fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
@@ -122,31 +120,29 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::Conv {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::abi::call::PassMode {
+impl<'tcx> Stable<'tcx> for callconv::PassMode {
     type T = PassMode;
 
     fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         match self {
-            rustc_target::abi::call::PassMode::Ignore => PassMode::Ignore,
-            rustc_target::abi::call::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
-            rustc_target::abi::call::PassMode::Pair(first, second) => {
+            callconv::PassMode::Ignore => PassMode::Ignore,
+            callconv::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
+            callconv::PassMode::Pair(first, second) => {
                 PassMode::Pair(opaque(first), opaque(second))
             }
-            rustc_target::abi::call::PassMode::Cast { pad_i32, cast } => {
+            callconv::PassMode::Cast { pad_i32, cast } => {
                 PassMode::Cast { pad_i32: *pad_i32, cast: opaque(cast) }
             }
-            rustc_target::abi::call::PassMode::Indirect { attrs, meta_attrs, on_stack } => {
-                PassMode::Indirect {
-                    attrs: opaque(attrs),
-                    meta_attrs: opaque(meta_attrs),
-                    on_stack: *on_stack,
-                }
-            }
+            callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
+                attrs: opaque(attrs),
+                meta_attrs: opaque(meta_attrs),
+                on_stack: *on_stack,
+            },
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_target::abi::FieldIdx> {
+impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_abi::FieldIdx> {
     type T = FieldsShape;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -163,9 +159,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_target::abi::FieldIdx> 
     }
 }
 
-impl<'tcx> Stable<'tcx>
-    for rustc_abi::Variants<rustc_target::abi::FieldIdx, rustc_target::abi::VariantIdx>
-{
+impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::VariantIdx> {
     type T = VariantsShape;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
@@ -185,7 +179,7 @@ impl<'tcx> Stable<'tcx>
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_target::abi::VariantIdx> {
+impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_abi::VariantIdx> {
     type T = TagEncoding;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {

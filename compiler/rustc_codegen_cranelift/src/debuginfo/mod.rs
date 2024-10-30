@@ -210,7 +210,6 @@ impl DebugContext {
         type_names::push_generic_params(
             tcx,
             tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args),
-            enclosing_fn_def_id,
             &mut name,
         );
 

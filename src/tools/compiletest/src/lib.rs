@@ -175,6 +175,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "git-merge-commit-email",
             "email address used for finding merge commits",
             "EMAIL",
+        )
+        .optopt(
+            "",
+            "compiletest-diff-tool",
+            "What custom diff tool to use for displaying compiletest tests.",
+            "COMMAND",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -356,6 +362,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfgs: OnceLock::new(),
+        builtin_cfg_names: OnceLock::new(),
 
         nocapture: matches.opt_present("nocapture"),
 
@@ -364,6 +371,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+        diff_command: matches.opt_str("compiletest-diff-tool"),
     }
 }
 

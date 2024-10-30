@@ -341,7 +341,7 @@ impl HirDisplay for Pat {
                     };
 
                     let variant_data = variant.variant_data(f.db.upcast());
-                    if let VariantData::Record(rec_fields) = &*variant_data {
+                    if let VariantData::Record { fields: rec_fields, .. } = &*variant_data {
                         write!(f, " {{ ")?;
 
                         let mut printed = 0;

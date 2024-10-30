@@ -79,10 +79,10 @@ mod prelude {
     #[lang = "sized"]
     pub trait Sized {}
 
-    #[lang = "receiver"]
-    pub trait Receiver {}
-    impl<T: ?Sized> Receiver for &T {}
-    impl<T: ?Sized> Receiver for &mut T {}
+    #[lang = "legacy_receiver"]
+    pub trait LegacyReceiver {}
+    impl<T: ?Sized> LegacyReceiver for &T {}
+    impl<T: ?Sized> LegacyReceiver for &mut T {}
 
     #[lang = "copy"]
     pub trait Copy: Sized {}
@@ -211,6 +211,15 @@ impl Clone for Zst {
     }
 }
 
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+enum Either2<T, U> {
+    Left(T),
+    Right(U, ()),
+}
+
 #[repr(C)]
 enum ReprCEnum<T> {
     Variant1,
@@ -328,7 +337,8 @@ mod unsized_ {
     test_transparent_unsized!(dyn_trait, dyn Any);
 }
 
-// RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>.
+// RFC 3391 <https://rust-lang.github.io/rfcs/3391-result_ffi_guarantees.html>, including the
+// extension ratified at <https://github.com/rust-lang/rust/pull/130628#issuecomment-2402761599>.
 macro_rules! test_nonnull {
     ($name:ident, $t:ty) => {
         mod $name {
@@ -340,6 +350,12 @@ macro_rules! test_nonnull {
             test_abi_compatible!(result_ok_zst, Result<Zst, $t>, $t);
             test_abi_compatible!(result_err_arr, Result<$t, [i8; 0]>, $t);
             test_abi_compatible!(result_ok_arr, Result<[i8; 0], $t>, $t);
+            test_abi_compatible!(result_err_void, Result<$t, Void>, $t);
+            test_abi_compatible!(result_ok_void, Result<Void, $t>, $t);
+            test_abi_compatible!(either_err_zst, Either<$t, Zst>, $t);
+            test_abi_compatible!(either_ok_zst, Either<Zst, $t>, $t);
+            test_abi_compatible!(either2_err_zst, Either2<$t, Zst>, $t);
+            test_abi_compatible!(either2_err_arr, Either2<$t, [i8; 0]>, $t);
         }
     }
 }

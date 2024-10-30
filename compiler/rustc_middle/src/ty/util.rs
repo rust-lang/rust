@@ -17,10 +17,10 @@ use rustc_span::sym;
 use rustc_target::abi::{Float, Integer, IntegerType, Size};
 use rustc_target::spec::abi::Abi;
 use smallvec::{SmallVec, smallvec};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::{IntoQueryParam, Providers};
+use crate::query::Providers;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
@@ -863,48 +863,6 @@ impl<'tcx> TyCtxt<'tcx> {
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
             || self.extern_crate(key).is_some_and(|e| e.is_direct())
-    }
-
-    /// Whether the item has a host effect param. This is different from `TyCtxt::is_const`,
-    /// because the item must also be "maybe const", and the crate where the item is
-    /// defined must also have the effects feature enabled.
-    pub fn has_host_param(self, def_id: impl IntoQueryParam<DefId>) -> bool {
-        self.generics_of(def_id).host_effect_index.is_some()
-    }
-
-    pub fn expected_host_effect_param_for_body(self, def_id: impl Into<DefId>) -> ty::Const<'tcx> {
-        let def_id = def_id.into();
-        // FIXME(effects): This is suspicious and should probably not be done,
-        // especially now that we enforce host effects and then properly handle
-        // effect vars during fallback.
-        let mut host_always_on =
-            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
-
-        // Compute the constness required by the context.
-        let const_context = self.hir().body_const_context(def_id);
-
-        let kind = self.def_kind(def_id);
-        debug_assert_ne!(kind, DefKind::ConstParam);
-
-        if self.has_attr(def_id, sym::rustc_do_not_const_check) {
-            trace!("do not const check this context");
-            host_always_on = true;
-        }
-
-        match const_context {
-            _ if host_always_on => self.consts.true_,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
-                self.consts.false_
-            }
-            Some(hir::ConstContext::ConstFn) => {
-                let host_idx = self
-                    .generics_of(def_id)
-                    .host_effect_index
-                    .expect("ConstContext::Maybe must have host effect param");
-                ty::GenericArgs::identity_for_item(self, def_id).const_at(host_idx)
-            }
-            None => self.consts.true_,
-        }
     }
 
     /// Expand any [weak alias types][weak] contained within the given `value`.
@@ -1826,8 +1784,8 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
     if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        && tcx.features().intrinsics)
-        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs)
+        && tcx.features().intrinsics())
+        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs())
     {
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),

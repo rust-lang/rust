@@ -123,7 +123,7 @@ fn print_err(msg: &str, lineno: usize) {
 
 // FIXME: This setup is temporary until we figure out how to improve this situation.
 //        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../compiletest/src/command-list.rs"));
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../compiletest/src/directive-list.rs"));
 
 /// Get a list of commands from a file. Does the work of ensuring the commands
 /// are syntactically valid.

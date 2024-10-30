@@ -149,10 +149,6 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
 
-hir_analysis_effects_without_next_solver = using `#![feature(effects)]` without enabling next trait solver globally
-    .note = the next trait solver must be enabled globally for the effects feature to work correctly
-    .help = use `-Znext-solver` to enable
-
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
 

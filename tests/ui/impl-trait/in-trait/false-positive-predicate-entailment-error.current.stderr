@@ -8,7 +8,7 @@ LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -26,7 +26,7 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:30
    |
 LL |     fn autobatch<F>(self) -> impl Trait
-   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -58,7 +58,7 @@ LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -77,7 +77,7 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:30
    |
 LL |     fn autobatch<F>(self) -> impl Trait
-   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   |                              ^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -91,7 +91,7 @@ error[E0277]: the trait bound `F: Callback<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:27:12
    |
 LL |         F: Callback<Self::CallbackArg>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21
@@ -111,7 +111,7 @@ LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
-   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`, which is required by `F: Callback<i32>`
+   | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:14:21

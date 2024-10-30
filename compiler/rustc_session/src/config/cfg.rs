@@ -23,12 +23,12 @@
 use std::hash::Hash;
 use std::iter;
 
+use rustc_abi::Align;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTriple};
 
 use crate::Session;

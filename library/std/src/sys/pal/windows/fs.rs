@@ -1159,7 +1159,7 @@ pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> 
     // Formerly, symlink creation required the SeCreateSymbolicLink privilege. For the Windows 10
     // Creators Update, Microsoft loosened this to allow unprivileged symlink creation if the
     // computer is in Developer Mode, but SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE must be
-    // added to dwFlags to opt into this behaviour.
+    // added to dwFlags to opt into this behavior.
     let result = cvt(unsafe {
         c::CreateSymbolicLinkW(
             link.as_ptr(),

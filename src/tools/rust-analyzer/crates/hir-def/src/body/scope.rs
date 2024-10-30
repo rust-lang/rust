@@ -1,12 +1,12 @@
 //! Name resolution for expressions.
-use hir_expand::name::Name;
+use hir_expand::{name::Name, MacroDefId};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
-    body::Body,
+    body::{Body, HygieneId},
     db::DefDatabase,
-    hir::{Binding, BindingId, Expr, ExprId, LabelId, Pat, PatId, Statement},
+    hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
     BlockId, ConstBlockId, DefWithBodyId,
 };
 
@@ -22,12 +22,17 @@ pub struct ExprScopes {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeEntry {
     name: Name,
+    hygiene: HygieneId,
     binding: BindingId,
 }
 
 impl ScopeEntry {
     pub fn name(&self) -> &Name {
         &self.name
+    }
+
+    pub(crate) fn hygiene(&self) -> HygieneId {
+        self.hygiene
     }
 
     pub fn binding(&self) -> BindingId {
@@ -40,6 +45,8 @@ pub struct ScopeData {
     parent: Option<ScopeId>,
     block: Option<BlockId>,
     label: Option<(LabelId, Name)>,
+    // FIXME: We can compress this with an enum for this and `label`/`block` if memory usage matters.
+    macro_def: Option<Box<MacroDefId>>,
     entries: IdxRange<ScopeEntry>,
 }
 
@@ -60,6 +67,12 @@ impl ExprScopes {
     /// If `scope` refers to a block expression scope, returns the corresponding `BlockId`.
     pub fn block(&self, scope: ScopeId) -> Option<BlockId> {
         self.scopes[scope].block
+    }
+
+    /// If `scope` refers to a macro def scope, returns the corresponding `MacroId`.
+    #[allow(clippy::borrowed_box)] // If we return `&MacroDefId` we need to move it, this way we just clone the `Box`.
+    pub fn macro_def(&self, scope: ScopeId) -> Option<&Box<MacroDefId>> {
+        self.scopes[scope].macro_def.as_ref()
     }
 
     /// If `scope` refers to a labeled expression scope, returns the corresponding `Label`.
@@ -102,7 +115,7 @@ impl ExprScopes {
         };
         let mut root = scopes.root_scope();
         if let Some(self_param) = body.self_param {
-            scopes.add_bindings(body, root, self_param);
+            scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         scopes.add_params_bindings(body, root, &body.params);
         compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root, resolve_const_block);
@@ -114,6 +127,7 @@ impl ExprScopes {
             parent: None,
             block: None,
             label: None,
+            macro_def: None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -123,6 +137,7 @@ impl ExprScopes {
             parent: Some(parent),
             block: None,
             label: None,
+            macro_def: None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -132,6 +147,7 @@ impl ExprScopes {
             parent: Some(parent),
             block: None,
             label,
+            macro_def: None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -146,21 +162,38 @@ impl ExprScopes {
             parent: Some(parent),
             block,
             label,
+            macro_def: None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
 
-    fn add_bindings(&mut self, body: &Body, scope: ScopeId, binding: BindingId) {
+    fn new_macro_def_scope(&mut self, parent: ScopeId, macro_id: Box<MacroDefId>) -> ScopeId {
+        self.scopes.alloc(ScopeData {
+            parent: Some(parent),
+            block: None,
+            label: None,
+            macro_def: Some(macro_id),
+            entries: empty_entries(self.scope_entries.len()),
+        })
+    }
+
+    fn add_bindings(
+        &mut self,
+        body: &Body,
+        scope: ScopeId,
+        binding: BindingId,
+        hygiene: HygieneId,
+    ) {
         let Binding { name, .. } = &body.bindings[binding];
-        let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding });
+        let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding, hygiene });
         self.scopes[scope].entries =
             IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
     }
 
     fn add_pat_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
         let pattern = &body[pat];
-        if let Pat::Bind { id, .. } = pattern {
-            self.add_bindings(body, scope, *id);
+        if let Pat::Bind { id, .. } = *pattern {
+            self.add_bindings(body, scope, id, body.binding_hygiene(id));
         }
 
         pattern.walk_child_pats(|pat| self.add_pat_bindings(body, scope, pat));
@@ -206,7 +239,10 @@ fn compute_block_scopes(
             Statement::Expr { expr, .. } => {
                 compute_expr_scopes(*expr, body, scopes, scope, resolve_const_block);
             }
-            Statement::Item => (),
+            Statement::Item(Item::MacroDef(macro_id)) => {
+                *scope = scopes.new_macro_def_scope(*scope, macro_id.clone());
+            }
+            Statement::Item(Item::Other) => (),
         }
     }
     if let Some(expr) = tail {
@@ -282,7 +318,7 @@ fn compute_expr_scopes(
             *scope = scopes.new_scope(*scope);
             scopes.add_pat_bindings(body, *scope, pat);
         }
-        e => e.walk_child_exprs(|e| compute_expr_scopes(scopes, e, scope)),
+        _ => body.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope)),
     };
 }
 
@@ -333,6 +369,8 @@ mod tests {
 
         let expr_id = source_map
             .node_expr(InFile { file_id: file_id.into(), value: &marker.into() })
+            .unwrap()
+            .as_expr()
             .unwrap();
         let scope = scopes.scope_for(expr_id);
 
@@ -488,8 +526,11 @@ fn foo() {
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
-            let expr_id =
-                source_map.node_expr(InFile { file_id: file_id.into(), value: &expr_ast }).unwrap();
+            let expr_id = source_map
+                .node_expr(InFile { file_id: file_id.into(), value: &expr_ast })
+                .unwrap()
+                .as_expr()
+                .unwrap();
             scopes.scope_for(expr_id).unwrap()
         };
 

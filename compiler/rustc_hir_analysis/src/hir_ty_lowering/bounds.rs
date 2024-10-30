@@ -45,23 +45,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let hir::GenericBound::Trait(ptr) = hir_bound else {
                     continue;
                 };
-                match ptr.modifiers {
-                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
-                    hir::TraitBoundModifier::Negative => {
+                match ptr.modifiers.polarity {
+                    hir::BoundPolarity::Maybe(_) => unbounds.push(ptr),
+                    hir::BoundPolarity::Negative(_) => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_negative_sized_bound = true;
                         }
                     }
-                    hir::TraitBoundModifier::None => {
+                    hir::BoundPolarity::Positive => {
                         if let Some(sized_def_id) = sized_def_id
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_positive_sized_bound = true;
                         }
                     }
-                    _ => {}
                 }
             }
         };
@@ -89,7 +88,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
             if seen_repeat {
                 self.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds {
+            } else if !tcx.features().more_maybe_bounds() {
                 self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
             };
         }
@@ -155,7 +154,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for hir_bound in hir_bounds {
             // In order to avoid cycles, when we're lowering `SelfThatDefines`,
             // we skip over any traits that don't define the given associated type.
-
             if let PredicateFilter::SelfThatDefines(assoc_name) = predicate_filter {
                 if let Some(trait_ref) = hir_bound.trait_ref()
                     && let Some(trait_did) = trait_ref.trait_def_id()
@@ -169,20 +167,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
-                    let (constness, polarity) = match poly_trait_ref.modifiers {
-                        hir::TraitBoundModifier::Const => {
-                            (Some(ty::BoundConstness::Const), ty::PredicatePolarity::Positive)
-                        }
-                        hir::TraitBoundModifier::MaybeConst => (
-                            Some(ty::BoundConstness::ConstIfConst),
-                            ty::PredicatePolarity::Positive,
-                        ),
-                        hir::TraitBoundModifier::None => (None, ty::PredicatePolarity::Positive),
-                        hir::TraitBoundModifier::Negative => {
-                            (None, ty::PredicatePolarity::Negative)
-                        }
-                        hir::TraitBoundModifier::Maybe => continue,
+                    let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
+                    let polarity = match polarity {
+                        rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
+                        rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+                        rustc_ast::BoundPolarity::Maybe(_) => continue,
                     };
+
                     let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
@@ -194,6 +185,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     );
                 }
                 hir::GenericBound::Outlives(lifetime) => {
+                    // `ConstIfConst` is only interested in `~const` bounds.
+                    if matches!(
+                        predicate_filter,
+                        PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst
+                    ) {
+                        continue;
+                    }
+
                     let region = self.lower_lifetime(lifetime, RegionInferReason::OutlivesBound);
                     bounds.push_region_bound(
                         self.tcx(),
@@ -393,21 +392,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     },
                 );
 
-                bounds.push_projection_bound(
-                    tcx,
-                    projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
-                        projection_term,
-                        term,
-                    }),
-                    constraint.span,
-                );
+                match predicate_filter {
+                    PredicateFilter::All
+                    | PredicateFilter::SelfOnly
+                    | PredicateFilter::SelfThatDefines(_)
+                    | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                        bounds.push_projection_bound(
+                            tcx,
+                            projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
+                                projection_term,
+                                term,
+                            }),
+                            constraint.span,
+                        );
+                    }
+                    // `ConstIfConst` is only interested in `~const` bounds.
+                    PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
+                }
             }
             // Lower a constraint like `Item: Debug` as found in HIR bound `T: Iterator<Item: Debug>`
             // to a bound involving a projection: `<T as Iterator>::Item: Debug`.
             hir::AssocItemConstraintKind::Bound { bounds: hir_bounds } => {
                 match predicate_filter {
-                    PredicateFilter::SelfOnly | PredicateFilter::SelfThatDefines(_) => {}
-                    PredicateFilter::All | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                    PredicateFilter::All
+                    | PredicateFilter::SelfAndAssociatedTypeBounds
+                    | PredicateFilter::ConstIfConst => {
                         let projection_ty = projection_term
                             .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
                         // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
@@ -422,6 +431,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             predicate_filter,
                         );
                     }
+                    PredicateFilter::SelfOnly
+                    | PredicateFilter::SelfThatDefines(_)
+                    | PredicateFilter::SelfConstIfConst => {}
                 }
             }
         }

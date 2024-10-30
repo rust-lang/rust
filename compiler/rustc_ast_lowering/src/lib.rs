@@ -40,8 +40,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use std::collections::hash_map::Entry;
-
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
@@ -115,8 +113,8 @@ struct LoweringContext<'a, 'hir> {
     /// outside of an `async fn`.
     current_item: Option<Span>,
 
-    catch_scope: Option<NodeId>,
-    loop_scope: Option<NodeId>,
+    catch_scope: Option<HirId>,
+    loop_scope: Option<HirId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
@@ -140,7 +138,10 @@ struct LoweringContext<'a, 'hir> {
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
 
-    /// NodeIds that are lowered inside the current HIR owner.
+    /// NodeIds of pattern identifiers and labelled nodes that are lowered inside the current HIR owner.
+    ident_and_label_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
+    #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
@@ -154,17 +155,10 @@ struct LoweringContext<'a, 'hir> {
     /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<LocalDefIdMap<LocalDefId>>,
-
-    host_param_id: Option<LocalDefId>,
-    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(
-        tcx: TyCtxt<'hir>,
-        resolver: &'a mut ResolverAstLowering,
-        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
-    ) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
         Self {
             // Pseudo-globals.
             tcx,
@@ -178,6 +172,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
+            ident_and_label_to_local_id: Default::default(),
+            #[cfg(debug_assertions)]
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
 
@@ -193,7 +189,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller {
+            allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
                 [sym::gen_future].into()
@@ -204,8 +200,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
-            host_param_id: None,
-            ast_index,
         }
     }
 
@@ -597,7 +591,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
-        let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
+        let current_ident_and_label_to_local_id =
+            std::mem::take(&mut self.ident_and_label_to_local_id);
+
+        #[cfg(debug_assertions)]
+        let current_node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
             std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
@@ -611,8 +609,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
 
         // Always allocate the first `HirId` for the owner itself.
-        let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
-        debug_assert_eq!(_old, None);
+        #[cfg(debug_assertions)]
+        {
+            let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
+            debug_assert_eq!(_old, None);
+        }
 
         let item = self.with_def_id_parent(def_id, f);
         debug_assert_eq!(def_id, item.def_id().def_id);
@@ -623,7 +624,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
-        self.node_id_to_local_id = current_node_ids;
+        self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
+
+        #[cfg(debug_assertions)]
+        {
+            self.node_id_to_local_id = current_node_id_to_local_id;
+        }
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
@@ -689,39 +695,37 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
 
-    /// This method allocates a new `HirId` for the given `NodeId` and stores it in
-    /// the `LoweringContext`'s `NodeId => HirId` map.
+    /// This method allocates a new `HirId` for the given `NodeId`.
     /// Take care not to call this method if the resulting `HirId` is then not
     /// actually used in the HIR, as that would trigger an assertion in the
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
-    /// properly. Calling the method twice with the same `NodeId` is fine though.
+    /// properly. Calling the method twice with the same `NodeId` is also forbidden.
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-        match self.node_id_to_local_id.entry(ast_node_id) {
-            Entry::Occupied(o) => HirId { owner: self.current_hir_id_owner, local_id: *o.get() },
-            Entry::Vacant(v) => {
-                // Generate a new `HirId`.
-                let owner = self.current_hir_id_owner;
-                let local_id = self.item_local_id_counter;
-                let hir_id = HirId { owner, local_id };
+        let owner = self.current_hir_id_owner;
+        let local_id = self.item_local_id_counter;
+        assert_ne!(local_id, hir::ItemLocalId::ZERO);
+        self.item_local_id_counter.increment_by(1);
+        let hir_id = HirId { owner, local_id };
 
-                v.insert(local_id);
-                self.item_local_id_counter.increment_by(1);
-
-                assert_ne!(local_id, hir::ItemLocalId::ZERO);
-                if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
-                    self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-                }
-
-                if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
-                    self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
-                }
-
-                hir_id
-            }
+        if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
+            self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
+
+        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
+        }
+
+        // Check whether the same `NodeId` is lowered more than once.
+        #[cfg(debug_assertions)]
+        {
+            let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
+            assert_eq!(old, None);
+        }
+
+        hir_id
     }
 
     /// Generate a new `HirId` without a backing `NodeId`.
@@ -738,7 +742,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
-            let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;
+            let local_id = self.ident_and_label_to_local_id.get(&id).copied().ok_or(())?;
             Ok(HirId { owner, local_id })
         });
         trace!(?res);
@@ -1035,7 +1039,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: data.inputs_span,
                             })
                         };
-                        if !self.tcx.features().return_type_notation
+                        if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
                             add_feature_diagnostics(
@@ -1160,7 +1164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
-                    TyKind::Infer if self.tcx.features().generic_arg_infer => {
+                    TyKind::Infer if self.tcx.features().generic_arg_infer() => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
@@ -1500,7 +1504,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // is enabled. We don't check the span of the edition, since this is done
         // on a per-opaque basis to account for nested opaques.
         let always_capture_in_scope = match origin {
-            _ if self.tcx.features().lifetime_capture_rules_2024 => true,
+            _ if self.tcx.features().lifetime_capture_rules_2024() => true,
             hir::OpaqueTyOrigin::TyAlias { .. } => true,
             hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
             hir::OpaqueTyOrigin::AsyncFn { .. } => {
@@ -1519,7 +1523,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Feature gate for RPITIT + use<..>
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl: Some(_), .. } => {
-                if !self.tcx.features().precise_capturing_in_traits
+                if !self.tcx.features().precise_capturing_in_traits()
                     && let Some(span) = bounds.iter().find_map(|bound| match *bound {
                         ast::GenericBound::Use(_, span) => Some(span),
                         _ => None,
@@ -1874,7 +1878,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(self.allow_async_iterator.clone()))
+                (return_impl_trait_id, Some(Lrc::clone(&self.allow_async_iterator)))
             }
         };
 
@@ -1956,7 +1960,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::Trait(hir::PolyTraitRef {
             bound_generic_params: &[],
-            modifiers: hir::TraitBoundModifier::None,
+            modifiers: hir::TraitBoundModifiers::NONE,
             trait_ref: hir::TraitRef {
                 path: self.make_lang_item_path(trait_lang_item, opaque_ty_span, Some(bound_args)),
                 hir_ref_id: self.next_id(),
@@ -2054,11 +2058,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(
-            param,
-            source,
-            attr::contains_name(&param.attrs, sym::rustc_runtime),
-        );
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2078,7 +2078,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         param: &GenericParam,
         source: hir::GenericParamSource,
-        is_host_effect: bool,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2144,7 +2143,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, is_host_effect, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default, synthetic: false },
                 )
             }
         }
@@ -2270,7 +2269,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer {
+                if self.tcx.features().generic_arg_infer() {
                     hir::ArrayLen::Infer(hir::InferArg {
                         hir_id: self.lower_node_id(c.id),
                         span: self.lower_span(c.value.span),
@@ -2445,22 +2444,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_bound_modifiers(
         &mut self,
         modifiers: TraitBoundModifiers,
-    ) -> hir::TraitBoundModifier {
-        // Invalid modifier combinations will cause an error during AST validation.
-        // Arbitrarily pick a placeholder for them to make compilation proceed.
-        match (modifiers.constness, modifiers.polarity) {
-            (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
-            (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
-            (BoundConstness::Never, BoundPolarity::Negative(_)) => {
-                if self.tcx.features().negative_bounds {
-                    hir::TraitBoundModifier::Negative
-                } else {
-                    hir::TraitBoundModifier::None
-                }
-            }
-            (BoundConstness::Always(_), _) => hir::TraitBoundModifier::Const,
-            (BoundConstness::Maybe(_), _) => hir::TraitBoundModifier::MaybeConst,
-        }
+    ) -> hir::TraitBoundModifiers {
+        hir::TraitBoundModifiers { constness: modifiers.constness, polarity: modifiers.polarity }
     }
 
     // Helper methods for building HIR.
@@ -2626,7 +2611,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
-                            modifiers: hir::TraitBoundModifier::None,
+                            modifiers: hir::TraitBoundModifiers::NONE,
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
                         };

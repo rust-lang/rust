@@ -4,7 +4,7 @@ error[E0277]: the type `[{integer}]` cannot be indexed by `u8`
 LL |     [0][0u8];
    |         ^^^ slice indices are of type `usize` or ranges of `usize`
    |
-   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`, which is required by `[{integer}; 1]: Index<_>`
+   = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`
    = help: the trait `SliceIndex<[{integer}]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u8`
    = note: required for `[{integer}]` to implement `Index<u8>`

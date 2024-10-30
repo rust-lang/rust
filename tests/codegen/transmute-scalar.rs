@@ -25,7 +25,7 @@ pub fn bool_to_byte(b: bool) -> u8 {
     unsafe { std::mem::transmute(b) }
 }
 
-// CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8 %byte)
+// CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8{{.*}} %byte)
 // CHECK: %_0 = trunc i8 %byte to i1
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]

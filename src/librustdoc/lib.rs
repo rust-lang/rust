@@ -37,7 +37,6 @@ extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
-extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -817,7 +816,7 @@ fn main_args(
             return wrap_return(
                 dcx,
                 interface::run_compiler(config, |_compiler| {
-                    markdown::render(&md_input, render_options, edition)
+                    markdown::render_and_write(&md_input, render_options, edition)
                 }),
             );
         }

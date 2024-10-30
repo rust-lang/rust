@@ -484,7 +484,7 @@ impl<T> Channel<T> {
     ///
     /// # Panicking
     /// If a destructor panics, the remaining messages are leaked, matching the
-    /// behaviour of the unbounded channel.
+    /// behavior of the unbounded channel.
     ///
     /// # Safety
     /// This method must only be called when dropping the last receiver. The

@@ -266,7 +266,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
         trait_self_param_idx: usize,
         allow_self_projection: AllowSelfProjection,
     }
-    impl<'a> TypeVisitor<Interner> for IllegalSelfTypeVisitor<'a> {
+    impl TypeVisitor<Interner> for IllegalSelfTypeVisitor<'_> {
         type BreakTy = ();
 
         fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {

@@ -287,7 +287,7 @@ class TestEnvironment:
 
     @property
     def package_server_log_path(self) -> Path:
-        return self.tmp_dir().joinpath("package_server_log")
+        return self.tmp_dir().joinpath(f"repo_{self.TEST_REPO_NAME}.log")
 
     @property
     def emulator_log_path(self) -> Path:
@@ -401,6 +401,7 @@ class TestEnvironment:
         # Set configs
         configs = {
             "log.enabled": "true",
+            "log.dir": self.tmp_dir(),
             "test.is_isolated": "true",
             "test.experimental_structured_output": "true",
         }
@@ -575,43 +576,19 @@ class TestEnvironment:
             stderr_handler=self.subprocess_logger.debug,
         )
 
-        # Add repository
-        check_call_with_logging(
-            [
-                ffx_path,
-                "repository",
-                "add-from-pm",
-                "--repository",
-                self.TEST_REPO_NAME,
-                self.repo_dir(),
-            ],
-            env=ffx_env,
-            stdout_handler=self.subprocess_logger.debug,
-            stderr_handler=self.subprocess_logger.debug,
-        )
-
-        # Start repository server
-        # Note that we must first enable the repository server daemon.
-        check_call_with_logging(
-            [
-                ffx_path,
-                "config",
-                "set",
-                "repository.server.enabled",
-                "true",
-            ],
-            env=ffx_env,
-            stdout_handler=self.subprocess_logger.debug,
-            stderr_handler=self.subprocess_logger.debug,
-        )
         check_call_with_logging(
             [
                 ffx_path,
                 "repository",
                 "server",
                 "start",
+                "--background",
                 "--address",
                 "[::]:0",
+                "--repo-path",
+                self.repo_dir(),
+                "--repository",
+                self.TEST_REPO_NAME
             ],
             env=ffx_env,
             stdout_handler=self.subprocess_logger.debug,
@@ -1003,6 +980,21 @@ class TestEnvironment:
                 self.tool_path("ffx"),
                 "emu",
                 "stop",
+            ],
+            env=self.ffx_cmd_env(),
+            stdout_handler=self.subprocess_logger.debug,
+            stderr_handler=self.subprocess_logger.debug,
+        )
+
+        # Stop the package server
+        self.env_logger.info("Stopping package server...")
+        check_call_with_logging(
+            [
+                self.tool_path("ffx"),
+                "repository",
+                "server",
+                "stop",
+                self.TEST_REPO_NAME
             ],
             env=self.ffx_cmd_env(),
             stdout_handler=self.subprocess_logger.debug,

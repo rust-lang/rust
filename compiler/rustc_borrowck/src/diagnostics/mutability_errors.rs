@@ -959,13 +959,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         None
                     }
                 }
-                hir::ExprKind::MethodCall(_, _, args, span) => {
-                    if let Some(def_id) = typeck_results.type_dependent_def_id(*hir_id) {
-                        Some((def_id, *span, *args))
-                    } else {
-                        None
-                    }
-                }
+                hir::ExprKind::MethodCall(_, _, args, span) => typeck_results
+                    .type_dependent_def_id(*hir_id)
+                    .map(|def_id| (def_id, *span, *args)),
                 _ => None,
             }
         };

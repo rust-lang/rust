@@ -123,6 +123,9 @@ auto:
   - image: aarch64-gnu
     <<: *job-aarch64-linux
 
+  - image: aarch64-gnu-debug
+    <<: *job-aarch64-linux
+
   - image: arm-android
     <<: *job-linux-4c
 
@@ -253,7 +256,9 @@ auto:
     <<: *job-linux-4c
 
   - image: x86_64-gnu-debug
-    <<: *job-linux-4c
+    # This seems to be needed because a full stage 2 build + run-make tests
+    # overwhelms the storage capacity of the standard 4c runner.
+    <<: *job-linux-4c-largedisk
 
   - image: x86_64-gnu-distcheck
     <<: *job-linux-8c

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/derive-clone-for-eq.rs:4:17
    |
 LL | #[derive(Clone, Eq)]
-   |                 ^^ the trait `Clone` is not implemented for `T`, which is required by `Struct<T>: PartialEq`
+   |                 ^^ the trait `Clone` is not implemented for `T`
    |
 note: required for `Struct<T>` to implement `PartialEq`
   --> $DIR/derive-clone-for-eq.rs:7:19

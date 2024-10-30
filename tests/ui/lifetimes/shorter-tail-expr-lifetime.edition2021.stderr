@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/shorter-tail-expr-lifetime.rs:10:5
+  --> $DIR/shorter-tail-expr-lifetime.rs:8:5
    |
 LL |     let c = std::cell::RefCell::new("..");
    |         - binding `c` declared here

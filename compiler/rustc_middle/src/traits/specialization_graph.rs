@@ -61,7 +61,7 @@ pub enum OverlapMode {
 
 impl OverlapMode {
     pub fn get(tcx: TyCtxt<'_>, trait_id: DefId) -> OverlapMode {
-        let with_negative_coherence = tcx.features().with_negative_coherence;
+        let with_negative_coherence = tcx.features().with_negative_coherence();
         let strict_coherence = tcx.has_attr(trait_id, sym::rustc_strict_coherence);
 
         if with_negative_coherence {

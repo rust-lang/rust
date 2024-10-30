@@ -4,6 +4,7 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 #[test]
+#[cfg_attr(not(bootstrap), expect(dangling_pointers_from_temporaries))]
 fn uninitialized_zero_size_box() {
     assert_eq!(
         &*Box::<()>::new_uninit() as *const _,
@@ -57,6 +58,44 @@ fn box_deref_lval() {
     let x = Box::new(Cell::new(5));
     x.set(1000);
     assert_eq!(x.get(), 1000);
+}
+
+/// Test that a panic from a destructor does not leak the allocation.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn panic_no_leak() {
+    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+    use std::ptr::NonNull;
+
+    struct AllocCount(Cell<i32>);
+    unsafe impl Allocator for AllocCount {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            self.0.set(self.0.get() + 1);
+            Global.allocate(layout)
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            self.0.set(self.0.get() - 1);
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    struct PanicOnDrop {
+        _data: u8,
+    }
+    impl Drop for PanicOnDrop {
+        fn drop(&mut self) {
+            panic!("PanicOnDrop");
+        }
+    }
+
+    let alloc = AllocCount(Cell::new(0));
+    let b = Box::new_in(PanicOnDrop { _data: 42 }, &alloc);
+    assert_eq!(alloc.0.get(), 1);
+
+    let panic_message = catch_unwind(AssertUnwindSafe(|| drop(b))).unwrap_err();
+    assert_eq!(*panic_message.downcast_ref::<&'static str>().unwrap(), "PanicOnDrop");
+    assert_eq!(alloc.0.get(), 0);
 }
 
 #[allow(unused)]

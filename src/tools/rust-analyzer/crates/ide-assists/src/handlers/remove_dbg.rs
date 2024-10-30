@@ -41,7 +41,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
 
     acc.add(
-        AssistId("remove_dbg", AssistKind::Refactor),
+        AssistId("remove_dbg", AssistKind::QuickFix),
         "Remove dbg!()",
         replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range))?,
         |builder| {

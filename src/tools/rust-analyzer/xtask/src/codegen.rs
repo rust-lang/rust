@@ -79,7 +79,7 @@ impl CommentBlock {
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
             match line.strip_prefix("//") {
-                Some(mut contents) => {
+                Some(mut contents) if !contents.starts_with('/') => {
                     if let Some('/' | '!') = contents.chars().next() {
                         contents = &contents[1..];
                         block.is_doc = true;
@@ -89,7 +89,7 @@ impl CommentBlock {
                     }
                     block.contents.push(contents.to_owned());
                 }
-                None => {
+                _ => {
                     if !block.contents.is_empty() {
                         let block = mem::replace(&mut block, dummy_block.clone());
                         res.push(block);

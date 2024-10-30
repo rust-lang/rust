@@ -23,9 +23,7 @@ use std::hash::Hash;
 use derive_where::derive_where;
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::solve::{
-    CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
-};
+use crate::solve::{CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, CanonicalVarValues, Interner};
 
 /// Some `data` together with information about how they relate to the input
@@ -69,15 +67,10 @@ pub struct CanonicalGoalEvaluation<I: Interner> {
 #[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
-    Evaluation { final_revision: CanonicalGoalEvaluationStep<I> },
-}
-
-#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
-pub struct CanonicalGoalEvaluationStep<I: Interner> {
-    pub instantiated_goal: QueryInput<I, I::Predicate>,
-
-    /// The actual evaluation of the goal, always `ProbeKind::Root`.
-    pub evaluation: Probe<I>,
+    Evaluation {
+        /// This is always `ProbeKind::Root`.
+        final_revision: Probe<I>,
+    },
 }
 
 /// A self-contained computation during trait solving. This either

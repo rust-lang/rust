@@ -24,7 +24,6 @@ pub struct Mutex {
 
 impl Mutex {
     #[inline]
-    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Mutex {
         Mutex { locked: AtomicUsize::new(0), contended: AtomicBool::new(false) }
     }

@@ -187,6 +187,24 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 };
                 Some(node)
             },
+            ast::LetStmt(it) => {
+                let pat = it.pat()?;
+
+                let mut label = String::new();
+                collapse_ws(pat.syntax(), &mut label);
+
+                let node = StructureNode {
+                    parent: None,
+                    label,
+                    navigation_range: pat.syntax().text_range(),
+                    node_range: it.syntax().text_range(),
+                    kind: StructureNodeKind::SymbolKind(SymbolKind::Local),
+                    detail: it.ty().map(|ty| ty.to_string()),
+                    deprecated: false,
+                };
+
+                Some(node)
+            },
             ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             _ => None,
         }
@@ -307,6 +325,17 @@ mod m {
 fn f() {}
 // endregion
 fn g() {}
+}
+
+fn let_statements() {
+    let x = 42;
+    let mut y = x;
+    let Foo {
+        ..
+    } = Foo { x };
+    if let None = Some(x) {}
+    _ = ();
+    let _ = g();
 }
 "#,
             expect![[r#"
@@ -631,6 +660,71 @@ fn g() {}
                         detail: Some(
                             "fn()",
                         ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "let_statements",
+                        navigation_range: 641..655,
+                        node_range: 638..798,
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            26,
+                        ),
+                        label: "x",
+                        navigation_range: 668..669,
+                        node_range: 664..675,
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            26,
+                        ),
+                        label: "mut y",
+                        navigation_range: 684..689,
+                        node_range: 680..694,
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            26,
+                        ),
+                        label: "Foo { .. }",
+                        navigation_range: 703..725,
+                        node_range: 699..738,
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            26,
+                        ),
+                        label: "_",
+                        navigation_range: 788..789,
+                        node_range: 784..796,
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: None,
                         deprecated: false,
                     },
                 ]

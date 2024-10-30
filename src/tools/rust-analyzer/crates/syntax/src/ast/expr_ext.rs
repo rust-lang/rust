@@ -232,6 +232,10 @@ impl ast::RangeExpr {
             Some((ix, token, bin_op))
         })
     }
+
+    pub fn is_range_full(&self) -> bool {
+        support::children::<Expr>(&self.syntax).next().is_none()
+    }
 }
 
 impl RangeItem for ast::RangeExpr {

@@ -1485,7 +1485,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, LayoutS<FieldIdx, VariantIdx>>,
+        variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
     },
 }
 
@@ -1603,7 +1603,7 @@ impl Niche {
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
+pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape<FieldIdx>,
 
@@ -1643,7 +1643,7 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
     pub unadjusted_abi_align: Align,
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.abi {
@@ -1652,11 +1652,16 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
         }
     }
 
+    /// Returns `true` if this is an uninhabited type
+    pub fn is_uninhabited(&self) -> bool {
+        self.abi.is_uninhabited()
+    }
+
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
-        LayoutS {
+        LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
@@ -1669,7 +1674,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
     }
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutS<FieldIdx, VariantIdx>
+impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutData<FieldIdx, VariantIdx>
 where
     FieldsShape<FieldIdx>: fmt::Debug,
     Variants<FieldIdx, VariantIdx>: fmt::Debug,
@@ -1678,7 +1683,7 @@ where
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
-        let LayoutS {
+        let LayoutData {
             size,
             align,
             abi,
@@ -1723,7 +1728,7 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
 }
 
-impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
+impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {

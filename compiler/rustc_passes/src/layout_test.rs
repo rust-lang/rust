@@ -1,3 +1,4 @@
+use rustc_abi::{HasDataLayout, TargetDataLayout};
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -7,7 +8,6 @@ use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits;
@@ -18,7 +18,7 @@ use crate::errors::{
 };
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         return;
     }

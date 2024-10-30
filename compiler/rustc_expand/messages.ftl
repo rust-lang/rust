@@ -25,7 +25,7 @@ expand_collapse_debuginfo_illegal =
     illegal value for attribute #[collapse_debuginfo(no|external|yes)]
 
 expand_count_repetition_misplaced =
-    `count` can not be placed inside the inner-most repetition
+    `count` can not be placed inside the innermost repetition
 
 expand_crate_name_in_cfg_attr =
     `crate_name` within an `#![cfg_attr]` attribute is forbidden

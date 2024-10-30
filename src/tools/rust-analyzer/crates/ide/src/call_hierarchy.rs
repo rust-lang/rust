@@ -510,6 +510,7 @@ fn caller$0() {
             expect![[]],
         );
     }
+
     #[test]
     fn test_call_hierarchy_in_macros_incoming_different_files() {
         check_hierarchy(
@@ -591,9 +592,9 @@ macro_rules! call {
 "#,
             expect!["callee Function FileId(0) 22..37 30..36"],
             expect![[r#"
-                callee Function FileId(0) 38..52 44..50 : FileId(0):44..50
                 caller Function FileId(0) 38..52 : FileId(0):44..50
-                caller Function FileId(1) 130..136 130..136 : FileId(0):44..50"#]],
+                caller Function FileId(1) 130..136 130..136 : FileId(0):44..50
+                callee Function FileId(0) 38..52 44..50 : FileId(0):44..50"#]],
             expect![[]],
         );
     }

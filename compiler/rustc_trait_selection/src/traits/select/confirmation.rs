@@ -402,7 +402,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut assume = predicate.trait_ref.args.const_at(2);
         // FIXME(min_generic_const_exprs): We should shallowly normalize this.
-        if self.tcx().features().generic_const_exprs {
+        if self.tcx().features().generic_const_exprs() {
             assume = assume.normalize_internal(self.tcx(), obligation.param_env);
         }
         let Some(assume) =
@@ -626,7 +626,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for assoc_type in assoc_types {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
 
-            if !defs.own_params.is_empty() && !tcx.features().generic_associated_types_extended {
+            if !defs.own_params.is_empty() && !tcx.features().generic_associated_types_extended() {
                 tcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",

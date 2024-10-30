@@ -23,11 +23,11 @@ pub(crate) enum MetaVarExpr {
     /// Ignore a meta-variable for repetition without expansion.
     Ignore(Ident),
 
-    /// The index of the repetition at a particular depth, where 0 is the inner-most
+    /// The index of the repetition at a particular depth, where 0 is the innermost
     /// repetition. The `usize` is the depth.
     Index(usize),
 
-    /// The length of the repetition at a particular depth, where 0 is the inner-most
+    /// The length of the repetition at a particular depth, where 0 is the innermost
     /// repetition. The `usize` is the depth.
     Len(usize),
 }

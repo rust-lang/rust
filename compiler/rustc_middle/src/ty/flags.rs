@@ -265,6 +265,12 @@ impl FlagComputation {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 self.add_args(trait_pred.trait_ref.args);
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                trait_ref,
+                host: _,
+            })) => {
+                self.add_args(trait_ref.args);
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
                 a,
                 b,
@@ -354,9 +360,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
-                    InferConst::Var(_) | InferConst::EffectVar(_) => {
-                        self.add_flags(TypeFlags::HAS_CT_INFER)
-                    }
+                    InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
             ty::ConstKind::Bound(debruijn, _) => {

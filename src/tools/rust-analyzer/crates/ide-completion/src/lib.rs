@@ -10,16 +10,17 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
         import_assets::NameToImport,
         insert_use::{self, ImportScope},
     },
-    items_locator, FilePosition, RootDatabase,
+    items_locator,
+    syntax_helpers::tree_diff::diff,
+    FilePosition, RootDatabase,
 };
-use syntax::algo;
-use text_edit::TextEdit;
 
 use crate::{
     completions::Completions,
@@ -297,6 +298,6 @@ pub fn resolve_completion_edits(
         }
     });
 
-    algo::diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
+    diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
     Some(vec![import_insert.finish()])
 }

@@ -144,10 +144,31 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
         LIFETIME_IDENT => lifetime(p),
         T![for] => types::for_type(p, false),
         // test precise_capturing
-        // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T> {}
+        // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T, Self> {}
         T![use] if p.nth_at(1, T![<]) => {
             p.bump_any();
-            generic_param_list(p)
+            let m = p.start();
+            delimited(
+                p,
+                T![<],
+                T![>],
+                T![,],
+                || "expected identifier or lifetime".into(),
+                TokenSet::new(&[T![Self], IDENT, LIFETIME_IDENT]),
+                |p| {
+                    if p.at(T![Self]) {
+                        let m = p.start();
+                        p.bump(T![Self]);
+                        m.complete(p, NAME_REF);
+                    } else if p.at(LIFETIME_IDENT) {
+                        lifetime(p);
+                    } else {
+                        name_ref(p);
+                    }
+                    true
+                },
+            );
+            m.complete(p, USE_BOUND_GENERIC_ARGS);
         }
         T![?] if p.nth_at(1, T![for]) => {
             // test question_for_type_trait_bound

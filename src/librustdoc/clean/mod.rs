@@ -216,7 +216,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
         hir::GenericBound::Trait(ref t) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-            if t.modifiers == hir::TraitBoundModifier::MaybeConst
+            if let hir::BoundConstness::Maybe(_) = t.modifiers.constness
                 && cx.tcx.lang_items().destruct_trait() == Some(t.trait_ref.trait_def_id().unwrap())
             {
                 return None;
@@ -263,7 +263,7 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
             trait_: clean_trait_ref_with_constraints(cx, poly_trait_ref, constraints),
             generic_params: clean_bound_vars(poly_trait_ref.bound_vars()),
         },
-        hir::TraitBoundModifier::None,
+        hir::TraitBoundModifiers::NONE,
     )
 }
 
@@ -368,7 +368,9 @@ pub(crate) fn clean_predicate<'tcx>(
         // FIXME(generic_const_exprs): should this do something?
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
-        | ty::ClauseKind::ConstArgHasType(..) => None,
+        | ty::ClauseKind::ConstArgHasType(..)
+        // FIXME(effects): We can probably use this `HostEffect` pred to render `~const`.
+        | ty::ClauseKind::HostEffect(_) => None,
     }
 }
 
@@ -542,7 +544,7 @@ fn clean_generic_param_def(
                 synthetic,
             })
         }
-        ty::GenericParamDefKind::Const { has_default, synthetic, is_host_effect: _ } => {
+        ty::GenericParamDefKind::Const { has_default, synthetic } => {
             (def.name, GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
                     ty::Binder::dummy(
@@ -617,7 +619,7 @@ fn clean_generic_param<'tcx>(
                 synthetic,
             })
         }
-        hir::GenericParamKind::Const { ty, default, synthetic, is_host_effect: _ } => {
+        hir::GenericParamKind::Const { ty, default, synthetic } => {
             (param.name.ident().name, GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
@@ -797,7 +799,7 @@ fn clean_ty_generics<'tcx>(
                 }
                 true
             }
-            ty::GenericParamDefKind::Const { is_host_effect, .. } => !is_host_effect,
+            ty::GenericParamDefKind::Const { .. } => true,
         })
         .map(|param| clean_generic_param_def(param, ParamDefaults::Yes, cx))
         .collect();
@@ -1398,7 +1400,6 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 clean_ty_generics(cx, tcx.generics_of(assoc_item.def_id), ty::GenericPredicates {
                     parent: None,
                     predicates,
-                    effects_min_tys: ty::List::empty(),
                 });
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
@@ -2189,7 +2190,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Alias(ty::Weak, data) => {
-            if cx.tcx.features().lazy_type_alias {
+            if cx.tcx.features().lazy_type_alias() {
                 // Weak type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
                 let path = clean_middle_path(

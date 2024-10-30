@@ -1,6 +1,7 @@
 use std::iter;
 
 use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     helpers::is_editable_crate,
@@ -16,7 +17,6 @@ use syntax::{
     ast::{edit::AstNodeEdit, Type},
     SyntaxNode,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 

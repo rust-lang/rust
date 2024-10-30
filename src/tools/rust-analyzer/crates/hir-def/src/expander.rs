@@ -14,6 +14,7 @@ use span::SyntaxContextId;
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
+use crate::type_ref::{TypesMap, TypesSourceMap};
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
     UnresolvedMacro,
@@ -47,6 +48,10 @@ impl Expander {
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
             span_map: OnceCell::new(),
         }
+    }
+
+    pub(crate) fn span_map(&self, db: &dyn DefDatabase) -> &SpanMap {
+        self.span_map.get_or_init(|| db.span_map(self.current_file_id))
     }
 
     pub fn krate(&self) -> CrateId {
@@ -110,8 +115,19 @@ impl Expander {
         mark.bomb.defuse();
     }
 
-    pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone())
+    pub fn ctx<'a>(
+        &self,
+        db: &'a dyn DefDatabase,
+        types_map: &'a mut TypesMap,
+        types_source_map: &'a mut TypesSourceMap,
+    ) -> LowerCtx<'a> {
+        LowerCtx::with_span_map_cell(
+            db,
+            self.current_file_id,
+            self.span_map.clone(),
+            types_map,
+            types_source_map,
+        )
     }
 
     pub(crate) fn in_file<T>(&self, value: T) -> InFile<T> {
@@ -138,8 +154,20 @@ impl Expander {
         self.current_file_id
     }
 
-    pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone());
+    pub(crate) fn parse_path(
+        &mut self,
+        db: &dyn DefDatabase,
+        path: ast::Path,
+        types_map: &mut TypesMap,
+        types_source_map: &mut TypesSourceMap,
+    ) -> Option<Path> {
+        let ctx = LowerCtx::with_span_map_cell(
+            db,
+            self.current_file_id,
+            self.span_map.clone(),
+            types_map,
+            types_source_map,
+        );
         Path::from_src(&ctx, path)
     }
 

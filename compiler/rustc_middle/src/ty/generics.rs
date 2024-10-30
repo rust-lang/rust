@@ -14,7 +14,7 @@ use crate::ty::{EarlyBinder, GenericArgsRef};
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool, is_host_effect: bool, synthetic: bool },
+    Const { has_default: bool, synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -81,10 +81,6 @@ impl GenericParamDef {
         }
     }
 
-    pub fn is_host_effect(&self) -> bool {
-        matches!(self.kind, GenericParamDefKind::Const { is_host_effect: true, .. })
-    }
-
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -133,9 +129,6 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
-
-    // The index of the host effect when instantiated. (i.e. might be index to parent args)
-    pub host_effect_index: Option<usize>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
@@ -216,12 +209,10 @@ impl<'tcx> Generics {
     pub fn own_requires_monomorphization(&self) -> bool {
         for param in &self.own_params {
             match param.kind {
-                GenericParamDefKind::Type { .. }
-                | GenericParamDefKind::Const { is_host_effect: false, .. } => {
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                     return true;
                 }
-                GenericParamDefKind::Lifetime
-                | GenericParamDefKind::Const { is_host_effect: true, .. } => {}
+                GenericParamDefKind::Lifetime => {}
             }
         }
         false
@@ -300,8 +291,6 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
-        let verbose = tcx.sess.verbose_internals();
-
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
@@ -316,8 +305,6 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
-                // filter out trailing effect params, if we're not in `-Zverbose-internals`.
-                || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();
 
@@ -373,7 +360,6 @@ impl<'tcx> Generics {
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Clause<'tcx>, Span)],
-    pub effects_min_tys: &'tcx ty::List<Ty<'tcx>>,
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
@@ -395,7 +381,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
     }
 
-    pub fn instantiate_own_identity(self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
+    pub fn instantiate_own_identity(
+        self,
+    ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).iter_identity_copied()
     }
 
@@ -431,5 +419,75 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+    }
+}
+
+/// `~const` bounds for a given item. This is represented using a struct much like
+/// `GenericPredicates`, where you can either choose to only instantiate the "own"
+/// bounds or all of the bounds including those from the parent. This distinction
+/// is necessary for code like `compare_method_predicate_entailment`.
+#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct ConstConditions<'tcx> {
+    pub parent: Option<DefId>,
+    pub predicates: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],
+}
+
+impl<'tcx> ConstConditions<'tcx> {
+    pub fn instantiate(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+        let mut instantiated = vec![];
+        self.instantiate_into(tcx, &mut instantiated, args);
+        instantiated
+    }
+
+    pub fn instantiate_own(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
+    }
+
+    pub fn instantiate_own_identity(
+        self,
+    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder::bind(self.predicates).iter_identity_copied()
+    }
+
+    #[instrument(level = "debug", skip(self, tcx))]
+    fn instantiate_into(
+        self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+        args: GenericArgsRef<'tcx>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);
+        }
+        instantiated.extend(
+            self.predicates.iter().map(|&(p, s)| (EarlyBinder::bind(p).instantiate(tcx, args), s)),
+        );
+    }
+
+    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+        let mut instantiated = vec![];
+        self.instantiate_identity_into(tcx, &mut instantiated);
+        instantiated
+    }
+
+    fn instantiate_identity_into(
+        self,
+        tcx: TyCtxt<'tcx>,
+        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+    ) {
+        if let Some(def_id) = self.parent {
+            tcx.const_conditions(def_id).instantiate_identity_into(tcx, instantiated);
+        }
+        instantiated.extend(self.predicates.iter().copied());
     }
 }

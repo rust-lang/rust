@@ -1025,7 +1025,7 @@ pub mod ast {
         check_found_path(
             r#"
 mod bar {
-    mod foo { pub(super) struct S; }
+    mod foo { pub(crate) struct S; }
     pub(crate) use foo::*;
 }
 $0
@@ -1047,7 +1047,7 @@ $0
         check_found_path(
             r#"
 mod bar {
-    mod foo { pub(super) struct S; }
+    mod foo { pub(crate) struct S; }
     pub(crate) use foo::S as U;
 }
 $0

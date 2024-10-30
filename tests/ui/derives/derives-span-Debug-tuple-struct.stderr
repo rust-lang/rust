@@ -7,7 +7,7 @@ LL | struct Struct(
 LL |     Error
    |     ^^^^^ `Error` cannot be formatted using `{:?}`
    |
-   = help: the trait `Debug` is not implemented for `Error`, which is required by `&Error: Debug`
+   = help: the trait `Debug` is not implemented for `Error`
    = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Error` with `#[derive(Debug)]`

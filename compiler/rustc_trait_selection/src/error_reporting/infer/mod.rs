@@ -75,6 +75,7 @@ use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
 use crate::infer::{InferCtxt, TypeTrace, ValuePairs};
+use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
@@ -145,21 +146,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_mismatched_types(
         &self,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
+        self.report_and_explain_type_error(
+            TypeTrace::types(cause, true, expected, actual),
+            param_env,
+            err,
+        )
     }
 
     pub fn report_mismatched_consts(
         &self,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
-        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
+        self.report_and_explain_type_error(
+            TypeTrace::consts(cause, true, expected, actual),
+            param_env,
+            err,
+        )
     }
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
@@ -381,7 +392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         Some(ty) if expected == ty => {
                             let source_map = self.tcx.sess.source_map();
                             err.span_suggestion(
-                                source_map.end_point(cause.span()),
+                                source_map.end_point(cause.span),
                                 "try removing this `?`",
                                 "",
                                 Applicability::MachineApplicable,
@@ -401,6 +412,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 source,
                 ref prior_non_diverging_arms,
                 scrut_span,
+                expr_span,
                 ..
             }) => match source {
                 hir::MatchSource::TryDesugar(scrut_hir_id) => {
@@ -419,7 +431,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(
-                                    source_map.end_point(cause.span()),
+                                    source_map.end_point(cause.span),
                                     "try removing this `?`",
                                     "",
                                     Applicability::MachineApplicable,
@@ -449,12 +461,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this and all prior arms are found to be of type `{t}`"),
                         );
                     }
-                    let outer = if any_multiline_arm || !source_map.is_multiline(cause.span) {
+                    let outer = if any_multiline_arm || !source_map.is_multiline(expr_span) {
                         // Cover just `match` and the scrutinee expression, not
                         // the entire match body, to reduce diagram noise.
-                        cause.span.shrink_to_lo().to(scrut_span)
+                        expr_span.shrink_to_lo().to(scrut_span)
                     } else {
-                        cause.span
+                        expr_span
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer, msg);
@@ -1133,11 +1145,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
         secondary_span: Option<(Span, Cow<'static, str>, bool)>,
-        mut values: Option<ValuePairs<'tcx>>,
+        mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
     ) {
-        let span = cause.span();
+        let span = cause.span;
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1241,8 +1253,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let (expected_found, exp_found, is_simple_error, values) = match values {
             None => (None, Mismatch::Fixed("type"), false, None),
-            Some(values) => {
-                let values = self.resolve_vars_if_possible(values);
+            Some(ty::ParamEnvAnd { param_env, value: values }) => {
+                let mut values = self.resolve_vars_if_possible(values);
+                if self.next_trait_solver() {
+                    values = deeply_normalize_for_diagnostics(self, param_env, values);
+                }
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
@@ -1628,7 +1643,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let values = self.resolve_vars_if_possible(trace.values);
         if let Some((expected, found)) = values.ty() {
             match (expected.kind(), found.kind()) {
@@ -1773,18 +1788,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
-        let span = trace.cause.span();
+        let span = trace.cause.span;
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
             self.type_error_additional_suggestions(&trace, terr),
         );
         let mut diag = self.dcx().create_err(failure_code);
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
+        self.note_type_err(
+            &mut diag,
+            &trace.cause,
+            None,
+            Some(param_env.and(trace.values)),
+            terr,
+            false,
+        );
         diag
     }
 

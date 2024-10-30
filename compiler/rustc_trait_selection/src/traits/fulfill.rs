@@ -17,6 +17,7 @@ use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
 use thin_vec::ThinVec;
 use tracing::{debug, debug_span, instrument};
 
+use super::effects::{self, HostEffectObligation};
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::{
@@ -372,7 +373,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::Subtype(_)
                 | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
-                | ty::PredicateKind::ConstEquate(..) => {
+                | ty::PredicateKind::ConstEquate(..)
+                // FIXME(effects): We may need to do this using the higher-ranked
+                // pred instead of just instantiating it with placeholders b/c of
+                // higher-ranked implied bound issues in the old solver.
+                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
                     let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe(binder));
                     let mut obligations = PredicateObligations::with_capacity(1);
                     obligations.push(obligation.with(infcx.tcx, pred));
@@ -394,6 +399,15 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     self.process_trait_obligation(
                         obligation,
                         trait_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
+                    let host_obligation = obligation.with(infcx.tcx, data);
+
+                    self.process_host_obligation(
+                        host_obligation,
                         &mut pending_obligation.stalled_on,
                     )
                 }
@@ -450,7 +464,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ty::ConstKind::Infer(var) => {
                             let var = match var {
                                 ty::InferConst::Var(vid) => TyOrConstInferVar::Const(vid),
-                                ty::InferConst::EffectVar(vid) => TyOrConstInferVar::Effect(vid),
                                 ty::InferConst::Fresh(_) => {
                                     bug!("encountered fresh const in fulfill")
                                 }
@@ -598,7 +611,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let tcx = self.selcx.tcx();
                     assert!(
-                        tcx.features().generic_const_exprs,
+                        tcx.features().generic_const_exprs(),
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
                     // FIXME: we probably should only try to unify abstract constants
@@ -844,6 +857,27 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(FulfillmentErrorCode::Project(e))
+            }
+        }
+    }
+
+    fn process_host_obligation(
+        &mut self,
+        host_obligation: HostEffectObligation<'tcx>,
+        stalled_on: &mut Vec<TyOrConstInferVar>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        match effects::evaluate_host_effect_obligation(&mut self.selcx, &host_obligation) {
+            Ok(nested) => ProcessResult::Changed(mk_pending(nested)),
+            Err(effects::EvaluationFailure::Ambiguous) => {
+                stalled_on.clear();
+                stalled_on.extend(args_infer_vars(
+                    &self.selcx,
+                    ty::Binder::dummy(host_obligation.predicate.trait_ref.args),
+                ));
+                ProcessResult::Unchanged
+            }
+            Err(effects::EvaluationFailure::NoSolution) => {
+                ProcessResult::Error(FulfillmentErrorCode::Select(SelectionError::Unimplemented))
             }
         }
     }

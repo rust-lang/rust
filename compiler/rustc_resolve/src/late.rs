@@ -1205,7 +1205,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     }
 
     fn visit_assoc_item_constraint(&mut self, constraint: &'ast AssocItemConstraint) {
-        self.visit_ident(constraint.ident);
+        self.visit_ident(&constraint.ident);
         if let Some(ref gen_args) = constraint.gen_args {
             // Forbid anonymous lifetimes in GAT parameters until proper semantics are decided.
             self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
@@ -2683,7 +2683,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(
-                        if self.r.tcx.features().generic_const_items {
+                        if self.r.tcx.features().generic_const_items() {
                             HasGenericParams::Yes(generics.span)
                         } else {
                             HasGenericParams::No
@@ -2888,7 +2888,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     RibKind::Normal => {
                         // FIXME(non_lifetime_binders): Stop special-casing
                         // const params to error out here.
-                        if self.r.tcx.features().non_lifetime_binders
+                        if self.r.tcx.features().non_lifetime_binders()
                             && matches!(param.kind, GenericParamKind::Type { .. })
                         {
                             Res::Def(def_kind, def_id.to_def_id())
@@ -4411,10 +4411,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let tcx = self.r.tcx();
 
                 let gate_err_sym_msg = match prim {
-                    PrimTy::Float(FloatTy::F16) if !tcx.features().f16 => {
+                    PrimTy::Float(FloatTy::F16) if !tcx.features().f16() => {
                         Some((sym::f16, "the type `f16` is unstable"))
                     }
-                    PrimTy::Float(FloatTy::F128) if !tcx.features().f128 => {
+                    PrimTy::Float(FloatTy::F128) if !tcx.features().f128() => {
                         Some((sym::f128, "the type `f128` is unstable"))
                     }
                     _ => None,
@@ -4565,7 +4565,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs || is_trivial_const_arg {
+                if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
                     ConstantHasGenerics::Yes
                 } else {
                     ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)
@@ -4582,7 +4582,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_expr_field(&mut self, f: &'ast ExprField, e: &'ast Expr) {
         self.resolve_expr(&f.expr, Some(e));
-        self.visit_ident(f.ident);
+        self.visit_ident(&f.ident);
         walk_list!(self, visit_attribute, f.attrs.iter());
     }
 

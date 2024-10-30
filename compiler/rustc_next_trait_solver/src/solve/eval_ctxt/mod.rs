@@ -291,7 +291,7 @@ where
             search_graph,
             nested_goals: NestedGoals::new(),
             tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values, input),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
@@ -442,6 +442,9 @@ where
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     self.compute_trait_goal(Goal { param_env, predicate })
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
+                    self.compute_host_effect_goal(Goal { param_env, predicate })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) => {
                     self.compute_projection_goal(Goal { param_env, predicate })

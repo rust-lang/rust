@@ -1,11 +1,17 @@
+error: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> tests/ui/rename.rs:57:10
+   |
+LL | #![allow(temporary_cstring_as_ptr)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
+
 error: lint `clippy::almost_complete_letter_range` has been renamed to `clippy::almost_complete_range`
   --> tests/ui/rename.rs:63:9
    |
 LL | #![warn(clippy::almost_complete_letter_range)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::almost_complete_range`
-   |
-   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
 
 error: lint `clippy::blacklisted_name` has been renamed to `clippy::disallowed_names`
   --> tests/ui/rename.rs:64:9
@@ -361,11 +367,11 @@ error: lint `clippy::positional_named_format_parameters` has been renamed to `na
 LL | #![warn(clippy::positional_named_format_parameters)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `named_arguments_used_positionally`
 
-error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cstring_as_ptr`
+error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
   --> tests/ui/rename.rs:123:9
    |
 LL | #![warn(clippy::temporary_cstring_as_ptr)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
 
 error: lint `clippy::undropped_manually_drops` has been renamed to `undropped_manually_drops`
   --> tests/ui/rename.rs:124:9
@@ -397,5 +403,5 @@ error: lint `clippy::reverse_range_loop` has been renamed to `clippy::reversed_e
 LL | #![warn(clippy::reverse_range_loop)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::reversed_empty_ranges`
 
-error: aborting due to 66 previous errors
+error: aborting due to 67 previous errors
 

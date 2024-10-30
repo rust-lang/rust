@@ -237,7 +237,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_args: GenericArgsRef<'tcx>,
         actual_args: GenericArgsRef<'tcx>,
     ) -> Diag<'tcx> {
-        let span = cause.span();
+        let span = cause.span;
 
         let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
             if let ObligationCauseCode::WhereClause(def_id, span)

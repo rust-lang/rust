@@ -40,6 +40,7 @@ cfg_if::cfg_if! {
         mod horizon;
         pub use horizon::fill_bytes;
     } else if #[cfg(any(
+        target_os = "aix",
         target_os = "hurd",
         target_os = "l4re",
         target_os = "nto",

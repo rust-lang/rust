@@ -173,21 +173,6 @@ pub(crate) fn fetch_native_diagnostics(
     let _p = tracing::info_span!("fetch_native_diagnostics").entered();
     let _ctx = stdx::panic_context::enter("fetch_native_diagnostics".to_owned());
 
-    let convert_diagnostic =
-        |line_index: &crate::line_index::LineIndex, d: ide::Diagnostic| lsp_types::Diagnostic {
-            range: lsp::to_proto::range(line_index, d.range.range),
-            severity: Some(lsp::to_proto::diagnostic_severity(d.severity)),
-            code: Some(lsp_types::NumberOrString::String(d.code.as_str().to_owned())),
-            code_description: Some(lsp_types::CodeDescription {
-                href: lsp_types::Url::parse(&d.code.url()).unwrap(),
-            }),
-            source: Some("rust-analyzer".to_owned()),
-            message: d.message,
-            related_information: None,
-            tags: d.unused.then(|| vec![lsp_types::DiagnosticTag::UNNECESSARY]),
-            data: None,
-        };
-
     // the diagnostics produced may point to different files not requested by the concrete request,
     // put those into here and filter later
     let mut odd_ones = Vec::new();
@@ -203,10 +188,12 @@ pub(crate) fn fetch_native_diagnostics(
                 NativeDiagnosticsFetchKind::Syntax => {
                     snapshot.analysis.syntax_diagnostics(config, file_id).ok()?
                 }
-                NativeDiagnosticsFetchKind::Semantic => snapshot
+
+                NativeDiagnosticsFetchKind::Semantic if config.enabled => snapshot
                     .analysis
                     .semantic_diagnostics(config, ide::AssistResolveStrategy::None, file_id)
                     .ok()?,
+                NativeDiagnosticsFetchKind::Semantic => return None,
             };
             let diagnostics = diagnostics
                 .into_iter()
@@ -245,4 +232,23 @@ pub(crate) fn fetch_native_diagnostics(
         }
     }
     diagnostics
+}
+
+pub(crate) fn convert_diagnostic(
+    line_index: &crate::line_index::LineIndex,
+    d: ide::Diagnostic,
+) -> lsp_types::Diagnostic {
+    lsp_types::Diagnostic {
+        range: lsp::to_proto::range(line_index, d.range.range),
+        severity: Some(lsp::to_proto::diagnostic_severity(d.severity)),
+        code: Some(lsp_types::NumberOrString::String(d.code.as_str().to_owned())),
+        code_description: Some(lsp_types::CodeDescription {
+            href: lsp_types::Url::parse(&d.code.url()).unwrap(),
+        }),
+        source: Some("rust-analyzer".to_owned()),
+        message: d.message,
+        related_information: None,
+        tags: d.unused.then(|| vec![lsp_types::DiagnosticTag::UNNECESSARY]),
+        data: None,
+    }
 }

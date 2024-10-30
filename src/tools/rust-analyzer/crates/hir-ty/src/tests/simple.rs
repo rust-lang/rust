@@ -3418,11 +3418,11 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &'? [i32; 1], got [{unknown}; _]
+  //^^^^expected &'? [i32; 1], got [{unknown}]
 
     let x;
     [(x,),] = &[(1,),];
-  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}; _]
+  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}]
 
     let x;
     ((x,),) = &((1,),);
@@ -3718,5 +3718,87 @@ fn test() -> bool {
             181..182 '1': i32
             181..187 '1 == 1': {unknown}
         "#]],
+    );
+}
+
+#[test]
+fn macro_semitransparent_hygiene() {
+    check_types(
+        r#"
+macro_rules! m {
+    () => { let bar: i32; };
+}
+fn foo() {
+    let bar: bool;
+    m!();
+    bar;
+ // ^^^ bool
+}
+        "#,
+    );
+}
+
+#[test]
+fn macro_expansion_can_refer_variables_defined_before_macro_definition() {
+    check_types(
+        r#"
+fn foo() {
+    let v: i32 = 0;
+    macro_rules! m {
+        () => { v };
+    }
+    let v: bool = true;
+    m!();
+ // ^^^^ i32
+}
+        "#,
+    );
+}
+
+#[test]
+fn macro_rules_shadowing_works_with_hygiene() {
+    check_types(
+        r#"
+fn foo() {
+    let v: bool;
+    macro_rules! m { () => { v } }
+    m!();
+ // ^^^^ bool
+
+    let v: char;
+    macro_rules! m { () => { v } }
+    m!();
+ // ^^^^ char
+
+    {
+        let v: u8;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ u8
+
+        let v: i8;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ i8
+
+        let v: i16;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ i16
+
+        {
+            let v: u32;
+            macro_rules! m { () => { v } }
+            m!();
+         // ^^^^ u32
+
+            let v: u64;
+            macro_rules! m { () => { v } }
+            m!();
+         // ^^^^ u64
+        }
+    }
+}
+        "#,
     );
 }

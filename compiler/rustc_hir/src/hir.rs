@@ -6,8 +6,8 @@ use rustc_ast::{
     LitKind, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
-    BinOp, BinOpKind, BindingMode, BorrowKind, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability,
-    Mutability, UnOp,
+    BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
+    ImplPolarity, IsAuto, Movability, Mutability, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -502,19 +502,16 @@ pub enum GenericArgsParentheses {
     ParenSugar,
 }
 
-/// A modifier on a trait bound.
+/// The modifiers on a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum TraitBoundModifier {
-    /// `Type: Trait`
-    None,
-    /// `Type: !Trait`
-    Negative,
-    /// `Type: ?Trait`
-    Maybe,
-    /// `Type: const Trait`
-    Const,
-    /// `Type: ~const Trait`
-    MaybeConst,
+pub struct TraitBoundModifiers {
+    pub constness: BoundConstness,
+    pub polarity: BoundPolarity,
+}
+
+impl TraitBoundModifiers {
+    pub const NONE: Self =
+        TraitBoundModifiers { constness: BoundConstness::Never, polarity: BoundPolarity::Positive };
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -583,7 +580,6 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<&'hir ConstArg<'hir>>,
-        is_host_effect: bool,
         synthetic: bool,
     },
 }
@@ -3180,7 +3176,7 @@ pub struct PolyTraitRef<'hir> {
     /// The constness and polarity of the trait ref.
     ///
     /// The `async` modifier is lowered directly into a different trait for now.
-    pub modifiers: TraitBoundModifier,
+    pub modifiers: TraitBoundModifiers,
 
     /// The `Foo<&'a T>` in `for<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef<'hir>,
@@ -4085,7 +4081,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
-    static_assert_size!(GenericBound<'_>, 48);
+    static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
     static_assert_size!(ImplItem<'_>, 88);

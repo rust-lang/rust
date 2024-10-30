@@ -20,7 +20,6 @@ use syntax::{
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
-use text_edit::Indel;
 
 use crate::{
     context::analysis::{expand_and_analyze, AnalysisResult},
@@ -48,12 +47,16 @@ pub(crate) struct QualifierCtx {
     // TODO: Add try_tok and default_tok
     pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
+    pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none()
+            && self.unsafe_tok.is_none()
+            && self.safe_tok.is_none()
+            && self.vis_node.is_none()
     }
 }
 
@@ -229,7 +232,7 @@ pub(crate) enum ItemListKind {
     Impl,
     TraitImpl(Option<ast::Impl>),
     Trait,
-    ExternBlock,
+    ExternBlock { is_unsafe: bool },
 }
 
 #[derive(Debug)]
@@ -680,8 +683,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit, file_id.edition()).tree()
+            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, file_id.edition()).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

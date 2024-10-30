@@ -9,7 +9,7 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Sync`
    |
-   = help: within `{main::{closure#0} upvar_tys=() witness={main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`, which is required by `{main::{closure#0} upvar_tys=() witness={main::{closure#0}}}: Sync`
+   = help: within `{main::{closure#0} upvar_tys=() witness={main::{closure#0}}}`, the trait `Sync` is not implemented for `NotSync`
 note: coroutine is not `Sync` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:20:9
    |
@@ -34,7 +34,7 @@ LL | |         drop(a);
 LL | |     });
    | |______^ coroutine is not `Send`
    |
-   = help: within `{main::{closure#1} upvar_tys=() witness={main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`, which is required by `{main::{closure#1} upvar_tys=() witness={main::{closure#1}}}: Send`
+   = help: within `{main::{closure#1} upvar_tys=() witness={main::{closure#1}}}`, the trait `Send` is not implemented for `NotSend`
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/coroutine-print-verbose-2.rs:27:9
    |

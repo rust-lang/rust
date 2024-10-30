@@ -6,7 +6,7 @@ LL |     use_iterator(i);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Iterator` is not implemented for `&dyn IntoIterator<IntoIter = I, Item = i32>`, which is required by `&dyn IntoIterator<IntoIter = I, Item = i32>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&dyn IntoIterator<IntoIter = I, Item = i32>`
    = note: required for `&dyn IntoIterator<IntoIter = I, Item = i32>` to implement `IntoIterator`
 note: required by a bound in `use_iterator`
   --> $DIR/dont-suggest-unsize-deref.rs:3:8

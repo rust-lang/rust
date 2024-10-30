@@ -7,7 +7,7 @@ LL |         .await
    |         |`()` is not a future
    |         help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `()`, which is required by `(): IntoFuture`
+   = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
 

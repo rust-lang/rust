@@ -853,23 +853,61 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
-extern "C" void LLVMRustAddModuleFlagU32(LLVMModuleRef M,
-                                         Module::ModFlagBehavior MergeBehavior,
-                                         const char *Name, uint32_t Value) {
-  unwrap(M)->addModuleFlag(MergeBehavior, Name, Value);
+// FFI equivalent of LLVM's `llvm::Module::ModFlagBehavior`.
+// Must match the layout of
+// `rustc_codegen_llvm::llvm::ffi::ModuleFlagMergeBehavior`.
+//
+// There is a stable LLVM-C version of this enum (`LLVMModuleFlagBehavior`),
+// but as of LLVM 19 it does not support all of the enum values in the unstable
+// C++ API.
+enum class LLVMRustModuleFlagMergeBehavior {
+  Error = 1,
+  Warning = 2,
+  Require = 3,
+  Override = 4,
+  Append = 5,
+  AppendUnique = 6,
+  Max = 7,
+  Min = 8,
+};
+
+static Module::ModFlagBehavior
+fromRust(LLVMRustModuleFlagMergeBehavior Behavior) {
+  switch (Behavior) {
+  case LLVMRustModuleFlagMergeBehavior::Error:
+    return Module::ModFlagBehavior::Error;
+  case LLVMRustModuleFlagMergeBehavior::Warning:
+    return Module::ModFlagBehavior::Warning;
+  case LLVMRustModuleFlagMergeBehavior::Require:
+    return Module::ModFlagBehavior::Require;
+  case LLVMRustModuleFlagMergeBehavior::Override:
+    return Module::ModFlagBehavior::Override;
+  case LLVMRustModuleFlagMergeBehavior::Append:
+    return Module::ModFlagBehavior::Append;
+  case LLVMRustModuleFlagMergeBehavior::AppendUnique:
+    return Module::ModFlagBehavior::AppendUnique;
+  case LLVMRustModuleFlagMergeBehavior::Max:
+    return Module::ModFlagBehavior::Max;
+  case LLVMRustModuleFlagMergeBehavior::Min:
+    return Module::ModFlagBehavior::Min;
+  }
+  report_fatal_error("bad LLVMRustModuleFlagMergeBehavior");
+}
+
+extern "C" void
+LLVMRustAddModuleFlagU32(LLVMModuleRef M,
+                         LLVMRustModuleFlagMergeBehavior MergeBehavior,
+                         const char *Name, size_t NameLen, uint32_t Value) {
+  unwrap(M)->addModuleFlag(fromRust(MergeBehavior), StringRef(Name, NameLen),
+                           Value);
 }
 
 extern "C" void LLVMRustAddModuleFlagString(
-    LLVMModuleRef M, Module::ModFlagBehavior MergeBehavior, const char *Name,
-    const char *Value, size_t ValueLen) {
+    LLVMModuleRef M, LLVMRustModuleFlagMergeBehavior MergeBehavior,
+    const char *Name, size_t NameLen, const char *Value, size_t ValueLen) {
   unwrap(M)->addModuleFlag(
-      MergeBehavior, Name,
+      fromRust(MergeBehavior), StringRef(Name, NameLen),
       MDString::get(unwrap(M)->getContext(), StringRef(Value, ValueLen)));
-}
-
-extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
-                                      size_t Len) {
-  return unwrap(M)->getModuleFlag(StringRef(Name, Len)) != nullptr;
 }
 
 extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
@@ -1231,7 +1269,7 @@ extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
   return dwarf::DW_OP_plus_uconst;
 }
 
-extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
+extern "C" uint64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
   return dwarf::DW_OP_LLVM_fragment;
 }
 
@@ -1531,45 +1569,6 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty,
                                     ArrayRef<OperandBundleDef>(OpBundles)));
 }
 
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(20, 0)
-  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_increment));
-#else
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_increment));
-#endif
-}
-
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCParametersIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
-#endif
-#if LLVM_VERSION_GE(20, 0)
-  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
-#else
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_parameters));
-#endif
-}
-
-extern "C" LLVMValueRef
-LLVMRustGetInstrProfMCDCTVBitmapUpdateIntrinsic(LLVMModuleRef M) {
-#if LLVM_VERSION_LT(19, 0)
-  report_fatal_error("LLVM 19.0 is required for mcdc intrinsic functions");
-#endif
-#if LLVM_VERSION_GE(20, 0)
-  return wrap(llvm::Intrinsic::getOrInsertDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-#else
-  return wrap(llvm::Intrinsic::getDeclaration(
-      unwrap(M), llvm::Intrinsic::instrprof_mcdc_tvbitmap_update));
-#endif
-}
-
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Src,
                                             unsigned SrcAlign,
@@ -1658,86 +1657,6 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
   unwrap(B)->SetInsertPoint(unwrap(BB), Point);
 }
 
-enum class LLVMRustLinkage {
-  ExternalLinkage = 0,
-  AvailableExternallyLinkage = 1,
-  LinkOnceAnyLinkage = 2,
-  LinkOnceODRLinkage = 3,
-  WeakAnyLinkage = 4,
-  WeakODRLinkage = 5,
-  AppendingLinkage = 6,
-  InternalLinkage = 7,
-  PrivateLinkage = 8,
-  ExternalWeakLinkage = 9,
-  CommonLinkage = 10,
-};
-
-static LLVMRustLinkage toRust(LLVMLinkage Linkage) {
-  switch (Linkage) {
-  case LLVMExternalLinkage:
-    return LLVMRustLinkage::ExternalLinkage;
-  case LLVMAvailableExternallyLinkage:
-    return LLVMRustLinkage::AvailableExternallyLinkage;
-  case LLVMLinkOnceAnyLinkage:
-    return LLVMRustLinkage::LinkOnceAnyLinkage;
-  case LLVMLinkOnceODRLinkage:
-    return LLVMRustLinkage::LinkOnceODRLinkage;
-  case LLVMWeakAnyLinkage:
-    return LLVMRustLinkage::WeakAnyLinkage;
-  case LLVMWeakODRLinkage:
-    return LLVMRustLinkage::WeakODRLinkage;
-  case LLVMAppendingLinkage:
-    return LLVMRustLinkage::AppendingLinkage;
-  case LLVMInternalLinkage:
-    return LLVMRustLinkage::InternalLinkage;
-  case LLVMPrivateLinkage:
-    return LLVMRustLinkage::PrivateLinkage;
-  case LLVMExternalWeakLinkage:
-    return LLVMRustLinkage::ExternalWeakLinkage;
-  case LLVMCommonLinkage:
-    return LLVMRustLinkage::CommonLinkage;
-  default:
-    report_fatal_error("Invalid LLVMRustLinkage value!");
-  }
-}
-
-static LLVMLinkage fromRust(LLVMRustLinkage Linkage) {
-  switch (Linkage) {
-  case LLVMRustLinkage::ExternalLinkage:
-    return LLVMExternalLinkage;
-  case LLVMRustLinkage::AvailableExternallyLinkage:
-    return LLVMAvailableExternallyLinkage;
-  case LLVMRustLinkage::LinkOnceAnyLinkage:
-    return LLVMLinkOnceAnyLinkage;
-  case LLVMRustLinkage::LinkOnceODRLinkage:
-    return LLVMLinkOnceODRLinkage;
-  case LLVMRustLinkage::WeakAnyLinkage:
-    return LLVMWeakAnyLinkage;
-  case LLVMRustLinkage::WeakODRLinkage:
-    return LLVMWeakODRLinkage;
-  case LLVMRustLinkage::AppendingLinkage:
-    return LLVMAppendingLinkage;
-  case LLVMRustLinkage::InternalLinkage:
-    return LLVMInternalLinkage;
-  case LLVMRustLinkage::PrivateLinkage:
-    return LLVMPrivateLinkage;
-  case LLVMRustLinkage::ExternalWeakLinkage:
-    return LLVMExternalWeakLinkage;
-  case LLVMRustLinkage::CommonLinkage:
-    return LLVMCommonLinkage;
-  }
-  report_fatal_error("Invalid LLVMRustLinkage value!");
-}
-
-extern "C" LLVMRustLinkage LLVMRustGetLinkage(LLVMValueRef V) {
-  return toRust(LLVMGetLinkage(V));
-}
-
-extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
-                                   LLVMRustLinkage RustLinkage) {
-  LLVMSetLinkage(V, fromRust(RustLinkage));
-}
-
 extern "C" bool LLVMRustConstIntGetZExtValue(LLVMValueRef CV, uint64_t *value) {
   auto C = unwrap<llvm::ConstantInt>(CV);
   if (C->getBitWidth() > 64)
@@ -1763,45 +1682,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext,
   *low = AP.getLoBits(64).getZExtValue();
   *high = AP.getHiBits(64).getZExtValue();
   return true;
-}
-
-enum class LLVMRustVisibility {
-  Default = 0,
-  Hidden = 1,
-  Protected = 2,
-};
-
-static LLVMRustVisibility toRust(LLVMVisibility Vis) {
-  switch (Vis) {
-  case LLVMDefaultVisibility:
-    return LLVMRustVisibility::Default;
-  case LLVMHiddenVisibility:
-    return LLVMRustVisibility::Hidden;
-  case LLVMProtectedVisibility:
-    return LLVMRustVisibility::Protected;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
-  switch (Vis) {
-  case LLVMRustVisibility::Default:
-    return LLVMDefaultVisibility;
-  case LLVMRustVisibility::Hidden:
-    return LLVMHiddenVisibility;
-  case LLVMRustVisibility::Protected:
-    return LLVMProtectedVisibility;
-  }
-  report_fatal_error("Invalid LLVMRustVisibility value!");
-}
-
-extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
-  return toRust(LLVMGetVisibility(V));
-}
-
-extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
-                                      LLVMRustVisibility RustVisibility) {
-  LLVMSetVisibility(V, fromRust(RustVisibility));
 }
 
 extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {

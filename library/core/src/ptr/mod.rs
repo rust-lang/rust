@@ -134,7 +134,7 @@
 //! # Provenance
 //!
 //! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
-//! to say that a Use After Free is clearly Undefined Behaviour, even if you "get lucky"
+//! to say that a Use After Free is clearly Undefined Behavior, even if you "get lucky"
 //! and the freed memory gets reallocated before your read/write (in fact this is the
 //! worst-case scenario, UAFs would be much less concerning if this didn't happen!).
 //! As another example, consider that [`wrapping_offset`] is documented to "remember"
@@ -591,8 +591,8 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -602,7 +602,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
     unsafe { mem::transmute(addr) }
 }
 
-/// Creates a new pointer that is dangling, but well-aligned.
+/// Creates a new pointer that is dangling, but non-null and well-aligned.
 ///
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
@@ -613,8 +613,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
 }
@@ -634,8 +634,8 @@ pub const fn dangling<T>() -> *const T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -645,7 +645,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unsafe { mem::transmute(addr) }
 }
 
-/// Creates a new pointer that is dangling, but well-aligned.
+/// Creates a new pointer that is dangling, but non-null and well-aligned.
 ///
 /// This is useful for initializing types which lazily allocate, like
 /// `Vec::new` does.
@@ -656,8 +656,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
@@ -1125,7 +1125,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
 }
 
-/// Same behaviour and safety conditions as [`swap_nonoverlapping`]
+/// Same behavior and safety conditions as [`swap_nonoverlapping`]
 ///
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
@@ -1854,6 +1854,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
 #[lang = "align_offset"]
+#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
@@ -2107,13 +2108,39 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 
 /// Compares the *addresses* of the two function pointers for equality.
 ///
-/// Function pointers comparisons can have surprising results since
-/// they are never guaranteed to be unique and could vary between different
-/// code generation units. Furthermore, different functions could have the
-/// same address after being merged together.
+/// This is the same as `f == g`, but using this function makes clear that the potentially
+/// surprising semantics of function pointer comparison are involved.
 ///
-/// This is the same as `f == g` but using this function makes clear
-/// that you are aware of these potentially surprising semantics.
+/// There are **very few guarantees** about how functions are compiled and they have no intrinsic
+/// “identity”; in particular, this comparison:
+///
+/// * May return `true` unexpectedly, in cases where functions are equivalent.
+///
+///   For example, the following program is likely (but not guaranteed) to print `(true, true)`
+///   when compiled with optimization:
+///
+///   ```
+///   # #![feature(ptr_fn_addr_eq)]
+///   let f: fn(i32) -> i32 = |x| x;
+///   let g: fn(i32) -> i32 = |x| x + 0;  // different closure, different body
+///   let h: fn(u32) -> u32 = |x| x + 0;  // different signature too
+///   dbg!(std::ptr::fn_addr_eq(f, g), std::ptr::fn_addr_eq(f, h)); // not guaranteed to be equal
+///   ```
+///
+/// * May return `false` in any case.
+///
+///   This is particularly likely with generic functions but may happen with any function.
+///   (From an implementation perspective, this is possible because functions may sometimes be
+///   processed more than once by the compiler, resulting in duplicate machine code.)
+///
+/// Despite these false positives and false negatives, this comparison can still be useful.
+/// Specifically, if
+///
+/// * `T` is the same type as `U`, `T` is a [subtype] of `U`, or `U` is a [subtype] of `T`, and
+/// * `ptr::fn_addr_eq(f, g)` returns true,
+///
+/// then calling `f` and calling `g` will be equivalent.
+///
 ///
 /// # Examples
 ///
@@ -2125,6 +2152,8 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// fn b() { println!("b"); }
 /// assert!(!ptr::fn_addr_eq(a as fn(), b as fn()));
 /// ```
+///
+/// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
 #[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]

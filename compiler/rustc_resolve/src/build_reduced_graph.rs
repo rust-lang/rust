@@ -177,7 +177,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let loaded_macro = self.cstore().load_macro_untracked(def_id, self.tcx);
         let macro_data = match loaded_macro {
-            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
+            LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
+                self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
+            }
             LoadedMacro::ProcMacro(ext) => MacroData::new(Lrc::new(ext)),
         };
 
@@ -1321,7 +1323,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         // Visit attributes after items for backward compatibility.
                         // This way they can use `macro_rules` defined later.
                         self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
+                        self.visit_ident(&item.ident);
                         item.kind.walk(item, AssocCtxt::Trait, self);
                         visit::walk_list!(self, visit_attribute, &item.attrs);
                     }

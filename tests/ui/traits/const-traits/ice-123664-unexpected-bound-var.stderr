@@ -1,0 +1,16 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
+   |
+LL | const fn with_positive<F: ~const Fn()>() {}
+   |                           ^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/ice-123664-unexpected-bound-var.rs:4:27
+   |
+LL | const fn with_positive<F: ~const Fn()>() {}
+   |                           ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

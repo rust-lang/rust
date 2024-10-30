@@ -3,14 +3,19 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 // Diagnostic: macro-error
 //
 // This diagnostic is shown for macro expansion errors.
+
+// Diagnostic: proc-macros-disabled
+//
+// This diagnostic is shown for proc macros where proc macros have been disabled.
+
+// Diagnostic: proc-macro-disabled
+//
+// This diagnostic is shown for proc macros that has been specifically disabled via `rust-analyzer.procMacro.ignored`.
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
     Diagnostic::new(
-        DiagnosticCode::Ra(
-            "macro-error",
-            if d.error { Severity::Error } else { Severity::WeakWarning },
-        ),
+        DiagnosticCode::Ra(d.kind, if d.error { Severity::Error } else { Severity::WeakWarning }),
         d.message.clone(),
         display_range,
     )
