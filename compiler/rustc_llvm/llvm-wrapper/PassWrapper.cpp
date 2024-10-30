@@ -1559,8 +1559,10 @@ extern "C" LLVMModuleRef LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
 extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
                                                             size_t len,
                                                             const char *name,
+                                                            size_t name_len,
                                                             size_t *out_len) {
   *out_len = 0;
+  auto Name = StringRef(name, name_len);
   auto Data = StringRef(data, len);
   auto Buffer = MemoryBufferRef(Data, ""); // The id is unused.
   file_magic Type = identify_magic(Buffer.getBuffer());
@@ -1571,8 +1573,8 @@ extern "C" const char *LLVMRustGetSliceFromObjectDataByName(const char *data,
     return nullptr;
   }
   for (const object::SectionRef &Sec : (*ObjFileOrError)->sections()) {
-    Expected<StringRef> Name = Sec.getName();
-    if (Name && *Name == name) {
+    Expected<StringRef> SecName = Sec.getName();
+    if (SecName && *SecName == Name) {
       Expected<StringRef> SectionOrError = Sec.getContents();
       if (!SectionOrError) {
         LLVMRustSetLastError(toString(SectionOrError.takeError()).c_str());

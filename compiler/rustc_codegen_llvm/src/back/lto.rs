@@ -165,13 +165,14 @@ fn get_bitcode_slice_from_object_data<'a>(
     // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
     // name" which in the public API for sections gets treated as part of the section name, but
     // internally in MachOObjectFile.cpp gets treated separately.
-    let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
+    let section_name = bitcode_section_name(cgcx).to_str().unwrap().trim_start_matches("__LLVM,");
     let mut len = 0;
     let data = unsafe {
         llvm::LLVMRustGetSliceFromObjectDataByName(
             obj.as_ptr(),
             obj.len(),
             section_name.as_ptr(),
+            section_name.len(),
             &mut len,
         )
     };
