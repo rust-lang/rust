@@ -1388,7 +1388,7 @@ fn check_impl<'tcx>(
                                 ObligationCauseCode::WellFormed(None),
                             ),
                             wfcx.param_env,
-                            bound.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                            bound.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
                         ))
                     }
                 }

@@ -1959,7 +1959,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::BoundConstness::Const => {
                 p!("const ");
             }
-            ty::BoundConstness::ConstIfConst => {
+            ty::BoundConstness::Maybe => {
                 p!("~const ");
             }
         }
@@ -3076,9 +3076,9 @@ define_print! {
     }
 
     ty::HostEffectPredicate<'tcx> {
-        let constness = match self.host {
-            ty::HostPolarity::Const => { "const" }
-            ty::HostPolarity::Maybe => { "~const" }
+        let constness = match self.constness {
+            ty::BoundConstness::Const => { "const" }
+            ty::BoundConstness::Maybe => { "~const" }
         };
         p!(print(self.trait_ref.self_ty()), ": {constness} ");
         p!(print(self.trait_ref.print_trait_sugared()))

@@ -155,7 +155,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     if tcx.is_conditionally_const(def_id) {
         predicates.extend(
             tcx.const_conditions(def_id).instantiate_identity(tcx).into_iter().map(
-                |(trait_ref, _)| trait_ref.to_host_effect_clause(tcx, ty::HostPolarity::Maybe),
+                |(trait_ref, _)| trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
             ),
         );
     }
