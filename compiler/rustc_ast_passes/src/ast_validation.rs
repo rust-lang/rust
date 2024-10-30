@@ -677,9 +677,8 @@ impl<'a> AstValidator<'a> {
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
-                if let Extern::Implicit(_) = bfty.ext {
-                    let sig_span = self.sess.source_map().next_point(ty.span.shrink_to_lo());
-                    self.maybe_lint_missing_abi(sig_span, ty.id);
+                if let Extern::Implicit(extern_span) = bfty.ext {
+                    self.maybe_lint_missing_abi(extern_span, ty.id);
                 }
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -953,7 +952,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
                     let old_item = mem::replace(&mut this.extern_mod, Some(item.span));
                     this.visibility_not_permitted(
@@ -977,7 +976,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     if abi.is_none() {
-                        this.maybe_lint_missing_abi(item.span, item.id);
+                        this.maybe_lint_missing_abi(*extern_span, item.id);
                     }
                     visit::walk_item(this, item);
                     this.extern_mod = old_item;
@@ -1350,13 +1349,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit(_), .. }, .. },
+            FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
             _,
             _,
             _,
         ) = fk
         {
-            self.maybe_lint_missing_abi(*sig_span, id);
+            self.maybe_lint_missing_abi(*extern_span, id);
         }
 
         // Functions without bodies cannot have patterns.
