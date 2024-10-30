@@ -2169,7 +2169,7 @@ impl str {
     /// Returns a string slice with the prefix removed.
     ///
     /// If the string starts with the pattern `prefix`, returns the substring after the prefix,
-    /// wrapped in `Some`. Unlike `trim_start_matches`, this method removes the prefix exactly once.
+    /// wrapped in `Some`. Unlike [`trim_start_matches`], this method removes the prefix exactly once.
     ///
     /// If the string does not start with `prefix`, returns `None`.
     ///
@@ -2178,6 +2178,7 @@ impl str {
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
+    /// [`trim_start_matches`]: Self::trim_start_matches
     ///
     /// # Examples
     ///
@@ -2196,7 +2197,7 @@ impl str {
     /// Returns a string slice with the suffix removed.
     ///
     /// If the string ends with the pattern `suffix`, returns the substring before the suffix,
-    /// wrapped in `Some`.  Unlike `trim_end_matches`, this method removes the suffix exactly once.
+    /// wrapped in `Some`.  Unlike [`trim_end_matches`], this method removes the suffix exactly once.
     ///
     /// If the string does not end with `suffix`, returns `None`.
     ///
@@ -2205,6 +2206,7 @@ impl str {
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
+    /// [`trim_end_matches`]: Self::trim_end_matches
     ///
     /// # Examples
     ///
