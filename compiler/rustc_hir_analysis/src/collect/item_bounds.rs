@@ -379,9 +379,6 @@ pub(super) fn explicit_item_bounds_with_filter(
     }
 
     let bounds = match tcx.hir_node_by_def_id(def_id) {
-        _ if tcx.is_effects_desugared_assoc_ty(def_id.to_def_id()) => {
-            associated_type_bounds(tcx, def_id, &[], tcx.def_span(def_id), filter)
-        }
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
