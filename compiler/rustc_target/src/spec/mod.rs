@@ -55,8 +55,14 @@ use crate::json::{Json, ToJson};
 use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
 
-pub mod abi;
 pub mod crt_objects;
+
+pub mod abi {
+    pub use rustc_abi::{
+        AbiDisabled, AbiUnsupported, ExternAbi as Abi, all_names, enabled_names, is_enabled,
+        is_stable, lookup,
+    };
+}
 
 mod base;
 pub use base::apple::{

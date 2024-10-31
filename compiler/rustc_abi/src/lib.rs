@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
+#![cfg_attr(feature = "nightly", feature(assert_matches))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
@@ -28,7 +29,14 @@ mod layout;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "nightly")]
+mod extern_abi;
+
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
+#[cfg(feature = "nightly")]
+pub use extern_abi::{
+    AbiDisabled, AbiUnsupported, ExternAbi, all_names, enabled_names, is_enabled, is_stable, lookup,
+};
 #[cfg(feature = "nightly")]
 pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
 pub use layout::{LayoutCalculator, LayoutCalculatorError};
