@@ -38,6 +38,9 @@ jobs:
         - target: i686-unknown-linux-gnu
           os: ubuntu-latest
           rust: nightly
+        - target: loongarch64-unknown-linux-gnu
+          os: ubuntu-latest
+          rust: nightly
         # MIPS targets disabled since they are dropped to tier 3.
         # See https://github.com/rust-lang/compiler-team/issues/648
         #- target: mips-unknown-linux-gnu
