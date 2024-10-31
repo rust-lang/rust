@@ -44,37 +44,19 @@ Check [PR #65] for an example.
   `mod.rs`.
 
 - You may encounter weird literals like `0x1p127f` in the MUSL code. These are hexadecimal floating
-  point literals. Rust (the language) doesn't support these kind of literals. The best way I have
-  found to deal with these literals is to turn them into their integer representation using the
-  [`hexf!`] macro and then turn them back into floats. See below:
+  point literals. Rust (the language) doesn't support these kind of literals. This crate provides
+  two macros, `hf32!` and `hf64!`, which convert string literals to floats at compile time.
 
-[`hexf!`]: https://crates.io/crates/hexf
-
-``` rust
-// Step 1: write a program to convert the float into its integer representation
-#[macro_use]
-extern crate hexf;
-
-fn main() {
-    println!("{:#x}", hexf32!("0x1.0p127").to_bits());
-}
-```
-
-``` console
-$ # Step 2: run the program
-$ cargo run
-0x7f000000
-```
-
-``` rust
-// Step 3: copy paste the output into libm
-let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 12
-```
+  ```rust
+  assert_eq!(hf32!("0x1.ffep+8").to_bits(), 0x43fff000);
+  assert_eq!(hf64!("0x1.ffep+8").to_bits(), 0x407ffe0000000000);
+  ```
 
 - Rust code panics on arithmetic overflows when not optimized. You may need to use the [`Wrapping`]
-  newtype to avoid this problem.
+  newtype to avoid this problem, or individual methods like [`wrapping_add`].
 
 [`Wrapping`]: https://doc.rust-lang.org/std/num/struct.Wrapping.html
+[`wrapping_add`]: https://doc.rust-lang.org/std/primitive.u32.html#method.wrapping_add
 
 ## Testing
 
