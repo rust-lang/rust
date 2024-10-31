@@ -362,7 +362,7 @@ fn is_normalizable_helper<'tcx>(
     }
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
     cache.insert(ty, false);
-    let infcx = cx.tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
+    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     let cause = ObligationCause::dummy();
     let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
         match ty.kind() {
