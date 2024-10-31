@@ -214,6 +214,7 @@ pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
 pub(crate) enum SuggestAnnotation {
     Unit(Span),
     Path(Span),
+    Local(Span),
 }
 
 #[derive(Clone)]
@@ -239,6 +240,9 @@ impl Subdiagnostic for SuggestAnnotations {
                 SuggestAnnotation::Path(span) => {
                     suggestions.push((span.shrink_to_lo(), "<() as ".to_string()));
                     suggestions.push((span.shrink_to_hi(), ">".to_string()));
+                }
+                SuggestAnnotation::Local(span) => {
+                    suggestions.push((span, ": ()".to_string()));
                 }
             }
         }

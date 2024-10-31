@@ -620,6 +620,19 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
         }
         hir::intravisit::walk_expr(self, expr)
     }
+
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) -> Self::Result {
+        if let None = local.ty
+            && let ty = self.fcx.typeck_results.borrow().node_type(local.hir_id)
+            && let Some(vid) = self.fcx.root_vid(ty)
+            && self.reachable_vids.contains(&vid)
+        {
+            return ControlFlow::Break(errors::SuggestAnnotation::Local(
+                local.pat.span.shrink_to_hi(),
+            ));
+        }
+        hir::intravisit::walk_local(self, local)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
