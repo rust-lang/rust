@@ -4,6 +4,7 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
+use rustc_session::Session;
 use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
@@ -39,17 +40,50 @@ impl<V: CodegenObject> PlaceValue<V> {
         PlaceValue { llval, llextra: None, align }
     }
 
+    fn max_am_alignment_bytes(sess: &Session) -> u64 {
+        1 << sess.target.pointer_width - 1
+    }
+
+    /// Returns the maximum possible alignment in the AM as a constant `V`.
+    /// This is `isize::MIN`, which is usually more than `Align::MAX`,
+    /// as the `Align` type inherits an alignment cap from LLVM.
+    ///
+    /// Exposed as a method for use by `alloca_zst` and because static allocations
+    /// in cg_llvm use it as well.
+    pub fn const_usize_max_am_alignment<'tcx, Cx: CodegenMethods<'tcx, Value = V>>(cx: &Cx) -> V {
+        cx.const_usize(Self::max_am_alignment_bytes(cx.sess()))
+    }
+
+    /// "Allocates" a ZST by returning a no-provenance pointer to `isize::MIN`,
+    /// which is always sufficiently aligned for every possible type.
+    pub fn alloca_zst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        bx: &mut Bx,
+    ) -> PlaceValue<V> {
+        let max_am_align = Self::const_usize_max_am_alignment(bx.cx());
+        let llval = bx.ptradd(bx.const_null(bx.type_ptr()), max_am_align);
+        let max_align =
+            Align::from_bytes(Self::max_am_alignment_bytes(bx.sess())).unwrap_or(Align::MAX);
+        Self::new_sized(llval, max_align)
+    }
+
     /// Allocates a stack slot in the function for a value
     /// of the specified size and alignment.
     ///
     /// The allocation itself is untyped.
+    ///
+    /// If `size == 0`, this will be [`Self::alloca_zst`] rather than emitting
+    /// an actual `alloca` instruction with zero size.
     pub fn alloca<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         size: Size,
         align: Align,
     ) -> PlaceValue<V> {
-        let llval = bx.alloca(size, align);
-        PlaceValue::new_sized(llval, align)
+        if size == Size::ZERO {
+            Self::alloca_zst(bx)
+        } else {
+            let llval = bx.alloca(size, align);
+            PlaceValue::new_sized(llval, align)
+        }
     }
 
     /// Creates a `PlaceRef` to this location with the given type.

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/nonnull_as_ref_ub.rs:6:29
+   |
+LL | const _: () = assert!(42 == *unsafe { NON_NULL.as_ref() });
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 1 byte of memory, but got 0x8000000000000000[noalloc] which is a dangling pointer (it has no provenance)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

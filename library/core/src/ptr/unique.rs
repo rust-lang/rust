@@ -71,6 +71,7 @@ impl<T: Sized> Unique<T> {
     /// some other means.
     #[must_use]
     #[inline]
+    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "ptr_internals", issue = "none"))]
     pub const fn dangling() -> Self {
         // FIXME(const-hack) replace with `From`
         Unique { pointer: NonNull::dangling(), _marker: PhantomData }

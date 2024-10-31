@@ -181,7 +181,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline]
     #[cfg_attr(bootstrap, rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81"))]
     pub const fn new_in(alloc: A) -> Self {
-        Self { inner: RawVecInner::new_in(alloc, align_of::<T>()), _marker: PhantomData }
+        Self { inner: RawVecInner::new_in(alloc), _marker: PhantomData }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -410,8 +410,9 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
     #[cfg_attr(bootstrap, rustc_const_stable(feature = "raw_vec_internals_const", since = "1.81"))]
-    const fn new_in(alloc: A, align: usize) -> Self {
-        let ptr = unsafe { core::mem::transmute(align) };
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(ptr_internals))]
+    const fn new_in(alloc: A) -> Self {
+        let ptr = Unique::dangling();
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr, cap: Cap::ZERO, alloc }
     }
@@ -466,7 +467,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
         if layout.size() == 0 {
-            return Ok(Self::new_in(alloc, elem_layout.align()));
+            return Ok(Self::new_in(alloc));
         }
 
         if let Err(err) = alloc_guard(layout.size()) {

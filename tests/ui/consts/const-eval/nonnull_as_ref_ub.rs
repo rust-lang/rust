@@ -1,3 +1,5 @@
+//@ stderr-per-bitwidth
+
 use std::ptr::NonNull;
 
 const NON_NULL: NonNull<u8> = unsafe { NonNull::dangling() };

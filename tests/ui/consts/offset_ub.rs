@@ -2,6 +2,7 @@ use std::ptr;
 
 //@ normalize-stderr-test: "0xf+" -> "0xf..f"
 //@ normalize-stderr-test: "0x7f+" -> "0x7f..f"
+//@ normalize-stderr-test: "0x80+" -> "0x80..0"
 //@ normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
 
 

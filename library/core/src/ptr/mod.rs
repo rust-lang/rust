@@ -616,7 +616,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling<T>() -> *const T {
-    without_provenance(mem::align_of::<T>())
+    ONE_TRUE_DANGLING_POINTER as _
 }
 
 /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
@@ -645,6 +645,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     unsafe { mem::transmute(addr) }
 }
 
+const ONE_TRUE_DANGLING_POINTER: *mut () = without_provenance_mut(isize::MIN as usize);
+
 /// Creates a new pointer that is dangling, but non-null and well-aligned.
 ///
 /// This is useful for initializing types which lazily allocate, like
@@ -659,7 +661,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
 pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem::align_of::<T>())
+    ONE_TRUE_DANGLING_POINTER as _
 }
 
 /// Converts an address back to a pointer, picking up some previously 'exposed'

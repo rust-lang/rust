@@ -15,6 +15,7 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+impl Copy for u8 {}
 impl<T: ?Sized> Copy for &T {}
 #[lang = "legacy_receiver"]
 trait LegacyReceiver {}
@@ -35,11 +36,14 @@ trait Drop {
     fn drop(&mut self);
 }
 
+// These types were formerly all ZSTs, but that triggered allocation-avoidance for them,
+// so now they have a field to ensure they get things like `alloca`s when they're locals.
+
 pub trait Trait1 {
     fn foo(&self);
 }
 
-pub struct Type1;
+pub struct Type1(u8);
 
 impl Trait1 for Type1 {
     fn foo(&self) {}
@@ -49,7 +53,7 @@ pub trait Trait2<T> {
     fn bar(&self);
 }
 
-pub struct Type2;
+pub struct Type2(u8);
 
 impl Trait2<i32> for Type2 {
     fn bar(&self) {}
@@ -59,7 +63,7 @@ pub trait Trait3<T> {
     fn baz(&self, _: &T);
 }
 
-pub struct Type3;
+pub struct Type3(u8);
 
 impl<T, U> Trait3<U> for T {
     fn baz(&self, _: &U) {}
@@ -70,7 +74,7 @@ pub trait Trait4<'a, T> {
     fn qux(&self, _: &T) -> Self::Output;
 }
 
-pub struct Type4;
+pub struct Type4(u8);
 
 impl<'a, T, U> Trait4<'a, U> for T {
     type Output = &'a i32;
@@ -83,7 +87,7 @@ pub trait Trait5<T, const N: usize> {
     fn quux(&self, _: &[T; N]);
 }
 
-pub struct Type5;
+pub struct Type5(u8);
 
 impl Copy for Type5 {}
 
@@ -98,11 +102,11 @@ pub fn foo1(a: &dyn Trait1) {
 }
 
 pub fn bar1() {
-    let a = Type1;
+    let a = Type1(42);
     let b = &a as &dyn Trait1;
     b.foo();
     // CHECK-LABEL: define{{.*}}4bar1{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE1:[[:print:]]+]]) ]
 }
 
 pub fn foo2<T>(a: &dyn Trait2<T>) {
@@ -112,55 +116,55 @@ pub fn foo2<T>(a: &dyn Trait2<T>) {
 }
 
 pub fn bar2() {
-    let a = Type2;
+    let a = Type2(42);
     foo2(&a);
     let b = &a as &dyn Trait2<i32>;
     b.bar();
     // CHECK-LABEL: define{{.*}}4bar2{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE2:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE2:[[:print:]]+]]) ]
 }
 
 pub fn foo3(a: &dyn Trait3<Type3>) {
-    let b = Type3;
+    let b = Type3(42);
     a.baz(&b);
     // CHECK-LABEL: define{{.*}}4foo3{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
 }
 
 pub fn bar3() {
-    let a = Type3;
+    let a = Type3(42);
     foo3(&a);
     let b = &a as &dyn Trait3<Type3>;
     b.baz(&a);
     // CHECK-LABEL: define{{.*}}4bar3{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
+    // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z]|%_[0-9]}}, ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE3:[[:print:]]+]]) ]
 }
 
 pub fn foo4<'a>(a: &dyn Trait4<'a, Type4, Output = &'a i32>) {
-    let b = Type4;
+    let b = Type4(42);
     a.qux(&b);
     // CHECK-LABEL: define{{.*}}4foo4{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call align 4 ptr %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
+    // CHECK:       call align 4 ptr %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
 }
 
 pub fn bar4<'a>() {
-    let a = Type4;
+    let a = Type4(42);
     foo4(&a);
     let b = &a as &dyn Trait4<'a, Type4, Output = &'a i32>;
     b.qux(&a);
     // CHECK-LABEL: define{{.*}}4bar4{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
-    // CHECK:       call align 4 ptr %{{[0-9]}}(ptr align 1 {{%[a-z]\.0|%_[0-9]}}, ptr align 1 {{%[a-z]\.0|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
+    // CHECK:       call align 4 ptr %{{[0-9]}}(ptr align 1 {{%[a-z]|%_[0-9]}}, ptr align 1 {{%[a-z]|%_[0-9]}}){{.*}}[ "kcfi"(i32 [[TYPE4:[[:print:]]+]]) ]
 }
 
 pub fn foo5(a: &dyn Trait5<Type5, 32>) {
-    let b = &[Type5; 32];
+    let b = &[Type5(42); 32];
     a.quux(&b);
     // CHECK-LABEL: define{{.*}}4foo5{{.*}}!{{<unknown kind #36>|kcfi_type}} !{{[0-9]+}}
     // CHECK:       call void %{{[0-9]}}(ptr align 1 {{%[a-z](\.0)*|%_[0-9]+]}}, ptr align 1 {{%[a-z](\.0)*|%_[0-9]+}}){{.*}}[ "kcfi"(i32 [[TYPE5:[[:print:]]+]]) ]
 }
 
 pub fn bar5() {
-    let a = &[Type5; 32];
+    let a = &[Type5(42); 32];
     foo5(&a);
     let b = &a as &dyn Trait5<Type5, 32>;
     b.quux(&a);

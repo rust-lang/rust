@@ -133,14 +133,14 @@ impl Alignment {
     /// ```
     /// #![feature(ptr_alignment_type)]
     /// #![feature(ptr_mask)]
-    /// use std::ptr::{Alignment, NonNull};
+    /// use std::ptr::{self, Alignment};
     ///
     /// #[repr(align(1))] struct Align1(u8);
     /// #[repr(align(2))] struct Align2(u16);
     /// #[repr(align(4))] struct Align4(u32);
-    /// let one = <NonNull<Align1>>::dangling().as_ptr();
-    /// let two = <NonNull<Align2>>::dangling().as_ptr();
-    /// let four = <NonNull<Align4>>::dangling().as_ptr();
+    /// let one = ptr::without_provenance::<u8>(1);
+    /// let two = ptr::without_provenance::<u8>(2);
+    /// let four = ptr::without_provenance::<u8>(4);
     ///
     /// assert_eq!(four.mask(Alignment::of::<Align1>().mask()), four);
     /// assert_eq!(four.mask(Alignment::of::<Align2>().mask()), four);

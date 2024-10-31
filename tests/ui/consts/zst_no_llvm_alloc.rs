@@ -11,9 +11,14 @@ fn main() {
     // a constant address is cheap and doesn't result in relocations in comparison to a "real"
     // global somewhere in the data section.
     let x: &'static () = &();
-    assert_eq!(x as *const () as usize, 1);
+    assert_eq!(x as *const () as isize, isize::MIN);
     let x: &'static Foo = &Foo;
-    assert_eq!(x as *const Foo as usize, 4);
+    assert_eq!(x as *const Foo as isize, isize::MIN);
+    // We also put ZST locals at the same fake address, rather than `alloca`ing
+    let local_unit = ();
+    assert_eq!((&raw const local_unit) as isize, isize::MIN);
+    let local_high_align_zst = [0_u128; 0];
+    assert_eq!((&raw const local_high_align_zst) as isize, isize::MIN);
 
     // The exact addresses returned by these library functions are not necessarily stable guarantees
     // but for now we assert that we're still matching.

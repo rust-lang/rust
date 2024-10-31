@@ -6,6 +6,7 @@ use rustc_abi::Primitive::Pointer;
 use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::mir::place::PlaceValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -274,11 +275,11 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
                             assert_eq!(offset.bytes(), 0);
-                            let llval = self.const_usize(alloc.inner().align.bytes());
+                            let max_align = PlaceValue::const_usize_max_am_alignment(self);
                             return if matches!(layout.primitive(), Pointer(_)) {
-                                unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
+                                unsafe { llvm::LLVMConstIntToPtr(max_align, llty) }
                             } else {
-                                self.const_bitcast(llval, llty)
+                                self.const_bitcast(max_align, llty)
                             };
                         } else {
                             let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
