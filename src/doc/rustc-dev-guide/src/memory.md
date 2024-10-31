@@ -94,7 +94,7 @@ structures (e.g. the [Abstract Syntax Tree (AST)][ast], [High-Level Intermediate
 Representation (`HIR`)][hir], and the type system) and as such, arenas and
 references are heavily relied upon to minimize unnecessary memory use. This
 manifests itself in the way people can plug into the compiler (i.e. the
-[driver](./rustc-driver.md)), preferring a "push"-style API (callbacks) instead
+[driver](./rustc-driver/intro.md)), preferring a "push"-style API (callbacks) instead
 of the more Rust-ic "pull" style (think the `Iterator` trait).
 
 Thread-local storage and interning are used a lot through the compiler to reduce

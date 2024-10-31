@@ -113,7 +113,7 @@ in the trait solver
 
 #### The type system is complete during the implicit negative overlap check in coherence ✅
 
-For more on overlap checking: [../coherence.md]
+For more on overlap checking: [coherence]
 
 During the implicit negative overlap check in coherence we must never return *error* for
 goals which can be proven. This would allow for overlapping impls with potentially different
@@ -154,3 +154,4 @@ arguments. This currently does not hold: [#97156].
 [#57893]: https://github.com/rust-lang/rust/issues/57893
 [#97156]: https://github.com/rust-lang/rust/issues/97156
 [#114936]: https://github.com/rust-lang/rust/issues/114936
+[coherence]:  ../coherence.md

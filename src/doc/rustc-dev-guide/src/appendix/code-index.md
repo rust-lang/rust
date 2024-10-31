@@ -34,7 +34,7 @@ Item            |  Kind    | Short description           | Chapter            | 
 [The HIR]: ../hir.html
 [Identifiers in the HIR]: ../hir.html#hir-id
 [The parser]: ../the-parser.html
-[The Rustc Driver and Interface]: ../rustc-driver.html
+[The Rustc Driver and Interface]: ../rustc-driver/intro.html
 [Type checking]: ../type-checking.html
 [The `ty` modules]: ../ty.html
 [Rustdoc]: ../rustdoc.html

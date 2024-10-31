@@ -14,6 +14,6 @@ And parsing requires macro expansion, which in turn may require parsing the outp
 [AST]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [macro expansion]: ./macro-expansion.md
 [feature-gate checking]: ./feature-gate-ck.md
-[lexing, parsing]: ./lexing-parsing.md
+[lexing, parsing]: ./the-parser.md
 [name resolution]: ./name-resolution.md
 [validation]: ./ast-validation.md

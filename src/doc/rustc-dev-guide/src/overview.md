@@ -146,7 +146,7 @@ the final binary.
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
 [`Pat`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Pat.html
 [`rustc_ast::ast`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/index.html
-[`rustc_driver`]: rustc-driver.md
+[`rustc_driver`]: rustc-driver/intro.md
 [`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
 [`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`rustc_parse::lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/index.html
@@ -387,7 +387,7 @@ For more details on bootstrapping, see
 # References
 
 - Command line parsing
-  - Guide: [The Rustc Driver and Interface](rustc-driver.md)
+  - Guide: [The Rustc Driver and Interface](rustc-driver/intro.md)
   - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
   - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens

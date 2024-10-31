@@ -16,7 +16,7 @@ where the rustc source code lives.
 ## Workspace structure
 
 The [`rust-lang/rust`] repository consists of a single large cargo workspace
-containing the compiler, the standard libraries ([`core`], [`alloc`],[ `std`],
+containing the compiler, the standard libraries ([`core`], [`alloc`], [`std`],
 [`proc_macro`], [`etc`]), and [`rustdoc`], along with the build system and a
 bunch of tools and submodules for building a full Rust distribution.
 
