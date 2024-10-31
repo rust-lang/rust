@@ -626,7 +626,6 @@ macro_rules! spec_tuple_impl {
 }
 
 spec_tuple_impl!(
-    (M, m, EM, TraitM, default_extend_tuple_m, 12),
     (L, l, EL, TraitL, default_extend_tuple_l, 11),
     (K, k, EK, TraitK, default_extend_tuple_k, 10),
     (J, j, EJ, TraitJ, default_extend_tuple_j, 9),
