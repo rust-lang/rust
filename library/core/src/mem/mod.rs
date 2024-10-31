@@ -1255,8 +1255,8 @@ impl<T> SizedTypeProperties for T {}
 /// Nested field accesses may be used, but not array indexes.
 ///
 /// If the nightly-only feature `offset_of_enum` is enabled,
-/// variants may be traversed as if they were fields. Variants themselves do
-/// not have an offset.
+/// variants may be traversed as if they were fields.
+/// Variants themselves do not have an offset.
 ///
 /// Visibility is respected - all types and fields must be visible to the call site:
 ///
