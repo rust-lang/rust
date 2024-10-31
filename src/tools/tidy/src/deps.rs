@@ -161,7 +161,6 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
-    ("snap", "BSD-3-Clause"),
     // tidy-alphabetical-end
 ];
 

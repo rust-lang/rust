@@ -8,7 +8,6 @@ use std::{
 use memmap2::Mmap;
 use object::read::{File as BinaryFile, Object, ObjectSection};
 use paths::AbsPath;
-use snap::read::FrameDecoder as SnapDecoder;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -123,9 +122,8 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
     // Last supported version is:
     // https://github.com/rust-lang/rust/commit/b94cfefc860715fb2adf72a6955423d384c69318
-    let (snappy_portion, bytes_before_version) = match version {
-        5 | 6 => (&dot_rustc[8..], 13),
-        7 | 8 => {
+    let (mut metadata_portion, bytes_before_version) = match version {
+        8 => {
             let len_bytes = &dot_rustc[8..12];
             let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
             (&dot_rustc[12..data_len + 12], 13)
@@ -143,13 +141,6 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
         }
     };
 
-    let mut uncompressed: Box<dyn Read> = if &snappy_portion[0..4] == b"rust" {
-        // Not compressed.
-        Box::new(snappy_portion)
-    } else {
-        Box::new(SnapDecoder::new(snappy_portion))
-    };
-
     // We're going to skip over the bytes before the version string, so basically:
     // 8 bytes for [b'r',b'u',b's',b't',0,0,0,5]
     // 4 or 8 bytes for [crate root bytes]
@@ -157,11 +148,11 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     // so 13 or 17 bytes in total, and we should check the last of those bytes
     // to know the length
     let mut bytes = [0u8; 17];
-    uncompressed.read_exact(&mut bytes[..bytes_before_version])?;
+    metadata_portion.read_exact(&mut bytes[..bytes_before_version])?;
     let length = bytes[bytes_before_version - 1];
 
     let mut version_string_utf8 = vec![0u8; length as usize];
-    uncompressed.read_exact(&mut version_string_utf8)?;
+    metadata_portion.read_exact(&mut version_string_utf8)?;
     let version_string = String::from_utf8(version_string_utf8);
     version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
