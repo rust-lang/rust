@@ -2767,25 +2767,32 @@ impl Config {
             }
         };
 
-        let files_to_track =
-            &["compiler", "library", "src/version", "src/stage0", "src/ci/channel"];
+        let mut files_to_track = vec!["compiler", "src/version", "src/stage0", "src/ci/channel"];
+
+        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, ignore
+        // these changes to speed up the build process for library developers. This provides consistent
+        // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
+        // options.
+        if CiEnv::is_ci() {
+            files_to_track.push("library");
+        }
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = match self.last_modified_commit(files_to_track, "download-rustc", if_unchanged)
-        {
-            Some(commit) => commit,
-            None => {
-                if if_unchanged {
-                    return None;
+        let commit =
+            match self.last_modified_commit(&files_to_track, "download-rustc", if_unchanged) {
+                Some(commit) => commit,
+                None => {
+                    if if_unchanged {
+                        return None;
+                    }
+                    println!("ERROR: could not find commit hash for downloading rustc");
+                    println!("HELP: maybe your repository history is too shallow?");
+                    println!("HELP: consider disabling `download-rustc`");
+                    println!("HELP: or fetch enough history to include one upstream commit");
+                    crate::exit!(1);
                 }
-                println!("ERROR: could not find commit hash for downloading rustc");
-                println!("HELP: maybe your repository history is too shallow?");
-                println!("HELP: consider disabling `download-rustc`");
-                println!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
-            }
-        };
+            };
 
         if CiEnv::is_ci() && {
             let head_sha =

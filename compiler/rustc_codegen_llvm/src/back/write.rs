@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -958,14 +958,13 @@ fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
     cgcx.opts.target_triple.triple().contains("-aix")
 }
 
-//FIXME use c string literals here too
-pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static str {
+pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
     if target_is_apple(cgcx) {
-        "__LLVM,__bitcode\0"
+        c"__LLVM,__bitcode"
     } else if target_is_aix(cgcx) {
-        ".ipa\0"
+        c".ipa"
     } else {
-        ".llvmbc\0"
+        c".llvmbc"
     }
 }
 
@@ -1042,8 +1041,7 @@ unsafe fn embed_bitcode(
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
 
-            let section = bitcode_section_name(cgcx);
-            llvm::LLVMSetSection(llglobal, section.as_c_char_ptr());
+            llvm::set_section(llglobal, bitcode_section_name(cgcx));
             llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
             llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
@@ -1061,7 +1059,7 @@ unsafe fn embed_bitcode(
             } else {
                 c".llvmcmd"
             };
-            llvm::LLVMSetSection(llglobal, section.as_ptr());
+            llvm::set_section(llglobal, section);
             llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
         } else {
             // We need custom section flags, so emit module-level inline assembly.

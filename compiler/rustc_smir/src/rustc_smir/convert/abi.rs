@@ -56,7 +56,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi
         LayoutShape {
             fields: self.fields.stable(tables),
             variants: self.variants.stable(tables),
-            abi: self.abi.stable(tables),
+            abi: self.backend_repr.stable(tables),
             abi_align: self.align.abi.stable(tables),
             size: self.size.stable(tables),
         }
@@ -196,20 +196,20 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_abi::VariantIdx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_abi::Abi {
+impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
     type T = ValueAbi;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match *self {
-            rustc_abi::Abi::Uninhabited => ValueAbi::Uninhabited,
-            rustc_abi::Abi::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables)),
-            rustc_abi::Abi::ScalarPair(first, second) => {
+            rustc_abi::BackendRepr::Uninhabited => ValueAbi::Uninhabited,
+            rustc_abi::BackendRepr::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables)),
+            rustc_abi::BackendRepr::ScalarPair(first, second) => {
                 ValueAbi::ScalarPair(first.stable(tables), second.stable(tables))
             }
-            rustc_abi::Abi::Vector { element, count } => {
+            rustc_abi::BackendRepr::Vector { element, count } => {
                 ValueAbi::Vector { element: element.stable(tables), count }
             }
-            rustc_abi::Abi::Aggregate { sized } => ValueAbi::Aggregate { sized },
+            rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },
         }
     }
 }

@@ -217,7 +217,7 @@ fn structurally_same_type<'tcx>(
         // `extern` blocks cannot be generic, so we'll always get a layout here.
         let a_layout = tcx.layout_of(param_env.and(a)).unwrap();
         let b_layout = tcx.layout_of(param_env.and(b)).unwrap();
-        assert_eq!(a_layout.abi, b_layout.abi);
+        assert_eq!(a_layout.backend_repr, b_layout.backend_repr);
         assert_eq!(a_layout.size, b_layout.size);
         assert_eq!(a_layout.align, b_layout.align);
     }

@@ -14,11 +14,11 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, Upcast,
+    TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::Abi;
+use rustc_target::abi::BackendRepr;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -523,8 +523,8 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
 
     // e.g., `Rc<()>`
     let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
-    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.abi) {
-        Ok(Abi::Scalar(..)) => (),
+    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.backend_repr) {
+        Ok(BackendRepr::Scalar(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),
@@ -538,8 +538,8 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
     // e.g., `Rc<dyn Trait>`
     let trait_object_receiver =
         receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
-    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.abi) {
-        Ok(Abi::ScalarPair(..)) => (),
+    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.backend_repr) {
+        Ok(BackendRepr::ScalarPair(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),
@@ -718,7 +718,7 @@ fn receiver_is_dispatchable<'tcx>(
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
 
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     // the receiver is dispatchable iff the obligation holds
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }

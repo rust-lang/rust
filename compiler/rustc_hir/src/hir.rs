@@ -2627,7 +2627,6 @@ impl<'hir> Ty<'hir> {
             }
             TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
             TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
-            TyKind::OpaqueDef(_, generic_args) => are_suggestable_generic_args(generic_args),
             TyKind::Path(QPath::TypeRelative(ty, segment)) => {
                 ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
             }
@@ -2746,19 +2745,8 @@ pub struct BareFnTy<'hir> {
 pub struct OpaqueTy<'hir> {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
-    pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
-    pub origin: OpaqueTyOrigin,
-    /// Return-position impl traits (and async futures) must "reify" any late-bound
-    /// lifetimes that are captured from the function signature they originate from.
-    ///
-    /// This is done by generating a new early-bound lifetime parameter local to the
-    /// opaque which is instantiated in the function signature with the late-bound
-    /// lifetime.
-    ///
-    /// This mapping associated a captured lifetime (first parameter) with the new
-    /// early-bound lifetime that was generated for the opaque.
-    pub lifetime_mapping: &'hir [(&'hir Lifetime, LocalDefId)],
+    pub origin: OpaqueTyOrigin<LocalDefId>,
     pub span: Span,
 }
 
@@ -2796,33 +2784,35 @@ pub struct PreciseCapturingNonLifetimeArg {
     pub res: Res,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum RpitContext {
     Trait,
     TraitImpl,
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
-pub enum OpaqueTyOrigin {
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
+pub enum OpaqueTyOrigin<D> {
     /// `-> impl Trait`
     FnReturn {
         /// The defining function.
-        parent: LocalDefId,
+        parent: D,
         // Whether this is an RPITIT (return position impl trait in trait)
         in_trait_or_impl: Option<RpitContext>,
     },
     /// `async fn`
     AsyncFn {
         /// The defining function.
-        parent: LocalDefId,
+        parent: D,
         // Whether this is an AFIT (async fn in trait)
         in_trait_or_impl: Option<RpitContext>,
     },
     /// type aliases: `type Foo = impl Trait;`
     TyAlias {
         /// The type alias or associated type parent of the TAIT/ATPIT
-        parent: LocalDefId,
+        parent: D,
         /// associated types in impl blocks for traits.
         in_assoc_ty: bool,
     },
@@ -2861,12 +2851,7 @@ pub enum TyKind<'hir> {
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath<'hir>),
     /// An opaque type definition itself. This is only used for `impl Trait`.
-    ///
-    /// The generic argument list contains the lifetimes (and in the future
-    /// possibly parameters) that are actually bound on the `impl Trait`.
-    ///
-    /// The last parameter specifies whether this opaque appears in a trait definition.
-    OpaqueDef(&'hir OpaqueTy<'hir>, &'hir [GenericArg<'hir>]),
+    OpaqueDef(&'hir OpaqueTy<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
@@ -3991,7 +3976,6 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
-            Node::OpaqueTy(opaque) => Some(opaque.generics),
             _ => None,
         }
     }

@@ -5,8 +5,9 @@ use hir::def_id::DefId;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    Abi, AbiAndPrefAlign, AddressSpace, Align, FieldsShape, HasDataLayout, LayoutCalculatorError,
-    LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding, Variants, WrappingRange,
+    AbiAndPrefAlign, AddressSpace, Align, BackendRepr, FieldsShape, HasDataLayout,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    Variants, WrappingRange,
 };
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -173,7 +174,9 @@ fn layout_of_uncached<'tcx>(
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end, include_end } => {
-                    if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut layout.abi {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
                         if let Some(start) = start {
                             scalar.valid_range_mut().start = start
                                 .try_to_bits(tcx, param_env)
@@ -275,7 +278,7 @@ fn layout_of_uncached<'tcx>(
                     return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
                 }
 
-                let Abi::Scalar(metadata) = metadata_layout.abi else {
+                let BackendRepr::Scalar(metadata) = metadata_layout.backend_repr else {
                     return Err(error(cx, LayoutError::Unknown(pointee)));
                 };
 
@@ -330,9 +333,9 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
 
             let abi = if count != 0 && ty.is_privately_uninhabited(tcx, param_env) {
-                Abi::Uninhabited
+                BackendRepr::Uninhabited
             } else {
-                Abi::Aggregate { sized: true }
+                BackendRepr::Memory { sized: true }
             };
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
@@ -340,7 +343,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count },
-                abi,
+                backend_repr: abi,
                 largest_niche,
                 align: element.align,
                 size,
@@ -353,7 +356,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
-                abi: Abi::Aggregate { sized: false },
+                backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
                 align: element.align,
                 size: Size::ZERO,
@@ -364,7 +367,7 @@ fn layout_of_uncached<'tcx>(
         ty::Str => tcx.mk_layout(LayoutData {
             variants: Variants::Single { index: FIRST_VARIANT },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            abi: Abi::Aggregate { sized: false },
+            backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
@@ -384,8 +387,8 @@ fn layout_of_uncached<'tcx>(
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?;
-            match unit.abi {
-                Abi::Aggregate { ref mut sized } => *sized = false,
+            match unit.backend_repr {
+                BackendRepr::Memory { ref mut sized } => *sized = false,
                 _ => bug!(),
             }
             tcx.mk_layout(unit)
@@ -500,7 +503,7 @@ fn layout_of_uncached<'tcx>(
 
             // Compute the ABI of the element type:
             let e_ly = cx.layout_of(e_ty)?;
-            let Abi::Scalar(e_abi) = e_ly.abi else {
+            let BackendRepr::Scalar(e_abi) = e_ly.backend_repr else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
                 tcx.dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty });
@@ -516,12 +519,12 @@ fn layout_of_uncached<'tcx>(
                 // Non-power-of-two vectors have padding up to the next power-of-two.
                 // If we're a packed repr, remove the padding while keeping the alignment as close
                 // to a vector as possible.
-                (Abi::Aggregate { sized: true }, AbiAndPrefAlign {
+                (BackendRepr::Memory { sized: true }, AbiAndPrefAlign {
                     abi: Align::max_for_offset(size),
                     pref: dl.vector_align(size).pref,
                 })
             } else {
-                (Abi::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
+                (BackendRepr::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
             };
             let size = size.align_to(align.abi);
 
@@ -535,7 +538,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields,
-                abi,
+                backend_repr: abi,
                 largest_niche: e_ly.largest_niche,
                 size,
                 align,
@@ -985,10 +988,12 @@ fn coroutine_layout<'tcx>(
 
     size = size.align_to(align.abi);
 
-    let abi = if prefix.abi.is_uninhabited() || variants.iter().all(|v| v.abi.is_uninhabited()) {
-        Abi::Uninhabited
+    let abi = if prefix.backend_repr.is_uninhabited()
+        || variants.iter().all(|v| v.backend_repr.is_uninhabited())
+    {
+        BackendRepr::Uninhabited
     } else {
-        Abi::Aggregate { sized: true }
+        BackendRepr::Memory { sized: true }
     };
 
     let layout = tcx.mk_layout(LayoutData {
@@ -999,7 +1004,7 @@ fn coroutine_layout<'tcx>(
             variants,
         },
         fields: outer_fields,
-        abi,
+        backend_repr: abi,
         // Suppress niches inside coroutines. If the niche is inside a field that is aliased (due to
         // self-referentiality), getting the discriminant can cause aliasing violations.
         // `UnsafeCell` blocks niches for the same reason, but we don't yet have `UnsafePinned` that

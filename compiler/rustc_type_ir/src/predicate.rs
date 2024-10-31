@@ -112,9 +112,9 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
         self.skip_binder().def_id
     }
 
-    pub fn to_host_effect_clause(self, cx: I, host: HostPolarity) -> I::Clause {
+    pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
         self.map_bound(|trait_ref| {
-            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, host })
+            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
         })
         .upcast(cx)
     }
@@ -757,7 +757,7 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct HostEffectPredicate<I: Interner> {
     pub trait_ref: ty::TraitRef<I>,
-    pub host: HostPolarity,
+    pub constness: BoundConstness,
 }
 
 impl<I: Interner> HostEffectPredicate<I> {
@@ -785,28 +785,8 @@ impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
     }
 
     #[inline]
-    pub fn host(self) -> HostPolarity {
-        self.skip_binder().host
-    }
-}
-
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
-pub enum HostPolarity {
-    /// May be called in const environments if the callee is const.
-    Maybe,
-    /// Always allowed to be called in const environments.
-    Const,
-}
-
-impl HostPolarity {
-    pub fn satisfies(self, goal: HostPolarity) -> bool {
-        match (self, goal) {
-            (HostPolarity::Const, HostPolarity::Const | HostPolarity::Maybe) => true,
-            (HostPolarity::Maybe, HostPolarity::Maybe) => true,
-            (HostPolarity::Maybe, HostPolarity::Const) => false,
-        }
+    pub fn constness(self) -> BoundConstness {
+        self.skip_binder().constness
     }
 }
 
@@ -831,8 +811,8 @@ pub struct CoercePredicate<I: Interner> {
     pub b: I::Ty,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum BoundConstness {
     /// `Type: const Trait`
     ///
@@ -841,14 +821,22 @@ pub enum BoundConstness {
     /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
-    ConstIfConst,
+    Maybe,
 }
 
 impl BoundConstness {
+    pub fn satisfies(self, goal: BoundConstness) -> bool {
+        match (self, goal) {
+            (BoundConstness::Const, BoundConstness::Const | BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Const) => false,
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Const => "const",
-            Self::ConstIfConst => "~const",
+            Self::Maybe => "~const",
         }
     }
 }
@@ -857,14 +845,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Const => f.write_str("const"),
-            Self::ConstIfConst => f.write_str("~const"),
+            Self::Maybe => f.write_str("~const"),
         }
-    }
-}
-
-impl<I> Lift<I> for BoundConstness {
-    type Lifted = BoundConstness;
-    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
-        Some(self)
     }
 }

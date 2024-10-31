@@ -13,7 +13,7 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{Abi, FieldIdx, Primitive};
+use rustc_target::abi::{BackendRepr, FieldIdx, Primitive};
 use tracing::debug;
 
 use crate::build::expr::as_place::PlaceBase;
@@ -207,7 +207,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     let (op, ty) = (Operand::Move(discr), discr_ty);
 
-                    if let Abi::Scalar(scalar) = layout.unwrap().abi
+                    if let BackendRepr::Scalar(scalar) = layout.unwrap().backend_repr
                         && !scalar.is_always_valid(&this.tcx)
                         && let Primitive::Int(int_width, _signed) = scalar.primitive()
                     {

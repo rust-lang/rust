@@ -851,11 +851,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        // If we have `rustc_do_not_const_check`, do not check `~const` bounds.
+        if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
+            return;
+        }
+
         let host = match self.tcx.hir().body_const_context(self.body_id) {
             Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
-                ty::HostPolarity::Const
+                ty::BoundConstness::Const
             }
-            Some(hir::ConstContext::ConstFn) => ty::HostPolarity::Maybe,
+            Some(hir::ConstContext::ConstFn) => ty::BoundConstness::Maybe,
             None => return,
         };
 

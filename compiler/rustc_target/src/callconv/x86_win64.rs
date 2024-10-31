@@ -1,25 +1,28 @@
+use rustc_abi::{BackendRepr, Float, Primitive};
+
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{Abi, Float, Primitive};
 use crate::spec::HasTargetSpec;
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
 pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>| {
-        match a.layout.abi {
-            Abi::Uninhabited | Abi::Aggregate { sized: false } => {}
-            Abi::ScalarPair(..) | Abi::Aggregate { sized: true } => match a.layout.size.bits() {
-                8 => a.cast_to(Reg::i8()),
-                16 => a.cast_to(Reg::i16()),
-                32 => a.cast_to(Reg::i32()),
-                64 => a.cast_to(Reg::i64()),
-                _ => a.make_indirect(),
-            },
-            Abi::Vector { .. } => {
+        match a.layout.backend_repr {
+            BackendRepr::Uninhabited | BackendRepr::Memory { sized: false } => {}
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
+                match a.layout.size.bits() {
+                    8 => a.cast_to(Reg::i8()),
+                    16 => a.cast_to(Reg::i16()),
+                    32 => a.cast_to(Reg::i32()),
+                    64 => a.cast_to(Reg::i64()),
+                    _ => a.make_indirect(),
+                }
+            }
+            BackendRepr::Vector { .. } => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
-            Abi::Scalar(scalar) => {
+            BackendRepr::Scalar(scalar) => {
                 // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
                 // with what LLVM expects.
                 if a.layout.size.bytes() > 8

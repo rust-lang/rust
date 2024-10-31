@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::util::AsyncDropGlueMorphology;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
@@ -130,7 +130,7 @@ fn resolve_associated_item<'tcx>(
                 .unwrap_or_else(|| {
                     bug!("{:?} not found in {:?}", trait_item_id, impl_data.impl_def_id);
                 });
-            let infcx = tcx.infer_ctxt().build();
+            let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
             let param_env = param_env.with_reveal_all_normalized(tcx);
             let args = rcvr_args.rebase_onto(tcx, trait_def_id, impl_data.args);
             let args = translate_args(

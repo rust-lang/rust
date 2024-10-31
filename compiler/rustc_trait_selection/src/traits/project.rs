@@ -334,11 +334,6 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
 ) -> Result<Option<Term<'tcx>>, InProgress> {
     let infcx = selcx.infcx;
     debug_assert!(!selcx.infcx.next_trait_solver());
-    // Don't use the projection cache in intercrate mode -
-    // the `infcx` may be re-used between intercrate in non-intercrate
-    // mode, which could lead to using incorrect cache results.
-    let use_cache = !selcx.is_intercrate();
-
     let projection_term = infcx.resolve_vars_if_possible(projection_term);
     let cache_key = ProjectionCacheKey::new(projection_term, param_env);
 
@@ -349,13 +344,8 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
     // would not benefit from caching when proving `T: Trait<U=Foo>`
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
-
-    let cache_result = if use_cache {
-        infcx.inner.borrow_mut().projection_cache().try_start(cache_key)
-    } else {
-        Ok(())
-    };
-    match cache_result {
+    let cache_entry = infcx.inner.borrow_mut().projection_cache().try_start(cache_key);
+    match cache_entry {
         Ok(()) => debug!("no cache"),
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that means we will continue
@@ -378,10 +368,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             // Cache that normalizing this projection resulted in a cycle. This
             // should ensure that, unless this happens within a snapshot that's
             // rolled back, fulfillment or evaluation will notice the cycle.
-
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().recur(cache_key);
-            }
+            infcx.inner.borrow_mut().projection_cache().recur(cache_key);
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::Recur) => {
@@ -445,26 +432,20 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             let mut deduped = SsoHashSet::with_capacity(result.obligations.len());
             result.obligations.retain(|obligation| deduped.insert(obligation.clone()));
 
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
-            }
+            infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
             obligations.extend(result.obligations);
             Ok(Some(result.value))
         }
         Ok(Projected::NoProgress(projected_ty)) => {
             let result =
                 Normalized { value: projected_ty, obligations: PredicateObligations::new() };
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
-            }
+            infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
             // No need to extend `obligations`.
             Ok(Some(result.value))
         }
         Err(ProjectionError::TooManyCandidates) => {
             debug!("opt_normalize_projection_type: too many candidates");
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().ambiguous(cache_key);
-            }
+            infcx.inner.borrow_mut().projection_cache().ambiguous(cache_key);
             Ok(None)
         }
         Err(ProjectionError::TraitSelectionError(_)) => {
@@ -473,10 +454,7 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             // just return `ty::err` but add the obligation `T :
             // Trait`, which when processed will cause the error to be
             // reported later
-
-            if use_cache {
-                infcx.inner.borrow_mut().projection_cache().error(cache_key);
-            }
+            infcx.inner.borrow_mut().projection_cache().error(cache_key);
             let result = normalize_to_error(selcx, param_env, projection_term, cause, depth);
             obligations.extend(result.obligations);
             Ok(Some(result.value))

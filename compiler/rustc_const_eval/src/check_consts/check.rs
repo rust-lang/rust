@@ -16,7 +16,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt, TypingMode};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -64,8 +64,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint()
+                .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
 
@@ -94,8 +93,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint()
+                .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
 
@@ -124,8 +122,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, body)
-                .iterate_to_fixpoint()
+                .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
 
@@ -240,8 +237,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 let always_live_locals = &always_storage_live_locals(&ccx.body);
                 let mut maybe_storage_live =
                     MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
-                        .into_engine(ccx.tcx, &ccx.body)
-                        .iterate_to_fixpoint()
+                        .iterate_to_fixpoint(ccx.tcx, &ccx.body, None)
                         .into_results_cursor(&ccx.body);
 
                 // And then check all `Return` in the MIR, and if a local is "maybe live" at a
@@ -593,7 +589,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
                 // which path expressions are getting called on and which path expressions are only used
                 // as function pointers. This is required for correctness.
-                let infcx = tcx.infer_ctxt().build();
+                let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
                 let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);

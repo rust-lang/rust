@@ -1,4 +1,4 @@
-error: no rules expected the token `@`
+error: no rules expected `@`
   --> $DIR/fail-simple.rs:2:12
    |
 LL |     panic!(@);

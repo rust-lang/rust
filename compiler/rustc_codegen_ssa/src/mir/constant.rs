@@ -1,8 +1,8 @@
+use rustc_abi::BackendRepr;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::abi::Abi;
 
 use super::FunctionCx;
 use crate::errors;
@@ -86,7 +86,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .map(|field| {
                         if let Some(prim) = field.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
-                            let Abi::Scalar(scalar) = layout.abi else {
+                            let BackendRepr::Scalar(scalar) = layout.backend_repr else {
                                 bug!("from_const: invalid ByVal layout: {:#?}", layout);
                             };
                             bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))

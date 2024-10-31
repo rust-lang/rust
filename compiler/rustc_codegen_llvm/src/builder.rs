@@ -239,7 +239,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let args = self.check_call("invoke", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
-        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
             bundles.push(funclet_bundle);
@@ -250,13 +249,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
-        if let Some(kcfi_bundle) = kcfi_bundle {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
             bundles.push(kcfi_bundle);
         }
 
         let invoke = unsafe {
-            llvm::LLVMRustBuildInvoke(
+            llvm::LLVMBuildInvokeWithOperandBundles(
                 self.llbuilder,
                 llty,
                 llfn,
@@ -545,13 +543,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(llty, place.val.llval, place.val.align);
-                if let abi::Abi::Scalar(scalar) = place.layout.abi {
+                if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
                 load
             });
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
-        } else if let abi::Abi::ScalarPair(a, b) = place.layout.abi {
+        } else if let abi::BackendRepr::ScalarPair(a, b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
@@ -1179,7 +1177,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let args = self.check_call("call", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
-        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
             bundles.push(funclet_bundle);
@@ -1190,13 +1187,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
-        if let Some(kcfi_bundle) = kcfi_bundle {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
             bundles.push(kcfi_bundle);
         }
 
         let call = unsafe {
-            llvm::LLVMRustBuildCall(
+            llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder,
                 llty,
                 llfn,
@@ -1204,6 +1200,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 bundles.as_ptr(),
                 bundles.len() as c_uint,
+                c"".as_ptr(),
             )
         };
         if let Some(fn_abi) = fn_abi {
@@ -1509,7 +1506,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         let args = self.check_call("callbr", llty, llfn, args);
         let funclet_bundle = funclet.map(|funclet| funclet.bundle());
-        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
         let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
         if let Some(funclet_bundle) = funclet_bundle {
             bundles.push(funclet_bundle);
@@ -1520,13 +1516,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         // Emit KCFI operand bundle
         let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
-        let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
-        if let Some(kcfi_bundle) = kcfi_bundle {
+        if let Some(kcfi_bundle) = kcfi_bundle.as_deref() {
             bundles.push(kcfi_bundle);
         }
 
         let callbr = unsafe {
-            llvm::LLVMRustBuildCallBr(
+            llvm::LLVMBuildCallBr(
                 self.llbuilder,
                 llty,
                 llfn,
@@ -1601,7 +1596,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         instance: Option<Instance<'tcx>>,
         llfn: &'ll Value,
-    ) -> Option<llvm::OperandBundleDef<'ll>> {
+    ) -> Option<llvm::OperandBundleOwned<'ll>> {
         let is_indirect_call = unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) };
         let kcfi_bundle = if self.tcx.sess.is_sanitizer_kcfi_enabled()
             && let Some(fn_abi) = fn_abi
@@ -1627,7 +1622,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
             };
 
-            Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            Some(llvm::OperandBundleOwned::new("kcfi", &[self.const_u32(kcfi_typeid)]))
         } else {
             None
         };

@@ -565,7 +565,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
             llvm::LLVMSetInitializer(g, array);
             llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
+            llvm::set_section(g, c"llvm.metadata");
         }
     }
 }

@@ -424,7 +424,7 @@ impl TokenDescription {
     }
 }
 
-pub(super) fn token_descr(token: &Token) -> String {
+pub fn token_descr(token: &Token) -> String {
     let name = pprust::token_to_string(token).to_string();
 
     let kind = match (TokenDescription::from_token(token), &token.kind) {

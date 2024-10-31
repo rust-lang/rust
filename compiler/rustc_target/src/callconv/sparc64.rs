@@ -109,11 +109,11 @@ where
         return data;
     }
 
-    match layout.abi {
-        abi::Abi::Scalar(scalar) => {
+    match layout.backend_repr {
+        abi::BackendRepr::Scalar(scalar) => {
             data = arg_scalar(cx, &scalar, offset, data);
         }
-        abi::Abi::Aggregate { .. } => {
+        abi::BackendRepr::Memory { .. } => {
             for i in 0..layout.fields.count() {
                 if offset < layout.fields.offset(i) {
                     offset = layout.fields.offset(i);
@@ -122,7 +122,7 @@ where
             }
         }
         _ => {
-            if let abi::Abi::ScalarPair(scalar1, scalar2) = &layout.abi {
+            if let abi::BackendRepr::ScalarPair(scalar1, scalar2) = &layout.backend_repr {
                 data = arg_scalar_pair(cx, scalar1, scalar2, offset, data);
             }
         }

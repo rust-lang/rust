@@ -32,8 +32,11 @@ pub(crate) struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    body: &'mir Body<'tcx>,
-    results: RefCell<Option<Results<'tcx, A>>>,
+    // The `RefCell` is used because `<Formatter as Labeller>::node_label`
+    // takes `&self`, but it needs to modify the cursor. This is also the
+    // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
+    // the operations that involve the mutation, i.e. within the `borrow_mut`.
+    cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
     reachable: BitSet<BasicBlock>,
 }
@@ -48,11 +51,15 @@ where
         style: OutputStyle,
     ) -> Self {
         let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { body, results: Some(results).into(), style, reachable }
+        Formatter { cursor: results.into_results_cursor(body).into(), style, reachable }
+    }
+
+    fn body(&self) -> &'mir Body<'tcx> {
+        self.cursor.borrow().body()
     }
 
     pub(crate) fn into_results(self) -> Results<'tcx, A> {
-        self.results.into_inner().unwrap()
+        self.cursor.into_inner().into_results()
     }
 }
 
@@ -81,7 +88,7 @@ where
     type Edge = CfgEdge;
 
     fn graph_id(&self) -> dot::Id<'_> {
-        let name = graphviz_safe_def_name(self.body.source.def_id());
+        let name = graphviz_safe_def_name(self.body().source.def_id());
         dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
@@ -90,20 +97,11 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let mut label = Vec::new();
-        self.results.replace_with(|results| {
-            // `Formatter::result` is a `RefCell<Option<_>>` so we can replace
-            // the value with `None`, move it into the results cursor, move it
-            // back out, and return it to the refcell wrapped in `Some`.
-            let mut fmt = BlockFormatter {
-                results: results.take().unwrap().into_results_cursor(self.body),
-                style: self.style,
-                bg: Background::Light,
-            };
+        let mut cursor = self.cursor.borrow_mut();
+        let mut fmt =
+            BlockFormatter { cursor: &mut cursor, style: self.style, bg: Background::Light };
+        let label = fmt.write_node_label(*block).unwrap();
 
-            fmt.write_node_label(&mut label, *block).unwrap();
-            Some(fmt.results.into_results())
-        });
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
@@ -112,12 +110,12 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
+        let label = &self.body()[e.source].terminator().kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
 
-impl<'mir, 'tcx, A> dot::GraphWalk<'mir> for Formatter<'mir, 'tcx, A>
+impl<'tcx, A> dot::GraphWalk<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -125,7 +123,7 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body
+        self.body()
             .basic_blocks
             .indices()
             .filter(|&idx| self.reachable.contains(idx))
@@ -134,10 +132,10 @@ where
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
-        self.body
-            .basic_blocks
+        let body = self.body();
+        body.basic_blocks
             .indices()
-            .flat_map(|bb| dataflow_successors(self.body, bb))
+            .flat_map(|bb| dataflow_successors(body, bb))
             .collect::<Vec<_>>()
             .into()
     }
@@ -147,20 +145,20 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
+        self.body()[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
-struct BlockFormatter<'mir, 'tcx, A>
+struct BlockFormatter<'a, 'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    results: ResultsCursor<'mir, 'tcx, A>,
+    cursor: &'a mut ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
 
-impl<'mir, 'tcx, A> BlockFormatter<'mir, 'tcx, A>
+impl<'tcx, A> BlockFormatter<'_, '_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -173,7 +171,9 @@ where
         bg
     }
 
-    fn write_node_label(&mut self, w: &mut impl io::Write, block: BasicBlock) -> io::Result<()> {
+    fn write_node_label(&mut self, block: BasicBlock) -> io::Result<Vec<u8>> {
+        use std::io::Write;
+
         //   Sample output:
         //   +-+-----------------------------------------------+
         // A |                      bb4                        |
@@ -200,6 +200,9 @@ where
         // attributes. Make sure to test the output before trying to remove the redundancy.
         // Notably, `align` was found to have no effect when applied only to <table>.
 
+        let mut v = vec![];
+        let w = &mut v;
+
         let table_fmt = concat!(
             " border=\"1\"",
             " cellborder=\"1\"",
@@ -219,8 +222,8 @@ where
 
         // C: State at start of block
         self.bg = Background::Light;
-        self.results.seek_to_block_start(block);
-        let block_start_state = self.results.get().clone();
+        self.cursor.seek_to_block_start(block);
+        let block_start_state = self.cursor.get().clone();
         self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D + E: Statement and terminator transfer functions
@@ -228,12 +231,12 @@ where
 
         // F: State at end of block
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
 
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
-        self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
+        self.cursor.seek_to_block_end(block);
+        if self.cursor.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
                 mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
@@ -250,8 +253,8 @@ where
         match terminator.kind {
             mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -265,9 +268,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -275,8 +278,8 @@ where
 
             mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_coroutine_drop = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_coroutine_drop = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             resume,
@@ -290,9 +293,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_coroutine_drop,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -302,8 +305,8 @@ where
                 if !targets.is_empty() =>
             {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.apply_custom_effect(|analysis, state| {
+                    let state_on_unwind = this.cursor.get().clone();
+                    this.cursor.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
@@ -317,9 +320,9 @@ where
                         colspan = this.style.num_state_columns(),
                         fmt = fmt,
                         diff = diff_pretty(
-                            this.results.get(),
+                            this.cursor.get(),
                             &state_on_unwind,
-                            this.results.analysis()
+                            this.cursor.analysis()
                         ),
                     )
                 })?;
@@ -328,7 +331,9 @@ where
             _ => {}
         };
 
-        write!(w, "</table>")
+        write!(w, "</table>")?;
+
+        Ok(v)
     }
 
     fn write_block_header_simple(
@@ -407,9 +412,9 @@ where
         block: BasicBlock,
     ) -> io::Result<()> {
         let diffs = StateDiffCollector::run(
-            self.results.body(),
+            self.cursor.body(),
             block,
-            self.results.mut_results(),
+            self.cursor.mut_results(),
             self.style,
         );
 
@@ -420,7 +425,7 @@ where
             if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
-        for (i, statement) in self.results.body()[block].statements.iter().enumerate() {
+        for (i, statement) in self.cursor.body()[block].statements.iter().enumerate() {
             let statement_str = format!("{statement:?}");
             let index_str = format!("{i}");
 
@@ -442,7 +447,7 @@ where
         assert!(diffs_after.is_empty());
         assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
 
-        let terminator = self.results.body()[block].terminator();
+        let terminator = self.cursor.body()[block].terminator();
         let mut terminator_str = String::new();
         terminator.kind.fmt_head(&mut terminator_str).unwrap();
 
@@ -492,8 +497,8 @@ where
         mir: &str,
     ) -> io::Result<()> {
         self.write_row(w, i, mir, |this, w, fmt| {
-            let state = this.results.get();
-            let analysis = this.results.analysis();
+            let state = this.cursor.get();
+            let analysis = this.cursor.analysis();
 
             // FIXME: The full state vector can be quite long. It would be nice to split on commas
             // and use some text wrapping algorithm.

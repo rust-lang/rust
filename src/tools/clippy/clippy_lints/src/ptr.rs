@@ -695,7 +695,7 @@ fn matches_preds<'tcx>(
     ty: Ty<'tcx>,
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     preds
         .iter()
         .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {

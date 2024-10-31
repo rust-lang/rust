@@ -280,6 +280,7 @@ trivial! {
     rustc_hir::IsAsync,
     rustc_hir::ItemLocalId,
     rustc_hir::LangItem,
+    rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::OwnerId,
     rustc_hir::Upvar,
     rustc_index::bit_set::FiniteBitSet<u32>,

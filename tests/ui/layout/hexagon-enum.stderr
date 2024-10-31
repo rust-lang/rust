@@ -48,7 +48,7 @@ error: layout_of(A) = Layout {
                            abi: Align(1 bytes),
                            pref: Align(1 bytes),
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -122,7 +122,7 @@ error: layout_of(B) = Layout {
                            abi: Align(1 bytes),
                            pref: Align(1 bytes),
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -196,7 +196,7 @@ error: layout_of(C) = Layout {
                            abi: Align(2 bytes),
                            pref: Align(2 bytes),
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -270,7 +270,7 @@ error: layout_of(P) = Layout {
                            abi: Align(4 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -344,7 +344,7 @@ error: layout_of(T) = Layout {
                            abi: Align(4 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
