@@ -67,7 +67,7 @@ pub(crate) mod entry {
         }
 
         pub(crate) fn pat_top(p: &mut Parser<'_>) {
-            patterns::pattern_top(p);
+            patterns::pattern(p);
         }
 
         pub(crate) fn ty(p: &mut Parser<'_>) {
@@ -117,7 +117,7 @@ pub(crate) mod entry {
 
         pub(crate) fn pattern(p: &mut Parser<'_>) {
             let m = p.start();
-            patterns::pattern_top(p);
+            patterns::pattern(p);
             if p.at(EOF) {
                 m.abandon(p);
                 return;
