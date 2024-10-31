@@ -175,9 +175,7 @@ fn main() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
-            for flag in flags.split(' ') {
-                cmd.arg(flag);
-            }
+            cmd.args(flags.split(' '));
         }
     }
 
