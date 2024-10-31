@@ -348,7 +348,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     // Const eval always happens in Reveal::All mode in order to be able to use the hidden types of
     // opaque types. This is needed for trivial things like `size_of`, but also for using associated
     // types that are not specified in the opaque type.
-
     assert_eq!(key.param_env.reveal(), Reveal::All);
     if cfg!(debug_assertions) {
         // Make sure we format the instance even if we do not print it.

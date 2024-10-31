@@ -2,6 +2,7 @@ use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::solve::Reveal;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
@@ -231,6 +232,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
+    debug_assert_eq!(param_env.reveal(), Reveal::All);
     let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`

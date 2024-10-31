@@ -41,7 +41,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
+        let param_env = self.param_env_reveal_all_normalized(def_id);
         let inputs = self.erase_regions(param_env.and(cid));
         self.eval_to_allocation_raw(inputs)
     }
@@ -72,11 +72,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::try_resolve(
-            self, param_env,
-            // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
-            ct.def, ct.args,
-        ) {
+        match ty::Instance::try_resolve(self, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
@@ -108,6 +104,10 @@ impl<'tcx> TyCtxt<'tcx> {
         match ty::Instance::try_resolve(self, param_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
+                // We always evaluate with `Reveal::All` as evaluation should be able
+                // to observe the hidden types of opaques. Note that we've still succeeded to
+                // typeck the body of the constant using `Reveal::UserFacing`.
+                let param_env = self.erase_regions(param_env).with_reveal_all_normalized(self);
                 self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
                     // We are emitting the lint here instead of in `is_const_evaluatable`
                     // as we normalize obligations before checking them, and normalization

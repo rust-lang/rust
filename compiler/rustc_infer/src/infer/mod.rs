@@ -1345,16 +1345,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
 
-        let param_env_erased = tcx.erase_regions(param_env);
-        let args_erased = tcx.erase_regions(args);
-        debug!(?param_env_erased);
-        debug!(?args_erased);
-
-        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args: args_erased };
-
+        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args };
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to instantiate back the original values.
-        tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
+        tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is

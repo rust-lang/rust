@@ -376,11 +376,14 @@ impl<'tcx> Const<'tcx> {
         assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         match self.kind() {
             ConstKind::Unevaluated(unevaluated) => {
-                // FIXME(eddyb) maybe the `const_eval_*` methods should take
-                // `ty::ParamEnvAnd` instead of having them separate.
-                let (param_env, unevaluated) = unevaluated.prepare_for_eval(tcx, param_env);
-                // try to resolve e.g. associated constants to their definition on an impl, and then
+                // Try to resolve e.g. associated constants to their definition on an impl, and then
                 // evaluate the const.
+                //
+                // In case the query key would contain unconstrained inference variables, we bail instead.
+                if (unevaluated, param_env).has_non_region_infer() {
+                    return Err(Either::Right(ErrorHandled::TooGeneric(span)));
+                }
+
                 match tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span) {
                     Ok(Ok(c)) => {
                         Ok((tcx.type_of(unevaluated.def).instantiate(tcx, unevaluated.args), c))
