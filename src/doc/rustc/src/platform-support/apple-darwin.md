@@ -52,5 +52,10 @@ Cross-compilation of these targets are supported using Clang, but may require
 Xcode or the macOS SDK (`MacOSX.sdk`) to be available to compile C code and
 to link.
 
+The Clang target is suffixed with `-macosx`. Clang's `-darwin` target refers
+to Darwin platforms in general (macOS/iOS/tvOS/watchOS/visionOS), and requires
+the `-mmacosx-version-min=...`, `-miphoneos-version-min=...` or similar flags
+to disambiguate.
+
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
 environment variable.
