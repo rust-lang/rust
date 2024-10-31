@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
-use std::{iter, slice};
+use std::{iter, mem, slice};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -127,10 +127,10 @@ impl CoverageGraph {
         let mut bcbs = IndexVec::<BasicCoverageBlock, _>::with_capacity(num_basic_blocks);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, num_basic_blocks);
 
-        let mut add_basic_coverage_block = |basic_blocks: &mut Vec<BasicBlock>| {
+        let mut flush_chain_into_new_bcb = |current_chain: &mut Vec<BasicBlock>| {
             // Take the accumulated list of blocks, leaving the vector empty
             // to be used by subsequent BCBs.
-            let basic_blocks = std::mem::take(basic_blocks);
+            let basic_blocks = mem::take(current_chain);
 
             let bcb = bcbs.next_index();
             for &bb in basic_blocks.iter() {
@@ -141,7 +141,7 @@ impl CoverageGraph {
                 bcb_filtered_successors(mir_body[bb].terminator()).is_out_summable()
             });
             let bcb_data = BasicCoverageBlockData { basic_blocks, is_out_summable };
-            debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
+            debug!("adding {bcb:?}: {bcb_data:?}");
             bcbs.push(bcb_data);
         };
 
@@ -151,37 +151,31 @@ impl CoverageGraph {
         // together, they will be adjacent in the traversal order.
 
         // Accumulates a chain of blocks that will be combined into one BCB.
-        let mut basic_blocks = Vec::new();
+        let mut current_chain = vec![];
 
-        let filtered_successors = |bb| bcb_filtered_successors(mir_body[bb].terminator());
         let subgraph = CoverageRelevantSubgraph::new(&mir_body.basic_blocks);
         for bb in graph::depth_first_search(subgraph, mir::START_BLOCK)
             .filter(|&bb| mir_body[bb].terminator().kind != TerminatorKind::Unreachable)
         {
-            // If the previous block can't be chained into `bb`, flush the accumulated
-            // blocks into a new BCB, then start building the next chain.
-            if let Some(&prev) = basic_blocks.last()
-                && (!filtered_successors(prev).is_chainable() || {
-                    // If `bb` has multiple predecessor blocks, or `prev` isn't
-                    // one of its predecessors, we can't chain and must flush.
-                    let predecessors = &mir_body.basic_blocks.predecessors()[bb];
-                    predecessors.len() > 1 || !predecessors.contains(&prev)
-                })
-            {
-                debug!(
-                    terminator_kind = ?mir_body[prev].terminator().kind,
-                    predecessors = ?&mir_body.basic_blocks.predecessors()[bb],
-                    "can't chain from {prev:?} to {bb:?}"
-                );
-                add_basic_coverage_block(&mut basic_blocks);
+            if let Some(&prev) = current_chain.last() {
+                // Adding a block to a non-empty chain is allowed if the
+                // previous block permits chaining, and the current block has
+                // `prev` as its sole predecessor.
+                let can_chain = subgraph.coverage_successors(prev).is_out_chainable()
+                    && mir_body.basic_blocks.predecessors()[bb].as_slice() == &[prev];
+                if !can_chain {
+                    // The current block can't be added to the existing chain, so
+                    // flush that chain into a new BCB, and start a new chain.
+                    flush_chain_into_new_bcb(&mut current_chain);
+                }
             }
 
-            basic_blocks.push(bb);
+            current_chain.push(bb);
         }
 
-        if !basic_blocks.is_empty() {
+        if !current_chain.is_empty() {
             debug!("flushing accumulated blocks into one last BCB");
-            add_basic_coverage_block(&mut basic_blocks);
+            flush_chain_into_new_bcb(&mut current_chain);
         }
 
         (bcbs, bb_to_bcb)
@@ -398,7 +392,9 @@ struct CoverageSuccessors<'a> {
 }
 
 impl CoverageSuccessors<'_> {
-    fn is_chainable(&self) -> bool {
+    /// If `false`, this terminator cannot be chained into another block when
+    /// building the coverage graph.
+    fn is_out_chainable(&self) -> bool {
         // If a terminator is out-summable and has exactly one out-edge, then
         // it is eligible to be chained into its successor block.
         self.is_out_summable() && self.targets.len() == 1
