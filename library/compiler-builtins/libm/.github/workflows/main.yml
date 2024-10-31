@@ -32,6 +32,8 @@ jobs:
           os: ubuntu-latest
         - target: i686-unknown-linux-gnu
           os: ubuntu-latest
+        - target: loongarch64-unknown-linux-gnu
+          os: ubuntu-latest
         - target: powerpc-unknown-linux-gnu
           os: ubuntu-latest
         - target: powerpc64-unknown-linux-gnu
