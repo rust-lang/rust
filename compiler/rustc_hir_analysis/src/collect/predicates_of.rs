@@ -757,6 +757,16 @@ pub(super) fn type_param_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     (item_def_id, def_id, assoc_name): (LocalDefId, LocalDefId, Ident),
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+    match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
+        Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
+            return tcx.type_param_predicates((opaque_def_id.expect_local(), def_id, assoc_name));
+        }
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            unreachable!("should not be lowering bounds on RPITIT in impl")
+        }
+        None => {}
+    }
+
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
