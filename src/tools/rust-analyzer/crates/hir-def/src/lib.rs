@@ -47,7 +47,6 @@ pub mod resolver;
 
 pub mod nameres;
 
-pub mod child_by_source;
 pub mod src;
 
 pub mod find_path;
@@ -354,9 +353,9 @@ impl_loc!(ProcMacroLoc, id: Function, container: CrateRootModuleId);
 pub struct BlockId(ra_salsa::InternId);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BlockLoc {
-    ast_id: AstId<ast::BlockExpr>,
+    pub ast_id: AstId<ast::BlockExpr>,
     /// The containing module.
-    module: ModuleId,
+    pub module: ModuleId,
 }
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
@@ -935,7 +934,7 @@ impl_from!(
 );
 
 impl GenericDefId {
-    fn file_id_and_params_of(
+    pub fn file_id_and_params_of(
         self,
         db: &dyn DefDatabase,
     ) -> (HirFileId, Option<ast::GenericParamList>) {

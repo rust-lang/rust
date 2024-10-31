@@ -1,5 +1,6 @@
 //! See `Semantics`.
 
+mod child_by_source;
 mod source_to_def;
 
 use std::{
