@@ -3,6 +3,7 @@
 use std::assert_matches::assert_matches;
 use std::iter;
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
 use rustc_middle::middle::region;
@@ -12,7 +13,6 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use tracing::{debug, instrument, trace};
 
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
