@@ -2738,11 +2738,9 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_extern_without_abi)]
-#[help]
 pub(crate) struct MissingAbi {
-    #[label]
+    #[suggestion(code = "extern \"{default_abi}\"", applicability = "machine-applicable")]
     pub span: Span,
-
     pub default_abi: &'static str,
 }
 
