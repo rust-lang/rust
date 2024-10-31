@@ -145,18 +145,17 @@ impl CoverageGraph {
             bcbs.push(bcb_data);
         };
 
-        // Walk the MIR CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
-        // each block terminator's `successors()`. Coverage spans must map to actual source code,
-        // so compiler generated blocks and paths can be ignored. To that end, the CFG traversal
-        // intentionally omits unwind paths.
-        // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
-        // `catch_unwind()` handlers.
+        // Traverse the MIR control-flow graph, accumulating chains of blocks
+        // that can be combined into a single node in the coverage graph.
+        // A depth-first search ensures that if two nodes can be chained
+        // together, they will be adjacent in the traversal order.
 
         // Accumulates a chain of blocks that will be combined into one BCB.
         let mut basic_blocks = Vec::new();
 
         let filtered_successors = |bb| bcb_filtered_successors(mir_body[bb].terminator());
-        for bb in short_circuit_preorder(mir_body, filtered_successors)
+        let subgraph = CoverageRelevantSubgraph::new(&mir_body.basic_blocks);
+        for bb in graph::depth_first_search(subgraph, mir::START_BLOCK)
             .filter(|&bb| mir_body[bb].terminator().kind != TerminatorKind::Unreachable)
         {
             // If the previous block can't be chained into `bb`, flush the accumulated
@@ -599,28 +598,31 @@ impl<'a> TraverseCoverageGraphWithLoops<'a> {
     }
 }
 
-fn short_circuit_preorder<'a, 'tcx, F, Iter>(
-    body: &'a mir::Body<'tcx>,
-    filtered_successors: F,
-) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
-where
-    F: Fn(BasicBlock) -> Iter,
-    Iter: IntoIterator<Item = BasicBlock>,
-{
-    let mut visited = BitSet::new_empty(body.basic_blocks.len());
-    let mut worklist = vec![mir::START_BLOCK];
+/// Wrapper around a [`mir::BasicBlocks`] graph that restricts each node's
+/// successors to only the ones considered "relevant" when building a coverage
+/// graph.
+#[derive(Clone, Copy)]
+struct CoverageRelevantSubgraph<'a, 'tcx> {
+    basic_blocks: &'a mir::BasicBlocks<'tcx>,
+}
+impl<'a, 'tcx> CoverageRelevantSubgraph<'a, 'tcx> {
+    fn new(basic_blocks: &'a mir::BasicBlocks<'tcx>) -> Self {
+        Self { basic_blocks }
+    }
 
-    std::iter::from_fn(move || {
-        while let Some(bb) = worklist.pop() {
-            if !visited.insert(bb) {
-                continue;
-            }
+    fn coverage_successors(&self, bb: BasicBlock) -> CoverageSuccessors<'_> {
+        bcb_filtered_successors(self.basic_blocks[bb].terminator())
+    }
+}
+impl<'a, 'tcx> graph::DirectedGraph for CoverageRelevantSubgraph<'a, 'tcx> {
+    type Node = BasicBlock;
 
-            worklist.extend(filtered_successors(bb));
-
-            return Some(bb);
-        }
-
-        None
-    })
+    fn num_nodes(&self) -> usize {
+        self.basic_blocks.num_nodes()
+    }
+}
+impl<'a, 'tcx> graph::Successors for CoverageRelevantSubgraph<'a, 'tcx> {
+    fn successors(&self, bb: Self::Node) -> impl Iterator<Item = Self::Node> {
+        self.coverage_successors(bb).into_iter()
+    }
 }
