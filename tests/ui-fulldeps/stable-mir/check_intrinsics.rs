@@ -13,6 +13,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
+extern crate rustc_middle;
 extern crate rustc_hir;
 #[macro_use]
 extern crate rustc_smir;

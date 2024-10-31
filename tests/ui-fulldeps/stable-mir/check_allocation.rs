@@ -13,6 +13,7 @@
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;

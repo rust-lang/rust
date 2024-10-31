@@ -50,6 +50,7 @@ use rustc_interface::{Linker, Queries, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
+use rustc_middle::ty::TyCtxt;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
     CG_OPTIONS, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, Z_OPTIONS,
@@ -179,7 +180,7 @@ pub trait Callbacks {
     fn after_analysis<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -437,13 +438,11 @@ fn run_compiler(
                 }
 
                 tcx.analysis(())?;
-            })?;
 
-            if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
+                if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                    return early_exit();
+                }
 
-            queries.global_ctxt()?.enter(|tcx| {
                 Ok(Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)?))
             })
         })?;
