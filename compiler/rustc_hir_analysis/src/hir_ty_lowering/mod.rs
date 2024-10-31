@@ -681,11 +681,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
+        let tcx = self.tcx();
+        let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
+        debug!(?bound_vars);
+
+        let poly_trait_ref = ty::Binder::bind_with_vars(
+            ty::TraitRef::new_from_args(tcx, trait_def_id, generic_args),
+            bound_vars,
+        );
+
         let polarity = match polarity {
             rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
             rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
             rustc_ast::BoundPolarity::Maybe(_) => {
-                // No-op.
+                // Validate associated type at least. We may want to reject these
+                // outright in the future...
+                for constraint in trait_segment.args().constraints {
+                    let _ = self.lower_assoc_item_constraint(
+                        trait_ref.hir_ref_id,
+                        poly_trait_ref,
+                        constraint,
+                        &mut Default::default(),
+                        &mut Default::default(),
+                        constraint.span,
+                        predicate_filter,
+                    );
+                }
                 return arg_count;
             }
         };
@@ -698,15 +719,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 modifier: constness.as_str(),
             });
         }
-
-        let tcx = self.tcx();
-        let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
-        debug!(?bound_vars);
-
-        let poly_trait_ref = ty::Binder::bind_with_vars(
-            ty::TraitRef::new_from_args(tcx, trait_def_id, generic_args),
-            bound_vars,
-        );
 
         match predicate_filter {
             PredicateFilter::All
@@ -758,11 +770,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // since we should have emitted an error for them earlier, and they
             // would not be well-formed!
             if polarity != ty::PredicatePolarity::Positive {
-                assert!(
-                    self.dcx().has_errors().is_some(),
+                self.dcx().span_delayed_bug(
+                    constraint.span,
                     "negative trait bounds should not have assoc item constraints",
                 );
-                continue;
+                break;
             }
 
             // Specify type to assert that error was already reported in `Err` case.
