@@ -42,7 +42,7 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
 };
-use rustc_mir_dataflow::{Analysis, EntrySets, Results};
+use rustc_mir_dataflow::{Analysis, EntrySets, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
@@ -318,7 +318,7 @@ fn do_mir_borrowck<'tcx>(
     mbcx.report_region_errors(nll_errors);
 
     let mut flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
-    rustc_mir_dataflow::visit_results(
+    visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
         &mut flow_results,
@@ -607,14 +607,10 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
-    for MirBorrowckCtxt<'a, '_, 'tcx>
-{
-    type Domain = BorrowckDomain<'a, 'tcx>;
-
+impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         stmt: &'a Statement<'tcx>,
         location: Location,
@@ -686,7 +682,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
@@ -799,7 +795,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,

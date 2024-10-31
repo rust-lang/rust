@@ -544,20 +544,18 @@ impl<D> StateDiffCollector<D> {
     }
 }
 
-impl<'tcx, A> ResultsVisitor<'_, 'tcx, Results<'tcx, A>> for StateDiffCollector<A::Domain>
+impl<'tcx, A> ResultsVisitor<'_, 'tcx, A> for StateDiffCollector<A::Domain>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
 {
-    type Domain = A::Domain;
-
-    fn visit_block_start(&mut self, state: &Self::Domain) {
+    fn visit_block_start(&mut self, state: &A::Domain) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(&mut self, state: &Self::Domain) {
+    fn visit_block_end(&mut self, state: &A::Domain) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
@@ -566,7 +564,7 @@ where
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::Domain,
+        state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -579,7 +577,7 @@ where
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::Domain,
+        state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
@@ -590,7 +588,7 @@ where
     fn visit_terminator_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::Domain,
+        state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
@@ -603,7 +601,7 @@ where
     fn visit_terminator_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
-        state: &Self::Domain,
+        state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
