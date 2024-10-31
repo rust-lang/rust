@@ -140,7 +140,7 @@ impl<'tcx> Cx<'tcx> {
 
                 expr = Expr {
                     temp_lifetime,
-                    ty: Ty::new_ref(self.tcx, deref.region, expr.ty, deref.mutbl),
+                    ty: Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, expr.ty, deref.mutbl),
                     span,
                     kind: ExprKind::Borrow {
                         borrow_kind: deref.mutbl.to_borrow_kind(),
@@ -152,14 +152,14 @@ impl<'tcx> Cx<'tcx> {
 
                 self.overloaded_place(hir_expr, adjustment.target, Some(call), expr, deref.span)
             }
-            Adjust::Borrow(AutoBorrow::Ref(_, m)) => ExprKind::Borrow {
+            Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
                 borrow_kind: m.to_borrow_kind(),
                 arg: self.thir.exprs.push(expr),
             },
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
-            Adjust::ReborrowPin(region, mutbl) => {
+            Adjust::ReborrowPin(mutbl) => {
                 debug!("apply ReborrowPin adjustment");
                 // Rewrite `$expr` as `Pin { __pointer: &(mut)? *($expr).__pointer }`
 
@@ -197,7 +197,8 @@ impl<'tcx> Cx<'tcx> {
                     hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
                     hir::Mutability::Not => BorrowKind::Shared,
                 };
-                let new_pin_target = Ty::new_ref(self.tcx, region, ptr_target_ty, mutbl);
+                let new_pin_target =
+                    Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, ptr_target_ty, mutbl);
                 let expr = self.thir.exprs.push(Expr {
                     temp_lifetime,
                     ty: new_pin_target,

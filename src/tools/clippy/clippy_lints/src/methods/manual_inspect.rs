@@ -137,7 +137,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                                 _ if matches!(
                                     typeck.expr_adjustments(prev_expr).first(),
                                     Some(Adjustment {
-                                        kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Not))
+                                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not))
                                             | Adjust::Deref(_),
                                         ..
                                     })
@@ -230,7 +230,7 @@ fn check_use<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (UseKind<'tcx>,
             if use_cx
                 .adjustments
                 .first()
-                .is_some_and(|a| matches!(a.kind, Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Not)))) =>
+                .is_some_and(|a| matches!(a.kind, Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)))) =>
         {
             UseKind::AutoBorrowed
         },
