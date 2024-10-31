@@ -5,7 +5,7 @@ use quote::ToTokens;
 use syn::parse::{Parse, ParseStream, Parser};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::Comma;
+use syn::token::{self, Comma};
 use syn::{Arm, Attribute, Expr, ExprMatch, Ident, Meta, Token, bracketed};
 
 /// The input to our macro; just a list of `field: value` items.
@@ -39,6 +39,9 @@ impl Parse for Mapping {
 pub struct StructuredInput {
     /// Macro to invoke once per function
     pub callback: Ident,
+    /// Whether or not to provide `CFn` `CArgs` `RustFn` etc. This is really only needed
+    /// once for crate to set up the main trait.
+    pub emit_types: Vec<Ident>,
     /// Skip these functions
     pub skip: Vec<Ident>,
     /// Invoke only for these functions
@@ -50,6 +53,7 @@ pub struct StructuredInput {
     /// Per-function extra expressions to pass to the macro
     pub fn_extra: Option<BTreeMap<Ident, Expr>>,
     // For diagnostics
+    pub emit_types_span: Option<Span>,
     pub only_span: Option<Span>,
     pub fn_extra_span: Option<Span>,
 }
@@ -58,6 +62,7 @@ impl StructuredInput {
     pub fn from_fields(input: Invocation) -> syn::Result<Self> {
         let mut map: Vec<_> = input.fields.into_iter().collect();
         let cb_expr = expect_field(&mut map, "callback")?;
+        let emit_types_expr = expect_field(&mut map, "emit_types").ok();
         let skip_expr = expect_field(&mut map, "skip").ok();
         let only_expr = expect_field(&mut map, "only").ok();
         let attr_expr = expect_field(&mut map, "attributes").ok();
@@ -70,6 +75,12 @@ impl StructuredInput {
                 format!("unexpected fields {map:?}"),
             ))?;
         }
+
+        let emit_types_span = emit_types_expr.as_ref().map(|expr| expr.span());
+        let emit_types = match emit_types_expr {
+            Some(expr) => Parser::parse2(parse_ident_or_array, expr.into_token_stream())?,
+            None => Vec::new(),
+        };
 
         let skip = match skip_expr {
             Some(expr) => Parser::parse2(parse_ident_array, expr.into_token_stream())?,
@@ -103,6 +114,7 @@ impl StructuredInput {
 
         Ok(Self {
             callback: expect_ident(cb_expr)?,
+            emit_types,
             skip,
             only,
             only_span,
@@ -110,6 +122,7 @@ impl StructuredInput {
             extra,
             fn_extra,
             fn_extra_span,
+            emit_types_span,
         })
     }
 }
@@ -181,6 +194,15 @@ fn expect_field(v: &mut Vec<Mapping>, name: &str) -> syn::Result<Expr> {
 /// Coerce an expression into a simple identifier.
 fn expect_ident(expr: Expr) -> syn::Result<Ident> {
     syn::parse2(expr.into_token_stream())
+}
+
+/// Parse either a single identifier (`foo`) or an array of identifiers (`[foo, bar, baz]`).
+fn parse_ident_or_array(input: ParseStream) -> syn::Result<Vec<Ident>> {
+    if !input.peek(token::Bracket) {
+        return Ok(vec![input.parse()?]);
+    }
+
+    parse_ident_array(input)
 }
 
 /// Parse an array of expressions.
