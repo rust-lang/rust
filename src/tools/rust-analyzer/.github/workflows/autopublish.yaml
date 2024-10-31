@@ -51,6 +51,7 @@ jobs:
           cargo workspaces rename --from proc-macro-api proc_macro_api
           cargo workspaces rename --from proc-macro-srv proc_macro_srv
           cargo workspaces rename --from project-model project_model
+          cargo workspaces rename --from test-fixture test_fixture
           cargo workspaces rename --from test-utils test_utils
           cargo workspaces rename --from text-edit text_edit
           # Remove library crates from the workspaces so we don't auto-publish them as well
