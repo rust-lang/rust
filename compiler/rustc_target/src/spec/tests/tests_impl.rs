@@ -165,7 +165,8 @@ impl Target {
                 assert_matches!(&*self.llvm_abiname, "ilp32" | "ilp32f" | "ilp32d" | "ilp32e")
             }
             "riscv64" => {
-                assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q")
+                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e")
             }
             _ => {}
         }
