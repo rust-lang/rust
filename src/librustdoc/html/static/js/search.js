@@ -1412,7 +1412,7 @@ class DocSearch {
      *   query fingerprint. If any bits are set in the query but not in the function, it can't
      *   match.
      *
-     * - The fourth section has the number of distinct items in the set.
+     * - The fourth section has the number of items in the set.
      *   This is the distance function, used for filtering and for sorting.
      *
      * [^1]: Distance is the relatively naive metric of counting the number of distinct items in
@@ -1420,9 +1420,8 @@ class DocSearch {
      *
      * @param {FunctionType|QueryElement} type - a single type
      * @param {Uint32Array} output - write the fingerprint to this data structure: uses 128 bits
-     * @param {Set<number>} fps - Set of distinct items
      */
-    buildFunctionTypeFingerprint(type, output, fps) {
+    buildFunctionTypeFingerprint(type, output) {
         let input = type.id;
         // All forms of `[]`/`()`/`->` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
@@ -1468,10 +1467,11 @@ class DocSearch {
             output[0] |= (1 << (h0a % 32)) | (1 << (h1b % 32));
             output[1] |= (1 << (h1a % 32)) | (1 << (h2b % 32));
             output[2] |= (1 << (h2a % 32)) | (1 << (h0b % 32));
-            fps.add(input);
+            // output[3] is the total number of items in the type signature
+            output[3] += 1;
         }
         for (const g of type.generics) {
-            this.buildFunctionTypeFingerprint(g, output, fps);
+            this.buildFunctionTypeFingerprint(g, output);
         }
         const fb = {
             id: null,
@@ -1482,9 +1482,8 @@ class DocSearch {
         for (const [k, v] of type.bindings.entries()) {
             fb.id = k;
             fb.generics = v;
-            this.buildFunctionTypeFingerprint(fb, output, fps);
+            this.buildFunctionTypeFingerprint(fb, output);
         }
-        output[3] = fps.size;
     }
 
     /**
@@ -1734,16 +1733,15 @@ class DocSearch {
                 if (type !== null) {
                     if (type) {
                         const fp = this.functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
-                        const fps = new Set();
                         for (const t of type.inputs) {
-                            this.buildFunctionTypeFingerprint(t, fp, fps);
+                            this.buildFunctionTypeFingerprint(t, fp);
                         }
                         for (const t of type.output) {
-                            this.buildFunctionTypeFingerprint(t, fp, fps);
+                            this.buildFunctionTypeFingerprint(t, fp);
                         }
                         for (const w of type.where_clause) {
                             for (const t of w) {
-                                this.buildFunctionTypeFingerprint(t, fp, fps);
+                                this.buildFunctionTypeFingerprint(t, fp);
                             }
                         }
                     }
@@ -3885,14 +3883,13 @@ class DocSearch {
                 );
             };
 
-            const fps = new Set();
             for (const elem of parsedQuery.elems) {
                 convertNameToId(elem);
-                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint, fps);
+                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
             }
             for (const elem of parsedQuery.returned) {
                 convertNameToId(elem);
-                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint, fps);
+                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
             }
 
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
