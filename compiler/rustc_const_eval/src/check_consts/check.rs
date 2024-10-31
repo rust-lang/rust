@@ -589,7 +589,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
                 // which path expressions are getting called on and which path expressions are only used
                 // as function pointers. This is required for correctness.
-                let infcx = tcx.infer_ctxt().build(body.phase.typing_mode());
+                let infcx = tcx.infer_ctxt().build(body.typing_mode(tcx));
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
                 let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);

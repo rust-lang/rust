@@ -116,7 +116,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
 
-                    let infcx = tcx.infer_ctxt().build(body.phase.typing_mode());
+                    let infcx = tcx.infer_ctxt().build(body.typing_mode(tcx));
                     let mut selcx = SelectionContext::new(&infcx);
                     let implsrc = selcx.select(&obligation);
 

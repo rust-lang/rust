@@ -20,7 +20,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_type_ir::Upcast;
 
-use crate::util::{is_within_packed, relate_types};
+use crate::util::{self, is_within_packed};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -583,7 +583,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Variance::Covariant
         };
 
-        crate::util::relate_types(self.tcx, self.param_env, variance, src, dest)
+        crate::util::relate_types(
+            self.tcx,
+            self.body.typing_mode(self.tcx),
+            self.param_env,
+            variance,
+            src,
+            dest,
+        )
     }
 
     /// Check that the given predicate definitely holds in the param-env of this MIR body.
@@ -602,7 +609,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        let infcx = self.tcx.infer_ctxt().build(self.body.phase.typing_mode());
+        let infcx = self.tcx.infer_ctxt().build(self.body.typing_mode(self.tcx));
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,
@@ -794,10 +801,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Subtype(ty) => {
-                if !relate_types(
+                if !util::sub_types(
                     self.tcx,
+                    self.body.typing_mode(self.tcx),
                     self.param_env,
-                    Variance::Covariant,
                     ty,
                     place_ref.ty(&self.body.local_decls, self.tcx).ty,
                 ) {
