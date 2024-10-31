@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
 
@@ -298,7 +299,7 @@ pub struct Config {
     pub lldb_version: Option<u32>,
 
     /// Version of LLVM
-    pub llvm_version: Option<u32>,
+    pub llvm_version: Option<Version>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,

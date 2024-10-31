@@ -1,3 +1,4 @@
+use rustc_abi::FIRST_VARIANT;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -6,7 +7,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, TyCtxt};
 use rustc_session::declare_lint;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::FIRST_VARIANT;
 use tracing::{debug, instrument};
 
 use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
@@ -217,7 +217,7 @@ fn structurally_same_type<'tcx>(
         // `extern` blocks cannot be generic, so we'll always get a layout here.
         let a_layout = tcx.layout_of(param_env.and(a)).unwrap();
         let b_layout = tcx.layout_of(param_env.and(b)).unwrap();
-        assert_eq!(a_layout.abi, b_layout.abi);
+        assert_eq!(a_layout.backend_repr, b_layout.backend_repr);
         assert_eq!(a_layout.size, b_layout.size);
         assert_eq!(a_layout.align, b_layout.align);
     }

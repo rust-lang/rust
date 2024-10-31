@@ -2,11 +2,12 @@
 
 use std::cell::RefCell;
 use std::ffi::{CStr, CString};
+use std::ops::Deref;
+use std::ptr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
-use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_llvm::RustString;
 use rustc_target::abi::{Align, Size, WrappingRange};
 
@@ -17,12 +18,12 @@ pub use self::IntPredicate::*;
 pub use self::Linkage::*;
 pub use self::MetadataType::*;
 pub use self::RealPredicate::*;
+pub use self::ffi::*;
+use crate::common::AsCCharPtr;
 
 pub mod archive_ro;
 pub mod diagnostic;
 mod ffi;
-
-pub use self::ffi::*;
 
 impl LLVMRustResult {
     pub fn into_result(self) -> Result<(), ()> {
@@ -53,9 +54,9 @@ pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
-            attr.as_ptr().cast(),
+            attr.as_c_char_ptr(),
             attr.len().try_into().unwrap(),
-            value.as_ptr().cast(),
+            value.as_c_char_ptr(),
             value.len().try_into().unwrap(),
         )
     }
@@ -65,7 +66,7 @@ pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
-            attr.as_ptr().cast(),
+            attr.as_c_char_ptr(),
             attr.len().try_into().unwrap(),
             std::ptr::null(),
             0,
@@ -294,7 +295,7 @@ pub fn get_value_name(value: &Value) -> &[u8] {
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
-        let data = name.as_ptr().cast();
+        let data = name.as_c_char_ptr();
         LLVMSetValueName2(value, data, name.len());
     }
 }
@@ -331,24 +332,68 @@ pub fn last_error() -> Option<String> {
     }
 }
 
-pub struct OperandBundleDef<'a> {
-    pub raw: &'a mut ffi::OperandBundleDef<'a>,
+/// Owns an [`OperandBundle`], and will dispose of it when dropped.
+pub(crate) struct OperandBundleOwned<'a> {
+    raw: ptr::NonNull<OperandBundle<'a>>,
 }
 
-impl<'a> OperandBundleDef<'a> {
-    pub fn new(name: &str, vals: &[&'a Value]) -> Self {
-        let name = SmallCStr::new(name);
-        let def = unsafe {
-            LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr(), vals.len() as c_uint)
+impl<'a> OperandBundleOwned<'a> {
+    pub(crate) fn new(name: &str, vals: &[&'a Value]) -> Self {
+        let raw = unsafe {
+            LLVMCreateOperandBundle(
+                name.as_c_char_ptr(),
+                name.len(),
+                vals.as_ptr(),
+                vals.len() as c_uint,
+            )
         };
-        OperandBundleDef { raw: def }
+        OperandBundleOwned { raw: ptr::NonNull::new(raw).unwrap() }
     }
 }
 
-impl Drop for OperandBundleDef<'_> {
+impl Drop for OperandBundleOwned<'_> {
     fn drop(&mut self) {
         unsafe {
-            LLVMRustFreeOperandBundleDef(&mut *(self.raw as *mut _));
+            LLVMDisposeOperandBundle(self.raw);
         }
+    }
+}
+
+impl<'a> Deref for OperandBundleOwned<'a> {
+    type Target = OperandBundle<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: The returned reference is opaque and can only used for FFI.
+        // It is valid for as long as `&self` is.
+        unsafe { self.raw.as_ref() }
+    }
+}
+
+pub(crate) fn add_module_flag_u32(
+    module: &Module,
+    merge_behavior: ModuleFlagMergeBehavior,
+    key: &str,
+    value: u32,
+) {
+    unsafe {
+        LLVMRustAddModuleFlagU32(module, merge_behavior, key.as_c_char_ptr(), key.len(), value);
+    }
+}
+
+pub(crate) fn add_module_flag_str(
+    module: &Module,
+    merge_behavior: ModuleFlagMergeBehavior,
+    key: &str,
+    value: &str,
+) {
+    unsafe {
+        LLVMRustAddModuleFlagString(
+            module,
+            merge_behavior,
+            key.as_c_char_ptr(),
+            key.len(),
+            value.as_c_char_ptr(),
+            value.len(),
+        );
     }
 }

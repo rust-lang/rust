@@ -2,22 +2,27 @@
 //! be directly created from an ast::TypeRef, without further queries.
 
 use core::fmt;
-use std::fmt::Write;
+use std::{fmt::Write, ops::Index};
 
 use hir_expand::{
     db::ExpandDatabase,
     name::{AsName, Name},
-    AstId,
+    AstId, InFile,
 };
-use intern::{sym, Interned, Symbol};
+use intern::{sym, Symbol};
+use la_arena::{Arena, ArenaMap, Idx};
 use span::Edition;
-use syntax::ast::{self, HasGenericArgs, HasName, IsString};
+use stdx::thin_vec::{thin_vec_with_header_struct, EmptyOptimizedThinVec, ThinVec};
+use syntax::{
+    ast::{self, HasGenericArgs, HasName, IsString},
+    AstPtr,
+};
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     hir::Literal,
     lower::LowerCtx,
-    path::Path,
+    path::{GenericArg, Path},
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -104,33 +109,88 @@ impl TraitRef {
     }
 }
 
+thin_vec_with_header_struct! {
+    pub new(pub(crate)) struct FnType, FnTypeHeader {
+        pub params: [(Option<Name>, TypeRefId)],
+        pub is_varargs: bool,
+        pub is_unsafe: bool,
+        pub abi: Option<Symbol>; ref,
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ArrayType {
+    pub ty: TypeRefId,
+    // FIXME: This should be Ast<ConstArg>
+    pub len: ConstRef,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct RefType {
+    pub ty: TypeRefId,
+    pub lifetime: Option<LifetimeRef>,
+    pub mutability: Mutability,
+}
+
 /// Compare ty::Ty
-///
-/// Note: Most users of `TypeRef` that end up in the salsa database intern it using
-/// `Interned<TypeRef>` to save space. But notably, nested `TypeRef`s are not interned, since that
-/// does not seem to save any noticeable amount of memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {
     Never,
     Placeholder,
-    Tuple(Vec<TypeRef>),
+    Tuple(EmptyOptimizedThinVec<TypeRefId>),
     Path(Path),
-    RawPtr(Box<TypeRef>, Mutability),
-    Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
-    // FIXME: This should be Array(Box<TypeRef>, Ast<ConstArg>),
-    Array(Box<TypeRef>, ConstRef),
-    Slice(Box<TypeRef>),
+    RawPtr(TypeRefId, Mutability),
+    Reference(Box<RefType>),
+    Array(Box<ArrayType>),
+    Slice(TypeRefId),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(
-        Box<[(Option<Name>, TypeRef)]>,
-        bool,           /*varargs*/
-        bool,           /*is_unsafe*/
-        Option<Symbol>, /* abi */
-    ),
-    ImplTrait(Vec<Interned<TypeBound>>),
-    DynTrait(Vec<Interned<TypeBound>>),
+    Fn(FnType),
+    ImplTrait(ThinVec<TypeBound>),
+    DynTrait(ThinVec<TypeBound>),
     Macro(AstId<ast::MacroCall>),
     Error,
+}
+
+#[cfg(target_arch = "x86_64")]
+const _: () = assert!(size_of::<TypeRef>() == 16);
+
+pub type TypeRefId = Idx<TypeRef>;
+
+#[derive(Default, Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TypesMap {
+    pub(crate) types: Arena<TypeRef>,
+}
+
+impl TypesMap {
+    pub const EMPTY: &TypesMap = &TypesMap { types: Arena::new() };
+
+    pub(crate) fn shrink_to_fit(&mut self) {
+        let TypesMap { types } = self;
+        types.shrink_to_fit();
+    }
+}
+
+impl Index<TypeRefId> for TypesMap {
+    type Output = TypeRef;
+
+    fn index(&self, index: TypeRefId) -> &Self::Output {
+        &self.types[index]
+    }
+}
+
+pub type TypePtr = AstPtr<ast::Type>;
+pub type TypeSource = InFile<TypePtr>;
+
+#[derive(Default, Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TypesSourceMap {
+    pub(crate) types_map_back: ArenaMap<TypeRefId, TypeSource>,
+}
+
+impl TypesSourceMap {
+    pub(crate) fn shrink_to_fit(&mut self) {
+        let TypesSourceMap { types_map_back } = self;
+        types_map_back.shrink_to_fit();
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -157,12 +217,22 @@ pub enum TypeBound {
     Path(Path, TraitBoundModifier),
     ForLifetime(Box<[Name]>, Path),
     Lifetime(LifetimeRef),
+    Use(Box<[UseArgRef]>),
     Error,
+}
+
+#[cfg(target_pointer_width = "64")]
+const _: [(); 32] = [(); ::std::mem::size_of::<TypeBound>()];
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum UseArgRef {
+    Name(Name),
+    Lifetime(LifetimeRef),
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum TraitBoundModifier {
     None,
     Maybe,
@@ -170,12 +240,12 @@ pub enum TraitBoundModifier {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> Self {
-        match node {
-            ast::Type::ParenType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
-            ast::Type::TupleType(inner) => {
-                TypeRef::Tuple(inner.fields().map(|it| TypeRef::from_ast(ctx, it)).collect())
-            }
+    pub fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> TypeRefId {
+        let ty = match &node {
+            ast::Type::ParenType(inner) => return TypeRef::from_ast_opt(ctx, inner.ty()),
+            ast::Type::TupleType(inner) => TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(
+                Vec::from_iter(inner.fields().map(|it| TypeRef::from_ast(ctx, it))),
+            )),
             ast::Type::NeverType(..) => TypeRef::Never,
             ast::Type::PathType(inner) => {
                 // FIXME: Use `Path::from_src`
@@ -188,20 +258,21 @@ impl TypeRef {
             ast::Type::PtrType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
-                TypeRef::RawPtr(Box::new(inner_ty), mutability)
+                TypeRef::RawPtr(inner_ty, mutability)
             }
             ast::Type::ArrayType(inner) => {
                 let len = ConstRef::from_const_arg(ctx, inner.const_arg());
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
+                TypeRef::Array(Box::new(ArrayType {
+                    ty: TypeRef::from_ast_opt(ctx, inner.ty()),
+                    len,
+                }))
             }
-            ast::Type::SliceType(inner) => {
-                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())))
-            }
+            ast::Type::SliceType(inner) => TypeRef::Slice(TypeRef::from_ast_opt(ctx, inner.ty())),
             ast::Type::RefType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(ctx, inner.ty());
                 let lifetime = inner.lifetime().map(|lt| LifetimeRef::new(&lt));
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
-                TypeRef::Reference(Box::new(inner_ty), lifetime, mutability)
+                TypeRef::Reference(Box::new(RefType { ty: inner_ty, lifetime, mutability }))
             }
             ast::Type::InferType(_inner) => TypeRef::Placeholder,
             ast::Type::FnPtrType(inner) => {
@@ -209,7 +280,7 @@ impl TypeRef {
                     .ret_type()
                     .and_then(|rt| rt.ty())
                     .map(|it| TypeRef::from_ast(ctx, it))
-                    .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
+                    .unwrap_or_else(|| ctx.alloc_type_ref_desugared(TypeRef::unit()));
                 let mut is_varargs = false;
                 let mut params = if let Some(pl) = inner.param_list() {
                     if let Some(param) = pl.params().last() {
@@ -241,10 +312,10 @@ impl TypeRef {
 
                 let abi = inner.abi().map(lower_abi);
                 params.push((None, ret_ty));
-                TypeRef::Fn(params.into(), is_varargs, inner.unsafe_token().is_some(), abi)
+                TypeRef::Fn(FnType::new(is_varargs, inner.unsafe_token().is_some(), abi, params))
             }
             // for types are close enough for our purposes to the inner type for now...
-            ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
+            ast::Type::ForType(inner) => return TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::ImplTraitType(inner) => {
                 if ctx.outer_impl_trait() {
                     // Disallow nested impl traits
@@ -261,74 +332,74 @@ impl TypeRef {
                 Some(mc) => TypeRef::Macro(ctx.ast_id(&mc)),
                 None => TypeRef::Error,
             },
-        }
+        };
+        ctx.alloc_type_ref(ty, AstPtr::new(&node))
     }
 
-    pub(crate) fn from_ast_opt(ctx: &LowerCtx<'_>, node: Option<ast::Type>) -> Self {
+    pub(crate) fn from_ast_opt(ctx: &LowerCtx<'_>, node: Option<ast::Type>) -> TypeRefId {
         match node {
             Some(node) => TypeRef::from_ast(ctx, node),
-            None => TypeRef::Error,
+            None => ctx.alloc_error_type(),
         }
     }
 
     pub(crate) fn unit() -> TypeRef {
-        TypeRef::Tuple(Vec::new())
+        TypeRef::Tuple(EmptyOptimizedThinVec::empty())
     }
 
-    pub fn walk(&self, f: &mut impl FnMut(&TypeRef)) {
-        go(self, f);
+    pub fn walk(this: TypeRefId, map: &TypesMap, f: &mut impl FnMut(&TypeRef)) {
+        go(this, f, map);
 
-        fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
+        fn go(type_ref: TypeRefId, f: &mut impl FnMut(&TypeRef), map: &TypesMap) {
+            let type_ref = &map[type_ref];
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(params, _, _, _) => {
-                    params.iter().for_each(|(_, param_type)| go(param_type, f))
+                TypeRef::Fn(fn_) => {
+                    fn_.params().iter().for_each(|&(_, param_type)| go(param_type, f, map))
                 }
-                TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
-                TypeRef::RawPtr(type_ref, _)
-                | TypeRef::Reference(type_ref, ..)
-                | TypeRef::Array(type_ref, _)
-                | TypeRef::Slice(type_ref) => go(type_ref, f),
+                TypeRef::Tuple(types) => types.iter().for_each(|&t| go(t, f, map)),
+                TypeRef::RawPtr(type_ref, _) | TypeRef::Slice(type_ref) => go(*type_ref, f, map),
+                TypeRef::Reference(it) => go(it.ty, f, map),
+                TypeRef::Array(it) => go(it.ty, f, map),
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
-                        match bound.as_ref() {
+                        match bound {
                             TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
-                                go_path(path, f)
+                                go_path(path, f, map)
                             }
-                            TypeBound::Lifetime(_) | TypeBound::Error => (),
+                            TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                         }
                     }
                 }
-                TypeRef::Path(path) => go_path(path, f),
+                TypeRef::Path(path) => go_path(path, f, map),
                 TypeRef::Never | TypeRef::Placeholder | TypeRef::Macro(_) | TypeRef::Error => {}
             };
         }
 
-        fn go_path(path: &Path, f: &mut impl FnMut(&TypeRef)) {
+        fn go_path(path: &Path, f: &mut impl FnMut(&TypeRef), map: &TypesMap) {
             if let Some(type_ref) = path.type_anchor() {
-                go(type_ref, f);
+                go(type_ref, f, map);
             }
             for segment in path.segments().iter() {
                 if let Some(args_and_bindings) = segment.args_and_bindings {
                     for arg in args_and_bindings.args.iter() {
                         match arg {
-                            crate::path::GenericArg::Type(type_ref) => {
-                                go(type_ref, f);
+                            GenericArg::Type(type_ref) => {
+                                go(*type_ref, f, map);
                             }
-                            crate::path::GenericArg::Const(_)
-                            | crate::path::GenericArg::Lifetime(_) => {}
+                            GenericArg::Const(_) | GenericArg::Lifetime(_) => {}
                         }
                     }
                     for binding in args_and_bindings.bindings.iter() {
-                        if let Some(type_ref) = &binding.type_ref {
-                            go(type_ref, f);
+                        if let Some(type_ref) = binding.type_ref {
+                            go(type_ref, f, map);
                         }
                         for bound in binding.bounds.iter() {
-                            match bound.as_ref() {
+                            match bound {
                                 TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
-                                    go_path(path, f)
+                                    go_path(path, f, map)
                                 }
-                                TypeBound::Lifetime(_) | TypeBound::Error => (),
+                                TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => (),
                             }
                         }
                     }
@@ -341,11 +412,13 @@ impl TypeRef {
 pub(crate) fn type_bounds_from_ast(
     lower_ctx: &LowerCtx<'_>,
     type_bounds_opt: Option<ast::TypeBoundList>,
-) -> Vec<Interned<TypeBound>> {
+) -> ThinVec<TypeBound> {
     if let Some(type_bounds) = type_bounds_opt {
-        type_bounds.bounds().map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it))).collect()
+        ThinVec::from_iter(Vec::from_iter(
+            type_bounds.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)),
+        ))
     } else {
-        vec![]
+        ThinVec::from_iter([])
     }
 }
 
@@ -380,7 +453,16 @@ impl TypeBound {
                     None => TypeBound::Error,
                 }
             }
-            ast::TypeBoundKind::Use(_) => TypeBound::Error,
+            ast::TypeBoundKind::Use(gal) => TypeBound::Use(
+                gal.use_bound_generic_args()
+                    .map(|p| match p {
+                        ast::UseBoundGenericArg::Lifetime(l) => {
+                            UseArgRef::Lifetime(LifetimeRef::new(&l))
+                        }
+                        ast::UseBoundGenericArg::NameRef(n) => UseArgRef::Name(n.as_name()),
+                    })
+                    .collect(),
+            ),
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
@@ -391,7 +473,7 @@ impl TypeBound {
         match self {
             TypeBound::Path(p, m) => Some((p, m)),
             TypeBound::ForLifetime(_, p) => Some((p, &TraitBoundModifier::None)),
-            TypeBound::Lifetime(_) | TypeBound::Error => None,
+            TypeBound::Lifetime(_) | TypeBound::Error | TypeBound::Use(_) => None,
         }
     }
 }

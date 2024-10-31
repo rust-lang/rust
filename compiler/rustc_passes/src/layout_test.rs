@@ -1,13 +1,14 @@
+use rustc_abi::{HasDataLayout, TargetDataLayout};
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::infer::canonical::ir::TypingMode;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits;
@@ -54,7 +55,7 @@ pub fn ensure_wf<'tcx>(
         param_env,
         pred,
     );
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
     let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
@@ -81,8 +82,12 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
             let meta_items = attr.meta_item_list().unwrap_or_default();
             for meta_item in meta_items {
                 match meta_item.name_or_empty() {
+                    // FIXME: this never was about ABI and now this dump arg is confusing
                     sym::abi => {
-                        tcx.dcx().emit_err(LayoutAbi { span, abi: format!("{:?}", ty_layout.abi) });
+                        tcx.dcx().emit_err(LayoutAbi {
+                            span,
+                            abi: format!("{:?}", ty_layout.backend_repr),
+                        });
                     }
 
                     sym::align => {

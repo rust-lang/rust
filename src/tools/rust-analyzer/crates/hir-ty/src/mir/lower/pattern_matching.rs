@@ -1,6 +1,6 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::LiteralOrConst, resolver::HasResolver, AssocItemId};
+use hir_def::{hir::LiteralOrConst, AssocItemId};
 
 use crate::{
     mir::{
@@ -46,6 +46,8 @@ enum MatchingMode {
     Check,
     /// Assume that this pattern matches, fill bindings
     Bind,
+    /// Assume that this pattern matches, assign to existing variables.
+    Assign,
 }
 
 impl MirLowerCtx<'_> {
@@ -80,6 +82,17 @@ impl MirLowerCtx<'_> {
             MatchingMode::Bind,
         )?;
         Ok((current, current_else))
+    }
+
+    pub(super) fn pattern_match_assignment(
+        &mut self,
+        current: BasicBlockId,
+        value: Place,
+        pattern: PatId,
+    ) -> Result<BasicBlockId> {
+        let (current, _) =
+            self.pattern_match_inner(current, None, value, pattern, MatchingMode::Assign)?;
+        Ok(current)
     }
 
     pub(super) fn match_self_param(
@@ -155,14 +168,8 @@ impl MirLowerCtx<'_> {
                         *pat,
                         MatchingMode::Check,
                     )?;
-                    if mode == MatchingMode::Bind {
-                        (next, _) = self.pattern_match_inner(
-                            next,
-                            None,
-                            cond_place,
-                            *pat,
-                            MatchingMode::Bind,
-                        )?;
+                    if mode != MatchingMode::Check {
+                        (next, _) = self.pattern_match_inner(next, None, cond_place, *pat, mode)?;
                     }
                     self.set_goto(next, then_target, pattern.into());
                     match next_else {
@@ -176,11 +183,11 @@ impl MirLowerCtx<'_> {
                     }
                 }
                 if !finished {
-                    if mode == MatchingMode::Bind {
-                        self.set_terminator(current, TerminatorKind::Unreachable, pattern.into());
-                    } else {
+                    if mode == MatchingMode::Check {
                         let ce = *current_else.get_or_insert_with(|| self.new_basic_block());
                         self.set_goto(current, ce, pattern.into());
+                    } else {
+                        self.set_terminator(current, TerminatorKind::Unreachable, pattern.into());
                     }
                 }
                 (then_target, current_else)
@@ -300,7 +307,7 @@ impl MirLowerCtx<'_> {
                         self.pattern_match_inner(current, current_else, next_place, pat, mode)?;
                 }
                 if let &Some(slice) = slice {
-                    if mode == MatchingMode::Bind {
+                    if mode != MatchingMode::Check {
                         if let Pat::Bind { id, subpat: _ } = self.body[slice] {
                             let next_place = cond_place.project(
                                 ProjectionElem::Subslice {
@@ -342,17 +349,36 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?,
                 None => {
-                    // The path is not a variant, so it is a const
+                    let unresolved_name = || {
+                        MirLowerError::unresolved_path(self.db, p, self.edition(), &self.body.types)
+                    };
+                    let hygiene = self.body.pat_path_hygiene(pattern);
+                    let pr = self
+                        .resolver
+                        .resolve_path_in_value_ns(self.db.upcast(), p, hygiene)
+                        .ok_or_else(unresolved_name)?;
+
+                    if let (
+                        MatchingMode::Assign,
+                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding), _),
+                    ) = (mode, &pr)
+                    {
+                        let local = self.binding_local(*binding)?;
+                        self.push_match_assignment(
+                            current,
+                            local,
+                            BindingMode::Move,
+                            cond_place,
+                            pattern.into(),
+                        );
+                        return Ok((current, current_else));
+                    }
+
+                    // The path is not a variant or a local, so it is a const
                     if mode != MatchingMode::Check {
                         // A const don't bind anything. Only needs check.
                         return Ok((current, current_else));
                     }
-                    let unresolved_name =
-                        || MirLowerError::unresolved_path(self.db, p, self.edition());
-                    let resolver = self.owner.resolver(self.db.upcast());
-                    let pr = resolver
-                        .resolve_path_in_value_ns(self.db.upcast(), p)
-                        .ok_or_else(unresolved_name)?;
                     let (c, subst) = 'b: {
                         if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern) {
                             if let AssocItemId::ConstId(c) = x.0 {
@@ -415,7 +441,7 @@ impl MirLowerCtx<'_> {
                     (current, current_else) =
                         self.pattern_match_inner(current, current_else, cond_place, *subpat, mode)?
                 }
-                if mode == MatchingMode::Bind {
+                if mode != MatchingMode::Check {
                     let mode = self.infer.binding_modes[pattern];
                     self.pattern_match_binding(
                         *id,
@@ -448,6 +474,23 @@ impl MirLowerCtx<'_> {
                     cond_place.project(ProjectionElem::Deref, &mut self.result.projection_store);
                 self.pattern_match_inner(current, current_else, cond_place, *pat, mode)?
             }
+            &Pat::Expr(expr) => {
+                stdx::always!(
+                    mode == MatchingMode::Assign,
+                    "Pat::Expr can only come in destructuring assignments"
+                );
+                let Some((lhs_place, current)) = self.lower_expr_as_place(current, expr, false)?
+                else {
+                    return Ok((current, current_else));
+                };
+                self.push_assignment(
+                    current,
+                    lhs_place,
+                    Operand::Copy(cond_place).into(),
+                    expr.into(),
+                );
+                (current, current_else)
+            }
             Pat::Box { .. } => not_supported!("box pattern"),
             Pat::ConstBlock(_) => not_supported!("const block pattern"),
         })
@@ -464,6 +507,18 @@ impl MirLowerCtx<'_> {
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         let target_place = self.binding_local(id)?;
         self.push_storage_live(id, current)?;
+        self.push_match_assignment(current, target_place, mode, cond_place, span);
+        Ok((current, current_else))
+    }
+
+    fn push_match_assignment(
+        &mut self,
+        current: BasicBlockId,
+        target_place: LocalId,
+        mode: BindingMode,
+        cond_place: Place,
+        span: MirSpan,
+    ) {
         self.push_assignment(
             current,
             target_place.into(),
@@ -476,7 +531,6 @@ impl MirLowerCtx<'_> {
             },
             span,
         );
-        Ok((current, current_else))
     }
 
     fn pattern_match_const(

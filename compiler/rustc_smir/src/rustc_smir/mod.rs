@@ -36,7 +36,7 @@ pub struct Tables<'tcx> {
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
     pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
     pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
-    pub(crate) layouts: IndexMap<rustc_target::abi::Layout<'tcx>, Layout>,
+    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, Layout>,
 }
 
 impl<'tcx> Tables<'tcx> {

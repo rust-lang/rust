@@ -9,11 +9,12 @@ use std::{
 use crate::{
     lang_item::LangItemTarget,
     lower::LowerCtx,
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
+    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
 };
 use hir_expand::name::Name;
 use intern::Interned;
 use span::Edition;
+use stdx::thin_vec::thin_vec_with_header_struct;
 use syntax::ast;
 
 pub use hir_expand::mod_path::{path, ModPath, PathKind};
@@ -47,18 +48,31 @@ impl Display for ImportAliasDisplay<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Path {
-    /// A normal path
-    Normal {
-        /// Type based path like `<T>::foo`.
-        /// Note that paths like `<Type as Trait>::foo` are desugared to `Trait::<Self=Type>::foo`.
-        type_anchor: Option<Interned<TypeRef>>,
-        mod_path: Interned<ModPath>,
-        /// Invariant: the same len as `self.mod_path.segments` or `None` if all segments are `None`.
-        generic_args: Option<Box<[Option<Interned<GenericArgs>>]>>,
-    },
+    /// `BarePath` is used when the path has neither generics nor type anchor, since the vast majority of paths
+    /// are in this category, and splitting `Path` this way allows it to be more thin. When the path has either generics
+    /// or type anchor, it is `Path::Normal` with the generics filled with `None` even if there are none (practically
+    /// this is not a problem since many more paths have generics than a type anchor).
+    BarePath(Interned<ModPath>),
+    /// `Path::Normal` may have empty generics and type anchor (but generic args will be filled with `None`).
+    Normal(NormalPath),
     /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
     LangItem(LangItemTarget, Option<Name>),
+}
+
+// This type is being used a lot, make sure it doesn't grow unintentionally.
+#[cfg(target_arch = "x86_64")]
+const _: () = {
+    assert!(size_of::<Path>() == 16);
+    assert!(size_of::<Option<Path>>() == 16);
+};
+
+thin_vec_with_header_struct! {
+    pub new(pub(crate)) struct NormalPath, NormalPathHeader {
+        pub generic_args: [Option<GenericArgs>],
+        pub type_anchor: Option<TypeRefId>,
+        pub mod_path: Interned<ModPath>; ref,
+    }
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
@@ -86,20 +100,20 @@ pub struct AssociatedTypeBinding {
     pub name: Name,
     /// The generic arguments to the associated type. e.g. For `Trait<Assoc<'a, T> = &'a T>`, this
     /// would be `['a, T]`.
-    pub args: Option<Interned<GenericArgs>>,
+    pub args: Option<GenericArgs>,
     /// The type bound to this associated type (in `Item = T`, this would be the
     /// `T`). This can be `None` if there are bounds instead.
-    pub type_ref: Option<TypeRef>,
+    pub type_ref: Option<TypeRefId>,
     /// Bounds for the associated type, like in `Iterator<Item:
     /// SomeOtherTrait>`. (This is the unstable `associated_type_bounds`
     /// feature.)
-    pub bounds: Box<[Interned<TypeBound>]>,
+    pub bounds: Box<[TypeBound]>,
 }
 
 /// A single generic argument.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
-    Type(TypeRef),
+    Type(TypeRefId),
     Lifetime(LifetimeRef),
     Const(ConstRef),
 }
@@ -112,50 +126,49 @@ impl Path {
     }
 
     /// Converts a known mod path to `Path`.
-    pub fn from_known_path(
-        path: ModPath,
-        generic_args: impl Into<Box<[Option<Interned<GenericArgs>>]>>,
-    ) -> Path {
-        let generic_args = generic_args.into();
-        assert_eq!(path.len(), generic_args.len());
-        Path::Normal {
-            type_anchor: None,
-            mod_path: Interned::new(path),
-            generic_args: Some(generic_args),
-        }
+    pub fn from_known_path(path: ModPath, generic_args: Vec<Option<GenericArgs>>) -> Path {
+        Path::Normal(NormalPath::new(None, Interned::new(path), generic_args))
     }
 
     /// Converts a known mod path to `Path`.
     pub fn from_known_path_with_no_generic(path: ModPath) -> Path {
-        Path::Normal { type_anchor: None, mod_path: Interned::new(path), generic_args: None }
+        Path::BarePath(Interned::new(path))
     }
 
+    #[inline]
     pub fn kind(&self) -> &PathKind {
         match self {
-            Path::Normal { mod_path, .. } => &mod_path.kind,
+            Path::BarePath(mod_path) => &mod_path.kind,
+            Path::Normal(path) => &path.mod_path().kind,
             Path::LangItem(..) => &PathKind::Abs,
         }
     }
 
-    pub fn type_anchor(&self) -> Option<&TypeRef> {
+    #[inline]
+    pub fn type_anchor(&self) -> Option<TypeRefId> {
         match self {
-            Path::Normal { type_anchor, .. } => type_anchor.as_deref(),
-            Path::LangItem(..) => None,
+            Path::Normal(path) => path.type_anchor(),
+            Path::LangItem(..) | Path::BarePath(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn generic_args(&self) -> Option<&[Option<GenericArgs>]> {
+        match self {
+            Path::Normal(path) => Some(path.generic_args()),
+            Path::LangItem(..) | Path::BarePath(_) => None,
         }
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
         match self {
-            Path::Normal { mod_path, generic_args, .. } => {
-                let s = PathSegments {
-                    segments: mod_path.segments(),
-                    generic_args: generic_args.as_deref(),
-                };
-                if let Some(generic_args) = s.generic_args {
-                    assert_eq!(s.segments.len(), generic_args.len());
-                }
-                s
+            Path::BarePath(mod_path) => {
+                PathSegments { segments: mod_path.segments(), generic_args: None }
             }
+            Path::Normal(path) => PathSegments {
+                segments: path.mod_path().segments(),
+                generic_args: Some(path.generic_args()),
+            },
             Path::LangItem(_, seg) => PathSegments {
                 segments: seg.as_ref().map_or(&[], |seg| std::slice::from_ref(seg)),
                 generic_args: None,
@@ -165,34 +178,55 @@ impl Path {
 
     pub fn mod_path(&self) -> Option<&ModPath> {
         match self {
-            Path::Normal { mod_path, .. } => Some(mod_path),
+            Path::BarePath(mod_path) => Some(mod_path),
+            Path::Normal(path) => Some(path.mod_path()),
             Path::LangItem(..) => None,
         }
     }
 
     pub fn qualifier(&self) -> Option<Path> {
-        let Path::Normal { mod_path, generic_args, type_anchor } = self else {
-            return None;
-        };
-        if mod_path.is_ident() {
-            return None;
+        match self {
+            Path::BarePath(mod_path) => {
+                if mod_path.is_ident() {
+                    return None;
+                }
+                Some(Path::BarePath(Interned::new(ModPath::from_segments(
+                    mod_path.kind,
+                    mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
+                ))))
+            }
+            Path::Normal(path) => {
+                let mod_path = path.mod_path();
+                if mod_path.is_ident() {
+                    return None;
+                }
+                let type_anchor = path.type_anchor();
+                let generic_args = path.generic_args();
+                let qualifier_mod_path = Interned::new(ModPath::from_segments(
+                    mod_path.kind,
+                    mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
+                ));
+                let qualifier_generic_args = &generic_args[..generic_args.len() - 1];
+                Some(Path::Normal(NormalPath::new(
+                    type_anchor,
+                    qualifier_mod_path,
+                    qualifier_generic_args.iter().cloned(),
+                )))
+            }
+            Path::LangItem(..) => None,
         }
-        let res = Path::Normal {
-            type_anchor: type_anchor.clone(),
-            mod_path: Interned::new(ModPath::from_segments(
-                mod_path.kind,
-                mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
-            )),
-            generic_args: generic_args.as_ref().map(|it| it[..it.len() - 1].to_vec().into()),
-        };
-        Some(res)
     }
 
     pub fn is_self_type(&self) -> bool {
-        let Path::Normal { mod_path, generic_args, type_anchor } = self else {
-            return false;
-        };
-        type_anchor.is_none() && generic_args.as_deref().is_none() && mod_path.is_Self()
+        match self {
+            Path::BarePath(mod_path) => mod_path.is_Self(),
+            Path::Normal(path) => {
+                path.type_anchor().is_none()
+                    && path.mod_path().is_Self()
+                    && path.generic_args().iter().all(|args| args.is_none())
+            }
+            Path::LangItem(..) => false,
+        }
     }
 }
 
@@ -204,7 +238,7 @@ pub struct PathSegment<'a> {
 
 pub struct PathSegments<'a> {
     segments: &'a [Name],
-    generic_args: Option<&'a [Option<Interned<GenericArgs>>]>,
+    generic_args: Option<&'a [Option<GenericArgs>]>,
 }
 
 impl<'a> PathSegments<'a> {
@@ -224,7 +258,7 @@ impl<'a> PathSegments<'a> {
     pub fn get(&self, idx: usize) -> Option<PathSegment<'a>> {
         let res = PathSegment {
             name: self.segments.get(idx)?,
-            args_and_bindings: self.generic_args.and_then(|it| it.get(idx)?.as_deref()),
+            args_and_bindings: self.generic_args.and_then(|it| it.get(idx)?.as_ref()),
         };
         Some(res)
     }
@@ -244,7 +278,7 @@ impl<'a> PathSegments<'a> {
         self.segments
             .iter()
             .zip(self.generic_args.into_iter().flatten().chain(iter::repeat(&None)))
-            .map(|(name, args)| PathSegment { name, args_and_bindings: args.as_deref() })
+            .map(|(name, args)| PathSegment { name, args_and_bindings: args.as_ref() })
     }
 }
 
@@ -268,16 +302,6 @@ impl GenericArgs {
 
 impl From<Name> for Path {
     fn from(name: Name) -> Path {
-        Path::Normal {
-            type_anchor: None,
-            mod_path: Interned::new(ModPath::from_segments(PathKind::Plain, iter::once(name))),
-            generic_args: None,
-        }
-    }
-}
-
-impl From<Name> for Box<Path> {
-    fn from(name: Name) -> Box<Path> {
-        Box::new(Path::from(name))
+        Path::BarePath(Interned::new(ModPath::from_segments(PathKind::Plain, iter::once(name))))
     }
 }

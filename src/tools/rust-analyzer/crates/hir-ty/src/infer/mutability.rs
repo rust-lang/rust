@@ -4,7 +4,8 @@
 use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
     hir::{
-        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, PatId, Statement, UnaryOp,
+        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
+        UnaryOp,
     },
     lang_item::LangItem,
 };
@@ -88,7 +89,7 @@ impl InferenceContext<'_> {
                         Statement::Expr { expr, has_semi: _ } => {
                             self.infer_mut_expr(*expr, Mutability::Not);
                         }
-                        Statement::Item => (),
+                        Statement::Item(_) => (),
                     }
                 }
                 if let Some(tail) = tail {
@@ -96,7 +97,7 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::MethodCall { receiver: it, method_name: _, args, generic_args: _ }
-            | Expr::Call { callee: it, args, is_assignee_expr: _ } => {
+            | Expr::Call { callee: it, args } => {
                 self.infer_mut_not_expr_iter(args.iter().copied().chain(Some(*it)));
             }
             Expr::Match { expr, arms } => {
@@ -120,10 +121,10 @@ impl InferenceContext<'_> {
             Expr::Become { expr } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
-            Expr::RecordLit { path: _, fields, spread, ellipsis: _, is_assignee_expr: _ } => {
+            Expr::RecordLit { path: _, fields, spread } => {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
-            &Expr::Index { base, index, is_assignee_expr } => {
+            &Expr::Index { base, index } => {
                 if mutability == Mutability::Mut {
                     if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                         if let Some(index_trait) = self
@@ -148,11 +149,8 @@ impl InferenceContext<'_> {
                                     target,
                                 }) = base_adjustments
                                 {
-                                    // For assignee exprs `IndexMut` obligations are already applied
-                                    if !is_assignee_expr {
-                                        if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
-                                            base_ty = Some(ty.clone());
-                                        }
+                                    if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
+                                        base_ty = Some(ty.clone());
                                     }
                                     *mutability = Mutability::Mut;
                                 }
@@ -233,6 +231,14 @@ impl InferenceContext<'_> {
                 self.infer_mut_expr(*lhs, Mutability::Mut);
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
+            &Expr::Assignment { target, value } => {
+                self.body.walk_pats(target, &mut |pat| match self.body[pat] {
+                    Pat::Expr(expr) => self.infer_mut_expr(expr, Mutability::Mut),
+                    Pat::ConstBlock(block) => self.infer_mut_expr(block, Mutability::Not),
+                    _ => {}
+                });
+                self.infer_mut_expr(value, Mutability::Not);
+            }
             Expr::Array(Array::Repeat { initializer: lhs, repeat: rhs })
             | Expr::BinaryOp { lhs, rhs, op: _ }
             | Expr::Range { lhs: Some(lhs), rhs: Some(rhs), range_type: _ } => {
@@ -242,8 +248,7 @@ impl InferenceContext<'_> {
             Expr::Closure { body, .. } => {
                 self.infer_mut_expr(*body, Mutability::Not);
             }
-            Expr::Tuple { exprs, is_assignee_expr: _ }
-            | Expr::Array(Array::ElementList { elements: exprs, is_assignee_expr: _ }) => {
+            Expr::Tuple { exprs } | Expr::Array(Array::ElementList { elements: exprs }) => {
                 self.infer_mut_not_expr_iter(exprs.iter().copied());
             }
             // These don't need any action, as they don't have sub expressions

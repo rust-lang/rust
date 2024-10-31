@@ -2,7 +2,7 @@ error[E0277]: the trait bound `K: Hash` is not satisfied
   --> $DIR/bad-index-due-to-nested.rs:20:5
    |
 LL |     map[k]
-   |     ^^^ the trait `Hash` is not implemented for `K`, which is required by `HashMap<_, _>: Index<&_>`
+   |     ^^^ the trait `Hash` is not implemented for `K`
    |
 note: required for `HashMap<K, V>` to implement `Index<&K>`
   --> $DIR/bad-index-due-to-nested.rs:7:12
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `V: Copy` is not satisfied
   --> $DIR/bad-index-due-to-nested.rs:20:5
    |
 LL |     map[k]
-   |     ^^^ the trait `Copy` is not implemented for `V`, which is required by `HashMap<_, _>: Index<&_>`
+   |     ^^^ the trait `Copy` is not implemented for `V`
    |
 note: required for `HashMap<K, V>` to implement `Index<&K>`
   --> $DIR/bad-index-due-to-nested.rs:7:12

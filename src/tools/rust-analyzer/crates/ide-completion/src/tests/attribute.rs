@@ -663,6 +663,7 @@ mod cfg {
                 ba dbg
                 ba opt_level
                 ba test
+                ba true
             "#]],
         );
         check(
@@ -674,6 +675,7 @@ mod cfg {
                 ba dbg
                 ba opt_level
                 ba test
+                ba true
             "#]],
         );
     }

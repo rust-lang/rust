@@ -493,7 +493,7 @@ where
     is_static::<Slot<K>>();
 }
 
-impl<'me, Q> QueryTable<'me, Q>
+impl<Q> QueryTable<'_, Q>
 where
     Q: Query<Storage = InternedStorage<Q>>,
     Q::Key: InternValue,

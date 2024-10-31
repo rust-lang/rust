@@ -18,7 +18,7 @@ enum ScalarPairPointerWithInt { //~ERROR: abi: ScalarPair
 // of a different size. (Assumes that no target has 8 bit pointers, which
 // feels pretty safe.)
 #[rustc_layout(abi)]
-enum NotScalarPairPointerWithSmallerInt { //~ERROR: abi: Aggregate
+enum NotScalarPairPointerWithSmallerInt { //~ERROR: abi: Memory
     A(u8),
     B(Box<()>),
 }

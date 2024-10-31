@@ -19,6 +19,7 @@ pub mod rust_doc;
 pub mod search;
 pub mod source_change;
 pub mod symbol_index;
+pub mod text_edit;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
@@ -36,6 +37,7 @@ pub mod generated {
 pub mod syntax_helpers {
     pub mod format_string;
     pub mod format_string_exprs;
+    pub mod tree_diff;
     pub use hir::prettify_macro_expansion;
     pub mod node_ext;
     pub mod suggest_name;
@@ -291,5 +293,37 @@ impl SnippetCap {
         } else {
             None
         }
+    }
+}
+
+pub struct Ranker<'a> {
+    pub kind: parser::SyntaxKind,
+    pub text: &'a str,
+    pub ident_kind: bool,
+}
+
+impl<'a> Ranker<'a> {
+    pub const MAX_RANK: usize = 0b1110;
+
+    pub fn from_token(token: &'a syntax::SyntaxToken) -> Self {
+        let kind = token.kind();
+        Ranker { kind, text: token.text(), ident_kind: kind.is_any_identifier() }
+    }
+
+    /// A utility function that ranks a token again a given kind and text, returning a number that
+    /// represents how close the token is to the given kind and text.
+    pub fn rank_token(&self, tok: &syntax::SyntaxToken) -> usize {
+        let tok_kind = tok.kind();
+
+        let exact_same_kind = tok_kind == self.kind;
+        let both_idents = exact_same_kind || (tok_kind.is_any_identifier() && self.ident_kind);
+        let same_text = tok.text() == self.text;
+        // anything that mapped into a token tree has likely no semantic information
+        let no_tt_parent =
+            tok.parent().map_or(false, |it| it.kind() != parser::SyntaxKind::TOKEN_TREE);
+        (both_idents as usize)
+            | ((exact_same_kind as usize) << 1)
+            | ((same_text as usize) << 2)
+            | ((no_tt_parent as usize) << 3)
     }
 }

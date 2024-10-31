@@ -11,6 +11,10 @@ use std::num::NonZero;
 
 use either::{Left, Right};
 use hir::def::DefKind;
+use rustc_abi::{
+    BackendRepr, FieldIdx, FieldsShape, Scalar as ScalarAbi, Size, VariantIdx, Variants,
+    WrappingRange,
+};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -23,9 +27,6 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::{
-    Abi, FieldIdx, FieldsShape, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange,
-};
 use tracing::trace;
 
 use super::machine::AllocMap;
@@ -422,7 +423,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Reset provenance: ensure slice tail metadata does not preserve provenance,
         // and ensure all pointers do not preserve partial provenance.
         if self.reset_provenance_and_padding {
-            if matches!(imm.layout.abi, Abi::Scalar(..)) {
+            if matches!(imm.layout.backend_repr, BackendRepr::Scalar(..)) {
                 // A thin pointer. If it has provenance, we don't have to do anything.
                 // If it does not, ensure we clear the provenance in memory.
                 if matches!(imm.to_scalar(), Scalar::Int(..)) {
@@ -542,7 +543,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             throw_validation_failure!(self.path, NullPtr { ptr_kind })
         }
         // Do not allow references to uninhabited types.
-        if place.layout.abi.is_uninhabited() {
+        if place.layout.is_uninhabited() {
             let ty = place.layout.ty;
             throw_validation_failure!(self.path, PtrToUninhabited { ptr_kind, ty })
         }
@@ -867,7 +868,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     /// Add the entire given place to the "data" range of this visit.
     fn add_data_range_place(&mut self, place: &PlaceTy<'tcx, M::Provenance>) {
         // Only sized places can be added this way.
-        debug_assert!(place.layout.abi.is_sized());
+        debug_assert!(place.layout.is_sized());
         if let Some(data_bytes) = self.data_bytes.as_mut() {
             let offset = Self::data_range_offset(self.ecx, place);
             data_bytes.add_range(offset, place.layout.size);
@@ -945,7 +946,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         layout: TyAndLayout<'tcx>,
     ) -> Cow<'e, RangeSet> {
         assert!(layout.ty.is_union());
-        assert!(layout.abi.is_sized(), "there are no unsized unions");
+        assert!(layout.is_sized(), "there are no unsized unions");
         let layout_cx = LayoutCx::new(*ecx.tcx, ecx.param_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());
@@ -981,7 +982,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     let elem = layout.field(cx, 0);
 
                     // Fast-path for large arrays of simple types that do not contain any padding.
-                    if elem.abi.is_scalar() {
+                    if elem.backend_repr.is_scalar() {
                         out.add_range(base_offset, elem.size * count);
                     } else {
                         for idx in 0..count {
@@ -1299,19 +1300,19 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
         // MyNewtype and then the scalar in there).
-        match val.layout.abi {
-            Abi::Uninhabited => {
+        match val.layout.backend_repr {
+            BackendRepr::Uninhabited => {
                 let ty = val.layout.ty;
                 throw_validation_failure!(self.path, UninhabitedVal { ty });
             }
-            Abi::Scalar(scalar_layout) => {
+            BackendRepr::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
                     let scalar = self.read_scalar(val, ExpectedKind::InitScalar)?;
                     self.visit_scalar(scalar, scalar_layout)?;
                 }
             }
-            Abi::ScalarPair(a_layout, b_layout) => {
+            BackendRepr::ScalarPair(a_layout, b_layout) => {
                 // We can only proceed if *both* scalars need to be initialized.
                 // FIXME: find a way to also check ScalarPair when one side can be uninit but
                 // the other must be init.
@@ -1322,12 +1323,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     self.visit_scalar(b, b_layout)?;
                 }
             }
-            Abi::Vector { .. } => {
+            BackendRepr::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.
                 // (This is harder to check since Miri does not represent these as `Immediate`. We
                 // also cannot use field projections since this might be a newtype around a vector.)
             }
-            Abi::Aggregate { .. } => {
+            BackendRepr::Memory { .. } => {
                 // Nothing to do.
             }
         }

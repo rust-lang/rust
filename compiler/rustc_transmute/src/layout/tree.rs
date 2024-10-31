@@ -339,9 +339,7 @@ pub(crate) mod rustc {
             // 2. enums that delegate their layout to a variant
             // 3. enums with multiple variants
             match layout.variants() {
-                Variants::Single { .. }
-                    if layout.abi.is_uninhabited() && layout.size == Size::ZERO =>
-                {
+                Variants::Single { .. } if layout.is_uninhabited() && layout.size == Size::ZERO => {
                     // The layout representation of uninhabited, ZST enums is
                     // defined to be like that of the `!` type, as opposed of a
                     // typical enum. Consequently, they cannot be descended into

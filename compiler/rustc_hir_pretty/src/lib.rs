@@ -659,8 +659,6 @@ impl<'a> State<'a> {
 
     fn print_opaque_ty(&mut self, o: &hir::OpaqueTy<'_>) {
         self.head("opaque");
-        self.print_generic_params(o.generics.params);
-        self.print_where_clause(o.generics);
         self.word("{");
         self.print_bounds("impl", o.bounds);
         self.word("}");

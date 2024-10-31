@@ -5,7 +5,7 @@ LL |     let hello = move || {
    |                 ------- within this `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`
 ...
 LL |     let hello = hello.clone();
-   |                       ^^^^^ within `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`, the trait `Clone` is not implemented for `S`, which is required by `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}: Clone`
+   |                       ^^^^^ within `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`, the trait `Clone` is not implemented for `S`
    |
 note: required because it's used within this closure
   --> $DIR/not-clone-closure.rs:7:17

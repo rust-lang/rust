@@ -23,7 +23,7 @@ use syntax::{
     AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize, T,
 };
 
-use text_edit::{Indel, TextEdit};
+use ide_db::text_edit::TextEdit;
 
 use crate::SourceChange;
 
@@ -126,7 +126,7 @@ fn on_opening_bracket_typed(
         return None;
     }
     // FIXME: Edition
-    let file = file.reparse(&Indel::delete(range), span::Edition::CURRENT_FIXME);
+    let file = file.reparse(range, "", span::Edition::CURRENT_FIXME);
 
     if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
         return Some(edit);

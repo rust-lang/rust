@@ -24,14 +24,15 @@ pub(crate) fn get(
     config: RustcCfgConfig<'_>,
 ) -> Vec<CfgAtom> {
     let _p = tracing::info_span!("rustc_cfg::get").entered();
-    let mut res: Vec<_> = Vec::with_capacity(6 * 2 + 1);
+    let mut res: Vec<_> = Vec::with_capacity(7 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
     res.push(CfgAtom::Flag(Symbol::intern("target_thread_local")));
-    for ty in ["8", "16", "32", "64", "cas", "ptr"] {
-        for key in ["target_has_atomic", "target_has_atomic_load_store"] {
+    for key in ["target_has_atomic", "target_has_atomic_load_store"] {
+        for ty in ["8", "16", "32", "64", "cas", "ptr"] {
             res.push(CfgAtom::KeyValue { key: Symbol::intern(key), value: Symbol::intern(ty) });
         }
+        res.push(CfgAtom::Flag(Symbol::intern(key)));
     }
 
     let rustc_cfgs = get_rust_cfgs(target, extra_env, config);

@@ -6,6 +6,7 @@ pub mod auto_trait;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod dyn_compatibility;
+pub mod effects;
 mod engine;
 mod fulfill;
 pub mod misc;
@@ -33,7 +34,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, Upcast,
+    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, TypingMode,
+    Upcast,
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -273,7 +275,7 @@ fn do_normalize_predicates<'tcx>(
     // by wfcheck anyway, so I'm not sure we have to check
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, predicates);
 
@@ -474,11 +476,11 @@ pub fn normalize_param_env_or_error<'tcx>(
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
 /// returns true, then either normalize encountered an error or one of the predicates did not
-/// hold. Used when creating vtables to check for unsatisfiable methods.
+/// hold. Used when creating vtables to check for unsatisfiable methods. This should not be
+/// used during analysis.
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
-
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
     let param_env = ty::ParamEnv::reveal_all();
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
@@ -567,8 +569,11 @@ fn is_impossible_associated_item(
     // since that method *may* have some substitutions where the predicates hold.
     //
     // This replicates the logic we use in coherence.
-    let infcx =
-        tcx.infer_ctxt().ignoring_regions().with_next_trait_solver(true).intercrate(true).build();
+    let infcx = tcx
+        .infer_ctxt()
+        .ignoring_regions()
+        .with_next_trait_solver(true)
+        .build(TypingMode::Coherence);
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 

@@ -1365,7 +1365,6 @@ impl<'tcx> Pick<'tcx> {
                     trait_item_def_id: _,
                     fn_has_self_parameter: _,
                     opt_rpitit_info: _,
-                    is_effects_desugaring: _,
                 },
             kind: _,
             import_ids: _,

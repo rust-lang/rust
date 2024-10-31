@@ -8,7 +8,7 @@ use syntax::{
     SyntaxToken, TextRange, TextSize, T,
 };
 
-use text_edit::{TextEdit, TextEditBuilder};
+use ide_db::text_edit::{TextEdit, TextEditBuilder};
 
 pub struct JoinLinesConfig {
     pub join_else_if: bool,

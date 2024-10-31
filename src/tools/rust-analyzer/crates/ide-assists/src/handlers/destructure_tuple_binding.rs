@@ -1,3 +1,4 @@
+use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -8,7 +9,6 @@ use syntax::{
     ast::{self, make, AstNode, FieldExpr, HasName, IdentPat},
     ted,
 };
-use text_edit::TextRange;
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},

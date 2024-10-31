@@ -21,7 +21,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL |     assert_sized::<Foo>();
    |                    ^^^ doesn't have a size known at compile-time
    |
-   = help: within `Foo`, the trait `Sized` is not implemented for `A`, which is required by `Foo: Sized`
+   = help: within `Foo`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Foo`
   --> $DIR/extern-types-unsized.rs:9:8
    |
@@ -43,7 +43,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL |     assert_sized::<Bar<A>>();
    |                    ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Bar<A>`, the trait `Sized` is not implemented for `A`, which is required by `Bar<A>: Sized`
+   = help: within `Bar<A>`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Bar<A>`
   --> $DIR/extern-types-unsized.rs:14:8
    |
@@ -65,7 +65,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
 LL |     assert_sized::<Bar<Bar<A>>>();
    |                    ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Bar<Bar<A>>`, the trait `Sized` is not implemented for `A`, which is required by `Bar<Bar<A>>: Sized`
+   = help: within `Bar<Bar<A>>`, the trait `Sized` is not implemented for `A`
 note: required because it appears within the type `Bar<A>`
   --> $DIR/extern-types-unsized.rs:14:8
    |

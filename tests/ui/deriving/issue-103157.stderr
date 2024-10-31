@@ -5,7 +5,7 @@ LL | #[derive(PartialEq, Eq)]
    |                     -- in this derive macro expansion
 ...
 LL |     Float(Option<f64>),
-   |           ^^^^^^^^^^^ the trait `Eq` is not implemented for `f64`, which is required by `Option<f64>: Eq`
+   |           ^^^^^^^^^^^ the trait `Eq` is not implemented for `f64`
    |
    = help: the following other types implement trait `Eq`:
              i128

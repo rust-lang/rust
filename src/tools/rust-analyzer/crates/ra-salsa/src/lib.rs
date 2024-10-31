@@ -149,7 +149,7 @@ where
     db: &'me D,
 }
 
-impl<'me, D: ?Sized> fmt::Debug for EventDebug<'me, D>
+impl<D: ?Sized> fmt::Debug for EventDebug<'_, D>
 where
     D: plumbing::DatabaseOps,
 {
@@ -242,7 +242,7 @@ where
     db: &'me D,
 }
 
-impl<'me, D: ?Sized> fmt::Debug for EventKindDebug<'me, D>
+impl<D: ?Sized> fmt::Debug for EventKindDebug<'_, D>
 where
     D: plumbing::DatabaseOps,
 {
@@ -729,7 +729,7 @@ impl Cycle {
             db: &'me dyn Database,
         }
 
-        impl<'me> std::fmt::Debug for UnexpectedCycleDebug<'me> {
+        impl std::fmt::Debug for UnexpectedCycleDebug<'_> {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 fmt.debug_struct("UnexpectedCycle")
                     .field("all_participants", &self.c.all_participants(self.db))

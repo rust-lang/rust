@@ -289,10 +289,12 @@ impl ExprValidator {
         match &self.body[scrutinee_expr] {
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
             Expr::Path(path) => {
-                let value_or_partial = self
-                    .owner
-                    .resolver(db.upcast())
-                    .resolve_path_in_value_ns_fully(db.upcast(), path);
+                let value_or_partial =
+                    self.owner.resolver(db.upcast()).resolve_path_in_value_ns_fully(
+                        db.upcast(),
+                        path,
+                        self.body.expr_path_hygiene(scrutinee_expr),
+                    );
                 value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
@@ -546,10 +548,7 @@ pub fn record_literal_missing_fields(
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
     let (fields, exhaustive) = match expr {
-        Expr::RecordLit { fields, spread, ellipsis, is_assignee_expr, .. } => {
-            let exhaustive = if *is_assignee_expr { !*ellipsis } else { spread.is_none() };
-            (fields, exhaustive)
-        }
+        Expr::RecordLit { fields, spread, .. } => (fields, spread.is_none()),
         _ => return None,
     };
 

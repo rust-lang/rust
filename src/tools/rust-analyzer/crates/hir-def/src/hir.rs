@@ -17,16 +17,17 @@ pub mod type_ref;
 
 use std::fmt;
 
-use hir_expand::name::Name;
-use intern::{Interned, Symbol};
+use hir_expand::{name::Name, MacroDefId};
+use intern::Symbol;
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
+use type_ref::TypeRefId;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     path::{GenericArgs, Path},
-    type_ref::{Mutability, Rawness, TypeRef},
+    type_ref::{Mutability, Rawness},
     BlockId, ConstBlockId,
 };
 
@@ -47,6 +48,22 @@ pub type PatId = Idx<Pat>;
 pub enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),
+}
+
+impl ExprOrPatId {
+    pub fn as_expr(self) -> Option<ExprId> {
+        match self {
+            Self::ExprId(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_pat(self) -> Option<PatId> {
+        match self {
+            Self::PatId(v) => Some(v),
+            _ => None,
+        }
+    }
 }
 stdx::impl_from!(ExprId, PatId for ExprOrPatId);
 
@@ -204,7 +221,6 @@ pub enum Expr {
     Call {
         callee: ExprId,
         args: Box<[ExprId]>,
-        is_assignee_expr: bool,
     },
     MethodCall {
         receiver: ExprId,
@@ -239,8 +255,6 @@ pub enum Expr {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
         spread: Option<ExprId>,
-        ellipsis: bool,
-        is_assignee_expr: bool,
     },
     Field {
         expr: ExprId,
@@ -251,7 +265,7 @@ pub enum Expr {
     },
     Cast {
         expr: ExprId,
-        type_ref: Interned<TypeRef>,
+        type_ref: TypeRefId,
     },
     Ref {
         expr: ExprId,
@@ -265,10 +279,16 @@ pub enum Expr {
         expr: ExprId,
         op: UnaryOp,
     },
+    /// `op` cannot be bare `=` (but can be `op=`), these are lowered to `Assignment` instead.
     BinaryOp {
         lhs: ExprId,
         rhs: ExprId,
         op: Option<BinaryOp>,
+    },
+    // Assignments need a special treatment because of destructuring assignment.
+    Assignment {
+        target: PatId,
+        value: ExprId,
     },
     Range {
         lhs: Option<ExprId>,
@@ -278,19 +298,17 @@ pub enum Expr {
     Index {
         base: ExprId,
         index: ExprId,
-        is_assignee_expr: bool,
     },
     Closure {
         args: Box<[PatId]>,
-        arg_types: Box<[Option<Interned<TypeRef>>]>,
-        ret_type: Option<Interned<TypeRef>>,
+        arg_types: Box<[Option<TypeRefId>]>,
+        ret_type: Option<TypeRefId>,
         body: ExprId,
         closure_kind: ClosureKind,
         capture_by: CaptureBy,
     },
     Tuple {
         exprs: Box<[ExprId]>,
-        is_assignee_expr: bool,
     },
     Array(Array),
     Literal(Literal),
@@ -301,7 +319,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OffsetOf {
-    pub container: Interned<TypeRef>,
+    pub container: TypeRefId,
     pub fields: Box<[Name]>,
 }
 
@@ -446,7 +464,7 @@ pub enum Movability {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
-    ElementList { elements: Box<[ExprId]>, is_assignee_expr: bool },
+    ElementList { elements: Box<[ExprId]> },
     Repeat { initializer: ExprId, repeat: ExprId },
 }
 
@@ -467,7 +485,7 @@ pub struct RecordLitField {
 pub enum Statement {
     Let {
         pat: PatId,
-        type_ref: Option<Interned<TypeRef>>,
+        type_ref: Option<TypeRefId>,
         initializer: Option<ExprId>,
         else_branch: Option<ExprId>,
     },
@@ -475,133 +493,13 @@ pub enum Statement {
         expr: ExprId,
         has_semi: bool,
     },
-    // At the moment, we only use this to figure out if a return expression
-    // is really the last statement of a block. See #16566
-    Item,
+    Item(Item),
 }
 
-impl Expr {
-    pub fn walk_child_exprs(&self, mut f: impl FnMut(ExprId)) {
-        match self {
-            Expr::Missing => {}
-            Expr::Path(_) | Expr::OffsetOf(_) => {}
-            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
-                AsmOperand::In { expr, .. }
-                | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. } => f(*expr),
-                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                    f(*in_expr);
-                    if let Some(out_expr) = out_expr {
-                        f(*out_expr);
-                    }
-                }
-                AsmOperand::Out { expr: None, .. }
-                | AsmOperand::Const(_)
-                | AsmOperand::Label(_)
-                | AsmOperand::Sym(_) => (),
-            }),
-            Expr::If { condition, then_branch, else_branch } => {
-                f(*condition);
-                f(*then_branch);
-                if let &Some(else_branch) = else_branch {
-                    f(else_branch);
-                }
-            }
-            Expr::Let { expr, .. } => {
-                f(*expr);
-            }
-            Expr::Const(_) => (),
-            Expr::Block { statements, tail, .. }
-            | Expr::Unsafe { statements, tail, .. }
-            | Expr::Async { statements, tail, .. } => {
-                for stmt in statements.iter() {
-                    match stmt {
-                        Statement::Let { initializer, else_branch, .. } => {
-                            if let &Some(expr) = initializer {
-                                f(expr);
-                            }
-                            if let &Some(expr) = else_branch {
-                                f(expr);
-                            }
-                        }
-                        Statement::Expr { expr: expression, .. } => f(*expression),
-                        Statement::Item => (),
-                    }
-                }
-                if let &Some(expr) = tail {
-                    f(expr);
-                }
-            }
-            Expr::Loop { body, .. } => f(*body),
-            Expr::Call { callee, args, .. } => {
-                f(*callee);
-                args.iter().copied().for_each(f);
-            }
-            Expr::MethodCall { receiver, args, .. } => {
-                f(*receiver);
-                args.iter().copied().for_each(f);
-            }
-            Expr::Match { expr, arms } => {
-                f(*expr);
-                arms.iter().map(|arm| arm.expr).for_each(f);
-            }
-            Expr::Continue { .. } => {}
-            Expr::Break { expr, .. }
-            | Expr::Return { expr }
-            | Expr::Yield { expr }
-            | Expr::Yeet { expr } => {
-                if let &Some(expr) = expr {
-                    f(expr);
-                }
-            }
-            Expr::Become { expr } => f(*expr),
-            Expr::RecordLit { fields, spread, .. } => {
-                for field in fields.iter() {
-                    f(field.expr);
-                }
-                if let &Some(expr) = spread {
-                    f(expr);
-                }
-            }
-            Expr::Closure { body, .. } => {
-                f(*body);
-            }
-            Expr::BinaryOp { lhs, rhs, .. } => {
-                f(*lhs);
-                f(*rhs);
-            }
-            Expr::Range { lhs, rhs, .. } => {
-                if let &Some(lhs) = rhs {
-                    f(lhs);
-                }
-                if let &Some(rhs) = lhs {
-                    f(rhs);
-                }
-            }
-            Expr::Index { base, index, .. } => {
-                f(*base);
-                f(*index);
-            }
-            Expr::Field { expr, .. }
-            | Expr::Await { expr }
-            | Expr::Cast { expr, .. }
-            | Expr::Ref { expr, .. }
-            | Expr::UnaryOp { expr, .. }
-            | Expr::Box { expr } => {
-                f(*expr);
-            }
-            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
-            Expr::Array(a) => match a {
-                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
-                Array::Repeat { initializer, repeat } => {
-                    f(*initializer);
-                    f(*repeat)
-                }
-            },
-            Expr::Literal(_) => {}
-            Expr::Underscore => {}
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Item {
+    MacroDef(Box<MacroDefId>),
+    Other,
 }
 
 /// Explicit binding annotations given in the HIR for a binding. Note
@@ -665,18 +563,49 @@ pub struct RecordFieldPat {
 pub enum Pat {
     Missing,
     Wild,
-    Tuple { args: Box<[PatId]>, ellipsis: Option<u32> },
+    Tuple {
+        args: Box<[PatId]>,
+        ellipsis: Option<u32>,
+    },
     Or(Box<[PatId]>),
-    Record { path: Option<Box<Path>>, args: Box<[RecordFieldPat]>, ellipsis: bool },
-    Range { start: Option<Box<LiteralOrConst>>, end: Option<Box<LiteralOrConst>> },
-    Slice { prefix: Box<[PatId]>, slice: Option<PatId>, suffix: Box<[PatId]> },
-    Path(Box<Path>),
+    Record {
+        path: Option<Box<Path>>,
+        args: Box<[RecordFieldPat]>,
+        ellipsis: bool,
+    },
+    Range {
+        start: Option<Box<LiteralOrConst>>,
+        end: Option<Box<LiteralOrConst>>,
+    },
+    Slice {
+        prefix: Box<[PatId]>,
+        slice: Option<PatId>,
+        suffix: Box<[PatId]>,
+    },
+    /// This might refer to a variable if a single segment path (specifically, on destructuring assignment).
+    Path(Path),
     Lit(ExprId),
-    Bind { id: BindingId, subpat: Option<PatId> },
-    TupleStruct { path: Option<Box<Path>>, args: Box<[PatId]>, ellipsis: Option<u32> },
-    Ref { pat: PatId, mutability: Mutability },
-    Box { inner: PatId },
+    Bind {
+        id: BindingId,
+        subpat: Option<PatId>,
+    },
+    TupleStruct {
+        path: Option<Box<Path>>,
+        args: Box<[PatId]>,
+        ellipsis: Option<u32>,
+    },
+    Ref {
+        pat: PatId,
+        mutability: Mutability,
+    },
+    Box {
+        inner: PatId,
+    },
     ConstBlock(ExprId),
+    /// An expression inside a pattern. That can only occur inside assignments.
+    ///
+    /// E.g. in `(a, *b) = (1, &mut 2)`, `*b` is an expression.
+    Expr(ExprId),
 }
 
 impl Pat {
@@ -687,7 +616,8 @@ impl Pat {
             | Pat::Path(..)
             | Pat::ConstBlock(..)
             | Pat::Wild
-            | Pat::Missing => {}
+            | Pat::Missing
+            | Pat::Expr(_) => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }

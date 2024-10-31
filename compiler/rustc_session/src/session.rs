@@ -1036,7 +1036,8 @@ pub fn build_session(
         sopts.unstable_opts.translate_directionality_markers,
     );
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
+    let emitter =
+        default_emitter(&sopts, registry, Lrc::clone(&source_map), bundle, fallback_bundle);
 
     let mut dcx =
         DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
@@ -1079,7 +1080,7 @@ pub fn build_session(
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
         // rescanning of the target lib path and an unnecessary allocation.
-        host_tlib_path.clone()
+        Lrc::clone(&host_tlib_path)
     } else {
         Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };

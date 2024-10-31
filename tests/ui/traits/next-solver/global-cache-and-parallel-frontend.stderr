@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/global-cache-and-parallel-frontend.rs:15:17
    |
 LL | #[derive(Clone, Eq)]
-   |                 ^^ the trait `Clone` is not implemented for `T`, which is required by `Struct<T>: PartialEq`
+   |                 ^^ the trait `Clone` is not implemented for `T`
    |
 note: required for `Struct<T>` to implement `PartialEq`
   --> $DIR/global-cache-and-parallel-frontend.rs:18:19

@@ -153,7 +153,6 @@ impl Step for Std {
             // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
             // its artifacts can't be reused.
             && compiler.stage != 0
-            // This check is specific to testing std itself; see `test::Std` for more details.
             && !self.force_recompile
         {
             let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });

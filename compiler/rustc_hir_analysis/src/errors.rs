@@ -1624,10 +1624,14 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_effects_without_next_solver)]
+#[diag(hir_analysis_invalid_generic_receiver_ty, code = E0801)]
 #[note]
-#[help]
-pub(crate) struct EffectsWithoutNextSolver;
+#[help(hir_analysis_invalid_generic_receiver_ty_help)]
+pub(crate) struct InvalidGenericReceiverTy<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
+}
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_cmse_inputs_stack_spill, code = E0798)]

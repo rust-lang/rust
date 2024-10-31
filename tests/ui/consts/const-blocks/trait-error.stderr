@@ -4,7 +4,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |     [Foo(String::new()); 4];
    |      ^^^^^^^^^^^^^^^^^^
    |      |
-   |      the trait `Copy` is not implemented for `String`, which is required by `Foo<String>: Copy`
+   |      the trait `Copy` is not implemented for `String`
    |      help: create an inline `const` block: `const { Foo(String::new()) }`
    |
 note: required for `Foo<String>` to implement `Copy`

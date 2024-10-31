@@ -2,6 +2,7 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
+use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, OpTy, PlaceTy, Projectable, interp_ok,
@@ -20,7 +21,6 @@ use rustc_mir_dataflow::value_analysis::{
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Abi, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use tracing::{debug, debug_span, instrument};
 
 // These constants are somewhat random guesses and have not been optimized.
@@ -59,7 +59,7 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
         let mut results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
+            .in_scope(|| analysis.wrap().iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
         let mut visitor = Collector::new(tcx, &body.local_decls);
@@ -457,7 +457,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     // a pair and sometimes not. But as a hack we always return a pair
                     // and just make the 2nd component `Bottom` when it does not exist.
                     Some(val) => {
-                        if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                        if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
                             let (val, overflow) = val.to_scalar_pair();
                             (FlatSet::Elem(val), FlatSet::Elem(overflow))
                         } else {
@@ -470,7 +470,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Exactly one side is known, attempt some algebraic simplifications.
             (FlatSet::Elem(const_arg), _) | (_, FlatSet::Elem(const_arg)) => {
                 let layout = const_arg.layout;
-                if !matches!(layout.abi, rustc_target::abi::Abi::Scalar(..)) {
+                if !matches!(layout.backend_repr, rustc_target::abi::BackendRepr::Scalar(..)) {
                     return (FlatSet::Top, FlatSet::Top);
                 }
 
@@ -589,13 +589,13 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
         }
 
         let place = map.find(place.as_ref())?;
-        if layout.abi.is_scalar()
+        if layout.backend_repr.is_scalar()
             && let Some(value) = propagatable_scalar(place, state, map)
         {
             return Some(Const::Val(ConstValue::Scalar(value), ty));
         }
 
-        if matches!(layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+        if matches!(layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
             let alloc_id = ecx
                 .intern_with_temp_alloc(layout, |ecx, dest| {
                     try_write_constant(ecx, dest, place, ty, state, map)
@@ -641,7 +641,7 @@ fn try_write_constant<'tcx>(
     }
 
     // Fast path for scalars.
-    if layout.abi.is_scalar()
+    if layout.backend_repr.is_scalar()
         && let Some(value) = propagatable_scalar(place, state, map)
     {
         return ecx.write_immediate(Immediate::Scalar(value), dest);

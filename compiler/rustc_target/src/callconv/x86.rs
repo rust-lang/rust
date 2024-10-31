@@ -1,6 +1,6 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
 use crate::abi::{
-    Abi, AddressSpace, Align, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
 };
 use crate::spec::HasTargetSpec;
 use crate::spec::abi::Abi as SpecAbi;
@@ -105,10 +105,12 @@ where
             where
                 Ty: TyAbiInterface<'a, C> + Copy,
             {
-                match layout.abi {
-                    Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) => false,
-                    Abi::Vector { .. } => true,
-                    Abi::Aggregate { .. } => {
+                match layout.backend_repr {
+                    BackendRepr::Uninhabited
+                    | BackendRepr::Scalar(_)
+                    | BackendRepr::ScalarPair(..) => false,
+                    BackendRepr::Vector { .. } => true,
+                    BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {
                             if contains_vector(cx, layout.field(cx, i)) {
                                 return true;
@@ -223,9 +225,9 @@ where
         // Intrinsics themselves are not actual "real" functions, so theres no need to change their ABIs.
         && abi != SpecAbi::RustIntrinsic
     {
-        let has_float = match fn_abi.ret.layout.abi {
-            Abi::Scalar(s) => matches!(s.primitive(), Float(_)),
-            Abi::ScalarPair(s1, s2) => {
+        let has_float = match fn_abi.ret.layout.backend_repr {
+            BackendRepr::Scalar(s) => matches!(s.primitive(), Float(_)),
+            BackendRepr::ScalarPair(s1, s2) => {
                 matches!(s1.primitive(), Float(_)) || matches!(s2.primitive(), Float(_))
             }
             _ => false, // anyway not passed via registers on x86

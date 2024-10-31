@@ -376,6 +376,21 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     unsafe fn from_ptr_in(ptr: *mut RcInner<T>, alloc: A) -> Self {
         unsafe { Self::from_inner_in(NonNull::new_unchecked(ptr), alloc) }
     }
+
+    // Non-inlined part of `drop`.
+    #[inline(never)]
+    unsafe fn drop_slow(&mut self) {
+        // Reconstruct the "strong weak" pointer and drop it when this
+        // variable goes out of scope. This ensures that the memory is
+        // deallocated even if the destructor of `T` panics.
+        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+
+        // Destroy the contained object.
+        // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
+        unsafe {
+            ptr::drop_in_place(&mut (*self.ptr.as_ptr()).value);
+        }
+    }
 }
 
 impl<T> Rc<T> {
@@ -2252,21 +2267,12 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             self.inner().dec_strong();
             if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
-
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    self.alloc
-                        .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
-                }
+                self.drop_slow();
             }
         }
     }

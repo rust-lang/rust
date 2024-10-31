@@ -241,7 +241,7 @@ impl ParseSess {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
             HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
-                .sm(Some(sm.clone())),
+                .sm(Some(Lrc::clone(&sm))),
         );
         let dcx = DiagCtxt::new(emitter);
         ParseSess::with_dcx(dcx, sm)
@@ -278,7 +278,7 @@ impl ParseSess {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(HumanEmitter::new(
             stderr_destination(ColorConfig::Auto),
-            fallback_bundle.clone(),
+            Lrc::clone(&fallback_bundle),
         ));
         let fatal_dcx = DiagCtxt::new(emitter);
         let dcx = DiagCtxt::new(Box::new(SilentEmitter {
@@ -297,7 +297,7 @@ impl ParseSess {
     }
 
     pub fn clone_source_map(&self) -> Lrc<SourceMap> {
-        self.source_map.clone()
+        Lrc::clone(&self.source_map)
     }
 
     pub fn buffer_lint(

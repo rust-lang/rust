@@ -1,6 +1,9 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Ctarget-feature=+f,+d
 //@ needs-llvm-components: riscv
+//@ revisions: LLVM-PRE-20 LLVM-POST-20
+//@ [LLVM-PRE-20] ignore-llvm-version: 20 - 99
+//@ [LLVM-POST-20] min-llvm-version: 20
 
 #![feature(no_core, lang_items, f16)]
 #![crate_type = "lib"]
@@ -31,9 +34,11 @@ pub extern "C" fn read_f16(x: &f16) -> f16 {
 // CHECK-LABEL: read_f32
 #[no_mangle]
 pub extern "C" fn read_f32(x: &f32) -> f32 {
-    // CHECK: flw fa5, 0(a0)
-    // CHECK-NEXT: fmv.x.w a0, fa5
-    // CHECK-NEXT: ret
+    // LLVM-PRE-20: flw fa5, 0(a0)
+    // LLVM-PRE-20-NEXT: fmv.x.w a0, fa5
+    // LLVM-PRE-20-NEXT: ret
+    // LLVM-POST-20: lw a0, 0(a0)
+    // LLVM-POST-20-NEXT: ret
     *x
 }
 

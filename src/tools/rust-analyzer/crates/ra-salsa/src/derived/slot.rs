@@ -616,7 +616,7 @@ Please report this bug to https://github.com/salsa-rs/salsa/issues."
     }
 }
 
-impl<'me, Q> Drop for PanicGuard<'me, Q>
+impl<Q> Drop for PanicGuard<'_, Q>
 where
     Q: QueryFunction,
     Q::Value: Eq,

@@ -123,7 +123,7 @@ pub(super) struct ClauseElaborator<'a> {
     seen: FxHashSet<WhereClause>,
 }
 
-impl<'a> ClauseElaborator<'a> {
+impl ClauseElaborator<'_> {
     fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
         self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
     }
@@ -163,10 +163,12 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(Tra
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
                 let is_trait = match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
-                        TypeRef::Path(p) => p.is_self_type(),
-                        _ => false,
-                    },
+                    WherePredicateTypeTarget::TypeRef(type_ref) => {
+                        match &generic_params.types_map[*type_ref] {
+                            TypeRef::Path(p) => p.is_self_type(),
+                            _ => false,
+                        }
+                    }
                     WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
                         Some(*local_id) == trait_self
                     }

@@ -1,4 +1,5 @@
 use hir::{db::ExpandDatabase, diagnostics::RemoveUnnecessaryElse, HirFileIdExt};
+use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use itertools::Itertools;
 use syntax::{
@@ -8,7 +9,6 @@ use syntax::{
     },
     AstNode, SyntaxToken, TextRange,
 };
-use text_edit::TextEdit;
 
 use crate::{
     adjusted_display_range, fix, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity,

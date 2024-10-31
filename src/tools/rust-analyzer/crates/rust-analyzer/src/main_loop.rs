@@ -417,6 +417,8 @@ impl GlobalState {
                 }
             }
 
+            let supports_diagnostic_pull_model = self.config.text_document_diagnostic();
+
             let client_refresh = became_quiescent || state_changed;
             if client_refresh {
                 // Refresh semantic tokens if the client supports it.
@@ -434,11 +436,21 @@ impl GlobalState {
                 if self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
                 }
+
+                if supports_diagnostic_pull_model {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
+                }
             }
 
             let project_or_mem_docs_changed =
                 became_quiescent || state_changed || memdocs_added_or_removed;
-            if project_or_mem_docs_changed && self.config.publish_diagnostics(None) {
+            if project_or_mem_docs_changed
+                && !supports_diagnostic_pull_model
+                && self.config.publish_diagnostics(None)
+            {
                 self.update_diagnostics();
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
@@ -1080,6 +1092,23 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
+            .on_with::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+                lsp_types::DocumentDiagnosticReport::Full(
+                    lsp_types::RelatedFullDocumentDiagnosticReport {
+                        related_documents: None,
+                        full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                            result_id: None,
+                            items: vec![],
+                        },
+                    },
+                ),
+            ), || lsp_server::ResponseError {
+                code: lsp_server::ErrorCode::ServerCancelled as i32,
+                message: "server cancelled the request".to_owned(),
+                data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {
+                    retrigger_request: true
+                }).ok(),
+            })
             .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)

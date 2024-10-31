@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: TraitFoo` is not satisfied
   --> $DIR/copy-impl-cannot-normalize.rs:22:18
    |
 LL | impl<T> Copy for Foo<T> {}
-   |                  ^^^^^^ the trait `TraitFoo` is not implemented for `T`, which is required by `Foo<T>: Clone`
+   |                  ^^^^^^ the trait `TraitFoo` is not implemented for `T`
    |
 note: required for `Foo<T>` to implement `Clone`
   --> $DIR/copy-impl-cannot-normalize.rs:12:9

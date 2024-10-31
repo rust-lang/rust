@@ -84,10 +84,10 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
+use ide_db::text_edit::TextEdit;
 use ide_db::{base_db::SourceDatabase, EditionedFileId, FileId, FxHashMap, RootDatabase};
 use resolving::ResolvedRule;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
-use text_edit::TextEdit;
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]

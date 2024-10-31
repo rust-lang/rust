@@ -15,7 +15,7 @@ use itertools::Itertools;
 use stdx::{always, never};
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize};
 
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
 
 use crate::{FilePosition, RangeInfo, SourceChange};
 
@@ -449,9 +449,9 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 mod tests {
     use expect_test::{expect, Expect};
     use ide_db::source_change::SourceChange;
+    use ide_db::text_edit::TextEdit;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
-    use text_edit::TextEdit;
 
     use crate::fixture;
 

@@ -157,7 +157,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Some(ty_def) if cx.tcx.is_lang_item(ty_def.did(), LangItem::String),
             );
 
-            let infcx = cx.tcx.infer_ctxt().build();
+            let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             let suggest_display = is_str
                 || cx.tcx.get_diagnostic_item(sym::Display).is_some_and(|t| {
                     infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()

@@ -1042,7 +1042,7 @@ fn render_dyn_compatibility(
         }
         DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
             let name = hir::Trait::from(super_trait).name(db);
-            format_to!(buf, "has a object unsafe supertrait `{}`", name.as_str());
+            format_to!(buf, "has a dyn incompatible supertrait `{}`", name.as_str());
         }
     }
 }

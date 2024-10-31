@@ -170,7 +170,7 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::mir::mono::StaticDef(self.create_def_id(did))
     }
 
-    pub(crate) fn layout_id(&mut self, layout: rustc_target::abi::Layout<'tcx>) -> Layout {
+    pub(crate) fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> Layout {
         self.layouts.create_or_fetch(layout)
     }
 }

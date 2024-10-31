@@ -77,7 +77,7 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use text_edit::{TextRange, TextSize};
+    use ide_db::text_edit::{TextRange, TextSize};
 
     use crate::{
         fixture,

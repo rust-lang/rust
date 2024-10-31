@@ -8,6 +8,7 @@ use hir::{
     sym, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
+use ide_db::text_edit::TextEdit;
 use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
@@ -17,7 +18,6 @@ use syntax::{
     ast::{self, AstNode, HasGenericParams},
     format_smolstr, match_ast, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
 };
-use text_edit::TextEdit;
 
 use crate::{navigation_target::TryToNav, FileId};
 
@@ -410,19 +410,6 @@ impl InlayHint {
         }
     }
 
-    fn opening_paren_before(kind: InlayKind, range: TextRange) -> InlayHint {
-        InlayHint {
-            range,
-            kind,
-            label: InlayHintLabel::from("("),
-            text_edit: None,
-            position: InlayHintPosition::Before,
-            pad_left: false,
-            pad_right: false,
-            resolve_parent: None,
-        }
-    }
-
     pub fn needs_resolve(&self) -> Option<TextRange> {
         self.resolve_parent.filter(|_| self.text_edit.is_some() || self.label.needs_resolve())
     }
@@ -473,6 +460,18 @@ impl InlayHintLabel {
                 tooltip: None,
             }),
         }
+    }
+
+    pub fn append_part(&mut self, part: InlayHintLabelPart) {
+        if part.linked_location.is_none() && part.tooltip.is_none() {
+            if let Some(InlayHintLabelPart { text, linked_location: None, tooltip: None }) =
+                self.parts.last_mut()
+            {
+                text.push_str(&part.text);
+                return;
+            }
+        }
+        self.parts.push(part);
     }
 
     pub fn needs_resolve(&self) -> bool {

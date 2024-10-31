@@ -58,7 +58,8 @@ use hir_def::{
     TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{
-    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, ValueResult,
+    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, RenderedExpandError,
+    ValueResult,
 };
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
@@ -838,7 +839,7 @@ fn macro_call_diagnostics(
         let file_id = loc.kind.file_id();
         let node =
             InFile::new(file_id, db.ast_id_map(file_id).get_erased(loc.kind.erased_ast_id()));
-        let (message, error) = err.render_to_string(db.upcast());
+        let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
         let precise_location = if err.span().anchor.file_id == file_id {
             Some(
                 err.span().range
@@ -850,7 +851,7 @@ fn macro_call_diagnostics(
         } else {
             None
         };
-        acc.push(MacroError { node, precise_location, message, error }.into());
+        acc.push(MacroError { node, precise_location, message, error, kind }.into());
     }
 
     if !parse_errors.is_empty() {
@@ -916,13 +917,14 @@ fn emit_def_diagnostic_(
 
         DefDiagnosticKind::MacroError { ast, path, err } => {
             let item = ast.to_ptr(db.upcast());
-            let (message, error) = err.render_to_string(db.upcast());
+            let RenderedExpandError { message, error, kind } = err.render_to_string(db.upcast());
             acc.push(
                 MacroError {
                     node: InFile::new(ast.file_id, item.syntax_node_ptr()),
                     precise_location: None,
                     message: format!("{}: {message}", path.display(db.upcast(), edition)),
                     error,
+                    kind,
                 }
                 .into(),
             )
@@ -1811,7 +1813,8 @@ impl DefWithBody {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
                 BodyDiagnostic::MacroError { node, err } => {
-                    let (message, error) = err.render_to_string(db.upcast());
+                    let RenderedExpandError { message, error, kind } =
+                        err.render_to_string(db.upcast());
 
                     let precise_location = if err.span().anchor.file_id == node.file_id {
                         Some(
@@ -1829,6 +1832,7 @@ impl DefWithBody {
                         precise_location,
                         message,
                         error,
+                        kind,
                     }
                     .into()
                 }
@@ -1885,7 +1889,7 @@ impl DefWithBody {
 
         let (unafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
         for expr in unafe_exprs {
-            match source_map.expr_syntax(expr) {
+            match source_map.expr_or_pat_syntax(expr) {
                 Ok(expr) => acc.push(MissingUnsafe { expr, only_lint }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
@@ -2420,8 +2424,8 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|param| match &**param {
-                TypeRef::Reference(.., mutability) => match mutability {
+            .map(|&param| match &func_data.types_map[param] {
+                TypeRef::Reference(ref_) => match ref_.mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
                 },
@@ -2745,10 +2749,6 @@ impl TypeAlias {
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         Module { id: self.id.module(db.upcast()) }
-    }
-
-    pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
-        db.type_alias_data(self.id).type_ref.as_deref().cloned()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -3481,7 +3481,7 @@ impl Local {
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
-                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            Either::Right(ast::Pat::IdentPat(it)) => Either::Left(it),
                             _ => unreachable!("local with non ident-pattern"),
                         }),
                     }
@@ -3510,7 +3510,7 @@ impl Local {
                     LocalSource {
                         local: self,
                         source: src.map(|ast| match ast.to_node(&root) {
-                            ast::Pat::IdentPat(it) => Either::Left(it),
+                            Either::Right(ast::Pat::IdentPat(it)) => Either::Left(it),
                             _ => unreachable!("local with non ident-pattern"),
                         }),
                     }
@@ -4235,10 +4235,7 @@ impl CaptureUsages {
                 }
                 mir::MirSpan::PatId(pat) => {
                     if let Ok(pat) = source_map.pat_syntax(pat) {
-                        result.push(CaptureUsageSource {
-                            is_ref,
-                            source: pat.map(AstPtr::wrap_right),
-                        });
+                        result.push(CaptureUsageSource { is_ref, source: pat });
                     }
                 }
                 mir::MirSpan::BindingId(binding) => result.extend(
@@ -4246,10 +4243,7 @@ impl CaptureUsages {
                         .patterns_for_binding(binding)
                         .iter()
                         .filter_map(|&pat| source_map.pat_syntax(pat).ok())
-                        .map(|pat| CaptureUsageSource {
-                            is_ref,
-                            source: pat.map(AstPtr::wrap_right),
-                        }),
+                        .map(|pat| CaptureUsageSource { is_ref, source: pat }),
                 ),
                 mir::MirSpan::SelfParam | mir::MirSpan::Unknown => {
                     unreachable!("invalid capture usage span")

@@ -94,8 +94,7 @@ impl InferenceContext<'_> {
             return Some(ValuePathResolution::NonGeneric(ty));
         };
 
-        let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
-        let substs = ctx.substs_from_path(path, value_def, true);
+        let substs = self.with_body_ty_lowering(|ctx| ctx.substs_from_path(path, value_def, true));
         let substs = substs.as_slice(Interner);
 
         if let ValueNs::EnumVariantId(_) = value {
@@ -152,8 +151,12 @@ impl InferenceContext<'_> {
             let last = path.segments().last()?;
 
             // Don't use `self.make_ty()` here as we need `orig_ns`.
-            let ctx =
-                crate::lower::TyLoweringContext::new(self.db, &self.resolver, self.owner.into());
+            let ctx = crate::lower::TyLoweringContext::new(
+                self.db,
+                &self.resolver,
+                &self.body.types,
+                self.owner.into(),
+            );
             let (ty, orig_ns) = ctx.lower_ty_ext(type_ref);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
@@ -164,9 +167,10 @@ impl InferenceContext<'_> {
             let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
+            let hygiene = self.body.expr_or_pat_path_hygiene(id);
             // FIXME: report error, unresolved first path segment
             let value_or_partial =
-                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path)?;
+                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene)?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it, _) => (it, None),
@@ -218,7 +222,7 @@ impl InferenceContext<'_> {
 
         let _d;
         let (resolved_segment, remaining_segments) = match path {
-            Path::Normal { .. } => {
+            Path::Normal { .. } | Path::BarePath(_) => {
                 assert!(remaining_index < path.segments().len());
                 (
                     path.segments().get(remaining_index - 1).unwrap(),
@@ -242,17 +246,10 @@ impl InferenceContext<'_> {
             (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
-                let ctx = crate::lower::TyLoweringContext::new(
-                    self.db,
-                    &self.resolver,
-                    self.owner.into(),
-                );
-                let trait_ref = ctx.lower_trait_ref_from_resolved_path(
-                    trait_,
-                    resolved_segment,
-                    self.table.new_type_var(),
-                );
-
+                let self_ty = self.table.new_type_var();
+                let trait_ref = self.with_body_ty_lowering(|ctx| {
+                    ctx.lower_trait_ref_from_resolved_path(trait_, resolved_segment, self_ty)
+                });
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
@@ -262,17 +259,14 @@ impl InferenceContext<'_> {
                 // as Iterator>::Item::default`)
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
-                let ctx = crate::lower::TyLoweringContext::new(
-                    self.db,
-                    &self.resolver,
-                    self.owner.into(),
-                );
-                let (ty, _) = ctx.lower_partly_resolved_path(
-                    def,
-                    resolved_segment,
-                    remaining_segments_for_ty,
-                    true,
-                );
+                let (ty, _) = self.with_body_ty_lowering(|ctx| {
+                    ctx.lower_partly_resolved_path(
+                        def,
+                        resolved_segment,
+                        remaining_segments_for_ty,
+                        true,
+                    )
+                });
                 if ty.is_unknown() {
                     return None;
                 }

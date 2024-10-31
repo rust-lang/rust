@@ -841,10 +841,9 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
                 visit::walk_ty(self, ty)
             }
-            TyKind::ImplTrait(node_id, _) => {
+            TyKind::ImplTrait(..) => {
                 let candidates = self.lifetime_elision_candidates.take();
                 visit::walk_ty(self, ty);
-                self.record_lifetime_params_for_impl_trait(*node_id);
                 self.lifetime_elision_candidates = candidates;
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -977,14 +976,6 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                             sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
                             &sig.decl.output,
                         );
-
-                        if let Some((coro_node_id, _)) = sig
-                            .header
-                            .coroutine_kind
-                            .map(|coroutine_kind| coroutine_kind.return_id())
-                        {
-                            this.record_lifetime_params_for_impl_trait(coro_node_id);
-                        }
                     },
                 );
                 return;
@@ -1026,10 +1017,6 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                                         .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
                                     &declaration.output,
                                 );
-
-                                if let Some((async_node_id, _)) = coro_node_id {
-                                    this.record_lifetime_params_for_impl_trait(async_node_id);
-                                }
                             },
                         );
 
@@ -1220,7 +1207,6 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 }
             },
             AssocItemConstraintKind::Bound { ref bounds } => {
-                self.record_lifetime_params_for_impl_trait(constraint.id);
                 walk_list!(self, visit_param_bound, bounds, BoundKind::Bound);
             }
         }
@@ -4793,30 +4779,6 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ident.span.ctxt(),
             Some((ident.name, ns)),
         )
-    }
-
-    /// Construct the list of in-scope lifetime parameters for impl trait lowering.
-    /// We include all lifetime parameters, either named or "Fresh".
-    /// The order of those parameters does not matter, as long as it is
-    /// deterministic.
-    fn record_lifetime_params_for_impl_trait(&mut self, impl_trait_node_id: NodeId) {
-        let mut extra_lifetime_params = vec![];
-
-        for rib in self.lifetime_ribs.iter().rev() {
-            extra_lifetime_params
-                .extend(rib.bindings.iter().map(|(&ident, &(node_id, res))| (ident, node_id, res)));
-            match rib.kind {
-                LifetimeRibKind::Item => break,
-                LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                    if let Some(earlier_fresh) = self.r.extra_lifetime_params_map.get(&binder) {
-                        extra_lifetime_params.extend(earlier_fresh);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        self.r.extra_lifetime_params_map.insert(impl_trait_node_id, extra_lifetime_params);
     }
 
     fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {

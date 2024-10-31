@@ -1,4 +1,4 @@
-error: no rules expected the token `bcd`
+error: no rules expected `bcd`
   --> $DIR/trace_faulty_macros.rs:7:26
    |
 LL | macro_rules! my_faulty_macro {

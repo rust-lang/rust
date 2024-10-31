@@ -412,3 +412,42 @@ use reexport::*;
         "#]],
     );
 }
+
+#[test]
+fn regression_18308() {
+    check(
+        r#"
+use outer::*;
+
+mod outer {
+    mod inner_superglob {
+        pub use super::*;
+    }
+
+    // The importing order matters!
+    pub use inner_superglob::*;
+    use super::glob_target::*;
+}
+
+mod glob_target {
+    pub struct ShouldBePrivate;
+}
+"#,
+        expect![[r#"
+            crate
+            glob_target: t
+            outer: t
+
+            crate::glob_target
+            ShouldBePrivate: t v
+
+            crate::outer
+            ShouldBePrivate: t v
+            inner_superglob: t
+
+            crate::outer::inner_superglob
+            ShouldBePrivate: t v
+            inner_superglob: t
+        "#]],
+    );
+}

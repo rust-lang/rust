@@ -14,7 +14,7 @@ error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/issue-74824.rs:10:26
    |
 LL |     type Copy<T>: Copy = Box<T>;
-   |                          ^^^^^^ the trait `Clone` is not implemented for `T`, which is required by `<Self as UnsafeCopy>::Copy<T>: Copy`
+   |                          ^^^^^^ the trait `Clone` is not implemented for `T`
    |
    = note: required for `Box<T>` to implement `Clone`
    = note: required for `<Self as UnsafeCopy>::Copy<T>` to implement `Copy`

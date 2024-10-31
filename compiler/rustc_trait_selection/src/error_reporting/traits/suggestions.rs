@@ -361,7 +361,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
-                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
                     if param_ty =>
                 {
                     // We skip the 0'th arg (self) because we do not want
@@ -424,10 +423,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _),
                     ..
-                })
-                | hir::Node::OpaqueTy(hir::OpaqueTy { generics, .. })
-                    if !param_ty =>
-                {
+                }) if !param_ty => {
                     // Missing generic type parameter bound.
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
@@ -5105,24 +5101,13 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             _ => None,
         };
 
-        let pred = obligation.predicate;
-        let (_, base) = obligation.cause.code().peel_derives_with_predicate();
-        let post = if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
-            && let ty::ClauseKind::Trait(pred) = clause
-            && let Some(base) = base
-            && base.skip_binder() != pred
-        {
-            format!(", which is required by `{base}`")
-        } else {
-            String::new()
-        };
         let desc = match ty_desc {
             Some(desc) => format!(" {desc}"),
             None => String::new(),
         };
         if let ty::PredicatePolarity::Positive = trait_predicate.polarity() {
             format!(
-                "{pre_message}the trait `{}` is not implemented for{desc} `{}`{post}",
+                "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
                 tcx.short_ty_string(trait_predicate.self_ty().skip_binder(), &mut None),
             )
@@ -5130,7 +5115,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is
             // not implemented for `T`".
             // FIXME: add note explaining explicit negative trait bounds.
-            format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied{post}")
+            format!("{pre_message}the trait bound `{trait_predicate}` is not satisfied")
         }
     }
 }
@@ -5237,12 +5222,6 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     let ty::ClauseKind::Projection(proj) = clause else {
         return;
     };
-    // avoid ICEing since effects desugared associated types don't have names.
-    // this path should only be hit for `~const` on invalid places, so they
-    // will have an informative error already.
-    if tcx.is_effects_desugared_assoc_ty(proj.projection_term.def_id) {
-        return;
-    }
     let name = tcx.item_name(proj.projection_term.def_id);
     let mut predicates = generics.predicates.iter().peekable();
     let mut prev: Option<&hir::WhereBoundPredicate<'_>> = None;

@@ -6,9 +6,9 @@ mod abi {
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
-#[cfg(feature = "nightly")]
-use crate::{Abi, FieldsShape, TyAbiInterface, TyAndLayout};
 use crate::{Align, HasDataLayout, Size};
+#[cfg(feature = "nightly")]
+use crate::{BackendRepr, FieldsShape, TyAbiInterface, TyAndLayout};
 
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -128,11 +128,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        match self.abi {
-            Abi::Uninhabited => Err(Heterogeneous),
+        match self.backend_repr {
+            BackendRepr::Uninhabited => Err(Heterogeneous),
 
             // The primitive for this algorithm.
-            Abi::Scalar(scalar) => {
+            BackendRepr::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer(_) => RegKind::Integer,
                     abi::Float(_) => RegKind::Float,
@@ -140,7 +140,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
-            Abi::Vector { .. } => {
+            BackendRepr::Vector { .. } => {
                 assert!(!self.is_zst());
                 Ok(HomogeneousAggregate::Homogeneous(Reg {
                     kind: RegKind::Vector,
@@ -148,7 +148,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
-            Abi::ScalarPair(..) | Abi::Aggregate { sized: true } => {
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
                 let from_fields_at =
@@ -246,7 +246,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     Ok(result)
                 }
             }
-            Abi::Aggregate { sized: false } => Err(Heterogeneous),
+            BackendRepr::Memory { sized: false } => Err(Heterogeneous),
         }
     }
 }
