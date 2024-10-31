@@ -713,7 +713,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `dangerous_stack_allocation` lint detects stack allocations that 
+    /// The `dangerous_stack_allocation` lint detects stack allocations that
     /// are 1 GB or more.
     ///
     /// ### Example
