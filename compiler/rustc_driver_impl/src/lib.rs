@@ -45,7 +45,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, interface, passes};
+use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -400,7 +400,9 @@ fn run_compiler(
             // If pretty printing is requested: Figure out the representation, print it and exit
             if let Some(pp_mode) = sess.opts.pretty {
                 if pp_mode.needs_ast_map() {
-                    queries.global_ctxt().enter(|tcx| {
+                    let krate = queries.parse().steal();
+
+                    create_and_enter_global_ctxt(&compiler, krate, |tcx| {
                         tcx.ensure().early_lint_checks(());
                         pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                         passes::write_dep_info(tcx);
@@ -425,7 +427,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt().enter(|tcx| {
+            let krate = queries.parse().steal();
+
+            create_and_enter_global_ctxt(&compiler, krate, |tcx| {
                 // Make sure name resolution and macro expansion is run.
                 let _ = tcx.resolver_for_lowering();
 

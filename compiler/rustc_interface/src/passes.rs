@@ -41,7 +41,7 @@ use tracing::{info, instrument};
 use crate::interface::Compiler;
 use crate::{errors, proc_macro_decls, util};
 
-pub(crate) fn parse<'a>(sess: &'a Session) -> ast::Crate {
+pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
@@ -709,7 +709,22 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub(crate) fn create_global_ctxt<'tcx>(
+pub fn create_and_enter_global_ctxt<'tcx, T>(
+    compiler: &'tcx Compiler,
+    krate: rustc_ast::Crate,
+    f: impl for<'a> FnOnce(TyCtxt<'a>) -> T,
+) -> T {
+    let gcx_cell = OnceLock::new();
+    let arena = WorkerLocal::new(|_| Arena::default());
+    let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
+
+    let gcx = create_global_ctxt(compiler, krate, &gcx_cell, &arena, &hir_arena);
+    let ret = gcx.enter(f);
+    gcx.finish();
+    ret
+}
+
+fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     mut krate: rustc_ast::Crate,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,

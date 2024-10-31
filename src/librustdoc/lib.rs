@@ -857,12 +857,12 @@ fn main_args(
         }
 
         compiler.enter(|queries| {
-            let mut gcx = queries.global_ctxt();
+            let krate = queries.parse().steal();
             if sess.dcx().has_errors().is_some() {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            gcx.enter(|tcx| {
+            rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
                 });

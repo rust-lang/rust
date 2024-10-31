@@ -7,9 +7,7 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{OnceLock, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_session::Session;
@@ -65,50 +63,17 @@ impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx_cell: OnceLock<GlobalCtxt<'tcx>>,
-
-    arena: WorkerLocal<Arena<'tcx>>,
-    hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
     parse: Query<ast::Crate>,
-    // This just points to what's in `gcx_cell`.
-    gcx: Query<&'tcx GlobalCtxt<'tcx>>,
 }
 
 impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
-        Queries {
-            compiler,
-            gcx_cell: OnceLock::new(),
-            arena: WorkerLocal::new(|_| Arena::default()),
-            hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
-            parse: Query { result: RefCell::new(None) },
-            gcx: Query { result: RefCell::new(None) },
-        }
-    }
-
-    pub fn finish(&'tcx self) {
-        if let Some(gcx) = self.gcx_cell.get() {
-            gcx.finish();
-        }
+        Queries { compiler, parse: Query { result: RefCell::new(None) } }
     }
 
     pub fn parse(&self) -> QueryResult<'_, ast::Crate> {
         self.parse.compute(|| passes::parse(&self.compiler.sess))
-    }
-
-    pub fn global_ctxt(&'tcx self) -> QueryResult<'tcx, &'tcx GlobalCtxt<'tcx>> {
-        self.gcx.compute(|| {
-            let krate = self.parse().steal();
-
-            passes::create_global_ctxt(
-                self.compiler,
-                krate,
-                &self.gcx_cell,
-                &self.arena,
-                &self.hir_arena,
-            )
-        })
     }
 }
 
@@ -192,16 +157,7 @@ impl Compiler {
     where
         F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
     {
-        // Must declare `_timer` first so that it is dropped after `queries`.
-        let _timer;
         let queries = Queries::new(self);
-        let ret = f(&queries);
-
-        // The timer's lifetime spans the dropping of `queries`, which contains
-        // the global context.
-        _timer = self.sess.timer("free_global_ctxt");
-        queries.finish();
-
-        ret
+        f(&queries)
     }
 }
