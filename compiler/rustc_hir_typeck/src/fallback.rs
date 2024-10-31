@@ -14,7 +14,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::{FnCtxt, TypeckRootCtxt, errors};
+use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
 pub(crate) enum DivergingFallbackBehavior {
@@ -419,7 +419,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         root_vid: ty::TyVid,
     ) {
         let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-            let unsafe_infer_vars = compute_unsafe_infer_vars(self.root_ctxt, self.body_id);
+            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_id);
             debug!(?unsafe_infer_vars);
             unsafe_infer_vars
         });
@@ -569,27 +569,26 @@ pub(crate) enum UnsafeUseReason {
 ///
 /// `compute_unsafe_infer_vars` will return `{ id(?X) -> (hir_id, span, Call) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
-    root_ctxt: &'a TypeckRootCtxt<'tcx>,
+    fcx: &'a FnCtxt<'a, 'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body =
-        root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {
-        root_ctxt: &'a TypeckRootCtxt<'tcx>,
+        fcx: &'a FnCtxt<'a, 'tcx>,
         res: &'a mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
     }
 
     impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
-            let typeck_results = self.root_ctxt.typeck_results.borrow();
+            let typeck_results = self.fcx.typeck_results.borrow();
 
             match ex.kind {
                 hir::ExprKind::MethodCall(..) => {
                     if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
-                        && let method_ty = self.root_ctxt.tcx.type_of(def_id).instantiate_identity()
-                        && let sig = method_ty.fn_sig(self.root_ctxt.tcx)
+                        && let method_ty = self.fcx.tcx.type_of(def_id).instantiate_identity()
+                        && let sig = method_ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -609,7 +608,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     let func_ty = typeck_results.expr_ty(func);
 
                     if func_ty.is_fn()
-                        && let sig = func_ty.fn_sig(self.root_ctxt.tcx)
+                        && let sig = func_ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -640,7 +639,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     // If this path refers to an unsafe function, collect inference variables which may affect it.
                     // `is_fn` excludes closures, but those can't be unsafe.
                     if ty.is_fn()
-                        && let sig = ty.fn_sig(self.root_ctxt.tcx)
+                        && let sig = ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -698,7 +697,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
         }
     }
 
-    UnsafeInferVarsVisitor { root_ctxt, res: &mut res }.visit_expr(&body.value);
+    UnsafeInferVarsVisitor { fcx, res: &mut res }.visit_expr(&body.value);
 
     debug!(?res, "collected the following unsafe vars for {body_id:?}");
 
