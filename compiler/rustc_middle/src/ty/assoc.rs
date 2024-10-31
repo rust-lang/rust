@@ -34,8 +34,6 @@ pub struct AssocItem {
     /// return-position `impl Trait` in trait desugaring. The `ImplTraitInTraitData`
     /// provides additional information about its source.
     pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
-
-    pub is_effects_desugaring: bool,
 }
 
 impl AssocItem {
