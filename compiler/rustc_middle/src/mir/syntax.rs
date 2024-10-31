@@ -19,9 +19,10 @@ use smallvec::SmallVec;
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
-use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{
+    self, GenericArgsRef, List, Region, Ty, TyCtxt, TypingMode, UserTypeAnnotationIndex,
+};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -102,10 +103,20 @@ impl MirPhase {
         }
     }
 
-    pub fn reveal(&self) -> Reveal {
-        match *self {
-            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
-            MirPhase::Runtime(_) => Reveal::All,
+    pub fn typing_mode<'tcx>(&self) -> TypingMode<'tcx> {
+        match self {
+            // FIXME(#132279): the MIR is quite clearly inside of a body, so we
+            // should instead reveal opaques defined by that body here.
+            MirPhase::Built | MirPhase::Analysis(_) => TypingMode::non_body_analysis(),
+            MirPhase::Runtime(_) => TypingMode::PostAnalysis,
+        }
+    }
+
+    pub fn param_env<'tcx>(&self, tcx: TyCtxt<'tcx>, body_def_id: DefId) -> ty::ParamEnv<'tcx> {
+        match self.typing_mode() {
+            TypingMode::Coherence => unreachable!(),
+            TypingMode::Analysis { defining_opaque_types: _ } => tcx.param_env(body_def_id),
+            TypingMode::PostAnalysis => tcx.param_env_reveal_all_normalized(body_def_id),
         }
     }
 }

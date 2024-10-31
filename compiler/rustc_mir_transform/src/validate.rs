@@ -5,14 +5,14 @@ use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{Obligation, ObligationCause, Reveal};
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, Variance,
+    Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{FIRST_VARIANT, Size};
@@ -50,11 +50,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
         let def_id = body.source.def_id();
         let mir_phase = self.mir_phase;
-        let param_env = match mir_phase.reveal() {
-            Reveal::UserFacing => tcx.param_env(def_id),
-            Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
-        };
-
+        let param_env = mir_phase.param_env(tcx, def_id);
         let can_unwind = if mir_phase <= MirPhase::Runtime(RuntimePhase::Initial) {
             // In this case `AbortUnwindingCalls` haven't yet been executed.
             true
@@ -606,7 +602,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        let infcx = self.tcx.infer_ctxt().build(TypingMode::from_param_env(self.param_env));
+        let infcx = self.tcx.infer_ctxt().build(self.body.phase.typing_mode());
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,

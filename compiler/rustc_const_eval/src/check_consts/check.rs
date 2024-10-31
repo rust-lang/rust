@@ -16,7 +16,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -589,7 +589,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Typeck only does a "non-const" check since it operates on HIR and cannot distinguish
                 // which path expressions are getting called on and which path expressions are only used
                 // as function pointers. This is required for correctness.
-                let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
+                let infcx = tcx.infer_ctxt().build(body.phase.typing_mode());
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
                 let predicates = tcx.predicates_of(callee).instantiate(tcx, fn_args);
