@@ -395,7 +395,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
-        placeholder_indices: Rc<PlaceholderIndices>,
+        placeholder_indices: PlaceholderIndices,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
         mut outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,

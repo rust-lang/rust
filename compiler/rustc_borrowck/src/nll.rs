@@ -126,7 +126,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         universe_causes,
         type_tests,
     } = constraints;
-    let placeholder_indices = Rc::new(placeholder_indices);
 
     // If requested, emit legacy polonius facts.
     polonius::emit_facts(
