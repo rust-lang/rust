@@ -159,6 +159,9 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    #[deprecated = "This callback will likely be removed or stop giving access \
+                    to the TyCtxt in the future. Use either the after_expansion \
+                    or the after_analysis callback instead."]
     fn after_crate_root_parsing<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
@@ -409,6 +412,7 @@ fn run_compiler(
                 return early_exit();
             }
 
+            #[allow(deprecated)]
             if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
