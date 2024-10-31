@@ -86,7 +86,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_header,
         coroutine_kind,
         coroutine_for_closure,
-        is_type_alias_impl_trait,
+        opaque_ty_origin,
         rendered_precise_capturing_args,
         ..*providers
     };
@@ -1759,9 +1759,18 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
     def_id.to_def_id()
 }
 
-fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    let opaque = tcx.hir().expect_opaque_ty(def_id);
-    matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. })
+fn opaque_ty_origin<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> hir::OpaqueTyOrigin<DefId> {
+    match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+        hir::OpaqueTyOrigin::FnReturn { parent, in_trait_or_impl } => {
+            hir::OpaqueTyOrigin::FnReturn { parent: parent.to_def_id(), in_trait_or_impl }
+        }
+        hir::OpaqueTyOrigin::AsyncFn { parent, in_trait_or_impl } => {
+            hir::OpaqueTyOrigin::AsyncFn { parent: parent.to_def_id(), in_trait_or_impl }
+        }
+        hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty } => {
+            hir::OpaqueTyOrigin::TyAlias { parent: parent.to_def_id(), in_assoc_ty }
+        }
+    }
 }
 
 fn rendered_precise_capturing_args<'tcx>(

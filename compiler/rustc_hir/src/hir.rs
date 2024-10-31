@@ -2746,7 +2746,7 @@ pub struct OpaqueTy<'hir> {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub bounds: GenericBounds<'hir>,
-    pub origin: OpaqueTyOrigin,
+    pub origin: OpaqueTyOrigin<LocalDefId>,
     pub span: Span,
 }
 
@@ -2784,33 +2784,35 @@ pub struct PreciseCapturingNonLifetimeArg {
     pub res: Res,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum RpitContext {
     Trait,
     TraitImpl,
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable_Generic)]
-pub enum OpaqueTyOrigin {
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
+pub enum OpaqueTyOrigin<D> {
     /// `-> impl Trait`
     FnReturn {
         /// The defining function.
-        parent: LocalDefId,
+        parent: D,
         // Whether this is an RPITIT (return position impl trait in trait)
         in_trait_or_impl: Option<RpitContext>,
     },
     /// `async fn`
     AsyncFn {
         /// The defining function.
-        parent: LocalDefId,
+        parent: D,
         // Whether this is an AFIT (async fn in trait)
         in_trait_or_impl: Option<RpitContext>,
     },
     /// type aliases: `type Foo = impl Trait;`
     TyAlias {
         /// The type alias or associated type parent of the TAIT/ATPIT
-        parent: LocalDefId,
+        parent: D,
         /// associated types in impl blocks for traits.
         in_assoc_ty: bool,
     },

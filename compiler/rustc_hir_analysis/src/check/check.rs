@@ -268,7 +268,7 @@ fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     span: Span,
-    origin: &hir::OpaqueTyOrigin,
+    origin: &hir::OpaqueTyOrigin<LocalDefId>,
 ) -> Result<(), ErrorGuaranteed> {
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn { parent, .. }
@@ -677,7 +677,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::OpaqueTy => {
             check_opaque_precise_captures(tcx, def_id);
 
-            let origin = tcx.opaque_type_origin(def_id);
+            let origin = tcx.local_opaque_ty_origin(def_id);
             if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
             | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)

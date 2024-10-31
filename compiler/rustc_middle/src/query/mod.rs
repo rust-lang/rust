@@ -260,11 +260,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query is_type_alias_impl_trait(key: DefId) -> bool
+    query opaque_ty_origin(key: DefId) -> hir::OpaqueTyOrigin<DefId>
     {
-        desc { "determine whether the opaque is a type-alias impl trait" }
+        desc { "determine where the opaque originates from" }
         separate_provide_extern
-        feedable
     }
 
     query unsizing_params_for_adt(key: DefId) -> &'tcx rustc_index::bit_set::BitSet<u32>

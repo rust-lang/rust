@@ -20,6 +20,7 @@ pub mod errors;
 pub mod generics;
 mod lint;
 
+use std::assert_matches::assert_matches;
 use std::slice;
 
 use rustc_ast::TraitObjectSyntax;
@@ -1811,7 +1812,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         match path.res {
             Res::Def(DefKind::OpaqueTy, did) => {
                 // Check for desugared `impl Trait`.
-                assert!(tcx.is_type_alias_impl_trait(did));
+                assert_matches!(tcx.opaque_ty_origin(did), hir::OpaqueTyOrigin::TyAlias { .. });
                 let item_segment = path.segments.split_last().unwrap();
                 let _ = self
                     .prohibit_generic_args(item_segment.1.iter(), GenericsArgsErrExtend::OpaqueTy);

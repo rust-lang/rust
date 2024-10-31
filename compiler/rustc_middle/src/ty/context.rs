@@ -55,7 +55,7 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo, search_graph};
-use tracing::{debug, trace};
+use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
@@ -2103,11 +2103,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the origin of the opaque type `def_id`.
-    #[track_caller]
-    pub fn opaque_type_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin {
-        let origin = self.hir().expect_opaque_ty(def_id).origin;
-        trace!("opaque_type_origin({def_id:?}) => {origin:?}");
-        origin
+    #[instrument(skip(self), level = "trace", ret)]
+    pub fn local_opaque_ty_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin<LocalDefId> {
+        self.hir().expect_opaque_ty(def_id).origin
     }
 }
 
