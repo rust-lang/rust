@@ -554,6 +554,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
     /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
+    #[track_caller]
     pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
         self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }
