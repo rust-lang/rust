@@ -31,11 +31,9 @@ use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::nll::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
-use crate::region_infer::values::{
-    LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
-};
-use crate::type_check::Locations;
+use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
 use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
 
 mod dump_mir;
@@ -395,21 +393,35 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
-        placeholder_indices: PlaceholderIndices,
+        constraints: MirTypeckRegionConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        mut outlives_constraints: OutlivesConstraintSet<'tcx>,
-        member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
-        universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
-        type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: LivenessValues,
         elements: Rc<DenseLocationMap>,
     ) -> Self {
         let universal_regions = &universal_region_relations.universal_regions;
+        let MirTypeckRegionConstraints {
+            placeholder_indices,
+            placeholder_index_to_region: _,
+            liveness_constraints,
+            mut outlives_constraints,
+            mut member_constraints,
+            universe_causes,
+            type_tests,
+        } = constraints;
 
         debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
         debug!("placeholder_indices: {:#?}", placeholder_indices);
         debug!("type tests: {:#?}", type_tests);
+
+        if let Some(guar) = universal_region_relations.universal_regions.tainted_by_errors() {
+            // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
+            // outlives bounds that we may end up checking.
+            outlives_constraints = Default::default();
+            member_constraints = Default::default();
+
+            // Also taint the entire scope.
+            infcx.set_tainted_by_errors(guar);
+        }
 
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
@@ -435,7 +447,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let member_constraints =
-            Rc::new(member_constraints_in.into_mapped(|r| constraint_sccs.scc(r)));
+            Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
             var_infos,
