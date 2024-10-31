@@ -9,6 +9,7 @@ use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
@@ -592,10 +593,45 @@ struct VidVisitor<'a, 'tcx> {
     reachable_vids: FxHashSet<ty::TyVid>,
     fcx: &'a FnCtxt<'a, 'tcx>,
 }
+impl<'tcx> VidVisitor<'_, 'tcx> {
+    fn suggest_for_segment(
+        &self,
+        arg_segment: &'tcx hir::PathSegment<'tcx>,
+        def_id: DefId,
+        id: HirId,
+    ) -> ControlFlow<errors::SuggestAnnotation> {
+        if arg_segment.args.is_none()
+            && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
+            && let generics = self.fcx.tcx.generics_of(def_id)
+            && let args = &all_args[generics.parent_count..]
+            // We can't turbofish consts :(
+            && args.iter().all(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Lifetime(_)))
+        {
+            let n_tys = args
+                .iter()
+                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+                .count();
+            for (idx, arg) in args.iter().enumerate() {
+                if let Some(ty) = arg.as_type()
+                    && let Some(vid) = self.fcx.root_vid(ty)
+                    && self.reachable_vids.contains(&vid)
+                {
+                    return ControlFlow::Break(errors::SuggestAnnotation::Turbo(
+                        arg_segment.ident.span.shrink_to_hi(),
+                        n_tys,
+                        idx,
+                    ));
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    }
+}
 impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
     type Result = ControlFlow<errors::SuggestAnnotation>;
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        // Try to replace `_` with `()`.
         if let hir::TyKind::Infer = hir_ty.kind
             && let ty = self.fcx.typeck_results.borrow().node_type(hir_ty.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
@@ -606,7 +642,32 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
         hir::intravisit::walk_ty(self, hir_ty)
     }
 
+    fn visit_qpath(
+        &mut self,
+        qpath: &'tcx rustc_hir::QPath<'tcx>,
+        id: HirId,
+        _span: Span,
+    ) -> Self::Result {
+        let arg_segment = match qpath {
+            hir::QPath::Resolved(_, path) => {
+                path.segments.last().expect("paths should have a segment")
+            }
+            hir::QPath::TypeRelative(_, segment) => segment,
+            hir::QPath::LangItem(..) => {
+                return hir::intravisit::walk_qpath(self, qpath, id);
+            }
+        };
+        // Alternatively, try to turbofish `::<_, (), _>` (ignoring lifetimes,
+        // since we don't need to turbofish those; they'll be inferred).
+        // FIXME: Same logic could work for types...
+        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id() {
+            self.suggest_for_segment(arg_segment, def_id, id)?;
+        }
+        hir::intravisit::walk_qpath(self, qpath, id)
+    }
+
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        // Try to suggest adding an explicit qself `()` to a trait method path.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
             && let Res::Def(DefKind::AssocFn, def_id) = path.res
             && self.fcx.tcx.trait_of_item(def_id).is_some()
@@ -617,6 +678,13 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
         {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
             return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
+        }
+        // Or else turbofishing the method
+        if let hir::ExprKind::MethodCall(segment, ..) = expr.kind
+            && let Some(def_id) =
+                self.fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+        {
+            self.suggest_for_segment(segment, def_id, expr.hir_id)?;
         }
         hir::intravisit::walk_expr(self, expr)
     }

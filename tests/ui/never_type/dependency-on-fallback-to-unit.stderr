@@ -32,6 +32,10 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     deserialize::<()>()?;
+   |                ++++++
 
 warning: 2 warnings emitted
 

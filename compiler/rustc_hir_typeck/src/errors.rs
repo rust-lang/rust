@@ -215,6 +215,7 @@ pub(crate) enum SuggestAnnotation {
     Unit(Span),
     Path(Span),
     Local(Span),
+    Turbo(Span, usize, usize),
 }
 
 #[derive(Clone)]
@@ -244,6 +245,16 @@ impl Subdiagnostic for SuggestAnnotations {
                 SuggestAnnotation::Local(span) => {
                     suggestions.push((span, ": ()".to_string()));
                 }
+                SuggestAnnotation::Turbo(span, n_args, idx) => suggestions.push((
+                    span,
+                    format!(
+                        "::<{}>",
+                        (0..n_args)
+                            .map(|i| if i == idx { "()" } else { "_" })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ),
+                )),
             }
         }
 
