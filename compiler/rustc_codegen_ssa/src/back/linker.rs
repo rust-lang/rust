@@ -585,7 +585,23 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
-            self.link_or_cc_arg(format!("-l{colon}{name}"));
+            if self.sess.target.is_like_osx && verbatim {
+                // The man page for ld64's `-l` option says:
+                // > This option tells the linker to search for libx.dylib or libx.a in the library
+                // > search path. If string x is of the form y.o, then that file is searched for in
+                // > the same places, but without prepending `lib` or appending `.a` or `.dylib` to
+                // > the filename.
+                //
+                // So if we're linking a verbatim file, then we need to do the lookup and pass it
+                // directly as a normal file parameter on the command line.
+                //
+                // NOTE: We _could_ add `&& name.ends_with(".o")`, but having more guaranteed
+                // consistent behaviour in `rustc` regardless of the file extension seems like the
+                // better solution.
+                self.link_or_cc_arg(find_native_static_library(name, verbatim, self.sess));
+            } else {
+                self.link_or_cc_arg(format!("-l{colon}{name}"));
+            }
         } else if self.sess.target.is_like_osx {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
