@@ -24,19 +24,25 @@ integration.
 
 ## What to do in case of failure
 
-Currently, we use the following unofficial policy for handling failures caused
-by a change breaking the RfL integration:
+If a PR breaks the Rust for Linux CI job, then:
 
-- If the breakage was unintentional, then fix the PR.
-- If the breakage was intentional, then let [RFL][rfl-ping] know and discuss
+- If the breakage was unintentional and seems spurious, then let [RfL][rfl-ping]
+  know and retry.
+    - If the PR is urgent and retrying doesn't fix it, then disable the CI job
+      temporarily (comment out the `image: x86_64-rust-for-linux` job in
+      `src/ci/github-actions/jobs.yml`).
+- If the breakage was unintentional, then change the PR to resolve the breakage.
+- If the breakage was intentional, then let [RfL][rfl-ping] know and discuss
   what will the kernel need to change.
-    - If the PR is urgent, then disable the test temporarily.
-    - If the PR can wait a few days, then wait for RFL maintainers to provide a
+    - If the PR is urgent, then disable the CI job temporarily (comment out
+      the `image: x86_64-rust-for-linux` job in `src/ci/github-actions/jobs.yml`).
+    - If the PR can wait a few days, then wait for RfL maintainers to provide a
       new Linux kernel commit hash with the needed changes done, and apply it to
-      the PR, which would confirm the changes work.
+      the PR, which would confirm the changes work (update the  `LINUX_VERSION`
+      environment variable in `src/ci/docker/scripts/rfl-build.sh`).
 
-If something goes wrong with the workflow, you can ping the [Rust for
-Linux][rfl-ping] ping group to ask for help.
+If you need to contact the RfL developers, you can ping the [Rust for Linux][rfl-ping]
+ping group to ask for help:
 
 ```text
 @rustbot ping rfl
