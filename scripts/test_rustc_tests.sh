@@ -178,6 +178,18 @@ index 9607ff02f96..b7d97caf9a2 100644
          Self { cmd }
      }
 
+diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
+index e7ae773ffa1d3..04bc2d7787da7 100644
+--- a/src/tools/compiletest/src/runtest/run_make.rs
++++ b/src/tools/compiletest/src/runtest/run_make.rs
+@@ -329,7 +329,6 @@ impl TestCx<'_> {
+             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
+             .arg("--edition=2021")
+             .arg(&self.testpaths.file.join("rmake.rs"))
+-            .arg("-Cprefer-dynamic")
+             // Provide necessary library search paths for rustc.
+             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
+
 EOF
 
 echo "[TEST] rustc test suite"
