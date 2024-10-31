@@ -148,6 +148,11 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout =
                 target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
         }
+        if sess.target.arch.starts_with("sparc") {
+            // LLVM 20 updates the sparc layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/106951
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
