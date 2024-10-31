@@ -18,7 +18,7 @@ use crate::errors::{
     DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
 };
 
-type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
+pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
 #[derive(Clone)]
@@ -27,7 +27,7 @@ where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: EntrySets<'tcx, A>,
+    pub entry_sets: EntrySets<'tcx, A>,
 }
 
 impl<'tcx, A> Results<'tcx, A>
