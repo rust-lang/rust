@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: Default` will fail
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         true => <() as Default>::default(),
+   |                 ++++++        +
 
 warning: this function depends on never type fallback being `()`
   --> $DIR/never-type-fallback-breaking.rs:27:1

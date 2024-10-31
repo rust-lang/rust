@@ -211,8 +211,14 @@ pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
 }
 
 #[derive(Clone)]
+pub(crate) enum SuggestAnnotation {
+    Unit(Span),
+    Path(Span),
+}
+
+#[derive(Clone)]
 pub(crate) struct SuggestAnnotations {
-    pub suggestion_spans: Vec<Span>,
+    pub suggestions: Vec<SuggestAnnotation>,
 }
 impl Subdiagnostic for SuggestAnnotations {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
@@ -220,13 +226,26 @@ impl Subdiagnostic for SuggestAnnotations {
         diag: &mut Diag<'_, G>,
         _: &F,
     ) {
-        if self.suggestion_spans.is_empty() {
+        if self.suggestions.is_empty() {
             return;
+        }
+
+        let mut suggestions = vec![];
+        for suggestion in self.suggestions {
+            match suggestion {
+                SuggestAnnotation::Unit(span) => {
+                    suggestions.push((span, "()".to_string()));
+                }
+                SuggestAnnotation::Path(span) => {
+                    suggestions.push((span.shrink_to_lo(), "<() as ".to_string()));
+                    suggestions.push((span.shrink_to_hi(), ">".to_string()));
+                }
+            }
         }
 
         diag.multipart_suggestion_verbose(
             "use `()` annotations to avoid fallback changes",
-            self.suggestion_spans.into_iter().map(|span| (span, String::from("()"))).collect(),
+            suggestions,
             Applicability::MachineApplicable,
         );
     }

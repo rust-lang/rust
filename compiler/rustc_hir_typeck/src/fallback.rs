@@ -8,6 +8,7 @@ use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
@@ -573,7 +574,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
         // per var.
-        let suggestion_spans = diverging_vids
+        let suggestions = diverging_vids
             .iter()
             .copied()
             .filter_map(|vid| {
@@ -582,16 +583,17 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 VidVisitor { reachable_vids, fcx: self }.visit_expr(body.value).break_value()
             })
             .collect();
-        errors::SuggestAnnotations { suggestion_spans }
+        errors::SuggestAnnotations { suggestions }
     }
 }
 
+/// Try to collect a useful suggestion to preserve fallback to `()`.
 struct VidVisitor<'a, 'tcx> {
     reachable_vids: FxHashSet<ty::TyVid>,
     fcx: &'a FnCtxt<'a, 'tcx>,
 }
 impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
-    type Result = ControlFlow<Span>;
+    type Result = ControlFlow<errors::SuggestAnnotation>;
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
         if let hir::TyKind::Infer = hir_ty.kind
@@ -599,9 +601,24 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
         {
-            return ControlFlow::Break(hir_ty.span);
+            return ControlFlow::Break(errors::SuggestAnnotation::Unit(hir_ty.span));
         }
         hir::intravisit::walk_ty(self, hir_ty)
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+            && let Res::Def(DefKind::AssocFn, def_id) = path.res
+            && self.fcx.tcx.trait_of_item(def_id).is_some()
+            && let self_ty = self.fcx.typeck_results.borrow().node_args(expr.hir_id).type_at(0)
+            && let Some(vid) = self.fcx.root_vid(self_ty)
+            && self.reachable_vids.contains(&vid)
+            && let [.., trait_segment, _method_segment] = path.segments
+        {
+            let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
+            return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
+        }
+        hir::intravisit::walk_expr(self, expr)
     }
 }
 
