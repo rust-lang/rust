@@ -7,7 +7,7 @@ use std::arch::x86_64::*;
 use std::io::Write;
 use std::ops::Coroutine;
 
-extern {
+extern "C" {
     pub fn printf(format: *const i8, ...) -> i32;
 }
 
