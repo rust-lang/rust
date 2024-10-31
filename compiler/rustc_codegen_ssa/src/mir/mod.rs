@@ -3,7 +3,7 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::{UnwindTerminateReason, traversal};
+use rustc_middle::mir::UnwindTerminateReason;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
@@ -222,7 +222,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, cx.tcx(), instance);
+    let traversal_order = mir.basic_blocks.reverse_postorder();
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
@@ -284,7 +284,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut unreached_blocks = BitSet::new_filled(mir.basic_blocks.len());
     // Codegen the body of each reachable block using our reverse postorder list.
-    for bb in traversal_order {
+    for &bb in traversal_order {
         fx.codegen_block(bb);
         unreached_blocks.remove(bb);
     }
