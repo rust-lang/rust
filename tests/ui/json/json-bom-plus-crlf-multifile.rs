@@ -1,6 +1,8 @@
 ﻿// (This line has BOM so it's ignored by compiletest for directives)
 //
 //@ compile-flags: --json=diagnostic-short --error-format=json
+//@ reference: input.byte-order-mark
+//@ reference: input.crlf
 // ignore-tidy-cr
 
 #[path = "json-bom-plus-crlf-multifile-aux.rs"]
