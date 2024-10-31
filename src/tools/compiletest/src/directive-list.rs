@@ -3,6 +3,7 @@
 /// a best-effort approximation for diagnostics. Add new headers to this list when needed.
 const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-start
+    "add-core-stubs",
     "assembly-output",
     "aux-bin",
     "aux-build",
