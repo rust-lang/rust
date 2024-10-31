@@ -709,10 +709,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub fn create_and_enter_global_ctxt<'tcx, T>(
-    compiler: &'tcx Compiler,
+pub fn create_and_enter_global_ctxt<T>(
+    compiler: &Compiler,
     krate: rustc_ast::Crate,
-    f: impl for<'a> FnOnce(TyCtxt<'a>) -> T,
+    f: impl for<'tcx> FnOnce(TyCtxt<'tcx>) -> T,
 ) -> T {
     let gcx_cell = OnceLock::new();
     let arena = WorkerLocal::new(|_| Arena::default());

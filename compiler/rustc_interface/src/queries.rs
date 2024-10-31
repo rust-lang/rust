@@ -1,81 +1,17 @@
 use std::any::Any;
-use std::cell::{RefCell, RefMut};
 use std::sync::Arc;
 
-use rustc_ast as ast;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{GlobalCtxt, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
 use crate::errors::FailedWritingFile;
-use crate::interface::Compiler;
 use crate::passes;
-
-/// Represent the result of a query.
-///
-/// This result can be stolen once with the [`steal`] method and generated with the [`compute`] method.
-///
-/// [`steal`]: Steal::steal
-/// [`compute`]: Self::compute
-pub struct Query<T> {
-    /// `None` means no value has been computed yet.
-    result: RefCell<Option<Steal<T>>>,
-}
-
-impl<T> Query<T> {
-    fn compute<F: FnOnce() -> T>(&self, f: F) -> QueryResult<'_, T> {
-        QueryResult(RefMut::map(
-            self.result.borrow_mut(),
-            |r: &mut Option<Steal<T>>| -> &mut Steal<T> {
-                r.get_or_insert_with(|| Steal::new(f()))
-            },
-        ))
-    }
-}
-
-pub struct QueryResult<'a, T>(RefMut<'a, Steal<T>>);
-
-impl<'a, T> std::ops::Deref for QueryResult<'a, T> {
-    type Target = RefMut<'a, Steal<T>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
-    pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
-        (*self.0).borrow().enter(f)
-    }
-}
-
-pub struct Queries<'tcx> {
-    compiler: &'tcx Compiler,
-
-    parse: Query<ast::Crate>,
-}
-
-impl<'tcx> Queries<'tcx> {
-    pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
-        Queries { compiler, parse: Query { result: RefCell::new(None) } }
-    }
-
-    pub fn parse(&self) -> QueryResult<'_, ast::Crate> {
-        self.parse.compute(|| passes::parse(&self.compiler.sess))
-    }
-}
 
 pub struct Linker {
     dep_graph: DepGraph,
@@ -149,15 +85,5 @@ impl Linker {
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
         codegen_backend.link(sess, codegen_results, &self.output_filenames)
-    }
-}
-
-impl Compiler {
-    pub fn enter<F, T>(&self, f: F) -> T
-    where
-        F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T,
-    {
-        let queries = Queries::new(self);
-        f(&queries)
     }
 }
