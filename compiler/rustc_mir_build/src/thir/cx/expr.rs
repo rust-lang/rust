@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -18,7 +19,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, sym};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use tracing::{debug, info, instrument, trace};
 
 use crate::errors;
