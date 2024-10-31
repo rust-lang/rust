@@ -493,6 +493,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_field_list.rs");
     }
     #[test]
+    fn record_field_pat_leading_or() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_field_pat_leading_or.rs");
+    }
+    #[test]
     fn record_lit() { run_and_expect_no_errors("test_data/parser/inline/ok/record_lit.rs"); }
     #[test]
     fn record_literal_field_with_attr() {
