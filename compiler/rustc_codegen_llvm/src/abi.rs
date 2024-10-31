@@ -458,7 +458,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         match &self.ret.mode {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
-                if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
+                if let abi::BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr {
                     apply_range_attr(llvm::AttributePlace::ReturnValue, scalar);
                 }
             }
@@ -495,7 +495,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Direct(attrs) => {
                     let i = apply(attrs);
-                    if let abi::Abi::Scalar(scalar) = arg.layout.abi {
+                    if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar);
                     }
                 }
@@ -510,7 +510,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Pair(a, b) => {
                     let i = apply(a);
                     let ii = apply(b);
-                    if let abi::Abi::ScalarPair(scalar_a, scalar_b) = arg.layout.abi {
+                    if let abi::BackendRepr::ScalarPair(scalar_a, scalar_b) =
+                        arg.layout.backend_repr
+                    {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
@@ -570,7 +572,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
         if bx.cx.sess().opts.optimize != config::OptLevel::No
                 && llvm_util::get_version() < (19, 0, 0)
-                && let abi::Abi::Scalar(scalar) = self.ret.layout.abi
+                && let abi::BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr
                 && matches!(scalar.primitive(), Int(..))
                 // If the value is a boolean, the range is 0..2 and that ultimately
                 // become 0..0 when the type becomes i1, which would be rejected

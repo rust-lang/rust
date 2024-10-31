@@ -426,6 +426,21 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         });
     }
 
+    if let Node::OpaqueTy(&hir::OpaqueTy { .. }) = node {
+        assert!(own_params.is_empty());
+
+        let lifetimes = tcx.opaque_captured_lifetimes(def_id);
+        debug!(?lifetimes);
+
+        own_params.extend(lifetimes.iter().map(|&(_, param)| ty::GenericParamDef {
+            name: tcx.item_name(param.to_def_id()),
+            index: next_index(),
+            def_id: param.to_def_id(),
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Lifetime,
+        }))
+    }
+
     let param_def_id_to_index =
         own_params.iter().map(|param| (param.def_id, param.index)).collect();
 

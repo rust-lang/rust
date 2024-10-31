@@ -278,7 +278,7 @@ fn needless_borrow_count<'tcx>(
 
             let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]);
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-            let infcx = cx.tcx.infer_ctxt().build();
+            let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })
     };

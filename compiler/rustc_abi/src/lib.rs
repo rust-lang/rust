@@ -1344,11 +1344,19 @@ impl AddressSpace {
     pub const DATA: Self = AddressSpace(0);
 }
 
-/// Describes how values of the type are passed by target ABIs,
-/// in terms of categories of C types there are ABI rules for.
+/// The way we represent values to the backend
+///
+/// Previously this was conflated with the "ABI" a type is given, as in the platform-specific ABI.
+/// In reality, this implies little about that, but is mostly used to describe the syntactic form
+/// emitted for the backend, as most backends handle SSA values and blobs of memory differently.
+/// The psABI may need consideration in doing so, but this enum does not constitute a promise for
+/// how the value will be lowered to the calling convention, in itself.
+///
+/// Generally, a codegen backend will prefer to handle smaller values as a scalar or short vector,
+/// and larger values will usually prefer to be represented as memory.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-pub enum Abi {
+pub enum BackendRepr {
     Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
@@ -1356,19 +1364,23 @@ pub enum Abi {
         element: Scalar,
         count: u64,
     },
-    Aggregate {
+    // FIXME: I sometimes use memory, sometimes use an IR aggregate!
+    Memory {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
 }
 
-impl Abi {
+impl BackendRepr {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => !sized,
+            BackendRepr::Uninhabited
+            | BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::Vector { .. } => false,
+            BackendRepr::Memory { sized } => !sized,
         }
     }
 
@@ -1381,7 +1393,7 @@ impl Abi {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            Abi::Scalar(scal) => match scal.primitive() {
+            BackendRepr::Scalar(scal) => match scal.primitive() {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1392,61 +1404,67 @@ impl Abi {
     /// Returns `true` if this is an uninhabited type
     #[inline]
     pub fn is_uninhabited(&self) -> bool {
-        matches!(*self, Abi::Uninhabited)
+        matches!(*self, BackendRepr::Uninhabited)
     }
 
     /// Returns `true` if this is a scalar type
     #[inline]
     pub fn is_scalar(&self) -> bool {
-        matches!(*self, Abi::Scalar(_))
+        matches!(*self, BackendRepr::Scalar(_))
     }
 
     /// Returns `true` if this is a bool
     #[inline]
     pub fn is_bool(&self) -> bool {
-        matches!(*self, Abi::Scalar(s) if s.is_bool())
+        matches!(*self, BackendRepr::Scalar(s) if s.is_bool())
     }
 
     /// Returns the fixed alignment of this ABI, if any is mandated.
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
-            Abi::Scalar(s) => s.align(cx),
-            Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
-            Abi::Vector { element, count } => {
+            BackendRepr::Scalar(s) => s.align(cx),
+            BackendRepr::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
+            BackendRepr::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
         })
     }
 
     /// Returns the fixed size of this ABI, if any is mandated.
     pub fn inherent_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
         Some(match *self {
-            Abi::Scalar(s) => {
+            BackendRepr::Scalar(s) => {
                 // No padding in scalars.
                 s.size(cx)
             }
-            Abi::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair(s1, s2) => {
                 // May have some padding between the pair.
                 let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
                 (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
             }
-            Abi::Vector { element, count } => {
+            BackendRepr::Vector { element, count } => {
                 // No padding in vectors, except possibly for trailing padding
                 // to make the size a multiple of align (e.g. for vectors of size 3).
                 (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
         })
     }
 
     /// Discard validity range information and allow undef.
     pub fn to_union(&self) -> Self {
         match *self {
-            Abi::Scalar(s) => Abi::Scalar(s.to_union()),
-            Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
-            Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
-            Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+            BackendRepr::Scalar(s) => BackendRepr::Scalar(s.to_union()),
+            BackendRepr::ScalarPair(s1, s2) => {
+                BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
+            }
+            BackendRepr::Vector { element, count } => {
+                BackendRepr::Vector { element: element.to_union(), count }
+            }
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
+                BackendRepr::Memory { sized: true }
+            }
         }
     }
 
@@ -1454,12 +1472,12 @@ impl Abi {
         match (self, other) {
             // Scalar, Vector, ScalarPair have `Scalar` in them where we ignore validity ranges.
             // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
-            (Abi::Scalar(l), Abi::Scalar(r)) => l.primitive() == r.primitive(),
+            (BackendRepr::Scalar(l), BackendRepr::Scalar(r)) => l.primitive() == r.primitive(),
             (
-                Abi::Vector { element: element_l, count: count_l },
-                Abi::Vector { element: element_r, count: count_r },
+                BackendRepr::Vector { element: element_l, count: count_l },
+                BackendRepr::Vector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
-            (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) => {
+            (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
                 l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
             }
             // Everything else must be strictly identical.
@@ -1616,14 +1634,14 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// must be taken into account.
     pub variants: Variants<FieldIdx, VariantIdx>,
 
-    /// The `abi` defines how this data is passed between functions, and it defines
-    /// value restrictions via `valid_range`.
+    /// The `backend_repr` defines how this data will be represented to the codegen backend,
+    /// and encodes value restrictions via `valid_range`.
     ///
     /// Note that this is entirely orthogonal to the recursive structure defined by
     /// `variants` and `fields`; for example, `ManuallyDrop<Result<isize, isize>>` has
-    /// `Abi::ScalarPair`! So, even with non-`Aggregate` `abi`, `fields` and `variants`
+    /// `IrForm::ScalarPair`! So, even with non-`Memory` `backend_repr`, `fields` and `variants`
     /// have to be taken into account to find all fields of this layout.
-    pub abi: Abi,
+    pub backend_repr: BackendRepr,
 
     /// The leaf scalar with the largest number of invalid values
     /// (i.e. outside of its `valid_range`), if it exists.
@@ -1646,15 +1664,15 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
-        match self.abi {
-            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => true,
+        match self.backend_repr {
+            BackendRepr::Uninhabited | BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
 
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
-        self.abi.is_uninhabited()
+        self.backend_repr.is_uninhabited()
     }
 
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
@@ -1664,7 +1682,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
-            abi: Abi::Scalar(scalar),
+            backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,
             size,
             align,
@@ -1686,7 +1704,7 @@ where
         let LayoutData {
             size,
             align,
-            abi,
+            backend_repr,
             fields,
             largest_niche,
             variants,
@@ -1696,7 +1714,7 @@ where
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
-            .field("abi", abi)
+            .field("abi", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("variants", variants)
@@ -1732,12 +1750,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
+        self.backend_repr.is_unsized()
     }
 
     #[inline]
     pub fn is_sized(&self) -> bool {
-        self.abi.is_sized()
+        self.backend_repr.is_sized()
     }
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
@@ -1750,10 +1768,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Note that this does *not* imply that the type is irrelevant for layout! It can still have
     /// non-trivial alignment constraints. You probably want to use `is_1zst` instead.
     pub fn is_zst(&self) -> bool {
-        match self.abi {
-            Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
-            Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
+        match self.backend_repr {
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
+                false
+            }
+            BackendRepr::Uninhabited => self.size.bytes() == 0,
+            BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }
 
@@ -1768,8 +1788,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         // 2nd point is quite hard to check though.
         self.size == other.size
             && self.is_sized() == other.is_sized()
-            && self.abi.eq_up_to_validity(&other.abi)
-            && self.abi.is_bool() == other.abi.is_bool()
+            && self.backend_repr.eq_up_to_validity(&other.backend_repr)
+            && self.backend_repr.is_bool() == other.backend_repr.is_bool()
             && self.align.abi == other.align.abi
             && self.max_repr_align == other.max_repr_align
             && self.unadjusted_abi_align == other.unadjusted_abi_align

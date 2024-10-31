@@ -21,6 +21,7 @@ use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
+    token_descr,
 };
 use rustc_parse::validate_attr;
 use rustc_session::lint::BuiltinLintDiag;
@@ -1013,7 +1014,7 @@ pub(crate) fn ensure_complete_parse<'a>(
     span: Span,
 ) {
     if parser.token != token::Eof {
-        let token = pprust::token_to_string(&parser.token);
+        let descr = token_descr(&parser.token);
         // Avoid emitting backtrace info twice.
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
@@ -1029,7 +1030,7 @@ pub(crate) fn ensure_complete_parse<'a>(
 
         parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
-            token,
+            descr,
             label_span: span,
             macro_path,
             kind_name,

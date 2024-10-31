@@ -6,7 +6,7 @@ mod weak_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
+use rustc_type_ir::{self as ty, Interner, NormalizesTo, TypingMode, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -15,7 +15,7 @@ use crate::solve::assembly::{self, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, QueryResult, Reveal,
+    NoSolution, QueryResult,
 };
 
 impl<D, I> EvalCtxt<'_, D>
@@ -71,21 +71,21 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match param_env.reveal() {
-                    // In user-facing mode, paques are only rigid if we may not define it.
-                    Reveal::UserFacing => {
+                match self.typing_mode(param_env) {
+                    // Opaques are never rigid outside of analysis mode.
+                    TypingMode::Coherence | TypingMode::PostAnalysis => Err(NoSolution),
+                    // During analysis, opaques are only rigid if we may not define it.
+                    TypingMode::Analysis { defining_opaque_types } => {
                         if rigid_alias
                             .def_id
                             .as_local()
-                            .is_some_and(|def_id| self.can_define_opaque_ty(def_id))
+                            .is_some_and(|def_id| defining_opaque_types.contains(&def_id))
                         {
                             Err(NoSolution)
                         } else {
                             Ok(())
                         }
                     }
-                    // Opaques are never rigid in reveal-all mode.
-                    Reveal::All => Err(NoSolution),
                 }
             }
             // FIXME(generic_const_exprs): we would need to support generic consts here
@@ -252,7 +252,6 @@ where
             // return ambiguity this would otherwise be incomplete, resulting in
             // unsoundness during coherence (#105782).
             let Some(target_item_def_id) = ecx.fetch_eligible_assoc_item(
-                goal.param_env,
                 goal_trait_ref,
                 goal.predicate.def_id(),
                 impl_def_id,

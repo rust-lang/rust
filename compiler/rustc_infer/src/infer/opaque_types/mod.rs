@@ -2,6 +2,7 @@ use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
+use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -100,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                if self.intercrate {
+                if let ty::TypingMode::Coherence = self.typing_mode(param_env) {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -154,7 +155,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     // however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`, where
                     // it is of no concern, so we only check for TAITs.
                     if self.can_define_opaque_ty(b_def_id)
-                        && self.tcx.is_type_alias_impl_trait(b_def_id)
+                        && matches!(
+                            self.tcx.opaque_ty_origin(b_def_id),
+                            hir::OpaqueTyOrigin::TyAlias { .. }
+                        )
                     {
                         self.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span,
@@ -519,28 +523,32 @@ impl<'tcx> InferCtxt<'tcx> {
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        if self.intercrate {
-            // During intercrate we do not define opaque types but instead always
-            // force ambiguity unless the hidden type is known to not implement
-            // our trait.
-            goals.push(Goal::new(self.tcx, param_env, ty::PredicateKind::Ambiguous))
-        } else {
-            let prev = self
-                .inner
-                .borrow_mut()
-                .opaque_types()
-                .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
-            if let Some(prev) = prev {
-                goals.extend(
-                    self.at(&ObligationCause::dummy_with_span(span), param_env)
-                        .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
-                        .obligations
-                        .into_iter()
-                        // FIXME: Shuttling between obligations and goals is awkward.
-                        .map(Goal::from),
-                );
+        match self.typing_mode(param_env) {
+            ty::TypingMode::Coherence => {
+                // During intercrate we do not define opaque types but instead always
+                // force ambiguity unless the hidden type is known to not implement
+                // our trait.
+                goals.push(Goal::new(self.tcx, param_env, ty::PredicateKind::Ambiguous));
             }
-        };
+            ty::TypingMode::Analysis { .. } => {
+                let prev = self
+                    .inner
+                    .borrow_mut()
+                    .opaque_types()
+                    .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
+                if let Some(prev) = prev {
+                    goals.extend(
+                        self.at(&ObligationCause::dummy_with_span(span), param_env)
+                            .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
+                            .obligations
+                            .into_iter()
+                            // FIXME: Shuttling between obligations and goals is awkward.
+                            .map(Goal::from),
+                    );
+                }
+            }
+            ty::TypingMode::PostAnalysis => bug!("insert hidden type post-analysis"),
+        }
 
         Ok(())
     }

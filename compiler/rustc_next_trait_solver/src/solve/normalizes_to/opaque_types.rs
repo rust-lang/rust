@@ -4,12 +4,10 @@
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, TypingMode};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{
-    Certainty, EvalCtxt, Goal, NoSolution, QueryResult, Reveal, SolverMode, inspect,
-};
+use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, inspect};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -24,17 +22,27 @@ where
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
-        match (goal.param_env.reveal(), self.solver_mode()) {
-            (Reveal::UserFacing, SolverMode::Normal) => {
-                let Some(opaque_ty_def_id) = opaque_ty.def_id.as_local() else {
+        match self.typing_mode(goal.param_env) {
+            TypingMode::Coherence => {
+                // An impossible opaque type bound is the only way this goal will fail
+                // e.g. assigning `impl Copy := NotCopy`
+                self.add_item_bounds_for_hidden_type(
+                    opaque_ty.def_id,
+                    opaque_ty.args,
+                    goal.param_env,
+                    expected,
+                );
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+            TypingMode::Analysis { defining_opaque_types } => {
+                let Some(def_id) = opaque_ty.def_id.as_local() else {
                     return Err(NoSolution);
                 };
-                // FIXME: at some point we should call queries without defining
-                // new opaque types but having the existing opaque type definitions.
-                // This will require moving this below "Prefer opaques registered already".
-                if !self.can_define_opaque_ty(opaque_ty_def_id) {
+
+                if !defining_opaque_types.contains(&def_id) {
                     return Err(NoSolution);
                 }
+
                 // FIXME: This may have issues when the args contain aliases...
                 match uses_unique_placeholders_ignoring_regions(self.cx(), opaque_ty.args) {
                     Err(NotUniqueParam::NotParam(param)) if param.is_non_region_infer() => {
@@ -48,8 +56,7 @@ where
                     Ok(()) => {}
                 }
                 // Prefer opaques registered already.
-                let opaque_type_key =
-                    ty::OpaqueTypeKey { def_id: opaque_ty_def_id, args: opaque_ty.args };
+                let opaque_type_key = ty::OpaqueTypeKey { def_id, args: opaque_ty.args };
                 // FIXME: This also unifies the previous hidden type with the expected.
                 //
                 // If that fails, we insert `expected` as a new hidden type instead of
@@ -69,7 +76,7 @@ where
                             }
                             ecx.eq(goal.param_env, candidate_ty, expected)?;
                             ecx.add_item_bounds_for_hidden_type(
-                                candidate_key.def_id.into(),
+                                def_id.into(),
                                 candidate_key.args,
                                 goal.param_env,
                                 candidate_ty,
@@ -82,25 +89,14 @@ where
                 // FIXME: should we use `inject_hidden_type_unchecked` here?
                 self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
                 self.add_item_bounds_for_hidden_type(
-                    opaque_ty.def_id,
+                    def_id.into(),
                     opaque_ty.args,
                     goal.param_env,
                     expected,
                 );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            (Reveal::UserFacing, SolverMode::Coherence) => {
-                // An impossible opaque type bound is the only way this goal will fail
-                // e.g. assigning `impl Copy := NotCopy`
-                self.add_item_bounds_for_hidden_type(
-                    opaque_ty.def_id,
-                    opaque_ty.args,
-                    goal.param_env,
-                    expected,
-                );
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-            }
-            (Reveal::All, _) => {
+            TypingMode::PostAnalysis => {
                 // FIXME: Add an assertion that opaque type storage is empty.
                 let actual = cx.type_of(opaque_ty.def_id).instantiate(cx, opaque_ty.args);
                 self.eq(goal.param_env, expected, actual)?;

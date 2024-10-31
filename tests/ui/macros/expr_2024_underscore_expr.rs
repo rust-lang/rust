@@ -16,6 +16,6 @@ macro_rules! m2024 {
 }
 
 fn main() {
-    m2021!(_); //~ ERROR: no rules expected the token `_`
-    m2024!(_); //[edi2021]~ ERROR: no rules expected the token `_`
+    m2021!(_); //~ ERROR: no rules expected reserved identifier `_`
+    m2024!(_); //[edi2021]~ ERROR: no rules expected reserved identifier `_`
 }

@@ -1537,38 +1537,6 @@ LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
   return true;
 }
 
-extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
-                                                           LLVMValueRef *Inputs,
-                                                           unsigned NumInputs) {
-  return new OperandBundleDef(Name,
-                              ArrayRef<Value *>(unwrap(Inputs), NumInputs));
-}
-
-extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
-  delete Bundle;
-}
-
-// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
-extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMTypeRef Ty,
-                                          LLVMValueRef Fn, LLVMValueRef *Args,
-                                          unsigned NumArgs,
-                                          OperandBundleDef **OpBundlesIndirect,
-                                          unsigned NumOpBundles) {
-  Value *Callee = unwrap(Fn);
-  FunctionType *FTy = unwrap<FunctionType>(Ty);
-
-  // FIXME: Is there a way around this?
-  SmallVector<OperandBundleDef> OpBundles;
-  OpBundles.reserve(NumOpBundles);
-  for (unsigned i = 0; i < NumOpBundles; ++i) {
-    OpBundles.push_back(*OpBundlesIndirect[i]);
-  }
-
-  return wrap(unwrap(B)->CreateCall(FTy, Callee,
-                                    ArrayRef<Value *>(unwrap(Args), NumArgs),
-                                    ArrayRef<OperandBundleDef>(OpBundles)));
-}
-
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Src,
                                             unsigned SrcAlign,
@@ -1596,37 +1564,18 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                       MaybeAlign(DstAlign), IsVolatile));
 }
 
-// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
+// Polyfill for `LLVMBuildCallBr`, which was added in LLVM 19.
+// <https://github.com/llvm/llvm-project/commit/584253c4e2f788f870488fc32193b52d67ddaccc>
+// FIXME: Remove when Rust's minimum supported LLVM version reaches 19.
+#if LLVM_VERSION_LT(19, 0)
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(OperandBundleDef, LLVMOperandBundleRef)
+
 extern "C" LLVMValueRef
-LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
-                    LLVMValueRef *Args, unsigned NumArgs,
-                    LLVMBasicBlockRef Then, LLVMBasicBlockRef Catch,
-                    OperandBundleDef **OpBundlesIndirect, unsigned NumOpBundles,
-                    const char *Name) {
-  Value *Callee = unwrap(Fn);
-  FunctionType *FTy = unwrap<FunctionType>(Ty);
-
-  // FIXME: Is there a way around this?
-  SmallVector<OperandBundleDef> OpBundles;
-  OpBundles.reserve(NumOpBundles);
-  for (unsigned i = 0; i < NumOpBundles; ++i) {
-    OpBundles.push_back(*OpBundlesIndirect[i]);
-  }
-
-  return wrap(unwrap(B)->CreateInvoke(FTy, Callee, unwrap(Then), unwrap(Catch),
-                                      ArrayRef<Value *>(unwrap(Args), NumArgs),
-                                      ArrayRef<OperandBundleDef>(OpBundles),
-                                      Name));
-}
-
-// OpBundlesIndirect is an array of pointers (*not* a pointer to an array).
-extern "C" LLVMValueRef
-LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
-                    LLVMBasicBlockRef DefaultDest,
-                    LLVMBasicBlockRef *IndirectDests, unsigned NumIndirectDests,
-                    LLVMValueRef *Args, unsigned NumArgs,
-                    OperandBundleDef **OpBundlesIndirect, unsigned NumOpBundles,
-                    const char *Name) {
+LLVMBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
+                LLVMBasicBlockRef DefaultDest, LLVMBasicBlockRef *IndirectDests,
+                unsigned NumIndirectDests, LLVMValueRef *Args, unsigned NumArgs,
+                LLVMOperandBundleRef *Bundles, unsigned NumBundles,
+                const char *Name) {
   Value *Callee = unwrap(Fn);
   FunctionType *FTy = unwrap<FunctionType>(Ty);
 
@@ -1639,9 +1588,9 @@ LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
 
   // FIXME: Is there a way around this?
   SmallVector<OperandBundleDef> OpBundles;
-  OpBundles.reserve(NumOpBundles);
-  for (unsigned i = 0; i < NumOpBundles; ++i) {
-    OpBundles.push_back(*OpBundlesIndirect[i]);
+  OpBundles.reserve(NumBundles);
+  for (unsigned i = 0; i < NumBundles; ++i) {
+    OpBundles.push_back(*unwrap(Bundles[i]));
   }
 
   return wrap(
@@ -1650,6 +1599,7 @@ LLVMRustBuildCallBr(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Fn,
                               ArrayRef<Value *>(unwrap(Args), NumArgs),
                               ArrayRef<OperandBundleDef>(OpBundles), Name));
 }
+#endif
 
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {

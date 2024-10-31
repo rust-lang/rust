@@ -3,9 +3,9 @@ use std::ops::Deref;
 
 use libffi::high::call as ffi;
 use libffi::low::CodePtr;
+use rustc_abi::{BackendRepr, HasDataLayout};
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
-use rustc_target::abi::{Abi, HasDataLayout};
 
 use crate::*;
 
@@ -149,7 +149,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Get the function arguments, and convert them to `libffi`-compatible form.
         let mut libffi_args = Vec::<CArg>::with_capacity(args.len());
         for arg in args.iter() {
-            if !matches!(arg.layout.abi, Abi::Scalar(_)) {
+            if !matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
                 throw_unsup_format!("only scalar argument types are support for native calls")
             }
             libffi_args.push(imm_to_carg(this.read_immediate(arg)?, this)?);

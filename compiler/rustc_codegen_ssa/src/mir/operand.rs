@@ -4,7 +4,7 @@ use std::fmt;
 use arrayvec::ArrayVec;
 use either::Either;
 use rustc_abi as abi;
-use rustc_abi::{Abi, Align, Size};
+use rustc_abi::{Align, BackendRepr, Size};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
@@ -163,7 +163,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
         let val = match val {
             ConstValue::Scalar(x) => {
-                let Abi::Scalar(scalar) = layout.abi else {
+                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
                     bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
@@ -171,7 +171,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { data, meta } => {
-                let Abi::ScalarPair(a_scalar, _) = layout.abi else {
+                let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(
@@ -221,14 +221,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         // case where some of the bytes are initialized and others are not. So, we need an extra
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
-        match layout.abi {
-            Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
+        match layout.backend_repr {
+            BackendRepr::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
                 let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
-            Abi::ScalarPair(
+            BackendRepr::ScalarPair(
                 a @ abi::Scalar::Initialized { .. },
                 b @ abi::Scalar::Initialized { .. },
             ) => {
@@ -322,7 +322,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         llval: V,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        let val = if let Abi::ScalarPair(..) = layout.abi {
+        let val = if let BackendRepr::ScalarPair(..) = layout.backend_repr {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
@@ -343,7 +343,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let field = self.layout.field(bx.cx(), i);
         let offset = self.layout.fields.offset(i);
 
-        let mut val = match (self.val, self.layout.abi) {
+        let mut val = match (self.val, self.layout.backend_repr) {
             // If the field is ZST, it has no data.
             _ if field.is_zst() => OperandValue::ZeroSized,
 
@@ -356,7 +356,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
 
             // Extract a scalar component from a pair.
-            (OperandValue::Pair(a_llval, b_llval), Abi::ScalarPair(a, b)) => {
+            (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
                 if offset.bytes() == 0 {
                     assert_eq!(field.size, a.size(bx.cx()));
                     OperandValue::Immediate(a_llval)
@@ -368,30 +368,30 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
 
             // `#[repr(simd)]` types are also immediate.
-            (OperandValue::Immediate(llval), Abi::Vector { .. }) => {
+            (OperandValue::Immediate(llval), BackendRepr::Vector { .. }) => {
                 OperandValue::Immediate(bx.extract_element(llval, bx.cx().const_usize(i as u64)))
             }
 
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self),
         };
 
-        match (&mut val, field.abi) {
+        match (&mut val, field.backend_repr) {
             (OperandValue::ZeroSized, _) => {}
             (
                 OperandValue::Immediate(llval),
-                Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. },
+                BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. },
             ) => {
                 // Bools in union fields needs to be truncated.
                 *llval = bx.to_immediate(*llval, field);
             }
-            (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
+            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(a_abi, b_abi)) => {
                 // Bools in union fields needs to be truncated.
                 *a = bx.to_immediate_scalar(*a, a_abi);
                 *b = bx.to_immediate_scalar(*b, b_abi);
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
-            (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
-                assert_matches!(self.layout.abi, Abi::Vector { .. });
+            (OperandValue::Immediate(llval), BackendRepr::Memory { sized: true }) => {
+                assert_matches!(self.layout.backend_repr, BackendRepr::Vector { .. });
 
                 let llfield_ty = bx.cx().backend_type(field);
 
@@ -400,7 +400,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 bx.store(*llval, llptr, field.align.abi);
                 *llval = bx.load(llfield_ty, llptr, field.align.abi);
             }
-            (OperandValue::Immediate(_), Abi::Uninhabited | Abi::Aggregate { sized: false }) => {
+            (
+                OperandValue::Immediate(_),
+                BackendRepr::Uninhabited | BackendRepr::Memory { sized: false },
+            ) => {
                 bug!()
             }
             (OperandValue::Pair(..), _) => bug!(),
@@ -494,7 +497,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 bx.store_with_flags(val, dest.val.llval, dest.val.align, flags);
             }
             OperandValue::Pair(a, b) => {
-                let Abi::ScalarPair(a_scalar, b_scalar) = dest.layout.abi else {
+                let BackendRepr::ScalarPair(a_scalar, b_scalar) = dest.layout.backend_repr else {
                     bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout);
                 };
                 let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
@@ -645,7 +648,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // However, some SIMD types do not actually use the vector ABI
                     // (in particular, packed SIMD types do not). Ensure we exclude those.
                     let layout = bx.layout_of(constant_ty);
-                    if let Abi::Vector { .. } = layout.abi {
+                    if let BackendRepr::Vector { .. } = layout.backend_repr {
                         let (llval, ty) = self.immediate_const_vector(bx, constant);
                         return OperandRef {
                             val: OperandValue::Immediate(llval),

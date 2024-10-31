@@ -51,8 +51,8 @@ fn report_atomic_type_validation_error<'tcx>(
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
-    let (element, count) = match layout.abi {
-        Abi::Vector { element, count } => (element, count),
+    let (element, count) = match layout.backend_repr {
+        BackendRepr::Vector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
@@ -505,7 +505,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -519,7 +519,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -693,7 +693,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     let layout = fx.layout_of(ty);
                     let msg_str = with_no_visible_paths!({
                         with_no_trimmed_paths!({
-                            if layout.abi.is_uninhabited() {
+                            if layout.is_uninhabited() {
                                 // Use this error even for the other intrinsics as it is more precise.
                                 format!("attempted to instantiate uninhabited type `{}`", ty)
                             } else if intrinsic == sym::assert_zero_valid {

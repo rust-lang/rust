@@ -6,7 +6,8 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
 use crate::abi::{
-    self, Abi, AddressSpace, Align, HasDataLayout, Pointer, Size, TyAbiInterface, TyAndLayout,
+    self, AddressSpace, Align, BackendRepr, HasDataLayout, Pointer, Size, TyAbiInterface,
+    TyAndLayout,
 };
 use crate::spec::abi::Abi as SpecAbi;
 use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
@@ -350,15 +351,17 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         layout: TyAndLayout<'a, Ty>,
         scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, abi::Scalar, Size) -> ArgAttributes,
     ) -> Self {
-        let mode = match layout.abi {
-            Abi::Uninhabited => PassMode::Ignore,
-            Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
-            Abi::ScalarPair(a, b) => PassMode::Pair(
+        let mode = match layout.backend_repr {
+            BackendRepr::Uninhabited => PassMode::Ignore,
+            BackendRepr::Scalar(scalar) => {
+                PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO))
+            }
+            BackendRepr::ScalarPair(a, b) => PassMode::Pair(
                 scalar_attrs(&layout, a, Size::ZERO),
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
-            Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
-            Abi::Aggregate { .. } => Self::indirect_pass_mode(&layout),
+            BackendRepr::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
         };
         ArgAbi { layout, mode }
     }
@@ -460,7 +463,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        if let Abi::Scalar(scalar) = self.layout.abi {
+        if let BackendRepr::Scalar(scalar) = self.layout.backend_repr {
             if let abi::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
@@ -512,7 +515,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             // That elevates any type difference to an ABI difference since we just use the
             // full Rust type as the LLVM argument/return type.
             if matches!(self.mode, PassMode::Direct(..))
-                && matches!(self.layout.abi, Abi::Aggregate { .. })
+                && matches!(self.layout.backend_repr, BackendRepr::Memory { .. })
             {
                 // For aggregates in `Direct` mode to be compatible, the types need to be equal.
                 self.layout.ty == other.layout.ty
@@ -791,8 +794,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
-            match arg.layout.abi {
-                Abi::Aggregate { .. } => {}
+            match arg.layout.backend_repr {
+                BackendRepr::Memory { .. } => {}
 
                 // This is a fun case! The gist of what this is doing is
                 // that we want callers and callees to always agree on the
@@ -813,7 +816,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // Note that the intrinsic ABI is exempt here as
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
-                Abi::Vector { .. } if abi != SpecAbi::RustIntrinsic && spec.simd_types_indirect => {
+                BackendRepr::Vector { .. }
+                    if abi != SpecAbi::RustIntrinsic && spec.simd_types_indirect =>
+                {
                     arg.make_indirect();
                     continue;
                 }

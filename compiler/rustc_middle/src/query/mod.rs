@@ -260,11 +260,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query is_type_alias_impl_trait(key: DefId) -> bool
+    query opaque_ty_origin(key: DefId) -> hir::OpaqueTyOrigin<DefId>
     {
-        desc { "determine whether the opaque is a type-alias impl trait" }
+        desc { "determine where the opaque originates from" }
         separate_provide_extern
-        feedable
     }
 
     query unsizing_params_for_adt(key: DefId) -> &'tcx rustc_index::bit_set::BitSet<u32>
@@ -1781,6 +1780,23 @@ rustc_queries! {
         -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>> {
         desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }
     }
+    /// For an opaque type, return the list of (captured lifetime, inner generic param).
+    /// ```ignore (illustrative)
+    /// fn foo<'a: 'a, 'b, T>(&'b u8) -> impl Into<Self> + 'b { ... }
+    /// ```
+    ///
+    /// We would return `[('a, '_a), ('b, '_b)]`, with `'a` early-bound and `'b` late-bound.
+    ///
+    /// After hir_ty_lowering, we get:
+    /// ```ignore (pseudo-code)
+    /// opaque foo::<'a>::opaque<'_a, '_b>: Into<Foo<'_a>> + '_b;
+    ///                          ^^^^^^^^ inner generic params
+    /// fn foo<'a>: for<'b> fn(&'b u8) -> foo::<'a>::opaque::<'a, 'b>
+    ///                                                       ^^^^^^ captured lifetimes
+    /// ```
+    query opaque_captured_lifetimes(def_id: LocalDefId) -> &'tcx [(ResolvedArg, LocalDefId)] {
+        desc { |tcx| "listing captured lifetimes for opaque `{}`", tcx.def_path_str(def_id) }
+    }
 
     /// Computes the visibility of the provided `def_id`.
     ///
@@ -2298,6 +2314,14 @@ rustc_queries! {
     query cross_crate_inlinable(def_id: DefId) -> bool {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
+    }
+
+    /// Check the signature of this function as well as all the call expressions inside of it
+    /// to ensure that any target features required by the ABI are enabled.
+    /// Should be called on a fully monomorphized instance.
+    query check_feature_dependent_abi(key: ty::Instance<'tcx>) {
+        desc { "check for feature-dependent ABI" }
+        cache_on_disk_if { true }
     }
 }
 

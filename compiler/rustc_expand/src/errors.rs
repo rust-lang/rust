@@ -275,7 +275,7 @@ pub(crate) struct UnsupportedKeyValue {
 pub(crate) struct IncompleteParse<'a> {
     #[primary_span]
     pub span: Span,
-    pub token: Cow<'a, str>,
+    pub descr: String,
     #[label]
     pub label_span: Span,
     pub macro_path: &'a ast::Path,

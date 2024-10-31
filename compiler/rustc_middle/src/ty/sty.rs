@@ -40,6 +40,7 @@ pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
+pub type TypingMode<'tcx> = ir::TypingMode<TyCtxt<'tcx>>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -1353,6 +1354,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),

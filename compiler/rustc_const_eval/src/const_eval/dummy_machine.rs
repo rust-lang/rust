@@ -131,7 +131,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
                 // Types can differ, e.g. fn ptrs with different `for`.
-                assert_eq!(left.layout.abi, right.layout.abi);
+                assert_eq!(left.layout.backend_repr, right.layout.backend_repr);
                 let size = ecx.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.

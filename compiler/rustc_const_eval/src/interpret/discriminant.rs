@@ -112,7 +112,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Read tag and sanity-check `tag_layout`.
         let tag_val = self.read_immediate(&self.project_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
-        assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
+        assert_eq!(tag_layout.backend_repr.is_signed(), tag_val.layout.backend_repr.is_signed());
         trace!("tag value: {}", tag_val);
 
         // Figure out which discriminant and variant this corresponds to.

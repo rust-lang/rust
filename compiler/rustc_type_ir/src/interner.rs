@@ -11,9 +11,7 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
-use crate::solve::{
-    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
-};
+use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, search_graph};
 
@@ -130,11 +128,7 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R;
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
     fn evaluation_is_concurrent(&self) -> bool;
 
@@ -298,6 +292,11 @@ pub trait Interner:
         self,
         binder: ty::Binder<Self, T>,
     ) -> ty::Binder<Self, T>;
+
+    fn opaque_types_defined_by(
+        self,
+        defining_anchor: Self::LocalDefId,
+    ) -> Self::DefiningOpaqueTypes;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
@@ -414,12 +413,8 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, I::DepNodeIndex) {
         I::with_cached_task(self, task)
     }
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R {
-        I::with_global_cache(self, mode, f)
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
+        I::with_global_cache(self, f)
     }
     fn evaluation_is_concurrent(&self) -> bool {
         self.evaluation_is_concurrent()

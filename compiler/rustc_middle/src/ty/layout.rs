@@ -4,8 +4,9 @@ use std::{cmp, fmt};
 
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    Abi, AddressSpace, Align, FieldsShape, HasDataLayout, Integer, LayoutCalculator, LayoutData,
-    PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout, Variants,
+    AddressSpace, Align, BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutCalculator,
+    LayoutData, PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
+    Variants,
 };
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
@@ -757,7 +758,7 @@ where
                         Some(fields) => FieldsShape::Union(fields),
                         None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
                     },
-                    abi: Abi::Uninhabited,
+                    backend_repr: BackendRepr::Uninhabited,
                     largest_niche: None,
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO,

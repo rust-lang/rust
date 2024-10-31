@@ -235,7 +235,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -317,7 +317,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -387,7 +387,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -426,7 +426,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Aggregate {
+                           abi: Memory {
                                sized: true,
                            },
                            fields: Array {
@@ -464,7 +464,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -497,7 +497,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Aggregate {
+                           abi: Memory {
                                sized: true,
                            },
                            fields: Array {
@@ -535,7 +535,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -610,7 +610,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -680,7 +680,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -756,7 +756,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -826,7 +826,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -929,7 +929,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

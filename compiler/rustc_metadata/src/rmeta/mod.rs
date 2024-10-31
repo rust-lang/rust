@@ -378,7 +378,6 @@ define_tables! {
 - defaulted:
     intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<DefIndex, bool>,
-    is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
     // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
@@ -396,7 +395,6 @@ define_tables! {
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
-    is_effects_desugaring: Table<DefIndex, bool>,
     unused_generic_params: Table<DefIndex, UnusedGenericParams>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
@@ -469,6 +467,7 @@ define_tables! {
     doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
+    opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

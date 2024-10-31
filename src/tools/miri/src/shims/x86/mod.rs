@@ -1000,6 +1000,7 @@ fn mask_load<'tcx>(
         let dest = this.project_index(&dest, i)?;
 
         if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
+            #[allow(clippy::arithmetic_side_effects)] // `Size` arithmetic is checked
             let ptr = ptr.wrapping_offset(dest.layout.size * i, &this.tcx);
             // Unaligned copy, which is what we want.
             this.mem_copy(ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
@@ -1035,6 +1036,7 @@ fn mask_store<'tcx>(
         if this.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
             // *Non-inbounds* pointer arithmetic to compute the destination.
             // (That's why we can't use a place projection.)
+            #[allow(clippy::arithmetic_side_effects)] // `Size` arithmetic is checked
             let ptr = ptr.wrapping_offset(value.layout.size * i, &this.tcx);
             // Deref the pointer *unaligned*, and do the copy.
             let dest = this.ptr_to_mplace_unaligned(ptr, value.layout);
