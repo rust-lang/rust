@@ -382,7 +382,7 @@ pub fn semantic_diagnostics(
         // A bunch of parse errors in a file indicate some bigger structural parse changes in the
         // file, so we skip semantic diagnostics so we can show these faster.
         Some(m) => {
-            if !db.parse_errors(file_id).as_deref().is_some_and(|es| es.len() >= 16) {
+            if db.parse_errors(file_id).as_deref().is_none_or(|es| es.len() < 16) {
                 m.diagnostics(db, &mut diags, config.style_lints);
             }
         }

@@ -8,7 +8,7 @@ use either::Either;
 use hir_expand::{attrs::collect_attrs, HirFileId};
 use syntax::{ast, AstPtr};
 
-use crate::{
+use hir_def::{
     db::DefDatabase,
     dyn_map::{
         keys::{self, Key},
@@ -23,7 +23,7 @@ use crate::{
     VariantId,
 };
 
-pub trait ChildBySource {
+pub(crate) trait ChildBySource {
     fn child_by_source(&self, db: &dyn DefDatabase, file_id: HirFileId) -> DynMap {
         let mut res = DynMap::default();
         self.child_by_source_to(db, &mut res, file_id);
