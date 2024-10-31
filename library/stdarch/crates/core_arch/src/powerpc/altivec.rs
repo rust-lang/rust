@@ -4117,7 +4117,7 @@ pub unsafe fn vec_cts<const IMM5: i32>(a: vector_float) -> vector_signed_int {
     vctsxs(a, IMM5)
 }
 
-/// Vector Convert to Signed Integer
+/// Vector Convert to Unsigned Integer
 #[inline]
 #[target_feature(enable = "altivec")]
 #[cfg_attr(test, assert_instr(vctuxs, IMM5 = 1))]
