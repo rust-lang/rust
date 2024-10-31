@@ -1,5 +1,7 @@
 use std::cell::OnceCell;
+use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::iterate::DepthFirstSearch;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::{self};
@@ -321,7 +323,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
 
-        self.lint_obligations_broken_by_never_type_fallback_change(behavior, &diverging_vids);
+        self.lint_obligations_broken_by_never_type_fallback_change(
+            behavior,
+            &diverging_vids,
+            &coercion_graph,
+        );
 
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
@@ -429,19 +435,31 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .filter_map(|x| unsafe_infer_vars.get(&x).copied())
                 .collect::<Vec<_>>();
 
+        let sugg = self.try_to_suggest_annotations(&[root_vid], coercion_graph);
+
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
             self.tcx.emit_node_span_lint(
                 lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
                 span,
                 match reason {
-                    UnsafeUseReason::Call => errors::NeverTypeFallbackFlowingIntoUnsafe::Call,
-                    UnsafeUseReason::Method => errors::NeverTypeFallbackFlowingIntoUnsafe::Method,
-                    UnsafeUseReason::Path => errors::NeverTypeFallbackFlowingIntoUnsafe::Path,
-                    UnsafeUseReason::UnionField => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
+                    UnsafeUseReason::Call => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
                     }
-                    UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
+                    UnsafeUseReason::Method => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Method { sugg: sugg.clone() }
+                    }
+                    UnsafeUseReason::Path => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
+                    }
+                    UnsafeUseReason::UnionField => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
+                            sugg: sugg.clone(),
+                        }
+                    }
+                    UnsafeUseReason::Deref => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Deref { sugg: sugg.clone() }
+                    }
                 },
             );
         }
@@ -451,6 +469,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         behavior: DivergingFallbackBehavior,
         diverging_vids: &[ty::TyVid],
+        coercions: &VecGraph<ty::TyVid, true>,
     ) {
         let DivergingFallbackBehavior::ToUnit = behavior else { return };
 
@@ -478,13 +497,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         };
 
         // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
-        // then this code will be broken by the never type fallback change.qba
+        // then this code will be broken by the never type fallback change.
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
             && let [ref mut never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
+            let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
             self.tcx.emit_node_span_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
@@ -492,6 +512,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 errors::DependencyOnUnitNeverTypeFallback {
                     obligation_span: never_error.obligation.cause.span,
                     obligation: never_error.obligation.predicate,
+                    sugg,
                 },
             )
         }
@@ -540,6 +561,47 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// If `ty` is an unresolved type variable, returns its root vid.
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
         Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
+    }
+
+    fn try_to_suggest_annotations(
+        &self,
+        diverging_vids: &[ty::TyVid],
+        coercions: &VecGraph<ty::TyVid, true>,
+    ) -> errors::SuggestAnnotations {
+        let body =
+            self.tcx.hir().maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+        // For each diverging var, look through the HIR for a place to give it
+        // a type annotation. We do this per var because we only really need one
+        // per var.
+        let suggestion_spans = diverging_vids
+            .iter()
+            .copied()
+            .filter_map(|vid| {
+                let reachable_vids =
+                    graph::depth_first_search_as_undirected(coercions, vid).collect();
+                VidVisitor { reachable_vids, fcx: self }.visit_expr(body.value).break_value()
+            })
+            .collect();
+        errors::SuggestAnnotations { suggestion_spans }
+    }
+}
+
+struct VidVisitor<'a, 'tcx> {
+    reachable_vids: FxHashSet<ty::TyVid>,
+    fcx: &'a FnCtxt<'a, 'tcx>,
+}
+impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
+    type Result = ControlFlow<Span>;
+
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        if let hir::TyKind::Infer = hir_ty.kind
+            && let ty = self.fcx.typeck_results.borrow().node_type(hir_ty.hir_id)
+            && let Some(vid) = self.fcx.root_vid(ty)
+            && self.reachable_vids.contains(&vid)
+        {
+            return ControlFlow::Break(hir_ty.span);
+        }
+        hir::intravisit::walk_ty(self, hir_ty)
     }
 }
 

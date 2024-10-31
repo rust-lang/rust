@@ -169,19 +169,34 @@ pub(crate) struct MissingParenthesesInRange {
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_call)]
-    Call,
+    Call {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_method)]
-    Method,
+    Method {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_path)]
-    Path,
+    Path {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_union_field)]
-    UnionField,
+    UnionField {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
-    Deref,
+    Deref {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
 }
 
 #[derive(LintDiagnostic)]
@@ -191,6 +206,30 @@ pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
     #[note]
     pub obligation_span: Span,
     pub obligation: ty::Predicate<'tcx>,
+    #[subdiagnostic]
+    pub sugg: SuggestAnnotations,
+}
+
+#[derive(Clone)]
+pub(crate) struct SuggestAnnotations {
+    pub suggestion_spans: Vec<Span>,
+}
+impl Subdiagnostic for SuggestAnnotations {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: &F,
+    ) {
+        if self.suggestion_spans.is_empty() {
+            return;
+        }
+
+        diag.multipart_suggestion_verbose(
+            "use `()` annotations to avoid fallback changes",
+            self.suggestion_spans.into_iter().map(|span| (span, String::from("()"))).collect(),
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 #[derive(Subdiagnostic)]

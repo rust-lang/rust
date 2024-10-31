@@ -102,6 +102,10 @@ LL |         msg_send!();
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
    = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `()` annotations to avoid fallback changes
+   |
+LL |             match send_message::<() /* ?0 */>() {
+   |                                  ~~
 
 warning: the type `!` does not permit zero-initialization
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18
