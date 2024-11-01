@@ -764,7 +764,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[rustc_never_returns_null_ptr]
     #[inline(always)]
     #[must_use]
@@ -1867,7 +1866,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
-    #[rustc_allow_const_fn_unstable(split_at_checked)]
     #[inline]
     #[track_caller]
     #[must_use]
