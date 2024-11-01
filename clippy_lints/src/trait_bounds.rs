@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut self_bounds_map = FxHashMap::default();
 
         for predicate in item.generics.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate
+            if let WherePredicate::BoundPredicate(bound_predicate) = predicate
                 && bound_predicate.origin != PredicateOrigin::ImplTrait
                 && !bound_predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
@@ -268,7 +268,7 @@ impl TraitBounds {
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in generics.predicates {
-            if let WherePredicate::BoundPredicate(ref p) = bound
+            if let WherePredicate::BoundPredicate(p) = bound
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
                 && !p.span.from_expansion()

@@ -425,7 +425,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
                 self.visit_opaque_ty(opaque);
                 self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
-                    GenericArg::Lifetime(&l) => Some(l),
+                    &GenericArg::Lifetime(l) => Some(l),
                     _ => None,
                 }));
             },
