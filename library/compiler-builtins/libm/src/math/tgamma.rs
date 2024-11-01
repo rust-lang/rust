@@ -130,6 +130,7 @@ fn s(x: f64) -> f64 {
     return num / den;
 }
 
+/// The [Gamma function](https://en.wikipedia.org/wiki/Gamma_function) (f64).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn tgamma(mut x: f64) -> f64 {
     let u: u64 = x.to_bits();

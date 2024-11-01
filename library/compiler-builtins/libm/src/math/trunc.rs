@@ -1,5 +1,8 @@
 use core::f64;
 
+/// Rounds the number toward 0 to the closest integral value (f64).
+///
+/// This effectively removes the decimal part of the number, leaving the integral part.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn trunc(x: f64) -> f64 {
     select_implementation! {
