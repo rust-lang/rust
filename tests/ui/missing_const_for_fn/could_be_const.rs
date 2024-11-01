@@ -104,7 +104,7 @@ fn main() {}
 
 struct D;
 
-/* FIXME(effects)
+/* FIXME(const_trait_impl)
 impl const Drop for D {
     fn drop(&mut self) {
         todo!();
@@ -113,7 +113,7 @@ impl const Drop for D {
 */
 
 // Lint this, since it can be dropped in const contexts
-// FIXME(effects)
+// FIXME(const_trait_impl)
 fn d(this: D) {}
 //~^ ERROR: this could be a `const fn`
 
