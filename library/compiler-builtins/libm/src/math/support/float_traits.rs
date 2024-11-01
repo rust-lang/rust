@@ -1,4 +1,4 @@
-use core::ops;
+use core::{fmt, ops};
 
 use super::int_traits::{Int, MinInt};
 
@@ -6,7 +6,8 @@ use super::int_traits::{Int, MinInt};
 #[allow(dead_code)]
 pub trait Float:
     Copy
-    + core::fmt::Debug
+    + fmt::Debug
+    + fmt::Display
     + PartialEq
     + PartialOrd
     + ops::AddAssign
@@ -17,16 +18,17 @@ pub trait Float:
     + ops::Rem<Output = Self>
 {
     /// A uint of the same width as the float
-    type Int: Int<OtherSign = Self::SignedInt, UnsignedInt = Self::Int>;
+    type Int: Int<OtherSign = Self::SignedInt, Unsigned = Self::Int>;
 
     /// A int of the same width as the float
-    type SignedInt: Int + MinInt<OtherSign = Self::Int, UnsignedInt = Self::Int>;
+    type SignedInt: Int + MinInt<OtherSign = Self::Int, Unsigned = Self::Int>;
 
     /// An int capable of containing the exponent bits plus a sign bit. This is signed.
     type ExpInt: Int;
 
     const ZERO: Self;
     const ONE: Self;
+    const NEG_ONE: Self;
     const INFINITY: Self;
     const NEG_INFINITY: Self;
     const NAN: Self;
@@ -69,8 +71,17 @@ pub trait Float:
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
-    /// Returns true if the sign is negative
+    /// Returns true if the value is NaN.
+    fn is_nan(self) -> bool;
+
+    /// Returns true if the value is +inf or -inf.
+    fn is_infinite(self) -> bool;
+
+    /// Returns true if the sign is negative.
     fn is_sign_negative(self) -> bool;
+
+    /// Returns if `self` is subnormal
+    fn is_subnormal(self) -> bool;
 
     /// Returns the exponent, not adjusting for bias.
     fn exp(self) -> Self::ExpInt;
@@ -95,8 +106,11 @@ pub trait Float:
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
-    /// Returns if `self` is subnormal
-    fn is_subnormal(self) -> bool;
+    /// Returns a number composed of the magnitude of self and the sign of sign.
+    fn copysign(self, other: Self) -> Self;
+
+    /// Returns a number that represents the sign of self.
+    fn signum(self) -> Self;
 }
 
 macro_rules! float_impl {
@@ -108,6 +122,7 @@ macro_rules! float_impl {
 
             const ZERO: Self = 0.0;
             const ONE: Self = 1.0;
+            const NEG_ONE: Self = -1.0;
             const INFINITY: Self = Self::INFINITY;
             const NEG_INFINITY: Self = Self::NEG_INFINITY;
             const NAN: Self = Self::NAN;
@@ -136,8 +151,17 @@ macro_rules! float_impl {
                 }
                 if is_nan(self) && is_nan(rhs) { true } else { self.to_bits() == rhs.to_bits() }
             }
+            fn is_nan(self) -> bool {
+                self.is_nan()
+            }
+            fn is_infinite(self) -> bool {
+                self.is_infinite()
+            }
             fn is_sign_negative(self) -> bool {
                 self.is_sign_negative()
+            }
+            fn is_subnormal(self) -> bool {
+                (self.to_bits() & Self::EXP_MASK) == Self::Int::ZERO
             }
             fn exp(self) -> Self::ExpInt {
                 ((self.to_bits() & Self::EXP_MASK) >> Self::SIG_BITS) as Self::ExpInt
@@ -162,8 +186,16 @@ macro_rules! float_impl {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
                 (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
             }
-            fn is_subnormal(self) -> bool {
-                (self.to_bits() & Self::EXP_MASK) == Self::Int::ZERO
+            fn copysign(self, other: Self) -> Self {
+                let mut x = self.to_bits();
+                let y = other.to_bits();
+                x &= !Self::SIGN_MASK;
+                x |= y & Self::SIGN_MASK;
+                Self::from_bits(x)
+            }
+
+            fn signum(self) -> Self {
+                if self.is_nan() { self } else { Self::ONE.copysign(self) }
             }
         }
     };

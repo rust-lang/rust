@@ -12,7 +12,7 @@ pub trait MinInt:
     /// Type with the same width but other signedness
     type OtherSign: MinInt;
     /// Unsigned version of Self
-    type UnsignedInt: MinInt;
+    type Unsigned: MinInt;
 
     /// If `Self` is a signed integer
     const SIGNED: bool;
@@ -30,6 +30,7 @@ pub trait MinInt:
 #[allow(dead_code)]
 pub trait Int:
     MinInt
+    + fmt::Display
     + PartialEq
     + PartialOrd
     + ops::AddAssign
@@ -47,8 +48,10 @@ pub trait Int:
     + ops::BitXor<Output = Self>
     + ops::BitAnd<Output = Self>
 {
-    fn unsigned(self) -> Self::UnsignedInt;
-    fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
+    fn signed(self) -> <Self::Unsigned as MinInt>::OtherSign;
+    fn unsigned(self) -> Self::Unsigned;
+    fn from_unsigned(unsigned: Self::Unsigned) -> Self;
+    fn abs(self) -> Self;
 
     fn from_bool(b: bool) -> Self;
 
@@ -56,10 +59,12 @@ pub trait Int:
     fn logical_shr(self, other: u32) -> Self;
 
     /// Absolute difference between two integers.
-    fn abs_diff(self, other: Self) -> Self::UnsignedInt;
+    fn abs_diff(self, other: Self) -> Self::Unsigned;
 
     // copied from primitive integers, but put in a trait
     fn is_zero(self) -> bool;
+    fn checked_add(self, other: Self) -> Option<Self>;
+    fn checked_sub(self, other: Self) -> Option<Self>;
     fn wrapping_neg(self) -> Self;
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
@@ -84,6 +89,14 @@ macro_rules! int_impl_common {
 
         fn is_zero(self) -> bool {
             self == Self::ZERO
+        }
+
+        fn checked_add(self, other: Self) -> Option<Self> {
+            self.checked_add(other)
+        }
+
+        fn checked_sub(self, other: Self) -> Option<Self> {
+            self.checked_sub(other)
         }
 
         fn wrapping_neg(self) -> Self {
@@ -132,7 +145,7 @@ macro_rules! int_impl {
     ($ity:ty, $uty:ty) => {
         impl MinInt for $uty {
             type OtherSign = $ity;
-            type UnsignedInt = $uty;
+            type Unsigned = $uty;
 
             const BITS: u32 = <Self as MinInt>::ZERO.count_zeros();
             const SIGNED: bool = Self::MIN != Self::ZERO;
@@ -144,8 +157,16 @@ macro_rules! int_impl {
         }
 
         impl Int for $uty {
-            fn unsigned(self) -> $uty {
+            fn signed(self) -> $ity {
+                self as $ity
+            }
+
+            fn unsigned(self) -> Self {
                 self
+            }
+
+            fn abs(self) -> Self {
+                unimplemented!()
             }
 
             // It makes writing macros easier if this is implemented for both signed and unsigned
@@ -163,7 +184,7 @@ macro_rules! int_impl {
 
         impl MinInt for $ity {
             type OtherSign = $uty;
-            type UnsignedInt = $uty;
+            type Unsigned = $uty;
 
             const BITS: u32 = <Self as MinInt>::ZERO.count_zeros();
             const SIGNED: bool = Self::MIN != Self::ZERO;
@@ -175,8 +196,16 @@ macro_rules! int_impl {
         }
 
         impl Int for $ity {
+            fn signed(self) -> Self {
+                self
+            }
+
             fn unsigned(self) -> $uty {
                 self as $uty
+            }
+
+            fn abs(self) -> Self {
+                self.abs()
             }
 
             fn from_unsigned(me: $uty) -> Self {
