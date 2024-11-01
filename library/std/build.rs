@@ -122,19 +122,24 @@ fn main() {
         _ if is_miri => true,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
-        // ABI and precision bugs <https://github.com/rust-lang/rust/issues/125109>
-        // <https://github.com/rust-lang/rust/issues/125102>
-        ("powerpc" | "powerpc64", _) => false,
+        // Selection bug <https://github.com/llvm/llvm-project/issues/96432>
+        ("mips64" | "mips64r6", _) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
         ("nvptx64", _) => false,
+        // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
+        // list at <https://github.com/rust-lang/rust/issues/116909>)
+        ("powerpc" | "powerpc64", _) => false,
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
         ("sparc", _) => false,
+        // Stack alignment bug <https://github.com/llvm/llvm-project/issues/77401>. NB: tests may
+        // not fail if our compiler-builtins is linked.
+        ("x86", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
-        // 64-bit Linux is about the only platform to have f128 symbols by default
-        (_, "linux") if target_pointer_width == 64 => true,
-        // Almost all OSs are missing symbol. compiler-builtins will have to add them.
-        _ => false,
+        // There are no known problems on other platforms, so the only requirement is that symbols
+        // are available. `compiler-builtins` provides all symbols required for core `f128`
+        // support, so this should work for everything else.
+        _ => true,
     };
 
     // Configure platforms that have reliable basics but may have unreliable math.
