@@ -24,10 +24,10 @@ fn main() {
 
 struct Container<const N: u32>;
 
-// FIXME(effects): Somehow emit `the trait bound `T: const Trait` is not satisfied` here instead
-//                 and suggest changing `Trait` to `const Trait`.
+// FIXME(const_trait_impl): Somehow emit `the trait bound `T: const Trait`
+// is not satisfied` here instead and suggest changing `Trait` to `const Trait`.
 fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
 
-// FIXME(effects): Instead of suggesting `+ const Trait`, suggest
+// FIXME(const_trait_impl): Instead of suggesting `+ const Trait`, suggest
 //                 changing `~const Trait` to `const Trait`.
 const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}

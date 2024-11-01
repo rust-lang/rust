@@ -657,7 +657,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // typeck ensures the conditions for calling a const trait method are met,
                     // so we only error if the trait isn't const. We try to resolve the trait
                     // into the concrete method, and uses that for const stability checks.
-                    // FIXME(effects) we might consider moving const stability checks to typeck as well.
+                    // FIXME(const_trait_impl) we might consider moving const stability checks
+                    // to typeck as well.
                     if tcx.features().const_trait_impl() && trait_is_const {
                         // This skips the check below that ensures we only call `const fn`.
                         is_trait = true;

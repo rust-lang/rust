@@ -1,7 +1,7 @@
 //@ known-bug: #110395
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-// FIXME(effects) check-pass
+// FIXME(const_trait_impl) check-pass
 //@ compile-flags: -Znext-solver
 
 #![crate_type = "lib"]

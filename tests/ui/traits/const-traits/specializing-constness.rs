@@ -22,7 +22,7 @@ impl<T: ~const Spec> const A for T {
 
 impl<T: Spec + Sup> A for T {
 //~^ ERROR: cannot specialize
-//FIXME(effects) ~| ERROR: missing `~const` qualifier
+//FIXME(const_trait_impl) ~| ERROR: missing `~const` qualifier
     fn a() -> u32 {
         3
     }

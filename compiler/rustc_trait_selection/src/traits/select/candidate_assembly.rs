@@ -1170,8 +1170,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         _obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // FIXME(effects): Destruct is not const yet, and it is implemented
-        // by all types today in non-const setting.
         candidates.vec.push(BuiltinCandidate { has_nested: false });
     }
 

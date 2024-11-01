@@ -4,8 +4,6 @@
 
 #[const_trait]
 trait Trait {
-    // FIXME(effects): `~const` bounds in trait associated types (excluding associated type bounds)
-    // don't look super useful. Should we forbid them again?
     type Assoc<T: ~const Bound>;
 }
 

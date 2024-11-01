@@ -538,7 +538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        // FIXME(effects): We should recompute the predicate with `~const`
+                        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
                         // if it's `const`, and if it holds, explain that this bound only
                         // *conditionally* holds. If that fails, we should also do selection
                         // to drill this down to an impl or built-in source, so we can
@@ -2641,7 +2641,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         _span: Span,
     ) -> UnsatisfiedConst {
         let unsatisfied_const = UnsatisfiedConst(false);
-        // FIXME(effects)
+        // FIXME(const_trait_impl)
         unsatisfied_const
     }
 
@@ -3052,7 +3052,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Make a fresh inference variable so we can determine what the generic parameters
                 // of the trait are.
                 let var = self.next_ty_var(DUMMY_SP);
-                // FIXME(effects)
+                // FIXME(const_trait_impl)
                 let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(
                     self.tcx,

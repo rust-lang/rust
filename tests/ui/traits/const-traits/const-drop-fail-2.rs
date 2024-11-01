@@ -20,7 +20,7 @@ impl A for NonTrivialDrop {}
 const fn check<T: ~const Destruct>(_: T) {}
 
 
-/* FIXME(effects)
+/* FIXME(const_trait_impl)
 struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {

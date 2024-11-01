@@ -3,7 +3,7 @@
 //@ normalize-stderr-test: ".*note: .*\n\n" -> ""
 //@ normalize-stderr-test: "thread 'rustc' panicked.*:\n.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
-// FIXME(effects) check-pass
+// FIXME(const_trait_impl) check-pass
 //@ compile-flags: -Znext-solver
 
 #![crate_type = "lib"]

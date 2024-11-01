@@ -217,7 +217,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         // `impl const Trait for Type` items forward their const stability to their
         // immediate children.
-        // FIXME(effects): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
+        // FIXME(const_trait_impl): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
         // Currently, once that is set, we do not inherit anything from the parent any more.
         if const_stab.is_none() {
             debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);

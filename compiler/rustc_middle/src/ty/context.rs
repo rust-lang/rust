@@ -3125,7 +3125,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
     }
 
-    // FIXME(effects): Please remove this. It's a footgun.
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }

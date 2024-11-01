@@ -431,7 +431,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
             // #[const_trait]. These *are* const-checked!
-            // FIXME(effects): why does `is_const_fn` not classify them as const?
+            // FIXME(const_trait_impl): why does `is_const_fn` not classify them as const?
             if (!ecx.tcx.is_const_fn(def) && !ecx.tcx.is_const_default_method(def))
                 || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
             {

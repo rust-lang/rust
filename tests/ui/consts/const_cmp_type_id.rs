@@ -12,6 +12,6 @@ fn main() {
         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
         //~^ ERROR cannot call non-const operator in constants
         // can't assert `_a` because it is not deterministic
-        // FIXME(effects) make it pass
+        // FIXME(const_trait_impl) make it pass
     }
 }
