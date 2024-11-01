@@ -525,7 +525,7 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
 }
 
 fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
-    let ForeignMod { safety, abi: _, items } = foreign_mod;
+    let ForeignMod { extern_span: _, safety, abi: _, items } = foreign_mod;
     visit_safety(vis, safety);
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
