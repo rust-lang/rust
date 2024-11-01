@@ -88,7 +88,9 @@ unsafe trait GenericRadix: Sized {
                 };
             }
         }
-        let buf = &buf[curr..];
+        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented,
+        // so it is always in bounds.
+        let buf = unsafe { buf.get_unchecked(curr..) };
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe {
