@@ -762,32 +762,34 @@ where
 
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
-    let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    if options.include_extra_comments {
-        writeln!(
-            w,
-            "{:A$} // {}{}",
-            indented_terminator,
-            if tcx.sess.verbose_internals() {
-                format!("{current_location:?}: ")
-            } else {
-                String::new()
-            },
-            comment(tcx, data.terminator().source_info),
-            A = ALIGN,
-        )?;
-    } else {
-        writeln!(w, "{indented_terminator}")?;
-    }
+    if data.terminator.is_some() {
+        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+        if options.include_extra_comments {
+            writeln!(
+                w,
+                "{:A$} // {}{}",
+                indented_terminator,
+                if tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
+                comment(tcx, data.terminator().source_info),
+                A = ALIGN,
+            )?;
+        } else {
+            writeln!(w, "{indented_terminator}")?;
+        }
 
-    write_extra(
-        tcx,
-        w,
-        |visitor| {
-            visitor.visit_terminator(data.terminator(), current_location);
-        },
-        options,
-    )?;
+        write_extra(
+            tcx,
+            w,
+            |visitor| {
+                visitor.visit_terminator(data.terminator(), current_location);
+            },
+            options,
+        )?;
+    }
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;
     extra_data(PassWhere::AfterTerminator(block), w)?;
