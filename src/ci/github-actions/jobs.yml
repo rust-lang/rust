@@ -205,7 +205,7 @@ auto:
   - image: dist-x86_64-musl
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-netbsd
     <<: *job-linux-4c
