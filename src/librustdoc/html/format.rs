@@ -13,6 +13,7 @@ use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
 use itertools::Itertools;
+use rustc_abi::ExternAbi;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -23,7 +24,6 @@ use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, trace};
 
 use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
@@ -1787,11 +1787,11 @@ impl clean::AssocItemConstraint {
     }
 }
 
-pub(crate) fn print_abi_with_space(abi: Abi) -> impl Display {
+pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
     display_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match abi {
-            Abi::Rust => Ok(()),
+            ExternAbi::Rust => Ok(()),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     })
