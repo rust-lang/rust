@@ -45,6 +45,10 @@ function setTheme(theme, store) {
 }
 
 (function() {
+    // This file is loaded first. If so, we add the `js` class on the `<html>`
+    // element.
+    document.documentElement.classList.add("js");
+
     // loading the theme after the initial load
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
     const theme = loadValue("theme");

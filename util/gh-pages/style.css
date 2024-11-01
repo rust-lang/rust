@@ -230,6 +230,11 @@ details[open] {
     }
 }
 
+html:not(.js) #settings-dropdown,
+html:not(.js)#menu-filters {
+    display: none;
+}
+
 #settings-dropdown {
     position: absolute;
     margin: 0.7em;
