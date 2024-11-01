@@ -48,6 +48,30 @@ LL | const fn a<T: ~const Destruct>(_: T) {}
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error[E0277]: the trait bound `T: const SomeTrait` is not satisfied
+  --> $DIR/const-drop.rs:67:46
+   |
+LL |     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `t::ConstDropWithBound`
+  --> $DIR/const-drop.rs:65:38
+   |
+LL |     pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
+   |                                      ^^^^^ required by this bound in `ConstDropWithBound`
+
+error[E0277]: the trait bound `T: const SomeTrait` is not satisfied
+  --> $DIR/const-drop.rs:68:22
+   |
+LL |         fn drop(&mut self) {
+   |                      ^^^^
+   |
+note: required by a bound in `t::ConstDropWithBound`
+  --> $DIR/const-drop.rs:65:38
+   |
+LL |     pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
+   |                                      ^^^^^ required by this bound in `ConstDropWithBound`
+
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:18:32
    |
@@ -66,7 +90,7 @@ help: add `#![feature(effects)]` to the crate attributes to enable
 LL + #![feature(effects)]
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
-Some errors have detailed explanations: E0015, E0493.
+Some errors have detailed explanations: E0015, E0277, E0493.
 For more information about an error, try `rustc --explain E0015`.

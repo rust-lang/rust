@@ -4,7 +4,7 @@ error[E0277]: `?` couldn't convert the error to `()`
 LL | fn a() -> Result<i32, ()> {
    |           --------------- expected `()` because of this
 LL |     Err(5)?;
-   |     ------^ the trait `From<{integer}>` is not implemented for `()`, which is required by `Result<i32, ()>: FromResidual<Result<Infallible, {integer}>>`
+   |     ------^ the trait `From<{integer}>` is not implemented for `()`
    |     |
    |     this can't be annotated with `?` because it has type `Result<_, {integer}>`
    |

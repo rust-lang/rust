@@ -13,7 +13,7 @@ error[E0277]: the size for values of type `[i32]` cannot be known at compilation
 LL |     offset_of!(T, y);
    |     ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `S`, the trait `Sized` is not implemented for `[i32]`, which is required by `S: Sized`
+   = help: within `S`, the trait `Sized` is not implemented for `[i32]`
 note: required because it appears within the type `S`
   --> $DIR/feature-gate-offset-of-slice.rs:3:8
    |

@@ -113,7 +113,19 @@ impl<'tcx> HirCollector<'tcx> {
         let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
             let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
-            self.collector.position = span;
+            self.collector.position = if span.edition().at_least_rust_2024() {
+                span
+            } else {
+                // this span affects filesystem path resolution,
+                // so we need to keep it the same as it was previously
+                ast_attrs
+                    .iter()
+                    .find(|attr| attr.doc_str().is_some())
+                    .map(|attr| {
+                        attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span)
+                    })
+                    .unwrap_or(DUMMY_SP)
+            };
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,

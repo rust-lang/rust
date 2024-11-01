@@ -896,9 +896,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::Path(ref qpath) => {
             try_visit!(visitor.visit_qpath(qpath, typ.hir_id, typ.span));
         }
-        TyKind::OpaqueDef(opaque, lifetimes) => {
+        TyKind::OpaqueDef(opaque) => {
             try_visit!(visitor.visit_opaque_ty(opaque));
-            walk_list!(visitor, visit_generic_arg, lifetimes);
         }
         TyKind::Array(ref ty, ref length) => {
             try_visit!(visitor.visit_ty(ty));
@@ -1188,10 +1187,8 @@ pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_opaque_ty<'v, V: Visitor<'v>>(visitor: &mut V, opaque: &'v OpaqueTy<'v>) -> V::Result {
-    let &OpaqueTy { hir_id, def_id: _, generics, bounds, origin: _, lifetime_mapping: _, span: _ } =
-        opaque;
+    let &OpaqueTy { hir_id, def_id: _, bounds, origin: _, span: _ } = opaque;
     try_visit!(visitor.visit_id(hir_id));
-    try_visit!(walk_generics(visitor, generics));
     walk_list!(visitor, visit_param_bound, bounds);
     V::Result::output()
 }

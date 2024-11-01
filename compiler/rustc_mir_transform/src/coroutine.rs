@@ -64,7 +64,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::Analysis;
@@ -666,14 +666,13 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
     let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body).pass_name("coroutine").iterate_to_fixpoint();
+        MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
 
     let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
@@ -681,16 +680,12 @@ fn locals_live_across_suspend_points<'tcx>(
     // for.
     let mut requires_storage_cursor =
         MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
+            .iterate_to_fixpoint(tcx, body, None)
             .into_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut liveness = MaybeLiveLocals
-        .into_engine(tcx, body)
-        .pass_name("coroutine")
-        .iterate_to_fixpoint()
-        .into_results_cursor(body);
+    let mut liveness =
+        MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
@@ -1501,7 +1496,11 @@ fn check_field_tys_sized<'tcx>(
         return;
     }
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    // FIXME(#132279): @lcnr believes that we may want to support coroutines
+    // whose `Sized`-ness relies on the hidden types of opaques defined by the
+    // parent function. In this case we'd have to be able to reveal only these
+    // opaques here.
+    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let param_env = tcx.param_env(def_id);
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);

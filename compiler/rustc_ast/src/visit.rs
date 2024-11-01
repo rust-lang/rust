@@ -366,7 +366,7 @@ impl WalkItemKind for ItemKind {
                 }
                 ModKind::Unloaded => {}
             },
-            ItemKind::ForeignMod(ForeignMod { safety: _, abi: _, items }) => {
+            ItemKind::ForeignMod(ForeignMod { extern_span: _, safety: _, abi: _, items }) => {
                 walk_list!(visitor, visit_foreign_item, items);
             }
             ItemKind::GlobalAsm(asm) => try_visit!(visitor.visit_inline_asm(asm)),

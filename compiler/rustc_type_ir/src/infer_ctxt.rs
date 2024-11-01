@@ -1,8 +1,74 @@
+use derive_where::derive_where;
+#[cfg(feature = "nightly")]
+use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+
 use crate::fold::TypeFoldable;
+use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::SolverMode;
+use crate::solve::Reveal;
 use crate::{self as ty, Interner};
+
+/// The current typing mode of an inference context. We unfortunately have some
+/// slightly different typing rules depending on the current context. See the
+/// doc comment for each variant for how and why they are used.
+///
+/// In most cases you can get the correct typing mode automically via:
+/// - `mir::Body::typing_mode`
+/// - `rustc_lint::LateContext::typing_mode`
+///
+/// If neither of these functions are available, feel free to reach out to
+/// t-types for help.
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+pub enum TypingMode<I: Interner> {
+    /// When checking whether impls overlap, we check whether any obligations
+    /// are guaranteed to never hold when unifying the impls. This requires us
+    /// to be complete: we must never fail to prove something which may actually
+    /// hold.
+    ///
+    /// In this typing mode we bail with ambiguity in case its not knowable
+    /// whether a trait goal may hold, e.g. because the trait may get implemented
+    /// in a downstream or sibling crate.
+    ///
+    /// We also have to be careful when generalizing aliases inside of higher-ranked
+    /// types to not unnecessarily constrain any inference variables.
+    Coherence,
+    /// Analysis includes type inference, checking that items are well-formed, and
+    /// pretty much everything else which may emit proper type errors to the user.
+    ///
+    /// We only normalize opaque types which may get defined by the current body,
+    /// which are stored in `defining_opaque_types`.
+    Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    /// After analysis, mostly during codegen and MIR optimizations, we're able to
+    /// reveal all opaque types.
+    PostAnalysis,
+}
+
+impl<I: Interner> TypingMode<I> {
+    /// Analysis outside of a body does not define any opaque types.
+    pub fn non_body_analysis() -> TypingMode<I> {
+        TypingMode::Analysis { defining_opaque_types: Default::default() }
+    }
+
+    /// While typechecking a body, we need to be able to define the opaque
+    /// types defined by that body.
+    pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+    }
+
+    /// FIXME(#132279): Using this function is questionable as the `param_env`
+    /// does not track `defining_opaque_types` and whether we're in coherence mode.
+    /// Many uses of this function should also use a not-yet implemented typing mode
+    /// which reveals already defined opaque types in the future. This function will
+    /// get completely removed at some point.
+    pub fn from_param_env(param_env: I::ParamEnv) -> TypingMode<I> {
+        match param_env.reveal() {
+            Reveal::UserFacing => TypingMode::non_body_analysis(),
+            Reveal::All => TypingMode::PostAnalysis,
+        }
+    }
+}
 
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
@@ -16,7 +82,10 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn solver_mode(&self) -> SolverMode;
+    fn typing_mode(
+        &self,
+        param_env_for_debug_assertion: <Self::Interner as Interner>::ParamEnv,
+    ) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;
     fn create_next_universe(&self) -> ty::UniverseIndex;
@@ -42,8 +111,6 @@ pub trait InferCtxtLike: Sized {
         &self,
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
-
-    fn defining_opaque_types(&self) -> <Self::Interner as Interner>::DefiningOpaqueTypes;
 
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;

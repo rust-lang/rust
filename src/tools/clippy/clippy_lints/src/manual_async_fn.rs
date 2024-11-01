@@ -4,9 +4,11 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl,
-    FnRetTy, GenericArg, GenericBound, ImplItem, Item, LifetimeName, Node, TraitRef, Ty, TyKind,
+    FnRetTy, GenericBound, ImplItem, Item, Node, OpaqueTy, TraitRef, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
+use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -44,21 +46,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        def_id: LocalDefId,
+        fn_def_id: LocalDefId,
     ) {
         if let Some(header) = kind.header()
             && !header.asyncness.is_async()
             // Check that this function returns `impl Future`
             && let FnRetTy::Return(ret_ty) = decl.output
-            && let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty)
+            && let TyKind::OpaqueDef(opaque) = ret_ty.kind
+            && let Some(trait_ref) = future_trait_ref(cx, opaque)
             && let Some(output) = future_output_ty(trait_ref)
-            && captures_all_lifetimes(decl.inputs, &output_lifetimes)
+            && captures_all_lifetimes(cx, fn_def_id, opaque.def_id)
             // Check that the body of the function consists of one async block
             && let ExprKind::Block(block, _) = body.value.kind
             && block.stmts.is_empty()
             && let Some(closure_body) = desugared_async_block(cx, block)
             && let Node::Item(Item {vis_span, ..}) | Node::ImplItem(ImplItem {vis_span, ..}) =
-                cx.tcx.hir_node_by_def_id(def_id)
+                cx.tcx.hir_node_by_def_id(fn_def_id)
         {
             let header_span = span.with_hi(ret_ty.span.hi());
 
@@ -101,12 +104,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     }
 }
 
-fn future_trait_ref<'tcx>(
-    cx: &LateContext<'tcx>,
-    ty: &'tcx Ty<'tcx>,
-) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
-    if let TyKind::OpaqueDef(opaque, bounds) = ty.kind
-        && let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
+fn future_trait_ref<'tcx>(cx: &LateContext<'tcx>, opaque: &'tcx OpaqueTy<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
+    if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
             if let GenericBound::Trait(poly) = bound {
                 Some(&poly.trait_ref)
             } else {
@@ -115,18 +114,7 @@ fn future_trait_ref<'tcx>(
         })
         && trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait()
     {
-        let output_lifetimes = bounds
-            .iter()
-            .filter_map(|bound| {
-                if let GenericArg::Lifetime(lt) = bound {
-                    Some(lt.res)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        return Some((trait_ref, output_lifetimes));
+        return Some(trait_ref);
     }
 
     None
@@ -145,27 +133,35 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
     None
 }
 
-fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) -> bool {
-    let input_lifetimes: Vec<LifetimeName> = inputs
-        .iter()
-        .filter_map(|ty| {
-            if let TyKind::Ref(lt, _) = ty.kind {
-                Some(lt.res)
-            } else {
-                None
-            }
-        })
-        .collect();
+fn captures_all_lifetimes(cx: &LateContext<'_>, fn_def_id: LocalDefId, opaque_def_id: LocalDefId) -> bool {
+    let early_input_params = ty::GenericArgs::identity_for_item(cx.tcx, fn_def_id);
+    let late_input_params = cx.tcx.late_bound_vars(cx.tcx.local_def_id_to_hir_id(fn_def_id));
 
-    // The lint should trigger in one of these cases:
-    // - There are no input lifetimes
-    // - There's only one output lifetime bound using `+ '_`
-    // - All input lifetimes are explicitly bound to the output
-    input_lifetimes.is_empty()
-        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Infer))
-        || input_lifetimes
-            .iter()
-            .all(|in_lt| output_lifetimes.iter().any(|out_lt| in_lt == out_lt))
+    let num_early_lifetimes = early_input_params
+        .iter()
+        .filter(|param| param.as_region().is_some())
+        .count();
+    let num_late_lifetimes = late_input_params
+        .iter()
+        .filter(|param_kind| matches!(param_kind, ty::BoundVariableKind::Region(_)))
+        .count();
+
+    // There is no lifetime, so they are all captured.
+    if num_early_lifetimes == 0 && num_late_lifetimes == 0 {
+        return true;
+    }
+
+    // By construction, each captured lifetime only appears once in `opaque_captured_lifetimes`.
+    let num_captured_lifetimes = cx
+        .tcx
+        .opaque_captured_lifetimes(opaque_def_id)
+        .iter()
+        .filter(|&(lifetime, _)| match *lifetime {
+            ResolvedArg::EarlyBound(_) | ResolvedArg::LateBound(ty::INNERMOST, _, _) => true,
+            _ => false,
+        })
+        .count();
+    num_captured_lifetimes == num_early_lifetimes + num_late_lifetimes
 }
 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {

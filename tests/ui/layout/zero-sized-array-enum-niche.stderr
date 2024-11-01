@@ -4,7 +4,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -42,7 +42,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -66,7 +66,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -109,7 +109,7 @@ error: layout_of(MultipleAlignments) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -147,7 +147,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(2 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -171,7 +171,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -195,7 +195,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -238,7 +238,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -276,7 +276,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -300,7 +300,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -343,7 +343,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Aggregate {
+           abi: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -385,7 +385,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -409,7 +409,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Aggregate {
+                       abi: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {

@@ -110,6 +110,18 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             ty::Coroutine(_, args) => {
                 args.as_coroutine().tupled_upvars_ty().visit_with(self);
 
+                // Coroutines may not outlive a region unless the resume
+                // ty outlives a region. This is because the resume ty may
+                // store data that lives shorter than this outlives region
+                // across yield points, which may subsequently be accessed
+                // after the coroutine is resumed again.
+                //
+                // Conceptually, you may think of the resume arg as an upvar
+                // of `&mut Option<ResumeArgTy>`, since it is kinda like
+                // storage shared between the callee of the coroutine and the
+                // coroutine body.
+                args.as_coroutine().resume_ty().visit_with(self);
+
                 // We ignore regions in the coroutine interior as we don't
                 // want these to affect region inference
             }

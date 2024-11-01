@@ -8,7 +8,7 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 |                          help: remove the `.await`
    |                 this call returns `[(); _]`
    |
-   = help: the trait `Future` is not implemented for `[(); _]`, which is required by `[(); _]: IntoFuture`
+   = help: the trait `Future` is not implemented for `[(); _]`
    = note: [(); _] must be a future or must implement `IntoFuture` to be awaited
    = note: required for `[(); _]` to implement `IntoFuture`
 

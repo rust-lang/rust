@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::iter::TrustedLen;
 use std::mem;
 use std::rc::{Rc, Weak};
@@ -204,6 +204,42 @@ fn weak_may_dangle() {
     //
     // `val` dropped here while still borrowed
     // borrow might be used here, when `val` is dropped and runs the `Drop` code for type `std::rc::Weak`
+}
+
+/// Test that a panic from a destructor does not leak the allocation.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn panic_no_leak() {
+    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+    use std::ptr::NonNull;
+
+    struct AllocCount(Cell<i32>);
+    unsafe impl Allocator for AllocCount {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            self.0.set(self.0.get() + 1);
+            Global.allocate(layout)
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            self.0.set(self.0.get() - 1);
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    struct PanicOnDrop;
+    impl Drop for PanicOnDrop {
+        fn drop(&mut self) {
+            panic!("PanicOnDrop");
+        }
+    }
+
+    let alloc = AllocCount(Cell::new(0));
+    let rc = Rc::new_in(PanicOnDrop, &alloc);
+    assert_eq!(alloc.0.get(), 1);
+
+    let panic_message = catch_unwind(AssertUnwindSafe(|| drop(rc))).unwrap_err();
+    assert_eq!(*panic_message.downcast_ref::<&'static str>().unwrap(), "PanicOnDrop");
+    assert_eq!(alloc.0.get(), 0);
 }
 
 #[allow(unused)]

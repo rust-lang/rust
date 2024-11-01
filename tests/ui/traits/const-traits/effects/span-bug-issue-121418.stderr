@@ -17,11 +17,6 @@ LL | #![feature(effects)]
    = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
 error[E0308]: mismatched types
   --> $DIR/span-bug-issue-121418.rs:9:27
    |
@@ -39,12 +34,12 @@ error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Mutex<(dyn T + 'static)>`, the trait `Sized` is not implemented for `(dyn T + 'static)`, which is required by `Mutex<(dyn T + 'static)>: Sized`
+   = help: within `Mutex<(dyn T + 'static)>`, the trait `Sized` is not implemented for `(dyn T + 'static)`
 note: required because it appears within the type `Mutex<(dyn T + 'static)>`
   --> $SRC_DIR/std/src/sync/mutex.rs:LL:COL
    = note: the return type of a function must have a statically known size
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

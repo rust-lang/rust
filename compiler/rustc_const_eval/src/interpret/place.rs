@@ -5,11 +5,11 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
+use rustc_abi::{Align, BackendRepr, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 use tracing::{instrument, trace};
 
 use super::{
@@ -540,6 +540,7 @@ where
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
+                self.typing_mode(),
                 self.param_env,
                 self.layout_of(normalized_place_ty)?,
                 place.layout,
@@ -659,7 +660,7 @@ where
                 // Unfortunately this is too expensive to do in release builds.
                 if cfg!(debug_assertions) {
                     src.assert_matches_abi(
-                        local_layout.abi,
+                        local_layout.backend_repr,
                         "invalid immediate for given destination place",
                         self,
                     );
@@ -683,7 +684,11 @@ where
     ) -> InterpResult<'tcx> {
         // We use the sizes from `value` below.
         // Ensure that matches the type of the place it is written to.
-        value.assert_matches_abi(layout.abi, "invalid immediate for given destination place", self);
+        value.assert_matches_abi(
+            layout.backend_repr,
+            "invalid immediate for given destination place",
+            self,
+        );
         // Note that it is really important that the type here is the right one, and matches the
         // type things are read at. In case `value` is a `ScalarPair`, we don't do any magic here
         // to handle padding properly, which is only correct if we never look at this data with the
@@ -700,7 +705,7 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
-                let Abi::ScalarPair(a, b) = layout.abi else {
+                let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
                     span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
@@ -866,8 +871,13 @@ where
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
-        let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout(), dest.layout());
+        let layout_compat = mir_assign_valid_types(
+            *self.tcx,
+            self.typing_mode(),
+            self.param_env,
+            src.layout(),
+            dest.layout(),
+        );
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),

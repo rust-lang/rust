@@ -26,7 +26,7 @@ error[E0277]: `(dyn Qux + 'static)` cannot be shared between threads safely
 LL | static FOO: &Lint = &Lint { desc: "desc" };
    |             ^^^^^ `(dyn Qux + 'static)` cannot be shared between threads safely
    |
-   = help: within `&'static Lint`, the trait `Sync` is not implemented for `(dyn Qux + 'static)`, which is required by `&'static Lint: Sync`
+   = help: within `&'static Lint`, the trait `Sync` is not implemented for `(dyn Qux + 'static)`
    = note: required because it appears within the type `&'static (dyn Qux + 'static)`
 note: required because it appears within the type `Lint`
   --> $DIR/unsizing-wfcheck-issue-127299.rs:7:12

@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{Abi, PointerKind, Scalar, Size};
+use rustc_abi::{BackendRepr, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -469,7 +469,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // careful. Scalar/ScalarPair is fine, since backends will generally use
                 // `layout.abi` and ignore everything else. We should just reject `Aggregate`
                 // entirely here, but some targets need to be fixed first.
-                if matches!(arg.layout.abi, Abi::Aggregate { .. }) {
+                if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
                     // For an unsized type we'd only pass the sized prefix, so there is no universe
                     // in which we ever want to allow this.
                     assert!(
@@ -500,7 +500,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // Similar to `Direct`, we need to make sure that backends use `layout.abi` and
                 // ignore the rest of the layout.
                 assert!(
-                    matches!(arg.layout.abi, Abi::ScalarPair(..)),
+                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
@@ -658,9 +658,9 @@ fn fn_abi_adjust_for_abi<'tcx>(
         fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
             // This still uses `PassMode::Pair` for ScalarPair types. That's unlikely to be intended,
             // but who knows what breaks if we change this now.
-            if matches!(arg.layout.abi, Abi::Aggregate { .. }) {
+            if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
                 assert!(
-                    arg.layout.abi.is_sized(),
+                    arg.layout.backend_repr.is_sized(),
                     "'unadjusted' ABI does not support unsized arguments"
                 );
             }
@@ -731,8 +731,8 @@ fn make_thin_self_ptr<'tcx>(
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
         Ty::new_mut_ptr(tcx, layout.ty)
     } else {
-        match layout.abi {
-            Abi::ScalarPair(..) | Abi::Scalar(..) => (),
+        match layout.backend_repr {
+            BackendRepr::ScalarPair(..) | BackendRepr::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

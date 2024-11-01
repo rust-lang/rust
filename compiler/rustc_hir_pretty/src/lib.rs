@@ -9,6 +9,7 @@
 use std::cell::Cell;
 use std::vec;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
@@ -20,7 +21,6 @@ use rustc_hir::{
 use rustc_span::FileName;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
@@ -659,8 +659,6 @@ impl<'a> State<'a> {
 
     fn print_opaque_ty(&mut self, o: &hir::OpaqueTy<'_>) {
         self.head("opaque");
-        self.print_generic_params(o.generics.params);
-        self.print_where_clause(o.generics);
         self.word("{");
         self.print_bounds("impl", o.bounds);
         self.word("}");
@@ -2242,7 +2240,7 @@ impl<'a> State<'a> {
 
     fn print_ty_fn(
         &mut self,
-        abi: Abi,
+        abi: ExternAbi,
         safety: hir::Safety,
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
@@ -2278,7 +2276,7 @@ impl<'a> State<'a> {
 
         self.print_safety(header.safety);
 
-        if header.abi != Abi::Rust {
+        if header.abi != ExternAbi::Rust {
             self.word_nbsp("extern");
             self.word_nbsp(header.abi.to_string());
         }

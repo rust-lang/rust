@@ -114,7 +114,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let l_bits = left.layout.size.bits();
             // Compute the equivalent shift modulo `size` that is in the range `0..size`. (This is
             // the one MIR operator that does *not* directly map to a single LLVM operation.)
-            let (shift_amount, overflow) = if right.layout.abi.is_signed() {
+            let (shift_amount, overflow) = if right.layout.backend_repr.is_signed() {
                 let shift_amount = r_signed();
                 let rem = shift_amount.rem_euclid(l_bits.into());
                 // `rem` is guaranteed positive, so the `unwrap` cannot fail
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             };
             let shift_amount = u32::try_from(shift_amount).unwrap(); // we brought this in the range `0..size` so this will always fit
             // Compute the shifted result.
-            let result = if left.layout.abi.is_signed() {
+            let result = if left.layout.backend_repr.is_signed() {
                 let l = l_signed();
                 let result = match bin_op {
                     Shl | ShlUnchecked => l.checked_shl(shift_amount).unwrap(),
@@ -147,7 +147,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             if overflow && let Some(intrinsic) = throw_ub_on_overflow {
                 throw_ub!(ShiftOverflow {
                     intrinsic,
-                    shift_amount: if right.layout.abi.is_signed() {
+                    shift_amount: if right.layout.backend_repr.is_signed() {
                         Either::Right(r_signed())
                     } else {
                         Either::Left(r_unsigned())
@@ -171,7 +171,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let size = left.layout.size;
 
         // Operations that need special treatment for signed integers
-        if left.layout.abi.is_signed() {
+        if left.layout.backend_repr.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
                 Lt => Some(i128::lt),
                 Le => Some(i128::le),
@@ -250,7 +250,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             BitXor => ImmTy::from_uint(l ^ r, left.layout),
 
             _ => {
-                assert!(!left.layout.abi.is_signed());
+                assert!(!left.layout.backend_repr.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
                     Add | AddUnchecked | AddWithOverflow => u128::overflowing_add,
                     Sub | SubUnchecked | SubWithOverflow => u128::overflowing_sub,
@@ -315,7 +315,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = left.to_scalar().to_pointer(self)?;
                 let pointee_ty = left.layout.ty.builtin_deref(true).unwrap();
                 let pointee_layout = self.layout_of(pointee_ty)?;
-                assert!(pointee_layout.abi.is_sized());
+                assert!(pointee_layout.is_sized());
 
                 // The size always fits in `i64` as it can be at most `isize::MAX`.
                 let pointee_size = i64::try_from(pointee_layout.size.bytes()).unwrap();
@@ -332,7 +332,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
 
                 let offset_bytes = val.to_target_isize(self)?;
-                if !right.layout.abi.is_signed() && offset_bytes < 0 {
+                if !right.layout.backend_repr.is_signed() && offset_bytes < 0 {
                     // We were supposed to do an unsigned offset but the result is negative -- this
                     // can only mean that the cast wrapped around.
                     throw_ub!(PointerArithOverflow)
@@ -518,14 +518,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         interp_ok(match null_op {
             SizeOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
                 }
                 let val = layout.size.bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
             AlignOf => {
-                if !layout.abi.is_sized() {
+                if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
                 }
                 let val = layout.align.abi.bytes();

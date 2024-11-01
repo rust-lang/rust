@@ -278,7 +278,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(self.lo);
             s.source_file_cache =
-                (source_map.files()[source_file_index].clone(), source_file_index);
+                (Lrc::clone(&source_map.files()[source_file_index]), source_file_index);
         }
         let (ref source_file, source_file_index) = s.source_file_cache;
         debug_assert!(source_file.contains(self.lo));
@@ -1188,7 +1188,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::SyntheticCoroutineBody => true,
 
         DefKind::OpaqueTy => {
-            let origin = tcx.opaque_type_origin(def_id);
+            let origin = tcx.local_opaque_ty_origin(def_id);
             if let hir::OpaqueTyOrigin::FnReturn { parent, .. }
             | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(parent)
@@ -1530,9 +1530,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
                 self.encode_explicit_item_super_predicates(def_id);
-                self.tables
-                    .is_type_alias_impl_trait
-                    .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
+                record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
@@ -1676,9 +1674,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 );
                 self.encode_precise_capturing_args(def_id);
             }
-        }
-        if item.is_effects_desugaring {
-            self.tables.is_effects_desugaring.set(def_id.index, true);
         }
     }
 
@@ -2275,7 +2270,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (source_map_files[0].clone(), 0);
+    let source_file_cache = (Lrc::clone(&source_map_files[0]), 0);
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 

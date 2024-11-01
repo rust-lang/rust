@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Result<u32, i32>: From<Result<u64, i32>>` is not 
   --> $DIR/issue-88696.rs:9:9
    |
 LL |     a().into()
-   |         ^^^^ the trait `From<Result<u64, i32>>` is not implemented for `Result<u32, i32>`, which is required by `Result<u64, i32>: Into<_>`
+   |         ^^^^ the trait `From<Result<u64, i32>>` is not implemented for `Result<u32, i32>`
    |
    = note: required for `Result<u64, i32>` to implement `Into<Result<u32, i32>>`
 

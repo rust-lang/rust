@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::attr;
@@ -16,12 +17,10 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::FieldIdx;
-use rustc_target::spec::abi::Abi;
 
 use super::lints;
 use crate::build::expr::as_place::PlaceBuilder;
@@ -467,7 +466,7 @@ fn construct_fn<'tcx>(
     if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
-        abi = Abi::Rust;
+        abi = ExternAbi::Rust;
     }
 
     let arguments = &thir.params;
@@ -500,7 +499,9 @@ fn construct_fn<'tcx>(
         );
     }
 
-    let infcx = tcx.infer_ctxt().build();
+    // FIXME(#132279): This should be able to reveal opaque
+    // types defined during HIR typeck.
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -538,7 +539,7 @@ fn construct_fn<'tcx>(
 
     let mut body = builder.finish();
 
-    body.spread_arg = if abi == Abi::RustCall {
+    body.spread_arg = if abi == ExternAbi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
         Some(Local::new(arguments.len()))
     } else {
@@ -578,7 +579,9 @@ fn construct_const<'a, 'tcx>(
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
-    let infcx = tcx.infer_ctxt().build();
+    // FIXME(#132279): We likely want to be able to use the hidden types of
+    // opaques used by this function here.
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let mut builder =
         Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 

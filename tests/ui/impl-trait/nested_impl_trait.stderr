@@ -46,7 +46,7 @@ error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfie
   --> $DIR/nested_impl_trait.rs:6:46
    |
 LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
-   |                                              ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`, which is required by `impl Into<u32>: Into<impl Debug>`
+   |                                              ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
@@ -55,7 +55,7 @@ error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfie
   --> $DIR/nested_impl_trait.rs:19:34
    |
 LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
-   |                                  ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`, which is required by `impl Into<u32>: Into<impl Debug>`
+   |                                  ^^^^^^^^^^^^^^^^^^^^^ the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
    |
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`

@@ -5,27 +5,18 @@
 
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, Variance};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt, TypingMode, Variance};
 use rustc_trait_selection::traits::ObligationCtxt;
 
-/// Returns whether the two types are equal up to subtyping.
-///
-/// This is used in case we don't know the expected subtyping direction
-/// and still want to check whether anything is broken.
-pub fn is_equal_up_to_subtyping<'tcx>(
+/// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
+pub fn sub_types<'tcx>(
     tcx: TyCtxt<'tcx>,
+    typing_mode: TypingMode<'tcx>,
     param_env: ParamEnv<'tcx>,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
 ) -> bool {
-    // Fast path.
-    if src == dest {
-        return true;
-    }
-
-    // Check for subtyping in either direction.
-    relate_types(tcx, param_env, Variance::Covariant, src, dest)
-        || relate_types(tcx, param_env, Variance::Covariant, dest, src)
+    relate_types(tcx, typing_mode, param_env, Variance::Covariant, src, dest)
 }
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
@@ -35,6 +26,7 @@ pub fn is_equal_up_to_subtyping<'tcx>(
 /// because we want to check for type equality.
 pub fn relate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
+    typing_mode: TypingMode<'tcx>,
     param_env: ParamEnv<'tcx>,
     variance: Variance,
     src: Ty<'tcx>,
@@ -45,7 +37,7 @@ pub fn relate_types<'tcx>(
     }
 
     let mut builder = tcx.infer_ctxt().ignoring_regions();
-    let infcx = builder.build();
+    let infcx = builder.build(typing_mode);
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
     let src = ocx.normalize(&cause, param_env, src);

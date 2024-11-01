@@ -84,11 +84,11 @@ tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.75", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.75", default-features = false }
-ra-ap-rustc_index = { version = "0.75", default-features = false }
-ra-ap-rustc_abi = { version = "0.75", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.75", default-features = false }
+ra-ap-rustc_lexer = { version = "0.76", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.76", default-features = false }
+ra-ap-rustc_index = { version = "0.76", default-features = false }
+ra-ap-rustc_abi = { version = "0.76", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.76", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
@@ -145,7 +145,6 @@ smallvec = { version = "1.10.0", features = [
   "const_generics",
 ] }
 smol_str = "0.3.2"
-snap = "1.1.0"
 text-size = "1.1.1"
 tracing = "0.1.40"
 tracing-tree = "0.3.0"

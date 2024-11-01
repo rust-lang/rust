@@ -16,7 +16,7 @@ use rustc_infer::traits::{
     Obligation, ObligationCause, PolyTraitObligation, PredicateObligations, SelectionError,
 };
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
@@ -790,7 +790,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if self.infcx.intercrate {
+                    } else if let TypingMode::Coherence =
+                        self.infcx.typing_mode(obligation.param_env)
+                    {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;
@@ -930,7 +932,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
         // Don't drop any candidates in intercrate mode, as it's incomplete.
         // (Not that it matters, since `Unsize` is not a stable trait.)
-        if self.infcx.intercrate {
+        //
+        // FIXME(@lcnr): This should probably only trigger during analysis,
+        // disabling candidates during codegen is also questionable.
+        if let TypingMode::Coherence = self.infcx.typing_mode(param_env) {
             return None;
         }
 

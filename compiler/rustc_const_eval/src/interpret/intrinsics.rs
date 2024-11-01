@@ -364,7 +364,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let msg = match requirement {
                         // For *all* intrinsics we first check `is_uninhabited` to give a more specific
                         // error message.
-                        _ if layout.abi.is_uninhabited() => format!(
+                        _ if layout.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{ty}`"
                         ),
                         ValidityRequirement::Inhabited => bug!("handled earlier"),
@@ -563,7 +563,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();
         interp_ok(if overflowed.to_bool()? {
             let size = l.layout.size;
-            if l.layout.abi.is_signed() {
+            if l.layout.backend_repr.is_signed() {
                 // For signed ints the saturated value depends on the sign of the first
                 // term since the sign of the second term can be inferred from this and
                 // the fact that the operation has overflowed (if either is 0 no

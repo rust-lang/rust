@@ -1489,6 +1489,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             &borrow_msg,
             &value_msg,
         );
+        self.note_due_to_edition_2024_opaque_capture_rules(borrow, &mut err);
 
         borrow_spans.var_path_only_subdiag(&mut err, crate::InitializationRequiringAction::Borrow);
 
@@ -1524,7 +1525,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 matches!(
                     adj.kind,
                     ty::adjustment::Adjust::Borrow(ty::adjustment::AutoBorrow::Ref(
-                        _,
                         ty::adjustment::AutoBorrowMutability::Not
                             | ty::adjustment::AutoBorrowMutability::Mut {
                                 allow_two_phase_borrow: ty::adjustment::AllowTwoPhase::No
@@ -1561,6 +1561,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             borrow_span,
             &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
+        self.note_due_to_edition_2024_opaque_capture_rules(borrow, &mut err);
+
         borrow_spans.var_subdiag(&mut err, Some(borrow.kind), |kind, var_span| {
             use crate::session_diagnostics::CaptureVarCause::*;
             let place = &borrow.borrowed_place;
@@ -1820,6 +1822,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 unreachable!()
             }
         };
+        self.note_due_to_edition_2024_opaque_capture_rules(issued_borrow, &mut err);
 
         if issued_spans == borrow_spans {
             borrow_spans.var_subdiag(&mut err, Some(gen_borrow_kind), |kind, var_span| {
@@ -2860,7 +2863,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         debug!(?place_desc, ?explanation);
 
-        let err = match (place_desc, explanation) {
+        let mut err = match (place_desc, explanation) {
             // If the outlives constraint comes from inside the closure,
             // for example:
             //
@@ -2939,6 +2942,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 explanation,
             ),
         };
+        self.note_due_to_edition_2024_opaque_capture_rules(borrow, &mut err);
 
         self.buffer_error(err);
     }
@@ -3777,6 +3781,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         let mut err = self.cannot_assign_to_borrowed(span, loan_span, &descr_place);
+        self.note_due_to_edition_2024_opaque_capture_rules(loan, &mut err);
 
         loan_spans.var_subdiag(&mut err, Some(loan.kind), |kind, var_span| {
             use crate::session_diagnostics::CaptureVarCause::*;

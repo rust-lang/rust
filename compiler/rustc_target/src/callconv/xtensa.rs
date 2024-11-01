@@ -6,7 +6,7 @@
 //! Section 2.3 from the Xtensa programmers guide.
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
-use crate::abi::{Abi, HasDataLayout, Size, TyAbiInterface};
+use crate::abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 const NUM_ARG_GPRS: u64 = 6;
@@ -114,8 +114,8 @@ where
 }
 
 fn is_xtensa_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
-    match arg.layout.abi {
-        Abi::Vector { .. } => true,
+    match arg.layout.backend_repr {
+        BackendRepr::Vector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }

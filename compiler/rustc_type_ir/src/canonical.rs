@@ -8,7 +8,7 @@ use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, UniverseIndex};
+use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 
 #[derive_where(Clone; I: Interner, V: Clone)]
 #[derive_where(Hash; I: Interner, V: Hash)]
@@ -19,7 +19,7 @@ use crate::{self as ty, Interner, UniverseIndex};
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
-    pub defining_opaque_types: I::DefiningOpaqueTypes,
+    pub typing_mode: TypingMode<I>,
 }
 
 /// A "canonicalized" type `V` is one where all free inference

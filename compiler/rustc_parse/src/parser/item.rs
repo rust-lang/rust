@@ -1194,6 +1194,7 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         mut safety: Safety,
     ) -> PResult<'a, ItemInfo> {
+        let extern_span = self.prev_token.uninterpolated_span();
         let abi = self.parse_abi(); // ABI?
         // FIXME: This recovery should be tested better.
         if safety == Safety::Default
@@ -1205,6 +1206,7 @@ impl<'a> Parser<'a> {
             let _ = self.eat_keyword(kw::Unsafe);
         }
         let module = ast::ForeignMod {
+            extern_span,
             safety,
             abi,
             items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,

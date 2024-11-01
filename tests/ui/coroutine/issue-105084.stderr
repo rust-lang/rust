@@ -29,7 +29,7 @@ LL |     || {
    |     -- within this `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`
 ...
 LL |     let mut h = copy(g);
-   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`, the trait `Copy` is not implemented for `Box<(i32, ())>`, which is required by `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}: Copy`
+   |                 ^^^^^^^ within `{coroutine@$DIR/issue-105084.rs:15:5: 15:7}`, the trait `Copy` is not implemented for `Box<(i32, ())>`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/issue-105084.rs:22:22

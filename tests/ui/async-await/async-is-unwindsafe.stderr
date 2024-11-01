@@ -13,7 +13,7 @@ LL | |         drop(cx_ref);
 LL | |     });
    | |______^ `&mut Context<'_>` may not be safely transferred across an unwind boundary
    |
-   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 12:24}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`, which is required by `{async block@$DIR/async-is-unwindsafe.rs:12:19: 12:24}: UnwindSafe`
+   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 12:24}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`
    = note: `UnwindSafe` is implemented for `&Context<'_>`, but not for `&mut Context<'_>`
 note: future does not implement `UnwindSafe` as this value is used across an await
   --> $DIR/async-is-unwindsafe.rs:25:18
