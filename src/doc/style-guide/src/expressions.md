@@ -328,9 +328,9 @@ foo_bar
 Prefer line-breaking at an assignment operator (either `=` or `+=`, etc.) rather
 than at other binary operators.
 
-If line-breaking at a binary operator (including assignment operators) where the
-first operand spans multiple lines, use the base indentation of the *last*
-line of the first operand, and indent relative to that:
+If line-breaking an assignment operator where the left-hand side spans multiple
+lines, use the base indentation of the *last* line of the left-hand side, and
+indent the right-hand side relative to that:
 
 ```rust
 impl SomeType {
@@ -340,12 +340,6 @@ impl SomeType {
             .expect("thing must exist")
             .extra_info =
                 long_long_long_long_long_long_long_long_long_long_long_long_long_long_long;
-
-        self.array[array_index as usize]
-            .as_mut()
-            .expect("thing must exist")
-            .extra_info
-                + long_long_long_long_long_long_long_long_long_long_long_long_long_long_long;
 
         self.array[array_index as usize]
             .as_mut()
