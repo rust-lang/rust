@@ -2,7 +2,9 @@
 
 fn src(x: &&u8) -> bool {
     // CHECK-LABEL: fn src(
-    // CHECK: _0 = const true;
+    // CHECK-NOT: _0 = const true;
+    // CHECK: _0 = Eq({{.*}}, {{.*}});
+    // CHECK-NOT: _0 = const true;
     let y = **x;
     unsafe { unknown() };
     **x == y
