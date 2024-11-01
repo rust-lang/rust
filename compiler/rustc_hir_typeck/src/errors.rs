@@ -169,19 +169,34 @@ pub(crate) struct MissingParenthesesInRange {
 pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_call)]
-    Call,
+    Call {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_method)]
-    Method,
+    Method {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_path)]
-    Path,
+    Path {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_union_field)]
-    UnionField,
+    UnionField {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
     #[help]
     #[diag(hir_typeck_never_type_fallback_flowing_into_unsafe_deref)]
-    Deref,
+    Deref {
+        #[subdiagnostic]
+        sugg: SuggestAnnotations,
+    },
 }
 
 #[derive(LintDiagnostic)]
@@ -191,6 +206,64 @@ pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
     #[note]
     pub obligation_span: Span,
     pub obligation: ty::Predicate<'tcx>,
+    #[subdiagnostic]
+    pub sugg: SuggestAnnotations,
+}
+
+#[derive(Clone)]
+pub(crate) enum SuggestAnnotation {
+    Unit(Span),
+    Path(Span),
+    Local(Span),
+    Turbo(Span, usize, usize),
+}
+
+#[derive(Clone)]
+pub(crate) struct SuggestAnnotations {
+    pub suggestions: Vec<SuggestAnnotation>,
+}
+impl Subdiagnostic for SuggestAnnotations {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: &F,
+    ) {
+        if self.suggestions.is_empty() {
+            return;
+        }
+
+        let mut suggestions = vec![];
+        for suggestion in self.suggestions {
+            match suggestion {
+                SuggestAnnotation::Unit(span) => {
+                    suggestions.push((span, "()".to_string()));
+                }
+                SuggestAnnotation::Path(span) => {
+                    suggestions.push((span.shrink_to_lo(), "<() as ".to_string()));
+                    suggestions.push((span.shrink_to_hi(), ">".to_string()));
+                }
+                SuggestAnnotation::Local(span) => {
+                    suggestions.push((span, ": ()".to_string()));
+                }
+                SuggestAnnotation::Turbo(span, n_args, idx) => suggestions.push((
+                    span,
+                    format!(
+                        "::<{}>",
+                        (0..n_args)
+                            .map(|i| if i == idx { "()" } else { "_" })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ),
+                )),
+            }
+        }
+
+        diag.multipart_suggestion_verbose(
+            "use `()` annotations to avoid fallback changes",
+            suggestions,
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 #[derive(Subdiagnostic)]

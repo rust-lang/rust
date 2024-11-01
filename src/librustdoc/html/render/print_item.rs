@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use rinja::Template;
+use rustc_abi::VariantIdx;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
@@ -14,7 +15,6 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_target::abi::VariantIdx;
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;

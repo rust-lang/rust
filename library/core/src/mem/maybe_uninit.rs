@@ -390,9 +390,6 @@ impl<T> MaybeUninit<T> {
     #[must_use]
     #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    // These are OK to allow since we do not leak &mut to user-visible API
-    #[rustc_allow_const_fn_unstable(const_mut_refs)]
-    #[rustc_allow_const_fn_unstable(const_ptr_write)]
     #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();

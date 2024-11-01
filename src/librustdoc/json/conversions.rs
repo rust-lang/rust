@@ -4,6 +4,7 @@
 
 #![allow(rustc::default_hash_types)]
 
+use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr::DeprecatedSince;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -11,7 +12,6 @@ use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, Symbol, sym};
-use rustc_target::spec::abi::Abi as RustcAbi;
 use rustdoc_json_types::*;
 
 use super::FullItemId;
@@ -421,17 +421,17 @@ pub(crate) fn from_fn_header(header: &rustc_hir::FnHeader) -> FunctionHeader {
     }
 }
 
-fn convert_abi(a: RustcAbi) -> Abi {
+fn convert_abi(a: ExternAbi) -> Abi {
     match a {
-        RustcAbi::Rust => Abi::Rust,
-        RustcAbi::C { unwind } => Abi::C { unwind },
-        RustcAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
-        RustcAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
-        RustcAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
-        RustcAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
-        RustcAbi::Win64 { unwind } => Abi::Win64 { unwind },
-        RustcAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
-        RustcAbi::System { unwind } => Abi::System { unwind },
+        ExternAbi::Rust => Abi::Rust,
+        ExternAbi::C { unwind } => Abi::C { unwind },
+        ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+        ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+        ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+        ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+        ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
+        ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+        ExternAbi::System { unwind } => Abi::System { unwind },
         _ => Abi::Other(a.to_string()),
     }
 }
