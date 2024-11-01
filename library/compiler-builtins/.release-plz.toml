@@ -1,5 +1,4 @@
 [workspace]
-changelog_update = false
 semver_check = false
 
 # As part of the release process, we delete `libm/Cargo.toml`. Since
