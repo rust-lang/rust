@@ -736,16 +736,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Intrinsics are language primitives, not regular calls, so treat them separately.
                 if let Some(intrinsic) = tcx.intrinsic(callee) {
+                    // We use `intrinsic.const_stable` to determine if this can be safely exposed to
+                    // stable code, rather than `const_stable_indirect`. This is to make
+                    // `#[rustc_const_stable_indirect]` an attribute that is always safe to add.
                     match tcx.lookup_const_stability(callee) {
                         None => {
                             // Non-const intrinsic.
                             self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
                         }
-                        Some(ConstStability { feature: None, const_stable_indirect, .. }) => {
+                        Some(ConstStability { feature: None, .. }) => {
                             // Intrinsic does not need a separate feature gate (we rely on the
                             // regular stability checker). However, we have to worry about recursive
                             // const stability.
-                            if !const_stable_indirect && self.enforce_recursive_const_stability() {
+                            if !intrinsic.const_stable && self.enforce_recursive_const_stability() {
                                 self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
                                     span: self.span,
                                     def_path: self.tcx.def_path_str(callee),
@@ -755,17 +758,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         Some(ConstStability {
                             feature: Some(feature),
                             level: StabilityLevel::Unstable { .. },
-                            const_stable_indirect,
                             ..
                         }) => {
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
-                                const_stable_indirect,
+                                const_stable: intrinsic.const_stable,
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
-                            // All good.
+                            // All good. But ensure this is indeed a const-stable intrinsic.
+                            assert!(intrinsic.const_stable);
                         }
                     }
                     // This completes the checks for intrinsics.

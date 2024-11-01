@@ -837,6 +837,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_const_stable_indirect, Normal,
         template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
     ),
+    rustc_attr!(
+        rustc_const_stable_intrinsic, Normal,
+        template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
+    ),
     gated!(
         rustc_allow_const_fn_unstable, Normal,
         template!(Word, List: "feat1, feat2, ..."), DuplicatesOk, EncodeCrossCrate::No,
