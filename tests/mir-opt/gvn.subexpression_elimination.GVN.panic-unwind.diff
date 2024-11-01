@@ -758,39 +758,32 @@
           StorageLive(_126);
           _126 = &_3;
           StorageLive(_127);
--         StorageLive(_128);
--         StorageLive(_129);
-+         nop;
-+         nop;
+          StorageLive(_128);
+          StorageLive(_129);
           _129 = copy (*_126);
           StorageLive(_130);
           _130 = copy _1;
 -         _128 = Add(move _129, move _130);
-+         _128 = Add(copy _129, copy _1);
++         _128 = Add(move _129, copy _1);
           StorageDead(_130);
--         StorageDead(_129);
--         _127 = opaque::<u64>(move _128) -> [return: bb35, unwind continue];
-+         nop;
-+         _127 = opaque::<u64>(copy _128) -> [return: bb35, unwind continue];
+          StorageDead(_129);
+          _127 = opaque::<u64>(move _128) -> [return: bb35, unwind continue];
       }
   
       bb35: {
--         StorageDead(_128);
-+         nop;
+          StorageDead(_128);
           StorageDead(_127);
           StorageLive(_131);
           StorageLive(_132);
           StorageLive(_133);
--         _133 = copy (*_126);
-+         _133 = copy _129;
+          _133 = copy (*_126);
           StorageLive(_134);
           _134 = copy _1;
 -         _132 = Add(move _133, move _134);
-+         _132 = copy _128;
++         _132 = Add(move _133, copy _1);
           StorageDead(_134);
           StorageDead(_133);
--         _131 = opaque::<u64>(move _132) -> [return: bb36, unwind continue];
-+         _131 = opaque::<u64>(copy _128) -> [return: bb36, unwind continue];
+          _131 = opaque::<u64>(move _132) -> [return: bb36, unwind continue];
       }
   
       bb36: {
@@ -906,39 +899,32 @@
           StorageLive(_163);
           _163 = &_3;
           StorageLive(_164);
--         StorageLive(_165);
--         StorageLive(_166);
-+         nop;
-+         nop;
+          StorageLive(_165);
+          StorageLive(_166);
           _166 = copy (*_163);
           StorageLive(_167);
           _167 = copy _1;
 -         _165 = Add(move _166, move _167);
-+         _165 = Add(copy _166, copy _1);
++         _165 = Add(move _166, copy _1);
           StorageDead(_167);
--         StorageDead(_166);
--         _164 = opaque::<u64>(move _165) -> [return: bb43, unwind continue];
-+         nop;
-+         _164 = opaque::<u64>(copy _165) -> [return: bb43, unwind continue];
+          StorageDead(_166);
+          _164 = opaque::<u64>(move _165) -> [return: bb43, unwind continue];
       }
   
       bb43: {
--         StorageDead(_165);
-+         nop;
+          StorageDead(_165);
           StorageDead(_164);
           StorageLive(_168);
           StorageLive(_169);
           StorageLive(_170);
--         _170 = copy (*_163);
-+         _170 = copy _166;
+          _170 = copy (*_163);
           StorageLive(_171);
           _171 = copy _1;
 -         _169 = Add(move _170, move _171);
-+         _169 = copy _165;
++         _169 = Add(move _170, copy _1);
           StorageDead(_171);
           StorageDead(_170);
--         _168 = opaque::<u64>(move _169) -> [return: bb44, unwind continue];
-+         _168 = opaque::<u64>(copy _165) -> [return: bb44, unwind continue];
+          _168 = opaque::<u64>(move _169) -> [return: bb44, unwind continue];
       }
   
       bb44: {

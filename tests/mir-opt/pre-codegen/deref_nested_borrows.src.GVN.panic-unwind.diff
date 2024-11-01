@@ -26,13 +26,12 @@
       bb1: {
           StorageLive(_4);
 -         _7 = deref_copy (*_1);
--         _4 = copy (*_7);
-+         _7 = copy _6;
-+         _4 = copy _2;
++         _7 = copy (*_1);
+          _4 = copy (*_7);
           StorageLive(_5);
           _5 = copy _2;
 -         _0 = Eq(move _4, move _5);
-+         _0 = const true;
++         _0 = Eq(move _4, copy _2);
           StorageDead(_5);
           StorageDead(_4);
 -         StorageDead(_2);
