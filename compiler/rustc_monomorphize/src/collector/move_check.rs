@@ -153,3 +153,17 @@ fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
         })
         .collect::<Vec<_>>()
 }
+
+fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
+    for impl_def_id in tcx.inherent_impls(def_id) {
+        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+            tcx,
+            fn_ident,
+            AssocKind::Fn,
+            def_id,
+        ) {
+            return Some(new.def_id);
+        }
+    }
+    None
+}

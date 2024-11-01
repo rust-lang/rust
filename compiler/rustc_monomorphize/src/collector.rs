@@ -205,11 +205,11 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-mod move_check;
+//mod move_check;
 
 use std::path::PathBuf;
 
-use move_check::MoveCheckState;
+//use move_check::MoveCheckState;
 use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -226,17 +226,16 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, AssocKind, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
 use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::Size;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
@@ -612,7 +611,7 @@ struct MirUsedCollector<'a, 'tcx> {
     used_mentioned_items: &'a mut UnordSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
     visiting_call_terminator: bool,
-    move_check: move_check::MoveCheckState,
+    //move_check: move_check::MoveCheckState,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -759,13 +758,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
-            | mir::TerminatorKind::TailCall { ref func, ref args, ref fn_span } => {
+            mir::TerminatorKind::Call { ref func, .. }
+            | mir::TerminatorKind::TailCall { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
-                self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+                //self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
@@ -832,7 +831,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        self.check_operand_move_size(operand, location);
+        //self.check_operand_move_size(operand, location);
     }
 }
 
@@ -1182,20 +1181,6 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
     }
 }
 
-fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
-    for impl_def_id in tcx.inherent_impls(def_id) {
-        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
-            tcx,
-            fn_ident,
-            AssocKind::Fn,
-            def_id,
-        ) {
-            return Some(new.def_id);
-        }
-    }
-    None
-}
-
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 ///
 /// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
@@ -1226,7 +1211,7 @@ fn collect_items_of_instance<'tcx>(
         used_mentioned_items: &mut used_mentioned_items,
         instance,
         visiting_call_terminator: false,
-        move_check: MoveCheckState::new(),
+        //move_check: MoveCheckState::new(),
     };
 
     if mode == CollectionMode::UsedItems {

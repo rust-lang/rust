@@ -4,11 +4,6 @@ monomorphize_couldnt_dump_mono_stats =
 monomorphize_encountered_error_while_instantiating =
     the above error was encountered while instantiating `{$formatted_item}`
 
-monomorphize_large_assignments =
-    moving {$size} bytes
-    .label = value moved from here
-    .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
-
 monomorphize_no_optimized_mir =
     missing optimized MIR for an item in the crate `{$crate_name}`
     .note = missing optimized MIR for this item (was the crate `{$crate_name}` compiled with `--emit=metadata`?)
