@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: UnitDefault` will fail
 LL |         x = UnitDefault::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     let x: ();
+   |          ++++
 
 warning: this function depends on never type fallback being `()`
   --> $DIR/diverging-fallback-control-flow.rs:42:1
@@ -28,6 +32,10 @@ note: in edition 2024, the requirement `!: UnitDefault` will fail
    |
 LL |         x = UnitDefault::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     let x: ();
+   |          ++++
 
 warning: 2 warnings emitted
 
