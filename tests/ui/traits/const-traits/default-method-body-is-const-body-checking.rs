@@ -1,6 +1,3 @@
-//@ known-bug: #110395
-//@ check-pass
-
 #![feature(const_trait_impl)]
 
 #[const_trait]
@@ -13,7 +10,7 @@ const fn foo<T>() where T: ~const Tr {}
 pub trait Foo {
     fn foo() {
         foo::<()>();
-        //FIXME ~^ ERROR the trait bound `(): Tr` is not satisfied
+        //~^ ERROR the trait bound `(): ~const Tr` is not satisfied
     }
 }
 
