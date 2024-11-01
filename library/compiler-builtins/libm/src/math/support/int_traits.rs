@@ -136,6 +136,9 @@ macro_rules! int_impl_common {
         }
 
         fn ilog2(self) -> u32 {
+            // On our older MSRV, this resolves to the trait method. Which won't actually work,
+            // but this is only called behind other gates.
+            #[allow(clippy::incompatible_msrv)]
             <Self>::ilog2(self)
         }
     };

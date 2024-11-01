@@ -71,7 +71,7 @@ pub fn fmaf(x: f32, y: f32, mut z: f32) -> f32 {
             underflow may not be raised correctly, example:
             fmaf(0x1p-120f, 0x1p-120f, 0x1p-149f)
         */
-        if e < 0x3ff - 126 && e >= 0x3ff - 149 && fetestexcept(FE_INEXACT) != 0 {
+        if ((0x3ff - 149)..(0x3ff - 126)).contains(&e) && fetestexcept(FE_INEXACT) != 0 {
             feclearexcept(FE_INEXACT);
             // prevent `xy + vz` from being CSE'd with `xy + z` above
             let vz: f32 = unsafe { read_volatile(&z) };

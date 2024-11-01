@@ -95,7 +95,8 @@ fn sin_pi(mut x: f32) -> f32 {
         1 => k_cosf(y),
         2 => k_sinf(-y),
         3 => -k_cosf(y),
-        0 | _ => k_sinf(y),
+        // 0
+        _ => k_sinf(y),
     }
 }
 

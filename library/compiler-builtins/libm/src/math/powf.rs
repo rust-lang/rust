@@ -13,6 +13,8 @@
  * ====================================================
  */
 
+use core::cmp::Ordering;
+
 use super::{fabsf, scalbnf, sqrtf};
 
 const BP: [f32; 2] = [1.0, 1.5];
@@ -115,15 +117,13 @@ pub fn powf(x: f32, y: f32) -> f32 {
     /* special value of y */
     if iy == 0x7f800000 {
         /* y is +-inf */
-        if ix == 0x3f800000 {
+        match ix.cmp(&0x3f800000) {
             /* (-1)**+-inf is 1 */
-            return 1.0;
-        } else if ix > 0x3f800000 {
+            Ordering::Equal => return 1.0,
             /* (|x|>1)**+-inf = inf,0 */
-            return if hy >= 0 { y } else { 0.0 };
-        } else {
+            Ordering::Greater => return if hy >= 0 { y } else { 0.0 },
             /* (|x|<1)**+-inf = 0,inf */
-            return if hy >= 0 { 0.0 } else { -y };
+            Ordering::Less => return if hy >= 0 { 0.0 } else { -y },
         }
     }
     if iy == 0x3f800000 {

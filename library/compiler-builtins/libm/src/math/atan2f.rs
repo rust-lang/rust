@@ -42,9 +42,9 @@ pub fn atan2f(y: f32, x: f32) -> f32 {
     /* when y = 0 */
     if iy == 0 {
         return match m {
-            0 | 1 => y,   /* atan(+-0,+anything)=+-0 */
-            2 => PI,      /* atan(+0,-anything) = pi */
-            3 | _ => -PI, /* atan(-0,-anything) =-pi */
+            0 | 1 => y, /* atan(+-0,+anything)=+-0 */
+            2 => PI,    /* atan(+0,-anything) = pi */
+            _ => -PI,   /* atan(-0,-anything) =-pi */
         };
     }
     /* when x = 0 */
@@ -55,17 +55,17 @@ pub fn atan2f(y: f32, x: f32) -> f32 {
     if ix == 0x7f800000 {
         return if iy == 0x7f800000 {
             match m {
-                0 => PI / 4.,           /* atan(+INF,+INF) */
-                1 => -PI / 4.,          /* atan(-INF,+INF) */
-                2 => 3. * PI / 4.,      /* atan(+INF,-INF)*/
-                3 | _ => -3. * PI / 4., /* atan(-INF,-INF)*/
+                0 => PI / 4.,       /* atan(+INF,+INF) */
+                1 => -PI / 4.,      /* atan(-INF,+INF) */
+                2 => 3. * PI / 4.,  /* atan(+INF,-INF)*/
+                _ => -3. * PI / 4., /* atan(-INF,-INF)*/
             }
         } else {
             match m {
-                0 => 0.,      /* atan(+...,+INF) */
-                1 => -0.,     /* atan(-...,+INF) */
-                2 => PI,      /* atan(+...,-INF) */
-                3 | _ => -PI, /* atan(-...,-INF) */
+                0 => 0.,  /* atan(+...,+INF) */
+                1 => -0., /* atan(-...,+INF) */
+                2 => PI,  /* atan(+...,-INF) */
+                _ => -PI, /* atan(-...,-INF) */
             }
         };
     }

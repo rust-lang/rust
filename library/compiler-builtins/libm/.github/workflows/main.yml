@@ -82,8 +82,8 @@ jobs:
         [ -n "${{ matrix.channel }}" ] && channel="${{ matrix.channel }}"
         rustup update "$channel" --no-self-update
         rustup default "$channel"
-        rustup target add ${{ matrix.target }}
-        rustup component add llvm-tools-preview
+        rustup target add "${{ matrix.target }}"
+        rustup component add clippy llvm-tools-preview
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -104,6 +104,12 @@ jobs:
       run: |
         rustup target add x86_64-unknown-linux-musl
         cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
+
+    - name: Clippy
+      run: |
+        # Run clippy on `libm`
+        cargo clippy --target "${{ matrix.target }}" --package libm
+        
 
   builtins:
     name: Check use with compiler-builtins

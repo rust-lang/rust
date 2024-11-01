@@ -88,3 +88,4 @@ else
     $cmd --benches
     $cmd --benches --release
 fi
+

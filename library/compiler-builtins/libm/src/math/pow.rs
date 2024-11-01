@@ -98,8 +98,8 @@ pub fn pow(x: f64, y: f64) -> f64 {
     let (hx, lx): (i32, u32) = ((x.to_bits() >> 32) as i32, x.to_bits() as u32);
     let (hy, ly): (i32, u32) = ((y.to_bits() >> 32) as i32, y.to_bits() as u32);
 
-    let mut ix: i32 = (hx & 0x7fffffff) as i32;
-    let iy: i32 = (hy & 0x7fffffff) as i32;
+    let mut ix: i32 = hx & 0x7fffffff_i32;
+    let iy: i32 = hy & 0x7fffffff_i32;
 
     /* x**0 = 1, even if x is NaN */
     if ((iy as u32) | ly) == 0 {
@@ -355,7 +355,7 @@ pub fn pow(x: f64, y: f64) -> f64 {
     }
 
     /* compute 2**(p_h+p_l) */
-    let i: i32 = j & (0x7fffffff as i32);
+    let i: i32 = j & 0x7fffffff_i32;
     k = (i >> 20) - 0x3ff;
     let mut n: i32 = 0;
 

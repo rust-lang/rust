@@ -1,5 +1,3 @@
-use core::u64;
-
 /// Absolute value (magnitude) (f64)
 /// Calculates the absolute value (magnitude) of the argument `x`,
 /// by direct manipulation of the bit representation of `x`.

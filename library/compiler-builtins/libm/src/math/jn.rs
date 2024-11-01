@@ -104,7 +104,8 @@ pub fn jn(n: i32, mut x: f64) -> f64 {
                 0 => -cos(x) + sin(x),
                 1 => -cos(x) - sin(x),
                 2 => cos(x) - sin(x),
-                3 | _ => cos(x) + sin(x),
+                // 3
+                _ => cos(x) + sin(x),
             };
             b = INVSQRTPI * temp / sqrt(x);
         } else {
@@ -118,130 +119,128 @@ pub fn jn(n: i32, mut x: f64) -> f64 {
                 a = temp;
             }
         }
-    } else {
-        if ix < 0x3e100000 {
-            /* x < 2**-29 */
-            /* x is tiny, return the first Taylor expansion of J(n,x)
-             * J(n,x) = 1/n!*(x/2)^n  - ...
-             */
-            if nm1 > 32 {
-                /* underflow */
-                b = 0.0;
-            } else {
-                temp = x * 0.5;
-                b = temp;
-                a = 1.0;
-                i = 2;
-                while i <= nm1 + 1 {
-                    a *= i as f64; /* a = n! */
-                    b *= temp; /* b = (x/2)^n */
-                    i += 1;
-                }
-                b = b / a;
-            }
+    } else if ix < 0x3e100000 {
+        /* x < 2**-29 */
+        /* x is tiny, return the first Taylor expansion of J(n,x)
+         * J(n,x) = 1/n!*(x/2)^n  - ...
+         */
+        if nm1 > 32 {
+            /* underflow */
+            b = 0.0;
         } else {
-            /* use backward recurrence */
-            /*                      x      x^2      x^2
-             *  J(n,x)/J(n-1,x) =  ----   ------   ------   .....
-             *                      2n  - 2(n+1) - 2(n+2)
-             *
-             *                      1      1        1
-             *  (for large x)   =  ----  ------   ------   .....
-             *                      2n   2(n+1)   2(n+2)
-             *                      -- - ------ - ------ -
-             *                       x     x         x
-             *
-             * Let w = 2n/x and h=2/x, then the above quotient
-             * is equal to the continued fraction:
-             *                  1
-             *      = -----------------------
-             *                     1
-             *         w - -----------------
-             *                        1
-             *              w+h - ---------
-             *                     w+2h - ...
-             *
-             * To determine how many terms needed, let
-             * Q(0) = w, Q(1) = w(w+h) - 1,
-             * Q(k) = (w+k*h)*Q(k-1) - Q(k-2),
-             * When Q(k) > 1e4      good for single
-             * When Q(k) > 1e9      good for double
-             * When Q(k) > 1e17     good for quadruple
-             */
-            /* determine k */
-            let mut t: f64;
-            let mut q0: f64;
-            let mut q1: f64;
-            let mut w: f64;
-            let h: f64;
-            let mut z: f64;
-            let mut tmp: f64;
-            let nf: f64;
-
-            let mut k: i32;
-
-            nf = (nm1 as f64) + 1.0;
-            w = 2.0 * nf / x;
-            h = 2.0 / x;
-            z = w + h;
-            q0 = w;
-            q1 = w * z - 1.0;
-            k = 1;
-            while q1 < 1.0e9 {
-                k += 1;
-                z += h;
-                tmp = z * q1 - q0;
-                q0 = q1;
-                q1 = tmp;
+            temp = x * 0.5;
+            b = temp;
+            a = 1.0;
+            i = 2;
+            while i <= nm1 + 1 {
+                a *= i as f64; /* a = n! */
+                b *= temp; /* b = (x/2)^n */
+                i += 1;
             }
-            t = 0.0;
-            i = k;
-            while i >= 0 {
-                t = 1.0 / (2.0 * ((i as f64) + nf) / x - t);
+            b = b / a;
+        }
+    } else {
+        /* use backward recurrence */
+        /*                      x      x^2      x^2
+         *  J(n,x)/J(n-1,x) =  ----   ------   ------   .....
+         *                      2n  - 2(n+1) - 2(n+2)
+         *
+         *                      1      1        1
+         *  (for large x)   =  ----  ------   ------   .....
+         *                      2n   2(n+1)   2(n+2)
+         *                      -- - ------ - ------ -
+         *                       x     x         x
+         *
+         * Let w = 2n/x and h=2/x, then the above quotient
+         * is equal to the continued fraction:
+         *                  1
+         *      = -----------------------
+         *                     1
+         *         w - -----------------
+         *                        1
+         *              w+h - ---------
+         *                     w+2h - ...
+         *
+         * To determine how many terms needed, let
+         * Q(0) = w, Q(1) = w(w+h) - 1,
+         * Q(k) = (w+k*h)*Q(k-1) - Q(k-2),
+         * When Q(k) > 1e4      good for single
+         * When Q(k) > 1e9      good for double
+         * When Q(k) > 1e17     good for quadruple
+         */
+        /* determine k */
+        let mut t: f64;
+        let mut q0: f64;
+        let mut q1: f64;
+        let mut w: f64;
+        let h: f64;
+        let mut z: f64;
+        let mut tmp: f64;
+        let nf: f64;
+
+        let mut k: i32;
+
+        nf = (nm1 as f64) + 1.0;
+        w = 2.0 * nf / x;
+        h = 2.0 / x;
+        z = w + h;
+        q0 = w;
+        q1 = w * z - 1.0;
+        k = 1;
+        while q1 < 1.0e9 {
+            k += 1;
+            z += h;
+            tmp = z * q1 - q0;
+            q0 = q1;
+            q1 = tmp;
+        }
+        t = 0.0;
+        i = k;
+        while i >= 0 {
+            t = 1.0 / (2.0 * ((i as f64) + nf) / x - t);
+            i -= 1;
+        }
+        a = t;
+        b = 1.0;
+        /*  estimate log((2/x)^n*n!) = n*log(2/x)+n*ln(n)
+         *  Hence, if n*(log(2n/x)) > ...
+         *  single 8.8722839355e+01
+         *  double 7.09782712893383973096e+02
+         *  long double 1.1356523406294143949491931077970765006170e+04
+         *  then recurrent value may overflow and the result is
+         *  likely underflow to zero
+         */
+        tmp = nf * log(fabs(w));
+        if tmp < 7.09782712893383973096e+02 {
+            i = nm1;
+            while i > 0 {
+                temp = b;
+                b = b * (2.0 * (i as f64)) / x - a;
+                a = temp;
                 i -= 1;
             }
-            a = t;
-            b = 1.0;
-            /*  estimate log((2/x)^n*n!) = n*log(2/x)+n*ln(n)
-             *  Hence, if n*(log(2n/x)) > ...
-             *  single 8.8722839355e+01
-             *  double 7.09782712893383973096e+02
-             *  long double 1.1356523406294143949491931077970765006170e+04
-             *  then recurrent value may overflow and the result is
-             *  likely underflow to zero
-             */
-            tmp = nf * log(fabs(w));
-            if tmp < 7.09782712893383973096e+02 {
-                i = nm1;
-                while i > 0 {
-                    temp = b;
-                    b = b * (2.0 * (i as f64)) / x - a;
-                    a = temp;
-                    i -= 1;
+        } else {
+            i = nm1;
+            while i > 0 {
+                temp = b;
+                b = b * (2.0 * (i as f64)) / x - a;
+                a = temp;
+                /* scale b to avoid spurious overflow */
+                let x1p500 = f64::from_bits(0x5f30000000000000); // 0x1p500 == 2^500
+                if b > x1p500 {
+                    a /= b;
+                    t /= b;
+                    b = 1.0;
                 }
-            } else {
-                i = nm1;
-                while i > 0 {
-                    temp = b;
-                    b = b * (2.0 * (i as f64)) / x - a;
-                    a = temp;
-                    /* scale b to avoid spurious overflow */
-                    let x1p500 = f64::from_bits(0x5f30000000000000); // 0x1p500 == 2^500
-                    if b > x1p500 {
-                        a /= b;
-                        t /= b;
-                        b = 1.0;
-                    }
-                    i -= 1;
-                }
+                i -= 1;
             }
-            z = j0(x);
-            w = j1(x);
-            if fabs(z) >= fabs(w) {
-                b = t * z / b;
-            } else {
-                b = t * w / a;
-            }
+        }
+        z = j0(x);
+        w = j1(x);
+        if fabs(z) >= fabs(w) {
+            b = t * z / b;
+        } else {
+            b = t * w / a;
         }
     }
 
@@ -315,7 +314,8 @@ pub fn yn(n: i32, x: f64) -> f64 {
             0 => -sin(x) - cos(x),
             1 => -sin(x) + cos(x),
             2 => sin(x) + cos(x),
-            3 | _ => sin(x) - cos(x),
+            // 3
+            _ => sin(x) - cos(x),
         };
         b = INVSQRTPI * temp / sqrt(x);
     } else {
