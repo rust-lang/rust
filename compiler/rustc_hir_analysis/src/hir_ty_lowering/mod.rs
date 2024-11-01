@@ -76,7 +76,7 @@ pub enum PredicateFilter {
     /// Only traits that reference `Self: ..` and define an associated type
     /// with the given ident are implied by the trait. This mode exists to
     /// side-step query cycles when lowering associated types.
-    SelfThatDefines(Ident),
+    SelfTraitThatDefines(Ident),
 
     /// Only traits that reference `Self: ..` and their associated type bounds.
     /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
@@ -730,9 +730,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         match predicate_filter {
+            // This is only concerned with trait predicates.
+            PredicateFilter::SelfTraitThatDefines(..) => {
+                bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+            }
             PredicateFilter::All
             | PredicateFilter::SelfOnly
-            | PredicateFilter::SelfThatDefines(..)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 debug!(?poly_trait_ref);
                 bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
