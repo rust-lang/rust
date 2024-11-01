@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::fs::File;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use rustc_errors::pluralize;
@@ -250,8 +252,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let width = self.sess.diagnostic_width();
-        let length_limit = width.saturating_sub(30);
-        if regular.len() <= width {
+        let length_limit = width / 2;
+        if regular.len() <= width * 2 / 3 {
             return regular;
         }
         let short = self.ty_string_with_limit(ty, length_limit);
@@ -265,7 +267,20 @@ impl<'tcx> TyCtxt<'tcx> {
         *path = Some(path.take().unwrap_or_else(|| {
             self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None)
         }));
-        match std::fs::write(path.as_ref().unwrap(), &format!("{regular}\n")) {
+        let Ok(mut file) =
+            File::options().create(true).read(true).append(true).open(&path.as_ref().unwrap())
+        else {
+            return regular;
+        };
+
+        // Do not write the same type to the file multiple times.
+        let mut contents = String::new();
+        let _ = file.read_to_string(&mut contents);
+        if let Some(_) = contents.lines().find(|line| line == &regular) {
+            return short;
+        }
+
+        match write!(file, "{regular}\n") {
             Ok(_) => short,
             Err(_) => regular,
         }

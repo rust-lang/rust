@@ -1,6 +1,7 @@
 // gate-test-coroutine_clone
 // Verifies that non-static coroutines can be cloned/copied if all their upvars and locals held
 // across awaits can be cloned/copied.
+//@compile-flags: --diagnostic-width=300
 
 #![feature(coroutines, coroutine_clone, stmt_expr_attributes)]
 

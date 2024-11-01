@@ -4,7 +4,8 @@ error[E0277]: the trait bound `&str: AsExpression<Integer>` is not satisfied
 LL |     SelectInt.check("bar");
    |               ^^^^^ the trait `AsExpression<Integer>` is not implemented for `&str`
    |
-   = help: the trait `AsExpression<Text>` is implemented for `&str`
+   = help: the trait `AsExpression<Integer>` is not implemented for `&str`
+           but trait `AsExpression<Text>` is implemented for it
    = help: for that trait implementation, expected `Text`, found `Integer`
 
 error: aborting due to 1 previous error

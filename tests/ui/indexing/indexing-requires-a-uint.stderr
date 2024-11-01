@@ -5,7 +5,7 @@ LL |     [0][0u8];
    |         ^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`
-   = help: the trait `SliceIndex<[{integer}]>` is implemented for `usize`
+           but it is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `u8`
    = note: required for `[{integer}]` to implement `Index<u8>`
    = note: 1 redundant requirement hidden
