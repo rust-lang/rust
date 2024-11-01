@@ -591,7 +591,6 @@ pub(crate) unsafe fn llvm_optimize(
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.instrument_coverage,
             instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-            config.instrument_gcov,
             pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.debug_info_for_profiling,
             llvm_selfprofiler,
