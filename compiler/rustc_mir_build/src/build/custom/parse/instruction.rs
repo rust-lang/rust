@@ -1,3 +1,4 @@
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
@@ -6,7 +7,6 @@ use rustc_middle::ty;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use super::{PResult, ParseCtxt, parse_by_kind};
 use crate::build::custom::ParseError;

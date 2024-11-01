@@ -1,5 +1,6 @@
 //! See docs in `build/expr/mod.rs`.
 
+use rustc_abi::{BackendRepr, FieldIdx, Primitive};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
@@ -13,7 +14,6 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{BackendRepr, FieldIdx, Primitive};
 use tracing::debug;
 
 use crate::build::expr::as_place::PlaceBase;
