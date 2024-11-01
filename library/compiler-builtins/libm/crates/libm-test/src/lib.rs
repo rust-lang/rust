@@ -1,13 +1,12 @@
 pub mod gen;
 #[cfg(feature = "test-multiprecision")]
 pub mod mpfloat;
-mod num_traits;
 mod precision;
 mod test_traits;
 
-pub use num_traits::{Float, Hex, Int};
+pub use libm::support::{Float, Int};
 pub use precision::{MaybeOverride, SpecialCase, multiprec_allowed_ulp, musl_allowed_ulp};
-pub use test_traits::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, TupleCall};
+pub use test_traits::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, Hex, TupleCall};
 
 /// Result type for tests is usually from `anyhow`. Most times there is no success value to
 /// propagate.

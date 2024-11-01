@@ -24,7 +24,7 @@ short-benchmarks = []
 [dependencies]
 anyhow = "1.0.90"
 az = { version = "1.2.1", optional = true }
-libm = { path = "../.." }
+libm = { path = "../..", features = ["unstable-test-support"] }
 libm-macros = { path = "../libm-macros" }
 musl-math-sys = { path = "../musl-math-sys", optional = true }
 paste = "1.0.15"
