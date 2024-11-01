@@ -1443,7 +1443,6 @@ impl f32 {
     ///
     /// assert!(f32::NAN.abs().is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
@@ -1469,7 +1468,6 @@ impl f32 {
     ///
     /// assert!(f32::NAN.signum().is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
@@ -1504,7 +1502,6 @@ impl f32 {
     ///
     /// assert!(f32::NAN.copysign(1.0).is_nan());
     /// ```
-    #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "copysign", since = "1.35.0")]

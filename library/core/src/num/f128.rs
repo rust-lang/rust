@@ -1303,7 +1303,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1334,7 +1333,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -1373,7 +1371,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
