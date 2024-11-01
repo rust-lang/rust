@@ -761,7 +761,6 @@ impl str {
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
     #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
-    #[rustc_allow_const_fn_unstable(const_is_char_boundary)]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
