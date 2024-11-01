@@ -936,21 +936,31 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn abort() -> !;
 
-    /// Informs the optimizer that this point in the code is not reachable,
-    /// enabling further optimizations.
+    /// Executes a breakpoint trap, for inspection by a debugger.
     ///
-    /// N.B., this is very different from the `unreachable!()` macro: Unlike the
-    /// macro, which panics when it is executed, it is *undefined behavior* to
-    /// reach code marked with this function.
-    ///
-    /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
-    #[cfg_attr(
-        bootstrap,
-        rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")
-    )]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+    /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
-    pub fn unreachable() -> !;
+    pub fn breakpoint();
+}
+
+/// Informs the optimizer that this point in the code is not reachable,
+/// enabling further optimizations.
+///
+/// N.B., this is very different from the `unreachable!()` macro: Unlike the
+/// macro, which panics when it is executed, it is *undefined behavior* to
+/// reach code marked with this function.
+///
+/// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unreachable() -> ! {
+    unreachable!()
 }
 
 /// Informs the optimizer that a condition is always true.
@@ -1044,437 +1054,465 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
     if b { true_val } else { false_val }
 }
 
+/// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
+/// This will statically either panic, or do nothing.
+///
+/// This intrinsic does not have a stable counterpart.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type", since = "1.59.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn assert_inhabited<T>() {
+    unreachable!()
+}
+
+/// A guard for unsafe functions that cannot ever be executed if `T` does not permit
+/// zero-initialization: This will statically either panic, or do nothing.
+///
+/// This intrinsic does not have a stable counterpart.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type2", since = "1.75.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn assert_zero_valid<T>() {
+    unreachable!()
+}
+
+/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+///
+/// This intrinsic does not have a stable counterpart.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type2", since = "1.75.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn assert_mem_uninitialized_valid<T>() {
+    unreachable!()
+}
+
+/// Gets a reference to a static `Location` indicating where it was called.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// Consider using [`core::panic::Location::caller`] instead.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_caller_location", since = "1.79.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn caller_location() -> &'static crate::panic::Location<'static> {
+    unreachable!()
+}
+
+/// Moves a value out of scope without running drop glue.
+///
+/// This exists solely for [`crate::mem::forget_unsized`]; normal `forget` uses
+/// `ManuallyDrop` instead.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_intrinsic_forget", since = "1.83.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn forget<T: ?Sized>(_: T) {
+    unreachable!()
+}
+
+/// Reinterprets the bits of a value of one type as another type.
+///
+/// Both types must have the same size. Compilation will fail if this is not guaranteed.
+///
+/// `transmute` is semantically equivalent to a bitwise move of one type
+/// into another. It copies the bits from the source value into the
+/// destination value, then forgets the original. Note that source and destination
+/// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
+/// is *not* guaranteed to be preserved by `transmute`.
+///
+/// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
+/// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
+/// will generate code *assuming that you, the programmer, ensure that there will never be
+/// undefined behavior*. It is therefore your responsibility to guarantee that every value
+/// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
+/// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
+/// unsafe**. `transmute` should be the absolute last resort.
+///
+/// Because `transmute` is a by-value operation, alignment of the *transmuted values
+/// themselves* is not a concern. As with any other function, the compiler already ensures
+/// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
+/// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
+/// alignment of the pointed-to values.
+///
+/// The [nomicon](../../nomicon/transmutes.html) has additional documentation.
+///
+/// [ub]: ../../reference/behavior-considered-undefined.html
+///
+/// # Transmutation between pointers and integers
+///
+/// Special care has to be taken when transmuting between pointers and integers, e.g.
+/// transmuting between `*const ()` and `usize`.
+///
+/// Transmuting *pointers to integers* in a `const` context is [undefined behavior][ub], unless
+/// the pointer was originally created *from* an integer. (That includes this function
+/// specifically, integer-to-pointer casts, and helpers like [`dangling`][crate::ptr::dangling],
+/// but also semantically-equivalent conversions such as punning through `repr(C)` union
+/// fields.) Any attempt to use the resulting value for integer operations will abort
+/// const-evaluation. (And even outside `const`, such transmutation is touching on many
+/// unspecified aspects of the Rust memory model and should be avoided. See below for
+/// alternatives.)
+///
+/// Transmuting *integers to pointers* is a largely unspecified operation. It is likely *not*
+/// equivalent to an `as` cast. Doing non-zero-sized memory accesses with a pointer constructed
+/// this way is currently considered undefined behavior.
+///
+/// All this also applies when the integer is nested inside an array, tuple, struct, or enum.
+/// However, `MaybeUninit<usize>` is not considered an integer type for the purpose of this
+/// section. Transmuting `*const ()` to `MaybeUninit<usize>` is fine---but then calling
+/// `assume_init()` on that result is considered as completing the pointer-to-integer transmute
+/// and thus runs into the issues discussed above.
+///
+/// In particular, doing a pointer-to-integer-to-pointer roundtrip via `transmute` is *not* a
+/// lossless process. If you want to round-trip a pointer through an integer in a way that you
+/// can get back the original pointer, you need to use `as` casts, or replace the integer type
+/// by `MaybeUninit<$int>` (and never call `assume_init()`). If you are looking for a way to
+/// store data of arbitrary type, also use `MaybeUninit<T>` (that will also handle uninitialized
+/// memory due to padding). If you specifically need to store something that is "either an
+/// integer or a pointer", use `*mut ()`: integers can be converted to pointers and back without
+/// any loss (via `as` casts or via `transmute`).
+///
+/// # Examples
+///
+/// There are a few things that `transmute` is really useful for.
+///
+/// Turning a pointer into a function pointer. This is *not* portable to
+/// machines where function pointers and data pointers have different sizes.
+///
+/// ```
+/// fn foo() -> i32 {
+///     0
+/// }
+/// // Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
+/// // This avoids an integer-to-pointer `transmute`, which can be problematic.
+/// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
+/// let pointer = foo as *const ();
+/// let function = unsafe {
+///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
+/// };
+/// assert_eq!(function(), 0);
+/// ```
+///
+/// Extending a lifetime, or shortening an invariant lifetime. This is
+/// advanced, very unsafe Rust!
+///
+/// ```
+/// struct R<'a>(&'a i32);
+/// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
+///     std::mem::transmute::<R<'b>, R<'static>>(r)
+/// }
+///
+/// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
+///                                              -> &'b mut R<'c> {
+///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
+/// }
+/// ```
+///
+/// # Alternatives
+///
+/// Don't despair: many uses of `transmute` can be achieved through other means.
+/// Below are common applications of `transmute` which can be replaced with safer
+/// constructs.
+///
+/// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
+///
+/// ```
+/// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
+///
+/// let num = unsafe {
+///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
+/// };
+///
+/// // use `u32::from_ne_bytes` instead
+/// let num = u32::from_ne_bytes(raw_bytes);
+/// // or use `u32::from_le_bytes` or `u32::from_be_bytes` to specify the endianness
+/// let num = u32::from_le_bytes(raw_bytes);
+/// assert_eq!(num, 0x12345678);
+/// let num = u32::from_be_bytes(raw_bytes);
+/// assert_eq!(num, 0x78563412);
+/// ```
+///
+/// Turning a pointer into a `usize`:
+///
+/// ```no_run
+/// let ptr = &0;
+/// let ptr_num_transmute = unsafe {
+///     std::mem::transmute::<&i32, usize>(ptr)
+/// };
+///
+/// // Use an `as` cast instead
+/// let ptr_num_cast = ptr as *const i32 as usize;
+/// ```
+///
+/// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
+/// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
+/// as expected -- this is touching on many unspecified aspects of the Rust memory model.
+/// Depending on what the code is doing, the following alternatives are preferable to
+/// pointer-to-integer transmutation:
+/// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
+///   type for that buffer, it can use [`MaybeUninit`][crate::mem::MaybeUninit].
+/// - If the code actually wants to work on the address the pointer points to, it can use `as`
+///   casts or [`ptr.addr()`][pointer::addr].
+///
+/// Turning a `*mut T` into a `&mut T`:
+///
+/// ```
+/// let ptr: *mut i32 = &mut 0;
+/// let ref_transmuted = unsafe {
+///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
+/// };
+///
+/// // Use a reborrow instead
+/// let ref_casted = unsafe { &mut *ptr };
+/// ```
+///
+/// Turning a `&mut T` into a `&mut U`:
+///
+/// ```
+/// let ptr = &mut 0;
+/// let val_transmuted = unsafe {
+///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
+/// };
+///
+/// // Now, put together `as` and reborrowing - note the chaining of `as`
+/// // `as` is not transitive
+/// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
+/// ```
+///
+/// Turning a `&str` into a `&[u8]`:
+///
+/// ```
+/// // this is not a good way to do this.
+/// let slice = unsafe { std::mem::transmute::<&str, &[u8]>("Rust") };
+/// assert_eq!(slice, &[82, 117, 115, 116]);
+///
+/// // You could use `str::as_bytes`
+/// let slice = "Rust".as_bytes();
+/// assert_eq!(slice, &[82, 117, 115, 116]);
+///
+/// // Or, just use a byte string, if you have control over the string
+/// // literal
+/// assert_eq!(b"Rust", &[82, 117, 115, 116]);
+/// ```
+///
+/// Turning a `Vec<&T>` into a `Vec<Option<&T>>`.
+///
+/// To transmute the inner type of the contents of a container, you must make sure to not
+/// violate any of the container's invariants. For `Vec`, this means that both the size
+/// *and alignment* of the inner types have to match. Other containers might rely on the
+/// size of the type, alignment, or even the `TypeId`, in which case transmuting wouldn't
+/// be possible at all without violating the container invariants.
+///
+/// ```
+/// let store = [0, 1, 2, 3];
+/// let v_orig = store.iter().collect::<Vec<&i32>>();
+///
+/// // clone the vector as we will reuse them later
+/// let v_clone = v_orig.clone();
+///
+/// // Using transmute: this relies on the unspecified data layout of `Vec`, which is a
+/// // bad idea and could cause Undefined Behavior.
+/// // However, it is no-copy.
+/// let v_transmuted = unsafe {
+///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
+/// };
+///
+/// let v_clone = v_orig.clone();
+///
+/// // This is the suggested, safe way.
+/// // It may copy the entire vector into a new one though, but also may not.
+/// let v_collected = v_clone.into_iter()
+///                          .map(Some)
+///                          .collect::<Vec<Option<&i32>>>();
+///
+/// let v_clone = v_orig.clone();
+///
+/// // This is the proper no-copy, unsafe way of "transmuting" a `Vec`, without relying on the
+/// // data layout. Instead of literally calling `transmute`, we perform a pointer cast, but
+/// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
+/// // this has all the same caveats. Besides the information provided above, also consult the
+/// // [`from_raw_parts`] documentation.
+/// let v_from_raw = unsafe {
+// FIXME Update this when vec_into_raw_parts is stabilized
+///     // Ensure the original vector is not dropped.
+///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
+///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
+///                         v_clone.len(),
+///                         v_clone.capacity())
+/// };
+/// ```
+///
+/// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
+///
+/// Implementing `split_at_mut`:
+///
+/// ```
+/// use std::{slice, mem};
+///
+/// // There are multiple ways to do this, and there are multiple problems
+/// // with the following (transmute) way.
+/// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
+///                              -> (&mut [T], &mut [T]) {
+///     let len = slice.len();
+///     assert!(mid <= len);
+///     unsafe {
+///         let slice2 = mem::transmute::<&mut [T], &mut [T]>(slice);
+///         // first: transmute is not type safe; all it checks is that T and
+///         // U are of the same size. Second, right here, you have two
+///         // mutable references pointing to the same memory.
+///         (&mut slice[0..mid], &mut slice2[mid..len])
+///     }
+/// }
+///
+/// // This gets rid of the type safety problems; `&mut *` will *only* give
+/// // you a `&mut T` from a `&mut T` or `*mut T`.
+/// fn split_at_mut_casts<T>(slice: &mut [T], mid: usize)
+///                          -> (&mut [T], &mut [T]) {
+///     let len = slice.len();
+///     assert!(mid <= len);
+///     unsafe {
+///         let slice2 = &mut *(slice as *mut [T]);
+///         // however, you still have two mutable references pointing to
+///         // the same memory.
+///         (&mut slice[0..mid], &mut slice2[mid..len])
+///     }
+/// }
+///
+/// // This is how the standard library does it. This is the best method, if
+/// // you need to do something like this
+/// fn split_at_stdlib<T>(slice: &mut [T], mid: usize)
+///                       -> (&mut [T], &mut [T]) {
+///     let len = slice.len();
+///     assert!(mid <= len);
+///     unsafe {
+///         let ptr = slice.as_mut_ptr();
+///         // This now has three mutable references pointing at the same
+///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
+///         // `slice` is never used after `let ptr = ...`, and so one can
+///         // treat it as "dead", and therefore, you only have two real
+///         // mutable slices.
+///         (slice::from_raw_parts_mut(ptr, mid),
+///          slice::from_raw_parts_mut(ptr.add(mid), len - mid))
+///     }
+/// }
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_allowed_through_unstable_modules]
+#[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
+#[rustc_diagnostic_item = "transmute"]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn transmute<Src, Dst>(_src: Src) -> Dst {
+    unreachable!()
+}
+
+/// Like [`transmute`], but even less checked at compile-time: rather than
+/// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
+/// **Undefined Behavior** at runtime.
+///
+/// Prefer normal `transmute` where possible, for the extra checking, since
+/// both do exactly the same thing at runtime, if they both compile.
+///
+/// This is not expected to ever be exposed directly to users, rather it
+/// may eventually be exposed through some more-constrained API.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_transmute", since = "1.56.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn transmute_unchecked<Src, Dst>(_src: Src) -> Dst {
+    unreachable!()
+}
+
+/// Returns `true` if the actual type given as `T` requires drop
+/// glue; returns `false` if the actual type provided for `T`
+/// implements `Copy`.
+///
+/// If the actual type neither requires drop glue nor implements
+/// `Copy`, then the return value of this function is unspecified.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_needs_drop", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn needs_drop<T: ?Sized>() -> bool {
+    unreachable!()
+}
+
+/// Calculates the offset from a pointer.
+///
+/// This is implemented as an intrinsic to avoid converting to and from an
+/// integer, since the conversion would throw away aliasing information.
+///
+/// This can only be used with `Ptr` as a raw pointer type (`*mut` or `*const`)
+/// to a `Sized` pointee and with `Delta` as `usize` or `isize`.  Any other
+/// instantiations may arbitrarily misbehave, and that's *not* a compiler bug.
+///
+/// # Safety
+///
+/// If the computed offset is non-zero, then both the starting and resulting pointer must be
+/// either in bounds or at the end of an allocated object. If either pointer is out
+/// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
+///
+/// The stabilized version of this intrinsic is [`pointer::offset`].
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn offset<Ptr, Delta>(_dst: Ptr, _offset: Delta) -> Ptr {
+    unreachable!()
+}
+
+/// Calculates the offset from a pointer, potentially wrapping.
+///
+/// This is implemented as an intrinsic to avoid converting to and from an
+/// integer, since the conversion inhibits certain optimizations.
+///
+/// # Safety
+///
+/// Unlike the `offset` intrinsic, this intrinsic does not restrict the
+/// resulting pointer to point into or at the end of an allocated
+/// object, and it wraps with two's complement arithmetic. The resulting
+/// value is not necessarily valid to be used to actually access memory.
+///
+/// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
+#[must_use = "returns a new pointer rather than modifying its argument"]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn arith_offset<T>(_dst: *const T, _offset: isize) -> *const T {
+    unreachable!()
+}
+
 extern "rust-intrinsic" {
-    /// Executes a breakpoint trap, for inspection by a debugger.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn breakpoint();
-
-    /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
-    /// This will statically either panic, or do nothing.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type", since = "1.59.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn assert_inhabited<T>();
-
-    /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
-    /// zero-initialization: This will statically either panic, or do nothing.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type2", since = "1.75.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn assert_zero_valid<T>();
-
-    /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_assert_type2", since = "1.75.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn assert_mem_uninitialized_valid<T>();
-
-    /// Gets a reference to a static `Location` indicating where it was called.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// Consider using [`core::panic::Location::caller`] instead.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_caller_location", since = "1.79.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn caller_location() -> &'static crate::panic::Location<'static>;
-
-    /// Moves a value out of scope without running drop glue.
-    ///
-    /// This exists solely for [`crate::mem::forget_unsized`]; normal `forget` uses
-    /// `ManuallyDrop` instead.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_intrinsic_forget", since = "1.83.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn forget<T: ?Sized>(_: T);
-
-    /// Reinterprets the bits of a value of one type as another type.
-    ///
-    /// Both types must have the same size. Compilation will fail if this is not guaranteed.
-    ///
-    /// `transmute` is semantically equivalent to a bitwise move of one type
-    /// into another. It copies the bits from the source value into the
-    /// destination value, then forgets the original. Note that source and destination
-    /// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
-    /// is *not* guaranteed to be preserved by `transmute`.
-    ///
-    /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
-    /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
-    /// will generate code *assuming that you, the programmer, ensure that there will never be
-    /// undefined behavior*. It is therefore your responsibility to guarantee that every value
-    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
-    /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
-    /// unsafe**. `transmute` should be the absolute last resort.
-    ///
-    /// Because `transmute` is a by-value operation, alignment of the *transmuted values
-    /// themselves* is not a concern. As with any other function, the compiler already ensures
-    /// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
-    /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
-    /// alignment of the pointed-to values.
-    ///
-    /// The [nomicon](../../nomicon/transmutes.html) has additional documentation.
-    ///
-    /// [ub]: ../../reference/behavior-considered-undefined.html
-    ///
-    /// # Transmutation between pointers and integers
-    ///
-    /// Special care has to be taken when transmuting between pointers and integers, e.g.
-    /// transmuting between `*const ()` and `usize`.
-    ///
-    /// Transmuting *pointers to integers* in a `const` context is [undefined behavior][ub], unless
-    /// the pointer was originally created *from* an integer. (That includes this function
-    /// specifically, integer-to-pointer casts, and helpers like [`dangling`][crate::ptr::dangling],
-    /// but also semantically-equivalent conversions such as punning through `repr(C)` union
-    /// fields.) Any attempt to use the resulting value for integer operations will abort
-    /// const-evaluation. (And even outside `const`, such transmutation is touching on many
-    /// unspecified aspects of the Rust memory model and should be avoided. See below for
-    /// alternatives.)
-    ///
-    /// Transmuting *integers to pointers* is a largely unspecified operation. It is likely *not*
-    /// equivalent to an `as` cast. Doing non-zero-sized memory accesses with a pointer constructed
-    /// this way is currently considered undefined behavior.
-    ///
-    /// All this also applies when the integer is nested inside an array, tuple, struct, or enum.
-    /// However, `MaybeUninit<usize>` is not considered an integer type for the purpose of this
-    /// section. Transmuting `*const ()` to `MaybeUninit<usize>` is fine---but then calling
-    /// `assume_init()` on that result is considered as completing the pointer-to-integer transmute
-    /// and thus runs into the issues discussed above.
-    ///
-    /// In particular, doing a pointer-to-integer-to-pointer roundtrip via `transmute` is *not* a
-    /// lossless process. If you want to round-trip a pointer through an integer in a way that you
-    /// can get back the original pointer, you need to use `as` casts, or replace the integer type
-    /// by `MaybeUninit<$int>` (and never call `assume_init()`). If you are looking for a way to
-    /// store data of arbitrary type, also use `MaybeUninit<T>` (that will also handle uninitialized
-    /// memory due to padding). If you specifically need to store something that is "either an
-    /// integer or a pointer", use `*mut ()`: integers can be converted to pointers and back without
-    /// any loss (via `as` casts or via `transmute`).
-    ///
-    /// # Examples
-    ///
-    /// There are a few things that `transmute` is really useful for.
-    ///
-    /// Turning a pointer into a function pointer. This is *not* portable to
-    /// machines where function pointers and data pointers have different sizes.
-    ///
-    /// ```
-    /// fn foo() -> i32 {
-    ///     0
-    /// }
-    /// // Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
-    /// // This avoids an integer-to-pointer `transmute`, which can be problematic.
-    /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
-    /// let pointer = foo as *const ();
-    /// let function = unsafe {
-    ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
-    /// };
-    /// assert_eq!(function(), 0);
-    /// ```
-    ///
-    /// Extending a lifetime, or shortening an invariant lifetime. This is
-    /// advanced, very unsafe Rust!
-    ///
-    /// ```
-    /// struct R<'a>(&'a i32);
-    /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
-    ///     std::mem::transmute::<R<'b>, R<'static>>(r)
-    /// }
-    ///
-    /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
-    ///                                              -> &'b mut R<'c> {
-    ///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
-    /// }
-    /// ```
-    ///
-    /// # Alternatives
-    ///
-    /// Don't despair: many uses of `transmute` can be achieved through other means.
-    /// Below are common applications of `transmute` which can be replaced with safer
-    /// constructs.
-    ///
-    /// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
-    ///
-    /// ```
-    /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
-    ///
-    /// let num = unsafe {
-    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
-    /// };
-    ///
-    /// // use `u32::from_ne_bytes` instead
-    /// let num = u32::from_ne_bytes(raw_bytes);
-    /// // or use `u32::from_le_bytes` or `u32::from_be_bytes` to specify the endianness
-    /// let num = u32::from_le_bytes(raw_bytes);
-    /// assert_eq!(num, 0x12345678);
-    /// let num = u32::from_be_bytes(raw_bytes);
-    /// assert_eq!(num, 0x78563412);
-    /// ```
-    ///
-    /// Turning a pointer into a `usize`:
-    ///
-    /// ```no_run
-    /// let ptr = &0;
-    /// let ptr_num_transmute = unsafe {
-    ///     std::mem::transmute::<&i32, usize>(ptr)
-    /// };
-    ///
-    /// // Use an `as` cast instead
-    /// let ptr_num_cast = ptr as *const i32 as usize;
-    /// ```
-    ///
-    /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
-    /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
-    /// as expected -- this is touching on many unspecified aspects of the Rust memory model.
-    /// Depending on what the code is doing, the following alternatives are preferable to
-    /// pointer-to-integer transmutation:
-    /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
-    ///   type for that buffer, it can use [`MaybeUninit`][crate::mem::MaybeUninit].
-    /// - If the code actually wants to work on the address the pointer points to, it can use `as`
-    ///   casts or [`ptr.addr()`][pointer::addr].
-    ///
-    /// Turning a `*mut T` into a `&mut T`:
-    ///
-    /// ```
-    /// let ptr: *mut i32 = &mut 0;
-    /// let ref_transmuted = unsafe {
-    ///     std::mem::transmute::<*mut i32, &mut i32>(ptr)
-    /// };
-    ///
-    /// // Use a reborrow instead
-    /// let ref_casted = unsafe { &mut *ptr };
-    /// ```
-    ///
-    /// Turning a `&mut T` into a `&mut U`:
-    ///
-    /// ```
-    /// let ptr = &mut 0;
-    /// let val_transmuted = unsafe {
-    ///     std::mem::transmute::<&mut i32, &mut u32>(ptr)
-    /// };
-    ///
-    /// // Now, put together `as` and reborrowing - note the chaining of `as`
-    /// // `as` is not transitive
-    /// let val_casts = unsafe { &mut *(ptr as *mut i32 as *mut u32) };
-    /// ```
-    ///
-    /// Turning a `&str` into a `&[u8]`:
-    ///
-    /// ```
-    /// // this is not a good way to do this.
-    /// let slice = unsafe { std::mem::transmute::<&str, &[u8]>("Rust") };
-    /// assert_eq!(slice, &[82, 117, 115, 116]);
-    ///
-    /// // You could use `str::as_bytes`
-    /// let slice = "Rust".as_bytes();
-    /// assert_eq!(slice, &[82, 117, 115, 116]);
-    ///
-    /// // Or, just use a byte string, if you have control over the string
-    /// // literal
-    /// assert_eq!(b"Rust", &[82, 117, 115, 116]);
-    /// ```
-    ///
-    /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`.
-    ///
-    /// To transmute the inner type of the contents of a container, you must make sure to not
-    /// violate any of the container's invariants. For `Vec`, this means that both the size
-    /// *and alignment* of the inner types have to match. Other containers might rely on the
-    /// size of the type, alignment, or even the `TypeId`, in which case transmuting wouldn't
-    /// be possible at all without violating the container invariants.
-    ///
-    /// ```
-    /// let store = [0, 1, 2, 3];
-    /// let v_orig = store.iter().collect::<Vec<&i32>>();
-    ///
-    /// // clone the vector as we will reuse them later
-    /// let v_clone = v_orig.clone();
-    ///
-    /// // Using transmute: this relies on the unspecified data layout of `Vec`, which is a
-    /// // bad idea and could cause Undefined Behavior.
-    /// // However, it is no-copy.
-    /// let v_transmuted = unsafe {
-    ///     std::mem::transmute::<Vec<&i32>, Vec<Option<&i32>>>(v_clone)
-    /// };
-    ///
-    /// let v_clone = v_orig.clone();
-    ///
-    /// // This is the suggested, safe way.
-    /// // It may copy the entire vector into a new one though, but also may not.
-    /// let v_collected = v_clone.into_iter()
-    ///                          .map(Some)
-    ///                          .collect::<Vec<Option<&i32>>>();
-    ///
-    /// let v_clone = v_orig.clone();
-    ///
-    /// // This is the proper no-copy, unsafe way of "transmuting" a `Vec`, without relying on the
-    /// // data layout. Instead of literally calling `transmute`, we perform a pointer cast, but
-    /// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
-    /// // this has all the same caveats. Besides the information provided above, also consult the
-    /// // [`from_raw_parts`] documentation.
-    /// let v_from_raw = unsafe {
-    // FIXME Update this when vec_into_raw_parts is stabilized
-    ///     // Ensure the original vector is not dropped.
-    ///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
-    ///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
-    ///                         v_clone.len(),
-    ///                         v_clone.capacity())
-    /// };
-    /// ```
-    ///
-    /// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
-    ///
-    /// Implementing `split_at_mut`:
-    ///
-    /// ```
-    /// use std::{slice, mem};
-    ///
-    /// // There are multiple ways to do this, and there are multiple problems
-    /// // with the following (transmute) way.
-    /// fn split_at_mut_transmute<T>(slice: &mut [T], mid: usize)
-    ///                              -> (&mut [T], &mut [T]) {
-    ///     let len = slice.len();
-    ///     assert!(mid <= len);
-    ///     unsafe {
-    ///         let slice2 = mem::transmute::<&mut [T], &mut [T]>(slice);
-    ///         // first: transmute is not type safe; all it checks is that T and
-    ///         // U are of the same size. Second, right here, you have two
-    ///         // mutable references pointing to the same memory.
-    ///         (&mut slice[0..mid], &mut slice2[mid..len])
-    ///     }
-    /// }
-    ///
-    /// // This gets rid of the type safety problems; `&mut *` will *only* give
-    /// // you a `&mut T` from a `&mut T` or `*mut T`.
-    /// fn split_at_mut_casts<T>(slice: &mut [T], mid: usize)
-    ///                          -> (&mut [T], &mut [T]) {
-    ///     let len = slice.len();
-    ///     assert!(mid <= len);
-    ///     unsafe {
-    ///         let slice2 = &mut *(slice as *mut [T]);
-    ///         // however, you still have two mutable references pointing to
-    ///         // the same memory.
-    ///         (&mut slice[0..mid], &mut slice2[mid..len])
-    ///     }
-    /// }
-    ///
-    /// // This is how the standard library does it. This is the best method, if
-    /// // you need to do something like this
-    /// fn split_at_stdlib<T>(slice: &mut [T], mid: usize)
-    ///                       -> (&mut [T], &mut [T]) {
-    ///     let len = slice.len();
-    ///     assert!(mid <= len);
-    ///     unsafe {
-    ///         let ptr = slice.as_mut_ptr();
-    ///         // This now has three mutable references pointing at the same
-    ///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
-    ///         // `slice` is never used after `let ptr = ...`, and so one can
-    ///         // treat it as "dead", and therefore, you only have two real
-    ///         // mutable slices.
-    ///         (slice::from_raw_parts_mut(ptr, mid),
-    ///          slice::from_raw_parts_mut(ptr.add(mid), len - mid))
-    ///     }
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_allowed_through_unstable_modules]
-    #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
-    #[rustc_diagnostic_item = "transmute"]
-    #[rustc_nounwind]
-    pub fn transmute<Src, Dst>(src: Src) -> Dst;
-
-    /// Like [`transmute`], but even less checked at compile-time: rather than
-    /// giving an error for `size_of::<Src>() != size_of::<Dst>()`, it's
-    /// **Undefined Behavior** at runtime.
-    ///
-    /// Prefer normal `transmute` where possible, for the extra checking, since
-    /// both do exactly the same thing at runtime, if they both compile.
-    ///
-    /// This is not expected to ever be exposed directly to users, rather it
-    /// may eventually be exposed through some more-constrained API.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_transmute", since = "1.56.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
-
-    /// Returns `true` if the actual type given as `T` requires drop
-    /// glue; returns `false` if the actual type provided for `T`
-    /// implements `Copy`.
-    ///
-    /// If the actual type neither requires drop glue nor implements
-    /// `Copy`, then the return value of this function is unspecified.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_needs_drop", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn needs_drop<T: ?Sized>() -> bool;
-
-    /// Calculates the offset from a pointer.
-    ///
-    /// This is implemented as an intrinsic to avoid converting to and from an
-    /// integer, since the conversion would throw away aliasing information.
-    ///
-    /// This can only be used with `Ptr` as a raw pointer type (`*mut` or `*const`)
-    /// to a `Sized` pointee and with `Delta` as `usize` or `isize`.  Any other
-    /// instantiations may arbitrarily misbehave, and that's *not* a compiler bug.
-    ///
-    /// # Safety
-    ///
-    /// If the computed offset is non-zero, then both the starting and resulting pointer must be
-    /// either in bounds or at the end of an allocated object. If either pointer is out
-    /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
-    ///
-    /// The stabilized version of this intrinsic is [`pointer::offset`].
-    #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
-
-    /// Calculates the offset from a pointer, potentially wrapping.
-    ///
-    /// This is implemented as an intrinsic to avoid converting to and from an
-    /// integer, since the conversion inhibits certain optimizations.
-    ///
-    /// # Safety
-    ///
-    /// Unlike the `offset` intrinsic, this intrinsic does not restrict the
-    /// resulting pointer to point into or at the end of an allocated
-    /// object, and it wraps with two's complement arithmetic. The resulting
-    /// value is not necessarily valid to be used to actually access memory.
-    ///
-    /// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
-    #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
-
     /// Masks out bits of the pointer according to a mask.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
@@ -2143,474 +2181,569 @@ extern "rust-intrinsic" {
     /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
     #[rustc_nounwind]
     pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+}
 
-    /// Returns the number of bits set in an integer type `T`
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `count_ones` method. For example,
-    /// [`u32::count_ones`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ctpop", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn ctpop<T: Copy>(x: T) -> u32;
+/// Returns the number of bits set in an integer type `T`
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `count_ones` method. For example,
+/// [`u32::count_ones`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ctpop", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn ctpop<T: Copy>(_x: T) -> u32 {
+    unimplemented!()
+}
 
-    /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `leading_zeros` method. For example,
-    /// [`u32::leading_zeros`]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::ctlz;
-    ///
-    /// let x = 0b0001_1100_u8;
-    /// let num_leading = ctlz(x);
-    /// assert_eq!(num_leading, 3);
-    /// ```
-    ///
-    /// An `x` with value `0` will return the bit width of `T`.
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::ctlz;
-    ///
-    /// let x = 0u16;
-    /// let num_leading = ctlz(x);
-    /// assert_eq!(num_leading, 16);
-    /// ```
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ctlz", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn ctlz<T: Copy>(x: T) -> u32;
+/// Returns the number of leading unset bits (zeroes) in an integer type `T`.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `leading_zeros` method. For example,
+/// [`u32::leading_zeros`]
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::ctlz;
+///
+/// let x = 0b0001_1100_u8;
+/// let num_leading = ctlz(x);
+/// assert_eq!(num_leading, 3);
+/// ```
+///
+/// An `x` with value `0` will return the bit width of `T`.
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::ctlz;
+///
+/// let x = 0u16;
+/// let num_leading = ctlz(x);
+/// assert_eq!(num_leading, 16);
+/// ```
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ctlz", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn ctlz<T: Copy>(_x: T) -> u32 {
+    unimplemented!()
+}
 
-    /// Like `ctlz`, but extra-unsafe as it returns `undef` when
-    /// given an `x` with value `0`.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::ctlz_nonzero;
-    ///
-    /// let x = 0b0001_1100_u8;
-    /// let num_leading = unsafe { ctlz_nonzero(x) };
-    /// assert_eq!(num_leading, 3);
-    /// ```
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "constctlz", since = "1.50.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn ctlz_nonzero<T: Copy>(x: T) -> u32;
+/// Like `ctlz`, but extra-unsafe as it returns `undef` when
+/// given an `x` with value `0`.
+///
+/// This intrinsic does not have a stable counterpart.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::ctlz_nonzero;
+///
+/// let x = 0b0001_1100_u8;
+/// let num_leading = unsafe { ctlz_nonzero(x) };
+/// assert_eq!(num_leading, 3);
+/// ```
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "constctlz", since = "1.50.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn ctlz_nonzero<T: Copy>(_x: T) -> u32 {
+    unimplemented!()
+}
 
-    /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `trailing_zeros` method. For example,
-    /// [`u32::trailing_zeros`]
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::cttz;
-    ///
-    /// let x = 0b0011_1000_u8;
-    /// let num_trailing = cttz(x);
-    /// assert_eq!(num_trailing, 3);
-    /// ```
-    ///
-    /// An `x` with value `0` will return the bit width of `T`:
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::cttz;
-    ///
-    /// let x = 0u16;
-    /// let num_trailing = cttz(x);
-    /// assert_eq!(num_trailing, 16);
-    /// ```
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cttz", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn cttz<T: Copy>(x: T) -> u32;
+/// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `trailing_zeros` method. For example,
+/// [`u32::trailing_zeros`]
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::cttz;
+///
+/// let x = 0b0011_1000_u8;
+/// let num_trailing = cttz(x);
+/// assert_eq!(num_trailing, 3);
+/// ```
+///
+/// An `x` with value `0` will return the bit width of `T`:
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::cttz;
+///
+/// let x = 0u16;
+/// let num_trailing = cttz(x);
+/// assert_eq!(num_trailing, 16);
+/// ```
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cttz", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn cttz<T: Copy>(_x: T) -> u32 {
+    unimplemented!()
+}
 
-    /// Like `cttz`, but extra-unsafe as it returns `undef` when
-    /// given an `x` with value `0`.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(core_intrinsics)]
-    /// # #![allow(internal_features)]
-    ///
-    /// use std::intrinsics::cttz_nonzero;
-    ///
-    /// let x = 0b0011_1000_u8;
-    /// let num_trailing = unsafe { cttz_nonzero(x) };
-    /// assert_eq!(num_trailing, 3);
-    /// ```
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn cttz_nonzero<T: Copy>(x: T) -> u32;
+/// Like `cttz`, but extra-unsafe as it returns `undef` when
+/// given an `x` with value `0`.
+///
+/// This intrinsic does not have a stable counterpart.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(core_intrinsics)]
+/// # #![allow(internal_features)]
+///
+/// use std::intrinsics::cttz_nonzero;
+///
+/// let x = 0b0011_1000_u8;
+/// let num_trailing = unsafe { cttz_nonzero(x) };
+/// assert_eq!(num_trailing, 3);
+/// ```
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn cttz_nonzero<T: Copy>(_x: T) -> u32 {
+    unimplemented!()
+}
 
-    /// Reverses the bytes in an integer type `T`.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `swap_bytes` method. For example,
-    /// [`u32::swap_bytes`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_bswap", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn bswap<T: Copy>(x: T) -> T;
+/// Reverses the bytes in an integer type `T`.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `swap_bytes` method. For example,
+/// [`u32::swap_bytes`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_bswap", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn bswap<T: Copy>(_x: T) -> T {
+    unimplemented!()
+}
 
-    /// Reverses the bits in an integer type `T`.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `reverse_bits` method. For example,
-    /// [`u32::reverse_bits`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_bitreverse", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn bitreverse<T: Copy>(x: T) -> T;
+/// Reverses the bits in an integer type `T`.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `reverse_bits` method. For example,
+/// [`u32::reverse_bits`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_bitreverse", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn bitreverse<T: Copy>(_x: T) -> T {
+    unimplemented!()
+}
 
-    /// Does a three-way comparison between the two integer arguments.
-    ///
-    /// This is included as an intrinsic as it's useful to let it be one thing
-    /// in MIR, rather than the multiple checks and switches that make its IR
-    /// large and difficult to optimize.
-    ///
-    /// The stabilized version of this intrinsic is [`Ord::cmp`].
-    #[rustc_const_unstable(feature = "const_three_way_compare", issue = "none")]
-    #[rustc_safe_intrinsic]
-    pub fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> crate::cmp::Ordering;
+/// Does a three-way comparison between the two integer arguments.
+///
+/// This is included as an intrinsic as it's useful to let it be one thing
+/// in MIR, rather than the multiple checks and switches that make its IR
+/// large and difficult to optimize.
+///
+/// The stabilized version of this intrinsic is [`Ord::cmp`].
+#[rustc_const_unstable(feature = "const_three_way_compare", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Ordering {
+    unimplemented!()
+}
 
-    /// Performs checked integer addition.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `overflowing_add` method. For example,
-    /// [`u32::overflowing_add`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
+/// Performs checked integer addition.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `overflowing_add` method. For example,
+/// [`u32::overflowing_add`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn add_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
+    unimplemented!()
+}
 
-    /// Performs checked integer subtraction
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `overflowing_sub` method. For example,
-    /// [`u32::overflowing_sub`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
+/// Performs checked integer subtraction
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `overflowing_sub` method. For example,
+/// [`u32::overflowing_sub`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn sub_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
+    unimplemented!()
+}
 
-    /// Performs checked integer multiplication
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `overflowing_mul` method. For example,
-    /// [`u32::overflowing_mul`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
+/// Performs checked integer multiplication
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `overflowing_mul` method. For example,
+/// [`u32::overflowing_mul`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_overflow", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
+    unimplemented!()
+}
 
-    /// Performs an exact division, resulting in undefined behavior where
-    /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_exact_div", issue = "none")]
-    #[rustc_nounwind]
-    pub fn exact_div<T: Copy>(x: T, y: T) -> T;
+/// Performs an exact division, resulting in undefined behavior where
+/// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_exact_div", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn exact_div<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
 
-    /// Performs an unchecked division, resulting in undefined behavior
-    /// where `y == 0` or `x == T::MIN && y == -1`
-    ///
-    /// Safe wrappers for this intrinsic are available on the integer
-    /// primitives via the `checked_div` method. For example,
-    /// [`u32::checked_div`]
-    #[cfg_attr(
-        bootstrap,
-        rustc_const_stable(feature = "const_int_unchecked_div", since = "1.52.0")
-    )]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
-    /// Returns the remainder of an unchecked division, resulting in
-    /// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
-    ///
-    /// Safe wrappers for this intrinsic are available on the integer
-    /// primitives via the `checked_rem` method. For example,
-    /// [`u32::checked_rem`]
-    #[cfg_attr(
-        bootstrap,
-        rustc_const_stable(feature = "const_int_unchecked_rem", since = "1.52.0")
-    )]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
+/// Performs an unchecked division, resulting in undefined behavior
+/// where `y == 0` or `x == T::MIN && y == -1`
+///
+/// Safe wrappers for this intrinsic are available on the integer
+/// primitives via the `checked_div` method. For example,
+/// [`u32::checked_div`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked_div", since = "1.52.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_div<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
+/// Returns the remainder of an unchecked division, resulting in
+/// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
+///
+/// Safe wrappers for this intrinsic are available on the integer
+/// primitives via the `checked_rem` method. For example,
+/// [`u32::checked_rem`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked_rem", since = "1.52.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_rem<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
 
-    /// Performs an unchecked left shift, resulting in undefined behavior when
-    /// `y < 0` or `y >= N`, where N is the width of T in bits.
-    ///
-    /// Safe wrappers for this intrinsic are available on the integer
-    /// primitives via the `checked_shl` method. For example,
-    /// [`u32::checked_shl`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_shl<T: Copy, U: Copy>(x: T, y: U) -> T;
-    /// Performs an unchecked right shift, resulting in undefined behavior when
-    /// `y < 0` or `y >= N`, where N is the width of T in bits.
-    ///
-    /// Safe wrappers for this intrinsic are available on the integer
-    /// primitives via the `checked_shr` method. For example,
-    /// [`u32::checked_shr`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_shr<T: Copy, U: Copy>(x: T, y: U) -> T;
+/// Performs an unchecked left shift, resulting in undefined behavior when
+/// `y < 0` or `y >= N`, where N is the width of T in bits.
+///
+/// Safe wrappers for this intrinsic are available on the integer
+/// primitives via the `checked_shl` method. For example,
+/// [`u32::checked_shl`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_shl<T: Copy, U: Copy>(_x: T, _y: U) -> T {
+    unimplemented!()
+}
+/// Performs an unchecked right shift, resulting in undefined behavior when
+/// `y < 0` or `y >= N`, where N is the width of T in bits.
+///
+/// Safe wrappers for this intrinsic are available on the integer
+/// primitives via the `checked_shr` method. For example,
+/// [`u32::checked_shr`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_shr<T: Copy, U: Copy>(_x: T, _y: U) -> T {
+    unimplemented!()
+}
 
-    /// Returns the result of an unchecked addition, resulting in
-    /// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.
-    ///
-    /// The stable counterpart of this intrinsic is `unchecked_add` on the various
-    /// integer types, such as [`u16::unchecked_add`] and [`i64::unchecked_add`].
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
+/// Returns the result of an unchecked addition, resulting in
+/// undefined behavior when `x + y > T::MAX` or `x + y < T::MIN`.
+///
+/// The stable counterpart of this intrinsic is `unchecked_add` on the various
+/// integer types, such as [`u16::unchecked_add`] and [`i64::unchecked_add`].
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_add<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
 
-    /// Returns the result of an unchecked subtraction, resulting in
-    /// undefined behavior when `x - y > T::MAX` or `x - y < T::MIN`.
-    ///
-    /// The stable counterpart of this intrinsic is `unchecked_sub` on the various
-    /// integer types, such as [`u16::unchecked_sub`] and [`i64::unchecked_sub`].
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
+/// Returns the result of an unchecked subtraction, resulting in
+/// undefined behavior when `x - y > T::MAX` or `x - y < T::MIN`.
+///
+/// The stable counterpart of this intrinsic is `unchecked_sub` on the various
+/// integer types, such as [`u16::unchecked_sub`] and [`i64::unchecked_sub`].
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_sub<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
 
-    /// Returns the result of an unchecked multiplication, resulting in
-    /// undefined behavior when `x * y > T::MAX` or `x * y < T::MIN`.
-    ///
-    /// The stable counterpart of this intrinsic is `unchecked_mul` on the various
-    /// integer types, such as [`u16::unchecked_mul`] and [`i64::unchecked_mul`].
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
+/// Returns the result of an unchecked multiplication, resulting in
+/// undefined behavior when `x * y > T::MAX` or `x * y < T::MIN`.
+///
+/// The stable counterpart of this intrinsic is `unchecked_mul` on the various
+/// integer types, such as [`u16::unchecked_mul`] and [`i64::unchecked_mul`].
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "unchecked_math", since = "1.79.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn unchecked_mul<T: Copy>(_x: T, _y: T) -> T {
+    unimplemented!()
+}
 
-    /// Performs rotate left.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `rotate_left` method. For example,
-    /// [`u32::rotate_left`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_rotate", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
+/// Performs rotate left.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `rotate_left` method. For example,
+/// [`u32::rotate_left`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_rotate", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn rotate_left<T: Copy>(_x: T, _shift: u32) -> T {
+    unimplemented!()
+}
 
-    /// Performs rotate right.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `rotate_right` method. For example,
-    /// [`u32::rotate_right`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_rotate", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn rotate_right<T: Copy>(x: T, shift: u32) -> T;
+/// Performs rotate right.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `rotate_right` method. For example,
+/// [`u32::rotate_right`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_rotate", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn rotate_right<T: Copy>(_x: T, _shift: u32) -> T {
+    unimplemented!()
+}
 
-    /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_add` method. For example,
-    /// [`u32::wrapping_add`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
-    /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_sub` method. For example,
-    /// [`u32::wrapping_sub`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
-    /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `wrapping_mul` method. For example,
-    /// [`u32::wrapping_mul`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
+/// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `wrapping_add` method. For example,
+/// [`u32::wrapping_add`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn wrapping_add<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+/// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `wrapping_sub` method. For example,
+/// [`u32::wrapping_sub`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn wrapping_sub<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+/// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `wrapping_mul` method. For example,
+/// [`u32::wrapping_mul`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn wrapping_mul<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
 
-    /// Computes `a + b`, saturating at numeric bounds.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `saturating_add` method. For example,
-    /// [`u32::saturating_add`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_saturating", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
-    /// Computes `a - b`, saturating at numeric bounds.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `saturating_sub` method. For example,
-    /// [`u32::saturating_sub`]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_saturating", since = "1.40.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
+/// Computes `a + b`, saturating at numeric bounds.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `saturating_add` method. For example,
+/// [`u32::saturating_add`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_saturating", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn saturating_add<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+/// Computes `a - b`, saturating at numeric bounds.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized versions of this intrinsic are available on the integer
+/// primitives via the `saturating_sub` method. For example,
+/// [`u32::saturating_sub`]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_int_saturating", since = "1.40.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn saturating_sub<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
 
-    /// This is an implementation detail of [`crate::ptr::read`] and should
-    /// not be used anywhere else.  See its comments for why this exists.
-    ///
-    /// This intrinsic can *only* be called where the pointer is a local without
-    /// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
-    /// trivially obeys runtime-MIR rules about derefs in operands.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_read", since = "1.71.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn read_via_copy<T>(ptr: *const T) -> T;
+/// This is an implementation detail of [`crate::ptr::read`] and should
+/// not be used anywhere else.  See its comments for why this exists.
+///
+/// This intrinsic can *only* be called where the pointer is a local without
+/// projections (`read_via_copy(ptr)`, not `read_via_copy(*ptr)`) so that it
+/// trivially obeys runtime-MIR rules about derefs in operands.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_read", since = "1.71.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn read_via_copy<T>(_ptr: *const T) -> T {
+    unimplemented!()
+}
 
-    /// This is an implementation detail of [`crate::ptr::write`] and should
-    /// not be used anywhere else.  See its comments for why this exists.
-    ///
-    /// This intrinsic can *only* be called where the pointer is a local without
-    /// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
-    /// that it trivially obeys runtime-MIR rules about derefs in operands.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_write", since = "1.83.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn write_via_move<T>(ptr: *mut T, value: T);
+/// This is an implementation detail of [`crate::ptr::write`] and should
+/// not be used anywhere else.  See its comments for why this exists.
+///
+/// This intrinsic can *only* be called where the pointer is a local without
+/// projections (`write_via_move(ptr, x)`, not `write_via_move(*ptr, x)`) so
+/// that it trivially obeys runtime-MIR rules about derefs in operands.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_write", since = "1.83.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn write_via_move<T>(_ptr: *mut T, _value: T) {
+    unimplemented!()
+}
 
-    /// Returns the value of the discriminant for the variant in 'v';
-    /// if `T` has no discriminant, returns `0`.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_discriminant", since = "1.75.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
+/// Returns the value of the discriminant for the variant in 'v';
+/// if `T` has no discriminant, returns `0`.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// The stabilized version of this intrinsic is [`core::mem::discriminant`].
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_discriminant", since = "1.75.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn discriminant_value<T>(_v: &T) -> <T as DiscriminantKind>::Discriminant {
+    unimplemented!()
+}
 
+extern "rust-intrinsic" {
     /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
     /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
     ///
@@ -2638,17 +2771,25 @@ extern "rust-intrinsic" {
     /// in ways that are not allowed for regular writes).
     #[rustc_nounwind]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+}
 
-    /// See documentation of `<*const T>::offset_from` for details.
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0"))]
-    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-    #[rustc_nounwind]
-    pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+/// See documentation of `<*const T>::offset_from` for details.
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0"))]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn ptr_offset_from<T>(_ptr: *const T, _base: *const T) -> isize {
+    unimplemented!()
+}
 
-    /// See documentation of `<*const T>::sub_ptr` for details.
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
-    #[rustc_nounwind]
-    pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
+/// See documentation of `<*const T>::sub_ptr` for details.
+#[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn ptr_offset_from_unsigned<T>(_ptr: *const T, _base: *const T) -> usize {
+    unimplemented!()
 }
 
 /// See documentation of `<*const T>::guaranteed_eq` for details.
@@ -2666,59 +2807,68 @@ pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
     (ptr == other) as u8
 }
 
-extern "rust-intrinsic" {
-    /// Determines whether the raw bytes of the two values are equal.
-    ///
-    /// This is particularly handy for arrays, since it allows things like just
-    /// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
-    ///
-    /// Above some backend-decided threshold this will emit calls to `memcmp`,
-    /// like slice equality does, instead of causing massive code size.
-    ///
-    /// Since this works by comparing the underlying bytes, the actual `T` is
-    /// not particularly important.  It will be used for its size and alignment,
-    /// but any validity restrictions will be ignored, not enforced.
-    ///
-    /// # Safety
-    ///
-    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
-    /// Note that this is a stricter criterion than just the *values* being
-    /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
-    ///
-    /// At compile-time, it is furthermore UB to call this if any of the bytes
-    /// in `*a` or `*b` have provenance.
-    ///
-    /// (The implementation is allowed to branch on the results of comparisons,
-    /// which is UB if any of their inputs are `undef`.)
-    #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
-    #[rustc_nounwind]
-    pub fn raw_eq<T>(a: &T, b: &T) -> bool;
+/// Determines whether the raw bytes of the two values are equal.
+///
+/// This is particularly handy for arrays, since it allows things like just
+/// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
+///
+/// Above some backend-decided threshold this will emit calls to `memcmp`,
+/// like slice equality does, instead of causing massive code size.
+///
+/// Since this works by comparing the underlying bytes, the actual `T` is
+/// not particularly important.  It will be used for its size and alignment,
+/// but any validity restrictions will be ignored, not enforced.
+///
+/// # Safety
+///
+/// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
+/// Note that this is a stricter criterion than just the *values* being
+/// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
+///
+/// At compile-time, it is furthermore UB to call this if any of the bytes
+/// in `*a` or `*b` have provenance.
+///
+/// (The implementation is allowed to branch on the results of comparisons,
+/// which is UB if any of their inputs are `undef`.)
+#[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn raw_eq<T>(_a: &T, _b: &T) -> bool {
+    unimplemented!()
+}
 
-    /// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
-    /// as unsigned bytes, returning negative if `left` is less, zero if all the
-    /// bytes match, or positive if `left` is greater.
-    ///
-    /// This underlies things like `<[u8]>::cmp`, and will usually lower to `memcmp`.
-    ///
-    /// # Safety
-    ///
-    /// `left` and `right` must each be [valid] for reads of `bytes` bytes.
-    ///
-    /// Note that this applies to the whole range, not just until the first byte
-    /// that differs.  That allows optimizations that can read in large chunks.
-    ///
-    /// [valid]: crate::ptr#safety
-    #[rustc_const_unstable(feature = "const_intrinsic_compare_bytes", issue = "none")]
-    #[rustc_nounwind]
-    pub fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
+/// Lexicographically compare `[left, left + bytes)` and `[right, right + bytes)`
+/// as unsigned bytes, returning negative if `left` is less, zero if all the
+/// bytes match, or positive if `left` is greater.
+///
+/// This underlies things like `<[u8]>::cmp`, and will usually lower to `memcmp`.
+///
+/// # Safety
+///
+/// `left` and `right` must each be [valid] for reads of `bytes` bytes.
+///
+/// Note that this applies to the whole range, not just until the first byte
+/// that differs.  That allows optimizations that can read in large chunks.
+///
+/// [valid]: crate::ptr#safety
+#[rustc_const_unstable(feature = "const_intrinsic_compare_bytes", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const unsafe fn compare_bytes(_left: *const u8, _right: *const u8, _bytes: usize) -> i32 {
+    unimplemented!()
+}
 
-    /// See documentation of [`std::hint::black_box`] for details.
-    ///
-    /// [`std::hint::black_box`]: crate::hint::black_box
-    #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn black_box<T>(dummy: T) -> T;
+/// See documentation of [`std::hint::black_box`] for details.
+///
+/// [`std::hint::black_box`]: crate::hint::black_box
+#[rustc_const_unstable(feature = "const_black_box", issue = "none")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn black_box<T>(_dummy: T) -> T {
+    unimplemented!()
 }
 
 /// Selects which function to call depending on the context.
@@ -3261,18 +3411,13 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    extern "rust-intrinsic" {
-        #[cfg_attr(
-            bootstrap,
-            rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")
-        )]
-        #[cfg_attr(
-            not(bootstrap),
-            rustc_const_unstable(feature = "core_intrinsics", issue = "none")
-        )]
-        #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-        #[rustc_nounwind]
-        pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0"))]
+    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    const unsafe fn copy_nonoverlapping<T>(_src: *const T, _dst: *mut T, _count: usize) {
+        unreachable!()
     }
 
     ub_checks::assert_unsafe_precondition!(
@@ -3373,18 +3518,13 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    extern "rust-intrinsic" {
-        #[cfg_attr(
-            bootstrap,
-            rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")
-        )]
-        #[cfg_attr(
-            not(bootstrap),
-            rustc_const_unstable(feature = "core_intrinsics", issue = "none")
-        )]
-        #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-        #[rustc_nounwind]
-        fn copy<T>(src: *const T, dst: *mut T, count: usize);
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0"))]
+    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    const unsafe fn copy<T>(_src: *const T, _dst: *mut T, _count: usize) {
+        unreachable!()
     }
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
@@ -3462,11 +3602,13 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
-    extern "rust-intrinsic" {
-        #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_write", since = "1.83.0"))]
-        #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
-        #[rustc_nounwind]
-        fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_ptr_write", since = "1.83.0"))]
+    #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    const unsafe fn write_bytes<T>(_dst: *mut T, _val: u8, _count: usize) {
+        unreachable!()
     }
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
