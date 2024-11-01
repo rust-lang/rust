@@ -3016,7 +3016,6 @@ pub(crate) macro const_eval_select {
 /// In other words, the following code has *Undefined Behavior*:
 ///
 /// ```no_run
-/// #![feature(is_val_statically_known)]
 /// #![feature(core_intrinsics)]
 /// # #![allow(internal_features)]
 /// use std::hint::unreachable_unchecked;
@@ -3029,7 +3028,6 @@ pub(crate) macro const_eval_select {
 /// may panic, or it may not:
 ///
 /// ```no_run
-/// #![feature(is_val_statically_known)]
 /// #![feature(core_intrinsics)]
 /// # #![allow(internal_features)]
 /// use std::intrinsics::is_val_statically_known;
@@ -3062,7 +3060,6 @@ pub(crate) macro const_eval_select {
 /// behave identically:
 ///
 /// ```
-/// #![feature(is_val_statically_known)]
 /// #![feature(core_intrinsics)]
 /// # #![allow(internal_features)]
 /// use std::intrinsics::is_val_statically_known;
@@ -3079,7 +3076,11 @@ pub(crate) macro const_eval_select {
 /// # _ = foo(&5_i32);
 /// # _ = bar(&5_i32);
 /// ```
-#[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_is_val_statically_known", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
