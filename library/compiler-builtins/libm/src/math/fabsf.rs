@@ -16,8 +16,6 @@ pub fn fabsf(x: f32) -> f32 {
 #[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
-    use core::f32::*;
-
     use super::*;
 
     #[test]
@@ -29,12 +27,12 @@ mod tests {
     /// The spec: https://en.cppreference.com/w/cpp/numeric/math/fabs
     #[test]
     fn spec_tests() {
-        assert!(fabsf(NAN).is_nan());
+        assert!(fabsf(f32::NAN).is_nan());
         for f in [0.0, -0.0].iter().copied() {
             assert_eq!(fabsf(f), 0.0);
         }
-        for f in [INFINITY, NEG_INFINITY].iter().copied() {
-            assert_eq!(fabsf(f), INFINITY);
+        for f in [f32::INFINITY, f32::NEG_INFINITY].iter().copied() {
+            assert_eq!(fabsf(f), f32::INFINITY);
         }
     }
 }

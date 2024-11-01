@@ -106,9 +106,10 @@ jobs:
         cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
     - name: Clippy
-      run: |
+      # Tests and utilities can't build on no_std targets
+      if: "!contains(matrix.target, 'thumb')"
         # Run clippy on `libm`
-        cargo clippy --target "${{ matrix.target }}" --package libm
+      run: cargo clippy --target "${{ matrix.target }}" --package libm --all-targets
         
 
   builtins:

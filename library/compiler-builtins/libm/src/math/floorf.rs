@@ -42,8 +42,6 @@ pub fn floorf(x: f32) -> f32 {
 #[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
-    use core::f32::*;
-
     use super::*;
 
     #[test]
@@ -57,8 +55,8 @@ mod tests {
     #[test]
     fn spec_tests() {
         // Not Asserted: that the current rounding mode has no effect.
-        assert!(floorf(NAN).is_nan());
-        for f in [0.0, -0.0, INFINITY, NEG_INFINITY].iter().copied() {
+        assert!(floorf(f32::NAN).is_nan());
+        for f in [0.0, -0.0, f32::INFINITY, f32::NEG_INFINITY].iter().copied() {
             assert_eq!(floorf(f), f);
         }
     }

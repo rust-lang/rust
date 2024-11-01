@@ -14,8 +14,6 @@ pub fn fabs(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use core::f64::*;
-
     use super::*;
 
     #[test]
@@ -27,12 +25,12 @@ mod tests {
     /// The spec: https://en.cppreference.com/w/cpp/numeric/math/fabs
     #[test]
     fn spec_tests() {
-        assert!(fabs(NAN).is_nan());
+        assert!(fabs(f64::NAN).is_nan());
         for f in [0.0, -0.0].iter().copied() {
             assert_eq!(fabs(f), 0.0);
         }
-        for f in [INFINITY, NEG_INFINITY].iter().copied() {
-            assert_eq!(fabs(f), INFINITY);
+        for f in [f64::INFINITY, f64::NEG_INFINITY].iter().copied() {
+            assert_eq!(fabs(f), f64::INFINITY);
         }
     }
 }

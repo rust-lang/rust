@@ -34,8 +34,6 @@ pub fn ceil(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use core::f64::*;
-
     use super::*;
 
     #[test]
@@ -48,8 +46,8 @@ mod tests {
     #[test]
     fn spec_tests() {
         // Not Asserted: that the current rounding mode has no effect.
-        assert!(ceil(NAN).is_nan());
-        for f in [0.0, -0.0, INFINITY, NEG_INFINITY].iter().copied() {
+        assert!(ceil(f64::NAN).is_nan());
+        for f in [0.0, -0.0, f64::INFINITY, f64::NEG_INFINITY].iter().copied() {
             assert_eq!(ceil(f), f);
         }
     }

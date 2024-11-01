@@ -110,8 +110,6 @@ pub fn sqrtf(x: f32) -> f32 {
 #[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
-    use core::f32::*;
-
     use super::*;
 
     #[test]
@@ -125,15 +123,16 @@ mod tests {
     fn spec_tests() {
         // Not Asserted: FE_INVALID exception is raised if argument is negative.
         assert!(sqrtf(-1.0).is_nan());
-        assert!(sqrtf(NAN).is_nan());
-        for f in [0.0, -0.0, INFINITY].iter().copied() {
+        assert!(sqrtf(f32::NAN).is_nan());
+        for f in [0.0, -0.0, f32::INFINITY].iter().copied() {
             assert_eq!(sqrtf(f), f);
         }
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn conformance_tests() {
-        let values = [3.14159265359f32, 10000.0f32, f32::from_bits(0x0000000f), INFINITY];
+        let values = [3.14159265359f32, 10000.0f32, f32::from_bits(0x0000000f), f32::INFINITY];
         let results = [1071833029u32, 1120403456u32, 456082799u32, 2139095040u32];
 
         for i in 0..values.len() {

@@ -33,8 +33,6 @@ pub fn floor(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use core::f64::*;
-
     use super::*;
 
     #[test]
@@ -47,8 +45,8 @@ mod tests {
     #[test]
     fn spec_tests() {
         // Not Asserted: that the current rounding mode has no effect.
-        assert!(floor(NAN).is_nan());
-        for f in [0.0, -0.0, INFINITY, NEG_INFINITY].iter().copied() {
+        assert!(floor(f64::NAN).is_nan());
+        for f in [0.0, -0.0, f64::INFINITY, f64::NEG_INFINITY].iter().copied() {
             assert_eq!(floor(f), f);
         }
     }

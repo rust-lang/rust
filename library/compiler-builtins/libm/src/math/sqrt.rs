@@ -224,8 +224,6 @@ pub fn sqrt(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use core::f64::*;
-
     use super::*;
 
     #[test]
@@ -239,15 +237,16 @@ mod tests {
     fn spec_tests() {
         // Not Asserted: FE_INVALID exception is raised if argument is negative.
         assert!(sqrt(-1.0).is_nan());
-        assert!(sqrt(NAN).is_nan());
-        for f in [0.0, -0.0, INFINITY].iter().copied() {
+        assert!(sqrt(f64::NAN).is_nan());
+        for f in [0.0, -0.0, f64::INFINITY].iter().copied() {
             assert_eq!(sqrt(f), f);
         }
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn conformance_tests() {
-        let values = [3.14159265359, 10000.0, f64::from_bits(0x0000000f), INFINITY];
+        let values = [3.14159265359, 10000.0, f64::from_bits(0x0000000f), f64::INFINITY];
         let results = [
             4610661241675116657u64,
             4636737291354636288u64,
