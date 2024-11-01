@@ -1,0 +1,14 @@
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Cinstrument-coverage=on
+   LL|       |
+   LL|       |#[inline]
+   LL|      0|pub fn inline_me() {}
+   LL|       |
+   LL|       |#[inline(never)]
+   LL|      1|pub fn no_inlining_please() {}
+   LL|       |
+   LL|      0|pub fn generic<T>() {}
+   LL|       |
+   LL|       |// FIXME(#132436): Even though this doesn't ICE, it still produces coverage
+   LL|       |// reports that undercount the affected code.
+
