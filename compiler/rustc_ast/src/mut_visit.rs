@@ -1899,6 +1899,9 @@ fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
         CaptureBy::Value { move_kw } => {
             vis.visit_span(move_kw);
         }
+        CaptureBy::Use { use_kw } => {
+            vis.visit_span(use_kw);
+        }
     }
 }
 
