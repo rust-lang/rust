@@ -59,7 +59,6 @@ pub mod abi;
 pub mod crt_objects;
 
 mod base;
-pub use base::apple::platform as current_apple_platform;
 pub use base::avr_gnu::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.

@@ -3,7 +3,7 @@ use std::env;
 
 use crate::spec::{
     Cc, DebuginfoKind, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow,
-    Target, TargetOptions, cvs,
+    TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -154,23 +154,6 @@ pub(crate) fn base(
         ..Default::default()
     };
     (opts, unversioned_llvm_target(os, arch, abi), arch.target_arch())
-}
-
-pub fn platform(target: &Target) -> Option<u32> {
-    Some(match (&*target.os, &*target.abi) {
-        ("macos", _) => object::macho::PLATFORM_MACOS,
-        ("ios", "macabi") => object::macho::PLATFORM_MACCATALYST,
-        ("ios", "sim") => object::macho::PLATFORM_IOSSIMULATOR,
-        ("ios", _) => object::macho::PLATFORM_IOS,
-        ("watchos", "sim") => object::macho::PLATFORM_WATCHOSSIMULATOR,
-        ("watchos", _) => object::macho::PLATFORM_WATCHOS,
-        ("tvos", "sim") => object::macho::PLATFORM_TVOSSIMULATOR,
-        ("tvos", _) => object::macho::PLATFORM_TVOS,
-        // FIXME: Upgrade to `object-rs` 0.33+ implementation with visionOS platform definition
-        ("visionos", "sim") => 12,
-        ("visionos", _) => 11,
-        _ => return None,
-    })
 }
 
 /// Generate part of the LLVM target triple.

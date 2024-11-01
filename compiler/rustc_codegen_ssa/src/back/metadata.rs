@@ -402,8 +402,7 @@ fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachO
         (major << 16) | (minor << 8) | patch
     }
 
-    let platform =
-        rustc_target::spec::current_apple_platform(&sess.target).expect("unknown Apple target OS");
+    let platform = apple::macho_platform(&sess.target);
     let min_os = apple::deployment_target(sess);
 
     let mut build_version = object::write::MachOBuildVersion::default();
