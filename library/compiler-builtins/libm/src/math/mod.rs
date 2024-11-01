@@ -74,9 +74,16 @@ macro_rules! div {
     };
 }
 
-// Private modules
+// `support` may be public for testing
 #[macro_use]
+#[cfg(feature = "unstable-test-support")]
+pub mod support;
+
+#[macro_use]
+#[cfg(not(feature = "unstable-test-support"))]
 mod support;
+
+// Private modules
 mod arch;
 mod expo2;
 mod fenv;

@@ -26,6 +26,9 @@ unstable = ["unstable-intrinsics"]
 # Enable calls to functions in `core::intrinsics`
 unstable-intrinsics = []
 
+# Make some internal things public for testing.
+unstable-test-support = []
+
 # Used to prevent using any intrinsics or arch-specific code.
 #
 # HACK: this is a negative feature which is generally a bad idea in Cargo, but
