@@ -1056,6 +1056,14 @@ pub fn rustc_cargo(
         cargo.rustflag("-l").rustflag("Enzyme-19");
     }
 
+    // Building with protected visibility reduces the number of dynamic relocations needed, giving
+    // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
+    // with direct references to protected symbols, so for now we only use protected symbols if
+    // linking with LLD is enabled.
+    if builder.build.config.lld_mode.is_used() {
+        cargo.rustflag("-Zdefault-visibility=protected");
+    }
+
     // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
     // and may just be a time sink.
     if compiler.stage != 0 {
