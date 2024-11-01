@@ -571,6 +571,7 @@ Select which editor you would like to set up [default: None]: ";
                 "b526bd58d0262dd4dda2bff5bc5515b705fb668a46235ace3e057f807963a11a",
                 "828666b021d837a33e78d870b56d34c88a5e2c85de58b693607ec574f0c27000",
                 "811fb3b063c739d261fd8590dd30242e117908f5a095d594fa04585daa18ec4d",
+                "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
             ],
             EditorKind::Emacs => vec![
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
