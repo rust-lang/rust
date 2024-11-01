@@ -565,6 +565,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
     }
 
+    /// Given a set of diverging vids and coercions, walk the HIR to gather a
+    /// set of suggestions which can be applied to preserve fallback to unit.
     fn try_to_suggest_annotations(
         &self,
         diverging_vids: &[ty::TyVid],
@@ -574,26 +576,34 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.tcx.hir().maybe_body_owned_by(self.body_id).expect("body id must have an owner");
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
-        // per var.
+        // suggestion to influence a var to be `()`.
         let suggestions = diverging_vids
             .iter()
             .copied()
             .filter_map(|vid| {
                 let reachable_vids =
                     graph::depth_first_search_as_undirected(coercions, vid).collect();
-                VidVisitor { reachable_vids, fcx: self }.visit_expr(body.value).break_value()
+                AnnotateUnitFallbackVisitor { reachable_vids, fcx: self }
+                    .visit_expr(body.value)
+                    .break_value()
             })
             .collect();
         errors::SuggestAnnotations { suggestions }
     }
 }
 
-/// Try to collect a useful suggestion to preserve fallback to `()`.
-struct VidVisitor<'a, 'tcx> {
+/// Try to walk the HIR to find a place to insert a useful suggestion
+/// to preserve fallback to `()` in 2024.
+struct AnnotateUnitFallbackVisitor<'a, 'tcx> {
     reachable_vids: FxHashSet<ty::TyVid>,
     fcx: &'a FnCtxt<'a, 'tcx>,
 }
-impl<'tcx> VidVisitor<'_, 'tcx> {
+impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
+    // For a given path segment, if it's missing a turbofish, try to suggest adding
+    // one so we can constrain an argument to `()`. To keep the suggestion simple,
+    // we want to simply suggest `_` for all the other args. This (for now) only
+    // works when there are only type variables (and region variables, since we can
+    // elide them)...
     fn suggest_for_segment(
         &self,
         arg_segment: &'tcx hir::PathSegment<'tcx>,
@@ -627,7 +637,7 @@ impl<'tcx> VidVisitor<'_, 'tcx> {
         ControlFlow::Continue(())
     }
 }
-impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
     type Result = ControlFlow<errors::SuggestAnnotation>;
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
@@ -657,9 +667,7 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
                 return hir::intravisit::walk_qpath(self, qpath, id);
             }
         };
-        // Alternatively, try to turbofish `::<_, (), _>` (ignoring lifetimes,
-        // since we don't need to turbofish those; they'll be inferred).
-        // FIXME: Same logic could work for types...
+        // Alternatively, try to turbofish `::<_, (), _>`.
         if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id() {
             self.suggest_for_segment(arg_segment, def_id, id)?;
         }
@@ -668,6 +676,7 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
         // Try to suggest adding an explicit qself `()` to a trait method path.
+        // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
             && let Res::Def(DefKind::AssocFn, def_id) = path.res
             && self.fcx.tcx.trait_of_item(def_id).is_some()
@@ -679,7 +688,7 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
             return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
         }
-        // Or else turbofishing the method
+        // Or else, try suggesting turbofishing the method args.
         if let hir::ExprKind::MethodCall(segment, ..) = expr.kind
             && let Some(def_id) =
                 self.fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
@@ -690,6 +699,7 @@ impl<'tcx> Visitor<'tcx> for VidVisitor<'_, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) -> Self::Result {
+        // For a local, try suggest annotating the type if it's missing.
         if let None = local.ty
             && let ty = self.fcx.typeck_results.borrow().node_type(local.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
