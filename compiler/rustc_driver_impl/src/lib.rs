@@ -33,6 +33,7 @@ use std::time::{Instant, SystemTime};
 use std::{env, str};
 
 use rustc_ast as ast;
+use rustc_codegen_ssa::back::apple;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
@@ -855,10 +856,8 @@ fn print_crate_info(
                 }
             }
             DeploymentTarget => {
-                use rustc_target::spec::current_apple_deployment_target;
-
                 if sess.target.is_like_osx {
-                    let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+                    let (major, minor, patch) = apple::deployment_target(sess);
                     let patch = if patch != 0 { format!(".{patch}") } else { String::new() };
                     println_info!("deployment_target={major}.{minor}{patch}")
                 } else {
