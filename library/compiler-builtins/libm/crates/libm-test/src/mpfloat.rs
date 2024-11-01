@@ -15,7 +15,7 @@ use crate::Float;
 
 /// Create a multiple-precision float with the correct number of bits for a concrete float type.
 fn new_mpfloat<F: Float>() -> MpFloat {
-    MpFloat::new(F::SIGNIFICAND_BITS + 1)
+    MpFloat::new(F::SIG_BITS + 1)
 }
 
 /// Set subnormal emulation and convert to a concrete float type.
