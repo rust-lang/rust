@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: Test` will fail
 LL |     unconstrained_arg(return);
    |                       ^^^^^^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     unconstrained_arg::<()>(return);
+   |                      ++++++
 
 warning: 1 warning emitted
 

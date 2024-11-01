@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: UnitReturn` will fail
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
    |                       ^^^^^^^^^^^^^^^^^^^^^^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     let _: () = if true { unconstrained_return() } else { panic!() };
+   |          ++++
 
 warning: 1 warning emitted
 
