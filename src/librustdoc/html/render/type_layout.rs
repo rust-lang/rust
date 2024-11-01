@@ -1,13 +1,13 @@
 use std::fmt;
 
 use rinja::Template;
+use rustc_abi::{Primitive, TagEncoding, Variants};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self};
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{Primitive, TagEncoding, Variants};
 
 use crate::html::format::display_fn;
 use crate::html::render::Context;
