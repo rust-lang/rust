@@ -67,14 +67,12 @@ pub fn sincosf(x: f32) -> (f32, f32) {
             }
         }
         /* -sin(x+c) is not correct if x+c could be 0: -0 vs +0 */
-        else {
-            if sign {
-                s = -k_sinf(x as f64 + S2PIO2);
-                c = -k_cosf(x as f64 + S2PIO2);
-            } else {
-                s = -k_sinf(x as f64 - S2PIO2);
-                c = -k_cosf(x as f64 - S2PIO2);
-            }
+        else if sign {
+            s = -k_sinf(x as f64 + S2PIO2);
+            c = -k_cosf(x as f64 + S2PIO2);
+        } else {
+            s = -k_sinf(x as f64 - S2PIO2);
+            c = -k_cosf(x as f64 - S2PIO2);
         }
 
         return (s, c);
@@ -91,14 +89,12 @@ pub fn sincosf(x: f32) -> (f32, f32) {
                 s = -k_cosf(x as f64 - S3PIO2);
                 c = k_sinf(x as f64 - S3PIO2);
             }
+        } else if sign {
+            s = k_sinf(x as f64 + S4PIO2);
+            c = k_cosf(x as f64 + S4PIO2);
         } else {
-            if sign {
-                s = k_sinf(x as f64 + S4PIO2);
-                c = k_cosf(x as f64 + S4PIO2);
-            } else {
-                s = k_sinf(x as f64 - S4PIO2);
-                c = k_cosf(x as f64 - S4PIO2);
-            }
+            s = k_sinf(x as f64 - S4PIO2);
+            c = k_cosf(x as f64 - S4PIO2);
         }
 
         return (s, c);

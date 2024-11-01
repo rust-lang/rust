@@ -115,7 +115,7 @@ pub fn expm1f(mut x: f32) -> f32 {
         return 1. + 2. * (x - e);
     }
     let twopk = f32::from_bits(((0x7f + k) << 23) as u32); /* 2^k */
-    if (k < 0) || (k > 56) {
+    if !(0..=56).contains(&k) {
         /* suffice to return exp(x)-1 */
         let mut y = x - e + 1.;
         if k == 128 {

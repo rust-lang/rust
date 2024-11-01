@@ -10,8 +10,8 @@ pub fn nextafter(x: f64, y: f64) -> f64 {
         return y;
     }
 
-    let ax = ux_i & !1_u64 / 2;
-    let ay = uy_i & !1_u64 / 2;
+    let ax = ux_i & (!1_u64 / 2);
+    let ay = uy_i & (!1_u64 / 2);
     if ax == 0 {
         if ay == 0 {
             return y;

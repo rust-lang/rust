@@ -90,7 +90,7 @@ pub fn asin(mut x: f64) -> f64 {
     /* |x| < 0.5 */
     if ix < 0x3fe00000 {
         /* if 0x1p-1022 <= |x| < 0x1p-26, avoid raising underflow */
-        if ix < 0x3e500000 && ix >= 0x00100000 {
+        if (0x00100000..0x3e500000).contains(&ix) {
             return x;
         } else {
             return x + x * comp_r(x * x);

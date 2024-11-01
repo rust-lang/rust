@@ -45,7 +45,8 @@ fn sinpi(mut x: f64) -> f64 {
         1 => k_cos(x, 0.0),
         2 => k_sin(-x, 0.0, 0),
         3 => -k_cos(x, 0.0),
-        0 | _ => k_sin(x, 0.0, 0),
+        // 0
+        _ => k_sin(x, 0.0, 0),
     }
 }
 
@@ -143,7 +144,7 @@ pub fn tgamma(mut x: f64) -> f64 {
     /* special cases */
     if ix >= 0x7ff00000 {
         /* tgamma(nan)=nan, tgamma(inf)=inf, tgamma(-inf)=nan with invalid */
-        return x + core::f64::INFINITY;
+        return x + f64::INFINITY;
     }
     if ix < ((0x3ff - 54) << 20) {
         /* |x| < 2^-54: tgamma(x) ~ 1/x, +-0 raises div-by-zero */

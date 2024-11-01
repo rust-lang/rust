@@ -1,5 +1,3 @@
-use core::u64;
-
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fmod(x: f64, y: f64) -> f64 {
     let mut uxi = x.to_bits();
@@ -74,7 +72,7 @@ pub fn fmod(x: f64, y: f64) -> f64 {
     } else {
         uxi >>= -ex + 1;
     }
-    uxi |= (sx as u64) << 63;
+    uxi |= sx << 63;
 
     f64::from_bits(uxi)
 }

@@ -18,7 +18,7 @@ pub fn atanhf(mut x: f32) -> f32 {
         if u < 0x3f800000 - (32 << 23) {
             /* handle underflow */
             if u < (1 << 23) {
-                force_eval!((x * x) as f32);
+                force_eval!(x * x);
             }
         } else {
             /* |x| < 0.5, up to 1.7ulp error */
