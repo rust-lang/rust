@@ -83,4 +83,8 @@ else
     # unstable with a feature
     $cmd --features "unstable-intrinsics"
     $cmd --release --features "unstable-intrinsics"
+
+    # Make sure benchmarks have correct results
+    $cmd --benches
+    $cmd --benches --release
 fi
