@@ -608,7 +608,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         value.visit_with(&mut for_liveness::FreeRegionsVisitor {
             tcx: typeck.tcx(),
-            param_env: typeck.param_env,
+            param_env: typeck.infcx.param_env,
             op: |r| {
                 let live_region_vid = typeck.universal_regions.to_region_vid(r);
 
@@ -621,6 +621,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck
+            .infcx
             .param_env
             .and(DropckOutlives { dropped_ty })
             .fully_perform(typeck.infcx, DUMMY_SP)

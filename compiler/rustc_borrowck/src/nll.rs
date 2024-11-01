@@ -50,10 +50,9 @@ pub(crate) struct NllOutput<'tcx> {
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
 /// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
-#[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
+#[instrument(skip(infcx, body, promoted), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
@@ -62,7 +61,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     debug!(?def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def, param_env);
+    let universal_regions = UniversalRegions::new(infcx, def);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
@@ -81,7 +80,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
-    param_env: ty::ParamEnv<'tcx>,
     flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
@@ -101,7 +99,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
         type_check::type_check(
             infcx,
-            param_env,
             body,
             promoted,
             universal_regions,

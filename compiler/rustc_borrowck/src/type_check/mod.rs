@@ -118,7 +118,6 @@ mod relate_tys;
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     universal_regions: UniversalRegions<'tcx>,
@@ -147,7 +146,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         known_type_outlives_obligations,
     } = free_region_relations::create(
         infcx,
-        param_env,
+        infcx.param_env,
         implicit_region_bound,
         universal_regions,
         &mut constraints,
@@ -157,7 +156,6 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     let mut checker = TypeChecker {
         infcx,
-        param_env,
         last_span: body.span,
         body,
         user_type_annotations: &body.user_type_annotations,
@@ -828,7 +826,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
     /// User type annotations are shared between the main MIR and the MIR of
@@ -1017,7 +1014,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.universal_regions,
             &self.region_bound_pairs,
             self.implicit_region_bound,
-            self.param_env,
+            self.infcx.param_env,
             &self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
@@ -1517,9 +1514,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // The signature in this call can reference region variables,
                 // so erase them before calling a query.
                 let output_ty = self.tcx().erase_regions(sig.output());
-                if !output_ty
-                    .is_privately_uninhabited(self.tcx(), self.infcx.typing_env(self.param_env))
-                {
+                if !output_ty.is_privately_uninhabited(
+                    self.tcx(),
+                    self.infcx.typing_env(self.infcx.param_env),
+                ) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1729,7 +1727,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let erased_ty = tcx.erase_regions(ty);
-        if !erased_ty.is_sized(tcx, self.param_env) {
+        if !erased_ty.is_sized(tcx, self.infcx.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough
@@ -2781,7 +2779,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.universal_regions,
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
-                self.param_env,
+                self.infcx.param_env,
                 &self.known_type_outlives_obligations,
                 locations,
                 self.body.span,             // irrelevant; will be overridden.

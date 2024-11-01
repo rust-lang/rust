@@ -140,7 +140,6 @@ fn do_mir_borrowck<'tcx>(
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
     let infcx = BorrowckInferCtxt::new(tcx, def);
-    let param_env = tcx.param_env(def);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -175,8 +174,7 @@ fn do_mir_borrowck<'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
     let mut promoted = input_promoted.to_owned();
-    let free_regions =
-        nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
     // FIXME(-Znext-solver): A bit dubious that we're only registering
@@ -213,7 +211,6 @@ fn do_mir_borrowck<'tcx>(
         body,
         &promoted,
         &location_table,
-        param_env,
         &mut flow_inits,
         &move_data,
         &borrow_set,
@@ -250,7 +247,6 @@ fn do_mir_borrowck<'tcx>(
         let promoted_body = &promoted[idx];
         let mut promoted_mbcx = MirBorrowckCtxt {
             infcx: &infcx,
-            param_env,
             body: promoted_body,
             move_data: &move_data,
             location_table: &location_table, // no need to create a real one for the promoted, it is not used
@@ -290,7 +286,6 @@ fn do_mir_borrowck<'tcx>(
 
     let mut mbcx = MirBorrowckCtxt {
         infcx: &infcx,
-        param_env,
         body,
         move_data: &move_data,
         location_table: &location_table,
@@ -447,12 +442,14 @@ fn get_flow_results<'a, 'tcx>(
 pub(crate) struct BorrowckInferCtxt<'tcx> {
     pub(crate) infcx: InferCtxt<'tcx>,
     pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
+    pub(crate) param_env: ParamEnv<'tcx>,
 }
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
-        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
+        let param_env = tcx.param_env(def_id);
+        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
 
     pub(crate) fn next_region_var<F>(
@@ -531,7 +528,6 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 
 struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 

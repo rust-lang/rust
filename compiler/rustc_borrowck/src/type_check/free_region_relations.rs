@@ -234,7 +234,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // In the new solver, normalize the type-outlives obligation assumptions.
             if self.infcx.next_trait_solver() {
                 match deeply_normalize(
-                    self.infcx.at(&ObligationCause::misc(span, defining_ty_def_id), self.param_env),
+                    self.infcx.at(&ObligationCause::misc(span, defining_ty_def_id), param_env),
                     outlives,
                 ) {
                     Ok(normalized_outlives) => {
@@ -274,15 +274,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             if let Some(c) = constraints_unnorm {
                 constraints.push(c)
             }
-            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
-                .param_env
-                .and(type_op::normalize::Normalize { value: ty })
-                .fully_perform(self.infcx, span)
-                .unwrap_or_else(|guar| TypeOpOutput {
-                    output: Ty::new_error(self.infcx.tcx, guar),
-                    constraints: None,
-                    error_info: None,
-                });
+            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
+                param_env
+                    .and(type_op::normalize::Normalize { value: ty })
+                    .fully_perform(self.infcx, span)
+                    .unwrap_or_else(|guar| TypeOpOutput {
+                        output: Ty::new_error(self.infcx.tcx, guar),
+                        constraints: None,
+                        error_info: None,
+                    });
             if let Some(c) = constraints_normalize {
                 constraints.push(c)
             }
@@ -312,8 +312,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         // Add implied bounds from impl header.
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst) {
             for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-                let result: Result<_, ErrorGuaranteed> = self
-                    .param_env
+                let result: Result<_, ErrorGuaranteed> = param_env
                     .and(type_op::normalize::Normalize { value: ty })
                     .fully_perform(self.infcx, span);
                 let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
