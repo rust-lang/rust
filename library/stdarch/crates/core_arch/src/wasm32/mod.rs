@@ -32,7 +32,7 @@ pub fn unreachable() -> ! {
     crate::intrinsics::abort()
 }
 
-extern "C" {
+extern "C-unwind" {
     #[link_name = "llvm.wasm.throw"]
     fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
 }
