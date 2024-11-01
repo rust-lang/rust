@@ -106,7 +106,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         def_id: LocalDefId,
         item_sp: Span,
         fn_sig: Option<&'tcx hir::FnSig<'tcx>>,
-        is_foreign_item: bool,
         kind: AnnotationKind,
         inherit_deprecation: InheritDeprecation,
         inherit_const_stability: InheritConstStability,
@@ -175,11 +174,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         // implied), check if the function/method is const or the parent impl block is const.
         if let Some(fn_sig) = fn_sig
             && !fn_sig.header.is_const()
-            // We have to exclude foreign items as they might be intrinsics. Sadly we can't check
-            // their ABI; `fn_sig.abi` is *not* correct for foreign functions.
-            && !is_foreign_item
             && const_stab.is_some()
-            && (!self.in_trait_impl || !self.tcx.is_const_fn(def_id.to_def_id()))
         {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
@@ -398,7 +393,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         ctor_def_id,
                         i.span,
                         None,
-                        /* is_foreign_item */ false,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
@@ -417,7 +411,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             i.owner_id.def_id,
             i.span,
             fn_sig,
-            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::Yes,
             const_stab_inherit,
@@ -437,7 +430,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             ti.owner_id.def_id,
             ti.span,
             fn_sig,
-            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -461,7 +453,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             ii.owner_id.def_id,
             ii.span,
             fn_sig,
-            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -477,7 +468,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             var.def_id,
             var.span,
             None,
-            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -488,7 +478,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         ctor_def_id,
                         var.span,
                         None,
-                        /* is_foreign_item */ false,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
@@ -507,7 +496,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             s.def_id,
             s.span,
             None,
-            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -527,7 +515,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             i.owner_id.def_id,
             i.span,
             fn_sig,
-            /* is_foreign_item */ true,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -550,7 +537,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             p.def_id,
             p.span,
             None,
-            /* is_foreign_item */ false,
             kind,
             InheritDeprecation::No,
             InheritConstStability::No,
@@ -712,7 +698,6 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             CRATE_DEF_ID,
             tcx.hir().span(CRATE_HIR_ID),
             None,
-            /* is_foreign_item */ false,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
