@@ -16,7 +16,7 @@ use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedD
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, Term, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use tracing::{debug, instrument};
@@ -975,18 +975,21 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // and the obligation is monomorphic, otherwise passes such as
                     // transmute checking and polymorphic MIR optimizations could
                     // get a result which isn't correct for all monomorphizations.
-                    if obligation.param_env.reveal() == Reveal::All {
-                        // NOTE(eddyb) inference variables can resolve to parameters, so
-                        // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                        let poly_trait_ref = selcx.infcx.resolve_vars_if_possible(trait_ref);
-                        !poly_trait_ref.still_further_specializable()
-                    } else {
-                        debug!(
-                            assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
-                            ?obligation.predicate,
-                            "assemble_candidates_from_impls: not eligible due to default",
-                        );
-                        false
+                    match selcx.infcx.typing_mode(obligation.param_env) {
+                        TypingMode::Coherence | TypingMode::Analysis { .. } => {
+                            debug!(
+                                assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
+                                ?obligation.predicate,
+                                "assemble_candidates_from_impls: not eligible due to default",
+                            );
+                            false
+                        }
+                        TypingMode::PostAnalysis => {
+                            // NOTE(eddyb) inference variables can resolve to parameters, so
+                            // assume `poly_trait_ref` isn't monomorphic, if it contains any.
+                            let poly_trait_ref = selcx.infcx.resolve_vars_if_possible(trait_ref);
+                            !poly_trait_ref.still_further_specializable()
+                        }
                     }
                 }
             }

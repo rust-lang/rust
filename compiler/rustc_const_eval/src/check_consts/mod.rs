@@ -32,14 +32,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
         let def_id = body.source.def_id().expect_local();
         let param_env = tcx.param_env(def_id);
-        Self::new_with_param_env(tcx, body, param_env)
-    }
 
-    pub fn new_with_param_env(
-        tcx: TyCtxt<'tcx>,
-        body: &'mir mir::Body<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
         let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
         ConstCx { body, tcx, param_env, const_kind }
     }
