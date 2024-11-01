@@ -124,7 +124,7 @@ fn build_musl_math(cfg: &Config) {
     // Run configuration steps. Usually done as part of the musl `Makefile`.
     let obj_include = cfg.out_dir.join("musl_obj/include");
     fs::create_dir_all(&obj_include).unwrap();
-    fs::create_dir_all(&obj_include.join("bits")).unwrap();
+    fs::create_dir_all(obj_include.join("bits")).unwrap();
     let sed_stat = Command::new("sed")
         .arg("-f")
         .arg(musl_dir.join("tools/mkalltypes.sed"))

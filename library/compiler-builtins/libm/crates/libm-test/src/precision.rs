@@ -238,7 +238,7 @@ fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Opt
 
     // abs and copysign require signaling NaNs to be propagated, so verify bit equality.
     if actual.to_bits() == expected.to_bits() {
-        return SKIP;
+        SKIP
     } else {
         Some(Err(anyhow::anyhow!("NaNs have different bitpatterns")))
     }

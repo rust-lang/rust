@@ -7,6 +7,7 @@ use std::ffi::{c_char, c_int, c_long};
 /// unsound.
 macro_rules! functions {
     ( $(
+        $( #[$meta:meta] )*
         $pfx_name:ident: $name:ident( $($arg:ident: $aty:ty),+ ) -> $rty:ty;
     )* ) => {
         extern "C" {
@@ -15,6 +16,7 @@ macro_rules! functions {
 
         $(
             // Expose a safe version
+            $( #[$meta] )*
             pub fn $name( $($arg: $aty),+ ) -> $rty {
                 // SAFETY: FFI calls with no preconditions
                 unsafe { $pfx_name( $($arg),+ ) }
@@ -231,8 +233,13 @@ functions! {
     musl_logf: logf(a: f32) -> f32;
     musl_modf: modf(a: f64, b: &mut f64) -> f64;
     musl_modff: modff(a: f32, b: &mut f32) -> f32;
+
+    // FIXME: these need to be unsafe
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     musl_nan: nan(a: *const c_char) -> f64;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
     musl_nanf: nanf(a: *const c_char) -> f32;
+
     musl_nearbyint: nearbyint(a: f64) -> f64;
     musl_nearbyintf: nearbyintf(a: f32) -> f32;
     musl_nextafter: nextafter(a: f64, b: f64) -> f64;

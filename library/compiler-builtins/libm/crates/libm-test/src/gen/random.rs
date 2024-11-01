@@ -37,7 +37,7 @@ static TEST_CASES: LazyLock<CachedInput> = LazyLock::new(|| make_test_cases(NTES
 /// value so tests don't run forever.
 static TEST_CASES_JN: LazyLock<CachedInput> = LazyLock::new(|| {
     // Start with regular test cases
-    let mut cases = (&*TEST_CASES).clone();
+    let mut cases = (*TEST_CASES).clone();
 
     // These functions are extremely slow, limit them
     let ntests_jn = (NTESTS / 1000).max(80);

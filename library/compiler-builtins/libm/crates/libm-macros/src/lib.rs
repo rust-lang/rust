@@ -353,7 +353,7 @@ fn validate(input: &StructuredInput) -> syn::Result<Vec<&'static FunctionInfo>> 
     if !input.skip.is_empty() && input.only.is_some() {
         let e = syn::Error::new(
             input.only_span.unwrap(),
-            format!("only one of `skip` or `only` may be specified"),
+            "only one of `skip` or `only` may be specified",
         );
         return Err(e);
     }

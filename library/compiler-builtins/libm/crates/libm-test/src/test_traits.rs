@@ -214,7 +214,7 @@ macro_rules! impl_int {
     };
 }
 
-fn validate_int<'a, I, Input>(actual: I, expected: I, input: Input, ctx: &CheckCtx) -> TestResult
+fn validate_int<I, Input>(actual: I, expected: I, input: Input, ctx: &CheckCtx) -> TestResult
 where
     I: Int + Hex,
     Input: Hex + fmt::Debug,
@@ -274,7 +274,7 @@ macro_rules! impl_float {
     };
 }
 
-fn validate_float<'a, F, Input>(actual: F, expected: F, input: Input, ctx: &CheckCtx) -> TestResult
+fn validate_float<F, Input>(actual: F, expected: F, input: Input, ctx: &CheckCtx) -> TestResult
 where
     F: Float + Hex,
     Input: Hex + fmt::Debug,
