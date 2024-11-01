@@ -5,19 +5,19 @@ LL | fn polarity() -> impl Sized + ?use<> {}
    |                                ^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `use`
-  --> $DIR/bound-modifiers.rs:9:38
+  --> $DIR/bound-modifiers.rs:7:38
    |
 LL | fn asyncness() -> impl Sized + async use<> {}
    |                                      ^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `use`
-  --> $DIR/bound-modifiers.rs:14:38
+  --> $DIR/bound-modifiers.rs:12:38
    |
 LL | fn constness() -> impl Sized + const use<> {}
    |                                      ^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `use`
-  --> $DIR/bound-modifiers.rs:19:37
+  --> $DIR/bound-modifiers.rs:17:37
    |
 LL | fn binder() -> impl Sized + for<'a> use<> {}
    |                                     ^^^ expected identifier, found keyword
@@ -29,25 +29,25 @@ LL | fn polarity() -> impl Sized + ?use<> {}
    |                                ^^^ not found in this scope
 
 error[E0405]: cannot find trait `r#use` in this scope
-  --> $DIR/bound-modifiers.rs:9:38
+  --> $DIR/bound-modifiers.rs:7:38
    |
 LL | fn asyncness() -> impl Sized + async use<> {}
    |                                      ^^^ not found in this scope
 
 error[E0405]: cannot find trait `r#use` in this scope
-  --> $DIR/bound-modifiers.rs:14:38
+  --> $DIR/bound-modifiers.rs:12:38
    |
 LL | fn constness() -> impl Sized + const use<> {}
    |                                      ^^^ not found in this scope
 
 error[E0405]: cannot find trait `r#use` in this scope
-  --> $DIR/bound-modifiers.rs:19:37
+  --> $DIR/bound-modifiers.rs:17:37
    |
 LL | fn binder() -> impl Sized + for<'a> use<> {}
    |                                     ^^^ not found in this scope
 
 error[E0658]: async closures are unstable
-  --> $DIR/bound-modifiers.rs:9:32
+  --> $DIR/bound-modifiers.rs:7:32
    |
 LL | fn asyncness() -> impl Sized + async use<> {}
    |                                ^^^^^
@@ -58,7 +58,7 @@ LL | fn asyncness() -> impl Sized + async use<> {}
    = help: to use an async block, remove the `||`: `async {`
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/bound-modifiers.rs:14:32
+  --> $DIR/bound-modifiers.rs:12:32
    |
 LL | fn constness() -> impl Sized + const use<> {}
    |                                ^^^^^
@@ -67,21 +67,7 @@ LL | fn constness() -> impl Sized + const use<> {}
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/bound-modifiers.rs:3:31
-   |
-LL | fn polarity() -> impl Sized + ?use<> {}
-   |                               ^^^^^^
-
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/bound-modifiers.rs:3:31
-   |
-LL | fn polarity() -> impl Sized + ?use<> {}
-   |                               ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 10 previous errors; 2 warnings emitted
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0405, E0658.
 For more information about an error, try `rustc --explain E0405`.

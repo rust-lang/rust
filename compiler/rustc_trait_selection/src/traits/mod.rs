@@ -411,7 +411,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal());
-    if !normalize::needs_normalization(&elaborated_env, unnormalized_env.reveal()) {
+    if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
 

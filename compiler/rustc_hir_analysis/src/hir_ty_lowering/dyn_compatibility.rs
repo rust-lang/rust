@@ -51,7 +51,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 hir::BoundConstness::Never,
-                ty::PredicatePolarity::Positive,
+                hir::BoundPolarity::Positive,
                 dummy_self,
                 &mut bounds,
                 PredicateFilter::SelfOnly,

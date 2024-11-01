@@ -5,6 +5,7 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef};
@@ -15,7 +16,6 @@ use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
-use rustc_target::abi::VariantIdx;
 use tracing::{debug, instrument};
 
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};

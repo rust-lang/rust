@@ -268,7 +268,7 @@ lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edi
 
 lint_extern_without_abi = extern declarations without an explicit ABI are deprecated
     .label = ABI should be specified here
-    .help = the default ABI is {$default_abi}
+    .suggestion = explicitly specify the {$default_abi} ABI
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement

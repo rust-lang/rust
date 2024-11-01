@@ -773,6 +773,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
+                self.typing_mode(),
                 self.param_env,
                 self.layout_of(normalized_place_ty)?,
                 op.layout,
@@ -832,7 +833,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             })
         };
         let layout =
-            from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty).into())?;
+            from_known_layout(self.tcx, self.typing_mode(), self.param_env, layout, || {
+                self.layout_of(ty).into()
+            })?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.

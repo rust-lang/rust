@@ -3,8 +3,6 @@
 fn polarity() -> impl Sized + ?use<> {}
 //~^ ERROR expected identifier, found keyword `use`
 //~| ERROR cannot find trait `r#use` in this scope
-//~| WARN relaxing a default bound only does something for `?Sized`
-//~| WARN relaxing a default bound only does something for `?Sized`
 
 fn asyncness() -> impl Sized + async use<> {}
 //~^ ERROR expected identifier, found keyword `use`

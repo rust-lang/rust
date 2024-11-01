@@ -39,7 +39,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingMode,
     UserTypeAnnotationIndex,
 };
 
@@ -450,6 +450,15 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.basic_blocks.as_mut()
+    }
+
+    pub fn typing_mode(&self, _tcx: TyCtxt<'tcx>) -> TypingMode<'tcx> {
+        match self.phase {
+            // FIXME(#132279): the MIR is quite clearly inside of a body, so we
+            // should instead reveal opaques defined by that body here.
+            MirPhase::Built | MirPhase::Analysis(_) => TypingMode::non_body_analysis(),
+            MirPhase::Runtime(_) => TypingMode::PostAnalysis,
+        }
     }
 
     #[inline]
