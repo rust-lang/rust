@@ -322,7 +322,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             // Set the appropriate flag based on ABI
             // This needs to match LLVM `RISCVELFStreamer.cpp`
             match &*sess.target.llvm_abiname {
-                "" | "ilp32" | "lp64" => (),
+                "ilp32" | "lp64" => (),
                 "ilp32f" | "lp64f" => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
                 "ilp32d" | "lp64d" => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
