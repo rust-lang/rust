@@ -1404,6 +1404,7 @@ impl<'a> Parser<'a> {
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
+                || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
                 || this.check_const_closure()
             {
@@ -2395,7 +2396,7 @@ impl<'a> Parser<'a> {
         Ok(closure)
     }
 
-    /// Parses an optional `move` prefix to a closure-like construct.
+    /// Parses an optional `move` or `use` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(exp!(Move)) {
             let move_kw_span = self.prev_token.span;
@@ -2407,6 +2408,16 @@ impl<'a> Parser<'a> {
                     .create_err(errors::AsyncMoveOrderIncorrect { span: move_async_span }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
+            }
+        } else if self.eat_keyword(exp!(Use)) {
+            let use_kw_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
+            // Check for `use async` and recover
+            if self.check_keyword(exp!(Async)) {
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                Err(self.dcx().create_err(errors::AsyncUseOrderIncorrect { span: use_async_span }))
+            } else {
+                Ok(CaptureBy::Use { use_kw: use_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -3422,7 +3433,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move, kw::Use])
                     && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })

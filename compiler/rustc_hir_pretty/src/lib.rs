@@ -2305,6 +2305,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
             hir::CaptureBy::Value { .. } => self.word_space("move"),
+            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
         }
     }

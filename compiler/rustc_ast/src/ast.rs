@@ -1762,6 +1762,11 @@ pub enum CaptureBy {
     },
     /// `move` keyword was not specified.
     Ref,
+    /// `use |x| y + x`.
+    Use {
+        /// The span of the `use` keyword.
+        use_kw: Span,
+    },
 }
 
 /// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.

@@ -1290,7 +1290,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp!(Static)) {
             // Check if this could be a closure.
             !self.look_ahead(1, |token| {
-                if token.is_keyword(kw::Move) {
+                if token.is_keyword(kw::Move) || token.is_keyword(kw::Use) {
                     return true;
                 }
                 matches!(token.kind, token::Or | token::OrOr)

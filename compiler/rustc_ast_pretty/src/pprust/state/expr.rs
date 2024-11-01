@@ -893,6 +893,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy) {
         match capture_clause {
             ast::CaptureBy::Value { .. } => self.word_space("move"),
+            ast::CaptureBy::Use { .. } => self.word_space("use"),
             ast::CaptureBy::Ref => {}
         }
     }

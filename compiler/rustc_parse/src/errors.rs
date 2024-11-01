@@ -1513,6 +1513,14 @@ pub(crate) struct AsyncMoveOrderIncorrect {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_use_order_incorrect)]
+pub(crate) struct AsyncUseOrderIncorrect {
+    #[primary_span]
+    #[suggestion(style = "verbose", code = "async use", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_double_colon_in_bound)]
 pub(crate) struct DoubleColonInBound {
     #[primary_span]
