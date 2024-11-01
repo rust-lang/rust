@@ -2,29 +2,27 @@
 
 use std::ffi::CString;
 
-use libc::c_uint;
-
 use crate::common::AsCCharPtr;
 use crate::coverageinfo::ffi;
 use crate::llvm;
 
 pub(crate) fn covmap_var_name() -> CString {
     CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
+        llvm::LLVMRustCoverageWriteCovmapVarNameToString(s);
     }))
     .expect("covmap variable name should not contain NUL")
 }
 
 pub(crate) fn covmap_section_name(llmod: &llvm::Module) -> CString {
     CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMapSectionNameToString(llmod, s);
+        llvm::LLVMRustCoverageWriteCovmapSectionNameToString(llmod, s);
     }))
     .expect("covmap section name should not contain NUL")
 }
 
 pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
     CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteFuncSectionNameToString(llmod, s);
+        llvm::LLVMRustCoverageWriteCovfunSectionNameToString(llmod, s);
     }))
     .expect("covfun section name should not contain NUL")
 }
@@ -51,7 +49,7 @@ pub(crate) fn write_filenames_to_buffer<'a>(
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
     llvm::build_byte_buffer(|buffer| unsafe {
-        llvm::LLVMRustCoverageWriteFilenamesSectionToBuffer(
+        llvm::LLVMRustCoverageWriteFilenamesToBuffer(
             pointers.as_ptr(),
             pointers.len(),
             lengths.as_ptr(),
@@ -70,19 +68,19 @@ pub(crate) fn write_function_mappings_to_buffer(
     mcdc_decision_regions: &[ffi::MCDCDecisionRegion],
 ) -> Vec<u8> {
     llvm::build_byte_buffer(|buffer| unsafe {
-        llvm::LLVMRustCoverageWriteMappingToBuffer(
+        llvm::LLVMRustCoverageWriteFunctionMappingsToBuffer(
             virtual_file_mapping.as_ptr(),
-            virtual_file_mapping.len() as c_uint,
+            virtual_file_mapping.len(),
             expressions.as_ptr(),
-            expressions.len() as c_uint,
+            expressions.len(),
             code_regions.as_ptr(),
-            code_regions.len() as c_uint,
+            code_regions.len(),
             branch_regions.as_ptr(),
-            branch_regions.len() as c_uint,
+            branch_regions.len(),
             mcdc_branch_regions.as_ptr(),
-            mcdc_branch_regions.len() as c_uint,
+            mcdc_branch_regions.len(),
             mcdc_decision_regions.as_ptr(),
-            mcdc_decision_regions.len() as c_uint,
+            mcdc_decision_regions.len(),
             buffer,
         )
     })
@@ -91,7 +89,7 @@ pub(crate) fn write_function_mappings_to_buffer(
 /// Hashes some bytes into a 64-bit hash, via LLVM's `IndexedInstrProf::ComputeHash`,
 /// as required for parts of the LLVM coverage mapping format.
 pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
-    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_c_char_ptr(), bytes.len()) }
+    unsafe { llvm::LLVMRustCoverageHashBytes(bytes.as_c_char_ptr(), bytes.len()) }
 }
 
 /// Returns LLVM's `coverage::CovMapVersion::CurrentVersion` (CoverageMapping.h)
