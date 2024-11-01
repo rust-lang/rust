@@ -16,7 +16,7 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |             |
    |             doesn't have a size known at compile-time
    |
-   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`, which is required by `(usize, (dyn Trait + 'static)): Sized`
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
@@ -38,7 +38,7 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |             |
    |             doesn't have a size known at compile-time
    |
-   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`, which is required by `(usize, (dyn Trait + 'static)): Sized`
+   = help: within `(usize, (dyn Trait + 'static))`, the trait `Sized` is not implemented for `(dyn Trait + 'static)`
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 

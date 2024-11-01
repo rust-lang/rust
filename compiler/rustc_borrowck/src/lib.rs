@@ -34,7 +34,7 @@ use rustc_infer::infer::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{
@@ -193,9 +193,7 @@ fn do_mir_borrowck<'tcx>(
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, Some("borrowck"))
         .into_results_cursor(body);
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def).is_fn_or_closure();
@@ -243,18 +241,21 @@ fn do_mir_borrowck<'tcx>(
     // usage significantly on some benchmarks.
     drop(flow_inits);
 
-    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
-    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data)
-        .into_engine(tcx, body)
-        .pass_name("borrowck")
-        .iterate_to_fixpoint();
+    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
 
     let movable_coroutine =
         // The first argument is the coroutine type passed by value
@@ -440,7 +441,7 @@ pub struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let infcx = tcx.infer_ctxt().with_opaque_type_inference(def_id).build();
+        let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
     }
 

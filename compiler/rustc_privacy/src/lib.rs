@@ -139,7 +139,7 @@ where
             }
             ty::ClauseKind::HostEffect(pred) => {
                 try_visit!(self.visit_trait(pred.trait_ref));
-                pred.host.visit_with(self)
+                pred.constness.visit_with(self)
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_term: projection_ty,

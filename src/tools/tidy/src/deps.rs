@@ -24,6 +24,7 @@ const LICENSES: &[&str] = &[
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
     "MIT / Apache-2.0",
+    "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
@@ -100,7 +101,6 @@ const EXCEPTIONS: ExceptionList = &[
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
-    ("snap", "BSD-3-Clause"),                                // rustc
     ("wasi-preview1-component-adapter-provider", "Apache-2.0 WITH LLVM-exception"), // rustc
     // tidy-alphabetical-end
 ];
@@ -162,7 +162,6 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
-    ("snap", "BSD-3-Clause"),
     // tidy-alphabetical-end
 ];
 
@@ -390,7 +389,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sharded-slab",
     "shlex",
     "smallvec",
-    "snap",
     "stable_deref_trait",
     "stacker",
     "static_assertions",

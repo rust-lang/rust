@@ -10,7 +10,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(tcx, cx.param_env) {
-        assert!(layout.abi.is_uninhabited());
+        assert!(layout.is_uninhabited());
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
@@ -66,12 +66,12 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the ABI mandated alignment and size.
-        let align = layout.abi.inherent_align(cx).map(|align| align.abi);
-        let size = layout.abi.inherent_size(cx);
+        let align = layout.backend_repr.inherent_align(cx).map(|align| align.abi);
+        let size = layout.backend_repr.inherent_size(cx);
         let Some((align, size)) = align.zip(size) else {
             assert_matches!(
-                layout.layout.abi(),
-                Abi::Uninhabited | Abi::Aggregate { .. },
+                layout.layout.backend_repr(),
+                BackendRepr::Uninhabited | BackendRepr::Memory { .. },
                 "ABI unexpectedly missing alignment and/or size in {layout:#?}"
             );
             return;
@@ -88,12 +88,12 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
         );
 
         // Verify per-ABI invariants
-        match layout.layout.abi() {
-            Abi::Scalar(_) => {
+        match layout.layout.backend_repr() {
+            BackendRepr::Scalar(_) => {
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
-                    matches!(inner.layout.abi(), Abi::Scalar(_)),
+                    matches!(inner.layout.backend_repr(), BackendRepr::Scalar(_)),
                     "`Scalar` type {} is newtype around non-`Scalar` type {}",
                     layout.ty,
                     inner.ty
@@ -132,7 +132,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                             "`Scalar` field with bad align in {inner:#?}",
                         );
                         assert!(
-                            matches!(field.abi, Abi::Scalar(_)),
+                            matches!(field.backend_repr, BackendRepr::Scalar(_)),
                             "`Scalar` field with bad ABI in {inner:#?}",
                         );
                     }
@@ -141,11 +141,11 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                     }
                 }
             }
-            Abi::ScalarPair(scalar1, scalar2) => {
+            BackendRepr::ScalarPair(scalar1, scalar2) => {
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
-                    matches!(inner.layout.abi(), Abi::ScalarPair(..)),
+                    matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair(..)),
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
                     layout.ty,
                     inner.ty
@@ -208,8 +208,8 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                     "`ScalarPair` first field with bad align in {inner:#?}",
                 );
                 assert_matches!(
-                    field1.abi,
-                    Abi::Scalar(_),
+                    field1.backend_repr,
+                    BackendRepr::Scalar(_),
                     "`ScalarPair` first field with bad ABI in {inner:#?}",
                 );
                 let field2_offset = size1.align_to(align2);
@@ -226,16 +226,16 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                     "`ScalarPair` second field with bad align in {inner:#?}",
                 );
                 assert_matches!(
-                    field2.abi,
-                    Abi::Scalar(_),
+                    field2.backend_repr,
+                    BackendRepr::Scalar(_),
                     "`ScalarPair` second field with bad ABI in {inner:#?}",
                 );
             }
-            Abi::Vector { element, .. } => {
+            BackendRepr::Vector { element, .. } => {
                 assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
-            Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
+            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {} // Nothing to check.
         }
     }
 
@@ -262,9 +262,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
                 )
             }
             // Skip empty variants.
-            if variant.size == Size::ZERO
-                || variant.fields.count() == 0
-                || variant.abi.is_uninhabited()
+            if variant.size == Size::ZERO || variant.fields.count() == 0 || variant.is_uninhabited()
             {
                 // These are never actually accessed anyway, so we can skip the coherence check
                 // for them. They also fail that check, since they have
@@ -276,13 +274,13 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
             // The top-level ABI and the ABI of the variants should be coherent.
             let scalar_coherent =
                 |s1: Scalar, s2: Scalar| s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx);
-            let abi_coherent = match (layout.abi, variant.abi) {
-                (Abi::Scalar(s1), Abi::Scalar(s2)) => scalar_coherent(s1, s2),
-                (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
+            let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
+                (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),
+                (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
                     scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
                 }
-                (Abi::Uninhabited, _) => true,
-                (Abi::Aggregate { .. }, _) => true,
+                (BackendRepr::Uninhabited, _) => true,
+                (BackendRepr::Memory { .. }, _) => true,
                 _ => false,
             };
             if !abi_coherent {

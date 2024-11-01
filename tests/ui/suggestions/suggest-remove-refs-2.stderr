@@ -4,7 +4,7 @@ error[E0277]: `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterat
 LL |     for (i, _) in & & & & &v.iter().enumerate() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`, which is required by `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
    = note: required for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
 help: consider removing 5 leading `&`-references
    |

@@ -113,7 +113,7 @@ fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
     vec![]
 }
 
-fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
+fn simple<'tcx>(kind: Adjust) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
     move |target| vec![Adjustment { kind, target }]
 }
 
@@ -484,14 +484,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
-        let ty::Ref(r_borrow, _, _) = ty.kind() else {
+        let ty::Ref(..) = ty.kind() else {
             span_bug!(span, "expected a ref type, got {:?}", ty);
         };
         let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
-        adjustments.push(Adjustment {
-            kind: Adjust::Borrow(AutoBorrow::Ref(*r_borrow, mutbl)),
-            target: ty,
-        });
+        adjustments.push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: ty });
 
         debug!("coerce_borrowed_pointer: succeeded ty={:?} adjustments={:?}", ty, adjustments);
 
@@ -547,7 +544,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
                 Some((Adjustment { kind: Adjust::Deref(None), target: ty_a }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                     target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
                 }))
             }
@@ -827,7 +824,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
 
         let (pin, a_region, a_ty, mut_a) = extract_pin_mut(a)?;
-        let (_, b_region, _b_ty, mut_b) = extract_pin_mut(b)?;
+        let (_, _, _b_ty, mut_b) = extract_pin_mut(b)?;
 
         coerce_mutbls(mut_a, mut_b)?;
 
@@ -841,7 +838,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
         self.unify_and(a, b, |_inner_ty| {
-            vec![Adjustment { kind: Adjust::ReborrowPin(b_region, mut_b), target: b }]
+            vec![Adjustment { kind: Adjust::ReborrowPin(mut_b), target: b }]
         })
     }
 
@@ -1321,7 +1318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let noop = match self.typeck_results.borrow().expr_adjustments(expr) {
                 &[
                     Adjustment { kind: Adjust::Deref(_), .. },
-                    Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. },
+                    Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl_adj)), .. },
                 ] => {
                     match *self.node_ty(expr.hir_id).kind() {
                         ty::Ref(_, _, mt_orig) => {

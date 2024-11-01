@@ -83,8 +83,8 @@ impl<'a> Layout<'a> {
         &self.0.0.variants
     }
 
-    pub fn abi(self) -> Abi {
-        self.0.0.abi
+    pub fn backend_repr(self) -> BackendRepr {
+        self.0.0.backend_repr
     }
 
     pub fn largest_niche(self) -> Option<Niche> {
@@ -114,7 +114,7 @@ impl<'a> Layout<'a> {
     pub fn is_pointer_like(self, data_layout: &TargetDataLayout) -> bool {
         self.size() == data_layout.pointer_size
             && self.align().abi == data_layout.pointer_align.abi
-            && matches!(self.abi(), Abi::Scalar(Scalar::Initialized { .. }))
+            && matches!(self.backend_repr(), BackendRepr::Scalar(Scalar::Initialized { .. }))
     }
 }
 
@@ -196,9 +196,9 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
-        match self.abi {
-            Abi::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
-            Abi::Aggregate { .. } => {
+        match self.backend_repr {
+            BackendRepr::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
+            BackendRepr::Memory { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
                 } else {

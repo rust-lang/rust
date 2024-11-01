@@ -139,7 +139,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
 
         // TAITs outside their defining scopes are ignored.
-        let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
+        let origin = self.tcx.local_opaque_ty_origin(alias_ty.def_id.expect_local());
         trace!(?origin);
         match origin {
             rustc_hir::OpaqueTyOrigin::FnReturn { .. }

@@ -44,7 +44,7 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause() {
             if host_clause.def_id() == goal.predicate.def_id()
-                && host_clause.host().satisfies(goal.predicate.host)
+                && host_clause.constness().satisfies(goal.predicate.constness)
             {
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
@@ -91,7 +91,7 @@ where
             cx,
             cx.implied_const_bounds(alias_ty.def_id)
                 .iter_instantiated(cx, alias_ty.args)
-                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.host)),
+                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
@@ -107,7 +107,7 @@ where
                             .map(|trait_ref| {
                                 goal.with(
                                     cx,
-                                    trait_ref.to_host_effect_clause(cx, goal.predicate.host),
+                                    trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
                                 )
                             }),
                     );
@@ -163,7 +163,10 @@ where
                 .const_conditions(impl_def_id)
                 .iter_instantiated(cx, impl_args)
                 .map(|bound_trait_ref| {
-                    goal.with(cx, bound_trait_ref.to_host_effect_clause(cx, goal.predicate.host))
+                    goal.with(
+                        cx,
+                        bound_trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
+                    )
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 

@@ -14,7 +14,7 @@ use rustc_target::abi::Size;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::coverageinfo::map_data::FunctionCoverageCollector;
 use crate::llvm;
 
@@ -152,7 +152,12 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        let mut coverage_map = bx.coverage_cx().function_coverage_map.borrow_mut();
+        // FIXME(#132395): Unwrapping `coverage_cx` here has led to ICEs in the
+        // wild, so keep this early-return until we understand why.
+        let mut coverage_map = match bx.coverage_cx {
+            Some(ref cx) => cx.function_coverage_map.borrow_mut(),
+            None => return,
+        };
         let func_coverage = coverage_map
             .entry(instance)
             .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
@@ -236,7 +241,7 @@ fn create_pgo_func_name_var<'ll, 'tcx>(
     unsafe {
         llvm::LLVMRustCoverageCreatePGOFuncNameVar(
             llfn,
-            mangled_fn_name.as_ptr().cast(),
+            mangled_fn_name.as_c_char_ptr(),
             mangled_fn_name.len(),
         )
     }
@@ -248,7 +253,7 @@ pub(crate) fn write_filenames_section_to_buffer<'a>(
 ) {
     let (pointers, lengths) = filenames
         .into_iter()
-        .map(|s: &str| (s.as_ptr().cast(), s.len()))
+        .map(|s: &str| (s.as_c_char_ptr(), s.len()))
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
     unsafe {
@@ -291,7 +296,7 @@ pub(crate) fn write_mapping_to_buffer(
 }
 
 pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
-    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_ptr().cast(), bytes.len()) }
+    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_c_char_ptr(), bytes.len()) }
 }
 
 pub(crate) fn mapping_version() -> u32 {

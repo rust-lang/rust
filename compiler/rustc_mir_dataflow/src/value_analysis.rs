@@ -1,400 +1,20 @@
-//! This module provides a framework on top of the normal MIR dataflow framework to simplify the
-//! implementation of analyses that track information about the values stored in certain places.
-//! We are using the term "place" here to refer to a `mir::Place` (a place expression) instead of
-//! an `interpret::Place` (a memory location).
-//!
-//! The default methods of [`ValueAnalysis`] (prefixed with `super_` instead of `handle_`)
-//! provide some behavior that should be valid for all abstract domains that are based only on the
-//! value stored in a certain place. On top of these default rules, an implementation should
-//! override some of the `handle_` methods. For an example, see `ConstAnalysis`.
-//!
-//! An implementation must also provide a [`Map`]. Before the analysis begins, all places that
-//! should be tracked during the analysis must be registered. During the analysis, no new places
-//! can be registered. The [`State`] can be queried to retrieve the abstract value stored for a
-//! certain place by passing the map.
-//!
-//! This framework is currently experimental. Originally, it supported shared references and enum
-//! variants. However, it was discovered that both of these were unsound, and especially references
-//! had subtle but serious issues. In the future, they could be added back in, but we should clarify
-//! the rules for optimizations that rely on the aliasing model first.
-//!
-//!
-//! # Notes
-//!
-//! - The bottom state denotes uninitialized memory. Because we are only doing a sound approximation
-//! of the actual execution, we can also use this state for places where access would be UB.
-//!
-//! - The assignment logic in `State::insert_place_idx` assumes that the places are non-overlapping,
-//! or identical. Note that this refers to place expressions, not memory locations.
-//!
-//! - Currently, places that have their reference taken cannot be tracked. Although this would be
-//! possible, it has to rely on some aliasing model, which we are not ready to commit to yet.
-//! Because of that, we can assume that the only way to change the value behind a tracked place is
-//! by direct assignment.
-
-use std::assert_matches::assert_matches;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::bug;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::debug;
 
-use crate::fmt::DebugWithContext;
+use crate::JoinSemiLattice;
 use crate::lattice::{HasBottom, HasTop};
-use crate::{Analysis, JoinSemiLattice, SwitchIntEdgeEffects};
-
-pub trait ValueAnalysis<'tcx> {
-    /// For each place of interest, the analysis tracks a value of the given type.
-    type Value: Clone + JoinSemiLattice + HasBottom + HasTop + Debug;
-
-    const NAME: &'static str;
-
-    fn map(&self) -> &Map<'tcx>;
-
-    fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<Self::Value>) {
-        self.super_statement(statement, state)
-    }
-
-    fn super_statement(&self, statement: &Statement<'tcx>, state: &mut State<Self::Value>) {
-        match &statement.kind {
-            StatementKind::Assign(box (place, rvalue)) => {
-                self.handle_assign(*place, rvalue, state);
-            }
-            StatementKind::SetDiscriminant { box place, variant_index } => {
-                self.handle_set_discriminant(*place, *variant_index, state);
-            }
-            StatementKind::Intrinsic(box intrinsic) => {
-                self.handle_intrinsic(intrinsic, state);
-            }
-            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // StorageLive leaves the local in an uninitialized state.
-                // StorageDead makes it UB to access the local afterwards.
-                state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::BOTTOM);
-            }
-            StatementKind::Deinit(box place) => {
-                // Deinit makes the place uninitialized.
-                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
-            }
-            StatementKind::Retag(..) => {
-                // We don't track references.
-            }
-            StatementKind::ConstEvalCounter
-            | StatementKind::Nop
-            | StatementKind::FakeRead(..)
-            | StatementKind::PlaceMention(..)
-            | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..) => (),
-        }
-    }
-
-    fn handle_set_discriminant(
-        &self,
-        place: Place<'tcx>,
-        variant_index: VariantIdx,
-        state: &mut State<Self::Value>,
-    ) {
-        self.super_set_discriminant(place, variant_index, state)
-    }
-
-    fn super_set_discriminant(
-        &self,
-        place: Place<'tcx>,
-        _variant_index: VariantIdx,
-        state: &mut State<Self::Value>,
-    ) {
-        state.flood_discr(place.as_ref(), self.map());
-    }
-
-    fn handle_intrinsic(
-        &self,
-        intrinsic: &NonDivergingIntrinsic<'tcx>,
-        state: &mut State<Self::Value>,
-    ) {
-        self.super_intrinsic(intrinsic, state);
-    }
-
-    fn super_intrinsic(
-        &self,
-        intrinsic: &NonDivergingIntrinsic<'tcx>,
-        _state: &mut State<Self::Value>,
-    ) {
-        match intrinsic {
-            NonDivergingIntrinsic::Assume(..) => {
-                // Could use this, but ignoring it is sound.
-            }
-            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
-                dst: _,
-                src: _,
-                count: _,
-            }) => {
-                // This statement represents `*dst = *src`, `count` times.
-            }
-        }
-    }
-
-    fn handle_assign(
-        &self,
-        target: Place<'tcx>,
-        rvalue: &Rvalue<'tcx>,
-        state: &mut State<Self::Value>,
-    ) {
-        self.super_assign(target, rvalue, state)
-    }
-
-    fn super_assign(
-        &self,
-        target: Place<'tcx>,
-        rvalue: &Rvalue<'tcx>,
-        state: &mut State<Self::Value>,
-    ) {
-        let result = self.handle_rvalue(rvalue, state);
-        state.assign(target.as_ref(), result, self.map());
-    }
-
-    fn handle_rvalue(
-        &self,
-        rvalue: &Rvalue<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
-        self.super_rvalue(rvalue, state)
-    }
-
-    fn super_rvalue(
-        &self,
-        rvalue: &Rvalue<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
-        match rvalue {
-            Rvalue::Use(operand) => self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
-            Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
-                // We don't track such places.
-                ValueOrPlace::TOP
-            }
-            Rvalue::Repeat(..)
-            | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Len(..)
-            | Rvalue::Cast(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Aggregate(..)
-            | Rvalue::ShallowInitBox(..) => {
-                // No modification is possible through these r-values.
-                ValueOrPlace::TOP
-            }
-        }
-    }
-
-    fn handle_operand(
-        &self,
-        operand: &Operand<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
-        self.super_operand(operand, state)
-    }
-
-    fn super_operand(
-        &self,
-        operand: &Operand<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
-        match operand {
-            Operand::Constant(box constant) => {
-                ValueOrPlace::Value(self.handle_constant(constant, state))
-            }
-            Operand::Copy(place) | Operand::Move(place) => {
-                // On move, we would ideally flood the place with bottom. But with the current
-                // framework this is not possible (similar to `InterpCx::eval_operand`).
-                self.map()
-                    .find(place.as_ref())
-                    .map(ValueOrPlace::Place)
-                    .unwrap_or(ValueOrPlace::TOP)
-            }
-        }
-    }
-
-    fn handle_constant(
-        &self,
-        constant: &ConstOperand<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> Self::Value {
-        self.super_constant(constant, state)
-    }
-
-    fn super_constant(
-        &self,
-        _constant: &ConstOperand<'tcx>,
-        _state: &mut State<Self::Value>,
-    ) -> Self::Value {
-        Self::Value::TOP
-    }
-
-    /// The effect of a successful function call return should not be
-    /// applied here, see [`Analysis::apply_terminator_effect`].
-    fn handle_terminator<'mir>(
-        &self,
-        terminator: &'mir Terminator<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        self.super_terminator(terminator, state)
-    }
-
-    fn super_terminator<'mir>(
-        &self,
-        terminator: &'mir Terminator<'tcx>,
-        state: &mut State<Self::Value>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        match &terminator.kind {
-            TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
-                // Effect is applied by `handle_call_return`.
-            }
-            TerminatorKind::Drop { place, .. } => {
-                state.flood_with(place.as_ref(), self.map(), Self::Value::BOTTOM);
-            }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
-            }
-            TerminatorKind::SwitchInt { discr, targets } => {
-                return self.handle_switch_int(discr, targets, state);
-            }
-            TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): determine if we need to do something here (probably not)
-            }
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                // These terminators have no effect on the analysis.
-            }
-        }
-        terminator.edges()
-    }
-
-    fn handle_call_return(
-        &self,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-        state: &mut State<Self::Value>,
-    ) {
-        self.super_call_return(return_places, state)
-    }
-
-    fn super_call_return(
-        &self,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-        state: &mut State<Self::Value>,
-    ) {
-        return_places.for_each(|place| {
-            state.flood(place.as_ref(), self.map());
-        })
-    }
-
-    fn handle_switch_int<'mir>(
-        &self,
-        discr: &'mir Operand<'tcx>,
-        targets: &'mir SwitchTargets,
-        state: &mut State<Self::Value>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        self.super_switch_int(discr, targets, state)
-    }
-
-    fn super_switch_int<'mir>(
-        &self,
-        discr: &'mir Operand<'tcx>,
-        targets: &'mir SwitchTargets,
-        _state: &mut State<Self::Value>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        TerminatorEdges::SwitchInt { discr, targets }
-    }
-
-    fn wrap(self) -> ValueAnalysisWrapper<Self>
-    where
-        Self: Sized,
-    {
-        ValueAnalysisWrapper(self)
-    }
-}
-
-pub struct ValueAnalysisWrapper<T>(pub T);
-
-impl<'tcx, T: ValueAnalysis<'tcx>> Analysis<'tcx> for ValueAnalysisWrapper<T> {
-    type Domain = State<T::Value>;
-
-    const NAME: &'static str = T::NAME;
-
-    fn bottom_value(&self, _body: &Body<'tcx>) -> Self::Domain {
-        State::Unreachable
-    }
-
-    fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
-        // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
-        assert_matches!(state, State::Unreachable);
-        *state = State::new_reachable();
-        for arg in body.args_iter() {
-            state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());
-        }
-    }
-
-    fn apply_statement_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        statement: &Statement<'tcx>,
-        _location: Location,
-    ) {
-        if state.is_reachable() {
-            self.0.handle_statement(statement, state);
-        }
-    }
-
-    fn apply_terminator_effect<'mir>(
-        &mut self,
-        state: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
-        _location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        if state.is_reachable() {
-            self.0.handle_terminator(terminator, state)
-        } else {
-            TerminatorEdges::None
-        }
-    }
-
-    fn apply_call_return_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        _block: BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        if state.is_reachable() {
-            self.0.handle_call_return(return_places, state)
-        }
-    }
-
-    fn apply_switch_int_edge_effects(
-        &mut self,
-        _block: BasicBlock,
-        _discr: &Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
-    ) {
-    }
-}
 
 rustc_index::newtype_index!(
     /// This index uniquely identifies a place.
@@ -464,7 +84,7 @@ impl<V: JoinSemiLattice + Clone + HasBottom> JoinSemiLattice for StateData<V> {
     }
 }
 
-/// The dataflow state for an instance of [`ValueAnalysis`].
+/// Dataflow state.
 ///
 /// Every instance specifies a lattice that represents the possible values of a single tracked
 /// place. If we call this lattice `V` and set of tracked places `P`, then a [`State`] is an
@@ -514,7 +134,7 @@ impl<V: Clone + HasBottom> State<V> {
         }
     }
 
-    fn is_reachable(&self) -> bool {
+    pub fn is_reachable(&self) -> bool {
         matches!(self, State::Reachable(_))
     }
 
@@ -858,7 +478,7 @@ impl<'tcx> Map<'tcx> {
             // Allocate a value slot if it doesn't have one, and the user requested one.
             assert!(place_info.value_index.is_none());
             if let Ok(layout) = tcx.layout_of(param_env.and(place_info.ty))
-                && layout.abi.is_scalar()
+                && layout.backend_repr.is_scalar()
             {
                 place_info.value_index = Some(self.value_count.into());
                 self.value_count += 1;
@@ -1317,34 +937,6 @@ pub fn excluded_locals(body: &Body<'_>) -> BitSet<Local> {
     collector.result
 }
 
-/// This is used to visualize the dataflow analysis.
-impl<'tcx, T> DebugWithContext<ValueAnalysisWrapper<T>> for State<T::Value>
-where
-    T: ValueAnalysis<'tcx>,
-    T::Value: Debug,
-{
-    fn fmt_with(&self, ctxt: &ValueAnalysisWrapper<T>, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            State::Reachable(values) => debug_with_context(values, None, ctxt.0.map(), f),
-            State::Unreachable => write!(f, "unreachable"),
-        }
-    }
-
-    fn fmt_diff_with(
-        &self,
-        old: &Self,
-        ctxt: &ValueAnalysisWrapper<T>,
-        f: &mut Formatter<'_>,
-    ) -> std::fmt::Result {
-        match (self, old) {
-            (State::Reachable(this), State::Reachable(old)) => {
-                debug_with_context(this, Some(old), ctxt.0.map(), f)
-            }
-            _ => Ok(()), // Consider printing something here.
-        }
-    }
-}
-
 fn debug_with_context_rec<V: Debug + Eq + HasBottom>(
     place: PlaceIndex,
     place_str: &str,
@@ -1391,7 +983,7 @@ fn debug_with_context_rec<V: Debug + Eq + HasBottom>(
     Ok(())
 }
 
-fn debug_with_context<V: Debug + Eq + HasBottom>(
+pub fn debug_with_context<V: Debug + Eq + HasBottom>(
     new: &StateData<V>,
     old: Option<&StateData<V>>,
     map: &Map<'_>,

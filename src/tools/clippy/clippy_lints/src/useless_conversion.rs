@@ -114,7 +114,7 @@ fn into_iter_bound<'tcx>(
                     if !cx
                         .tcx
                         .infer_ctxt()
-                        .build()
+                        .build(cx.typing_mode())
                         .predicate_must_hold_modulo_regions(&obligation)
                     {
                         return None;

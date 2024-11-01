@@ -10,10 +10,17 @@
 
 // But should fire on non-binary crates.
 
-//@[cdylib_] ignore-musl (dylibs are not supported)
-//@[dylib_] ignore-musl (dylibs are not supported)
-//@[dylib_] ignore-wasm (dylib is not supported)
-//@[proc_macro_] ignore-wasm (dylib is not supported)
+// FIXME(#132309): dylib crate type is not supported on wasm; we need a proper
+// supports-crate-type directive. Also, needs-dynamic-linking should rule out
+// musl since it supports neither dylibs nor cdylibs.
+//@[dylib_] ignore-wasm
+//@[dylib_] ignore-musl
+//@[cdylib_] ignore-musl
+
+//@[dylib_] needs-dynamic-linking
+//@[cdylib_] needs-dynamic-linking
+//@[proc_macro_] force-host
+//@[proc_macro_] no-prefer-dynamic
 
 //@[cdylib_] compile-flags: --crate-type=cdylib
 //@[dylib_] compile-flags: --crate-type=dylib

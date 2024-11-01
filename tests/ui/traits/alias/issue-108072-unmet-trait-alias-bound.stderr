@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(): IteratorAlias` is not satisfied
   --> $DIR/issue-108072-unmet-trait-alias-bound.rs:10:7
    |
 LL |     f(())
-   |     - ^^ the trait `Iterator` is not implemented for `()`, which is required by `(): IteratorAlias`
+   |     - ^^ the trait `Iterator` is not implemented for `()`
    |     |
    |     required by a bound introduced by this call
    |

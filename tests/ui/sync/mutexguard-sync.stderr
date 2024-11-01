@@ -6,7 +6,7 @@ LL |     test_sync(guard);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Sync` is not implemented for `Cell<i32>`, which is required by `MutexGuard<'_, Cell<i32>>: Sync`
+   = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicI32` instead
    = note: required for `MutexGuard<'_, Cell<i32>>` to implement `Sync`
 note: required by a bound in `test_sync`

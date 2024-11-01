@@ -7,18 +7,17 @@
 //!
 //! The `impls` module contains several examples of dataflow analyses.
 //!
-//! Create an `Engine` for your analysis using the `into_engine` method on the `Analysis` trait,
-//! then call `iterate_to_fixpoint`. From there, you can use a `ResultsCursor` to inspect the
-//! fixpoint solution to your dataflow problem, or implement the `ResultsVisitor` interface and use
-//! `visit_results`. The following example uses the `ResultsCursor` approach.
+//! Then call `iterate_to_fixpoint` on your type that impls `Analysis` to get a `Results`. From
+//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem,
+//! or implement the `ResultsVisitor` interface and use `visit_results`. The following example uses
+//! the `ResultsCursor` approach.
 //!
 //! ```ignore (cross-crate-imports)
-//! use rustc_const_eval::dataflow::Analysis; // Makes `into_engine` available.
+//! use rustc_const_eval::dataflow::Analysis; // Makes `iterate_to_fixpoint` available.
 //!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
 //!     let analysis = MyAnalysis::new()
-//!         .into_engine(tcx, body)
-//!         .iterate_to_fixpoint()
+//!         .iterate_to_fixpoint(tcx, body, None)
 //!         .into_results_cursor(body);
 //!
 //!     // Print the dataflow state *after* each statement in the start block.
@@ -34,23 +33,29 @@
 
 use std::cmp::Ordering;
 
-use rustc_index::Idx;
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::bug;
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
 use rustc_middle::ty::TyCtxt;
+use tracing::error;
+
+use self::results::write_graphviz_results;
+use super::fmt::DebugWithContext;
 
 mod cursor;
 mod direction;
-mod engine;
 pub mod fmt;
 pub mod graphviz;
 pub mod lattice;
+mod results;
 mod visitor;
 
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
+pub use self::results::Results;
 pub use self::visitor::{ResultsVisitable, ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -223,26 +228,92 @@ pub trait Analysis<'tcx> {
 
     /* Extension methods */
 
-    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
+    /// Finds the fixpoint for this dataflow problem.
     ///
     /// You shouldn't need to override this. Its purpose is to enable method chaining like so:
     ///
     /// ```ignore (cross-crate-imports)
     /// let results = MyAnalysis::new(tcx, body)
-    ///     .into_engine(tcx, body, def_id)
-    ///     .iterate_to_fixpoint()
+    ///     .iterate_to_fixpoint(tcx, body, None)
     ///     .into_results_cursor(body);
     /// ```
-    #[inline]
-    fn into_engine<'mir>(
-        self,
+    /// You can optionally add a `pass_name` to the graphviz output for this particular run of a
+    /// dataflow analysis. Some analyses are run multiple times in the compilation pipeline.
+    /// Without a `pass_name` to differentiates them, only the results for the latest run will be
+    /// saved.
+    fn iterate_to_fixpoint<'mir>(
+        mut self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
-    ) -> Engine<'mir, 'tcx, Self>
+        pass_name: Option<&'static str>,
+    ) -> Results<'tcx, Self>
     where
         Self: Sized,
+        Self::Domain: DebugWithContext<Self>,
     {
-        Engine::new(tcx, body, self)
+        let mut entry_sets =
+            IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
+        self.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
+
+        if Self::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != self.bottom_value(body) {
+            bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
+        }
+
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+
+        if Self::Direction::IS_FORWARD {
+            for (bb, _) in traversal::reverse_postorder(body) {
+                dirty_queue.insert(bb);
+            }
+        } else {
+            // Reverse post-order on the reverse CFG may generate a better iteration order for
+            // backward dataflow analyses, but probably not enough to matter.
+            for (bb, _) in traversal::postorder(body) {
+                dirty_queue.insert(bb);
+            }
+        }
+
+        // `state` is not actually used between iterations;
+        // this is just an optimization to avoid reallocating
+        // every iteration.
+        let mut state = self.bottom_value(body);
+        while let Some(bb) = dirty_queue.pop() {
+            let bb_data = &body[bb];
+
+            // Set the state to the entry state of the block.
+            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // but it saves an allocation, thus improving compile times.
+            state.clone_from(&entry_sets[bb]);
+
+            // Apply the block transfer function, using the cached one if it exists.
+            let edges = Self::Direction::apply_effects_in_block(&mut self, &mut state, bb, bb_data);
+
+            Self::Direction::join_state_into_successors_of(
+                &mut self,
+                body,
+                &mut state,
+                bb,
+                edges,
+                |target: BasicBlock, state: &Self::Domain| {
+                    let set_changed = entry_sets[target].join(state);
+                    if set_changed {
+                        dirty_queue.insert(target);
+                    }
+                },
+            );
+        }
+
+        let results = Results { analysis: self, entry_sets };
+
+        if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
+            let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
+            if let Err(e) = res {
+                error!("Failed to write graphviz dataflow results: {}", e);
+            }
+            results
+        } else {
+            results
+        }
     }
 }
 

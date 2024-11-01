@@ -1,0 +1,67 @@
+error: fn_abi_of(pass_zst) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: (),
+                       layout: Layout {
+                           size: Size(0 bytes),
+                           align: AbiAndPrefAlign {
+                               abi: $SOME_ALIGN,
+                               pref: $SOME_ALIGN,
+                           },
+                           abi: Memory {
+                               sized: true,
+                           },
+                           fields: Arbitrary {
+                               offsets: [],
+                               memory_index: [],
+                           },
+                           largest_niche: None,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: $SOME_ALIGN,
+                       },
+                   },
+                   mode: Ignore,
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (),
+                   layout: Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: $SOME_ALIGN,
+                           pref: $SOME_ALIGN,
+                       },
+                       abi: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                   },
+               },
+               mode: Ignore,
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86_64Win64,
+           can_unwind: false,
+       }
+  --> $DIR/win64-zst.rs:24:1
+   |
+LL | extern "win64" fn pass_zst(_: ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

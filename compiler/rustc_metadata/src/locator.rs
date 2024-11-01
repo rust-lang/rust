@@ -213,7 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use std::borrow::Cow;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt};
@@ -232,7 +232,6 @@ use rustc_session::utils::CanonicalizedPath;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{Target, TargetTriple};
-use snap::read::FrameDecoder;
 use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
@@ -792,7 +791,6 @@ fn get_metadata_section<'p>(
         CrateFlavor::Dylib => {
             let buf =
                 loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
-            // The header is uncompressed
             let header_len = METADATA_HEADER.len();
             // header + u64 length of data
             let data_start = header_len + 8;
@@ -806,7 +804,7 @@ fn get_metadata_section<'p>(
                 )));
             }
 
-            // Length of the compressed stream - this allows linkers to pad the section if they want
+            // Length of the metadata - this allows linkers to pad the section if they want
             let Ok(len_bytes) =
                 <[u8; 8]>::try_from(&buf[header_len..cmp::min(data_start, buf.len())])
             else {
@@ -814,29 +812,10 @@ fn get_metadata_section<'p>(
                     "invalid metadata length found".to_string(),
                 ));
             };
-            let compressed_len = u64::from_le_bytes(len_bytes) as usize;
+            let metadata_len = u64::from_le_bytes(len_bytes) as usize;
 
             // Header is okay -> inflate the actual metadata
-            let compressed_bytes = buf.slice(|buf| &buf[data_start..(data_start + compressed_len)]);
-            if &compressed_bytes[..cmp::min(METADATA_HEADER.len(), compressed_bytes.len())]
-                == METADATA_HEADER
-            {
-                // The metadata was not actually compressed.
-                compressed_bytes
-            } else {
-                debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-                // Assume the decompressed data will be at least the size of the compressed data, so we
-                // don't have to grow the buffer as much.
-                let mut inflated = Vec::with_capacity(compressed_bytes.len());
-                FrameDecoder::new(&*compressed_bytes).read_to_end(&mut inflated).map_err(|_| {
-                    MetadataError::LoadFailure(format!(
-                        "failed to decompress metadata: {}",
-                        filename.display()
-                    ))
-                })?;
-
-                slice_owned(inflated, Deref::deref)
-            }
+            buf.slice(|buf| &buf[data_start..(data_start + metadata_len)])
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.

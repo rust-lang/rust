@@ -5,6 +5,7 @@ mod const_to_pat;
 
 use std::cmp::Ordering;
 
+use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -20,7 +21,6 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisita
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::abi::{FieldIdx, Integer};
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;

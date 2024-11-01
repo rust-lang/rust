@@ -244,8 +244,13 @@ impl<'tcx> Inliner<'tcx> {
         // Normally, this shouldn't be required, but trait normalization failure can create a
         // validation ICE.
         let output_type = callee_body.return_ty();
-        if !util::relate_types(self.tcx, self.param_env, ty::Covariant, output_type, destination_ty)
-        {
+        if !util::sub_types(
+            self.tcx,
+            caller_body.typing_mode(self.tcx),
+            self.param_env,
+            output_type,
+            destination_ty,
+        ) {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
@@ -275,8 +280,13 @@ impl<'tcx> Inliner<'tcx> {
                 self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
             {
                 let input_type = callee_body.local_decls[input].ty;
-                if !util::relate_types(self.tcx, self.param_env, ty::Covariant, input_type, arg_ty)
-                {
+                if !util::sub_types(
+                    self.tcx,
+                    caller_body.typing_mode(self.tcx),
+                    self.param_env,
+                    input_type,
+                    arg_ty,
+                ) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize tuple argument type");
                 }
@@ -285,8 +295,13 @@ impl<'tcx> Inliner<'tcx> {
             for (arg, input) in args.iter().zip(callee_body.args_iter()) {
                 let input_type = callee_body.local_decls[input].ty;
                 let arg_ty = arg.node.ty(&caller_body.local_decls, self.tcx);
-                if !util::relate_types(self.tcx, self.param_env, ty::Covariant, input_type, arg_ty)
-                {
+                if !util::sub_types(
+                    self.tcx,
+                    caller_body.typing_mode(self.tcx),
+                    self.param_env,
+                    input_type,
+                    arg_ty,
+                ) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize argument type");
                 }

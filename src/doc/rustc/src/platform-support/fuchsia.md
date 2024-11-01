@@ -7,17 +7,9 @@ updatable, and performant.
 
 ## Target maintainers
 
-The [Fuchsia team]:
+See [`fuchsia.toml`] in the `team` repository for current target maintainers.
 
-- Tyler Mandry ([@tmandry](https://github.com/tmandry))
-- David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Julia Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
-- Erick Tryzelaar ([@erickt](https://github.com/erickt))
-
-As the team evolves over time, the specific members listed here may differ from
-the members reported by the API. The API should be considered to be
-authoritative if this occurs. Instead of pinging individual members, use
-`@rustbot ping fuchsia` to contact the team on GitHub.
+[`fuchsia.toml`]: https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml
 
 ## Table of contents
 
@@ -525,14 +517,6 @@ ${SDK_PATH}/tools/${ARCH}/ffx repository publish \
     pkg/repo
 ```
 
-Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
-
-```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
-    --repository hello-fuchsia \
-    pkg/repo
-```
-
 ## Running a Fuchsia component on an emulator
 
 At this point, we are ready to run our Fuchsia
@@ -590,7 +574,8 @@ Now, start a package repository server to serve our
 package to the emulator:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository server start
+${SDK_PATH}/tools/${ARCH}/ffx repository server start \
+    --background --repository hello-fuchsia --repo-path pkg-repo
 ```
 
 Once the repository server is up and running, register it with the target Fuchsia system running in the emulator:

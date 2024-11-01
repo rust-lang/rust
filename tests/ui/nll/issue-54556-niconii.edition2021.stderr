@@ -1,5 +1,5 @@
 error[E0597]: `counter` does not live long enough
-  --> $DIR/issue-54556-niconii.rs:30:20
+  --> $DIR/issue-54556-niconii.rs:28:20
    |
 LL |     let counter = Mutex;
    |         ------- binding `counter` declared here

@@ -9,6 +9,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{
     self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
+    TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -519,7 +520,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             //
                             // cc trait-system-refactor-initiative#108
                             if self.infcx.next_trait_solver()
-                                && !self.infcx.intercrate
+                                && !matches!(
+                                    self.infcx.typing_mode_unchecked(),
+                                    TypingMode::Coherence
+                                )
                                 && self.in_alias
                             {
                                 inner.type_variables().equate(vid, new_var_id);
@@ -650,7 +654,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // See the comment for type inference variables
                             // for more details.
                             if self.infcx.next_trait_solver()
-                                && !self.infcx.intercrate
+                                && !matches!(
+                                    self.infcx.typing_mode_unchecked(),
+                                    TypingMode::Coherence
+                                )
                                 && self.in_alias
                             {
                                 variable_table.union(vid, new_var_id);

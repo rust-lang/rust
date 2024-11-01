@@ -51,7 +51,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 &trait_bound.trait_ref,
                 trait_bound.span,
                 hir::BoundConstness::Never,
-                ty::PredicatePolarity::Positive,
+                hir::BoundPolarity::Positive,
                 dummy_self,
                 &mut bounds,
                 PredicateFilter::SelfOnly,
@@ -140,9 +140,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| {
-                                    !item.is_impl_trait_in_trait() && !item.is_effects_desugaring
-                                })
+                                .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| item.def_id),
                         );
                     }

@@ -46,7 +46,7 @@ impl<'tcx> InferCtxt<'tcx> {
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (param_env, value) = value.into_parts();
-        let param_env = self.tcx.canonical_param_env_cache.get_or_insert(
+        let canonical_param_env = self.tcx.canonical_param_env_cache.get_or_insert(
             self.tcx,
             param_env,
             query_state,
@@ -64,7 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
         );
 
         let canonical = Canonicalizer::canonicalize_with_base(
-            param_env,
+            canonical_param_env,
             value,
             Some(self),
             self.tcx,
@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
         )
         .unchecked_map(|(param_env, value)| param_env.and(value));
-        CanonicalQueryInput { canonical, defining_opaque_types: self.defining_opaque_types() }
+        CanonicalQueryInput { canonical, typing_mode: self.typing_mode(param_env) }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
