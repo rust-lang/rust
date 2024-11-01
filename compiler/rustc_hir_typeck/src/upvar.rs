@@ -670,7 +670,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 origin = updated.1;
 
                 let (place, capture_kind) = match capture_clause {
-                    hir::CaptureBy::Value { .. } => adjust_for_move_closure(place, capture_kind),
+                    hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } => {
+                        adjust_for_move_closure(place, capture_kind)
+                    }
                     hir::CaptureBy::Ref => adjust_for_non_move_closure(place, capture_kind),
                 };
 
@@ -1165,7 +1167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = match closure_clause {
             hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
-            hir::CaptureBy::Ref => {
+            hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
                 let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
@@ -1292,7 +1294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
-                hir::CaptureBy::Ref => {}
+                hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {}
             }
 
             return None;
@@ -1689,10 +1691,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
-            hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
+            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. }
+                if !place.deref_tys().any(Ty::is_ref) =>
+            {
                 ty::UpvarCapture::ByValue
             }
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => {
+            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } | hir::CaptureBy::Ref => {
                 ty::UpvarCapture::ByRef(BorrowKind::Immutable)
             }
         }

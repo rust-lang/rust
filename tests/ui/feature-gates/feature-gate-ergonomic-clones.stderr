@@ -1,39 +1,3 @@
-error: incorrect use of `use`
-  --> $DIR/feature-gate-ergonomic-clones.rs:9:14
-   |
-LL |       let s2 = use || {
-   |  ______________^
-LL | |
-LL | |         s1
-LL | |     };
-   | |_____^
-   |
-help: `use` is a postfix operation
-   |
-LL ~     let s2 = || {
-LL |
-LL |         s1
-LL ~     }.use;
-   |
-
-error: incorrect use of `use`
-  --> $DIR/feature-gate-ergonomic-clones.rs:14:14
-   |
-LL |       let s3 = use || {
-   |  ______________^
-LL | |
-LL | |         s1
-LL | |     };
-   | |_____^
-   |
-help: `use` is a postfix operation
-   |
-LL ~     let s3 = || {
-LL |
-LL |         s1
-LL ~     }.use;
-   |
-
 error[E0658]: `.use` calls are experimental
   --> $DIR/feature-gate-ergonomic-clones.rs:2:7
    |
@@ -44,6 +8,50 @@ LL |     x.use
    = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error[E0658]: `.use` calls are experimental
+  --> $DIR/feature-gate-ergonomic-clones.rs:9:14
+   |
+LL |     let s2 = use || {
+   |              ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0658]: `.use` calls are experimental
+  --> $DIR/feature-gate-ergonomic-clones.rs:14:14
+   |
+LL |     let s3 = use || {
+   |              ^^^
+   |
+   = note: see issue #132290 <https://github.com/rust-lang/rust/issues/132290> for more information
+   = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0382]: use of moved value: `s1`
+  --> $DIR/feature-gate-ergonomic-clones.rs:14:14
+   |
+LL |     let s1 = String::from("hi!");
+   |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
+LL |
+LL |     let s2 = use || {
+   |              ------ value moved into closure here
+LL |
+LL |         s1
+   |         -- variable moved due to use in closure
+...
+LL |     let s3 = use || {
+   |              ^^^^^^ value used here after move
+...
+LL |         s1
+   |         -- use occurs due to use in closure
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         s1.clone()
+   |           ++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0382, E0658.
+For more information about an error, try `rustc --explain E0382`.
