@@ -151,9 +151,15 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 //     };
                 // };
                 // ```
+                //
+                // It isn't possible to mix a impl in a module with const-anon, but an item can
+                // be put inside a module and referenced by a impl so we also have to treat the
+                // item parent as transparent to module and for consistency we have to do the same
+                // for impl, otherwise the item-def and impl-def won't have the same parent.
                 let outermost_impl_parent = peel_parent_while(cx.tcx, parent, |tcx, did| {
-                    tcx.def_kind(did) == DefKind::Const
-                        && tcx.opt_item_name(did) == Some(kw::Underscore)
+                    tcx.def_kind(did) == DefKind::Mod
+                        || (tcx.def_kind(did) == DefKind::Const
+                            && tcx.opt_item_name(did) == Some(kw::Underscore))
                 });
 
                 // 2. We check if any of the paths reference a the `impl`-parent.
