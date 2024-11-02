@@ -90,7 +90,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a shared reference to the filled portion of the buffer.
     #[inline]
-    pub fn filled(&self) -> &[u8] {
+    pub fn filled(&self) -> &'data [u8] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked(..self.filled);
@@ -100,7 +100,7 @@ impl<'data> BorrowedBuf<'data> {
 
     /// Returns a mutable reference to the filled portion of the buffer.
     #[inline]
-    pub fn filled_mut(&mut self) -> &mut [u8] {
+    pub fn filled_mut(&mut self) -> &'data mut [u8] {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked_mut(..self.filled);
