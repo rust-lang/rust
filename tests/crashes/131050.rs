@@ -1,25 +1,21 @@
 //@ known-bug: #131050
 //@ compile-flags: --edition=2021
 
-fn query_as<D>() {}
+use std::future::Future;
 
-async fn create_user() {
-    query_as();
+fn invalid_future() -> impl Future {}
+
+fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
+    async { &|| async { invalid_future().await } }
 }
 
-async fn post_user_filter() -> impl Filter {
-    AndThen(&(), || async { create_user().await })
+fn coerce_impl_trait() -> impl Future<Output = impl Send> {
+    create_complex_future()
 }
 
-async fn get_app() -> impl Send {
-    post_user_filter().await
-}
+trait ReturnsSend {}
 
-trait Filter {}
-
-struct AndThen<T, F>(T, F);
-
-impl<T, F, R> Filter for AndThen<T, F>
+impl<F, R> ReturnsSend for F
 where
     F: Fn() -> R,
     R: Send,
