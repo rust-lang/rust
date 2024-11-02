@@ -5,7 +5,7 @@ LL |     x[1i32];
    |       ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[i32]>` is not implemented for `i32`
-   = help: the trait `SliceIndex<[i32]>` is implemented for `usize`
+           but it is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `i32`
    = note: required for `[i32]` to implement `Index<i32>`
 

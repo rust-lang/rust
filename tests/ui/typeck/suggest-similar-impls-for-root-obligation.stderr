@@ -4,7 +4,8 @@ error[E0277]: the trait bound `((),): Into<Bar>` is not satisfied
 LL |     let _: Bar = ((),).into();
    |                        ^^^^ the trait `Foo<'_>` is not implemented for `((),)`
    |
-   = help: the trait `Foo<'_>` is implemented for `()`
+   = help: the trait `Foo<'_>` is not implemented for `((),)`
+           but it is implemented for `()`
    = help: for that trait implementation, expected `()`, found `((),)`
 note: required for `Bar` to implement `From<((),)>`
   --> $DIR/suggest-similar-impls-for-root-obligation.rs:7:22

@@ -12,6 +12,9 @@ error[E0277]: the trait bound `S: Copy` is not satisfied in `(S, T)`
    |
 LL |     fn foo<T: Default>() -> Self::E {
    |                             ^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `S`
+...
+LL |         (S::default(), T::default())
+   |         ---------------------------- return type was inferred to be `(S, T)` here
    |
    = note: required because it appears within the type `(S, T)`
 help: consider further restricting this bound
@@ -24,6 +27,9 @@ error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
    |
 LL |     fn foo<T: Default>() -> Self::E {
    |                             ^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `T`
+...
+LL |         (S::default(), T::default())
+   |         ---------------------------- return type was inferred to be `(S, T)` here
    |
    = note: required because it appears within the type `(S, T)`
 help: consider further restricting this bound
