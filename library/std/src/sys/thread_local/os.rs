@@ -15,19 +15,24 @@ pub macro thread_local_inner {
         $crate::thread::local_impl::thread_local_inner!(@key $t, { const INIT_EXPR: $t = $init; INIT_EXPR })
     },
 
-    // used to generate the `LocalKey` value for `thread_local!`
+    // NOTE: we cannot import `Storage` or `LocalKey` with a `use` because that can shadow user
+    // provided type or type alias with a matching name. Please update the shadowing test in
+    // `tests/thread.rs` if these types are renamed.
+
+    // used to generate the `LocalKey` value for `thread_local!`.
     (@key $t:ty, $init:expr) => {{
         #[inline]
         fn __init() -> $t { $init }
 
+        // NOTE: this cannot import `LocalKey` or `Storage` with a `use` because that can shadow
+        // user provided type or type alias with a matching name. Please update the shadowing test
+        // in `tests/thread.rs` if these types are renamed.
         unsafe {
-            use $crate::thread::LocalKey;
-            use $crate::thread::local_impl::Storage;
-
             // Inlining does not work on windows-gnu due to linking errors around
             // dllimports. See https://github.com/rust-lang/rust/issues/109797.
-            LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
-                static VAL: Storage<$t> = Storage::new();
+            $crate::thread::LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
+                static VAL: $crate::thread::local_impl::Storage<$t>
+                    = $crate::thread::local_impl::Storage::new();
                 VAL.get(init, __init)
             })
         }
