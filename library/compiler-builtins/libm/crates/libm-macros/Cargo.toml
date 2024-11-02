@@ -8,6 +8,7 @@ publish = false
 proc-macro = true
 
 [dependencies]
+heck = "0.5.0"
 proc-macro2 = "1.0.88"
 quote = "1.0.37"
 syn = { version = "2.0.79", features = ["full", "extra-traits", "visit-mut"] }

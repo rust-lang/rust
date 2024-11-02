@@ -4,6 +4,7 @@
 macro_rules! basic {
     (
         fn_name: $fn_name:ident,
+        FTy: $FTy:ty,
         CFn: $CFn:ty,
         CArgs: $CArgs:ty,
         CRet: $CRet:ty,
@@ -17,9 +18,9 @@ macro_rules! basic {
         $(#[$meta])*
         mod $fn_name {
             #[allow(unused)]
-            type CFnTy = $CFn;
-            // type CArgsTy<'_> = $CArgs;
-            // type CRetTy<'_> = $CRet;
+            type FTy= $FTy;
+            #[allow(unused)]
+            type CFnTy<'a> = $CFn;
             #[allow(unused)]
             type RustFnTy = $RustFn;
             #[allow(unused)]
@@ -39,6 +40,7 @@ macro_rules! basic {
 mod test_basic {
     libm_macros::for_each_function! {
         callback: basic,
+        emit_types: all,
         skip: [sin, cos],
         attributes: [
             // just some random attributes
@@ -58,25 +60,8 @@ mod test_basic {
 macro_rules! basic_no_extra {
     (
         fn_name: $fn_name:ident,
-        CFn: $CFn:ty,
-        CArgs: $CArgs:ty,
-        CRet: $CRet:ty,
-        RustFn: $RustFn:ty,
-        RustArgs: $RustArgs:ty,
-        RustRet: $RustRet:ty,
     ) => {
-        mod $fn_name {
-            #[allow(unused)]
-            type CFnTy = $CFn;
-            // type CArgsTy<'_> = $CArgs;
-            // type CRetTy<'_> = $CRet;
-            #[allow(unused)]
-            type RustFnTy = $RustFn;
-            #[allow(unused)]
-            type RustArgsTy = $RustArgs;
-            #[allow(unused)]
-            type RustRetTy = $RustRet;
-        }
+        mod $fn_name {}
     };
 }
 
@@ -92,5 +77,28 @@ mod test_only {
     libm_macros::for_each_function! {
         callback: basic_no_extra,
         only: [sin, sinf],
+    }
+}
+
+macro_rules! specified_types {
+    (
+        fn_name: $fn_name:ident,
+        RustFn: $RustFn:ty,
+        RustArgs: $RustArgs:ty,
+    ) => {
+        mod $fn_name {
+            #[allow(unused)]
+            type RustFnTy = $RustFn;
+            #[allow(unused)]
+            type RustArgsTy = $RustArgs;
+        }
+    };
+}
+
+mod test_emit_types {
+    // Test that we can specify a couple types to emit
+    libm_macros::for_each_function! {
+        callback: specified_types,
+        emit_types: [RustFn, RustArgs],
     }
 }

@@ -1,10 +1,12 @@
 pub mod gen;
 #[cfg(feature = "test-multiprecision")]
 pub mod mpfloat;
+pub mod op;
 mod precision;
 mod test_traits;
 
 pub use libm::support::{Float, Int};
+pub use op::{BaseName, MathOp, Name};
 pub use precision::{MaybeOverride, SpecialCase, multiprec_allowed_ulp, musl_allowed_ulp};
 pub use test_traits::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, Hex, TupleCall};
 

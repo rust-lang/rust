@@ -1,16 +1,20 @@
+mod enums;
 mod parse;
+
 use std::sync::LazyLock;
 
 use parse::{Invocation, StructuredInput};
 use proc_macro as pm;
 use proc_macro2::{self as pm2, Span};
 use quote::{ToTokens, quote};
-use syn::Ident;
+use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
+use syn::{Ident, ItemEnum};
 
-const ALL_FUNCTIONS: &[(Signature, Option<Signature>, &[&str])] = &[
+const ALL_FUNCTIONS: &[(Ty, Signature, Option<Signature>, &[&str])] = &[
     (
         // `fn(f32) -> f32`
+        Ty::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::F32] },
         None,
         &[
@@ -22,6 +26,7 @@ const ALL_FUNCTIONS: &[(Signature, Option<Signature>, &[&str])] = &[
     ),
     (
         // `(f64) -> f64`
+        Ty::F64,
         Signature { args: &[Ty::F64], returns: &[Ty::F64] },
         None,
         &[
@@ -33,6 +38,7 @@ const ALL_FUNCTIONS: &[(Signature, Option<Signature>, &[&str])] = &[
     ),
     (
         // `(f32, f32) -> f32`
+        Ty::F32,
         Signature { args: &[Ty::F32, Ty::F32], returns: &[Ty::F32] },
         None,
         &[
@@ -50,6 +56,7 @@ const ALL_FUNCTIONS: &[(Signature, Option<Signature>, &[&str])] = &[
     ),
     (
         // `(f64, f64) -> f64`
+        Ty::F64,
         Signature { args: &[Ty::F64, Ty::F64], returns: &[Ty::F64] },
         None,
         &[
@@ -67,101 +74,119 @@ const ALL_FUNCTIONS: &[(Signature, Option<Signature>, &[&str])] = &[
     ),
     (
         // `(f32, f32, f32) -> f32`
+        Ty::F32,
         Signature { args: &[Ty::F32, Ty::F32, Ty::F32], returns: &[Ty::F32] },
         None,
         &["fmaf"],
     ),
     (
         // `(f64, f64, f64) -> f64`
+        Ty::F64,
         Signature { args: &[Ty::F64, Ty::F64, Ty::F64], returns: &[Ty::F64] },
         None,
         &["fma"],
     ),
     (
         // `(f32) -> i32`
+        Ty::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::I32] },
         None,
         &["ilogbf"],
     ),
     (
         // `(f64) -> i32`
+        Ty::F64,
         Signature { args: &[Ty::F64], returns: &[Ty::I32] },
         None,
         &["ilogb"],
     ),
     (
         // `(i32, f32) -> f32`
+        Ty::F32,
         Signature { args: &[Ty::I32, Ty::F32], returns: &[Ty::F32] },
         None,
         &["jnf"],
     ),
     (
         // `(i32, f64) -> f64`
+        Ty::F64,
         Signature { args: &[Ty::I32, Ty::F64], returns: &[Ty::F64] },
         None,
         &["jn"],
     ),
     (
         // `(f32, i32) -> f32`
+        Ty::F32,
         Signature { args: &[Ty::F32, Ty::I32], returns: &[Ty::F32] },
         None,
         &["scalbnf", "ldexpf"],
     ),
     (
         // `(f64, i64) -> f64`
+        Ty::F64,
         Signature { args: &[Ty::F64, Ty::I32], returns: &[Ty::F64] },
         None,
         &["scalbn", "ldexp"],
     ),
     (
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
+        Ty::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::F32] },
         Some(Signature { args: &[Ty::F32, Ty::MutF32], returns: &[Ty::F32] }),
         &["modff"],
     ),
     (
         // `(f64, &mut f64) -> f64` as  `(f64) -> (f64, f64)`
+        Ty::F64,
         Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::F64] },
         Some(Signature { args: &[Ty::F64, Ty::MutF64], returns: &[Ty::F64] }),
         &["modf"],
     ),
     (
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
+        Ty::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::I32] },
         Some(Signature { args: &[Ty::F32, Ty::MutCInt], returns: &[Ty::F32] }),
         &["frexpf", "lgammaf_r"],
     ),
     (
         // `(f64, &mut c_int) -> f64` as `(f64) -> (f64, i32)`
+        Ty::F64,
         Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::I32] },
         Some(Signature { args: &[Ty::F64, Ty::MutCInt], returns: &[Ty::F64] }),
         &["frexp", "lgamma_r"],
     ),
     (
         // `(f32, f32, &mut c_int) -> f32` as `(f32, f32) -> (f32, i32)`
+        Ty::F32,
         Signature { args: &[Ty::F32, Ty::F32], returns: &[Ty::F32, Ty::I32] },
         Some(Signature { args: &[Ty::F32, Ty::F32, Ty::MutCInt], returns: &[Ty::F32] }),
         &["remquof"],
     ),
     (
         // `(f64, f64, &mut c_int) -> f64` as `(f64, f64) -> (f64, i32)`
+        Ty::F64,
         Signature { args: &[Ty::F64, Ty::F64], returns: &[Ty::F64, Ty::I32] },
         Some(Signature { args: &[Ty::F64, Ty::F64, Ty::MutCInt], returns: &[Ty::F64] }),
         &["remquo"],
     ),
     (
         // `(f32, &mut f32, &mut f32)` as `(f32) -> (f32, f32)`
+        Ty::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::F32, Ty::F32] },
         Some(Signature { args: &[Ty::F32, Ty::MutF32, Ty::MutF32], returns: &[] }),
         &["sincosf"],
     ),
     (
         // `(f64, &mut f64, &mut f64)` as `(f64) -> (f64, f64)`
+        Ty::F64,
         Signature { args: &[Ty::F64], returns: &[Ty::F64, Ty::F64] },
         Some(Signature { args: &[Ty::F64, Ty::MutF64, Ty::MutF64], returns: &[] }),
         &["sincos"],
     ),
 ];
+
+const KNOWN_TYPES: &[&str] = &["FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet"];
 
 /// A type used in a function signature.
 #[allow(dead_code)]
@@ -190,12 +215,12 @@ impl ToTokens for Ty {
             Ty::F128 => quote! { f128 },
             Ty::I32 => quote! { i32 },
             Ty::CInt => quote! { ::core::ffi::c_int },
-            Ty::MutF16 => quote! { &mut f16 },
-            Ty::MutF32 => quote! { &mut f32 },
-            Ty::MutF64 => quote! { &mut f64 },
-            Ty::MutF128 => quote! { &mut f128 },
-            Ty::MutI32 => quote! { &mut i32 },
-            Ty::MutCInt => quote! { &mut core::ffi::c_int },
+            Ty::MutF16 => quote! { &'a mut f16 },
+            Ty::MutF32 => quote! { &'a mut f32 },
+            Ty::MutF64 => quote! { &'a mut f64 },
+            Ty::MutF128 => quote! { &'a mut f128 },
+            Ty::MutI32 => quote! { &'a mut i32 },
+            Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
         };
 
         tokens.extend(ts);
@@ -213,6 +238,7 @@ struct Signature {
 #[derive(Debug, Clone)]
 struct FunctionInfo {
     name: &'static str,
+    base_fty: Ty,
     /// Function signature for C implementations
     c_sig: Signature,
     /// Function signature for Rust implementations
@@ -223,10 +249,11 @@ struct FunctionInfo {
 static ALL_FUNCTIONS_FLAT: LazyLock<Vec<FunctionInfo>> = LazyLock::new(|| {
     let mut ret = Vec::new();
 
-    for (rust_sig, c_sig, names) in ALL_FUNCTIONS {
+    for (base_fty, rust_sig, c_sig, names) in ALL_FUNCTIONS {
         for name in *names {
             let api = FunctionInfo {
                 name,
+                base_fty: *base_fty,
                 rust_sig: rust_sig.clone(),
                 c_sig: c_sig.clone().unwrap_or_else(|| rust_sig.clone()),
             };
@@ -237,6 +264,37 @@ static ALL_FUNCTIONS_FLAT: LazyLock<Vec<FunctionInfo>> = LazyLock::new(|| {
     ret.sort_by_key(|item| item.name);
     ret
 });
+
+/// Populate an enum with a variant representing function. Names are in upper camel case.
+///
+/// Applied to an empty enum. Expects one attribute `#[function_enum(BaseName)]` that provides
+/// the name of the `BaseName` enum.
+#[proc_macro_attribute]
+pub fn function_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> pm::TokenStream {
+    let item = syn::parse_macro_input!(tokens as ItemEnum);
+    let res = enums::function_enum(item, attributes.into());
+
+    match res {
+        Ok(ts) => ts,
+        Err(e) => e.into_compile_error(),
+    }
+    .into()
+}
+
+/// Create an enum representing all possible base names, with names in upper camel case.
+///
+/// Applied to an empty enum.
+#[proc_macro_attribute]
+pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> pm::TokenStream {
+    let item = syn::parse_macro_input!(tokens as ItemEnum);
+    let res = enums::base_name_enum(item, attributes.into());
+
+    match res {
+        Ok(ts) => ts,
+        Err(e) => e.into_compile_error(),
+    }
+    .into()
+}
 
 /// Do something for each function present in this crate.
 ///
@@ -258,6 +316,8 @@ static ALL_FUNCTIONS_FLAT: LazyLock<Vec<FunctionInfo>> = LazyLock::new(|| {
 ///     (
 ///         // Name of that function
 ///         fn_name: $fn_name:ident,
+///         // The basic float type for this function (e.g. `f32`, `f64`)
+///         FTy: $FTy:ty,
 ///         // Function signature of the C version (e.g. `fn(f32, &mut f32) -> f32`)
 ///         CFn: $CFn:ty,
 ///         // A tuple representing the C version's arguments (e.g. `(f32, &mut f32)`)
@@ -279,17 +339,16 @@ static ALL_FUNCTIONS_FLAT: LazyLock<Vec<FunctionInfo>> = LazyLock::new(|| {
 ///     ) => { };
 /// }
 ///
+/// // All fields except for `callback` are optional.
 /// libm_macros::for_each_function! {
 ///     // The macro to invoke as a callback
 ///     callback: callback_macro,
+///     // Which types to include either as a list (`[CFn, RustFn, RustArgs]`) or "all"
+///     emit_types: all,
 ///     // Functions to skip, i.e. `callback` shouldn't be called at all for these.
-///     //
-///     // This is an optional field.
 ///     skip: [sin, cos],
 ///     // Attributes passed as `attrs` for specific functions. For example, here the invocation
 ///     // with `sinf` and that with `cosf` will both get `meta1` and `meta2`, but no others will.
-///     //
-///     // This is an optional field.
 ///     attributes: [
 ///         #[meta1]
 ///         #[meta2]
@@ -297,8 +356,6 @@ static ALL_FUNCTIONS_FLAT: LazyLock<Vec<FunctionInfo>> = LazyLock::new(|| {
 ///     ],
 ///     // Any tokens that should be passed directly to all invocations of the callback. This can
 ///     // be used to pass local variables or other things the macro needs access to.
-///     //
-///     // This is an optional field.
 ///     extra: [foo],
 ///     // Similar to `extra`, but allow providing a pattern for only specific functions. Uses
 ///     // a simplified match-like syntax.
@@ -313,7 +370,7 @@ pub fn for_each_function(tokens: pm::TokenStream) -> pm::TokenStream {
     let input = syn::parse_macro_input!(tokens as Invocation);
 
     let res = StructuredInput::from_fields(input)
-        .and_then(|s_in| validate(&s_in).map(|fn_list| (s_in, fn_list)))
+        .and_then(|mut s_in| validate(&mut s_in).map(|fn_list| (s_in, fn_list)))
         .and_then(|(s_in, fn_list)| expand(s_in, &fn_list));
 
     match res {
@@ -325,7 +382,7 @@ pub fn for_each_function(tokens: pm::TokenStream) -> pm::TokenStream {
 /// Check for any input that is structurally correct but has other problems.
 ///
 /// Returns the list of function names that we should expand for.
-fn validate(input: &StructuredInput) -> syn::Result<Vec<&'static FunctionInfo>> {
+fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static FunctionInfo>> {
     // Collect lists of all functions that are provied as macro inputs in various fields (only,
     // skip, attributes).
     let attr_mentions = input
@@ -374,6 +431,43 @@ fn validate(input: &StructuredInput) -> syn::Result<Vec<&'static FunctionInfo>> 
 
         // Run everything else
         fn_list.push(func);
+    }
+
+    // Types that the user would like us to provide in the macro
+    let mut add_all_types = false;
+    for ty in &input.emit_types {
+        let ty_name = ty.to_string();
+        if ty_name == "all" {
+            add_all_types = true;
+            continue;
+        }
+
+        // Check that all requested types are valid
+        if !KNOWN_TYPES.contains(&ty_name.as_str()) {
+            let e = syn::Error::new(
+                ty_name.span(),
+                format!("unrecognized type identifier `{ty_name}`"),
+            );
+            return Err(e);
+        }
+    }
+
+    if add_all_types {
+        // Ensure that if `all` was specified that nothing else was
+        if input.emit_types.len() > 1 {
+            let e = syn::Error::new(
+                input.emit_types_span.unwrap(),
+                "if `all` is specified, no other type identifiers may be given",
+            );
+            return Err(e);
+        }
+
+        // ...and then add all types
+        input.emit_types.clear();
+        for ty in KNOWN_TYPES {
+            let ident = Ident::new(ty, Span::call_site());
+            input.emit_types.push(ident);
+        }
     }
 
     if let Some(map) = &input.fn_extra {
@@ -451,20 +545,31 @@ fn expand(input: StructuredInput, fn_list: &[&FunctionInfo]) -> syn::Result<pm2:
             None => pm2::TokenStream::new(),
         };
 
+        let base_fty = func.base_fty;
         let c_args = &func.c_sig.args;
         let c_ret = &func.c_sig.returns;
         let rust_args = &func.rust_sig.args;
         let rust_ret = &func.rust_sig.returns;
 
+        let mut ty_fields = Vec::new();
+        for ty in &input.emit_types {
+            let field = match ty.to_string().as_str() {
+                "FTy" => quote! { FTy: #base_fty, },
+                "CFn" => quote! { CFn: fn( #(#c_args),* ,) -> ( #(#c_ret),* ), },
+                "CArgs" => quote! { CArgs: ( #(#c_args),* ,), },
+                "CRet" => quote! { CRet: ( #(#c_ret),* ), },
+                "RustFn" => quote! { RustFn: fn( #(#rust_args),* ,) -> ( #(#rust_ret),* ), },
+                "RustArgs" => quote! { RustArgs: ( #(#rust_args),* ,), },
+                "RustRet" => quote! { RustRet: ( #(#rust_ret),* ), },
+                _ => unreachable!("checked in validation"),
+            };
+            ty_fields.push(field);
+        }
+
         let new = quote! {
             #callback! {
                 fn_name: #fn_name,
-                CFn: fn( #(#c_args),* ,) -> ( #(#c_ret),* ),
-                CArgs: ( #(#c_args),* ,),
-                CRet: ( #(#c_ret),* ),
-                RustFn: fn( #(#rust_args),* ,) -> ( #(#rust_ret),* ),
-                RustArgs: ( #(#rust_args),* ,),
-                RustRet: ( #(#rust_ret),* ),
+                #( #ty_fields )*
                 #meta_field
                 #extra_field
                 #fn_extra_field
@@ -488,24 +593,7 @@ struct MacroReplace {
 
 impl MacroReplace {
     fn new(name: &'static str) -> Self {
-        // Keep this in sync with `libm_test::canonical_name`
-        let known_mappings = &[
-            ("erff", "erf"),
-            ("erf", "erf"),
-            ("lgammaf_r", "lgamma_r"),
-            ("modff", "modf"),
-            ("modf", "modf"),
-        ];
-
-        let norm_name = match known_mappings.iter().find(|known| known.0 == name) {
-            Some(found) => found.1,
-            None => name
-                .strip_suffix("f")
-                .or_else(|| name.strip_suffix("f16"))
-                .or_else(|| name.strip_suffix("f128"))
-                .unwrap_or(name),
-        };
-
+        let norm_name = base_name(name);
         Self { fn_name: name, norm_name: norm_name.to_owned(), error: None }
     }
 
@@ -537,5 +625,26 @@ impl VisitMut for MacroReplace {
     fn visit_ident_mut(&mut self, i: &mut Ident) {
         self.visit_ident_inner(i);
         syn::visit_mut::visit_ident_mut(self, i);
+    }
+}
+
+/// Return the unsuffixed name of a function.
+fn base_name(name: &str) -> &str {
+    // Keep this in sync with `libm_test::base_name`
+    let known_mappings = &[
+        ("erff", "erf"),
+        ("erf", "erf"),
+        ("lgammaf_r", "lgamma_r"),
+        ("modff", "modf"),
+        ("modf", "modf"),
+    ];
+
+    match known_mappings.iter().find(|known| known.0 == name) {
+        Some(found) => found.1,
+        None => name
+            .strip_suffix("f")
+            .or_else(|| name.strip_suffix("f16"))
+            .or_else(|| name.strip_suffix("f128"))
+            .unwrap_or(name),
     }
 }

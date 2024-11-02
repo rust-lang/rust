@@ -22,12 +22,6 @@ const ALLOWED_SKIPS: &[&str] = &[
 macro_rules! callback {
     (
         fn_name: $name:ident,
-        CFn: $_CFn:ty,
-        CArgs: $_CArgs:ty,
-        CRet: $_CRet:ty,
-        RustFn: $_RustFn:ty,
-        RustArgs: $_RustArgs:ty,
-        RustRet: $_RustRet:ty,
         extra: [$push_to:ident],
     ) => {
         $push_to.push(stringify!($name));

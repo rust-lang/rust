@@ -2,72 +2,103 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_main};
-use libm_test::gen::random;
-use libm_test::{CheckBasis, CheckCtx, TupleCall};
+use libm_test::gen::{CachedInput, random};
+use libm_test::{CheckBasis, CheckCtx, GenerateInput, MathOp, TupleCall};
 
 /// Benchmark with this many items to get a variety
 const BENCH_ITER_ITEMS: usize = if cfg!(feature = "short-benchmarks") { 50 } else { 500 };
 
+/// Extra parameters we only care about if we are benchmarking against musl.
+#[allow(dead_code)]
+struct MuslExtra<F> {
+    musl_fn: Option<F>,
+    skip_on_i586: bool,
+}
+
 macro_rules! musl_rand_benches {
     (
         fn_name: $fn_name:ident,
-        CFn: $CFn:ty,
-        CArgs: $CArgs:ty,
-        CRet: $CRet:ty,
-        RustFn: $RustFn:ty,
-        RustArgs: $RustArgs:ty,
-        RustRet: $RustRet:ty,
         fn_extra: $skip_on_i586:expr,
     ) => {
         paste::paste! {
             fn [< musl_bench_ $fn_name >](c: &mut Criterion) {
-                let fn_name = stringify!($fn_name);
+                type Op = libm_test::op::$fn_name::Routine;
 
-                let ulp = libm_test::musl_allowed_ulp(fn_name);
-                let ctx = CheckCtx::new(ulp, fn_name, CheckBasis::Musl);
-                let benchvec: Vec<_> = random::get_test_cases::<$RustArgs>(&ctx)
-                    .take(BENCH_ITER_ITEMS)
-                    .collect();
-
-                // Perform a sanity check that we are benchmarking the same thing
-                // Don't test against musl if it is not available
                 #[cfg(feature = "build-musl")]
-                for input in benchvec.iter().copied() {
-                    use anyhow::Context;
-                    use libm_test::{CheckBasis, CheckCtx, CheckOutput};
+                let musl_extra = MuslExtra {
+                    musl_fn: Some(musl_math_sys::$fn_name as <Op as MathOp>::CFn),
+                    skip_on_i586: $skip_on_i586
+                };
 
-                    if cfg!(x86_no_sse) && $skip_on_i586 {
-                        break;
-                    }
+                #[cfg(not(feature = "build-musl"))]
+                let musl_extra = MuslExtra {
+                    musl_fn: None,
+                    skip_on_i586: $skip_on_i586
+                };
 
-                    let musl_res = input.call(musl_math_sys::$fn_name as $CFn);
-                    let crate_res = input.call(libm::$fn_name as $RustFn);
-
-                    let ctx = CheckCtx::new(ulp, fn_name, CheckBasis::Musl);
-                    crate_res.validate(musl_res, input, &ctx).context(fn_name).unwrap();
-                }
-
-                /* Function pointers are black boxed to avoid inlining in the benchmark loop */
-
-                let mut group = c.benchmark_group(fn_name);
-                group.bench_function("crate", |b| b.iter(|| {
-                    let f = black_box(libm::$fn_name as $RustFn);
-                    for input in benchvec.iter().copied() {
-                        input.call(f);
-                    }
-                }));
-
-                // Don't test against musl if it is not available
-                #[cfg(feature = "build-musl")]
-                group.bench_function("musl", |b| b.iter(|| {
-                    let f = black_box(musl_math_sys::$fn_name as $CFn);
-                    for input in benchvec.iter().copied() {
-                        input.call(f);
-                    }
-                }));
+                bench_one::<Op>(c, musl_extra);
             }
         }
     };
+}
+
+fn bench_one<Op>(c: &mut Criterion, musl_extra: MuslExtra<Op::CFn>)
+where
+    Op: MathOp,
+    CachedInput: GenerateInput<Op::RustArgs>,
+{
+    let name = Op::NAME_STR;
+
+    let ulp = libm_test::musl_allowed_ulp(name);
+    let ctx = CheckCtx::new(ulp, name, CheckBasis::Musl);
+    let benchvec: Vec<_> =
+        random::get_test_cases::<Op::RustArgs>(&ctx).take(BENCH_ITER_ITEMS).collect();
+
+    // Perform a sanity check that we are benchmarking the same thing
+    // Don't test against musl if it is not available
+    #[cfg(feature = "build-musl")]
+    for input in benchvec.iter().copied() {
+        use anyhow::Context;
+        use libm_test::CheckOutput;
+
+        if cfg!(x86_no_sse) && musl_extra.skip_on_i586 {
+            break;
+        }
+
+        let musl_res = input.call(musl_extra.musl_fn.unwrap());
+        let crate_res = input.call(Op::ROUTINE);
+
+        crate_res.validate(musl_res, input, &ctx).context(name).unwrap();
+    }
+
+    #[cfg(not(feature = "build-musl"))]
+    let _ = musl_extra; // silence unused warnings
+
+    /* Option pointers are black boxed to avoid inlining in the benchmark loop */
+
+    let mut group = c.benchmark_group(name);
+    group.bench_function("crate", |b| {
+        b.iter(|| {
+            let f = black_box(Op::ROUTINE);
+            for input in benchvec.iter().copied() {
+                input.call(f);
+            }
+        })
+    });
+
+    // Don't test against musl if it is not available
+    #[cfg(feature = "build-musl")]
+    {
+        let musl_fn = musl_extra.musl_fn.unwrap();
+        group.bench_function("musl", |b| {
+            b.iter(|| {
+                let f = black_box(musl_fn);
+                for input in benchvec.iter().copied() {
+                    input.call(f);
+                }
+            })
+        });
+    }
 }
 
 libm_macros::for_each_function! {
@@ -83,12 +114,6 @@ libm_macros::for_each_function! {
 macro_rules! run_callback {
     (
         fn_name: $fn_name:ident,
-        CFn: $_CFn:ty,
-        CArgs: $_CArgs:ty,
-        CRet: $_CRet:ty,
-        RustFn: $_RustFn:ty,
-        RustArgs: $_RustArgs:ty,
-        RustRet: $_RustRet:ty,
         extra: [$criterion:ident],
     ) => {
         paste::paste! {
