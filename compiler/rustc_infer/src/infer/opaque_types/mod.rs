@@ -432,7 +432,6 @@ where
                     upvar.visit_with(self);
                 }
 
-                // FIXME(async_closures): Is this the right signature to visit here?
                 args.as_coroutine_closure().signature_parts_ty().visit_with(self);
             }
 

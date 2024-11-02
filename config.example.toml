@@ -668,8 +668,6 @@
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 # Having the git information can cause a lot of rebuilds during development.
-#
-# FIXME(#76720): this can causes bugs if different compilers reuse the same metadata cache.
 #omit-git-hash = if rust.channel == "dev" { true } else { false }
 
 # Whether to create a source tarball by default when running `x dist`.

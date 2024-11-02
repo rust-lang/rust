@@ -12,6 +12,13 @@ use crate::{self as ty, Interner};
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
 /// doc comment for each variant for how and why they are used.
+///
+/// In most cases you can get the correct typing mode automically via:
+/// - `mir::Body::typing_mode`
+/// - `rustc_lint::LateContext::typing_mode`
+///
+/// If neither of these functions are available, feel free to reach out to
+/// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TypingMode<I: Interner> {

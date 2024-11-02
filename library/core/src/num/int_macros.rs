@@ -1161,7 +1161,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_neg", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_neg", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
@@ -1227,8 +1227,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        // We could always go back to wrapping
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1294,7 +1293,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
@@ -1353,8 +1352,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        // We could always go back to wrapping
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1420,7 +1418,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
@@ -2151,7 +2149,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2181,7 +2179,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds

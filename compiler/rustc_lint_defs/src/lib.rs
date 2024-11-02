@@ -2,6 +2,7 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use rustc_abi::ExternAbi;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -15,7 +16,6 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::spec::abi::Abi;
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -602,7 +602,7 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    MissingAbi(Span, Abi),
+    MissingAbi(Span, ExternAbi),
     UnusedDocComment(Span),
     UnusedBuiltinAttribute {
         attr_name: Symbol,

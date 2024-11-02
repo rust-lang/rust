@@ -8,6 +8,10 @@ LL |         unsafe { mem::zeroed() }
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
    = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         unsafe { mem::zeroed::<()>() }
+   |                             ++++++
 
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:30:13
@@ -18,6 +22,10 @@ LL |             core::mem::transmute(Zst)
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |             core::mem::transmute::<_, ()>(Zst)
+   |                                 +++++++++
 
 error: never type fallback affects this union access
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:47:18
@@ -38,6 +46,10 @@ LL |         unsafe { *ptr::from_ref(&()).cast() }
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         unsafe { *ptr::from_ref(&()).cast::<()>() }
+   |                                          ++++++
 
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:79:18
@@ -48,6 +60,10 @@ LL |         unsafe { internally_create(x) }
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         unsafe { internally_create::<()>(x) }
+   |                                   ++++++
 
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:97:18
@@ -58,6 +74,10 @@ LL |         unsafe { zeroed() }
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         let zeroed = mem::zeroed::<()>;
+   |                                 ++++++
 
 error: never type fallback affects this `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:92:22
@@ -68,6 +88,10 @@ LL |         let zeroed = mem::zeroed;
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         let zeroed = mem::zeroed::<()>;
+   |                                 ++++++
 
 error: never type fallback affects this `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:115:17
@@ -78,6 +102,10 @@ LL |         let f = internally_create;
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         let f = internally_create::<()>;
+   |                                  ++++++
 
 error: never type fallback affects this call to an `unsafe` method
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:140:13
@@ -102,6 +130,10 @@ LL |         msg_send!();
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the type explicitly
    = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use `()` annotations to avoid fallback changes
+   |
+LL |             match send_message::<() /* ?0 */>() {
+   |                                  ~~
 
 warning: the type `!` does not permit zero-initialization
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18

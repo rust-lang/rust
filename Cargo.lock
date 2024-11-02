@@ -3204,9 +3204,11 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "rustc_data_structures",
+ "rustc_feature",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_span",
  "tracing",
 ]
 
@@ -3749,11 +3751,11 @@ dependencies = [
 name = "rustc_hir_pretty"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_hir",
  "rustc_span",
- "rustc_target",
 ]
 
 [[package]]
@@ -3938,6 +3940,7 @@ dependencies = [
 name = "rustc_lint_defs"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_error_messages",
@@ -3945,7 +3948,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "rustc_target",
  "serde",
 ]
 
@@ -4004,7 +4006,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_type_ir",
- "snap",
  "tempfile",
  "tracing",
 ]
@@ -4054,6 +4055,7 @@ version = "0.0.0"
 dependencies = [
  "either",
  "itertools",
+ "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4069,7 +4071,6 @@ dependencies = [
  "rustc_pattern_analysis",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "rustc_trait_selection",
  "tracing",
 ]
@@ -4888,12 +4889,6 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
-
-[[package]]
-name = "snap"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
 name = "socket2"

@@ -2453,7 +2453,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(early_dcx, matches);
-    let (disable_local_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
         matches,
@@ -2479,18 +2479,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
     let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
-
-    if unstable_opts.profile && incremental.is_some() {
-        early_dcx.early_fatal("can't instrument with gcov profiling when compiling incrementally");
-    }
-    if unstable_opts.profile {
-        match codegen_units {
-            Some(1) => {}
-            None => codegen_units = Some(1),
-            Some(_) => early_dcx
-                .early_fatal("can't instrument with gcov profiling with multiple codegen units"),
-        }
-    }
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");

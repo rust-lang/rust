@@ -781,7 +781,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     self.walk_autoref(expr, &place_with_id, autoref);
                 }
 
-                adjustment::Adjust::ReborrowPin(_, mutbl) => {
+                adjustment::Adjust::ReborrowPin(mutbl) => {
                     // Reborrowing a Pin is like a combinations of a deref and a borrow, so we do
                     // both.
                     let bk = match mutbl {
@@ -804,7 +804,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         &self,
         expr: &hir::Expr<'_>,
         base_place: &PlaceWithHirId<'tcx>,
-        autoref: &adjustment::AutoBorrow<'tcx>,
+        autoref: &adjustment::AutoBorrow,
     ) {
         debug!(
             "walk_autoref(expr.hir_id={} base_place={:?} autoref={:?})",
@@ -812,7 +812,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         );
 
         match *autoref {
-            adjustment::AutoBorrow::Ref(_, m) => {
+            adjustment::AutoBorrow::Ref(m) => {
                 self.delegate.borrow_mut().borrow(
                     base_place,
                     base_place.hir_id,
@@ -1283,7 +1283,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
                 let base = if let Some(deref) = overloaded {
-                    let ref_ty = Ty::new_ref(self.cx.tcx(), deref.region, target, deref.mutbl);
+                    let ref_ty = Ty::new_ref(
+                        self.cx.tcx(),
+                        self.cx.tcx().lifetimes.re_erased,
+                        target,
+                        deref.mutbl,
+                    );
                     self.cat_rvalue(expr.hir_id, ref_ty)
                 } else {
                     previous()?

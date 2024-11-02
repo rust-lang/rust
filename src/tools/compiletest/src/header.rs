@@ -198,6 +198,9 @@ pub struct TestProps {
     pub no_auto_check_cfg: bool,
     /// Run tests which require enzyme being build
     pub has_enzyme: bool,
+    /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
+    /// that don't otherwise want/need `-Z build-std`.
+    pub add_core_stubs: bool,
 }
 
 mod directives {
@@ -243,6 +246,7 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
+    pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -300,6 +304,7 @@ impl TestProps {
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
             has_enzyme: false,
+            add_core_stubs: false,
         }
     }
 
@@ -564,6 +569,8 @@ impl TestProps {
                     }
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
+
+                    self.update_add_core_stubs(ln, config);
                 },
             );
 
@@ -676,6 +683,27 @@ impl TestProps {
     // does not consider CLI override for pass mode
     pub fn local_pass_mode(&self) -> Option<PassMode> {
         self.pass_mode
+    }
+
+    pub fn update_add_core_stubs(&mut self, ln: &str, config: &Config) {
+        let add_core_stubs = config.parse_name_directive(ln, directives::ADD_CORE_STUBS);
+        if add_core_stubs {
+            if !matches!(config.mode, Mode::Ui | Mode::Codegen | Mode::Assembly) {
+                panic!(
+                    "`add-core-stubs` is currently only supported for ui, codegen and assembly test modes"
+                );
+            }
+
+            // FIXME(jieyouxu): this check is currently order-dependent, but we should probably
+            // collect all directives in one go then perform a validation pass after that.
+            if self.local_pass_mode().is_some_and(|pm| pm == PassMode::Run) {
+                // `minicore` can only be used with non-run modes, because it's `core` prelude stubs
+                // and can't run.
+                panic!("`add-core-stubs` cannot be used to run the test binary");
+            }
+
+            self.add_core_stubs = add_core_stubs;
+        }
     }
 }
 

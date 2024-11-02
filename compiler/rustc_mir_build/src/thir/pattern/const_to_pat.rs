@@ -1,4 +1,5 @@
 use either::Either;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_hir as hir;
 use rustc_index::Idx;
@@ -9,7 +10,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, ValTree};
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};

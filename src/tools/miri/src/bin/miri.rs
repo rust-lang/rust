@@ -11,6 +11,7 @@
 extern crate tracing;
 
 // The rustc crates we need
+extern crate rustc_abi;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -21,7 +22,6 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_target;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
@@ -29,6 +29,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
+use rustc_abi::ExternAbi;
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -47,7 +48,6 @@ use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::spec::abi::Abi;
 use tracing::debug;
 
 struct MiriCompilerCalls {
@@ -368,7 +368,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
             tcx.types.isize,
             false,
             hir::Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         ));
 
         let correct_func_sig = check_function_signature(

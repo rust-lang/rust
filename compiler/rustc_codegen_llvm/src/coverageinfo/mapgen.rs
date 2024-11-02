@@ -54,7 +54,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         add_unused_functions(cx);
     }
 
-    let function_coverage_map = cx.coverage_cx().take_function_coverage_map();
+    // FIXME(#132395): Can this be none even when coverage is enabled?
+    let function_coverage_map = match cx.coverage_cx {
+        Some(ref cx) => cx.take_function_coverage_map(),
+        None => return,
+    };
     if function_coverage_map.is_empty() {
         // This module has no functions with coverage instrumentation
         return;

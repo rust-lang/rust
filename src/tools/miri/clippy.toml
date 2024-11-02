@@ -1,1 +1,1 @@
-arithmetic-side-effects-allowed = ["rustc_target::abi::Size"]
+arithmetic-side-effects-allowed = ["rustc_abi::Size"]

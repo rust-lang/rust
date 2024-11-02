@@ -22,6 +22,8 @@ use rustc_span::sym;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
 
+use super::apple;
+
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
 /// # Metadata location
@@ -238,7 +240,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
 
-        file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
+        file.set_macho_build_version(macho_object_build_version_for_target(sess))
     }
     if binary_format == BinaryFormat::Coff {
         // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
@@ -322,10 +324,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             // Set the appropriate flag based on ABI
             // This needs to match LLVM `RISCVELFStreamer.cpp`
             match &*sess.target.llvm_abiname {
-                "" | "ilp32" | "lp64" => (),
+                "ilp32" | "lp64" => (),
                 "ilp32f" | "lp64f" => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
                 "ilp32d" | "lp64d" => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
-                "ilp32e" => e_flags |= elf::EF_RISCV_RVE,
+                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                "ilp32e" | "lp64e" => e_flags |= elf::EF_RISCV_RVE,
                 _ => bug!("unknown RISC-V ABI name"),
             }
 
@@ -391,7 +394,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 ///
 /// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
 /// returns the `MachOBuildVersion` for the target to do so.
-fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
+fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
     fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
@@ -399,9 +402,8 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
         (major << 16) | (minor << 8) | patch
     }
 
-    let platform =
-        rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target);
+    let platform = apple::macho_platform(&sess.target);
+    let min_os = apple::deployment_target(sess);
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;

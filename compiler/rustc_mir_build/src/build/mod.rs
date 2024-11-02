@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::attr;
@@ -20,8 +21,6 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::FieldIdx;
-use rustc_target::spec::abi::Abi;
 
 use super::lints;
 use crate::build::expr::as_place::PlaceBuilder;
@@ -467,7 +466,7 @@ fn construct_fn<'tcx>(
     if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
-        abi = Abi::Rust;
+        abi = ExternAbi::Rust;
     }
 
     let arguments = &thir.params;
@@ -540,7 +539,7 @@ fn construct_fn<'tcx>(
 
     let mut body = builder.finish();
 
-    body.spread_arg = if abi == Abi::RustCall {
+    body.spread_arg = if abi == ExternAbi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
         Some(Local::new(arguments.len()))
     } else {
@@ -792,12 +791,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn finish(self) -> Body<'tcx> {
-        for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
-                span_bug!(self.fn_span, "no terminator on block {:?}", index);
-            }
-        }
-
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
@@ -811,6 +804,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+
+        for (index, block) in body.basic_blocks.iter().enumerate() {
+            if block.terminator.is_none() {
+                use rustc_middle::mir::pretty;
+                let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
+                pretty::write_mir_fn(
+                    self.tcx,
+                    &body,
+                    &mut |_, _| Ok(()),
+                    &mut std::io::stdout(),
+                    options,
+                )
+                .unwrap();
+                span_bug!(self.fn_span, "no terminator on block {:?}", index);
+            }
+        }
+
         body
     }
 

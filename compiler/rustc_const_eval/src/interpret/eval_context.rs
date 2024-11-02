@@ -3,7 +3,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::at::ToTrace;
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::{ObligationCause, Reveal};
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -116,6 +116,7 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
 /// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
+    typing_mode: TypingMode<'tcx>,
     param_env: ParamEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
@@ -124,7 +125,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences.
-    if util::relate_types(tcx, param_env, Variance::Covariant, src.ty, dest.ty) {
+    if util::relate_types(tcx, typing_mode, param_env, Variance::Covariant, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -144,6 +145,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 #[cfg_attr(not(debug_assertions), inline(always))]
 pub(super) fn from_known_layout<'tcx>(
     tcx: TyCtxtAt<'tcx>,
+    typing_mode: TypingMode<'tcx>,
     param_env: ParamEnv<'tcx>,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
@@ -153,7 +155,13 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
+                if !mir_assign_valid_types(
+                    tcx.tcx,
+                    typing_mode,
+                    param_env,
+                    check_layout,
+                    known_layout,
+                ) {
                     span_bug!(
                         tcx.span,
                         "expected type differs from actual type.\nexpected: {}\nactual: {}",
@@ -201,6 +209,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
+    }
+
+    pub fn typing_mode(&self) -> TypingMode<'tcx> {
+        debug_assert_eq!(self.param_env.reveal(), Reveal::All);
+        TypingMode::PostAnalysis
     }
 
     /// Returns the span of the currently executed statement/terminator.
@@ -327,7 +340,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return true;
         }
         // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-        let infcx = self.tcx.infer_ctxt().build(TypingMode::from_param_env(self.param_env));
+        let infcx = self.tcx.infer_ctxt().build(self.typing_mode());
         let ocx = ObligationCtxt::new(&infcx);
         let cause = ObligationCause::dummy_with_span(self.cur_span());
         // equate the two trait refs after normalization

@@ -844,7 +844,6 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_allow_const_fn_unstable(const_mut_refs)]
 #[rustc_never_returns_null_ptr]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r

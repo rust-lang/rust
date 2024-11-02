@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_uint};
 use std::str;
 
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -148,6 +149,11 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout =
                 target_data_layout.replace("-p270:32:32-p271:32:32-p272:64:64", "");
         }
+        if sess.target.arch.starts_with("sparc") {
+            // LLVM 20 updates the sparc layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/106951
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -177,7 +183,7 @@ pub(crate) unsafe fn create_module<'ll>(
         llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
     }
 
-    let llvm_target = SmallCStr::new(&sess.target.llvm_target);
+    let llvm_target = SmallCStr::new(&versioned_llvm_target(sess));
     unsafe {
         llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     }
@@ -554,6 +560,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
     /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
+    #[track_caller]
     pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
         self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }

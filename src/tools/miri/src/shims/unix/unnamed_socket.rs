@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::{ErrorKind, Read};
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
