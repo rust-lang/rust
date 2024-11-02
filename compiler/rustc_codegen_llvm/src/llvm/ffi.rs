@@ -2204,7 +2204,7 @@ unsafe extern "C" {
         Desc: &mut *const c_char,
     );
 
-    pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
+    pub fn LLVMRustGetHostCPUName(LenOut: &mut size_t) -> *const u8;
 
     // This function makes copies of pointed to data, so the data's lifetime may end after this
     // function returns.

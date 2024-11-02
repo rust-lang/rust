@@ -476,23 +476,31 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
     }
 }
 
-fn handle_native(name: &str) -> &str {
-    if name != "native" {
-        return name;
-    }
-
-    unsafe {
-        let mut len = 0;
+/// Returns the host CPU name, according to LLVM.
+fn get_host_cpu_name() -> &'static str {
+    let mut len = 0;
+    // SAFETY: The underlying C++ global function returns a `StringRef` that
+    // isn't tied to any particular backing buffer, so it must be 'static.
+    let slice: &'static [u8] = unsafe {
         let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
-        str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
+        assert!(!ptr.is_null());
+        slice::from_raw_parts(ptr, len)
+    };
+    str::from_utf8(slice).expect("host CPU name should be UTF-8")
+}
+
+/// If the given string is `"native"`, returns the host CPU name according to
+/// LLVM. Otherwise, the string is returned as-is.
+fn handle_native(cpu_name: &str) -> &str {
+    match cpu_name {
+        "native" => get_host_cpu_name(),
+        _ => cpu_name,
     }
 }
 
 pub(crate) fn target_cpu(sess: &Session) -> &str {
-    match sess.opts.cg.target_cpu {
-        Some(ref name) => handle_native(name),
-        None => handle_native(sess.target.cpu.as_ref()),
-    }
+    let cpu_name = sess.opts.cg.target_cpu.as_deref().unwrap_or_else(|| &sess.target.cpu);
+    handle_native(cpu_name)
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,

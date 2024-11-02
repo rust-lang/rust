@@ -382,9 +382,9 @@ extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
   *Desc = Feat.Desc;
 }
 
-extern "C" const char *LLVMRustGetHostCPUName(size_t *len) {
+extern "C" const char *LLVMRustGetHostCPUName(size_t *OutLen) {
   StringRef Name = sys::getHostCPUName();
-  *len = Name.size();
+  *OutLen = Name.size();
   return Name.data();
 }
 
