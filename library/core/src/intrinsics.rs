@@ -2389,7 +2389,7 @@ pub const fn bitreverse<T: Copy>(_x: T) -> T {
 /// large and difficult to optimize.
 ///
 /// The stabilized version of this intrinsic is [`Ord::cmp`].
-#[rustc_const_unstable(feature = "const_three_way_compare", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_three_way_compare", issue = "none"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Ordering {
@@ -2457,7 +2457,7 @@ pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
 /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
 ///
 /// This intrinsic does not have a stable counterpart.
-#[rustc_const_unstable(feature = "const_exact_div", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_exact_div", issue = "none"))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -2784,7 +2784,7 @@ pub const unsafe fn ptr_offset_from<T>(_ptr: *const T, _base: *const T) -> isize
 }
 
 /// See documentation of `<*const T>::sub_ptr` for details.
-#[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892"))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -2796,8 +2796,7 @@ pub const unsafe fn ptr_offset_from_unsigned<T>(_ptr: *const T, _base: *const T)
 /// Returns `2` if the result is unknown.
 /// Returns `1` if the pointers are guaranteed equal
 /// Returns `0` if the pointers are guaranteed inequal
-#[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020"))]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[rustc_do_not_const_check]
@@ -2830,7 +2829,7 @@ pub const fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8 {
 ///
 /// (The implementation is allowed to branch on the results of comparisons,
 /// which is UB if any of their inputs are `undef`.)
-#[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none"))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -2852,7 +2851,10 @@ pub const unsafe fn raw_eq<T>(_a: &T, _b: &T) -> bool {
 /// that differs.  That allows optimizations that can read in large chunks.
 ///
 /// [valid]: crate::ptr#safety
-#[rustc_const_unstable(feature = "const_intrinsic_compare_bytes", issue = "none")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_unstable(feature = "const_intrinsic_compare_bytes", issue = "none")
+)]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -2863,7 +2865,7 @@ pub const unsafe fn compare_bytes(_left: *const u8, _right: *const u8, _bytes: u
 /// See documentation of [`std::hint::black_box`] for details.
 ///
 /// [`std::hint::black_box`]: crate::hint::black_box
-#[rustc_const_unstable(feature = "const_black_box", issue = "none")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_black_box", issue = "none"))]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3036,7 +3038,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
-// This has fallback `const fn` MIR, so shouldn't need stability, see #122652
+// Const-unstable because `swap_nonoverlapping` is const-unstable.
 #[rustc_const_unstable(feature = "const_typed_swap", issue = "none")]
 pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
@@ -3059,7 +3061,6 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 /// primarily used by [`ub_checks::assert_unsafe_precondition`].
 #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
 #[cfg_attr(not(bootstrap), rustc_const_stable_intrinsic)] // just for UB checks
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn ub_checks() -> bool {
@@ -3075,7 +3076,6 @@ pub const fn ub_checks() -> bool {
 ///    - At compile time, a compile error occurs if this constraint is violated.
 ///    - At runtime, it is not checked.
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
@@ -3175,7 +3175,7 @@ pub const fn min_align_of<T>() -> usize {
 /// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_pref_align_of", issue = "91971"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn pref_align_of<T>() -> usize {
@@ -3193,7 +3193,7 @@ pub const unsafe fn pref_align_of<T>() -> usize {
 /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "variant_count", issue = "73662"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn variant_count<T>() -> usize {
@@ -3209,7 +3209,7 @@ pub const fn variant_count<T>() -> usize {
 /// See [`crate::mem::size_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_size_of_val", issue = "46571"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
@@ -3225,7 +3225,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 /// See [`crate::mem::align_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_align_of_val", issue = "46571"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
@@ -3242,7 +3242,7 @@ pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 /// The stabilized version of this intrinsic is [`core::any::type_name`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_type_name", issue = "63084"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn type_name<T: ?Sized>() -> &'static str {
@@ -3261,7 +3261,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_type_id", issue = "77125"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn type_id<T: ?Sized + 'static>() -> u128 {
@@ -3636,8 +3636,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// The stabilized version of this intrinsic is
 /// [`f16::min`]
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f16", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf16(_x: f16, _y: f16) -> f16 {
@@ -3654,7 +3653,7 @@ pub const fn minnumf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::min`]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
@@ -3671,7 +3670,7 @@ pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::min`]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf64(_x: f64, _y: f64) -> f64 {
@@ -3688,8 +3687,7 @@ pub const fn minnumf64(_x: f64, _y: f64) -> f64 {
 /// The stabilized version of this intrinsic is
 /// [`f128::min`]
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f128", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf128(_x: f128, _y: f128) -> f128 {
@@ -3706,8 +3704,7 @@ pub const fn minnumf128(_x: f128, _y: f128) -> f128 {
 /// The stabilized version of this intrinsic is
 /// [`f16::max`]
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f16", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf16(_x: f16, _y: f16) -> f16 {
@@ -3724,7 +3721,7 @@ pub const fn maxnumf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::max`]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
@@ -3741,7 +3738,7 @@ pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::max`]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
@@ -3758,8 +3755,7 @@ pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
 /// The stabilized version of this intrinsic is
 /// [`f128::max`]
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f128", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf128(_x: f128, _y: f128) -> f128 {
@@ -3771,8 +3767,7 @@ pub const fn maxnumf128(_x: f128, _y: f128) -> f128 {
 /// The stabilized version of this intrinsic is
 /// [`f16::abs`](../../std/primitive.f16.html#method.abs)
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f16", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf16(_x: f16) -> f16 {
@@ -3784,7 +3779,7 @@ pub const unsafe fn fabsf16(_x: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf32(_x: f32) -> f32 {
@@ -3796,7 +3791,7 @@ pub const unsafe fn fabsf32(_x: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf64(_x: f64) -> f64 {
@@ -3808,8 +3803,7 @@ pub const unsafe fn fabsf64(_x: f64) -> f64 {
 /// The stabilized version of this intrinsic is
 /// [`f128::abs`](../../std/primitive.f128.html#method.abs)
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f128", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf128(_x: f128) -> f128 {
@@ -3821,8 +3815,7 @@ pub const unsafe fn fabsf128(_x: f128) -> f128 {
 /// The stabilized version of this intrinsic is
 /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f16", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f16", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf16(_x: f16, _y: f16) -> f16 {
@@ -3834,7 +3827,7 @@ pub const unsafe fn copysignf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
@@ -3845,7 +3838,7 @@ pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf64(_x: f64, _y: f64) -> f64 {
@@ -3857,8 +3850,7 @@ pub const unsafe fn copysignf64(_x: f64, _y: f64) -> f64 {
 /// The stabilized version of this intrinsic is
 /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
 #[rustc_nounwind]
-// #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-#[rustc_const_unstable(feature = "f128", issue = "116909")]
+#[cfg_attr(bootstrap, rustc_const_unstable(feature = "f128", issue = "116909"))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf128(_x: f128, _y: f128) -> f128 {
