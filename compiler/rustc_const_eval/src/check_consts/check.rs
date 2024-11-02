@@ -709,6 +709,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Intrinsics are language primitives, not regular calls, so treat them separately.
                 if let Some(intrinsic) = tcx.intrinsic(callee) {
+                    if !tcx.is_const_fn(callee) {
+                        // Non-const intrinsic.
+                        self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
+                        // If we allowed this, we're in miri-unleashed mode, so we might
+                        // as well skip the remaining checks.
+                        return;
+                    }
                     // We use `intrinsic.const_stable` to determine if this can be safely exposed to
                     // stable code, rather than `const_stable_indirect`. This is to make
                     // `#[rustc_const_stable_indirect]` an attribute that is always safe to add.
@@ -716,17 +723,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // fallback body is safe to expose on stable.
                     let is_const_stable = intrinsic.const_stable
                         || (!intrinsic.must_be_overridden
-                            && tcx.is_const_fn(callee)
                             && is_safe_to_expose_on_stable_const_fn(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
                         None => {
-                            // Non-const intrinsic.
-                            self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
-                        }
-                        Some(ConstStability { feature: None, .. }) => {
-                            // Intrinsic does not need a separate feature gate (we rely on the
-                            // regular stability checker). However, we have to worry about recursive
-                            // const stability.
+                            // This doesn't need a separate const-stability check -- const-stability equals
+                            // regular stability, and regular stability is checked separately.
+                            // However, we *do* have to worry about *recursive* const stability.
                             if !is_const_stable && self.enforce_recursive_const_stability() {
                                 self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
                                     span: self.span,
@@ -735,8 +737,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         Some(ConstStability {
-                            feature: Some(feature),
                             level: StabilityLevel::Unstable { .. },
+                            feature,
                             ..
                         }) => {
                             self.check_op(ops::IntrinsicUnstable {
@@ -773,7 +775,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                         // All good.
                     }
-                    None | Some(ConstStability { feature: None, .. }) => {
+                    None => {
                         // This doesn't need a separate const-stability check -- const-stability equals
                         // regular stability, and regular stability is checked separately.
                         // However, we *do* have to worry about *recursive* const stability.
@@ -787,8 +789,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                     }
                     Some(ConstStability {
-                        feature: Some(feature),
                         level: StabilityLevel::Unstable { implied_by: implied_feature, .. },
+                        feature,
                         ..
                     }) => {
                         // An unstable const fn with a feature gate.

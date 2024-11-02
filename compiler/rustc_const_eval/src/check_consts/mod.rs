@@ -110,14 +110,15 @@ pub fn is_safe_to_expose_on_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> b
 
     match tcx.lookup_const_stability(def_id) {
         None => {
-            // Only marked functions can be trusted. Note that this may be a function in a
-            // non-staged-API crate where no recursive checks were done!
-            false
+            // In a `staged_api` crate, we do enforce recursive const stability for all unmarked
+            // functions, so we can trust local functions. But in another crate we don't know which
+            // rules were applied, so we can't trust that.
+            def_id.is_local() && tcx.features().staged_api()
         }
         Some(stab) => {
-            // We consider things safe-to-expose if they are stable, if they don't have any explicit
-            // const stability attribute, or if they are marked as `const_stable_indirect`.
-            stab.is_const_stable() || stab.feature.is_none() || stab.const_stable_indirect
+            // We consider things safe-to-expose if they are stable or if they are marked as
+            // `const_stable_indirect`.
+            stab.is_const_stable() || stab.const_stable_indirect
         }
     }
 }
