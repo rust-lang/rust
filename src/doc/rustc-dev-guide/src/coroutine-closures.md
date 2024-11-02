@@ -204,7 +204,7 @@ Well, first of all, all async closures implement `FnOnce` since they can always 
 For `Fn`/`FnMut`, the detailed answer involves answering a related question: is the coroutine-closure lending? Because if it is, then it cannot implement the non-lending `Fn`/`FnMut` traits.
 
 Determining when the coroutine-closure must *lend* its upvars is implemented in the `should_reborrow_from_env_of_parent_coroutine_closure` helper function[^u1]. Specifically, this needs to happen in two places:
-[^u1]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_hir_typeck/src/upvar.rs#L1818-L1860
+[^u1]: https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_hir_typeck/src/upvar.rs#L1818-L1860
 
 1.  Are we borrowing data owned by the parent closure? We can determine if that is the case by checking if the parent capture is by-move, EXCEPT if we apply a deref projection, which means we're reborrowing a reference that we captured by-move.
 
@@ -254,4 +254,4 @@ It turns out that borrow-checking async closures is pretty straightforward. Afte
 One thing to note is that we don't borrow-check the synthetic body we make for by-move coroutines, since by construction (and the validity of the by-ref coroutine body it was derived from) it must be valid.
 
 [^bck1]: https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_borrowck/src/universal_regions.rs#L110-L115
-[^bck2]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_borrowck/src/universal_regions.rs#L743-L790
+[^bck2]: https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_borrowck/src/universal_regions.rs#L743-L790
