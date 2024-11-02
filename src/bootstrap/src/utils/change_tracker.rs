@@ -290,4 +290,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
     },
+    ChangeInfo {
+        change_id: 132494,
+        severity: ChangeSeverity::Info,
+        summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
+    },
 ];
