@@ -1,4 +1,5 @@
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::collections::VecDeque;
+use std::ffi::{CStr, CString};
 use std::fmt::Write;
 use std::path::Path;
 use std::sync::Once;
@@ -387,7 +388,65 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
     ret
 }
 
-fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMachine) {
+pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
+    require_inited();
+    let tm = create_informational_target_machine(sess, false);
+    match req.kind {
+        PrintKind::TargetCPUs => print_target_cpus(sess, &tm, out),
+        PrintKind::TargetFeatures => print_target_features(sess, &tm, out),
+        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
+    }
+}
+
+fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
+    let cpu_names = llvm::build_string(|s| unsafe {
+        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+    })
+    .unwrap();
+
+    struct Cpu<'a> {
+        cpu_name: &'a str,
+        remark: String,
+    }
+    // Compare CPU against current target to label the default.
+    let target_cpu = handle_native(&sess.target.cpu);
+    let make_remark = |cpu_name| {
+        if cpu_name == target_cpu {
+            // FIXME(#132514): This prints the LLVM target string, which can be
+            // different from the Rust target string. Is that intended?
+            let target = &sess.target.llvm_target;
+            format!(
+                " - This is the default target CPU for the current build target (currently {target})."
+            )
+        } else {
+            "".to_owned()
+        }
+    };
+    let mut cpus = cpu_names
+        .lines()
+        .map(|cpu_name| Cpu { cpu_name, remark: make_remark(cpu_name) })
+        .collect::<VecDeque<_>>();
+
+    // Only print the "native" entry when host and target are the same arch,
+    // since otherwise it could be wrong or misleading.
+    if sess.host.arch == sess.target.arch {
+        let host = get_host_cpu_name();
+        cpus.push_front(Cpu {
+            cpu_name: "native",
+            remark: format!(" - Select the CPU of the current host (currently {host})."),
+        });
+    }
+
+    let max_name_width = cpus.iter().map(|cpu| cpu.cpu_name.len()).max().unwrap_or(0);
+    writeln!(out, "Available CPUs for this target:").unwrap();
+    for Cpu { cpu_name, remark } in cpus {
+        // Only pad the CPU name if there's a remark to print after it.
+        let width = if remark.is_empty() { 0 } else { max_name_width };
+        writeln!(out, "    {cpu_name:<width$}{remark}").unwrap();
+    }
+}
+
+fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let mut llvm_target_features = llvm_target_features(tm);
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
     let mut rustc_target_features = sess
@@ -445,35 +504,6 @@ fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMach
         .unwrap();
     writeln!(out, "Code-generation features cannot be used in cfg or #[target_feature],").unwrap();
     writeln!(out, "and may be renamed or removed in a future version of LLVM or rustc.\n").unwrap();
-}
-
-pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
-    require_inited();
-    let tm = create_informational_target_machine(sess, false);
-    match req.kind {
-        PrintKind::TargetCPUs => {
-            // SAFETY generate a C compatible string from a byte slice to pass
-            // the target CPU name into LLVM, the lifetime of the reference is
-            // at least as long as the C function
-            let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
-                .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
-            unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
-                let out = unsafe { &mut *(out as *mut &mut String) };
-                let bytes = unsafe { slice::from_raw_parts(string as *const u8, len) };
-                write!(out, "{}", String::from_utf8_lossy(bytes)).unwrap();
-            }
-            unsafe {
-                llvm::LLVMRustPrintTargetCPUs(
-                    &tm,
-                    cpu_cstring.as_ptr(),
-                    callback,
-                    (&raw mut out) as *mut c_void,
-                );
-            }
-        }
-        PrintKind::TargetFeatures => print_target_features(out, sess, &tm),
-        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
-    }
 }
 
 /// Returns the host CPU name, according to LLVM.

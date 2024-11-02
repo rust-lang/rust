@@ -2190,12 +2190,8 @@ unsafe extern "C" {
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    pub fn LLVMRustPrintTargetCPUs(
-        T: &TargetMachine,
-        cpu: *const c_char,
-        print: unsafe extern "C" fn(out: *mut c_void, string: *const c_char, len: usize),
-        out: *mut c_void,
-    );
+    #[allow(improper_ctypes)]
+    pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
     pub fn LLVMRustGetTargetFeature(
         T: &TargetMachine,
