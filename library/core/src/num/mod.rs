@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::macros::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, intrinsics, mem};
@@ -1460,24 +1461,16 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-#[track_caller]
-const fn from_str_radix_panic_ct(_radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]`");
-}
-
-#[track_caller]
-fn from_str_radix_panic_rt(radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]` - found {}", radix);
-}
-
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
-const fn from_str_radix_panic(radix: u32) {
-    // The only difference between these two functions is their panic message.
-    intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
+const fn from_str_radix_panic(radix: u32) -> ! {
+    const_panic!(
+        "from_str_radix_int: must lie in the range `[2, 36]`",
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
+        radix: u32 = radix,
+    )
 }
 
 macro_rules! from_str_radix {
