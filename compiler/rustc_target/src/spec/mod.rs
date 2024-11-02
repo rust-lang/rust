@@ -65,10 +65,6 @@ pub mod abi {
 }
 
 mod base;
-pub use base::apple::{
-    deployment_target_for_target as current_apple_deployment_target,
-    platform as current_apple_platform,
-};
 pub use base::avr_gnu::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
@@ -2009,7 +2005,12 @@ impl TargetWarnings {
 /// Every field here must be specified, and has no default value.
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
-    /// Target triple to pass to LLVM.
+    /// Unversioned target triple to pass to LLVM.
+    ///
+    /// Target triples can optionally contain an OS version (notably Apple targets), which rustc
+    /// cannot know without querying the environment.
+    ///
+    /// Use `rustc_codegen_ssa::back::versioned_llvm_target` if you need the full LLVM target.
     pub llvm_target: StaticCow<str>,
     /// Metadata about a target, for example the description or tier.
     /// Used for generating target documentation.
