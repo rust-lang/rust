@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: Some trait associated item kinds were configured more than once, or were missing, in the source ordering configuration. The trait associated item kinds are: [Const, Fn, Type]
+  --> $DIR/tests/ui-toml/arbitrary_source_item_ordering/bad_conf_1/clippy.toml:1:32
+   |
+LL | trait-assoc-item-kinds-order = ["fn", "type", "const", "type"]
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

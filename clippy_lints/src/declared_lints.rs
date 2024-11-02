@@ -36,6 +36,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
+    crate::arbitrary_source_item_ordering::ARBITRARY_SOURCE_ITEM_ORDERING_INFO,
     crate::arc_with_non_send_sync::ARC_WITH_NON_SEND_SYNC_INFO,
     crate::as_conversions::AS_CONVERSIONS_INFO,
     crate::asm_syntax::INLINE_ASM_X86_ATT_SYNTAX_INFO,

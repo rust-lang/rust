@@ -666,6 +666,16 @@ crate. For example, `pub(crate)` items.
 * [`missing_docs_in_private_items`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
 
 
+## `module-item-order-groupings`
+The named groupings of different source item kinds within modules.
+
+**Default Value:** `[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `msrv`
 The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
 
@@ -784,6 +794,16 @@ The maximum number of single char bindings a scope may have
 * [`many_single_char_names`](https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names)
 
 
+## `source-item-ordering`
+Which kind of elements should be ordered internally, possible values being `enum`, `impl`, `module`, `struct`, `trait`.
+
+**Default Value:** `["enum", "impl", "module", "struct", "trait"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `stack-size-threshold`
 The maximum allowed stack size for functions in bytes
 
@@ -861,6 +881,16 @@ The maximum number of lines a function or method can have
 ---
 **Affected lints:**
 * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
+
+
+## `trait-assoc-item-kinds-order`
+The order of associated items in traits.
+
+**Default Value:** `["const", "type", "fn"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
 
 
 ## `trivial-copy-size-limit`

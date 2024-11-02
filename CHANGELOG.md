@@ -5331,6 +5331,7 @@ Released 2018-09-13
 [`almost_complete_range`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range
 [`almost_swapped`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_swapped
 [`approx_constant`]: https://rust-lang.github.io/rust-clippy/master/index.html#approx_constant
+[`arbitrary_source_item_ordering`]: https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering
 [`arc_with_non_send_sync`]: https://rust-lang.github.io/rust-clippy/master/index.html#arc_with_non_send_sync
 [`arithmetic_side_effects`]: https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
 [`as_conversions`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
@@ -6208,12 +6209,14 @@ Released 2018-09-13
 [`max-trait-bounds`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-trait-bounds
 [`min-ident-chars-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-threshold
 [`missing-docs-in-crate-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#missing-docs-in-crate-items
+[`module-item-order-groupings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#module-item-order-groupings
 [`msrv`]: https://doc.rust-lang.org/clippy/lint_configuration.html#msrv
 [`pass-by-value-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pass-by-value-size-limit
 [`pub-underscore-fields-behavior`]: https://doc.rust-lang.org/clippy/lint_configuration.html#pub-underscore-fields-behavior
 [`semicolon-inside-block-ignore-singleline`]: https://doc.rust-lang.org/clippy/lint_configuration.html#semicolon-inside-block-ignore-singleline
 [`semicolon-outside-block-ignore-multiline`]: https://doc.rust-lang.org/clippy/lint_configuration.html#semicolon-outside-block-ignore-multiline
 [`single-char-binding-names-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#single-char-binding-names-threshold
+[`source-item-ordering`]: https://doc.rust-lang.org/clippy/lint_configuration.html#source-item-ordering
 [`stack-size-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#stack-size-threshold
 [`standard-macro-braces`]: https://doc.rust-lang.org/clippy/lint_configuration.html#standard-macro-braces
 [`struct-field-name-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#struct-field-name-threshold
@@ -6221,6 +6224,7 @@ Released 2018-09-13
 [`too-large-for-stack`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-large-for-stack
 [`too-many-arguments-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-many-arguments-threshold
 [`too-many-lines-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#too-many-lines-threshold
+[`trait-assoc-item-kinds-order`]: https://doc.rust-lang.org/clippy/lint_configuration.html#trait-assoc-item-kinds-order
 [`trivial-copy-size-limit`]: https://doc.rust-lang.org/clippy/lint_configuration.html#trivial-copy-size-limit
 [`type-complexity-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#type-complexity-threshold
 [`unnecessary-box-size`]: https://doc.rust-lang.org/clippy/lint_configuration.html#unnecessary-box-size
