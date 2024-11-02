@@ -338,7 +338,6 @@ impl<T> MaybeUninit<T> {
     /// let data = read(&mut buf);
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_uninit_array", issue = "96097")]
     #[must_use]
     #[inline(always)]
     pub const fn uninit_array<const N: usize>() -> [Self; N] {
@@ -946,7 +945,6 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(array, [0, 1, 2]);
     /// ```
     #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_array_assume_init", issue = "96097")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
@@ -973,7 +971,6 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init_ref`]: MaybeUninit::assume_init_ref
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
         // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
@@ -995,7 +992,6 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init_mut`]: MaybeUninit::assume_init_mut
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
         // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
@@ -1005,7 +1001,6 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this.as_ptr() as *const T
@@ -1013,7 +1008,6 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a mutable pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
         this.as_mut_ptr() as *mut T

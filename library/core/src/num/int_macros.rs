@@ -477,7 +477,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -573,7 +572,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add_unsigned(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -629,7 +627,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -725,7 +722,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub_unsigned(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -781,7 +777,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_mul(2);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -895,7 +890,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -969,7 +963,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1042,7 +1035,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem(-1);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1115,7 +1107,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem_euclid(-1);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1203,7 +1194,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_neg();")]
         ///
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1266,7 +1256,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x1", stringify!($SelfT), ".strict_shl(129);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1325,7 +1314,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1391,7 +1379,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shr(128);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1452,7 +1439,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1519,7 +1505,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_abs();")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1594,7 +1579,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_pow(2);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2368,7 +2352,6 @@ macro_rules! int_impl {
         /// assert_eq!((sum1, sum0), (6, 8));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2476,7 +2459,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((diff1, diff0), (10, ", stringify!($UnsignedT), "::MAX));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

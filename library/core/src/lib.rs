@@ -115,8 +115,6 @@
 #![feature(const_align_offset)]
 #![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
-#![feature(const_array_into_iter_constructors)]
-#![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
@@ -124,7 +122,6 @@
 #![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
-#![feature(const_num_midpoint)]
 #![feature(const_option_ext)]
 #![feature(const_pin_2)]
 #![feature(const_pointer_is_aligned)]
@@ -134,7 +131,6 @@
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
 #![feature(const_sockaddr_setters)]
-#![feature(const_strict_overflow_ops)]
 #![feature(const_swap)]
 #![feature(const_try)]
 #![feature(const_type_id)]
@@ -166,7 +162,6 @@
 #![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
 #![feature(utf16_extra)]
-#![feature(utf16_extra_const)]
 #![feature(variant_count)]
 // tidy-alphabetical-end
 //
