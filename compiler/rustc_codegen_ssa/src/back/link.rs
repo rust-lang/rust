@@ -997,7 +997,7 @@ fn link_natively(
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
                         let has_linker = windows_registry::find_tool(
-                            sess.opts.target_triple.triple(),
+                            sess.opts.target_triple.tuple(),
                             "link.exe",
                         )
                         .is_some();
@@ -1323,10 +1323,8 @@ fn link_sanitizer_runtime(
         } else {
             let default_sysroot =
                 filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
-            let default_tlib = filesearch::make_target_lib_path(
-                &default_sysroot,
-                sess.opts.target_triple.triple(),
-            );
+            let default_tlib =
+                filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.tuple());
             default_tlib
         }
     }

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::TargetTuple;
 
 use crate::EarlyDiagCtxt;
 use crate::filesearch::make_target_lib_path;
@@ -52,7 +52,7 @@ impl PathKind {
 impl SearchPath {
     pub fn from_cli_opt(
         sysroot: &Path,
-        triple: &TargetTriple,
+        triple: &TargetTuple,
         early_dcx: &EarlyDiagCtxt,
         path: &str,
         is_unstable_enabled: bool,
@@ -80,7 +80,7 @@ impl SearchPath {
                     );
                 }
 
-                make_target_lib_path(sysroot, triple.triple()).join("builtin").join(stripped)
+                make_target_lib_path(sysroot, triple.tuple()).join("builtin").join(stripped)
             }
             None => PathBuf::from(path),
         };
