@@ -26,7 +26,7 @@
 //! This apparently translates to any callbacks in the ".CRT$XLB" section
 //! being run on certain events.
 //!
-//! So after all that, we use the compiler's #[link_section] feature to place
+//! So after all that, we use the compiler's `#[link_section]` feature to place
 //! a callback pointer into the magic section so it ends up being called.
 //!
 //! # What's up with this callback?
