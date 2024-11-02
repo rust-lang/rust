@@ -35,7 +35,7 @@ But it has some other interesting features that distinguish it from the HIR:
 
 [HIR]: ./hir.md
 [`ExprId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.ExprId.html
-[body owners]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.BodyOwnerKind.html
+[body owners]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.BodyOwnerKind.html
 
 The THIR lives in [`rustc_mir_build::thir`][thir-docs]. To construct a [`thir::Expr`],
 you can use the [`thir_body`] function, passing in the memory arena where the THIR

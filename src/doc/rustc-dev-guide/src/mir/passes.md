@@ -168,7 +168,7 @@ queries are called before it actually steals, thus ensuring that the reads have 
 simply loads from a cache the second time).
 
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
-[mirpass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/trait.MirPass.html
+[mirpass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/pass_manager/trait.MirPass.html
 [lint1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_packed_ref/struct.CheckPackedRef.html
 [lint2]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/check_const_item_mutation/struct.CheckConstItemMutation.html
 [lint3]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/function_item_references/struct.FunctionItemReferences.html

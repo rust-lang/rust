@@ -37,7 +37,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Crate.html
+[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
 
 For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
@@ -55,7 +55,7 @@ struct) would only have the **`ItemId`** `I` of `bar()`. To get the
 details of the function `bar()`, we would lookup `I` in the
 `items` map.
 
-[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Mod.html
+[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Mod.html
 
 One nice result from this representation is that one can iterate
 over all items in the crate by iterating over the key-value pairs
@@ -72,7 +72,7 @@ function to lookup the contents of `bar()` given its id; this gives
 the compiler a chance to observe that you accessed the data for
 `bar()`, and then record the dependency.
 
-[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Item.html
+[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Item.html
 
 <a name="hir-id"></a>
 
@@ -120,9 +120,9 @@ that `n` must be some HIR expression, you can do
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
-[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.Node.html
+[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
 [expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.expect_expr
-[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Expr.html
+[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via
 calls like [`tcx.hir().get_parent(n)`][get_parent].
@@ -139,6 +139,6 @@ associated with an **owner**, which is typically some kind of item
 associated with a given def-id ([`maybe_body_owned_by`]) or to find
 the owner of a body ([`body_owner_def_id`]).
 
-[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Body.html
+[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
 [`maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.maybe_body_owned_by
 [`body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.body_owner_def_id

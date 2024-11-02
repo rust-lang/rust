@@ -55,7 +55,7 @@ which is provable from the bounds declared on `Seq<T>`.
 
 Let's start by looking what happens when we type-check `main`.
 Initially we invoke `produce_singleton` and the return type is an opaque type
-[`OpaqueTy`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.ItemKind.html#variant.OpaqueTy).
+[`OpaqueTy`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.ItemKind.html#variant.OpaqueTy).
 
 #### Type-checking the for loop
 
