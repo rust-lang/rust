@@ -9,7 +9,7 @@
 use rustc_attr::{Stability, StabilityLevel};
 use rustc_hir::def_id::CRATE_DEF_ID;
 
-use crate::clean::{Crate, Item, ItemId};
+use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
@@ -38,22 +38,45 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
             ItemId::DefId(def_id) => {
                 let own_stability = self.cx.tcx.lookup_stability(def_id);
 
-                // If any of the item's parents was stabilized later or is still unstable,
-                // then use the parent's stability instead.
-                if let Some(own_stab) = own_stability
-                    && let StabilityLevel::Stable {
-                        since: own_since,
-                        allowed_through_unstable_modules: false,
-                    } = own_stab.level
-                    && let Some(parent_stab) = parent_stability
-                    && (parent_stab.is_unstable()
-                        || parent_stab
-                            .stable_since()
-                            .is_some_and(|parent_since| parent_since > own_since))
-                {
-                    parent_stability
-                } else {
-                    own_stability
+                let (ItemKind::StrippedItem(box kind) | kind) = &item.kind;
+                match kind {
+                    ItemKind::ExternCrateItem { .. }
+                    | ItemKind::ImportItem(..)
+                    | ItemKind::StructItem(..)
+                    | ItemKind::UnionItem(..)
+                    | ItemKind::EnumItem(..)
+                    | ItemKind::FunctionItem(..)
+                    | ItemKind::ModuleItem(..)
+                    | ItemKind::TypeAliasItem(..)
+                    | ItemKind::StaticItem(..)
+                    | ItemKind::TraitItem(..)
+                    | ItemKind::TraitAliasItem(..)
+                    | ItemKind::StructFieldItem(..)
+                    | ItemKind::VariantItem(..)
+                    | ItemKind::ForeignFunctionItem(..)
+                    | ItemKind::ForeignStaticItem(..)
+                    | ItemKind::ForeignTypeItem
+                    | ItemKind::MacroItem(..)
+                    | ItemKind::ProcMacroItem(..)
+                    | ItemKind::ConstantItem(..) => {
+                        // If any of the item's parents was stabilized later or is still unstable,
+                        // then use the parent's stability instead.
+                        merge_stability(own_stability, parent_stability)
+                    }
+
+                    // Don't inherit the parent's stability for these items, because they
+                    // are potentially accessible even if the parent is more unstable.
+                    ItemKind::ImplItem(..)
+                    | ItemKind::TyMethodItem(..)
+                    | ItemKind::MethodItem(..)
+                    | ItemKind::TyAssocConstItem(..)
+                    | ItemKind::AssocConstItem(..)
+                    | ItemKind::TyAssocTypeItem(..)
+                    | ItemKind::AssocTypeItem(..)
+                    | ItemKind::PrimitiveItem(..)
+                    | ItemKind::KeywordItem => own_stability,
+
+                    ItemKind::StrippedItem(..) => unreachable!(),
                 }
             }
             ItemId::Auto { .. } | ItemId::Blanket { .. } => {
@@ -68,5 +91,22 @@ impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
         self.parent_stability = parent_stability;
 
         Some(item)
+    }
+}
+
+fn merge_stability(
+    own_stability: Option<Stability>,
+    parent_stability: Option<Stability>,
+) -> Option<Stability> {
+    if let Some(own_stab) = own_stability
+        && let StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: false } =
+            own_stab.level
+        && let Some(parent_stab) = parent_stability
+        && (parent_stab.is_unstable()
+            || parent_stab.stable_since().is_some_and(|parent_since| parent_since > own_since))
+    {
+        parent_stability
+    } else {
+        own_stability
     }
 }
