@@ -68,7 +68,7 @@ const USE_SIGNED: u8 = 2;
 /// The mask may be negated if negation flags inside the immediate byte are set.
 ///
 /// For more information, see the Intel Software Developer's Manual, Vol. 2b, Chapter 4.1.
-#[allow(clippy::arithmetic_side_effects)]
+#[expect(clippy::arithmetic_side_effects)]
 fn compare_strings<'tcx>(
     this: &mut MiriInterpCx<'tcx>,
     str1: &OpTy<'tcx>,
@@ -444,7 +444,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let crc = if bit_size == 64 {
                     // The 64-bit version will only consider the lower 32 bits,
                     // while the upper 32 bits get discarded.
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     u128::from((left.to_u64()? as u32).reverse_bits())
                 } else {
                     u128::from(left.to_u32()?.reverse_bits())

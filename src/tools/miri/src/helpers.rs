@@ -156,7 +156,7 @@ pub fn iter_exported_symbols<'tcx>(
     for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
         // We add 1 to the number because that's what rustc also does everywhere it
         // calls `CrateNum::new`...
-        #[allow(clippy::arithmetic_side_effects)]
+        #[expect(clippy::arithmetic_side_effects)]
         (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
     }) {
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported

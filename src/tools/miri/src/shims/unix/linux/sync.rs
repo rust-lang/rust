@@ -182,7 +182,7 @@ pub fn futex<'tcx>(
             // before doing the syscall.
             this.atomic_fence(AtomicFenceOrd::SeqCst)?;
             let mut n = 0;
-            #[allow(clippy::arithmetic_side_effects)]
+            #[expect(clippy::arithmetic_side_effects)]
             for _ in 0..val {
                 if this.futex_wake(addr_usize, bitset)? {
                     n += 1;

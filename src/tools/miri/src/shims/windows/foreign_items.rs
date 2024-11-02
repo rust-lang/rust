@@ -25,7 +25,7 @@ fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
 }
 
 #[cfg(unix)]
-#[allow(clippy::get_first, clippy::arithmetic_side_effects)]
+#[expect(clippy::get_first, clippy::arithmetic_side_effects)]
 fn win_absolute<'tcx>(path: &Path) -> InterpResult<'tcx, io::Result<PathBuf>> {
     // We are on Unix, so we need to implement parts of the logic ourselves.
     let bytes = path.as_os_str().as_encoded_bytes();

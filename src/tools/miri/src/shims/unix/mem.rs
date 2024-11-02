@@ -132,7 +132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // addr must be a multiple of the page size, but apart from that munmap is just implemented
         // as a dealloc.
-        #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
+        #[expect(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
         if addr.addr().bytes() % this.machine.page_size != 0 {
             return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }

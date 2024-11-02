@@ -63,7 +63,7 @@ impl Handle {
         let floor_log2 = variant_count.ilog2();
 
         // we need to add one for non powers of two to compensate for the difference
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
     }
 
@@ -88,8 +88,7 @@ impl Handle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
-        return discriminant << data_size | data;
+        discriminant << data_size | data
     }
 
     fn new(discriminant: u32, data: u32) -> Option<Self> {
@@ -107,11 +106,10 @@ impl Handle {
         let data_size = u32::BITS.strict_sub(disc_size);
 
         // the lower `data_size` bits of this mask are 1
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         let data_mask = 2u32.pow(data_size) - 1;
 
         // the discriminant is stored right above the lower `data_size` bits
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         let discriminant = handle >> data_size;
 
         // the data is stored in the lower `data_size` bits
@@ -123,7 +121,7 @@ impl Handle {
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
-        #[allow(clippy::cast_possible_wrap)] // we want it to wrap
+        #[expect(clippy::cast_possible_wrap)] // we want it to wrap
         let signed_handle = self.to_packed() as i32;
         Scalar::from_target_isize(signed_handle.into(), cx)
     }
@@ -134,7 +132,7 @@ impl Handle {
     ) -> InterpResult<'tcx, Option<Self>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
 
-        #[allow(clippy::cast_sign_loss)] // we want to lose the sign
+        #[expect(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
             signed_handle as u32
         } else {
