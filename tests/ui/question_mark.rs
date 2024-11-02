@@ -248,6 +248,16 @@ fn infer_check() {
 
         Ok(())
     };
+
+    let closure = |x: Result<u8, ()>| -> Result<(), _> {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
 }
 
 // see issue #8019

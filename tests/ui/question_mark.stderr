@@ -163,7 +163,7 @@ LL | |     };
    | |_____^ help: try instead: `func_returning_result()?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:274:5
+  --> tests/ui/question_mark.rs:284:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -171,7 +171,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:281:5
+  --> tests/ui/question_mark.rs:291:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -179,7 +179,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:358:13
+  --> tests/ui/question_mark.rs:368:13
    |
 LL | /             if a.is_none() {
 LL | |                 return None;
@@ -189,7 +189,7 @@ LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:418:5
+  --> tests/ui/question_mark.rs:428:5
    |
 LL | /     let Some(v) = bar.foo.owned.clone() else {
 LL | |         return None;

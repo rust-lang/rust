@@ -16,7 +16,7 @@ use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::Res;
 use rustc_hir::{
     Arm, BindingMode, Block, Body, ByRef, Expr, ExprKind, FnRetTy, HirId, LetStmt, MatchSource, Mutability, Node, Pat,
-    PatKind, PathSegment, QPath, Stmt, StmtKind, TyKind,
+    PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
@@ -478,7 +478,7 @@ fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
     };
 
     match closure.fn_decl.output {
-        FnRetTy::Return(ret_ty) => matches!(ret_ty.kind, TyKind::Infer),
+        FnRetTy::Return(ret_ty) => ret_ty.is_suggestable_infer_ty(),
         FnRetTy::DefaultReturn(_) => true,
     }
 }
