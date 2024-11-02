@@ -6,6 +6,7 @@
 //!
 //! - `minicore` is **only** intended for `core` items, and the stubs should match the actual `core`
 //!   items.
+//! - Becareful of adding new features and things that are only available for a subset of targets.
 //!
 //! # References
 //!
@@ -13,8 +14,9 @@
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
 // ignore-tidy-linelength
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, decl_macro)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
+#![feature(asm_experimental_arch)]
 #![no_std]
 #![no_core]
 
@@ -37,7 +39,9 @@ impl<T: ?Sized> LegacyReceiver for &mut T {}
 #[lang = "copy"]
 pub trait Copy: Sized {}
 
-impl_marker_trait!(Copy => [ bool, char, isize, usize, i8, i16, i32, i64, u8, u16, u32, u64 ]);
+impl_marker_trait!(
+    Copy => [ bool, char, isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64 ]
+);
 impl<'a, T: ?Sized> Copy for &'a T {}
 impl<T: ?Sized> Copy for *const T {}
 impl<T: ?Sized> Copy for *mut T {}
@@ -69,4 +73,9 @@ impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
 #[repr(transparent)]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
+}
+
+#[rustc_builtin_macro]
+pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
 }
