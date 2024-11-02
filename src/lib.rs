@@ -40,6 +40,7 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::ErrorGuaranteed;
@@ -260,7 +261,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    match sess.target.llvm_target.parse() {
+    // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
+    // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
+    match versioned_llvm_target(sess).parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
