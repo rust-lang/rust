@@ -14,7 +14,7 @@ fn report_simd_type_validation_error(
 ) {
     fx.tcx.dcx().span_err(span, format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
     // Prevent verifier error
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
@@ -190,7 +190,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     format!("simd_shuffle index must be a SIMD vector of `u32`, got `{}`", idx_ty),
                 );
                 // Prevent verifier error
-                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
                 return;
             };
             let n: u16 = idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap();
@@ -1135,7 +1135,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         _ => {
             fx.tcx.dcx().span_err(span, format!("Unknown SIMD intrinsic {}", intrinsic));
             // Prevent verifier error
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
             return;
         }
     }
