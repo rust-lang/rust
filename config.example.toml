@@ -772,6 +772,7 @@
 #validate-mir-opts = 3
 
 # Configure `std` features used during bootstrap.
+#
 # Default features will be expanded in the following cases:
 #  - If `rust.llvm-libunwind` or `target.llvm-libunwind` is enabled:
 #    - "llvm-libunwind" will be added for in-tree LLVM builds.
@@ -779,6 +780,9 @@
 #  - If `rust.backtrace` is enabled, "backtrace" will be added.
 #  - If `rust.profiler` or `target.profiler` is enabled, "profiler" will be added.
 #  - If building for a zkvm target, "compiler-builtins-mem" will be added.
+#
+# Since libstd also builds libcore and liballoc as dependencies and all their features are mirrored
+# as libstd features, this option can also be used to configure features such as optimize_for_size.
 #std-features = ["panic_unwind"]
 
 # =============================================================================
