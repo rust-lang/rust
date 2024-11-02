@@ -60,13 +60,21 @@ LL | const fn const_main() {
    |
 
 error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
-  --> $DIR/const-unstable-intrinsic.rs:50:14
+  --> $DIR/const-unstable-intrinsic.rs:53:14
    |
 LL |     unsafe { copy(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_intrinsic]` (but this requires team approval)
 
-error: aborting due to 7 previous errors
+error: intrinsic `size_of_val` cannot be (indirectly) exposed to stable
+  --> $DIR/const-unstable-intrinsic.rs:61:9
+   |
+LL |         super::size_of_val(src);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_intrinsic]` (but this requires team approval)
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

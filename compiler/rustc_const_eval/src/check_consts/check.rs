@@ -739,6 +739,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We use `intrinsic.const_stable` to determine if this can be safely exposed to
                     // stable code, rather than `const_stable_indirect`. This is to make
                     // `#[rustc_const_stable_indirect]` an attribute that is always safe to add.
+                    // We also ask is_safe_to_expose_on_stable_const_fn; this determines whether the intrinsic
+                    // fallback body is safe to expose on stable.
+                    let is_const_stable = intrinsic.const_stable
+                        || (!intrinsic.must_be_overridden
+                            && tcx.is_const_fn(callee)
+                            && is_safe_to_expose_on_stable_const_fn(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
                         None => {
                             // Non-const intrinsic.
@@ -748,7 +754,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // Intrinsic does not need a separate feature gate (we rely on the
                             // regular stability checker). However, we have to worry about recursive
                             // const stability.
-                            if !intrinsic.const_stable && self.enforce_recursive_const_stability() {
+                            if !is_const_stable && self.enforce_recursive_const_stability() {
                                 self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
                                     span: self.span,
                                     def_path: self.tcx.def_path_str(callee),
@@ -763,12 +769,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
-                                const_stable: intrinsic.const_stable,
+                                const_stable: is_const_stable,
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
-                            // All good. But ensure this is indeed a const-stable intrinsic.
-                            assert!(intrinsic.const_stable);
+                            // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
+                            // can be *directly* invoked from stable const code) does not always
+                            // have the `#[rustc_const_stable_intrinsic]` attribute (which controls
+                            // exposing an intrinsic indirectly); we accept this call anyway.
                         }
                     }
                     // This completes the checks for intrinsics.
