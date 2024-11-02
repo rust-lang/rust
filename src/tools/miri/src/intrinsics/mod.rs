@@ -4,11 +4,11 @@ mod atomic;
 mod simd;
 
 use rand::Rng;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
-use rustc_target::abi::Size;
 
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_arg_count};

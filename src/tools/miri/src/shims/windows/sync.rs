@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
 use crate::*;

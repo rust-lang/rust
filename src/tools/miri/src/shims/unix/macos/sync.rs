@@ -10,7 +10,7 @@
 //! and we do not detect copying of the lock, but macOS doesn't guarantee anything
 //! in that case either.
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::*;
 

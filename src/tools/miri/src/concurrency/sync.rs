@@ -3,9 +3,9 @@ use std::collections::hash_map::Entry;
 use std::ops::Not;
 use std::time::Duration;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{Idx, IndexVec};
-use rustc_target::abi::Size;
 
 use super::init_once::InitOnce;
 use super::vector_clock::VClock;

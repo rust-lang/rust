@@ -1,5 +1,5 @@
+use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use crate::shims::unix::*;
 use crate::*;
@@ -13,7 +13,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Threading
             "pthread_setname_np" => {
                 let [thread, name] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 // THREAD_NAME_MAX allows a thread name of 31+1 length
                 // https://github.com/illumos/illumos-gate/blob/7671517e13b8123748eda4ef1ee165c6d9dba7fe/usr/src/uts/common/sys/thread.h#L613
                 let max_len = 32;
@@ -37,7 +37,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_getname_np" => {
                 let [thread, name, len] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 // https://github.com/illumos/illumos-gate/blob/c56822be04b6c157c8b6f2281e47214c3b86f657/usr/src/lib/libc/port/threads/thr.c#L2449-L2480
                 let res = this.pthread_getname_np(
                     this.read_scalar(thread)?,
@@ -51,13 +51,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Miscellaneous
             "___errno" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             "stack_getbounds" => {
-                let [stack] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [stack] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let stack = this.deref_pointer_as(stack, this.libc_ty_layout("stack_t"))?;
 
                 this.write_int_fields_named(
@@ -76,7 +77,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "pset_info" => {
                 let [pset, tpe, cpus, list] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 // We do not need to handle the current process cpu mask, available_parallelism
                 // implementation pass null anyway. We only care for the number of
                 // cpus.

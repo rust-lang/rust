@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::concurrency::sync::LAZY_INIT_COOKIE;
 use crate::*;

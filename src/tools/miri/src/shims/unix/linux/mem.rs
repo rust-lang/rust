@@ -1,7 +1,7 @@
 //! This follows the pattern in src/shims/unix/mem.rs: We only support uses of mremap that would
 //! correspond to valid uses of realloc.
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::*;
 
