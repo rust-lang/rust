@@ -711,7 +711,7 @@ impl char {
     /// '𝕊'.encode_utf16(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
+    #[rustc_const_stable(feature = "const_char_encode_utf16", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         encode_utf16_raw(self as u32, dst)
@@ -1823,9 +1823,10 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
 /// Panics if the buffer is not large enough.
 /// A buffer of length 2 is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
+#[rustc_const_stable(feature = "const_char_encode_utf16", since = "CURRENT_RUSTC_VERSION")]
 #[doc(hidden)]
 #[inline]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
 pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
     const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
         // Note that we cannot format in constant expressions.
