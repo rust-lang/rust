@@ -999,7 +999,7 @@ fn default_emitter(
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
     early_dcx: EarlyDiagCtxt,
-    sopts: config::Options,
+    mut sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
@@ -1103,6 +1103,13 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
+
+    // Configure the deployment target for change-tracking, now that target
+    // details are available.
+    if target.is_like_osx {
+        let name = rustc_target::spec::apple_deployment_target_env(&target.os);
+        sopts.apple_deployment_target_env = std::env::var(name).ok();
+    }
 
     let sess = Session {
         target,

@@ -391,8 +391,7 @@ fn escape_dep_filename(filename: &str) -> String {
 
 // Makefile comments only need escaping newlines and `\`.
 // The result can be unescaped by anything that can unescape `escape_default` and friends.
-fn escape_dep_env(symbol: Symbol) -> String {
-    let s = symbol.as_str();
+fn escape_dep_env(s: &str) -> String {
     let mut escaped = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
@@ -556,16 +555,22 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
             // Emit special comments with information about accessed environment variables.
             let env_depinfo = sess.psess.env_depinfo.borrow();
+
+            // We will soon sort, so the initial order does not matter.
+            #[allow(rustc::potential_query_instability)]
+            let mut env_depinfo: Vec<_> = env_depinfo
+                .iter()
+                .map(|(k, v)| (escape_dep_env(k.as_str()), v.map(|v| escape_dep_env(v.as_str()))))
+                .chain(tcx.sess.target.is_like_osx.then(|| {
+                    // On Apple targets, we also depend on the deployment target environment variable.
+                    let name = rustc_target::spec::apple_deployment_target_env(&tcx.sess.target.os);
+                    (name.into(), std::env::var(name).ok().map(|var| escape_dep_env(&var)))
+                }))
+                .collect();
+            env_depinfo.sort_unstable();
             if !env_depinfo.is_empty() {
-                // We will soon sort, so the initial order does not matter.
-                #[allow(rustc::potential_query_instability)]
-                let mut envs: Vec<_> = env_depinfo
-                    .iter()
-                    .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
-                    .collect();
-                envs.sort_unstable();
                 writeln!(file)?;
-                for (k, v) in envs {
+                for (k, v) in env_depinfo {
                     write!(file, "# env-dep:{k}")?;
                     if let Some(v) = v {
                         write!(file, "={v}")?;

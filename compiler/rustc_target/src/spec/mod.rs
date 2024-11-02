@@ -66,6 +66,7 @@ pub mod abi {
 
 mod base;
 pub use base::apple::{
+    deployment_target_env as apple_deployment_target_env,
     deployment_target_for_target as current_apple_deployment_target,
     platform as current_apple_platform,
 };
