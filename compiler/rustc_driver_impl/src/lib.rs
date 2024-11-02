@@ -838,6 +838,7 @@ fn print_crate_info(
             RelocationModels
             | CodeModels
             | TlsModels
+            | TlsDialect
             | TargetCPUs
             | StackProtectorStrategies
             | TargetFeatures => {

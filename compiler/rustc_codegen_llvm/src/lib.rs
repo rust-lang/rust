@@ -310,6 +310,17 @@ impl CodegenBackend for LlvmCodegenBackend {
                 }
                 writeln!(out).unwrap();
             }
+            PrintKind::TlsDialect => {
+                writeln!(out, "Available TLS dialects:").unwrap();
+                for name in
+                    &["trad", "desc"]
+                {
+                    writeln!(out, "    {name}").unwrap();
+                }
+                writeln!(out).unwrap();
+            }
+
+
             PrintKind::StackProtectorStrategies => {
                 writeln!(
                     out,

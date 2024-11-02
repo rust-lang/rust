@@ -39,6 +39,7 @@ impl OwnedTargetMachine {
         output_obj_file: &CStr,
         debug_info_compression: &CStr,
         use_emulated_tls: bool,
+        enable_tlsdesc: bool,
         args_cstr_buff: &[u8],
     ) -> Result<Self, LlvmError<'static>> {
         assert!(args_cstr_buff.len() > 0);
@@ -71,6 +72,7 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
+                enable_tlsdesc,
                 args_cstr_buff.as_ptr() as *const c_char,
                 args_cstr_buff.len(),
             )
