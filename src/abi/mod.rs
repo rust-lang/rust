@@ -193,7 +193,7 @@ fn make_local_place<'tcx>(
         );
     }
     let place = if is_ssa {
-        if let rustc_target::abi::Abi::ScalarPair(_, _) = layout.abi {
+        if let BackendRepr::ScalarPair(_, _) = layout.backend_repr {
             CPlace::new_var_pair(fx, local, layout)
         } else {
             CPlace::new_var(fx, local, layout)

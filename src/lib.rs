@@ -92,6 +92,7 @@ mod prelude {
         StackSlotData, StackSlotKind, TrapCode, Type, Value, types,
     };
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
+    pub(crate) use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Scalar, Size, VariantIdx};
     pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
@@ -101,7 +102,6 @@ mod prelude {
         self, FloatTy, Instance, InstanceKind, IntTy, ParamEnv, Ty, TyCtxt, UintTy,
     };
     pub(crate) use rustc_span::Span;
-    pub(crate) use rustc_target::abi::{Abi, FIRST_VARIANT, FieldIdx, Scalar, Size, VariantIdx};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};

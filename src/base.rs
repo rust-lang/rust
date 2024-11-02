@@ -290,7 +290,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     let arg_uninhabited = fx
         .mir
         .args_iter()
-        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
+        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).is_uninhabited());
     if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
@@ -644,9 +644,9 @@ fn codegen_stmt<'tcx>(
                                 _ => unreachable!("un op Neg for {:?}", layout.ty),
                             }
                         }
-                        UnOp::PtrMetadata => match layout.abi {
-                            Abi::Scalar(_) => CValue::zst(dest_layout),
-                            Abi::ScalarPair(_, _) => {
+                        UnOp::PtrMetadata => match layout.backend_repr {
+                            BackendRepr::Scalar(_) => CValue::zst(dest_layout),
+                            BackendRepr::ScalarPair(_, _) => {
                                 CValue::by_val(operand.load_scalar_pair(fx).1, dest_layout)
                             }
                             _ => bug!("Unexpected `PtrToMetadata` operand: {operand:?}"),
