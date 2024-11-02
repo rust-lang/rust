@@ -8,8 +8,8 @@ use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::abi::Size;
 
 use self::fd::FlockOp;
 use self::shims::time::system_time_to_duration;

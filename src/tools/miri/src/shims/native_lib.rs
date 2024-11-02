@@ -3,9 +3,9 @@ use std::ops::Deref;
 
 use libffi::high::call as ffi;
 use libffi::low::CodePtr;
+use rustc_abi::{BackendRepr, HasDataLayout};
 use rustc_middle::ty::{self as ty, IntTy, UintTy};
 use rustc_span::Symbol;
-use rustc_abi::{BackendRepr, HasDataLayout};
 
 use crate::*;
 
