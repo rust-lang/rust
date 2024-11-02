@@ -114,7 +114,6 @@
 #![feature(const_align_of_val_raw)]
 #![feature(const_align_offset)]
 #![feature(const_alloc_layout)]
-#![feature(const_arguments_as_str)]
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
