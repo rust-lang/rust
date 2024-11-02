@@ -103,12 +103,12 @@ pub(crate) fn codegen_fn<'tcx>(
     let block_map: IndexVec<BasicBlock, Block> =
         (0..mir.basic_blocks.len()).map(|_| bcx.create_block()).collect();
 
+    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+
     // Make FunctionCx
     let target_config = module.target_config();
     let pointer_type = target_config.pointer_type();
-    let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
-
-    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+    let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance, fn_abi);
 
     let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
         Some(debug_context.define_function(tcx, type_dbg, instance, fn_abi, &symbol_name, mir.span))
@@ -294,7 +294,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
         return;
     }
     fx.tcx
@@ -311,7 +311,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         if !reachable_blocks.contains(bb) {
             // We want to skip this block, because it's not reachable. But we still create
             // the block so terminators in other blocks can reference it.
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             continue;
         }
 
@@ -379,7 +379,6 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
-                fx.bcx.set_cold_block(failure);
 
                 if *expected {
                     fx.bcx.ins().brif(cond, target, &[], failure, &[]);
@@ -541,10 +540,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             }
             TerminatorKind::UnwindResume => {
                 // FIXME implement unwinding
-                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Unreachable => {
-                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+                fx.bcx.set_cold_block(block);
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -1075,12 +1075,14 @@ fn codegen_panic_inner<'tcx>(
     args: &[Value],
     span: Option<Span>,
 ) {
+    fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+
     let def_id = fx.tcx.require_lang_item(lang_item, span);
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
 
     if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
-        fx.bcx.ins().trap(TrapCode::User(0));
+        fx.bcx.ins().trap(TrapCode::user(2).unwrap());
         return;
     }
 
@@ -1093,5 +1095,5 @@ fn codegen_panic_inner<'tcx>(
         args,
     );
 
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }

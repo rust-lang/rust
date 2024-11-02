@@ -47,7 +47,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
     if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
-        fx.bcx.ins().trap(TrapCode::User(1));
+        fx.bcx.ins().trap(TrapCode::user(2).unwrap());
         return;
     }
 
@@ -137,7 +137,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
         }
         None => {
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
         }
     }
 }

@@ -1,8 +1,8 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{fs, io};
 
 use crate::path::{Dirs, RelPath};
 use crate::utils::{copy_dir_recursively, ensure_empty_dir, spawn_and_wait};
@@ -89,6 +89,19 @@ impl GitRepo {
         }
     }
 
+    fn verify_checksum(&self, dirs: &Dirs) {
+        let download_dir = self.download_dir(dirs);
+        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
+        if actual_hash != self.content_hash {
+            eprintln!(
+                "Mismatched content hash for {download_dir}: {actual_hash} != {content_hash}. Please run ./y.sh prepare again.",
+                download_dir = download_dir.display(),
+                content_hash = self.content_hash,
+            );
+            std::process::exit(1);
+        }
+    }
+
     pub(crate) fn fetch(&self, dirs: &Dirs) {
         let download_dir = self.download_dir(dirs);
 
@@ -126,18 +139,11 @@ impl GitRepo {
             assert!(target_lockfile.exists());
         }
 
-        let actual_hash = format!("{:016x}", hash_dir(&download_dir));
-        if actual_hash != self.content_hash {
-            eprintln!(
-                "Download of {download_dir} failed with mismatched content hash: {actual_hash} != {content_hash}",
-                download_dir = download_dir.display(),
-                content_hash = self.content_hash,
-            );
-            std::process::exit(1);
-        }
+        self.verify_checksum(dirs);
     }
 
     pub(crate) fn patch(&self, dirs: &Dirs) {
+        self.verify_checksum(dirs);
         apply_patches(
             dirs,
             self.patch_name,
@@ -149,6 +155,13 @@ impl GitRepo {
 
 fn clone_repo(download_dir: &Path, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
+
+    match fs::remove_dir_all(download_dir) {
+        Ok(()) => {}
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => panic!("Failed to remove {path}: {err}", path = download_dir.display()),
+    }
+
     // Ignore exit code as the repo may already have been checked out
     git_command(None, "clone").arg(repo).arg(download_dir).spawn().unwrap().wait().unwrap();
 

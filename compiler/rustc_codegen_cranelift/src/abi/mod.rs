@@ -389,7 +389,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let callee = with_no_trimmed_paths!(fx.tcx.def_path_str(def_id));
                 fx.tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
             } else {
-                fx.bcx.ins().trap(TrapCode::User(0));
+                fx.bcx.ins().trap(TrapCode::user(2).unwrap());
                 return;
             }
         }
@@ -562,6 +562,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
         }
 
+        if fx.clif_comments.enabled() {
+            let nop_inst = fx.bcx.ins().nop();
+            with_no_trimmed_paths!(fx.add_comment(nop_inst, format!("abi: {:?}", fn_abi)));
+        }
+
         match func_ref {
             CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
             CallTarget::Indirect(sig, func_ptr) => {
@@ -574,7 +579,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let ret_block = fx.get_block(dest);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
     }
 
     fn adjust_call_for_c_variadic<'tcx>(
