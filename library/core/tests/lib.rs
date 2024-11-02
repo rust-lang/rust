@@ -19,7 +19,6 @@
 #![feature(const_align_offset)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
-#![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
 #![feature(const_option_ext)]
