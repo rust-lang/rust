@@ -126,7 +126,7 @@ async fn async_main() {
     {
         let mut s = S { a: 1, b: Drop("drop first"), c: Drop("untouched") };
         let c = guidance!(async move || {
-            // s.a = 2; // FIXME(async_closures): Figure out why this fails
+            s.a = 2;
             drop(s.b);
         });
         s.c.0 = "uncaptured";
@@ -141,7 +141,7 @@ async fn async_main() {
     {
         let mut s = S { a: 1, b: Drop("drop first"), c: Drop("untouched") };
         let c = guidance!(async move || {
-            // s.a = 2; // FIXME(async_closures): Figure out why this fails
+            s.a = 2;
             drop(s.b);
         });
         s.c.0 = "uncaptured";
