@@ -38,7 +38,7 @@ cfg_if::cfg_if! {
     }
 }
 
-/// Map a Result<T, WinError> to io::Result<T>.
+/// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 trait IoResult<T> {
     fn io_result(self) -> crate::io::Result<T>;
 }
