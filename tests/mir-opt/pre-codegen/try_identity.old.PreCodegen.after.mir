@@ -19,14 +19,14 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
     }
 
     bb1: {
-        _3 = move ((_1 as Ok).0: T);
-        _0 = Result::<T, E>::Ok(copy _3);
+        _3 = copy ((_1 as Ok).0: T);
+        _0 = copy _1;
         goto -> bb3;
     }
 
     bb2: {
-        _4 = move ((_1 as Err).0: E);
-        _0 = Result::<T, E>::Err(copy _4);
+        _4 = copy ((_1 as Err).0: E);
+        _0 = copy _1;
         goto -> bb3;
     }
 
