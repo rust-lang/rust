@@ -195,6 +195,7 @@
     - [Error codes](./diagnostics/error-codes.md)
     - [Diagnostic items](./diagnostics/diagnostic-items.md)
     - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
+- [Async closures/"coroutine-closures"](coroutine-closures.md)
 
 # MIR to Binaries
 
