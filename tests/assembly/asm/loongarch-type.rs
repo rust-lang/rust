@@ -3,7 +3,7 @@
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: loongarch
 
-#![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
