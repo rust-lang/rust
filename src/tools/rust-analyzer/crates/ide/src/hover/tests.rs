@@ -6413,7 +6413,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6423,7 +6423,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
