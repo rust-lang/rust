@@ -736,8 +736,9 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// {{produces}}
-    /// ```
+    /// This will produce:
+    ///
+    /// ```text
     /// warning: allocation of size: 1 GiB  exceeds most system architecture limits
     /// --> $DIR/large-stack-size-issue-83060.rs:7:9
     /// |
