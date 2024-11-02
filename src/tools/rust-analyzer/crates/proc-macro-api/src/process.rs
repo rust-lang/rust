@@ -56,8 +56,8 @@ impl ProcMacroProcessSrv {
         match srv.version_check() {
             Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
                 io::ErrorKind::Other,
-                format!(
-                    "proc-macro server's api version ({v}) is newer than rust-analyzer's ({CURRENT_API_VERSION})"
+                format!( "The version of the proc-macro server ({v}) in your Rust toolchain is newer than the version supported by your rust-analyzer ({CURRENT_API_VERSION}).
+            This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain."
                 ),
             )),
             Ok(v) => {
