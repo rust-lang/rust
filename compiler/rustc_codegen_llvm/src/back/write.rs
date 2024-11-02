@@ -945,7 +945,7 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
 }
 
 fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    let triple = cgcx.opts.target_triple.triple();
+    let triple = cgcx.opts.target_triple.tuple();
     triple.contains("-ios")
         || triple.contains("-darwin")
         || triple.contains("-tvos")
@@ -954,7 +954,7 @@ fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
 }
 
 fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    cgcx.opts.target_triple.triple().contains("-aix")
+    cgcx.opts.target_triple.tuple().contains("-aix")
 }
 
 pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
@@ -1030,7 +1030,7 @@ unsafe fn embed_bitcode(
     let is_aix = target_is_aix(cgcx);
     let is_apple = target_is_apple(cgcx);
     unsafe {
-        if is_apple || is_aix || cgcx.opts.target_triple.triple().starts_with("wasm") {
+        if is_apple || is_aix || cgcx.opts.target_triple.tuple().starts_with("wasm") {
             // We don't need custom section flags, create LLVM globals.
             let llconst = common::bytes_in_context(llcx, bitcode);
             let llglobal = llvm::LLVMAddGlobal(

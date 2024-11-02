@@ -28,7 +28,7 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn host_triple(&self) -> &str {
+    pub fn host_tuple(&self) -> &str {
         &self.host_triple
     }
 

@@ -38,7 +38,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
-use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
@@ -213,7 +213,7 @@ pub(crate) struct ProcMacroData {
 /// If you do modify this struct, also bump the [`METADATA_VERSION`] constant.
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct CrateHeader {
-    pub(crate) triple: TargetTriple,
+    pub(crate) triple: TargetTuple,
     pub(crate) hash: Svh,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
