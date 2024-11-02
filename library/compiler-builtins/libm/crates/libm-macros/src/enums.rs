@@ -56,14 +56,14 @@ pub fn function_enum(
 
         impl #enum_name {
             /// The stringified version of this function name.
-            const fn as_str(self) -> &'static str {
+            pub const fn as_str(self) -> &'static str {
                 match self {
                     #( #as_str_arms , )*
                 }
             }
 
             /// The base name enum for this function.
-            const fn base_name(self) -> #base_enum {
+            pub const fn base_name(self) -> #base_enum {
                 match self {
                     #( #base_arms, )*
                 }
@@ -111,7 +111,7 @@ pub fn base_name_enum(
 
         impl #item_name {
             /// The stringified version of this base name.
-            const fn as_str(self) -> &'static str {
+            pub const fn as_str(self) -> &'static str {
                 match self {
                     #( #as_str_arms ),*
                 }
