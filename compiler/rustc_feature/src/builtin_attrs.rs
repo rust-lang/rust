@@ -876,6 +876,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "lang items are subject to change",
     ),
     rustc_attr!(
+        rustc_as_ptr, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "#[rustc_as_ptr] is used to mark functions returning pointers to their inner allocations."
+    ),
+    rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
