@@ -1,0 +1,110 @@
+{
+    "DisplayName": "visionOS 2.0",
+    "DefaultProperties": {
+        "CODE_SIGN_ENTITLEMENTS": "",
+        "ENTITLEMENTS_REQUIRED": "YES",
+        "KASAN_DEFAULT_CFLAGS": "$(KASAN_CFLAGS_CLASSIC)",
+        "KASAN_DEFAULT_CFLAGS[arch=arm64]": "$(KASAN_CFLAGS_TBI)",
+        "KASAN_DEFAULT_CFLAGS[arch=arm64e]": "$(KASAN_CFLAGS_TBI)",
+        "DEAD_CODE_STRIPPING": "YES",
+        "GCC_THUMB_SUPPORT": "YES",
+        "SUPPORTED_DEVICE_FAMILIES": "7",
+        "TAPI_VERIFY_MODE": "Pedantic",
+        "TEST_LIBRARY_SEARCH_PATHS": "$(inherited) $(PLATFORM_DIR)\/Developer\/usr\/lib",
+        "PLATFORM_NAME": "xros",
+        "KASAN_CFLAGS_CLASSIC": "-DKASAN=1 -DKASAN_CLASSIC=1 -fsanitize=address -mllvm -asan-globals-live-support -mllvm -asan-force-dynamic-shadow",
+        "XROS_DEPLOYMENT_TARGET": "2.0",
+        "CODE_SIGNING_REQUIRED": "YES",
+        "CODE_SIGN_IDENTITY": "Apple Development",
+        "KASAN_CFLAGS_TBI": "-DKASAN=1 -DKASAN_TBI=1 -fsanitize=kernel-hwaddress -mllvm -hwasan-recover=0 -mllvm -hwasan-instrument-atomics=0 -mllvm -hwasan-instrument-stack=1 -mllvm -hwasan-generate-tags-with-calls=1 -mllvm -hwasan-instrument-with-calls=1 -mllvm -hwasan-use-short-granules=0 -mllvm -hwasan-memory-access-callback-prefix=__asan_",
+        "TEST_FRAMEWORK_SEARCH_PATHS": "$(inherited) $(PLATFORM_DIR)\/Developer\/Library\/Frameworks $(SDKROOT)\/Developer\/Library\/Frameworks",
+        "TAPI_USE_SRCROOT": "YES",
+        "ENTITLEMENTS_DESTINATION": "Signature",
+        "RESOURCES_PLATFORM_NAME": "xros",
+        "DEFAULT_COMPILER": "com.apple.compilers.llvm.clang.1_0",
+        "DEPLOYMENT_TARGET_SUGGESTED_VALUES": [
+            "1.0",
+            "1.1",
+            "1.2",
+            "1.3",
+            "2.0"
+        ],
+        "AD_HOC_CODE_SIGNING_ALLOWED": "NO"
+    },
+    "MinimalDisplayName": "2.0",
+    "Version": "2.0",
+    "IsBaseSDK": "YES",
+    "SupportedTargets": {
+        "xros": {
+            "LLVMTargetTripleVendor": "apple",
+            "DeploymentTargetSettingName": "XROS_DEPLOYMENT_TARGET",
+            "PlatformFamilyDisplayName": "visionOS",
+            "Archs": [
+                "arm64e",
+                "arm64"
+            ],
+            "LLVMTargetTripleEnvironment": "",
+            "ClangRuntimeLibraryPlatformName": "xros",
+            "MaximumDeploymentTarget": "2.0.99",
+            "BuildVersionPlatformID": "11",
+            "DefaultDeploymentTarget": "2.0",
+            "LLVMTargetTripleSys": "xros",
+            "DeviceFamilies": [
+                {
+                    "Identifier": "7",
+                    "Name": "vision",
+                    "DisplayName": "Apple Vision"
+                }
+            ],
+            "MinimumDeploymentTarget": "1.0",
+            "SwiftConcurrencyMinimumDeploymentTarget": "1.0",
+            "SwiftOSRuntimeMinimumDeploymentTarget": "1.0",
+            "RecommendedDeploymentTarget": "1.0",
+            "PlatformFamilyName": "xrOS",
+            "SystemPrefix": "",
+            "ValidDeploymentTargets": [
+                "1.0",
+                "1.1",
+                "1.2",
+                "1.3",
+                "2.0"
+            ]
+        }
+    },
+    "PropertyConditionFallbackNames": [
+        "embedded"
+    ],
+    "VersionMap": {
+        "xrOS_iOS": {
+            "1.2": "17.5",
+            "1.0": "17.1",
+            "2.0": "18.0",
+            "1.1": "17.4"
+        },
+        "iOS_visionOS": {
+            "17.5": "1.2",
+            "17.1": "1.0",
+            "17.4": "1.1",
+            "18.0": "2.0"
+        },
+        "iOS_xrOS": {
+            "17.5": "1.2",
+            "17.1": "1.0",
+            "17.4": "1.1",
+            "18.0": "2.0"
+        },
+        "visionOS_iOS": {
+            "1.2": "17.5",
+            "1.0": "17.1",
+            "2.0": "18.0",
+            "1.1": "17.4"
+        }
+    },
+    "DefaultDeploymentTarget": "2.0",
+    "MaximumDeploymentTarget": "2.0.99",
+    "DebuggerOptions": {
+        "SupportsViewDebugging": "YES"
+    },
+    "CanonicalName": "xros2.0",
+    "CustomProperties": {}
+}

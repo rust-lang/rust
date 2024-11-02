@@ -238,7 +238,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
 
-        file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
+        file.set_macho_build_version(macho_object_build_version_for_target(sess))
     }
     if binary_format == BinaryFormat::Coff {
         // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
@@ -392,17 +392,20 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 ///
 /// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
 /// returns the `MachOBuildVersion` for the target to do so.
-fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
+fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
+    use rustc_target::spec::AppleOSVersion;
+
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
+    fn pack_version(version: AppleOSVersion) -> u32 {
+        let AppleOSVersion { major, minor, patch } = version;
         let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
         (major << 16) | (minor << 8) | patch
     }
 
     let platform =
-        rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target);
+        rustc_target::spec::current_apple_platform(&sess.target).expect("unknown Apple target OS");
+    let min_os = crate::apple::deployment_target(sess);
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;

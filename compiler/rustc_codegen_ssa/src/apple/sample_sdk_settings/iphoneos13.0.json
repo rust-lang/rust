@@ -1,0 +1,99 @@
+{
+    "DisplayName": "iOS 13.0",
+    "DefaultProperties": {
+        "DEFAULT_COMPILER": "com.apple.compilers.llvm.clang.1_0",
+        "AD_HOC_CODE_SIGNING_ALLOWED": "NO",
+        "DEPLOYMENT_TARGET_SUGGESTED_VALUES": [
+            "8.0",
+            "8.1",
+            "8.2",
+            "8.3",
+            "8.4",
+            "9.0",
+            "9.1",
+            "9.2",
+            "9.3",
+            "10.0",
+            "10.1",
+            "10.2",
+            "10.3",
+            "11.0",
+            "11.1",
+            "11.2",
+            "11.3",
+            "11.4",
+            "12.0",
+            "12.1",
+            "12.2",
+            "12.3",
+            "12.4",
+            "13.0"
+        ],
+        "GCC_THUMB_SUPPORT": "YES",
+        "CODE_SIGN_IDENTITY": "Apple Development",
+        "CODE_SIGNING_REQUIRED": "YES",
+        "SUPPORTED_DEVICE_FAMILIES": "1,2",
+        "ENTITLEMENTS_DESTINATION": "Signature",
+        "PLATFORM_NAME": "iphoneos",
+        "ENTITLEMENTS_REQUIRED": "YES",
+        "CODE_SIGN_ENTITLEMENTS": "",
+        "IPHONEOS_DEPLOYMENT_TARGET": "13.0",
+        "KASAN_DEFAULT_CFLAGS": "-DKASAN=1 -fsanitize=address -mllvm -asan-globals-live-support -mllvm -asan-force-dynamic-shadow",
+        "DEAD_CODE_STRIPPING": "YES"
+    },
+    "MinimalDisplayName": "13.0",
+    "Version": "13.0",
+    "IsBaseSDK": "YES",
+    "SupportedTargets": {
+        "iphoneos": {
+            "MinimumDeploymentTarget": "8.0",
+            "LLVMTargetTripleSys": "ios",
+            "MaximumDeploymentTarget": "13.0.99",
+            "LLVMTargetTripleEnvironment": "",
+            "LLVMTargetTripleVendor": "apple",
+            "BuildVersionPlatformID": "2",
+            "DefaultDeploymentTarget": "13.0",
+            "Archs": [
+                "armv7",
+                "armv7s",
+                "arm64"
+            ],
+            "ValidDeploymentTargets": [
+                "8.0",
+                "8.1",
+                "8.2",
+                "8.3",
+                "8.4",
+                "9.0",
+                "9.1",
+                "9.2",
+                "9.3",
+                "10.0",
+                "10.1",
+                "10.2",
+                "10.3",
+                "11.0",
+                "11.1",
+                "11.2",
+                "11.3",
+                "11.4",
+                "12.0",
+                "12.1",
+                "12.2",
+                "12.3",
+                "12.4",
+                "13.0"
+            ]
+        }
+    },
+    "PropertyConditionFallbackNames": [
+        "embedded"
+    ],
+    "DefaultDeploymentTarget": "13.0",
+    "MaximumDeploymentTarget": "13.0.99",
+    "DebuggerOptions": {
+        "SupportsViewDebugging": "YES"
+    },
+    "CanonicalName": "iphoneos13.0",
+    "CustomProperties": {}
+}

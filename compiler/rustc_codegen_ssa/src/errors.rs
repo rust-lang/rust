@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::io::Error;
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -533,16 +534,72 @@ pub enum ExtractBundledLibsError<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_arch)]
-pub(crate) struct UnsupportedArch<'a> {
-    pub arch: &'a str,
-    pub os: &'a str,
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(codegen_ssa_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+
+    #[diag(codegen_ssa_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
+
+    #[diag(codegen_ssa_apple_deployment_target_too_high)]
+    TooHigh { sdk_max: String, version: String, env_var: &'static str },
 }
 
-#[derive(Diagnostic)]
-pub(crate) enum AppleSdkRootError<'a> {
-    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
-    SdkPath { sdk_name: &'a str, error: Error },
+#[derive(Diagnostic, Debug)]
+pub(crate) enum AppleSdkError {
+    #[diag(codegen_ssa_apple_sdk_error_failed_reading)]
+    FailedReading { path: PathBuf, error: std::io::Error },
+
+    #[diag(codegen_ssa_apple_sdk_error_invalid_sdk_settings_json)]
+    InvalidSDKSettingsJson { path: PathBuf, error: Box<dyn std::error::Error> },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing)]
+    Missing { sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_commandline_tools)]
+    MissingCommandlineTools { sdkroot: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_cross_compile_non_macos)]
+    MissingCrossCompileNonMacOS { sdk_name: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_developer_dir)]
+    MissingDeveloperDir { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_mac_catalyst_version)]
+    MissingMacCatalystVersion { version: String },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_sdk_settings)]
+    MissingSDKSettings { sdkroot: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_xcode)]
+    MissingXcode { sdkroot: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_missing_xcode_select)]
+    MissingXcodeSelect { dir: PathBuf, sdkroot: PathBuf, sdkroot_bare: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_must_have_when_using_ld64)]
+    MustHaveWhenUsingLd64,
+
+    #[diag(codegen_ssa_apple_sdk_error_not_sdk_path)]
+    NotSdkPath { sdkroot: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_does_not_support_arch)]
+    SdkDoesNotSupportArch { sdkroot: PathBuf, arch: &'static str },
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_does_not_support_os)]
+    SdkDoesNotSupportOS { sdkroot: PathBuf, os: Cow<'static, str>, abi: Cow<'static, str> },
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_root_ignored)]
+    SdkRootIgnored,
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_root_is_root_path)]
+    SdkRootIsRootPath,
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_root_missing)]
+    SdkRootMissing { sdkroot: PathBuf },
+
+    #[diag(codegen_ssa_apple_sdk_error_sdk_root_not_absolute)]
+    SdkRootNotAbsolute { sdkroot: PathBuf },
 }
 
 #[derive(Diagnostic)]

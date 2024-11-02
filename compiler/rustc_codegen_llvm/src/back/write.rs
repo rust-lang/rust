@@ -8,6 +8,7 @@ use libc::{c_char, c_int, c_void, size_t};
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
+use rustc_codegen_ssa::apple::versioned_llvm_target;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
@@ -211,7 +212,7 @@ pub(crate) fn target_machine_factory(
         singlethread = false;
     }
 
-    let triple = SmallCStr::new(&sess.target.llvm_target);
+    let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);

@@ -1,6 +1,9 @@
 use std::borrow::Cow;
-use std::env;
+use std::fmt;
 use std::num::ParseIntError;
+use std::str::FromStr;
+
+use serde::de;
 
 use crate::spec::{
     Cc, DebuginfoKind, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow,
@@ -158,6 +161,23 @@ pub(crate) fn base(
     (opts, llvm_target(os, arch, abi), arch.target_arch())
 }
 
+pub fn sdk_name(target: &Target) -> &'static str {
+    match (&*target.os, &*target.abi) {
+        ("ios", "") => "iPhoneOS",
+        ("ios", "sim") => "iPhoneSimulator",
+        // Mac Catalyst uses the macOS SDK
+        ("ios", "macabi") => "MacOSX",
+        ("macos", "") => "MacOSX",
+        ("tvos", "") => "AppleTVOS",
+        ("tvos", "sim") => "AppleTVSimulator",
+        ("visionos", "") => "XROS",
+        ("visionos", "sim") => "XRSimulator",
+        ("watchos", "") => "WatchOS",
+        ("watchos", "sim") => "WatchSimulator",
+        (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
+    }
+}
+
 pub fn platform(target: &Target) -> Option<u32> {
     Some(match (&*target.os, &*target.abi) {
         ("macos", _) => object::macho::PLATFORM_MACOS,
@@ -175,37 +195,16 @@ pub fn platform(target: &Target) -> Option<u32> {
     })
 }
 
-/// Hack for calling `deployment_target` outside of this module.
-pub fn deployment_target_for_target(target: &Target) -> (u16, u8, u8) {
-    let arch = if target.llvm_target.starts_with("arm64e") {
-        Arch::Arm64e
-    } else if target.arch == "aarch64" {
-        Arch::Arm64
-    } else {
-        // Dummy architecture, only used by `deployment_target` anyhow
-        Arch::X86_64
-    };
-    let abi = match &*target.abi {
-        "macabi" => TargetAbi::MacCatalyst,
-        "sim" => TargetAbi::Simulator,
-        "" => TargetAbi::Normal,
-        abi => unreachable!("invalid abi '{abi}' for Apple target"),
-    };
-    deployment_target(&target.os, arch, abi)
-}
-
-/// Get the deployment target based on the standard environment variables, or
-/// fall back to a sane default.
-fn deployment_target(os: &str, arch: Arch, abi: TargetAbi) -> (u16, u8, u8) {
-    // When bumping a version in here, remember to update the platform-support
-    // docs too.
+/// Minimum operating system versions currently supported by `rustc`.
+pub fn os_minimum_deployment_target(os: &str) -> OSVersion {
+    // When bumping a version in here, remember to update the platform-support docs too.
     //
-    // NOTE: If you are looking for the default deployment target, prefer
-    // `rustc --print deployment-target`, as the default here may change in
-    // future `rustc` versions.
-
-    // Minimum operating system versions currently supported by `rustc`.
-    let os_min = match os {
+    // NOTE: The defaults may change in future `rustc` versions, so if you are looking for the
+    // default deployment target, prefer:
+    // ```
+    // $ rustc --print deployment-target
+    // ```
+    let (major, minor, patch) = match os {
         "macos" => (10, 12, 0),
         "ios" => (10, 0, 0),
         "tvos" => (10, 0, 0),
@@ -213,59 +212,47 @@ fn deployment_target(os: &str, arch: Arch, abi: TargetAbi) -> (u16, u8, u8) {
         "visionos" => (1, 0, 0),
         _ => unreachable!("tried to get deployment target for non-Apple platform"),
     };
+    OSVersion { major, minor, patch }
+}
 
-    // On certain targets it makes sense to raise the minimum OS version.
-    //
-    // This matches what LLVM does, see:
-    // <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
-    let min = match (os, arch, abi) {
-        ("macos", Arch::Arm64 | Arch::Arm64e, _) => (11, 0, 0),
-        ("ios", Arch::Arm64 | Arch::Arm64e, TargetAbi::MacCatalyst) => (14, 0, 0),
-        ("ios", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (14, 0, 0),
-        ("ios", Arch::Arm64e, TargetAbi::Normal) => (14, 0, 0),
+/// The deployment target for the given target.
+///
+/// This is similar to `os_minimum_deployment_target`, except that on certain targets it makes sense
+/// to raise the minimum OS version.
+///
+/// This matches what LLVM does, see in part:
+/// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
+pub fn minimum_deployment_target(target: &Target) -> OSVersion {
+    let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.abi) {
+        ("macos", "aarch64", _) => (11, 0, 0),
+        ("ios", "aarch64", "macabi") => (14, 0, 0),
+        ("ios", "aarch64", "sim") => (14, 0, 0),
+        ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
         // Mac Catalyst defaults to 13.1 in Clang.
-        ("ios", _, TargetAbi::MacCatalyst) => (13, 1, 0),
-        ("tvos", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (14, 0, 0),
-        ("watchos", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (7, 0, 0),
-        _ => os_min,
+        ("ios", _, "macabi") => (13, 1, 0),
+        ("tvos", "aarch64", "sim") => (14, 0, 0),
+        ("watchos", "aarch64", "sim") => (7, 0, 0),
+        (os, _, _) => return os_minimum_deployment_target(os),
     };
+    OSVersion { major, minor, patch }
+}
 
-    // The environment variable used to fetch the deployment target.
-    let env_var = match os {
+/// Name of the environment variable used to fetch the deployment target on the given OS.
+pub fn deployment_target_env_var(os: &str) -> &'static str {
+    match os {
         "macos" => "MACOSX_DEPLOYMENT_TARGET",
         "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
         "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
         "tvos" => "TVOS_DEPLOYMENT_TARGET",
         "visionos" => "XROS_DEPLOYMENT_TARGET",
         _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
-    };
-
-    if let Ok(deployment_target) = env::var(env_var) {
-        match parse_version(&deployment_target) {
-            // It is common that the deployment target is set too low, e.g. on
-            // macOS Aarch64 to also target older x86_64, the user may set a
-            // lower deployment target than supported.
-            //
-            // To avoid such issues, we silently raise the deployment target
-            // here.
-            // FIXME: We want to show a warning when `version < os_min`.
-            Ok(version) => version.max(min),
-            // FIXME: Report erroneous environment variable to user.
-            Err(_) => min,
-        }
-    } else {
-        min
     }
 }
 
 /// Generate the target triple that we need to pass to LLVM and/or Clang.
+///
+/// See `rustc_codegen_ssa::apple::llvm_target` for the full LLVM target.
 fn llvm_target(os: &str, arch: Arch, abi: TargetAbi) -> StaticCow<str> {
-    // The target triple depends on the deployment target, and is required to
-    // enable features such as cross-language LTO, and for picking the right
-    // Mach-O commands.
-    //
-    // Certain optimizations also depend on the deployment target.
-    let (major, minor, patch) = deployment_target(os, arch, abi);
     let arch = arch.target_name();
     // Convert to the "canonical" OS name used by LLVM:
     // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L236-L282
@@ -282,7 +269,7 @@ fn llvm_target(os: &str, arch: Arch, abi: TargetAbi) -> StaticCow<str> {
         TargetAbi::MacCatalyst => "-macabi",
         TargetAbi::Simulator => "-simulator",
     };
-    format!("{arch}-apple-{os}{major}.{minor}.{patch}{environment}").into()
+    format!("{arch}-apple-{os}{environment}").into()
 }
 
 fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
@@ -292,29 +279,10 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // that's only applicable to cross-OS compilation. Always leave anything for the
     // host OS alone though.
     if os == "macos" {
-        let mut env_remove = Vec::with_capacity(2);
-        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
-        // may occur when we're linking a custom build script while targeting iOS for example.
-        if let Ok(sdkroot) = env::var("SDKROOT") {
-            if sdkroot.contains("iPhoneOS.platform")
-                || sdkroot.contains("iPhoneSimulator.platform")
-                || sdkroot.contains("AppleTVOS.platform")
-                || sdkroot.contains("AppleTVSimulator.platform")
-                || sdkroot.contains("WatchOS.platform")
-                || sdkroot.contains("WatchSimulator.platform")
-                || sdkroot.contains("XROS.platform")
-                || sdkroot.contains("XRSimulator.platform")
-            {
-                env_remove.push("SDKROOT".into())
-            }
-        }
-        // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
+        // `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
         // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
         // although this is apparently ignored when using the linker at "/usr/bin/ld".
-        env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
-        env_remove.push("XROS_DEPLOYMENT_TARGET".into());
-        env_remove.into()
+        cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET", "XROS_DEPLOYMENT_TARGET"]
     } else {
         // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
@@ -322,19 +290,71 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     }
 }
 
-/// Parse an OS version triple (SDK version or deployment target).
+/// Deployment target or SDK version.
 ///
-/// The size of the returned numbers here are limited by Mach-O's
-/// `LC_BUILD_VERSION`.
-fn parse_version(version: &str) -> Result<(u16, u8, u8), ParseIntError> {
-    if let Some((major, minor)) = version.split_once('.') {
-        let major = major.parse()?;
-        if let Some((minor, patch)) = minor.split_once('.') {
-            Ok((major, minor.parse()?, patch.parse()?))
-        } else {
-            Ok((major, minor.parse()?, 0))
+/// The size of the numbers in here are limited by Mach-O's `LC_BUILD_VERSION`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct OSVersion {
+    pub major: u16,
+    pub minor: u8,
+    pub patch: u8,
+}
+
+impl OSVersion {
+    pub const MIN: Self = Self { major: u16::MIN, minor: u8::MIN, patch: u8::MIN };
+
+    pub const MAX: Self = Self { major: u16::MAX, minor: u8::MAX, patch: u8::MAX };
+
+    pub fn pretty(self) -> impl fmt::Display {
+        let OSVersion { major, minor, patch } = self;
+        fmt::from_fn(move |f| {
+            write!(f, "{major}.{minor}")?;
+            if patch != 0 {
+                write!(f, ".{patch}")?;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<'de> de::Deserialize<'de> for OSVersion {
+    fn deserialize<D: de::Deserializer<'de>>(deserializer: D) -> Result<OSVersion, D::Error> {
+        struct OSVersionVisitor;
+
+        impl<'de> de::Visitor<'de> for OSVersionVisitor {
+            type Value = OSVersion;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a valid `major.minor.patch` version")
+            }
+
+            fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                OSVersion::from_str(value).map_err(E::custom)
+            }
         }
-    } else {
-        Ok((version.parse()?, 0, 0))
+
+        deserializer.deserialize_str(OSVersionVisitor)
+    }
+}
+
+impl FromStr for OSVersion {
+    type Err = ParseIntError;
+
+    /// Parse an OS version triple (SDK version or deployment target).
+    fn from_str(version: &str) -> Result<Self, Self::Err> {
+        if let Some((major, minor)) = version.split_once('.') {
+            let major = major.parse()?;
+            if let Some((minor, patch)) = minor.split_once('.') {
+                let minor = minor.parse()?;
+                let patch = patch.parse()?;
+                Ok(Self { major, minor, patch })
+            } else {
+                let minor = minor.parse()?;
+                Ok(Self { major, minor, patch: 0 })
+            }
+        } else {
+            let major = version.parse()?;
+            Ok(Self { major, minor: 0, patch: 0 })
+        }
     }
 }
