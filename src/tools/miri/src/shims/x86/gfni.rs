@@ -1,5 +1,5 @@
+use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -8,7 +8,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_gfni_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -30,7 +30,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affine_
             "vgf2p8affineqb.128" | "vgf2p8affineqb.256" | "vgf2p8affineqb.512" => {
                 let [left, right, imm8] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 affine_transform(this, left, right, imm8, dest, /* inverse */ false)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8affineinv_epi64_epi8` functions.
@@ -38,7 +38,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affineinv
             "vgf2p8affineinvqb.128" | "vgf2p8affineinvqb.256" | "vgf2p8affineinvqb.512" => {
                 let [left, right, imm8] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 affine_transform(this, left, right, imm8, dest, /* inverse */ true)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8mul_epi8` functions.
@@ -48,7 +48,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8mul
             "vgf2p8mulb.128" | "vgf2p8mulb.256" | "vgf2p8mulb.512" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -136,7 +136,7 @@ fn affine_transform<'tcx>(
 // This is a evaluated at compile time. Trait based conversion is not available.
 /// See <https://www.corsix.org/content/galois-field-instructions-2021-cpus> for the
 /// definition of `gf_inv` which was used for the creation of this table.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 static TABLE: [u8; 256] = {
     let mut array = [0; 256];
 
@@ -163,7 +163,7 @@ static TABLE: [u8; 256] = {
 /// polynomial representation with the reduction polynomial x^8 + x^4 + x^3 + x + 1.
 /// See <https://www.corsix.org/content/galois-field-instructions-2021-cpus> for details.
 // This is a const function. Trait based conversion is not available.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 const fn gf2p8_mul(left: u8, right: u8) -> u8 {
     // This implementation is based on the `gf2p8mul_byte` definition found inside the Intel intrinsics guide.
     // See https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8mul

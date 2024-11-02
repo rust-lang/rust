@@ -9,7 +9,7 @@ fn main() {
 
     let mut x = 1;
     needs_fn(async || {
-        //~^ ERROR  async closure does not implement `FnMut` because it captures state from its environment
+        //~^ ERROR async closure does not implement `FnMut` because it captures state from its environment
         x += 1;
     });
 }

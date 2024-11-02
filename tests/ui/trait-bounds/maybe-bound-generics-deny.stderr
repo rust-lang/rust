@@ -1,0 +1,11 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/maybe-bound-generics-deny.rs:1:12
+   |
+LL | fn uwu<T: ?Sized<i32>>() {}
+   |            ^^^^^----- help: remove the unnecessary generics
+   |            |
+   |            expected 0 generic arguments
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

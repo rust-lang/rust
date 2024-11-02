@@ -152,9 +152,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         'tcx: 'hir,
     {
         for hir_bound in hir_bounds {
-            // In order to avoid cycles, when we're lowering `SelfThatDefines`,
+            // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
-            if let PredicateFilter::SelfThatDefines(assoc_name) = predicate_filter {
+            if let PredicateFilter::SelfTraitThatDefines(assoc_name) = predicate_filter {
                 if let Some(trait_ref) = hir_bound.trait_ref()
                     && let Some(trait_did) = trait_ref.trait_def_id()
                     && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
@@ -168,12 +168,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref) => {
                     let hir::TraitBoundModifiers { constness, polarity } = poly_trait_ref.modifiers;
-                    let polarity = match polarity {
-                        rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
-                        rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
-                        rustc_ast::BoundPolarity::Maybe(_) => continue,
-                    };
-
                     let _ = self.lower_poly_trait_ref(
                         &poly_trait_ref.trait_ref,
                         poly_trait_ref.span,
@@ -395,7 +389,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match predicate_filter {
                     PredicateFilter::All
                     | PredicateFilter::SelfOnly
-                    | PredicateFilter::SelfThatDefines(_)
                     | PredicateFilter::SelfAndAssociatedTypeBounds => {
                         bounds.push_projection_bound(
                             tcx,
@@ -406,6 +399,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             constraint.span,
                         );
                     }
+                    // SelfTraitThatDefines is only interested in trait predicates.
+                    PredicateFilter::SelfTraitThatDefines(_) => {}
                     // `ConstIfConst` is only interested in `~const` bounds.
                     PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
                 }
@@ -432,7 +427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
                     PredicateFilter::SelfOnly
-                    | PredicateFilter::SelfThatDefines(_)
+                    | PredicateFilter::SelfTraitThatDefines(_)
                     | PredicateFilter::SelfConstIfConst => {}
                 }
             }

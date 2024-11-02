@@ -7,9 +7,11 @@ use rustc_span::{Span, Symbol};
 #[cfg(test)]
 mod tests;
 
+use ExternAbi as Abi;
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
-pub enum Abi {
+pub enum ExternAbi {
     // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
     // hashing tests. These are used in many places, so giving them stable values reduces test
     // churn. The specific values are meaningless.

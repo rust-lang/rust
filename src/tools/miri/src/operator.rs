@@ -2,9 +2,9 @@ use std::iter;
 
 use rand::Rng;
 use rand::seq::IteratorRandom;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
-use rustc_target::abi::Size;
 
 use crate::*;
 

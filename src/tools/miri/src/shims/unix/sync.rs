@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::concurrency::sync::LAZY_INIT_COOKIE;
 use crate::*;
@@ -685,7 +685,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let id = rwlock_get_data(this, rwlock_op)?.id;
 
-        #[allow(clippy::if_same_then_else)]
         if this.rwlock_reader_unlock(id)? || this.rwlock_writer_unlock(id)? {
             interp_ok(())
         } else {

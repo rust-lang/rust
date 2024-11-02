@@ -10,6 +10,7 @@ use std::{fmt, process};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use rustc_abi::{Align, ExternAbi, Size};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
@@ -21,8 +22,6 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
@@ -1006,7 +1005,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1033,7 +1032,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1075,7 +1074,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(panic, Abi::Rust, &[], None, StackPopCleanup::Goto {
+        ecx.call_function(panic, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
             ret: None,
             unwind: mir::UnwindAction::Unreachable,
         })?;

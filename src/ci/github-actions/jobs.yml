@@ -205,7 +205,7 @@ auto:
   - image: dist-x86_64-musl
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-netbsd
     <<: *job-linux-4c
@@ -232,7 +232,7 @@ auto:
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
   - image: x86_64-rust-for-linux
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: x86_64-gnu
     <<: *job-linux-4c
@@ -280,7 +280,7 @@ auto:
   - image: x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   ####################
   #  macOS Builders  #
@@ -488,7 +488,7 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-x86_64-mingw
     env:
@@ -501,10 +501,10 @@ auto:
       NO_DOWNLOAD_CI_LLVM: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-x86_64-msvc-alt
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
-    <<: *job-windows-8c
+    <<: *job-windows

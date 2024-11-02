@@ -264,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let autoborrow_mut = adj.iter().any(|adj| {
             matches!(adj, &Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
                 ..
             })
         });

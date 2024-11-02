@@ -7,6 +7,7 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
+use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -14,7 +15,6 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::shims::tls;
@@ -911,7 +911,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         thread: Option<MPlaceTy<'tcx>>,
         start_routine: Pointer,
-        start_abi: Abi,
+        start_abi: ExternAbi,
         func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {

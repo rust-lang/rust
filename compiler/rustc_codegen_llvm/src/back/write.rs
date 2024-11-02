@@ -9,6 +9,7 @@ use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
 use rustc_codegen_ssa::back::link::ensure_removed;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
@@ -211,7 +212,7 @@ pub(crate) fn target_machine_factory(
         singlethread = false;
     }
 
-    let triple = SmallCStr::new(&sess.target.llvm_target);
+    let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
@@ -591,7 +592,6 @@ pub(crate) unsafe fn llvm_optimize(
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.instrument_coverage,
             instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-            config.instrument_gcov,
             pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.debug_info_for_profiling,
             llvm_selfprofiler,

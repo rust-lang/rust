@@ -55,7 +55,6 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
-    llcontext: &'ll llvm::Context,
     llmod: &'ll llvm::Module,
     builder: &'ll mut DIBuilder<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
@@ -78,9 +77,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         debug!("CodegenUnitDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
-        let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         CodegenUnitDebugContext {
-            llcontext,
             llmod,
             builder,
             created_files: Default::default(),

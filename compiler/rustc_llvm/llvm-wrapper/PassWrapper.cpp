@@ -42,7 +42,6 @@
 #if LLVM_VERSION_GE(19, 0)
 #include "llvm/Support/PGOOptions.h"
 #endif
-#include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
@@ -714,9 +713,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
     bool EmitLifetimeMarkers, LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath, bool InstrumentCoverage,
-    const char *InstrProfileOutput, bool InstrumentGCOV,
-    const char *PGOSampleUsePath, bool DebugInfoForProfiling,
-    void *LlvmSelfProfiler,
+    const char *InstrProfileOutput, const char *PGOSampleUsePath,
+    bool DebugInfoForProfiling, void *LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
     const char *ExtraPasses, size_t ExtraPassesLen, const char *LLVMPlugins,
@@ -844,13 +842,6 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     PipelineStartEPCallbacks.push_back(
         [](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(createModuleToFunctionPassAdaptor(LintPass()));
-        });
-  }
-
-  if (InstrumentGCOV) {
-    PipelineStartEPCallbacks.push_back(
-        [](ModulePassManager &MPM, OptimizationLevel Level) {
-          MPM.addPass(GCOVProfilerPass(GCOVOptions::getDefault()));
         });
   }
 

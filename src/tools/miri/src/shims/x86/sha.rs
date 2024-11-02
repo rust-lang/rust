@@ -4,8 +4,8 @@
 //!
 //! [RustCrypto's sha256 module]: https://github.com/RustCrypto/hashes/blob/6be8466247e936c415d8aafb848697f39894a386/sha2/src/sha256/soft.rs
 
+use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -14,7 +14,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sha_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -51,7 +51,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match unprefixed_name {
             // Used to implement the _mm_sha256rnds2_epu32 function.
             "256rnds2" => {
-                let [a, b, k] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [a, b, k] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -72,7 +73,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg1_epu32 function.
             "256msg1" => {
-                let [a, b] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [a, b] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;
@@ -90,7 +92,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Used to implement the _mm_sha256msg2_epu32 function.
             "256msg2" => {
-                let [a, b] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [a, b] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (a_reg, a_len) = this.project_to_simd(a)?;
                 let (b_reg, b_len) = this.project_to_simd(b)?;

@@ -1,5 +1,5 @@
+use rustc_abi::ExternAbi;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::spec::abi::Abi;
 
 use self::shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 use crate::*;
@@ -49,7 +49,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.start_regular_thread(
             thread,
             start_routine,
-            Abi::System { unwind: false },
+            ExternAbi::System { unwind: false },
             func_arg,
             this.layout_of(this.tcx.types.u32)?,
         )

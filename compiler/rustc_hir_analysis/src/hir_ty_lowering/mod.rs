@@ -76,7 +76,7 @@ pub enum PredicateFilter {
     /// Only traits that reference `Self: ..` and define an associated type
     /// with the given ident are implied by the trait. This mode exists to
     /// side-step query cycles when lowering associated types.
-    SelfThatDefines(Ident),
+    SelfTraitThatDefines(Ident),
 
     /// Only traits that reference `Self: ..` and their associated type bounds.
     /// For example, given `Self: Tr<A: B>`, this would expand to `Self: Tr`
@@ -668,7 +668,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: &hir::TraitRef<'tcx>,
         span: Span,
         constness: hir::BoundConstness,
-        polarity: ty::PredicatePolarity,
+        polarity: hir::BoundPolarity,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         predicate_filter: PredicateFilter,
@@ -690,15 +690,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(self_ty),
         );
 
-        if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
-            && !self.tcx().is_const_trait(trait_def_id)
-        {
-            self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
-                span,
-                modifier: constness.as_str(),
-            });
-        }
-
         let tcx = self.tcx();
         let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
         debug!(?bound_vars);
@@ -708,10 +699,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             bound_vars,
         );
 
+        let polarity = match polarity {
+            rustc_ast::BoundPolarity::Positive => ty::PredicatePolarity::Positive,
+            rustc_ast::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+            rustc_ast::BoundPolarity::Maybe(_) => {
+                // Validate associated type at least. We may want to reject these
+                // outright in the future...
+                for constraint in trait_segment.args().constraints {
+                    let _ = self.lower_assoc_item_constraint(
+                        trait_ref.hir_ref_id,
+                        poly_trait_ref,
+                        constraint,
+                        &mut Default::default(),
+                        &mut Default::default(),
+                        constraint.span,
+                        predicate_filter,
+                    );
+                }
+                return arg_count;
+            }
+        };
+
+        if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
+            && !self.tcx().is_const_trait(trait_def_id)
+        {
+            self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+                span,
+                modifier: constness.as_str(),
+            });
+        }
+
         match predicate_filter {
+            // This is only concerned with trait predicates.
+            PredicateFilter::SelfTraitThatDefines(..) => {
+                bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
+            }
             PredicateFilter::All
             | PredicateFilter::SelfOnly
-            | PredicateFilter::SelfThatDefines(..)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 debug!(?poly_trait_ref);
                 bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
@@ -763,11 +787,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // since we should have emitted an error for them earlier, and they
             // would not be well-formed!
             if polarity != ty::PredicatePolarity::Positive {
-                assert!(
-                    self.dcx().has_errors().is_some(),
+                self.dcx().span_delayed_bug(
+                    constraint.span,
                     "negative trait bounds should not have assoc item constraints",
                 );
-                continue;
+                break;
             }
 
             // Specify type to assert that error was already reported in `Err` case.

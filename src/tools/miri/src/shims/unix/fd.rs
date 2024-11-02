@@ -7,7 +7,7 @@ use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::helpers::check_min_arg_count;
 use crate::shims::unix::linux::epoll::EpollReadyEvents;

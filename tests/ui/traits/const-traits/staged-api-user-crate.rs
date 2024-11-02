@@ -11,6 +11,7 @@ fn non_const_context() {
 const fn stable_const_context() {
     Unstable::func();
     //~^ ERROR cannot call non-const fn `<staged_api::Unstable as staged_api::MyTrait>::func` in constant functions
+    //~| ERROR cannot call non-const fn `<staged_api::Unstable as staged_api::MyTrait>::func` in constant functions
 }
 
 fn main() {}

@@ -1475,7 +1475,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
         #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
-        #[rustc_allow_const_fn_unstable(const_num_midpoint)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

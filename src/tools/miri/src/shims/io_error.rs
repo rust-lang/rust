@@ -188,7 +188,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// The inverse of `io_error_to_errnum`.
-    #[allow(clippy::needless_return)]
+    #[expect(clippy::needless_return)]
     fn try_errnum_to_io_error(
         &self,
         errnum: Scalar,

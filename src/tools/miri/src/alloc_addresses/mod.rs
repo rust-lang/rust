@@ -7,9 +7,9 @@ use std::cell::RefCell;
 use std::cmp::max;
 
 use rand::Rng;
+use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
-use rustc_target::abi::{Align, Size};
 
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;

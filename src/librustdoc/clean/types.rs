@@ -5,6 +5,7 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
@@ -26,8 +27,6 @@ use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Loc};
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi::Abi;
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
@@ -656,7 +655,7 @@ impl Item {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    safety: if abi == Abi::RustIntrinsic {
+                    safety: if abi == ExternAbi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
                         safety
@@ -2342,7 +2341,7 @@ pub(crate) struct BareFunctionDecl {
     pub(crate) safety: hir::Safety,
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
-    pub(crate) abi: Abi,
+    pub(crate) abi: ExternAbi,
 }
 
 #[derive(Clone, Debug)]

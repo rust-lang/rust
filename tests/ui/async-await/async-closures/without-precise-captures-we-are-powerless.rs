@@ -38,10 +38,12 @@ fn through_field_and_ref<'a>(x: &S<'a>) {
     let c = async || { println!("{}", *x.0); }; //~ ERROR `x` does not live long enough
     outlives::<'a>(c());
     outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
+}
 
+fn through_field_and_ref_move<'a>(x: &S<'a>) {
     let c = async move || { println!("{}", *x.0); };
     outlives::<'a>(c()); //~ ERROR `c` does not live long enough
-    // outlives::<'a>(call_once(c)); // FIXME(async_closures): Figure out why this fails
+    outlives::<'a>(call_once(c)); //~ ERROR explicit lifetime required in the type of `x`
 }
 
 fn main() {}

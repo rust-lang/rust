@@ -16,7 +16,6 @@ doctest = false
 object.workspace = true
 libloading.workspace = true
 memmap2.workspace = true
-snap.workspace = true
 
 stdx.workspace = true
 tt.workspace = true

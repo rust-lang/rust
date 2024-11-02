@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 ) || cx.typeck_results().expr_adjustments(expr).first().map_or(false, |a| {
                     matches!(
                         a.kind,
-                        Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. }))
+                        Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. }))
                     )
                 }) || (matches!(
                     cx.typeck_results().expr_ty(indexed).ref_mutability(),

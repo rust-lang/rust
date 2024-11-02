@@ -1,5 +1,6 @@
 //! See docs in build/expr/mod.rs
 
+use rustc_abi::Size;
 use rustc_ast as ast;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{
@@ -11,7 +12,6 @@ use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, Ty, TyCtxt, UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::abi::Size;
 use tracing::{instrument, trace};
 
 use crate::build::{Builder, parse_float_into_constval};

@@ -1,10 +1,10 @@
 use either::Either;
+use rustc_abi::{Endian, HasDataLayout};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::FloatTy;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
-use rustc_target::abi::{Endian, HasDataLayout};
 
 use crate::helpers::{ToHost, ToSoft, bool_to_simd_element, check_arg_count, simd_element_to_bool};
 use crate::*;
@@ -750,7 +750,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let val = if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
-                        #[allow(clippy::arithmetic_side_effects)]
                         let ptr = ptr.wrapping_offset(dest.layout.size * i, this);
                         let place = this.ptr_to_mplace(ptr, dest.layout);
                         this.read_immediate(&place)?
@@ -774,7 +773,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     if simd_element_to_bool(mask)? {
                         // Size * u64 is implemented as always checked
-                        #[allow(clippy::arithmetic_side_effects)]
                         let ptr = ptr.wrapping_offset(val.layout.size * i, this);
                         let place = this.ptr_to_mplace(ptr, val.layout);
                         this.write_immediate(*val, &place)?
@@ -831,7 +829,7 @@ fn simd_bitmask_index(idx: u32, vec_len: u32, endianness: Endian) -> u32 {
     assert!(idx < vec_len);
     match endianness {
         Endian::Little => idx,
-        #[allow(clippy::arithmetic_side_effects)] // idx < vec_len
+        #[expect(clippy::arithmetic_side_effects)] // idx < vec_len
         Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }

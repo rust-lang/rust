@@ -1,9 +1,9 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
+use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
 use rustc_span::{DUMMY_SP, SpanData, Symbol};
-use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;

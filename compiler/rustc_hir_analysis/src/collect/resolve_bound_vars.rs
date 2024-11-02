@@ -571,16 +571,28 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             // We list scopes outwards, this causes us to see lifetime parameters in reverse
             // declaration order. In order to make it consistent with what `generics_of` might
             // give, we will reverse the IndexMap after early captures.
+            let mut late_depth = 0;
             let mut scope = self.scope;
+            let mut crossed_late_boundary = None;
             let mut opaque_capture_scopes = vec![(opaque.def_id, &captures)];
             loop {
                 match *scope {
-                    Scope::Binder { ref bound_vars, s, .. } => {
+                    Scope::Binder { ref bound_vars, scope_type, s, .. } => {
                         for (&original_lifetime, &def) in bound_vars.iter().rev() {
+                            if let ResolvedArg::LateBound(..) = def
+                                && crossed_late_boundary.is_some()
+                            {
+                                continue;
+                            }
                             if let DefKind::LifetimeParam = self.tcx.def_kind(original_lifetime) {
+                                let def = def.shifted(late_depth);
                                 let ident = lifetime_ident(original_lifetime);
                                 self.remap_opaque_captures(&opaque_capture_scopes, def, ident);
                             }
+                        }
+                        match scope_type {
+                            BinderScopeType::Normal => late_depth += 1,
+                            BinderScopeType::Concatenating => {}
                         }
                         scope = s;
                     }
@@ -602,6 +614,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                     Scope::Opaque { captures, def_id, s } => {
                         opaque_capture_scopes.push((def_id, captures));
+                        late_depth = 0;
                         scope = s;
                     }
 
@@ -611,8 +624,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                     Scope::ObjectLifetimeDefault { s, .. }
                     | Scope::Supertrait { s, .. }
-                    | Scope::TraitRefBoundary { s, .. }
-                    | Scope::LateBoundary { s, .. } => {
+                    | Scope::TraitRefBoundary { s, .. } => {
+                        scope = s;
+                    }
+
+                    Scope::LateBoundary { s, what, .. } => {
+                        crossed_late_boundary = Some(what);
                         scope = s;
                     }
                 }

@@ -1,15 +1,16 @@
 //! Deeply normalize types using the old trait solver.
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_infer::infer::InferOk;
 use rustc_infer::infer::at::At;
+use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
 use rustc_macros::extension;
-use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
+    TypingMode,
 };
 use tracing::{debug, instrument};
 
@@ -109,16 +110,19 @@ where
 }
 
 pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    param_env_for_debug_assertion: ty::ParamEnv<'tcx>,
     value: &T,
-    reveal: Reveal,
 ) -> bool {
     let mut flags = ty::TypeFlags::HAS_ALIAS;
 
     // Opaques are treated as rigid with `Reveal::UserFacing`,
     // so we can ignore those.
-    match reveal {
-        Reveal::UserFacing => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
-        Reveal::All => {}
+    match infcx.typing_mode(param_env_for_debug_assertion) {
+        TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
+            flags.remove(ty::TypeFlags::HAS_TY_OPAQUE)
+        }
+        TypingMode::PostAnalysis => {}
     }
 
     value.has_type_flags(flags)
@@ -154,7 +158,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             "Normalizing {value:?} without wrapping in a `Binder`"
         );
 
-        if !needs_normalization(&value, self.param_env.reveal()) {
+        if !needs_normalization(self.selcx.infcx, self.param_env, &value) {
             value
         } else {
             value.fold_with(self)
@@ -178,7 +182,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !needs_normalization(&ty, self.param_env.reveal()) {
+        if !needs_normalization(self.selcx.infcx, self.param_env, &ty) {
             return ty;
         }
 
@@ -213,10 +217,11 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         match kind {
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
-                match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.super_fold_with(self),
-
-                    Reveal::All => {
+                match self.selcx.infcx.typing_mode(self.param_env) {
+                    TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
+                        ty.super_fold_with(self)
+                    }
+                    TypingMode::PostAnalysis => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             self.selcx.infcx.err_ctxt().report_overflow_error(
@@ -403,7 +408,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
         if tcx.features().generic_const_exprs()
-            || !needs_normalization(&constant, self.param_env.reveal())
+            || !needs_normalization(self.selcx.infcx, self.param_env, &constant)
         {
             constant
         } else {
@@ -420,7 +425,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
     #[inline]
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
+        if p.allow_normalization() && needs_normalization(self.selcx.infcx, self.param_env, &p) {
             p.super_fold_with(self)
         } else {
             p

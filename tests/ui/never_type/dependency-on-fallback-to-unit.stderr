@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: Default` will fail
 LL |         false => <_>::default(),
    |                   ^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         false => <()>::default(),
+   |                   ~~
 
 warning: this function depends on never type fallback being `()`
   --> $DIR/dependency-on-fallback-to-unit.rs:19:1
@@ -28,6 +32,10 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     deserialize::<()>()?;
+   |                ++++++
 
 warning: 2 warnings emitted
 

@@ -5,6 +5,7 @@ use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::RngCore;
+use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::Safety;
@@ -18,8 +19,6 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::{Align, FieldIdx, FieldsShape, Size, Variants};
-use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -157,7 +156,7 @@ pub fn iter_exported_symbols<'tcx>(
     for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
         // We add 1 to the number because that's what rustc also does everywhere it
         // calls `CrateNum::new`...
-        #[allow(clippy::arithmetic_side_effects)]
+        #[expect(clippy::arithmetic_side_effects)]
         (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
     }) {
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
@@ -435,7 +434,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
-        caller_abi: Abi,
+        caller_abi: ExternAbi,
         args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
         stack_pop: StackPopCleanup,
@@ -917,7 +916,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
+    fn check_abi<'a>(&self, abi: ExternAbi, exp_abi: ExternAbi) -> InterpResult<'a, ()> {
         if abi != exp_abi {
             throw_ub_format!(
                 "calling a function with ABI {} using caller ABI {}",
@@ -953,8 +952,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_abi_and_shim_symbol_clash(
         &mut self,
-        abi: Abi,
-        exp_abi: Abi,
+        abi: ExternAbi,
+        exp_abi: ExternAbi,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
@@ -978,8 +977,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_shim<'a, const N: usize>(
         &mut self,
-        abi: Abi,
-        exp_abi: Abi,
+        abi: ExternAbi,
+        exp_abi: ExternAbi,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
