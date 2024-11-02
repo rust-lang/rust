@@ -837,16 +837,18 @@ impl InTypeConstId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {
     ConstId(ConstId),
+    StaticId(StaticId),
     ConstBlockId(ConstBlockId),
     InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, ConstBlockId, InTypeConstId for GeneralConstId);
+impl_from!(ConstId, StaticId, ConstBlockId, InTypeConstId for GeneralConstId);
 
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
+            GeneralConstId::StaticId(_) => None,
             GeneralConstId::ConstBlockId(it) => it.lookup(db).parent.as_generic_def_id(db),
             GeneralConstId::InTypeConstId(it) => it.lookup(db).owner.as_generic_def_id(db),
         }
@@ -854,6 +856,9 @@ impl GeneralConstId {
 
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
+            GeneralConstId::StaticId(it) => {
+                db.static_data(it).name.display(db.upcast(), Edition::CURRENT).to_string()
+            }
             GeneralConstId::ConstId(const_id) => db
                 .const_data(const_id)
                 .name

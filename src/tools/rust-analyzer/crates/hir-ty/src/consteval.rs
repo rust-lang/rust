@@ -8,7 +8,7 @@ use hir_def::{
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
+    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
 use stdx::never;
@@ -235,6 +235,10 @@ pub(crate) fn const_eval_query(
     let body = match def {
         GeneralConstId::ConstId(c) => {
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
+        }
+        GeneralConstId::StaticId(s) => {
+            let krate = s.module(db.upcast()).krate();
+            db.monomorphized_mir_body(s.into(), subst, TraitEnvironment::empty(krate))?
         }
         GeneralConstId::ConstBlockId(c) => {
             let ConstBlockLoc { parent, root } = db.lookup_intern_anonymous_const(c);

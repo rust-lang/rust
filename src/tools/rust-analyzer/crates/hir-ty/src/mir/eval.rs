@@ -12,8 +12,8 @@ use hir_def::{
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
-    AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    StaticId, VariantId,
+    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
+    VariantId,
 };
 use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
 use intern::sym;
@@ -40,8 +40,8 @@ use crate::{
     static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
-    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
+    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -1899,8 +1899,8 @@ impl Evaluator<'_> {
 
     #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
-        let ty = &konst.data(Interner).ty;
-        let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
+        let ConstData { ty, value: chalk_ir::ConstValue::Concrete(c) } = &konst.data(Interner)
+        else {
             not_supported!("evaluating non concrete constant");
         };
         let result_owner;
@@ -2908,14 +2908,14 @@ impl Evaluator<'_> {
 
 pub fn render_const_using_debug_impl(
     db: &dyn HirDatabase,
-    owner: ConstId,
+    owner: DefWithBodyId,
     c: &Const,
 ) -> Result<String> {
-    let mut evaluator = Evaluator::new(db, owner.into(), false, None)?;
+    let mut evaluator = Evaluator::new(db, owner, false, None)?;
     let locals = &Locals {
         ptr: ArenaMap::new(),
         body: db
-            .mir_body(owner.into())
+            .mir_body(owner)
             .map_err(|_| MirEvalError::NotSupported("unreachable".to_owned()))?,
         drop_flags: DropFlags::default(),
     };
