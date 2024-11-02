@@ -112,8 +112,8 @@ pub fn report_unstable(
     soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
     let msg = match reason {
-        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
-        None => format!("use of unstable library feature '{feature}'"),
+        Some(r) => format!("use of unstable library feature `{feature}`: {r}"),
+        None => format!("use of unstable library feature `{feature}`"),
     };
 
     if is_soft {

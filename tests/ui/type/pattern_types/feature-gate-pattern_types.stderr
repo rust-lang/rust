@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'core_pattern_type'
+error[E0658]: use of unstable library feature `core_pattern_type`
   --> $DIR/feature-gate-pattern_types.rs:5:19
    |
 LL | type NonNullU32 = pattern_type!(u32 is 1..);
@@ -8,7 +8,7 @@ LL | type NonNullU32 = pattern_type!(u32 is 1..);
    = help: add `#![feature(core_pattern_type)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'core_pattern_type'
+error[E0658]: use of unstable library feature `core_pattern_type`
   --> $DIR/feature-gate-pattern_types.rs:7:16
    |
 LL | type Percent = pattern_type!(u32 is 0..=100);
@@ -18,7 +18,7 @@ LL | type Percent = pattern_type!(u32 is 0..=100);
    = help: add `#![feature(core_pattern_type)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'core_pattern_type'
+error[E0658]: use of unstable library feature `core_pattern_type`
   --> $DIR/feature-gate-pattern_types.rs:9:17
    |
 LL | type Negative = pattern_type!(i32 is ..=0);
@@ -28,7 +28,7 @@ LL | type Negative = pattern_type!(i32 is ..=0);
    = help: add `#![feature(core_pattern_type)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'core_pattern_type'
+error[E0658]: use of unstable library feature `core_pattern_type`
   --> $DIR/feature-gate-pattern_types.rs:11:17
    |
 LL | type Positive = pattern_type!(i32 is 0..);
@@ -38,7 +38,7 @@ LL | type Positive = pattern_type!(i32 is 0..);
    = help: add `#![feature(core_pattern_type)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'core_pattern_type'
+error[E0658]: use of unstable library feature `core_pattern_type`
   --> $DIR/feature-gate-pattern_types.rs:13:15
    |
 LL | type Always = pattern_type!(Option<u32> is Some(_));

@@ -66,15 +66,15 @@ mod cross_crate {
         <Foo>::trait_unstable(&foo); //~ ERROR use of unstable library feature
 
         foo.method_unstable_text();
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         Foo::method_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         <Foo>::method_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         foo.trait_unstable_text();
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         <Foo>::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
 
         stable();
         foo.method_stable();
@@ -139,9 +139,9 @@ mod cross_crate {
         foo.trait_unstable(); //~ ERROR use of unstable library feature
         <Foo>::trait_unstable(&foo); //~ ERROR use of unstable library feature
         foo.trait_unstable_text();
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         <Foo>::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         foo.trait_stable();
         Trait::trait_stable(&foo);
         <Foo>::trait_stable(&foo);
@@ -157,7 +157,7 @@ mod cross_crate {
         //~^ ERROR use of unstable library feature
         foo.trait_unstable(); //~ ERROR use of unstable library feature
         foo.trait_unstable_text();
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         foo.trait_stable();
     }
 

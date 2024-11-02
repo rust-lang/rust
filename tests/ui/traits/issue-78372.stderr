@@ -37,7 +37,7 @@ help: you might be missing a type parameter
 LL | impl<T, MISC> DispatchFromDyn<Smaht<U, MISC>> for T {}
    |       ++++++
 
-error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+error[E0658]: use of unstable library feature `dispatch_from_dyn`
   --> $DIR/issue-78372.rs:1:5
    |
 LL | use std::ops::DispatchFromDyn;
@@ -46,7 +46,7 @@ LL | use std::ops::DispatchFromDyn;
    = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+error[E0658]: use of unstable library feature `dispatch_from_dyn`
   --> $DIR/issue-78372.rs:3:9
    |
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
