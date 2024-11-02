@@ -1,23 +1,16 @@
+//@ add-core-stubs
+//@ needs-asm-support
 //@ revisions: s390x
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
-//@ needs-asm-support
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, rustc_attrs)]
+#![feature(asm_experimental_arch)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 fn f() {
     let mut x = 0;

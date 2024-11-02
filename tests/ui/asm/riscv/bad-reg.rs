@@ -1,3 +1,5 @@
+//@ add-core-stubs
+//@ needs-asm-support
 //@ revisions: riscv32i riscv32imafc riscv32gc riscv32e riscv64imac riscv64gc
 //@[riscv32i] compile-flags: --target riscv32i-unknown-none-elf
 //@[riscv32i] needs-llvm-components: riscv
@@ -11,25 +13,14 @@
 //@[riscv64imac] needs-llvm-components: riscv
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv64gc] needs-llvm-components: riscv
-//@ needs-asm-support
 
-#![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![crate_type = "lib"]
+#![feature(no_core, rustc_attrs)]
+#![feature(asm_experimental_arch)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 fn f() {
     let mut x = 0;
