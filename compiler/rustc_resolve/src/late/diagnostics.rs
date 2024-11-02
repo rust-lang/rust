@@ -894,10 +894,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             // If the trait has a single item (which wasn't matched by the algorithm), suggest it
             let suggestion = self.get_single_associated_item(path, &source, is_expected);
-            if !self.r.add_typo_suggestion(err, suggestion, ident_span) {
-                fallback = !self.let_binding_suggestion(err, ident_span);
-            }
+            self.r.add_typo_suggestion(err, suggestion, ident_span);
         }
+
+        if self.let_binding_suggestion(err, ident_span) {
+            fallback = false;
+        }
+
         fallback
     }
 
