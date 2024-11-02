@@ -31,9 +31,9 @@ fn needle_from_libs(libs: &[&str]) -> String {
     let mut needle = String::new();
     for lib in libs {
         if is_msvc() {
-            let _ = needle.write_fmt(format_args!(r#""{lib}.lib" "#));
+            let _ = needle.write_fmt(format_args!("{lib}.lib "));
         } else {
-            let _ = needle.write_fmt(format_args!(r#""-l{lib}" "#));
+            let _ = needle.write_fmt(format_args!("-l{lib} "));
         }
     }
     needle.pop(); // remove trailing space

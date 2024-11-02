@@ -190,3 +190,38 @@ fn unix_exit_statuses() {
         }
     }
 }
+
+#[test]
+fn command_debug_escaping() {
+    #[track_caller]
+    fn check(arg: impl AsRef<OsStr>, expected: &str) {
+        let cmd = Command::new(arg.as_ref());
+        assert_eq!(format!("{cmd:?}"), expected);
+    }
+
+    // Escaped.
+    check("", r#""""#);
+    check("é", r#""\xc3\xa9""#);
+    check("a'", r#""a\'""#);
+    check("a\"", r#""a\"""#);
+    check("'\"", r#""\'\"""#);
+    check(" ", r#"" ""#);
+    check(
+        "/Users/The user's name/.cargo/bin/cargo",
+        r#""/Users/The user\'s name/.cargo/bin/cargo""#,
+    );
+    check("!a", r#""!a""#);
+
+    // Simple enough that we don't escape them.
+    check("a", "a");
+    check("/my/simple/path", "/my/simple/path");
+    check("abc-defg_1234", "abc-defg_1234");
+
+    // Real-world use-case, immediately clear that two of the arguments are passed as one.
+    let mut cmd = crate::process::Command::new("ld");
+    cmd.arg("my/file.o");
+    cmd.arg("-macos_version_min");
+    cmd.arg("13.0");
+    cmd.arg("-arch arm64");
+    assert_eq!(format!("{cmd:?}"), r#"ld my/file.o -macos_version_min 13.0 "-arch arm64""#);
+}

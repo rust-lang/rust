@@ -72,8 +72,8 @@ fn main() {
         .stdout_utf8();
 
     let no_verbatim = regex::Regex::new("l1.*-Wl,a1.*l2.*-Wl,a2.*d1.*-Wl,a3").unwrap();
-    let one_verbatim = regex::Regex::new(r#"l1.*"a1".*l2.*-Wl,a2.*d1.*-Wl,a3"#).unwrap();
-    let ld = regex::Regex::new(r#"l1.*"a1".*l2.*"a2".*d1.*"a3""#).unwrap();
+    let one_verbatim = regex::Regex::new("l1.*a1.*l2.*-Wl,a2.*d1.*-Wl,a3").unwrap();
+    let ld = regex::Regex::new("l1.*a1.*l2.*a2.*d1.*a3").unwrap();
 
     assert!(no_verbatim.is_match(&out_gnu));
     assert!(no_verbatim.is_match(&out_att_gnu));
