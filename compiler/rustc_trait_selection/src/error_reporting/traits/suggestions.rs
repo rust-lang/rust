@@ -1091,7 +1091,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         Some((
                             DefIdOrName::DefId(def_id),
                             fn_sig.output(),
-                            fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
+                            fn_sig.inputs().map_bound(|inputs| inputs[0].tuple_fields().as_slice()),
                         ))
                     }
                     ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
@@ -1101,7 +1101,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             .iter()
                             .find_map(|pred| {
                                 if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && self.tcx.is_lang_item(proj.projection_term.def_id,LangItem::FnOnceOutput)
+                        && self.tcx.is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
                         // args tuple will always be args[1]
                         && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                                 {
