@@ -149,6 +149,11 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if let Some(stab) = self.parent_stab {
                 if inherit_deprecation.yes() && stab.is_unstable() {
                     self.index.stab_map.insert(def_id, stab);
+                    if fn_sig.is_some_and(|s| s.header.is_const()) {
+                        let const_stab =
+                            attr::unmarked_crate_const_stab(self.tcx.sess, attrs, stab);
+                        self.index.const_stab_map.insert(def_id, const_stab);
+                    }
                 }
             }
 

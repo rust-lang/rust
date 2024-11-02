@@ -381,6 +381,26 @@ pub fn find_const_stability(
     const_stab
 }
 
+/// Calculates the const stability for a const function in a `-Zforce-unstable-if-unmarked` crate
+/// without the `staged_api` feature.
+pub fn unmarked_crate_const_stab(
+    _sess: &Session,
+    attrs: &[Attribute],
+    regular_stab: Stability,
+) -> ConstStability {
+    assert!(regular_stab.level.is_unstable());
+    // The only attribute that matters here is `rustc_const_stable_indirect`.
+    // We enforce recursive const stability rules for those functions.
+    let const_stable_indirect =
+        attrs.iter().any(|a| a.name_or_empty() == sym::rustc_const_stable_indirect);
+    ConstStability {
+        feature: Some(regular_stab.feature),
+        const_stable_indirect,
+        promotable: false,
+        level: regular_stab.level,
+    }
+}
+
 /// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.
 /// Returns `None` if no stability attributes are found.
 pub fn find_body_stability(
