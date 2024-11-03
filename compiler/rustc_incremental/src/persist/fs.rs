@@ -585,23 +585,17 @@ fn extract_timestamp_from_session_dir(directory_name: &str) -> Result<SystemTime
 
 fn timestamp_to_string(timestamp: SystemTime) -> BaseNString {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
-    let micros = duration.as_secs() * 1_000_000 + (duration.subsec_nanos() as u64) / 1000;
+    let micros: u64 = duration.as_micros().try_into().unwrap();
     micros.to_base_fixed_len(CASE_INSENSITIVE)
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
-    let micros_since_unix_epoch = u64::from_str_radix(s, INT_ENCODE_BASE as u32);
+    let micros_since_unix_epoch = match u64::from_str_radix(s, INT_ENCODE_BASE as u32) {
+        Ok(micros) => micros,
+        Err(_) => return Err("timestamp not an int"),
+    };
 
-    if micros_since_unix_epoch.is_err() {
-        return Err("timestamp not an int");
-    }
-
-    let micros_since_unix_epoch = micros_since_unix_epoch.unwrap();
-
-    let duration = Duration::new(
-        micros_since_unix_epoch / 1_000_000,
-        1000 * (micros_since_unix_epoch % 1_000_000) as u32,
-    );
+    let duration = Duration::from_micros(micros_since_unix_epoch);
     Ok(UNIX_EPOCH + duration)
 }
 
