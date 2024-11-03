@@ -49,10 +49,6 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ExpnId, ExpnKind, Span};
-pub use rustc_type_ir::ConstKind::{
-    Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
-    Placeholder as PlaceholderCt, Unevaluated, Value,
-};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};

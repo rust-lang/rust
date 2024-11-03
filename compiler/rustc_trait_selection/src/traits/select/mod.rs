@@ -890,9 +890,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
 
                         use rustc_hir::def::DefKind;
-                        use ty::Unevaluated;
                         match (c1.kind(), c2.kind()) {
-                            (Unevaluated(a), Unevaluated(b))
+                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
                                 if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
@@ -912,7 +911,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Unevaluated(_))
+                            | (ty::ConstKind::Unevaluated(_), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
