@@ -313,6 +313,25 @@ leave a comment on the original PR asking the reviewer to close it for you.
 [labeling]: ./rustbot.md#issue-relabeling
 [closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
 
+### Reverting a PR
+
+When a PR leads to miscompile, significant performance regressions, or other critical issues, we may
+want to revert that PR with a regression test case. You can also check out the [revert policy] on
+Forge docs (which is mainly targeted for reviewers, but contains useful info for PR authors too).
+
+If the PR contains huge changes, it can be challenging to revert, making it harder to review
+incremental fixes in subsequent updates. Or if certain code in that PR is heavily depended upon by
+subsequent PRs, reverting it can become difficult.
+
+In such cases, we can identify the problematic code and disable it for some input, as shown in [#128271][#128271].
+
+For MIR optimizations, we can also use the `-Zunsound-mir-opt` option to gate the mir-opt, as shown
+in [#132356][#132356].
+
+[revert policy]: https://forge.rust-lang.org/compiler/reviews.html?highlight=revert#reverts
+[#128271]: https://github.com/rust-lang/rust/pull/128271
+[#132356]: https://github.com/rust-lang/rust/pull/132356
+
 ## External dependencies
 
 This section has moved to ["Using External Repositories"](./external-repos.md).
