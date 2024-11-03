@@ -710,7 +710,7 @@ pub fn check_tied_features(
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(impl_item) = tcx.opt_associated_item(def_id)
-        && let ty::AssocItemContainer::ImplContainer = impl_item.container
+        && let ty::AssocItemContainer::Impl = impl_item.container
         && let Some(trait_item) = impl_item.trait_item_def_id
     {
         return tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER);

@@ -1796,7 +1796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 false,
                 |did| {
                     let assoc_item = self.tcx.associated_item(did);
-                    assoc_item.container == ty::AssocItemContainer::TraitContainer
+                    assoc_item.container == ty::AssocItemContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
                 },
             )

@@ -59,11 +59,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let simple_ident = param.param.pat.simple_ident();
 
                     let (has_impl_path, impl_path) = match ctxt.assoc_item.container {
-                        AssocItemContainer::TraitContainer => {
+                        AssocItemContainer::Trait => {
                             let id = ctxt.assoc_item.container_id(tcx);
                             (true, tcx.def_path_str(id))
                         }
-                        AssocItemContainer::ImplContainer => (false, String::new()),
+                        AssocItemContainer::Impl => (false, String::new()),
                     };
 
                     let mut err = self.tcx().dcx().create_err(ButCallingIntroduces {
