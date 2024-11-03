@@ -660,7 +660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .into()
                         }
                         GenericParamDefKind::Lifetime => {
-                            let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                            let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
                             let bound_var = ty::BoundVariableKind::Region(kind);
                             bound_vars.push(bound_var);
                             ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {

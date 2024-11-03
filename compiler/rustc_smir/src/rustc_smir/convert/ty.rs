@@ -243,11 +243,11 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
-            ty::BoundRegionKind::BrAnon => BoundRegionKind::BrAnon,
-            ty::BoundRegionKind::BrNamed(def_id, symbol) => {
+            ty::BoundRegionKind::Anon => BoundRegionKind::BrAnon,
+            ty::BoundRegionKind::Named(def_id, symbol) => {
                 BoundRegionKind::BrNamed(tables.br_named_def(*def_id), symbol.to_string())
             }
-            ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
+            ty::BoundRegionKind::ClosureEnv => BoundRegionKind::BrEnv,
         }
     }
 }

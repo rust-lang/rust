@@ -381,7 +381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let closure_env_region: ty::Region<'_> =
                 ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
                     var: ty::BoundVar::ZERO,
-                    kind: ty::BoundRegionKind::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 });
 
             let num_args = args
@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rustc_abi::ExternAbi::Rust,
                     ),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
-                        ty::BoundRegionKind::BrEnv,
+                        ty::BoundRegionKind::ClosureEnv,
                     )]),
                 ),
             );

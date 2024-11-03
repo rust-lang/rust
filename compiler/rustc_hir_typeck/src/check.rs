@@ -194,21 +194,21 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(tcx, &[ty::GenericArg::from(
         ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
             var: ty::BoundVar::from_u32(1),
-            kind: ty::BrAnon,
+            kind: ty::BoundRegionKind::Anon,
         }),
     )]);
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
         ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
             var: ty::BoundVar::ZERO,
-            kind: ty::BrAnon,
+            kind: ty::BoundRegionKind::Anon,
         }),
         panic_info_ty,
     );
 
     let bounds = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrAnon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
         tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, ExternAbi::Rust),

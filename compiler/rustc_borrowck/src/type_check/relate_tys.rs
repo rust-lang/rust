@@ -271,9 +271,9 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             .placeholder_region(self.type_checker.infcx, placeholder);
 
         let reg_info = match placeholder.bound.kind {
-            ty::BoundRegionKind::BrAnon => sym::anon,
-            ty::BoundRegionKind::BrNamed(_, name) => name,
-            ty::BoundRegionKind::BrEnv => sym::env,
+            ty::BoundRegionKind::Anon => sym::anon,
+            ty::BoundRegionKind::Named(_, name) => name,
+            ty::BoundRegionKind::ClosureEnv => sym::env,
         };
 
         if cfg!(debug_assertions) {

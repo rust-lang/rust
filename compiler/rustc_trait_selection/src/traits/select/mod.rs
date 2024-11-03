@@ -3183,7 +3183,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
                         ty::ReErased => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_u32(counter),
-                                kind: ty::BrAnon,
+                                kind: ty::BoundRegionKind::Anon,
                             };
                             counter += 1;
                             ty::Region::new_bound(tcx, current_depth, br)
@@ -3196,9 +3196,11 @@ fn bind_coroutine_hidden_types_above<'tcx>(
             bty.instantiate(tcx, args)
         })
         .collect();
-    let bound_vars =
-        tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
-            (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
-        ));
+    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+        bound_vars.iter().chain(
+            (num_bound_variables..counter)
+                .map(|_| ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)),
+        ),
+    );
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

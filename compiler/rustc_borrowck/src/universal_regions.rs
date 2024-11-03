@@ -696,14 +696,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let closure_sig = args.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    inputs_and_output
-                        .bound_vars()
-                        .iter()
-                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                    inputs_and_output.bound_vars().iter().chain(iter::once(
+                        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                    )),
                 );
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(
@@ -751,15 +750,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::CoroutineClosure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
-                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    closure_sig
-                        .bound_vars()
-                        .iter()
-                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-                );
+                let bound_vars =
+                    tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
+                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
+                    ));
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BrEnv,
+                    kind: ty::BoundRegionKind::ClosureEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_kind = args.as_coroutine_closure().kind();

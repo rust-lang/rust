@@ -314,7 +314,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let name = lifetime_name(def_id);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BrNamed(def_id.to_def_id(), name),
+                    kind: ty::BoundRegionKind::Named(def_id.to_def_id(), name),
                 };
                 ty::Region::new_bound(tcx, debruijn, br)
             }
@@ -332,7 +332,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Region::new_late_param(
                     tcx,
                     scope.to_def_id(),
-                    ty::BrNamed(id.to_def_id(), name),
+                    ty::BoundRegionKind::Named(id.to_def_id(), name),
                 )
 
                 // (*) -- not late-bound, won't change
@@ -2449,15 +2449,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon | ty::BrEnv => {
-                    "an anonymous lifetime".to_string()
-                }
-                ty::BrNamed(_, name) => format!("lifetime `{name}`"),
+                ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
+                | ty::BoundRegionKind::Anon
+                | ty::BoundRegionKind::ClosureEnv => "an anonymous lifetime".to_string(),
+                ty::BoundRegionKind::Named(_, name) => format!("lifetime `{name}`"),
             };
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon = *br {
+            if let ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
+            | ty::BoundRegionKind::Anon = *br
+            {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

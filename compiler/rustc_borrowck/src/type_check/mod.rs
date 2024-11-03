@@ -1375,9 +1375,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
-                            ty::BoundRegionKind::BrAnon => sym::anon,
-                            ty::BoundRegionKind::BrNamed(_, name) => name,
-                            ty::BoundRegionKind::BrEnv => sym::env,
+                            ty::BoundRegionKind::Anon => sym::anon,
+                            ty::BoundRegionKind::Named(_, name) => name,
+                            ty::BoundRegionKind::ClosureEnv => sym::env,
                         };
 
                         RegionCtxt::LateBound(reg_info)

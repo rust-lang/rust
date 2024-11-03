@@ -84,7 +84,6 @@ pub use self::predicate::{
     RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, TraitPredicate, TraitRef,
     TypeOutlivesPredicate,
 };
-pub use self::region::BoundRegionKind::*;
 pub use self::region::{
     BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, Region, RegionKind, RegionVid,
 };
@@ -895,7 +894,7 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderRegion {
     }
 
     fn new(ui: UniverseIndex, var: BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::BrAnon } }
+        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
     }
 }
 

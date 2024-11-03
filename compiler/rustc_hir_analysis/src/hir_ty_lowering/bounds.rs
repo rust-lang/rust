@@ -644,7 +644,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::GenericParamDefKind::Lifetime => {
                     ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                         var: ty::BoundVar::from_usize(num_bound_vars),
-                        kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                        kind: ty::BoundRegionKind::Named(param.def_id, param.name),
                     })
                     .into()
                 }
@@ -830,8 +830,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::ReBound(db, br) if db >= self.depth => {
                 self.vars.insert(match br.kind {
-                    ty::BrNamed(def_id, name) => (def_id, name),
-                    ty::BrAnon | ty::BrEnv => {
+                    ty::BoundRegionKind::Named(def_id, name) => (def_id, name),
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let guar = self
                             .cx
                             .dcx()
