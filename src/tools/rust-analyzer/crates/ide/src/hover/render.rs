@@ -486,13 +486,19 @@ pub(super) fn definition(
             }
         }
         Definition::Static(it) => {
-            let source = it.source(db)?;
-            let mut body = source.value.body()?.syntax().clone();
-            if let Some(macro_file) = source.file_id.macro_file() {
-                let span_map = db.expansion_span_map(macro_file);
-                body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+            let body = it.render_eval(db, edition);
+            match body {
+                Ok(it) => Some(it),
+                Err(_) => {
+                    let source = it.source(db)?;
+                    let mut body = source.value.body()?.syntax().clone();
+                    if let Some(macro_file) = source.file_id.macro_file() {
+                        let span_map = db.expansion_span_map(macro_file);
+                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                    }
+                    Some(body.to_string())
+                }
             }
-            Some(body.to_string())
         }
         _ => None,
     };

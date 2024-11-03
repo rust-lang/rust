@@ -1544,7 +1544,7 @@ const foo$0: u32 = {
             ```
 
             ```rust
-            static foo: u32 = 456
+            static foo: u32 = 456 (0x1C8)
             ```
         "#]],
     );
