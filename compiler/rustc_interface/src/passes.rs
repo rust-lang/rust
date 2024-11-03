@@ -33,15 +33,15 @@ use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::{ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
 
-use crate::interface::{Compiler, Result};
+use crate::interface::Compiler;
 use crate::{errors, proc_macro_decls, util};
 
-pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
+pub(crate) fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
@@ -52,13 +52,16 @@ pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
             });
             parser.parse_crate_mod()
         })
-        .map_err(|parse_error| parse_error.emit())?;
+        .unwrap_or_else(|parse_error| {
+            let guar: ErrorGuaranteed = parse_error.emit();
+            guar.raise_fatal();
+        });
 
     if sess.opts.unstable_opts.input_stats {
         input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
-    Ok(krate)
+    krate
 }
 
 fn pre_expansion_lint<'a>(
@@ -712,7 +715,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> Result<&'tcx GlobalCtxt<'tcx>> {
+) -> &'tcx GlobalCtxt<'tcx> {
     let sess = &compiler.sess;
 
     rustc_builtin_macros::cmdline_attrs::inject(
@@ -733,7 +736,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
         sess.cfg_version,
     );
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-    let dep_graph = setup_dep_graph(sess)?;
+    let dep_graph = setup_dep_graph(sess);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -796,7 +799,7 @@ pub(crate) fn create_global_ctxt<'tcx>(
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
         });
-        Ok(qcx)
+        qcx
     })
 }
 
@@ -908,7 +911,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
 /// Runs the type-checking, region checking and other miscellaneous analysis
 /// passes on the crate.
-fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
+fn analysis(tcx: TyCtxt<'_>, (): ()) {
     run_required_analyses(tcx);
 
     let sess = tcx.sess;
@@ -922,7 +925,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // But we exclude lint errors from this, because lint errors are typically
     // less serious and we're more likely to want to continue (#87337).
     if let Some(guar) = sess.dcx().has_errors_excluding_lint_errors() {
-        return Err(guar);
+        guar.raise_fatal();
     }
 
     sess.time("misc_checking_3", || {
@@ -1050,8 +1053,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
             })
         }
     }
-
-    Ok(())
 }
 
 /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
@@ -1093,12 +1094,12 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> Result<Box<dyn Any>> {
+) -> Box<dyn Any> {
     // Don't do code generation if there were any errors. Likewise if
     // there were any delayed bugs, because codegen will likely cause
     // more ICEs, obscuring the original problem.
     if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-        return Err(guar);
+        guar.raise_fatal();
     }
 
     // Hook for UI tests.
@@ -1126,7 +1127,7 @@ pub(crate) fn start_codegen<'tcx>(
         }
     }
 
-    Ok(codegen)
+    codegen
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {

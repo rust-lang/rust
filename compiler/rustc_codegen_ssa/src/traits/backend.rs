@@ -4,7 +4,6 @@ use std::hash::Hash;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -84,13 +83,8 @@ pub trait CodegenBackend {
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>);
 
     /// This is called on the returned [`CodegenResults`] from [`join_codegen`](Self::join_codegen).
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs)
+    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
+        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs);
     }
 
     /// Returns `true` if this backend can be safely called from multiple threads.

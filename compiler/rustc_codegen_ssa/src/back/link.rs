@@ -15,7 +15,7 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -71,7 +71,7 @@ pub fn link_binary(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: CodegenResults,
     outputs: &OutputFilenames,
-) -> Result<(), ErrorGuaranteed> {
+) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
@@ -119,7 +119,7 @@ pub fn link_binary(
                         &codegen_results,
                         RlibFlavor::Normal,
                         &path,
-                    )?
+                    )
                     .build(&out_filename);
                 }
                 CrateType::Staticlib => {
@@ -129,7 +129,7 @@ pub fn link_binary(
                         &codegen_results,
                         &out_filename,
                         &path,
-                    )?;
+                    );
                 }
                 _ => {
                     link_natively(
@@ -139,7 +139,7 @@ pub fn link_binary(
                         &out_filename,
                         &codegen_results,
                         path.as_ref(),
-                    )?;
+                    );
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -225,8 +225,6 @@ pub fn link_binary(
             maybe_remove_temps_from_module(preserve_objects, preserve_dwarf_objects, module);
         }
     });
-
-    Ok(())
 }
 
 // Crate type is not passed when calculating the dylibs to include for LTO. In that case all
@@ -298,7 +296,7 @@ fn link_rlib<'a>(
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
-) -> Result<Box<dyn ArchiveBuilder + 'a>, ErrorGuaranteed> {
+) -> Box<dyn ArchiveBuilder + 'a> {
     let mut ab = archive_builder_builder.new_archive_builder(sess);
 
     let trailing_metadata = match flavor {
@@ -374,7 +372,7 @@ fn link_rlib<'a>(
         {
             let path = find_native_static_library(filename.as_str(), true, sess);
             let src = read(path)
-                .map_err(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }))?;
+                .unwrap_or_else(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }));
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
@@ -392,7 +390,7 @@ fn link_rlib<'a>(
         codegen_results.crate_info.used_libraries.iter(),
         tmpdir.as_ref(),
         true,
-    )? {
+    ) {
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
             sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
@@ -433,7 +431,7 @@ fn link_rlib<'a>(
         ab.add_file(&lib)
     }
 
-    Ok(ab)
+    ab
 }
 
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
@@ -445,7 +443,7 @@ fn link_rlib<'a>(
 fn collate_raw_dylibs<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
+) -> Vec<(String, Vec<DllImport>)> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
@@ -469,15 +467,13 @@ fn collate_raw_dylibs<'a>(
             }
         }
     }
-    if let Some(guar) = sess.dcx().has_errors() {
-        return Err(guar);
-    }
-    Ok(dylib_table
+    sess.dcx().abort_if_errors();
+    dylib_table
         .into_iter()
         .map(|(name, imports)| {
             (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
         })
-        .collect())
+        .collect()
 }
 
 fn create_dll_import_libs<'a>(
@@ -486,8 +482,8 @@ fn create_dll_import_libs<'a>(
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
     tmpdir: &Path,
     is_direct_dependency: bool,
-) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
-    Ok(collate_raw_dylibs(sess, used_libraries)?
+) -> Vec<PathBuf> {
+    collate_raw_dylibs(sess, used_libraries)
         .into_iter()
         .map(|(raw_dylib_name, raw_dylib_imports)| {
             let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
@@ -537,7 +533,7 @@ fn create_dll_import_libs<'a>(
 
             output_path
         })
-        .collect())
+        .collect()
 }
 
 /// Create a static archive.
@@ -557,7 +553,7 @@ fn link_staticlib(
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
-) -> Result<(), ErrorGuaranteed> {
+) {
     info!("preparing staticlib to {:?}", out_filename);
     let mut ab = link_rlib(
         sess,
@@ -565,7 +561,7 @@ fn link_staticlib(
         codegen_results,
         RlibFlavor::StaticlibBase,
         tempdir,
-    )?;
+    );
     let mut all_native_libs = vec![];
 
     let res = each_linked_rlib(
@@ -656,8 +652,6 @@ fn link_staticlib(
             print_native_static_libs(sess, &print.out, &all_native_libs, &all_rust_dylibs);
         }
     }
-
-    Ok(())
 }
 
 /// Use `thorin` (rust implementation of a dwarf packaging utility) to link DWARF objects into a
@@ -773,7 +767,7 @@ fn link_natively(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-) -> Result<(), ErrorGuaranteed> {
+) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
     let self_contained_components = self_contained_components(sess, crate_type);
@@ -797,7 +791,7 @@ fn link_natively(
         temp_filename,
         codegen_results,
         self_contained_components,
-    )?;
+    );
 
     linker::disable_localization(&mut cmd);
 
@@ -1177,8 +1171,6 @@ fn link_natively(
         ab.add_file(temp_filename);
         ab.build(out_filename);
     }
-
-    Ok(())
 }
 
 fn strip_symbols_with_external_utility(
@@ -2232,7 +2224,7 @@ fn linker_with_args(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     self_contained_components: LinkSelfContainedComponents,
-) -> Result<Command, ErrorGuaranteed> {
+) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
@@ -2356,7 +2348,7 @@ fn linker_with_args(
         codegen_results.crate_info.used_libraries.iter(),
         tmpdir,
         true,
-    )? {
+    ) {
         cmd.add_object(&output_path);
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
@@ -2388,7 +2380,7 @@ fn linker_with_args(
         native_libraries_from_nonstatics,
         tmpdir,
         false,
-    )? {
+    ) {
         cmd.add_object(&output_path);
     }
 
@@ -2435,7 +2427,7 @@ fn linker_with_args(
     // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
-    Ok(cmd.take_cmd())
+    cmd.take_cmd()
 }
 
 fn add_order_independent_options(

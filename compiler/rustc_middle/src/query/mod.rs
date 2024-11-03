@@ -276,7 +276,7 @@ rustc_queries! {
     }
 
     /// The root query triggering all analysis passes like typeck or borrowck.
-    query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
+    query analysis(key: ()) {
         eval_always
         desc { "running analysis passes on this crate" }
     }
