@@ -7,6 +7,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
+use rustc_abi::BackendRepr;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -18,7 +19,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::BackendRepr;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 

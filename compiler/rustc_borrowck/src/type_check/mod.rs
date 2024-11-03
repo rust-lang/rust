@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use either::Either;
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -40,7 +41,6 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };
