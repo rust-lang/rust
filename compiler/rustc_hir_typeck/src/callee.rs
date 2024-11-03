@@ -16,7 +16,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, sym};
-use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -509,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
         );
 
-        if fn_sig.abi == abi::Abi::RustCall {
+        if fn_sig.abi == rustc_abi::ExternAbi::RustCall {
             let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
