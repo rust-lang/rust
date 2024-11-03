@@ -85,11 +85,7 @@ pub fn link_binary(
         }
 
         if invalid_output_for_target(sess, crate_type) {
-            bug!(
-                "invalid output type `{:?}` for target os `{}`",
-                crate_type,
-                sess.opts.target_triple
-            );
+            bug!("invalid output type `{:?}` for target `{}`", crate_type, sess.opts.target_triple);
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
@@ -996,6 +992,7 @@ fn link_natively(
                         && (code < 1000 || code > 9999)
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        // FIXME(cc-rs#1265) pass only target arch to find_tool()
                         let has_linker = windows_registry::find_tool(
                             sess.opts.target_triple.tuple(),
                             "link.exe",
