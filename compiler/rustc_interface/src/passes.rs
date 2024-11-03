@@ -718,19 +718,17 @@ pub fn create_and_enter_global_ctxt<T>(
     let arena = WorkerLocal::new(|_| Arena::default());
     let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
 
-    let gcx = create_global_ctxt(compiler, krate, &gcx_cell, &arena, &hir_arena);
-    let ret = gcx.enter(f);
-    gcx.finish();
-    ret
+    create_and_enter_global_ctxt_inner(compiler, krate, &gcx_cell, &arena, &hir_arena, f)
 }
 
-fn create_global_ctxt<'tcx>(
+fn create_and_enter_global_ctxt_inner<'tcx, T>(
     compiler: &'tcx Compiler,
     mut krate: rustc_ast::Crate,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> &'tcx GlobalCtxt<'tcx> {
+    f: impl FnOnce(TyCtxt<'tcx>) -> T,
+) -> T {
     let sess = &compiler.sess;
 
     rustc_builtin_macros::cmdline_attrs::inject(
@@ -778,43 +776,45 @@ fn create_global_ctxt<'tcx>(
 
     let incremental = dep_graph.is_fully_enabled();
 
-    sess.time("setup_global_ctxt", || {
-        let qcx = gcx_cell.get_or_init(move || {
-            TyCtxt::create_global_ctxt(
-                sess,
-                crate_types,
-                stable_crate_id,
-                arena,
-                hir_arena,
-                untracked,
-                dep_graph,
-                rustc_query_impl::query_callbacks(arena),
-                rustc_query_impl::query_system(
-                    providers.queries,
-                    providers.extern_queries,
-                    query_result_on_disk_cache,
-                    incremental,
-                ),
-                providers.hooks,
-                compiler.current_gcx.clone(),
-            )
-        });
+    let qcx = gcx_cell.get_or_init(move || {
+        TyCtxt::create_global_ctxt(
+            sess,
+            crate_types,
+            stable_crate_id,
+            arena,
+            hir_arena,
+            untracked,
+            dep_graph,
+            rustc_query_impl::query_callbacks(arena),
+            rustc_query_impl::query_system(
+                providers.queries,
+                providers.extern_queries,
+                query_result_on_disk_cache,
+                incremental,
+            ),
+            providers.hooks,
+            compiler.current_gcx.clone(),
+        )
+    });
 
-        qcx.enter(|tcx| {
-            let feed = tcx.create_crate_num(stable_crate_id).unwrap();
-            assert_eq!(feed.key(), LOCAL_CRATE);
-            feed.crate_name(crate_name);
+    qcx.enter(|tcx| {
+        let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+        assert_eq!(feed.key(), LOCAL_CRATE);
+        feed.crate_name(crate_name);
 
-            let feed = tcx.feed_unit_query();
-            feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-                sess,
-                &pre_configured_attrs,
-                crate_name,
-            )));
-            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-            feed.output_filenames(Arc::new(outputs));
-        });
-        qcx
+        let feed = tcx.feed_unit_query();
+        feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+            sess,
+            &pre_configured_attrs,
+            crate_name,
+        )));
+        feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+        feed.output_filenames(Arc::new(outputs));
+
+        let res = f(tcx);
+        // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+        tcx.finish();
+        res
     })
 }
 

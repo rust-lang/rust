@@ -1374,19 +1374,6 @@ impl<'tcx> GlobalCtxt<'tcx> {
 
         tls::enter_context(&icx, || f(icx.tcx))
     }
-
-    pub fn finish(&'tcx self) {
-        // We assume that no queries are run past here. If there are new queries
-        // after this point, they'll show up as "<unknown>" in self-profiling data.
-        self.enter(|tcx| tcx.alloc_self_profile_query_strings());
-
-        self.enter(|tcx| tcx.save_dep_graph());
-        self.enter(|tcx| tcx.query_key_hash_verify_all());
-
-        if let Err((path, error)) = self.dep_graph.finish_encoding() {
-            self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
-        }
-    }
 }
 
 /// This is used to get a reference to a `GlobalCtxt` if one is available.
@@ -2119,6 +2106,19 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(skip(self), level = "trace", ret)]
     pub fn local_opaque_ty_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin<LocalDefId> {
         self.hir().expect_opaque_ty(def_id).origin
+    }
+
+    pub fn finish(self) {
+        // We assume that no queries are run past here. If there are new queries
+        // after this point, they'll show up as "<unknown>" in self-profiling data.
+        self.alloc_self_profile_query_strings();
+
+        self.save_dep_graph();
+        self.query_key_hash_verify_all();
+
+        if let Err((path, error)) = self.dep_graph.finish_encoding() {
+            self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
     }
 }
 
