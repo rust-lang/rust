@@ -217,7 +217,7 @@ fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
 
 impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
-        if let ty::BorrowKind::MutBorrow = bk
+        if let ty::BorrowKind::Mutable = bk
             && is_potentially_local_place(self.local_id, &cat.place)
             && !is_option_as_mut_use(self.tcx, diag_expr_id)
         {
