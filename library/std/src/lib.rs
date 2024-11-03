@@ -328,6 +328,7 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
+#![feature(build_hasher_default_const_new)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -415,7 +416,6 @@
 // Only for const-ness:
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
-#![feature(const_hash)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
