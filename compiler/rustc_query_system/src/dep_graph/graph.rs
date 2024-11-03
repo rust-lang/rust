@@ -1098,7 +1098,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
+        let nanos = duration.as_nanos();
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();
