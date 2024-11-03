@@ -259,25 +259,25 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
+    let is_intrinsic = db.attrs(func.into()).by_key(&sym::rustc_intrinsic).exists()
+        || data.abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+
     let loc = func.lookup(db.upcast());
     match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when
-            // it is marked as `safe` or it has `"rust-intrinsic"` ABI there are a
-            // few exceptions.
-            let id = block.lookup(db.upcast()).id;
-
-            let is_intrinsic =
-                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-
-            if is_intrinsic {
+            if is_intrinsic || {
+                let id = block.lookup(db.upcast()).id;
+                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic)
+            } {
                 // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
+                !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
-                // Extern items without `safe` modifier are always unsafe
+                // Function in an `extern` block are always unsafe to call, except when
+                // it is marked as `safe`.
                 !data.is_safe()
             }
         }
+        _ if is_intrinsic => !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists(),
         _ => false,
     }
 }

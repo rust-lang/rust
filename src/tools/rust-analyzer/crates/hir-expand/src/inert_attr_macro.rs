@@ -633,6 +633,19 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
     rustc_attr!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
+    rustc_attr!(
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
+    rustc_attr!(
+        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+    ),
+
+    rustc_attr!(
         rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
     ),

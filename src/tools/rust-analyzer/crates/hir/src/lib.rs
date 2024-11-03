@@ -2246,35 +2246,33 @@ impl Function {
 
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_test()
+        db.attrs(self.id.into()).is_test()
     }
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        let data = db.function_data(self.id);
-        data.attrs.export_name() == Some(&sym::main)
-            || self.module(db).is_crate_root() && data.name == sym::main
+        db.attrs(self.id.into()).export_name() == Some(&sym::main)
+            || self.module(db).is_crate_root() && db.function_data(self.id).name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
     pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
-        let data = db.function_data(self.id);
-        data.attrs.export_name() == Some(&sym::main)
+        db.attrs(self.id.into()).export_name() == Some(&sym::main)
     }
 
     /// Does this function have the ignore attribute?
     pub fn is_ignore(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_ignore()
+        db.attrs(self.id.into()).is_ignore()
     }
 
     /// Does this function have `#[bench]` attribute?
     pub fn is_bench(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_bench()
+        db.attrs(self.id.into()).is_bench()
     }
 
     /// Is this function marked as unstable with `#[feature]` attribute?
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_unstable()
+        db.attrs(self.id.into()).is_unstable()
     }
 
     pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
@@ -2289,8 +2287,7 @@ impl Function {
     }
 
     pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
-        let function_data = db.function_data(self.id);
-        let attrs = &function_data.attrs;
+        let attrs = db.attrs(self.id.into());
         // FIXME: Store this in FunctionData flags?
         if !(attrs.is_proc_macro()
             || attrs.is_proc_macro_attribute()
