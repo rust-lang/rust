@@ -12,54 +12,6 @@ macro_rules! panic {
     };
 }
 
-/// Helper macro for panicking in a `const fn`.
-/// Invoke as:
-/// ```rust,ignore (just an example)
-/// core::macros::const_panic!("boring message", "flavored message {a} {b:?}", a: u32 = foo.len(), b: Something = bar);
-/// ```
-/// where the first message will be printed in const-eval,
-/// and the second message will be printed at runtime.
-// All uses of this macro are FIXME(const-hack).
-#[unstable(feature = "panic_internals", issue = "none")]
-#[doc(hidden)]
-pub macro const_panic {
-    ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty = $val:expr),* $(,)?) => {{
-        #[inline]
-        #[track_caller]
-        fn runtime($($arg: $ty),*) -> ! {
-            $crate::panic!($runtime_msg);
-        }
-
-        #[inline]
-        #[track_caller]
-        const fn compiletime($(_: $ty),*) -> ! {
-            $crate::panic!($const_msg);
-        }
-
-        // Wrap call to `const_eval_select` in a function so that we can
-        // add the `rustc_allow_const_fn_unstable`. This is okay to do
-        // because both variants will panic, just with different messages.
-        #[rustc_allow_const_fn_unstable(const_eval_select)]
-        #[inline(always)]
-        #[track_caller]
-        #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "CURRENT_RUSTC_VERSION"))]
-        const fn do_panic($($arg: $ty),*) -> ! {
-            $crate::intrinsics::const_eval_select(($($arg),* ,), compiletime, runtime)
-        }
-
-        do_panic($($val),*)
-    }},
-    // We support leaving away the `val` expressions for *all* arguments
-    // (but not for *some* arguments, that's too tricky).
-    ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty),* $(,)?) => {
-        $crate::macros::const_panic!(
-            $const_msg,
-            $runtime_msg,
-            $($arg: $ty = $arg),*
-        )
-    },
-}
-
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
@@ -242,19 +194,6 @@ pub macro assert_matches {
             }
         }
     },
-}
-
-/// A version of `assert` that prints a non-formatting message in const contexts.
-///
-/// See [`const_panic!`].
-#[unstable(feature = "panic_internals", issue = "none")]
-#[doc(hidden)]
-pub macro const_assert {
-    ($condition: expr, $const_msg:literal, $runtime_msg:literal, $($arg:tt)*) => {{
-        if !$crate::intrinsics::likely($condition) {
-            $crate::macros::const_panic!($const_msg, $runtime_msg, $($arg)*)
-        }
-    }}
 }
 
 /// A macro for defining `#[cfg]` match-like statements.

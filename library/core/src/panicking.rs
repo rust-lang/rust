@@ -29,6 +29,7 @@
 )]
 
 use crate::fmt;
+use crate::intrinsics::const_eval_select;
 use crate::panic::{Location, PanicInfo};
 
 #[cfg(feature = "panic_immediate_abort")]
@@ -89,40 +90,35 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)] // must follow stable const rules since it is exposed to stable
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
-    #[inline] // this should always be inlined into `panic_nounwind_fmt`
-    #[track_caller]
-    fn runtime(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
-        if cfg!(feature = "panic_immediate_abort") {
-            super::intrinsics::abort()
+    const_eval_select!(
+        @capture { fmt: fmt::Arguments<'_>, force_no_backtrace: bool } -> !:
+        if const #[track_caller] {
+            // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
+            panic_fmt(fmt)
+        } else #[track_caller] {
+            if cfg!(feature = "panic_immediate_abort") {
+                super::intrinsics::abort()
+            }
+
+            // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+            // that gets resolved to the `#[panic_handler]` function.
+            extern "Rust" {
+                #[lang = "panic_impl"]
+                fn panic_impl(pi: &PanicInfo<'_>) -> !;
+            }
+
+            // PanicInfo with the `can_unwind` flag set to false forces an abort.
+            let pi = PanicInfo::new(
+                &fmt,
+                Location::caller(),
+                /* can_unwind */ false,
+                force_no_backtrace,
+            );
+
+            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+            unsafe { panic_impl(&pi) }
         }
-
-        // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-        // that gets resolved to the `#[panic_handler]` function.
-        extern "Rust" {
-            #[lang = "panic_impl"]
-            fn panic_impl(pi: &PanicInfo<'_>) -> !;
-        }
-
-        // PanicInfo with the `can_unwind` flag set to false forces an abort.
-        let pi = PanicInfo::new(
-            &fmt,
-            Location::caller(),
-            /* can_unwind */ false,
-            force_no_backtrace,
-        );
-
-        // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-        unsafe { panic_impl(&pi) }
-    }
-
-    #[inline]
-    #[track_caller]
-    const fn comptime(fmt: fmt::Arguments<'_>, _force_no_backtrace: bool) -> ! {
-        // We don't unwind anyway at compile-time so we can call the regular `panic_fmt`.
-        panic_fmt(fmt);
-    }
-
-    super::intrinsics::const_eval_select((fmt, force_no_backtrace), comptime, runtime);
+    )
 }
 
 // Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
