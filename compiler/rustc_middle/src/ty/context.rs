@@ -10,6 +10,7 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
+use std::sync::OnceLock;
 use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
@@ -1347,33 +1348,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
-    current_gcx: CurrentGcx,
-}
-
-impl<'tcx> GlobalCtxt<'tcx> {
-    /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
-    /// `f`.
-    pub fn enter<F, R>(&'tcx self, f: F) -> R
-    where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        let icx = tls::ImplicitCtxt::new(self);
-
-        // Reset `current_gcx` to `None` when we exit.
-        let _on_drop = defer(move || {
-            *self.current_gcx.value.write() = None;
-        });
-
-        // Set this `GlobalCtxt` as the current one.
-        {
-            let mut guard = self.current_gcx.value.write();
-            assert!(guard.is_none(), "no `GlobalCtxt` is currently set");
-            *guard = Some(self as *const _ as *const ());
-        }
-
-        tls::enter_context(&icx, || f(icx.tcx))
-    }
 }
 
 /// This is used to get a reference to a `GlobalCtxt` if one is available.
@@ -1517,7 +1491,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// By only providing the `TyCtxt` inside of the closure we enforce that the type
     /// context and any interned value (types, args, etc.) can only be used while `ty::tls`
     /// has a valid reference to the context, to allow formatting values that need it.
-    pub fn create_global_ctxt(
+    pub fn create_global_ctxt<T>(
+        gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
         s: &'tcx Session,
         crate_types: Vec<CrateType>,
         stable_crate_id: StableCrateId,
@@ -1529,7 +1504,8 @@ impl<'tcx> TyCtxt<'tcx> {
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
-    ) -> GlobalCtxt<'tcx> {
+        f: impl FnOnce(TyCtxt<'tcx>) -> T,
+    ) -> T {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.dcx().emit_fatal(err);
         });
@@ -1538,7 +1514,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types, s, &untracked);
 
-        GlobalCtxt {
+        let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess: s,
             crate_types,
             stable_crate_id,
@@ -1562,8 +1538,23 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            current_gcx,
+        });
+
+        let icx = tls::ImplicitCtxt::new(&gcx);
+
+        // Reset `current_gcx` to `None` when we exit.
+        let _on_drop = defer(|| {
+            *current_gcx.value.write() = None;
+        });
+
+        // Set this `GlobalCtxt` as the current one.
+        {
+            let mut guard = current_gcx.value.write();
+            assert!(guard.is_none(), "no `GlobalCtxt` is currently set");
+            *guard = Some(&gcx as *const _ as *const ());
         }
+
+        tls::enter_context(&icx, || f(icx.tcx))
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)

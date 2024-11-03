@@ -709,25 +709,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub fn create_and_enter_global_ctxt<T>(
+pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     compiler: &Compiler,
-    krate: rustc_ast::Crate,
-    f: impl for<'tcx> FnOnce(TyCtxt<'tcx>) -> T,
-) -> T {
-    let gcx_cell = OnceLock::new();
-    let arena = WorkerLocal::new(|_| Arena::default());
-    let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
-
-    create_and_enter_global_ctxt_inner(compiler, krate, &gcx_cell, &arena, &hir_arena, f)
-}
-
-fn create_and_enter_global_ctxt_inner<'tcx, T>(
-    compiler: &'tcx Compiler,
     mut krate: rustc_ast::Crate,
-    gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
-    arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-    f: impl FnOnce(TyCtxt<'tcx>) -> T,
+    f: F,
 ) -> T {
     let sess = &compiler.sess;
 
@@ -776,8 +761,25 @@ fn create_and_enter_global_ctxt_inner<'tcx, T>(
 
     let incremental = dep_graph.is_fully_enabled();
 
-    let qcx = gcx_cell.get_or_init(move || {
+    let gcx_cell = OnceLock::new();
+    let arena = WorkerLocal::new(|_| Arena::default());
+    let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
+
+    // This closure is necessary to force rustc to perform the correct lifetime
+    // subtyping for GlobalCtxt::enter to be allowed.
+    let inner: Box<
+        dyn for<'tcx> FnOnce(
+            &'tcx Compiler,
+            &'tcx OnceLock<GlobalCtxt<'tcx>>,
+            &'tcx WorkerLocal<Arena<'tcx>>,
+            &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
+            F,
+        ) -> T,
+    > = Box::new(move |compiler, gcx_cell, arena, hir_arena, f| {
+        let sess = &compiler.sess;
+
         TyCtxt::create_global_ctxt(
+            gcx_cell,
             sess,
             crate_types,
             stable_crate_id,
@@ -794,28 +796,29 @@ fn create_and_enter_global_ctxt_inner<'tcx, T>(
             ),
             providers.hooks,
             compiler.current_gcx.clone(),
+            |tcx| {
+                let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+                assert_eq!(feed.key(), LOCAL_CRATE);
+                feed.crate_name(crate_name);
+
+                let feed = tcx.feed_unit_query();
+                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                    sess,
+                    &pre_configured_attrs,
+                    crate_name,
+                )));
+                feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+                feed.output_filenames(Arc::new(outputs));
+
+                let res = f(tcx);
+                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                tcx.finish();
+                res
+            },
         )
     });
 
-    qcx.enter(|tcx| {
-        let feed = tcx.create_crate_num(stable_crate_id).unwrap();
-        assert_eq!(feed.key(), LOCAL_CRATE);
-        feed.crate_name(crate_name);
-
-        let feed = tcx.feed_unit_query();
-        feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-            sess,
-            &pre_configured_attrs,
-            crate_name,
-        )));
-        feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-        feed.output_filenames(Arc::new(outputs));
-
-        let res = f(tcx);
-        // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
-        tcx.finish();
-        res
-    })
+    inner(compiler, &gcx_cell, &arena, &hir_arena, f)
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
