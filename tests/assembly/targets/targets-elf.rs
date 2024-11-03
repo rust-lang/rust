@@ -525,9 +525,6 @@
 //@ revisions: wasm32v1_none
 //@ [wasm32v1_none] compile-flags: --target wasm32v1-none
 //@ [wasm32v1_none] needs-llvm-components: webassembly
-//@ revisions: wasm32_wasi
-//@ [wasm32_wasi] compile-flags: --target wasm32-wasi
-//@ [wasm32_wasi] needs-llvm-components: webassembly
 //@ revisions: wasm32_wasip1
 //@ [wasm32_wasip1] compile-flags: --target wasm32-wasip1
 //@ [wasm32_wasip1] needs-llvm-components: webassembly
