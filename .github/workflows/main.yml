@@ -140,9 +140,7 @@ jobs:
       if: matrix.os != 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      # Skip tests that need cg_clif specific unstable features. Also skip tests that are not
-      # cg_clif specific and thus unlikely to be broken with cg_llvm.
-      run: ./y.sh test --sysroot llvm --no-unstable-features --skip-test testsuite.extended_sysroot
+      run: ./y.sh test --sysroot llvm --no-unstable-features
 
 
   # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
