@@ -12,11 +12,13 @@ use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
@@ -110,6 +112,21 @@ impl MissingDoc {
             return;
         }
 
+        if let Some(parent_def_id) = cx.tcx.opt_parent(def_id.to_def_id())
+            && let DefKind::AnonConst
+            | DefKind::AssocConst
+            | DefKind::AssocFn
+            | DefKind::Closure
+            | DefKind::Const
+            | DefKind::Fn
+            | DefKind::InlineConst
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody = cx.tcx.def_kind(parent_def_id)
+        {
+            // Nested item has no generated documentation, so it doesn't need to be documented.
+            return;
+        }
+
         let has_doc = attrs
             .iter()
             .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()))
@@ -184,8 +201,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                     }
                 }
             },
-            hir::ItemKind::Const(..)
-            | hir::ItemKind::Enum(..)
+            hir::ItemKind::Const(..) => {
+                if it.ident.name == kw::Underscore {
+                    note_prev_span_then_ret!(self.prev_span, it.span);
+                }
+            },
+            hir::ItemKind::Enum(..)
             | hir::ItemKind::Macro(..)
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Static(..)
