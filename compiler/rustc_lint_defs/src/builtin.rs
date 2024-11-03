@@ -3184,6 +3184,7 @@ declare_lint! {
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
+    report_in_external_macro
 }
 
 declare_lint! {
