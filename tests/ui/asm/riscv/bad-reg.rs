@@ -14,6 +14,9 @@
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv64gc] needs-llvm-components: riscv
 
+// Unlike riscv32e-registers.rs, this tests if the rustc can reject invalid registers
+// usage in the asm! API (in, out, inout, etc.).
+
 #![crate_type = "lib"]
 #![feature(no_core, rustc_attrs)]
 #![feature(asm_experimental_arch)]
