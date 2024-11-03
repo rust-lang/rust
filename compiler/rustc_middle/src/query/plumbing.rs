@@ -44,16 +44,16 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub format_value: fn(&C::Value) -> String,
 }
 
-pub struct QuerySystemFns<'tcx> {
+pub struct QuerySystemFns {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
-    pub encode_query_results: fn(
+    pub encode_query_results: for<'tcx> fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,
         query_result_index: &mut EncodedDepNodeIndex,
     ),
-    pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
+    pub try_mark_green: for<'tcx> fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
 }
 
 pub struct QuerySystem<'tcx> {
@@ -68,7 +68,7 @@ pub struct QuerySystem<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub on_disk_cache: Option<OnDiskCache>,
 
-    pub fns: QuerySystemFns<'tcx>,
+    pub fns: QuerySystemFns,
 
     pub jobs: AtomicU64,
 }
