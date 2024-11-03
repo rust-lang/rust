@@ -47,6 +47,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
+    // FIXME(cc-rs#1265) pass only target arch to find_tool()
     let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.tuple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
