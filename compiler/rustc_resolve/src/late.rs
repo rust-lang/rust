@@ -259,7 +259,7 @@ impl RibKind<'_> {
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
-    pub bindings: FxIndexMap<Ident, R>,
+    pub bindings: FxHashMap<Ident, R>,
     pub kind: RibKind<'ra>,
 }
 
@@ -1548,7 +1548,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // Allow all following defaults to refer to this type parameter.
                         forward_ty_ban_rib
                             .bindings
-                            .shift_remove(&Ident::with_dummy_span(param.ident.name));
+                            .remove(&Ident::with_dummy_span(param.ident.name));
                     }
                     GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                         // Const parameters can't have param bounds.
@@ -1576,7 +1576,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // Allow all following defaults to refer to this const parameter.
                         forward_const_ban_rib
                             .bindings
-                            .shift_remove(&Ident::with_dummy_span(param.ident.name));
+                            .remove(&Ident::with_dummy_span(param.ident.name));
                     }
                 }
             }
@@ -2795,8 +2795,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         break;
                     }
 
-                    seen_bindings
-                        .extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
+                    // It is sorted before usage so ordering is not important here.
+                    #[allow(rustc::potential_query_instability)]
+                    let mut idents: Vec<_> = parent_rib.bindings.keys().into_iter().collect();
+                    idents.sort_by_key(|&ident| ident.span);
+
+                    seen_bindings.extend(idents.into_iter().map(|ident| (*ident, ident.span)));
                 }
             }
 
@@ -3868,7 +3872,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxIndexMap<Ident, Res> {
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxHashMap<Ident, Res> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 

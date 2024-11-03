@@ -762,7 +762,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some(rib) = &self.last_block_rib
             && let RibKind::Normal = rib.kind
         {
-            for (ident, &res) in &rib.bindings {
+            // It is sorted before usage so ordering is not important here.
+            #[allow(rustc::potential_query_instability)]
+            let mut bindings: Vec<_> = rib.bindings.clone().into_iter().collect();
+            bindings.sort_by_key(|(ident, _)| ident.span);
+
+            for (ident, res) in &bindings {
                 if let Res::Local(_) = res
                     && path.len() == 1
                     && ident.span.eq_ctxt(path[0].ident.span)
@@ -944,7 +949,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some(err_code) = err.code {
             if err_code == E0425 {
                 for label_rib in &self.label_ribs {
-                    for (label_ident, node_id) in &label_rib.bindings {
+                    // It is sorted before usage so ordering is not important here.
+                    #[allow(rustc::potential_query_instability)]
+                    let mut bindings: Vec<_> = label_rib.bindings.clone().into_iter().collect();
+                    bindings.sort_by_key(|(ident, _)| ident.span);
+
+                    for (label_ident, node_id) in &bindings {
                         let ident = path.last().unwrap().ident;
                         if format!("'{ident}") == label_ident.to_string() {
                             err.span_label(label_ident.span, "a label with a similar name exists");
@@ -2142,6 +2152,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 };
 
                 // Locals and type parameters
+                // `names` is sorted below so ordering is not important here.
+                #[allow(rustc::potential_query_instability)]
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
                         names.push(TypoSuggestion::typo_from_ident(*ident, res));
@@ -2605,18 +2617,28 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let within_scope = self.is_label_valid_from_rib(rib_index);
 
         let rib = &self.label_ribs[rib_index];
-        let names = rib
+        // `names` is sorted below so ordering is not important here.
+        #[allow(rustc::potential_query_instability)]
+        let mut names = rib
             .bindings
             .iter()
             .filter(|(id, _)| id.span.eq_ctxt(label.span))
             .map(|(id, _)| id.name)
             .collect::<Vec<Symbol>>();
 
+        // Make sure error reporting is deterministic.
+        names.sort();
+
         find_best_match_for_name(&names, label.name, None).map(|symbol| {
+            // It is sorted before usage so ordering is not important here.
+            #[allow(rustc::potential_query_instability)]
+            let mut bindings: Vec<_> = rib.bindings.clone().into_iter().collect();
+            bindings.sort_by_key(|(ident, _)| ident.span);
+
             // Upon finding a similar name, get the ident that it was from - the span
             // contained within helps make a useful diagnostic. In addition, determine
             // whether this candidate is within scope.
-            let (ident, _) = rib.bindings.iter().find(|(ident, _)| ident.name == symbol).unwrap();
+            let (ident, _) = bindings.iter().find(|(ident, _)| ident.name == symbol).unwrap();
             (*ident, within_scope)
         })
     }
