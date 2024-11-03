@@ -14,6 +14,7 @@
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
+use crate::macros::const_assert;
 use crate::mem;
 use crate::num::FpCategory;
 
@@ -1238,17 +1239,14 @@ impl f16 {
     #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn clamp(mut self, min: f16, max: f16) -> f16 {
-        #[inline] // inline to avoid LLVM crash
-        const fn assert_at_const(min: f16, max: f16) {
-            // Note that we cannot format in constant expressions.
-            assert!(min <= max, "min > max, or either was NaN");
-        }
-        #[inline] // inline to avoid codegen regression
-        fn assert_at_rt(min: f16, max: f16) {
-            assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
-        }
-        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        intrinsics::const_eval_select((min, max), assert_at_const, assert_at_rt);
+        const_assert!(
+            min <= max,
+            "min > max, or either was NaN",
+            "min > max, or either was NaN. min = {min:?}, max = {max:?}",
+            min: f16,
+            max: f16,
+        );
+
         if self < min {
             self = min;
         }
