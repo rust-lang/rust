@@ -745,7 +745,7 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
 }
 
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
-pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> {
+pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> + use<> {
     def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
 }
 
