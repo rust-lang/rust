@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
@@ -19,7 +20,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_target::asm::InlineAsmRegOrRegClass;
-use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -2735,7 +2735,7 @@ impl PrimTy {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct BareFnTy<'hir> {
     pub safety: Safety,
-    pub abi: Abi,
+    pub abi: ExternAbi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
     pub param_names: &'hir [Ident],
@@ -3313,7 +3313,7 @@ impl<'hir> Item<'hir> {
 
         expect_mod, &'hir Mod<'hir>, ItemKind::Mod(m), m;
 
-        expect_foreign_mod, (Abi, &'hir [ForeignItemRef]),
+        expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
         expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
@@ -3386,7 +3386,7 @@ pub struct FnHeader {
     pub safety: Safety,
     pub constness: Constness,
     pub asyncness: IsAsync,
-    pub abi: Abi,
+    pub abi: ExternAbi,
 }
 
 impl FnHeader {
@@ -3428,7 +3428,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(&'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef] },
+    ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
