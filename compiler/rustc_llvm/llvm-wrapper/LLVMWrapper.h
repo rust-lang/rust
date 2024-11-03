@@ -104,8 +104,9 @@ typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
 typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
 
-extern "C" void LLVMRustStringWriteImpl(RustStringRef Str, const char *Ptr,
-                                        size_t Size);
+extern "C" void LLVMRustStringWriteImpl(RustStringRef buf,
+                                        const char *slice_ptr,
+                                        size_t slice_len);
 
 class RawRustStringOstream : public llvm::raw_ostream {
   RustStringRef Str;
