@@ -125,7 +125,7 @@
             },
             {
                 "command": "rust-analyzer.interpretFunction",
-                "title": "Interpret Function",
+                "title": "Interpret",
                 "category": "rust-analyzer (debug command)"
             },
             {
