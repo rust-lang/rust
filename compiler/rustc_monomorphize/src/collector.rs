@@ -210,6 +210,7 @@ mod move_check;
 use std::path::PathBuf;
 
 use move_check::MoveCheckState;
+use rustc_abi::Size;
 use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
@@ -236,7 +237,6 @@ use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::Size;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
