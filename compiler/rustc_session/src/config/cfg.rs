@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTriple};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTuple};
 
 use crate::Session;
 use crate::config::{CrateType, FmtDebug};
@@ -417,7 +417,7 @@ impl CheckCfg {
 
                 for target in TARGETS
                     .iter()
-                    .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+                    .map(|target| Target::expect_builtin(&TargetTuple::from_tuple(target)))
                     .chain(iter::once(current_target.clone()))
                 {
                     values_target_abi.insert(Symbol::intern(&target.options.abi));

@@ -1,6 +1,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@[next] compile-flags: -Znext-solver
+//@[next] compile-flags: -Znext-solver --diagnostic-width=300
+//@[current] compile-flags: --diagnostic-width=300
 
 #![feature(coroutines, stmt_expr_attributes)]
 

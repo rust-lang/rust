@@ -136,7 +136,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(r.collect::<Vec<_>>(), vec![10, 11, 12, 13, 14, 15]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
-    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const unsafe fn new_unchecked(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
@@ -199,7 +198,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(get_bytes(false).collect::<Vec<_>>(), vec![]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
-    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const fn empty() -> Self {
         let buffer = [const { MaybeUninit::uninit() }; N];
         let initialized = 0..0;

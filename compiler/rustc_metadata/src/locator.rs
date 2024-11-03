@@ -231,7 +231,7 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTuple};
 use tracing::{debug, info};
 
 use crate::creader::{Library, MetadataLoader};
@@ -252,7 +252,7 @@ pub(crate) struct CrateLocator<'a> {
     pub hash: Option<Svh>,
     extra_filename: Option<&'a str>,
     pub target: &'a Target,
-    pub triple: TargetTriple,
+    pub tuple: TargetTuple,
     pub filesearch: FileSearch<'a>,
     pub is_proc_macro: bool,
 
@@ -338,7 +338,7 @@ impl<'a> CrateLocator<'a> {
             hash,
             extra_filename,
             target: &sess.target,
-            triple: sess.opts.target_triple.clone(),
+            tuple: sess.opts.target_triple.clone(),
             filesearch: sess.target_filesearch(path_kind),
             is_proc_macro: false,
             crate_rejections: CrateRejections::default(),
@@ -677,8 +677,8 @@ impl<'a> CrateLocator<'a> {
             return None;
         }
 
-        if header.triple != self.triple {
-            info!("Rejecting via crate triple: expected {} got {}", self.triple, header.triple);
+        if header.triple != self.tuple {
+            info!("Rejecting via crate triple: expected {} got {}", self.tuple, header.triple);
             self.crate_rejections.via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
                 got: header.triple.to_string(),
@@ -766,7 +766,7 @@ impl<'a> CrateLocator<'a> {
         CrateError::LocatorCombined(Box::new(CombinedLocatorError {
             crate_name: self.crate_name,
             root,
-            triple: self.triple,
+            triple: self.tuple,
             dll_prefix: self.target.dll_prefix.to_string(),
             dll_suffix: self.target.dll_suffix.to_string(),
             crate_rejections: self.crate_rejections,
@@ -909,7 +909,7 @@ struct CrateRejections {
 pub(crate) struct CombinedLocatorError {
     crate_name: Symbol,
     root: Option<CratePaths>,
-    triple: TargetTriple,
+    triple: TargetTuple,
     dll_prefix: String,
     dll_suffix: String,
     crate_rejections: CrateRejections,
@@ -1034,7 +1034,7 @@ impl CrateError {
                     dcx.emit_err(errors::NoCrateWithTriple {
                         span,
                         crate_name,
-                        locator_triple: locator.triple.triple(),
+                        locator_triple: locator.triple.tuple(),
                         add_info,
                         found_crates,
                     });

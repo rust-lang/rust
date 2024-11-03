@@ -1,9 +1,6 @@
 const_eval_address_space_full =
     there are no more free addresses in the address space
 
-const_eval_align_offset_invalid_align =
-    `align_offset` called with non-power-of-two align: {$target_align}
-
 const_eval_alignment_check_failed =
     {$msg ->
      [AccessedPtr] accessing memory
