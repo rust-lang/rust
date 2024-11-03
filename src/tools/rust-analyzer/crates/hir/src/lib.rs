@@ -2306,22 +2306,15 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-    ) -> String {
+    ) -> Result<String, ConstEvalError> {
         let krate = HasModule::krate(&self.id, db.upcast());
         let edition = db.crate_graph()[krate].edition;
-        let body = match db.monomorphized_mir_body(
+        let body = db.monomorphized_mir_body(
             self.id.into(),
             Substitution::empty(Interner),
             db.trait_environment(self.id.into()),
-        ) {
-            Ok(body) => body,
-            Err(e) => {
-                let mut r = String::new();
-                _ = e.pretty_print(&mut r, db, &span_formatter, edition);
-                return r;
-            }
-        };
-        let (result, output) = interpret_mir(db, body, false, None);
+        )?;
+        let (result, output) = interpret_mir(db, body, false, None)?;
         let mut text = match result {
             Ok(_) => "pass".to_owned(),
             Err(e) => {
@@ -2340,7 +2333,7 @@ impl Function {
             text += "\n--------- stderr ---------\n";
             text += &stderr;
         }
-        text
+        Ok(text)
     }
 }
 
@@ -2563,9 +2556,9 @@ impl Const {
     /// Evaluate the constant and return the result as a string.
     ///
     /// This function is intended for IDE assistance, different from [`Const::render_eval`].
-    pub fn eval(self, db: &dyn HirDatabase, edition: Edition) -> Result<String, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
         let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        Ok(format!("{}", c.display(db, edition)))
+        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
     }
 
     /// Evaluate the constant and return the result as a string, with more detailed information.
@@ -2640,7 +2633,15 @@ impl Static {
         Type::from_value_def(db, self.id)
     }
 
-    /// Evaluate the constant and return the result as a string, with more detailed information.
+    /// Evaluate the static and return the result as a string.
+    ///
+    /// This function is intended for IDE assistance, different from [`Static::render_eval`].
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
+        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
+    }
+
+    /// Evaluate the static and return the result as a string, with more detailed information.
     ///
     /// This function is intended for user-facing display.
     pub fn render_eval(

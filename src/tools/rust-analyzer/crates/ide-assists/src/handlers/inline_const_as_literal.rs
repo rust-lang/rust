@@ -51,10 +51,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
             | ast::Expr::MatchExpr(_)
             | ast::Expr::MacroExpr(_)
             | ast::Expr::BinExpr(_)
-            | ast::Expr::CallExpr(_) => {
-                let edition = ctx.sema.scope(variable.syntax())?.krate().edition(ctx.db());
-                konst.eval(ctx.sema.db, edition).ok()?
-            }
+            | ast::Expr::CallExpr(_) => konst.eval(ctx.sema.db).ok()?,
             _ => return None,
         };
 

@@ -585,13 +585,9 @@ pub fn interpret_mir(
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
     trait_env: Option<Arc<TraitEnvironment>>,
-) -> (Result<Const>, MirOutput) {
+) -> Result<(Result<Const>, MirOutput)> {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator =
-        match Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env) {
-            Ok(it) => it,
-            Err(e) => return (Err(e), MirOutput { stdout: vec![], stderr: vec![] }),
-        };
+    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
@@ -613,7 +609,7 @@ pub fn interpret_mir(
         };
         Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty))
     })();
-    (it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr })
+    Ok((it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr }))
 }
 
 #[cfg(test)]
