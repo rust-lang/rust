@@ -71,7 +71,7 @@ pub fn configure_f16_f128(target: &Target) {
         // `f128` crashes <https://github.com/llvm/llvm-project/issues/101545>
         "powerpc64" if &target.os == "aix" => (true, false),
         // `f128` crashes <https://github.com/llvm/llvm-project/issues/41838>
-        "sparc" | "sparcv9" => (true, false),
+        "sparc" => (true, false),
         // `f16` miscompiles <https://github.com/llvm/llvm-project/issues/96438>
         "wasm32" | "wasm64" => (false, true),
         // Most everything else works as of LLVM 19
