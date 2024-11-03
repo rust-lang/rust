@@ -175,19 +175,13 @@ fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span
         // arm would handle this.
         //
         // I believe this match arm is only needed for GAT but I am not 100% sure - BoxyUwU
-        Node::Ty(hir_ty @ hir::Ty { kind: TyKind::Path(QPath::TypeRelative(_, segment)), .. }) => {
+        Node::Ty(hir_ty @ hir::Ty { kind: TyKind::Path(QPath::TypeRelative(ty, segment)), .. }) => {
             // Find the Item containing the associated type so we can create an ItemCtxt.
             // Using the ItemCtxt lower the HIR for the unresolved assoc type into a
             // ty which is a fully resolved projection.
             // For the code example above, this would mean lowering `Self::Assoc<3>`
             // to a ty::Alias(ty::Projection, `<Self as Foo>::Assoc<3>`).
-            let item_def_id = tcx
-                .hir()
-                .parent_owner_iter(arg_hir_id)
-                .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
-                .unwrap()
-                .0
-                .def_id;
+            let item_def_id = tcx.hir().get_parent_item(ty.hir_id).def_id;
             let ty = ItemCtxt::new(tcx, item_def_id).lower_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
