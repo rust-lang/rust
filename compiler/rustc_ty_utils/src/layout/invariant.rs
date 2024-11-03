@@ -1,8 +1,8 @@
 use std::assert_matches::assert_matches;
 
+use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, Variants};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
-use rustc_target::abi::*;
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
