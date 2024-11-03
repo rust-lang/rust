@@ -1,5 +1,6 @@
 use rustc_abi::FieldIdx;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
@@ -123,19 +124,18 @@ pub struct OverloadedDeref {
 }
 
 impl OverloadedDeref {
-    /// Get the zst function item type for this method call.
-    pub fn method_call<'tcx>(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> Ty<'tcx> {
+    /// Get the [`DefId`] of the method call for the given `Deref`/`DerefMut` trait
+    /// for this overloaded deref's mutability.
+    pub fn method_call<'tcx>(&self, tcx: TyCtxt<'tcx>) -> DefId {
         let trait_def_id = match self.mutbl {
             hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
             hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
         };
-        let method_def_id = tcx
-            .associated_items(trait_def_id)
+        tcx.associated_items(trait_def_id)
             .in_definition_order()
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
-            .def_id;
-        Ty::new_fn_def(tcx, method_def_id, [source])
+            .def_id
     }
 }
 
