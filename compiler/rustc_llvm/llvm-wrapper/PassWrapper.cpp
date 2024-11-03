@@ -825,9 +825,9 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       !NoPrepopulatePasses) {
     PipelineStartEPCallbacks.push_back(
         [](ModulePassManager &MPM, OptimizationLevel Level) {
-          MPM.addPass(LowerTypeTestsPass(/*ExportSummary=*/nullptr,
-                                         /*ImportSummary=*/nullptr,
-                                         /*DropTypeTests=*/false));
+          MPM.addPass(LowerTypeTestsPass(
+              /*ExportSummary=*/nullptr,
+              /*ImportSummary=*/nullptr));
         });
   }
 
