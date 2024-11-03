@@ -53,7 +53,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     }
 
     pub fn enforce_recursive_const_stability(&self) -> bool {
-        // We can skip this if neither `staged_api` nor `-Zforrce-unstable-if-unmarked` are enabled,
+        // We can skip this if neither `staged_api` nor `-Zforce-unstable-if-unmarked` are enabled,
         // since in such crates `lookup_const_stability` will always be `None`.
         self.const_kind == Some(hir::ConstContext::ConstFn)
             && (self.tcx.features().staged_api()

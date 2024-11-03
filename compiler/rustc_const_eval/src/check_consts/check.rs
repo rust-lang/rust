@@ -3,6 +3,7 @@
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::mem;
+use std::num::NonZero;
 use std::ops::Deref;
 
 use rustc_attr::{ConstStability, StabilityLevel};
@@ -789,7 +790,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                     }
                     Some(ConstStability {
-                        level: StabilityLevel::Unstable { implied_by: implied_feature, .. },
+                        level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                         feature,
                         ..
                     }) => {
@@ -812,7 +813,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // to allow this.
                         let feature_enabled = callee.is_local()
                             || tcx.features().enabled(feature)
-                            || implied_feature.is_some_and(|f| tcx.features().enabled(f));
+                            || implied_feature.is_some_and(|f| tcx.features().enabled(f))
+                            || {
+                                // When we're compiling the compiler itself we may pull in
+                                // crates from crates.io, but those crates may depend on other
+                                // crates also pulled in from crates.io. We want to ideally be
+                                // able to compile everything without requiring upstream
+                                // modifications, so in the case that this looks like a
+                                // `rustc_private` crate (e.g., a compiler crate) and we also have
+                                // the `-Z force-unstable-if-unmarked` flag present (we're
+                                // compiling a compiler crate), then let this missing feature
+                                // annotation slide.
+                                // This matches what we do in `eval_stability_allow_unstable` for
+                                // regular stability.
+                                feature == sym::rustc_private
+                                    && issue == NonZero::new(27812)
+                                    && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                            };
                         // We do *not* honor this if we are in the "danger zone": we have to enforce
                         // recursive const-stability and the callee is not safe-to-expose. In that
                         // case we need `check_op` to do the check.

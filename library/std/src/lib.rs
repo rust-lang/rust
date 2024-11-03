@@ -391,11 +391,6 @@
 #![feature(stdarch_internal)]
 // tidy-alphabetical-end
 //
-// Library features (crates without staged_api):
-// tidy-alphabetical-start
-#![feature(rustc_private)]
-// tidy-alphabetical-end
-//
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(assert_matches)]

@@ -1,10 +1,10 @@
 //@ aux-build:unstable_if_unmarked_const_fn_crate.rs
 //@ aux-build:unmarked_const_fn_crate.rs
 #![feature(staged_api, rustc_private)]
-#![stable(since="1.0.0", feature = "stable")]
+#![stable(since = "1.0.0", feature = "stable")]
 
-extern crate unstable_if_unmarked_const_fn_crate;
 extern crate unmarked_const_fn_crate;
+extern crate unstable_if_unmarked_const_fn_crate;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
@@ -18,6 +18,4 @@ const fn stable_fn() {
     //~^ERROR: cannot be (indirectly) exposed to stable
 }
 
-fn main() {
-
-}
+fn main() {}
