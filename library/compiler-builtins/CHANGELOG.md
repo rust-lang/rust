@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.139](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.138...compiler_builtins-v0.1.139) - 2024-11-03
+
+### Other
+
+- Remove incorrect `sparcv9` match pattern from `configure_f16_f128`
+
 ## [0.1.138](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.137...compiler_builtins-v0.1.138) - 2024-11-01
 
 ### Other
