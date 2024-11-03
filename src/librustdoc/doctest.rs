@@ -24,7 +24,7 @@ use rustc_session::lint;
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
@@ -414,10 +414,10 @@ pub(crate) struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
-fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     let exe_suffix = match target {
-        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
-        TargetTriple::TargetJson { contents, .. } => {
+        TargetTuple::TargetTuple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTuple::TargetJson { contents, .. } => {
             Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
         }
     };
@@ -513,8 +513,8 @@ fn run_test(
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match &rustdoc_options.target {
-        TargetTriple::TargetTriple(s) => s,
-        TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+        TargetTuple::TargetTuple(s) => s,
+        TargetTuple::TargetJson { path_for_rustdoc, .. } => {
             path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });

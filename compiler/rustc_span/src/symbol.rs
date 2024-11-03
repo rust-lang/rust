@@ -378,7 +378,6 @@ symbols! {
         aggregate_raw_ptr,
         alias,
         align,
-        align_offset,
         alignment,
         all,
         alloc,

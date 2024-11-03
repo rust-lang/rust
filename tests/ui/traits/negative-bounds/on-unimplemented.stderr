@@ -6,12 +6,6 @@ LL | fn hello() -> impl !Foo {
 LL |
 LL |     NotFoo
    |     ------ return type was inferred to be `NotFoo` here
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/on-unimplemented.rs:4:1
-   |
-LL | trait Foo {}
-   | ^^^^^^^^^
 
 error: aborting due to 1 previous error
 

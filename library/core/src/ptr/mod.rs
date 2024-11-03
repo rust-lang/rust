@@ -1852,9 +1852,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
-#[lang = "align_offset"]
-#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
+pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
@@ -1915,11 +1913,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 
     let stride = mem::size_of::<T>();
 
-    // SAFETY: This is just an inlined `p.addr()` (which is not
-    // a `const fn` so we cannot call it).
-    // During const eval, we hook this function to ensure that the pointer never
-    // has provenance, making this sound.
-    let addr: usize = unsafe { mem::transmute(p) };
+    let addr: usize = p.addr();
 
     // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };

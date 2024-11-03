@@ -152,7 +152,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
 }
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
-    let target = crate::config::host_triple();
+    let target = crate::config::host_tuple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
     let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
@@ -218,7 +218,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
         ))?;
 
         // if `dir` points target's dir, move up to the sysroot
-        let mut sysroot_dir = if dir.ends_with(crate::config::host_triple()) {
+        let mut sysroot_dir = if dir.ends_with(crate::config::host_tuple()) {
             dir.parent() // chop off `$target`
                 .and_then(|p| p.parent()) // chop off `rustlib`
                 .and_then(|p| p.parent()) // chop off `lib`

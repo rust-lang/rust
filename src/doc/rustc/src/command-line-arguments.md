@@ -256,7 +256,8 @@ The valid types of print values are:
 - `crate-name` — The name of the crate.
 - `file-names` — The names of the files created by the `link` emit kind.
 - `sysroot` — Path to the sysroot.
-- `target-libdir` - Path to the target libdir.
+- `target-libdir` — Path to the target libdir.
+- `host-tuple` — The target-tuple string of the host compiler (e.g. `x86_64-unknown-linux-gnu`)
 - `cfg` — List of cfg values. See [conditional compilation] for more
   information about cfg values.
 - `target-list` — List of known targets. The target may be selected with the
@@ -286,7 +287,7 @@ The valid types of print values are:
   exact format of this debugging output is not a stable guarantee, other than
   that it will include the linker executable and the text of each command-line
   argument passed to the linker.
-- `deployment-target` - The currently selected [deployment target] (or minimum OS version)
+- `deployment-target` — The currently selected [deployment target] (or minimum OS version)
   for the selected Apple platform target. This value can be used or passed along to other
   components alongside a Rust build that need this information, such as C compilers.
   This returns rustc's minimum supported deployment target if no `*_DEPLOYMENT_TARGET` variable

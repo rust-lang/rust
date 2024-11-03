@@ -1825,7 +1825,7 @@ impl<'test> TestCx<'test> {
 
     /// Gets the absolute path to the directory where all output for the given
     /// test/revision should reside.
-    /// E.g., `/path/to/build/host-triple/test/ui/relative/testname.revision.mode/`.
+    /// E.g., `/path/to/build/host-tuple/test/ui/relative/testname.revision.mode/`.
     fn output_base_dir(&self) -> PathBuf {
         output_base_dir(self.config, self.testpaths, self.safe_revision())
     }

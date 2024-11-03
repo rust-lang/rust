@@ -6,8 +6,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Suggestions, pluralize,
-    struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
+    pluralize, struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -328,6 +328,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
+                        } else if explanation.len() > self.tcx.sess.diagnostic_width() {
+                            // Really long types don't look good as span labels, instead move it
+                            // to a `help`.
+                            err.span_label(span, "unsatisfied trait bound");
+                            err.help(explanation);
                         } else {
                             err.span_label(span, explanation);
                         }
@@ -1832,21 +1837,81 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
-                    let self_ty = impl_trait_ref.self_ty().to_string();
-                    err.highlighted_help(vec![
-                        StringPart::normal(format!(
-                            "the trait `{}` ",
-                            impl_trait_ref.print_trait_sugared()
-                        )),
-                        StringPart::highlighted("is"),
+
+                    if let [child, ..] = &err.children[..]
+                        && child.level == Level::Help
+                        && let Some(line) = child.messages.get(0)
+                        && let Some(line) = line.0.as_str()
+                        && line.starts_with("the trait")
+                        && line.contains("is not implemented for")
+                    {
+                        // HACK(estebank): we remove the pre-existing
+                        // "the trait `X` is not implemented for" note, which only happens if there
+                        // was a custom label. We do this because we want that note to always be the
+                        // first, and making this logic run earlier will get tricky. For now, we
+                        // instead keep the logic the same and modify the already constructed error
+                        // to avoid the wording duplication.
+                        err.children.remove(0);
+                    }
+
+                    let traits = self.cmp_traits(
+                        obligation_trait_ref.def_id,
+                        &obligation_trait_ref.args[1..],
+                        impl_trait_ref.def_id,
+                        &impl_trait_ref.args[1..],
+                    );
+                    let traits_content = (traits.0.content(), traits.1.content());
+                    let types = self.cmp(obligation_trait_ref.self_ty(), impl_trait_ref.self_ty());
+                    let types_content = (types.0.content(), types.1.content());
+                    let mut msg = vec![StringPart::normal("the trait `")];
+                    if traits_content.0 == traits_content.1 {
+                        msg.push(StringPart::normal(
+                            impl_trait_ref.print_trait_sugared().to_string(),
+                        ));
+                    } else {
+                        msg.extend(traits.0.0);
+                    }
+                    msg.extend([
+                        StringPart::normal("` "),
+                        StringPart::highlighted("is not"),
                         StringPart::normal(" implemented for `"),
-                        if let [TypeError::Sorts(_)] = &terrs[..] {
-                            StringPart::normal(self_ty)
-                        } else {
-                            StringPart::highlighted(self_ty)
-                        },
-                        StringPart::normal("`"),
                     ]);
+                    if types_content.0 == types_content.1 {
+                        let ty =
+                            self.tcx.short_ty_string(obligation_trait_ref.self_ty(), &mut None);
+                        msg.push(StringPart::normal(ty));
+                    } else {
+                        msg.extend(types.0.0);
+                    }
+                    msg.push(StringPart::normal("`"));
+                    if types_content.0 == types_content.1 {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for it"),
+                        ]);
+                    } else if traits_content.0 == traits_content.1 {
+                        msg.extend([
+                            StringPart::normal("\nbut it "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    } else {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    }
+                    err.highlighted_help(msg);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
@@ -2475,12 +2540,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && self.tcx.trait_impls_of(trait_def_id).is_empty()
             && !self.tcx.trait_is_auto(trait_def_id)
             && !self.tcx.trait_is_alias(trait_def_id)
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
         {
             err.span_help(
                 self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
-        } else if !suggested && !unsatisfied_const {
+        } else if !suggested
+            && !unsatisfied_const
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
+        {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(

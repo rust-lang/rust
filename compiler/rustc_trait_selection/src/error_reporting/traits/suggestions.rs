@@ -3563,17 +3563,34 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )]);
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
-                if let Some((expr_ty, hir_id)) = expr_info {
-                    let expr_ty = self.tcx.short_ty_string(expr_ty, long_ty_file);
-                    let expr = self.infcx.tcx.hir().expect_expr(hir_id);
-                    err.span_label(
-                        expr.span,
-                        with_forced_trimmed_paths!(format!(
-                            "return type was inferred to be `{expr_ty}` here",
-                        )),
-                    );
-                    suggest_remove_deref(err, &expr);
-                }
+                let (expr_ty, expr) = if let Some((expr_ty, hir_id)) = expr_info {
+                    let expr_ty = tcx.short_ty_string(expr_ty, long_ty_file);
+                    let expr = tcx.hir().expect_expr(hir_id);
+                    (expr_ty, expr)
+                } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
+                    && let body = tcx.hir().body(body_id)
+                    && let hir::ExprKind::Block(block, _) = body.value.kind
+                    && let Some(expr) = block.expr
+                    && let Some(expr_ty) = self
+                        .typeck_results
+                        .as_ref()
+                        .and_then(|typeck| typeck.node_type_opt(expr.hir_id))
+                    && let Some(pred) = predicate.as_clause()
+                    && let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
+                    && self.can_eq(param_env, pred.self_ty(), expr_ty)
+                {
+                    let expr_ty = tcx.short_ty_string(expr_ty, long_ty_file);
+                    (expr_ty, expr)
+                } else {
+                    return;
+                };
+                err.span_label(
+                    expr.span,
+                    with_forced_trimmed_paths!(format!(
+                        "return type was inferred to be `{expr_ty}` here",
+                    )),
+                );
+                suggest_remove_deref(err, &expr);
             }
         }
     }
@@ -3680,6 +3697,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
+        if trait_pred.polarity() == ty::PredicatePolarity::Negative {
+            return;
+        }
         let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
             return;
         };

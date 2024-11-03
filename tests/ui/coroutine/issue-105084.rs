@@ -1,3 +1,4 @@
+//@compile-flags: --diagnostic-width=300
 #![feature(coroutines)]
 #![feature(coroutine_clone)]
 #![feature(coroutine_trait)]

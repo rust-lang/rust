@@ -114,7 +114,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -142,7 +141,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -170,7 +168,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -196,7 +193,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -229,7 +225,6 @@ macro_rules! widening_impl {
         /// assert_eq!(1_000_000_000u32.widening_mul(10), (1410065408, 2));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -320,7 +315,6 @@ macro_rules! widening_impl {
         /// );
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -915,7 +909,6 @@ impl u8 {
     /// ```
     #[must_use]
     #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
-    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
     #[inline]
     pub const fn is_ascii_octdigit(&self) -> bool {
         matches!(*self, b'0'..=b'7')
@@ -1195,7 +1188,6 @@ impl u16 {
     /// ```
     #[must_use]
     #[unstable(feature = "utf16_extra", issue = "94919")]
-    #[rustc_const_unstable(feature = "utf16_extra_const", issue = "94919")]
     #[inline]
     pub const fn is_utf16_surrogate(self) -> bool {
         matches!(self, 0xD800..=0xDFFF)
