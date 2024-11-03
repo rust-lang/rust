@@ -6,6 +6,7 @@ use std::iter;
 use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
@@ -38,7 +39,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, ExpnKind, MacroKind, Span};
-use rustc_target::spec::abi;
 use tracing::{debug, instrument};
 
 use super::{
@@ -1916,7 +1916,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         infcx.next_ty_var(DUMMY_SP),
                         false,
                         hir::Safety::Safe,
-                        abi::Abi::Rust,
+                        ExternAbi::Rust,
                     )
                 }
                 _ => infcx.tcx.mk_fn_sig(
@@ -1924,7 +1924,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     infcx.next_ty_var(DUMMY_SP),
                     false,
                     hir::Safety::Safe,
-                    abi::Abi::Rust,
+                    ExternAbi::Rust,
                 ),
             };
 
@@ -3996,7 +3996,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
             && let fn_sig @ ty::FnSig {
-                abi: abi::Abi::Rust,
+                abi: ExternAbi::Rust,
                 c_variadic: false,
                 safety: hir::Safety::Safe,
                 ..

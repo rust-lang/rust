@@ -3615,6 +3615,26 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> From<&mut [T]> for Arc<[T]> {
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let mut original = [1, 2, 3];
+    /// let original: &mut [i32] = &mut original;
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut [T]) -> Arc<[T]> {
+        Arc::from(&*v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Arc<str> {
     /// Allocates a reference-counted `str` and copies `v` into it.
@@ -3630,6 +3650,26 @@ impl From<&str> for Arc<str> {
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const str) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl From<&mut str> for Arc<str> {
+    /// Allocates a reference-counted `str` and copies `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let mut original = String::from("eggplant");
+    /// let original: &mut str = &mut original;
+    /// let shared: Arc<str> = Arc::from(original);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut str) -> Arc<str> {
+        Arc::from(&*v)
     }
 }
 

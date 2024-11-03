@@ -4,6 +4,7 @@
 use core::ops::ControlFlow;
 
 use hir::{ExprKind, Param};
+use rustc_abi::FieldIdx;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
@@ -16,7 +17,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::{Symbol, kw};
 use rustc_span::{BytePos, DesugaringKind, Span, sym};
-use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;

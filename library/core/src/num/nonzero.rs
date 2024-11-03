@@ -110,26 +110,40 @@ impl_zeroable_primitive!(
 pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
 macro_rules! impl_nonzero_fmt {
-    ($Trait:ident) => {
-        #[stable(feature = "nonzero", since = "1.28.0")]
-        impl<T> fmt::$Trait for NonZero<T>
-        where
-            T: ZeroablePrimitive + fmt::$Trait,
-        {
-            #[inline]
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.get().fmt(f)
+    ($(#[$Attribute:meta] $Trait:ident)*) => {
+        $(
+            #[$Attribute]
+            impl<T> fmt::$Trait for NonZero<T>
+            where
+                T: ZeroablePrimitive + fmt::$Trait,
+            {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.get().fmt(f)
+                }
             }
-        }
+        )*
     };
 }
 
-impl_nonzero_fmt!(Debug);
-impl_nonzero_fmt!(Display);
-impl_nonzero_fmt!(Binary);
-impl_nonzero_fmt!(Octal);
-impl_nonzero_fmt!(LowerHex);
-impl_nonzero_fmt!(UpperHex);
+impl_nonzero_fmt! {
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Debug
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Display
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Binary
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Octal
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    LowerHex
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    UpperHex
+    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    LowerExp
+    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    UpperExp
+}
 
 macro_rules! impl_nonzero_auto_trait {
     (unsafe $Trait:ident) => {

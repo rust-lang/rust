@@ -110,6 +110,29 @@ impl<T: Clone> From<&[T]> for Box<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> From<&mut [T]> for Box<[T]> {
+    /// Converts a `&mut [T]` into a `Box<[T]>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `slice` and its contents.
+    ///
+    /// # Examples
+    /// ```rust
+    /// // create a &mut [u8] which will be used to create a Box<[u8]>
+    /// let mut array = [104, 101, 108, 108, 111];
+    /// let slice: &mut [u8] = &mut array;
+    /// let boxed_slice: Box<[u8]> = Box::from(slice);
+    ///
+    /// println!("{boxed_slice:?}");
+    /// ```
+    #[inline]
+    fn from(slice: &mut [T]) -> Box<[T]> {
+        Self::from(&*slice)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl<T: Clone> From<Cow<'_, [T]>> for Box<[T]> {
     /// Converts a `Cow<'_, [T]>` into a `Box<[T]>`
@@ -144,6 +167,28 @@ impl From<&str> for Box<str> {
     #[inline]
     fn from(s: &str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl From<&mut str> for Box<str> {
+    /// Converts a `&mut str` into a `Box<str>`
+    ///
+    /// This conversion allocates on the heap
+    /// and performs a copy of `s`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut original = String::from("hello");
+    /// let original: &mut str = &mut original;
+    /// let boxed: Box<str> = Box::from(original);
+    /// println!("{boxed}");
+    /// ```
+    #[inline]
+    fn from(s: &mut str) -> Box<str> {
+        Self::from(&*s)
     }
 }
 

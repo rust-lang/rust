@@ -50,6 +50,7 @@ use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir::def::DefKind;
@@ -67,7 +68,6 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_span::{BytePos, DesugaringKind, Pos, Span, sym};
-use rustc_target::spec::abi;
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -686,10 +686,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
-        if sig1.abi != abi::Abi::Rust {
+        if sig1.abi != ExternAbi::Rust {
             values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
         }
-        if sig2.abi != abi::Abi::Rust {
+        if sig2.abi != ExternAbi::Rust {
             values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
         }
 

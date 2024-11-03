@@ -745,10 +745,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
 
-  // FIXME: We may want to expose this as an option.
-  bool DebugPassManager = false;
-
-  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
+  StandardInstrumentations SI(TheModule->getContext(),
+                              /*DebugLogging=*/false);
   SI.registerCallbacks(PIC, &MAM);
 
   if (LLVMPluginsLen) {
@@ -900,8 +898,9 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       for (const auto &C : OptimizerLastEPCallbacks)
         PB.registerOptimizerLastEPCallback(C);
 
-      // Pass false as we manually schedule ThinLTOBufferPasses below.
-      MPM = PB.buildO0DefaultPipeline(OptLevel, /* PreLinkLTO */ false);
+      // We manually schedule ThinLTOBufferPasses below, so don't pass the value
+      // to enable it here.
+      MPM = PB.buildO0DefaultPipeline(OptLevel);
     } else {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
@@ -910,7 +909,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
 
       switch (OptStage) {
       case LLVMRustOptStage::PreLinkNoLTO:
-        MPM = PB.buildPerModuleDefaultPipeline(OptLevel, DebugPassManager);
+        MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);

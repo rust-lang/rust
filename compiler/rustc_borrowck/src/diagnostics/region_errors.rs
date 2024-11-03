@@ -1103,7 +1103,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 peeled_ty,
                 liberated_sig.c_variadic,
                 hir::Safety::Safe,
-                rustc_target::spec::abi::Abi::Rust,
+                rustc_abi::ExternAbi::Rust,
             )),
         );
         let closure_ty = Ty::new_closure(
