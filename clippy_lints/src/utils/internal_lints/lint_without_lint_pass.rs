@@ -21,7 +21,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The compiler only knows lints via a `LintPass`. Without
-    /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
+    /// putting a lint to a `LintPass::lint_vec()`'s return, the compiler will not
     /// know the name of the lint.
     ///
     /// ### Known problems
@@ -159,8 +159,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 let body = cx.tcx.hir().body_owned_by(
                     impl_item_refs
                         .iter()
-                        .find(|iiref| iiref.ident.as_str() == "get_lints")
-                        .expect("LintPass needs to implement get_lints")
+                        .find(|iiref| iiref.ident.as_str() == "lint_vec")
+                        .expect("LintPass needs to implement lint_vec")
                         .id
                         .owner_id
                         .def_id,
