@@ -1,9 +1,10 @@
-use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{
-    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
+use rustc_abi::{
+    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
+    TyAbiInterface, TyAndLayout,
 };
+
+use crate::abi::call::{ArgAttribute, FnAbi, PassMode};
 use crate::spec::HasTargetSpec;
-use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -214,7 +215,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
@@ -223,18 +224,19 @@ where
     // registers will quiet signalling NaNs. Also avoid using SSE registers since they
     // are not always available (depending on target features).
     if !fn_abi.ret.is_ignore()
-        // Intrinsics themselves are not actual "real" functions, so theres no need to change their ABIs.
-        && abi != SpecAbi::RustIntrinsic
+        // Intrinsics themselves are not "real" functions, so theres no need to change their ABIs.
+        && abi != ExternAbi::RustIntrinsic
     {
         let has_float = match fn_abi.ret.layout.backend_repr {
-            BackendRepr::Scalar(s) => matches!(s.primitive(), Float(_)),
+            BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
             BackendRepr::ScalarPair(s1, s2) => {
-                matches!(s1.primitive(), Float(_)) || matches!(s2.primitive(), Float(_))
+                matches!(s1.primitive(), Primitive::Float(_))
+                    || matches!(s2.primitive(), Primitive::Float(_))
             }
             _ => false, // anyway not passed via registers on x86
         };
         if has_float {
-            if fn_abi.ret.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
+            if fn_abi.ret.layout.size <= Primitive::Pointer(AddressSpace::DATA).size(cx) {
                 // Same size or smaller than pointer, return in a register.
                 fn_abi.ret.cast_to(Reg { kind: RegKind::Integer, size: fn_abi.ret.layout.size });
             } else {
