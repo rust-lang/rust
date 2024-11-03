@@ -91,8 +91,8 @@ impl Step for Std {
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
         if compiler.stage == 0 {
-            let libdir = builder.sysroot_libdir(compiler, target);
-            let hostdir = builder.sysroot_libdir(compiler, compiler.host);
+            let libdir = builder.sysroot_target_libdir(compiler, target);
+            let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
             add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
         }
         drop(_guard);
@@ -257,8 +257,8 @@ impl Step for Rustc {
             false,
         );
 
-        let libdir = builder.sysroot_libdir(compiler, target);
-        let hostdir = builder.sysroot_libdir(compiler, compiler.host);
+        let libdir = builder.sysroot_target_libdir(compiler, target);
+        let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
     }
 }
