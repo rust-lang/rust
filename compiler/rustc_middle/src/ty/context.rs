@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
 use std::{fmt, iter, mem};
 
-use rustc_abi::{FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
+use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -49,7 +49,6 @@ use rustc_session::{Limit, MetadataKind, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -136,7 +135,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AllocId = crate::mir::interpret::AllocId;
     type Pat = Pattern<'tcx>;
     type Safety = hir::Safety;
-    type Abi = abi::Abi;
+    type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst;
 
@@ -695,13 +694,13 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
     }
 }
 
-impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for abi::Abi {
+impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
     fn rust() -> Self {
-        abi::Abi::Rust
+        ExternAbi::Rust
     }
 
     fn is_rust(self) -> bool {
-        matches!(self, abi::Abi::Rust)
+        matches!(self, ExternAbi::Rust)
     }
 }
 
@@ -2557,7 +2556,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, abi::Abi::Rust)
+            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, ExternAbi::Rust)
         })
     }
 
@@ -2819,7 +2818,7 @@ impl<'tcx> TyCtxt<'tcx> {
         output: I::Item,
         c_variadic: bool,
         safety: hir::Safety,
-        abi: abi::Abi,
+        abi: ExternAbi,
     ) -> T::Output
     where
         I: IntoIterator<Item = T>,

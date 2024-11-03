@@ -67,7 +67,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
             err,
             false,
             rustc_hir::Safety::Safe,
-            rustc_target::spec::abi::Abi::Rust,
+            rustc_abi::ExternAbi::Rust,
         ));
 
         // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.

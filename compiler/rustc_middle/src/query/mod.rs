@@ -42,9 +42,8 @@ use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -1465,7 +1464,7 @@ rustc_queries! {
     /// instead, where the instance is an `InstanceKind::Virtual`.
     query fn_abi_of_fn_ptr(
         key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
@@ -1476,7 +1475,7 @@ rustc_queries! {
     /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance(
         key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
     }
 

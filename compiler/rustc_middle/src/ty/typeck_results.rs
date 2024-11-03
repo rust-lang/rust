@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::iter;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
@@ -16,7 +17,6 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use super::RvalueScopes;
 use crate::hir::place::Place as HirPlace;

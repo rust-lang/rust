@@ -2,6 +2,7 @@
 
 use std::{fmt, iter};
 
+use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -14,8 +15,6 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Float, Integer, IntegerType, Size};
-use rustc_target::spec::abi::Abi;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -1783,7 +1782,7 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
+    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
         && tcx.features().intrinsics())
         || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs())
     {

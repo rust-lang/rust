@@ -132,12 +132,10 @@ impl EraseType for Result<bool, &ty::layout::LayoutError<'_>> {
     type Result = [u8; size_of::<Result<bool, &'static ty::layout::LayoutError<'static>>>()];
 }
 
-impl EraseType
-    for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>
-{
+impl EraseType for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>> {
     type Result = [u8; size_of::<
         Result<
-            rustc_target::abi::TyAndLayout<'static, Ty<'static>>,
+            rustc_abi::TyAndLayout<'static, Ty<'static>>,
             &'static ty::layout::LayoutError<'static>,
         >,
     >()];
@@ -253,13 +251,14 @@ trivial! {
     Option<rustc_span::def_id::DefId>,
     Option<rustc_span::def_id::LocalDefId>,
     Option<rustc_span::Span>,
-    Option<rustc_target::abi::FieldIdx>,
+    Option<rustc_abi::FieldIdx>,
     Option<rustc_target::spec::PanicStrategy>,
     Option<usize>,
     Option<rustc_middle::ty::IntrinsicDef>,
     Result<(), rustc_errors::ErrorGuaranteed>,
     Result<(), rustc_middle::traits::query::NoSolution>,
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
+    rustc_abi::ReprOptions,
     rustc_ast::expand::allocator::AllocatorKind,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
@@ -311,7 +310,6 @@ trivial! {
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,
     rustc_middle::ty::Representability,
-    rustc_middle::ty::ReprOptions,
     rustc_middle::ty::UnusedGenericParams,
     rustc_middle::ty::util::AlwaysRequiresDrop,
     rustc_middle::ty::Visibility<rustc_span::def_id::DefId>,
