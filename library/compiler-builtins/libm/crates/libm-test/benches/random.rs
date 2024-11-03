@@ -47,10 +47,10 @@ where
     Op: MathOp,
     CachedInput: GenerateInput<Op::RustArgs>,
 {
-    let name = Op::NAME_STR;
+    let name = Op::NAME;
 
     let ulp = libm_test::musl_allowed_ulp(name);
-    let ctx = CheckCtx::new(ulp, name, CheckBasis::Musl);
+    let ctx = CheckCtx::new(ulp, Op::IDENTIFIER, CheckBasis::Musl);
     let benchvec: Vec<_> =
         random::get_test_cases::<Op::RustArgs>(&ctx).take(BENCH_ITER_ITEMS).collect();
 

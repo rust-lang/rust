@@ -34,9 +34,9 @@ where
     Op: MathOp,
     CachedInput: GenerateInput<Op::RustArgs>,
 {
-    let name = Op::NAME_STR;
+    let name = Op::NAME;
     let ulp = musl_allowed_ulp(name);
-    let ctx = CheckCtx::new(ulp, name, CheckBasis::Musl);
+    let ctx = CheckCtx::new(ulp, Op::IDENTIFIER, CheckBasis::Musl);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);
 
     for input in cases {

@@ -219,7 +219,7 @@ impl MaybeOverride<(f64,)> for SpecialCase {
 
 /// Check NaN bits if the function requires it
 fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Option<TestResult> {
-    if !(ctx.base_name == "fabs" || ctx.base_name == "copysign") {
+    if !(ctx.base_name_str == "fabs" || ctx.base_name_str == "copysign") {
         return None;
     }
 
@@ -277,7 +277,7 @@ fn maybe_skip_binop_nan<F1: Float, F2: Float>(
 ) -> Option<TestResult> {
     match ctx.basis {
         CheckBasis::Musl => {
-            if (ctx.base_name == "fmax" || ctx.base_name == "fmin")
+            if (ctx.base_name_str == "fmax" || ctx.base_name_str == "fmin")
                 && (input.0.is_nan() || input.1.is_nan())
                 && expected.is_nan()
             {
@@ -287,7 +287,7 @@ fn maybe_skip_binop_nan<F1: Float, F2: Float>(
             }
         }
         CheckBasis::Mpfr => {
-            if ctx.base_name == "copysign" && input.1.is_nan() {
+            if ctx.base_name_str == "copysign" && input.1.is_nan() {
                 SKIP
             } else {
                 None
@@ -353,7 +353,7 @@ fn bessel_prec_dropoff<F: Float>(
     ulp: &mut u32,
     ctx: &CheckCtx,
 ) -> Option<TestResult> {
-    if ctx.base_name == "jn" {
+    if ctx.base_name_str == "jn" {
         if input.0 > 4000 {
             return XFAIL;
         } else if input.0 > 2000 {

@@ -29,11 +29,11 @@ where
     Op: MathOp + MpOp,
     CachedInput: GenerateInput<Op::RustArgs>,
 {
-    let name = Op::NAME_STR;
+    let name = Op::NAME;
 
     let ulp = multiprec_allowed_ulp(name);
     let mut mp_vals = Op::new_mp();
-    let ctx = CheckCtx::new(ulp, name, CheckBasis::Mpfr);
+    let ctx = CheckCtx::new(ulp, Op::IDENTIFIER, CheckBasis::Mpfr);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);
 
     for input in cases {

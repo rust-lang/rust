@@ -15,10 +15,10 @@
 
 use crate::{CheckOutput, Float, TupleCall};
 
-/// An enum representing each possible routine name.
+/// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).
 #[libm_macros::function_enum(BaseName)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Name {}
+pub enum Identifier {}
 
 /// The name without any type specifier, e.g. `sin` and `sinf` both become `sin`.
 #[libm_macros::base_name_enum]
@@ -58,13 +58,13 @@ pub trait MathOp {
     type RustRet: CheckOutput<Self::RustArgs>;
 
     /// The name of this function, including suffix (e.g. `sin`, `sinf`).
-    const NAME: Name;
+    const IDENTIFIER: Identifier;
 
     /// The name as a string.
-    const NAME_STR: &'static str = Self::NAME.as_str();
+    const NAME: &'static str = Self::IDENTIFIER.as_str();
 
     /// The name of the function excluding the type suffix, e.g. `sin` and `sinf` are both `sin`.
-    const BASE_NAME: BaseName = Self::NAME.base_name();
+    const BASE_NAME: BaseName = Self::IDENTIFIER.base_name();
 
     /// The function in `libm` which can be called.
     const ROUTINE: Self::RustFn;
@@ -96,7 +96,7 @@ macro_rules! do_thing {
                     type RustArgs = $RustArgs;
                     type RustRet = $RustRet;
 
-                    const NAME: Name = Name::[< $fn_name:camel >];
+                    const IDENTIFIER: Identifier = Identifier::[< $fn_name:camel >];
                     const ROUTINE: Self::RustFn = libm::$fn_name;
                 }
             }

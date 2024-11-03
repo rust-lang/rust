@@ -628,9 +628,9 @@ impl VisitMut for MacroReplace {
     }
 }
 
-/// Return the unsuffixed name of a function.
+/// Return the unsuffixed version of a function name; e.g. `abs` and `absf` both return `abs`,
+/// `lgamma_r` and `lgammaf_r` both return `lgamma_r`.
 fn base_name(name: &str) -> &str {
-    // Keep this in sync with `libm_test::base_name`
     let known_mappings = &[
         ("erff", "erf"),
         ("erf", "erf"),
