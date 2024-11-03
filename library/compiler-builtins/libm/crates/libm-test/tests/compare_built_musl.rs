@@ -10,9 +10,7 @@
 #![cfg(feature = "build-musl")]
 
 use libm_test::gen::{CachedInput, random};
-use libm_test::{
-    CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall, musl_allowed_ulp,
-};
+use libm_test::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall};
 
 macro_rules! musl_rand_tests {
     (
@@ -34,9 +32,7 @@ where
     Op: MathOp,
     CachedInput: GenerateInput<Op::RustArgs>,
 {
-    let name = Op::NAME;
-    let ulp = musl_allowed_ulp(name);
-    let ctx = CheckCtx::new(ulp, Op::IDENTIFIER, CheckBasis::Musl);
+    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);
 
     for input in cases {

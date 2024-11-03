@@ -3,7 +3,10 @@
 
 use core::f32;
 
-use crate::{CheckBasis, CheckCtx, Float, Int, TestResult};
+use CheckBasis::{Mpfr, Musl};
+use Identifier as Id;
+
+use crate::{CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 
 /// Type implementing [`IgnoreCase`].
 pub struct SpecialCase;
@@ -14,50 +17,42 @@ const MUSL_DEFAULT_ULP: u32 = 2;
 /// Default ULP allowed to differ from multiprecision (i.e. infinite) results.
 const MULTIPREC_DEFAULT_ULP: u32 = 1;
 
-/// ULP allowed to differ from muls results.
+/// ULP allowed to differ from the results returned by a test basis.
 ///
-/// Note that these results were obtained using 400,000,000 rounds of random inputs, which
+/// Note that these results were obtained using 400M rounds of random inputs, which
 /// is not a value used by default.
-pub fn musl_allowed_ulp(name: &str) -> u32 {
-    // Consider overrides xfail
-    match name {
-        #[cfg(x86_no_sse)]
-        "asinh" | "asinhf" => 6,
-        "lgamma" | "lgamma_r" | "lgammaf" | "lgammaf_r" => 400,
-        "tanh" | "tanhf" => 4,
-        "tgamma" => 20,
-        "j0" | "j0f" | "j1" | "j1f" => {
+pub fn default_ulp(ctx: &CheckCtx) -> u32 {
+    match (&ctx.basis, ctx.fn_ident) {
+        // Overrides that apply to either basis
+        (_, Id::J0 | Id::J0f | Id::J1 | Id::J1f) => {
             // Results seem very target-dependent
             if cfg!(target_arch = "x86_64") { 4000 } else { 800_000 }
         }
-        "jn" | "jnf" => 1000,
-        "sincosf" => 500,
-        #[cfg(not(target_pointer_width = "64"))]
-        "exp10" => 4,
-        #[cfg(not(target_pointer_width = "64"))]
-        "exp10f" => 4,
-        _ => MUSL_DEFAULT_ULP,
-    }
-}
+        (_, Id::Jn | Id::Jnf) => 1000,
 
-/// ULP allowed to differ from multiprecision results.
-pub fn multiprec_allowed_ulp(name: &str) -> u32 {
-    // Consider overrides xfail
-    match name {
-        "asinh" | "asinhf" => 2,
-        "acoshf" => 4,
-        "atanh" | "atanhf" => 2,
-        "exp10" | "exp10f" => 3,
-        "j0" | "j0f" | "j1" | "j1f" => {
-            // Results seem very target-dependent
-            if cfg!(target_arch = "x86_64") { 4000 } else { 800_000 }
-        }
-        "jn" | "jnf" => 1000,
-        "lgamma" | "lgammaf" | "lgamma_r" | "lgammaf_r" => 16,
-        "sinh" | "sinhf" => 2,
-        "tanh" | "tanhf" => 2,
-        "tgamma" => 20,
-        _ => MULTIPREC_DEFAULT_ULP,
+        // Overrides for musl
+        #[cfg(x86_no_sse)]
+        (Musl, Id::Asinh | Id::Asinhf) => 6,
+        #[cfg(not(target_pointer_width = "64"))]
+        (Musl, Id::Exp10 | Id::Exp10f) => 4,
+        (Musl, Id::Lgamma | Id::LgammaR | Id::Lgammaf | Id::LgammafR) => 400,
+        (Musl, Id::Sincosf) => 500,
+        (Musl, Id::Tanh | Id::Tanhf) => 4,
+        (Musl, Id::Tgamma) => 20,
+
+        // Overrides for MPFR
+        (Mpfr, Id::Acoshf) => 4,
+        (Mpfr, Id::Asinh | Id::Asinhf) => 2,
+        (Mpfr, Id::Atanh | Id::Atanhf) => 2,
+        (Mpfr, Id::Exp10 | Id::Exp10f) => 3,
+        (Mpfr, Id::Lgamma | Id::LgammaR | Id::Lgammaf | Id::LgammafR) => 16,
+        (Mpfr, Id::Sinh | Id::Sinhf) => 2,
+        (Mpfr, Id::Tanh | Id::Tanhf) => 2,
+        (Mpfr, Id::Tgamma) => 20,
+
+        // Defaults
+        (Musl, _) => MUSL_DEFAULT_ULP,
+        (Mpfr, _) => MULTIPREC_DEFAULT_ULP,
     }
 }
 

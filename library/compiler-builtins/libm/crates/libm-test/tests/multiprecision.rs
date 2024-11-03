@@ -4,9 +4,7 @@
 
 use libm_test::gen::{CachedInput, random};
 use libm_test::mpfloat::MpOp;
-use libm_test::{
-    CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall, multiprec_allowed_ulp,
-};
+use libm_test::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall};
 
 /// Implement a test against MPFR with random inputs.
 macro_rules! multiprec_rand_tests {
@@ -29,11 +27,8 @@ where
     Op: MathOp + MpOp,
     CachedInput: GenerateInput<Op::RustArgs>,
 {
-    let name = Op::NAME;
-
-    let ulp = multiprec_allowed_ulp(name);
     let mut mp_vals = Op::new_mp();
-    let ctx = CheckCtx::new(ulp, Op::IDENTIFIER, CheckBasis::Mpfr);
+    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);
 
     for input in cases {

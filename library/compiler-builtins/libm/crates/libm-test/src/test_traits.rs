@@ -29,15 +29,18 @@ pub struct CheckCtx {
 }
 
 impl CheckCtx {
-    pub fn new(ulp: u32, fn_ident: Identifier, basis: CheckBasis) -> Self {
-        Self {
-            ulp,
+    /// Create a new check context, using the default ULP for the function.
+    pub fn new(fn_ident: Identifier, basis: CheckBasis) -> Self {
+        let mut ret = Self {
+            ulp: 0,
             fn_ident,
             fn_name: fn_ident.as_str(),
             base_name: fn_ident.base_name(),
             base_name_str: fn_ident.base_name().as_str(),
             basis,
-        }
+        };
+        ret.ulp = crate::default_ulp(&ret);
+        ret
     }
 }
 
