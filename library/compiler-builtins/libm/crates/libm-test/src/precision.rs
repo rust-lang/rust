@@ -111,25 +111,25 @@ impl MaybeOverride<(f32,)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
         if ctx.basis == CheckBasis::Musl {
-            if ctx.fn_name_str == "expm1f" && input.0 > 80.0 && actual.is_infinite() {
+            if ctx.fn_name == "expm1f" && input.0 > 80.0 && actual.is_infinite() {
                 // we return infinity but the number is representable
                 return XFAIL;
             }
 
-            if ctx.fn_name_str == "sinhf" && input.0.abs() > 80.0 && actual.is_nan() {
+            if ctx.fn_name == "sinhf" && input.0.abs() > 80.0 && actual.is_nan() {
                 // we return some NaN that should be real values or infinite
                 // doesn't seem to happen on x86
                 return XFAIL;
             }
         }
 
-        if ctx.fn_name_str == "acoshf" && input.0 < -1.0 {
+        if ctx.fn_name == "acoshf" && input.0 < -1.0 {
             // acoshf is undefined for x <= 1.0, but we return a random result at lower
             // values.
             return XFAIL;
         }
 
-        if ctx.fn_name_str == "lgammaf" || ctx.fn_name_str == "lgammaf_r" && input.0 < 0.0 {
+        if ctx.fn_name == "lgammaf" || ctx.fn_name == "lgammaf_r" && input.0 < 0.0 {
             // loggamma should not be defined for x < 0, yet we both return results
             return XFAIL;
         }
@@ -146,7 +146,7 @@ impl MaybeOverride<(f32,)> for SpecialCase {
         // On MPFR for lgammaf_r, we set -1 as the integer result for negative infinity but MPFR
         // sets +1
         if ctx.basis == CheckBasis::Mpfr
-            && ctx.fn_name_str == "lgammaf_r"
+            && ctx.fn_name == "lgammaf_r"
             && input.0 == f32::NEG_INFINITY
             && actual.abs() == expected.abs()
         {
@@ -166,13 +166,13 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         ctx: &CheckCtx,
     ) -> Option<TestResult> {
         if ctx.basis == CheckBasis::Musl {
-            if cfg!(target_arch = "x86") && ctx.fn_name_str == "acosh" && input.0 < 1.0 {
+            if cfg!(target_arch = "x86") && ctx.fn_name == "acosh" && input.0 < 1.0 {
                 // The function is undefined, both implementations return random results
                 return SKIP;
             }
 
             if cfg!(x86_no_sse)
-                && ctx.fn_name_str == "ceil"
+                && ctx.fn_name == "ceil"
                 && input.0 < 0.0
                 && input.0 > -1.0
                 && expected == F::ZERO
@@ -183,13 +183,13 @@ impl MaybeOverride<(f64,)> for SpecialCase {
             }
         }
 
-        if ctx.fn_name_str == "acosh" && input.0 < 1.0 {
+        if ctx.fn_name == "acosh" && input.0 < 1.0 {
             // The function is undefined for the inputs, musl and our libm both return
             // random results.
             return XFAIL;
         }
 
-        if ctx.fn_name_str == "lgamma" || ctx.fn_name_str == "lgamma_r" && input.0 < 0.0 {
+        if ctx.fn_name == "lgamma" || ctx.fn_name == "lgamma_r" && input.0 < 0.0 {
             // loggamma should not be defined for x < 0, yet we both return results
             return XFAIL;
         }
@@ -206,7 +206,7 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         // On MPFR for lgamma_r, we set -1 as the integer result for negative infinity but MPFR
         // sets +1
         if ctx.basis == CheckBasis::Mpfr
-            && ctx.fn_name_str == "lgamma_r"
+            && ctx.fn_name == "lgamma_r"
             && input.0 == f64::NEG_INFINITY
             && actual.abs() == expected.abs()
         {
@@ -308,7 +308,7 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
             CheckBasis::Musl => bessel_prec_dropoff(input, ulp, ctx),
             CheckBasis::Mpfr => {
                 // We return +0.0, MPFR returns -0.0
-                if ctx.fn_name_str == "jnf"
+                if ctx.fn_name == "jnf"
                     && input.1 == f32::NEG_INFINITY
                     && actual == F::ZERO
                     && expected == F::ZERO
@@ -333,7 +333,7 @@ impl MaybeOverride<(i32, f64)> for SpecialCase {
             CheckBasis::Musl => bessel_prec_dropoff(input, ulp, ctx),
             CheckBasis::Mpfr => {
                 // We return +0.0, MPFR returns -0.0
-                if ctx.fn_name_str == "jn"
+                if ctx.fn_name == "jn"
                     && input.1 == f64::NEG_INFINITY
                     && actual == F::ZERO
                     && expected == F::ZERO
