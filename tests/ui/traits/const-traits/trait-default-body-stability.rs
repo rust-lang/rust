@@ -2,7 +2,7 @@
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(staged_api)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 #![feature(const_t_try)]
 #![feature(const_try)]
 #![feature(try_trait_v2)]

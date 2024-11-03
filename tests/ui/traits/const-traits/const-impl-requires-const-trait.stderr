@@ -1,5 +1,5 @@
 error: const `impl` for trait `A` which is not marked with `#[const_trait]`
-  --> $DIR/const-impl-requires-const-trait.rs:7:12
+  --> $DIR/const-impl-requires-const-trait.rs:6:12
    |
 LL | pub trait A {}
    | - help: mark `A` as const: `#[const_trait]`

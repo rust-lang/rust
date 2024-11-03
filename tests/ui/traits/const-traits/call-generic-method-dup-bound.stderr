@@ -1,12 +1,3 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/call-generic-method-dup-bound.rs:5:30
-   |
-LL | #![feature(const_trait_impl, effects)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
   --> $DIR/call-generic-method-dup-bound.rs:9:12
    |
@@ -76,6 +67,6 @@ help: consider further restricting this bound
 LL | const fn equals_self2<T: A + ~const PartialEq + ~const std::cmp::PartialEq>(t: &T) -> bool {
    |                                               ++++++++++++++++++++++++++++
 
-error: aborting due to 8 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

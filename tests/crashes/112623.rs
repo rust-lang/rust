@@ -1,6 +1,6 @@
 //@ known-bug: #112623
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Value {

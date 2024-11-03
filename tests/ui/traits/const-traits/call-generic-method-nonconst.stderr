@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `S: const Foo` is not satisfied
-  --> $DIR/call-generic-method-nonconst.rs:25:22
+  --> $DIR/call-generic-method-nonconst.rs:24:22
    |
 LL | pub const EQ: bool = equals_self(&S);
    |                      ^^^^^^^^^^^^^^^

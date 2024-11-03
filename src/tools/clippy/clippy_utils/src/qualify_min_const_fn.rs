@@ -404,7 +404,7 @@ fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
 }
 
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-    // FIXME(effects, fee1-dead) revert to const destruct once it works again
+    // FIXME(const_trait_impl, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
     fn is_ty_const_destruct_unused<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
         // Avoid selecting for simple cases, such as builtin types.
@@ -412,7 +412,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
             return true;
         }
 
-        // FIXME(effects) constness
+        // FIXME(const_trait_impl) constness
         let obligation = Obligation::new(
             tcx,
             ObligationCause::dummy_with_span(body.span),

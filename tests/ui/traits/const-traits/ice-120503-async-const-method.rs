@@ -1,5 +1,4 @@
 //@ edition: 2021
-#![feature(effects)] //~ WARN the feature `effects` is incomplete
 
 trait MyTrait {}
 

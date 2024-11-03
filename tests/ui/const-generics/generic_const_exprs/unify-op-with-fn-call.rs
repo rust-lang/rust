@@ -1,6 +1,6 @@
 //@ known-bug: #110395
 //@ compile-flags: -Znext-solver
-#![feature(generic_const_exprs, adt_const_params, const_trait_impl, effects)]
+#![feature(generic_const_exprs, adt_const_params, const_trait_impl)]
 #![allow(incomplete_features)]
 
 // test `N + N` unifies with explicit function calls for non-builtin-types

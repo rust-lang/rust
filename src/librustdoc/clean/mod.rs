@@ -369,7 +369,7 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstArgHasType(..)
-        // FIXME(effects): We can probably use this `HostEffect` pred to render `~const`.
+        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
     }
 }
@@ -379,7 +379,7 @@ fn clean_poly_trait_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-    // FIXME(effects) check constness
+    // FIXME(const_trait_impl) check constness
     if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
         return None;
     }

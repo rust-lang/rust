@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 #![feature(staged_api)]
-#![feature(const_trait_impl, effects, rustc_attrs, intrinsics)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl, rustc_attrs, intrinsics)]
 #![stable(feature = "stable", since = "1.0.0")]
 
 #[stable(feature = "stable", since = "1.0.0")]

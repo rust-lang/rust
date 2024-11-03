@@ -3,8 +3,7 @@
 
 #![cfg_attr(unstable, feature(unstable))] // The feature from the ./auxiliary/staged-api.rs file.
 #![cfg_attr(unstable, feature(local_feature))]
-#![feature(const_trait_impl, effects)]
-#![allow(incomplete_features)]
+#![feature(const_trait_impl)]
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

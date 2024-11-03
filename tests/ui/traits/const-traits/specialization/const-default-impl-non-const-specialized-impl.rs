@@ -1,6 +1,6 @@
 // Tests that specializing trait impls must be at least as const as the default impl.
 
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 #![feature(min_specialization)]
 
 #[const_trait]

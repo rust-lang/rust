@@ -1,14 +1,5 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/spec-effectvar-ice.rs:3:12
-   |
-LL | #![feature(effects)]
-   |            ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: const `impl` for trait `Foo` which is not marked with `#[const_trait]`
-  --> $DIR/spec-effectvar-ice.rs:11:15
+  --> $DIR/spec-effectvar-ice.rs:10:15
    |
 LL | trait Foo {}
    | - help: mark `Foo` as const: `#[const_trait]`
@@ -20,7 +11,7 @@ LL | impl<T> const Foo for T {}
    = note: adding a non-const method body in the future would be a breaking change
 
 error: const `impl` for trait `Foo` which is not marked with `#[const_trait]`
-  --> $DIR/spec-effectvar-ice.rs:14:15
+  --> $DIR/spec-effectvar-ice.rs:13:15
    |
 LL | trait Foo {}
    | - help: mark `Foo` as const: `#[const_trait]`
@@ -32,28 +23,28 @@ LL | impl<T> const Foo for T where T: const Specialize {}
    = note: adding a non-const method body in the future would be a breaking change
 
 error: `const` can only be applied to `#[const_trait]` traits
-  --> $DIR/spec-effectvar-ice.rs:14:34
+  --> $DIR/spec-effectvar-ice.rs:13:34
    |
 LL | impl<T> const Foo for T where T: const Specialize {}
    |                                  ^^^^^
 
 error: specialization impl does not specialize any associated items
-  --> $DIR/spec-effectvar-ice.rs:14:1
+  --> $DIR/spec-effectvar-ice.rs:13:1
    |
 LL | impl<T> const Foo for T where T: const Specialize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: impl is a specialization of this impl
-  --> $DIR/spec-effectvar-ice.rs:11:1
+  --> $DIR/spec-effectvar-ice.rs:10:1
    |
 LL | impl<T> const Foo for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot specialize on trait `Specialize`
-  --> $DIR/spec-effectvar-ice.rs:14:34
+  --> $DIR/spec-effectvar-ice.rs:13:34
    |
 LL | impl<T> const Foo for T where T: const Specialize {}
    |                                  ^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 

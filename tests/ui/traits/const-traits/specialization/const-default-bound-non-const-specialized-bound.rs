@@ -1,7 +1,7 @@
 // Tests that trait bounds on specializing trait impls must be `~const` if the
 // same bound is present on the default impl and is `~const` there.
 //@ known-bug: #110395
-// FIXME(effects) ^ should error
+// FIXME(const_trait_impl) ^ should error
 
 #![feature(const_trait_impl)]
 #![feature(rustc_attrs)]
