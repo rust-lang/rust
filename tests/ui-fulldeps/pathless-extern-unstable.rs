@@ -1,3 +1,4 @@
+//@ ignore-stage1 FIXME: this line can be removed once these new error messages are in stage 0 rustc
 //@ edition:2018
 //@ compile-flags:--extern rustc_middle
 
