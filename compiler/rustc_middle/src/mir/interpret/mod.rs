@@ -12,6 +12,7 @@ use std::io::{Read, Write};
 use std::num::NonZero;
 use std::{fmt, io};
 
+use rustc_abi::{AddressSpace, Endian, HasDataLayout};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
@@ -20,7 +21,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
 pub use {

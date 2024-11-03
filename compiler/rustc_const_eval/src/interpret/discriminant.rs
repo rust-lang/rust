@@ -1,9 +1,9 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
+use rustc_abi::{self as abi, TagEncoding, VariantIdx, Variants};
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
 use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
 use rustc_middle::{mir, span_bug};
-use rustc_target::abi::{self, TagEncoding, VariantIdx, Variants};
 use tracing::{instrument, trace};
 
 use super::{

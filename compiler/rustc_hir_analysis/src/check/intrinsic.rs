@@ -1,6 +1,7 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, struct_span_code_err};
 use rustc_hir as hir;
@@ -10,7 +11,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::abi::Abi;
 
 use crate::check::check_function_signature;
 use crate::errors::{
@@ -163,7 +163,7 @@ pub fn check_intrinsic_type(
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
-    abi: Abi,
+    abi: ExternAbi,
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
@@ -533,14 +533,14 @@ pub fn check_intrinsic_type(
                     tcx.types.unit,
                     false,
                     hir::Safety::Safe,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                 ));
                 let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                     [mut_u8, mut_u8],
                     tcx.types.unit,
                     false,
                     hir::Safety::Safe,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                 ));
                 (
                     0,

@@ -37,7 +37,7 @@ use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_i
 use super::*;
 use crate::check::intrinsicck::InlineAsmCtxt;
 
-pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
+pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
     if !tcx.sess.target.is_abi_supported(abi) {
         struct_span_code_err!(
             tcx.dcx(),
@@ -49,7 +49,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
     }
 }
 
-pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
+pub fn check_abi_fn_ptr(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
     if !tcx.sess.target.is_abi_supported(abi) {
         tcx.node_span_lint(UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS, hir_id, span, |lint| {
             lint.primary_message(format!(
@@ -628,7 +628,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
                     i.name,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                 )
             }
             // Everything else is checked entirely within check_item_body
@@ -699,7 +699,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_abi(tcx, it.span, abi);
 
             match abi {
-                Abi::RustIntrinsic => {
+                ExternAbi::RustIntrinsic => {
                     for item in items {
                         intrinsic::check_intrinsic_type(
                             tcx,

@@ -5,9 +5,9 @@ use hir::def_id::DefId;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AbiAndPrefAlign, AddressSpace, Align, BackendRepr, FieldsShape, HasDataLayout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    Variants, WrappingRange,
+    AbiAndPrefAlign, AddressSpace, Align, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape,
+    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
+    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -24,7 +24,6 @@ use rustc_middle::ty::{
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, Layout, VariantIdx};
 use tracing::{debug, instrument, trace};
 use {rustc_abi as abi, rustc_hir as hir};
 

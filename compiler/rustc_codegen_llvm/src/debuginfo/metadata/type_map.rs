@@ -1,12 +1,12 @@
 use std::cell::RefCell;
 
+use rustc_abi::{Align, Size, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_middle::bug;
 use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_target::abi::{Align, Size, VariantIdx};
 
 use super::{SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};

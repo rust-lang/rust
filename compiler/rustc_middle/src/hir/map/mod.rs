@@ -1,3 +1,4 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -12,7 +13,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
 use crate::hir::ModuleItems;
@@ -668,7 +668,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_foreign_abi(self, hir_id: HirId) -> Abi {
+    pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
         let parent = self.get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =
             self.tcx.hir_owner_node(parent)

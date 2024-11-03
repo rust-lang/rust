@@ -5,7 +5,6 @@ use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi;
 
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::ty::fast_reject::SimplifiedType;
@@ -509,7 +508,7 @@ impl<'tcx> Key for (DefId, Ty<'tcx>, GenericArgsRef<'tcx>, ty::ParamEnv<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (Ty<'tcx>, abi::VariantIdx) {
+impl<'tcx> Key for (Ty<'tcx>, rustc_abi::VariantIdx) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {

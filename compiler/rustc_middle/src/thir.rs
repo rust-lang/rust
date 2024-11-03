@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
 
+use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,7 +30,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
 
@@ -1063,7 +1063,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
                 a.partial_cmp(&b)
             }
             ty::Int(ity) => {
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, *ity).size();
+                let size = rustc_abi::Integer::from_int_ty(&tcx, *ity).size();
                 let a = size.sign_extend(a) as i128;
                 let b = size.sign_extend(b) as i128;
                 Some(a.cmp(&b))
