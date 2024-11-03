@@ -6,7 +6,7 @@
 //!
 //! - `minicore` is **only** intended for `core` items, and the stubs should match the actual `core`
 //!   items.
-//! - Becareful of adding new features and things that are only available for a subset of targets.
+//! - Be careful of adding new features and things that are only available for a subset of targets.
 //!
 //! # References
 //!
