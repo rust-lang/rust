@@ -350,25 +350,25 @@ LL |     let _ = 2i32 * (x + y + 0i32);
    |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:239:20
+  --> tests/ui/identity_op.rs:240:20
    |
-LL |     let _ = 2i32 + (x + y + 0i32);
-   |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `x + y`
+LL |     let _ = 2i32 - (x - y - 0i32);
+   |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x - y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:243:17
+  --> tests/ui/identity_op.rs:244:17
    |
 LL |     let _ = 2 + (x + (y * z) + 0);
    |                 ^^^^^^^^^^^^^^^^^ help: consider reducing it to: `x + (y * z)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:247:20
+  --> tests/ui/identity_op.rs:248:20
    |
 LL |     let _ = 2i32 + (x * y * 1i32);
    |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x * y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:252:25
+  --> tests/ui/identity_op.rs:253:25
    |
 LL |     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(x as i32 + y as i32) as u64`

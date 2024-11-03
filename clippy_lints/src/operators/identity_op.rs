@@ -52,13 +52,8 @@ pub(crate) fn check<'tcx>(
         },
         BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
             if is_redundant_op(cx, right, 0) {
-                span_ineffective_operation(
-                    cx,
-                    expr.span,
-                    peeled_left_span,
-                    Parens::Unneeded,
-                    left_is_coerced_to_value,
-                );
+                let paren = needs_parenthesis(cx, expr, left);
+                span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::Mul => {
@@ -127,17 +122,12 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, child: &Expr<'_>) 
     match child.kind {
         ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) => {
             // For casts and binary expressions, we want to add parenthesis if
-            // the parent HIR node is an expression with a different precedence,
-            // or if the parent HIR node is a Block or Stmt, and the new left hand side
-            // would be treated as a statement rather than an expression.
+            // the parent HIR node is an expression, or if the parent HIR node
+            // is a Block or Stmt, and the new left hand side would need
+            // parenthesis be treated as a statement rather than an expression.
             if let Some((_, parent)) = cx.tcx.hir().parent_iter(binary.hir_id).next() {
-                if let Node::Expr(expr) = parent {
-                    if child.precedence().order() != expr.precedence().order() {
-                        return Parens::Needed;
-                    }
-                    return Parens::Unneeded;
-                }
                 match parent {
+                    Node::Expr(_) => return Parens::Needed,
                     Node::Block(_) | Node::Stmt(_) => {
                         // ensure we're checking against the leftmost expression of `child`
                         //

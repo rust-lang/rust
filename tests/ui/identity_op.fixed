@@ -235,8 +235,9 @@ fn issue_13470() {
     // Maintain parenthesis if the parent expr is of higher precedence
     let _ = 2i32 * (x + y);
     //~^ ERROR: this operation has no effect
-    // No need for parenthesis if the parent expr is of equal precedence
-    let _ = 2i32 + x + y;
+    // Maintain parenthesis if the parent expr is the same precedence
+    // as not all operations are associative
+    let _ = 2i32 - (x - y);
     //~^ ERROR: this operation has no effect
     // But make sure that inner parens still exist
     let z = 1i32;
