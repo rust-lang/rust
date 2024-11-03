@@ -534,13 +534,6 @@ pub enum ExtractBundledLibsError<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_unsupported_arch)]
-pub(crate) struct UnsupportedArch<'a> {
-    pub arch: &'a str,
-    pub os: &'a str,
-}
-
-#[derive(Diagnostic)]
 pub(crate) enum AppleDeploymentTarget {
     #[diag(codegen_ssa_apple_deployment_target_invalid)]
     Invalid { env_var: &'static str, error: ParseIntError },
