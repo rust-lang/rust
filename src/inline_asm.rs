@@ -464,7 +464,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let new_slot_fn = |slot_size: &mut Size, reg_class: InlineAsmRegClass| {
             let reg_size =
                 reg_class.supported_types(self.arch).iter().map(|(ty, _)| ty.size()).max().unwrap();
-            let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
+            let align = rustc_abi::Align::from_bytes(reg_size.bytes()).unwrap();
             let offset = slot_size.align_to(align);
             *slot_size = offset + reg_size;
             offset

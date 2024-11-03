@@ -1,8 +1,9 @@
 //! Argument passing
 
 use cranelift_codegen::ir::{ArgumentExtension, ArgumentPurpose};
-use rustc_target::abi::call::{
-    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode, Reg, RegKind,
+use rustc_abi::{Reg, RegKind};
+use rustc_target::callconv::{
+    ArgAbi, ArgAttributes, ArgExtension as RustcArgExtension, CastTarget, PassMode,
 };
 use smallvec::{SmallVec, smallvec};
 

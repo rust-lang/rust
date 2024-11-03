@@ -10,6 +10,7 @@ use std::mem;
 use cranelift_codegen::ir::{ArgumentPurpose, SigRef};
 use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
+use rustc_abi::ExternAbi;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -18,8 +19,7 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::{Conv, FnAbi, PassMode};
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{Conv, FnAbi, PassMode};
 
 use self::pass_mode::*;
 pub(crate) use self::returning::codegen_return;
@@ -443,7 +443,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_sig, extra_args)
     };
 
-    let is_cold = if fn_sig.abi() == Abi::RustCold {
+    let is_cold = if fn_sig.abi() == ExternAbi::RustCold {
         true
     } else {
         instance.is_some_and(|inst| {
@@ -458,7 +458,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     }
 
     // Unpack arguments tuple for closures
-    let mut args = if fn_sig.abi() == Abi::RustCall {
+    let mut args = if fn_sig.abi() == ExternAbi::RustCall {
         let (self_arg, pack_arg) = match args {
             [pack_arg] => (None, codegen_call_argument_operand(fx, &pack_arg.node)),
             [self_arg, pack_arg] => (
