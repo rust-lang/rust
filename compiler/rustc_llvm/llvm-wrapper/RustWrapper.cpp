@@ -1510,8 +1510,8 @@ LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
   const SourceMgr &LSM = *D.getSourceMgr();
   const MemoryBuffer *LBuf =
       LSM.getMemoryBuffer(LSM.FindBufferContainingLoc(D.getLoc()));
-  LLVMRustStringWriteImpl(BufferOut, LBuf->getBufferStart(),
-                          LBuf->getBufferSize());
+  auto BufferOS = RawRustStringOstream(BufferOut);
+  BufferOS << LBuf->getBuffer();
 
   *LocOut = D.getLoc().getPointer() - LBuf->getBufferStart();
 
