@@ -1,6 +1,7 @@
 use std::iter;
 
 use itertools::Itertools;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_const_eval::interpret;
 use rustc_hir::def_id::DefId;
@@ -18,7 +19,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::source_map::respan;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 

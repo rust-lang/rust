@@ -662,7 +662,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Exactly one side is known, attempt some algebraic simplifications.
             (FlatSet::Elem(const_arg), _) | (_, FlatSet::Elem(const_arg)) => {
                 let layout = const_arg.layout;
-                if !matches!(layout.backend_repr, rustc_target::abi::BackendRepr::Scalar(..)) {
+                if !matches!(layout.backend_repr, rustc_abi::BackendRepr::Scalar(..)) {
                     return (FlatSet::Top, FlatSet::Top);
                 }
 

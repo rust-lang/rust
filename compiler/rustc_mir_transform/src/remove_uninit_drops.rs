@@ -1,10 +1,10 @@
+use rustc_abi::FieldIdx;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, move_path_children_matching};
-use rustc_target::abi::FieldIdx;
 
 /// Removes `Drop` terminators whose target is known to be uninitialized at
 /// that point.

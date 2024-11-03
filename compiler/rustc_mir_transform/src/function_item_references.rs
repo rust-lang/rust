@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rustc_abi::ExternAbi;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -7,7 +8,6 @@ use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
 
 use crate::errors;
 
@@ -161,7 +161,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args);
         let unsafety = fn_sig.safety().prefix_str();
         let abi = match fn_sig.abi() {
-            Abi::Rust => String::from(""),
+            ExternAbi::Rust => String::from(""),
             other_abi => {
                 let mut s = String::from("extern \"");
                 s.push_str(other_abi.name());

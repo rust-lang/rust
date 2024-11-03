@@ -1,5 +1,6 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
+use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
@@ -15,8 +16,6 @@ use rustc_middle::ty::{
     Variance,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::{FIRST_VARIANT, Size};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_type_ir::Upcast;
 
@@ -60,9 +59,9 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             let body_ty = tcx.type_of(def_id).skip_binder();
             let body_abi = match body_ty.kind() {
                 ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
-                ty::Closure(..) => Abi::RustCall,
-                ty::CoroutineClosure(..) => Abi::RustCall,
-                ty::Coroutine(..) => Abi::Rust,
+                ty::Closure(..) => ExternAbi::RustCall,
+                ty::CoroutineClosure(..) => ExternAbi::RustCall,
+                ty::Coroutine(..) => ExternAbi::Rust,
                 // No need to do MIR validation on error bodies
                 ty::Error(_) => return,
                 _ => {
