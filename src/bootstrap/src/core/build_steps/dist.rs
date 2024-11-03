@@ -459,7 +459,8 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let src_dir =
+                    builder.sysroot_target_libdir(compiler, host).parent().unwrap().join("bin");
                 let rust_lld = exe("rust-lld", compiler.host);
                 builder.copy_link(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
@@ -474,7 +475,8 @@ impl Step for Rustc {
                 }
             }
             if builder.tool_enabled("wasm-component-ld") {
-                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let src_dir =
+                    builder.sysroot_target_libdir(compiler, host).parent().unwrap().join("bin");
                 let ld = exe("wasm-component-ld", compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
             }
