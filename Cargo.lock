@@ -4337,6 +4337,7 @@ name = "rustc_sanitizers"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.6.0",
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
