@@ -414,6 +414,12 @@ pub struct WhereClause {
     pub span: Span,
 }
 
+impl WhereClause {
+    pub fn is_empty(&self) -> bool {
+        !self.has_where_token && self.predicates.is_empty()
+    }
+}
+
 impl Default for WhereClause {
     fn default() -> WhereClause {
         WhereClause { has_where_token: false, predicates: ThinVec::new(), span: DUMMY_SP }
