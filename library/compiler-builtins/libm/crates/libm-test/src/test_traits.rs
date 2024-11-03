@@ -11,25 +11,33 @@ use std::fmt;
 
 use anyhow::{Context, bail, ensure};
 
-use crate::{Float, Int, MaybeOverride, SpecialCase, TestResult};
+use crate::{BaseName, Float, Int, MaybeOverride, Name, SpecialCase, TestResult};
 
 /// Context passed to [`CheckOutput`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckCtx {
     /// Allowed ULP deviation
     pub ulp: u32,
+    pub fn_name: Name,
+    pub base_name: BaseName,
     /// Function name.
-    pub fn_name: &'static str,
+    pub fn_name_str: &'static str,
     /// Return the unsuffixed version of the function name.
-    pub base_name: &'static str,
+    pub base_name_str: &'static str,
     /// Source of truth for tests.
     pub basis: CheckBasis,
 }
 
 impl CheckCtx {
-    pub fn new(ulp: u32, fname: &'static str, basis: CheckBasis) -> Self {
-        let base_name = crate::base_name(fname);
-        Self { ulp, fn_name: fname, base_name, basis }
+    pub fn new(ulp: u32, fn_name: Name, basis: CheckBasis) -> Self {
+        Self {
+            ulp,
+            fn_name,
+            fn_name_str: fn_name.as_str(),
+            base_name: fn_name.base_name(),
+            base_name_str: fn_name.base_name().as_str(),
+            basis,
+        }
     }
 }
 

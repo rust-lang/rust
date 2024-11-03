@@ -33,7 +33,7 @@ where
 
     let ulp = multiprec_allowed_ulp(name);
     let mut mp_vals = Op::new_mp();
-    let ctx = CheckCtx::new(ulp, name, CheckBasis::Mpfr);
+    let ctx = CheckCtx::new(ulp, Op::NAME, CheckBasis::Mpfr);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);
 
     for input in cases {
