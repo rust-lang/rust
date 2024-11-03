@@ -1,5 +1,5 @@
-error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:6:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi_2021.rs:10:1
    |
 LL | fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,8 +15,8 @@ help: or explicitly set the default
 LL | extern "Rust" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
    | +++++++++++++
 
-error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:11:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi_2021.rs:15:1
    |
 LL | pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,8 +30,8 @@ help: or explicitly set the default
 LL | pub extern "Rust" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
    |     +++++++++++++
 
-error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:17:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi_2021.rs:21:1
    |
 LL | pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,8 +45,8 @@ help: or explicitly set the default
 LL | pub unsafe extern "Rust" fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
    |            +++++++++++++
 
-error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:23:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi_2021.rs:27:1
    |
 LL | unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,8 +60,8 @@ help: or explicitly set the default
 LL | unsafe extern "Rust" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
    |        +++++++++++++
 
-error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:27:1
+error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi_2021.rs:31:1
    |
 LL | / fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
 LL | |
