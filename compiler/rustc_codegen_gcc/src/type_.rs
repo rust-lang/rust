@@ -4,13 +4,13 @@ use std::convert::TryInto;
 #[cfg(feature = "master")]
 use gccjit::CType;
 use gccjit::{RValue, Struct, Type};
+use rustc_abi::{AddressSpace, Align, Integer, Size};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, ty};
-use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
 use crate::common::TypeReflection;
 use crate::context::CodegenCx;
