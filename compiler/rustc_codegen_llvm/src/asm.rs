@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 
 use libc::{c_char, c_uint};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
@@ -9,7 +10,6 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Pos, Span, Symbol, sym};
-use rustc_target::abi::*;
 use rustc_target::asm::*;
 use smallvec::SmallVec;
 use tracing::debug;

@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
+use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -26,7 +27,6 @@ use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Symbol};
-use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::at::ToTrace;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};

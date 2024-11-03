@@ -1,9 +1,9 @@
+use rustc_abi::WrappingRange;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, sym};
-use rustc_target::abi::WrappingRange;
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::callconv::{FnAbi, PassMode};
 
 use super::FunctionCx;
 use super::operand::OperandRef;

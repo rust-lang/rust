@@ -5,6 +5,7 @@ use std::ops::Range;
 use std::{iter, ptr};
 
 use libc::c_uint;
+use rustc_abi::Size;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
@@ -22,7 +23,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
 };
-use rustc_target::abi::Size;
 use smallvec::SmallVec;
 use tracing::debug;
 

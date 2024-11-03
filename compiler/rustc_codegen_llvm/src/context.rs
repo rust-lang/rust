@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_uint};
 use std::str;
 
+use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
@@ -24,7 +25,6 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 

@@ -2,6 +2,7 @@ use std::cell::{OnceCell, RefCell};
 use std::ffi::{CStr, CString};
 
 use libc::c_uint;
+use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
     BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
@@ -10,7 +11,6 @@ use rustc_llvm::RustString;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_target::abi::Size;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;

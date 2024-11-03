@@ -1,13 +1,13 @@
 use std::assert_matches::assert_matches;
 
 use arrayvec::ArrayVec;
+use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{self, FIRST_VARIANT, FieldIdx};
 use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue};
