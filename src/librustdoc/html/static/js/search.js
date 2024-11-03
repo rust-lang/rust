@@ -692,8 +692,6 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     const quadcolon = /::\s*::/.exec(path);
     if (path.startsWith("::")) {
         throw ["Paths cannot start with ", "::"];
-    } else if (path.endsWith("::")) {
-        throw ["Paths cannot end with ", "::"];
     } else if (quadcolon !== null) {
         throw ["Unexpected ", quadcolon[0]];
     }
@@ -3974,18 +3972,19 @@ class DocSearch {
 
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
-                for (const id of this.nameTrie.search(elem.normalizedPathLast, this.tailTable)) {
+                // use arrow functions to preserve `this`.
+                const handleNameSearch = (id) => {
                     const row = this.searchIndex[id];
                     if (!typePassesFilter(elem.typeFilter, row.ty) ||
                         (filterCrates !== null && row.crate !== filterCrates)) {
-                        continue;
+                        return;
                     }
 
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
                         pathDist = checkPath(elem.pathWithoutLast, row);
                         if (pathDist === null) {
-                            continue;
+                            return;
                         }
                     }
 
@@ -4008,9 +4007,20 @@ class DocSearch {
                             maxEditDistance,
                         );
                     }
+                };
+                if (elem.normalizedPathLast !== "") {
+                    const last = elem.normalizedPathLast;
+                    for (const id of this.nameTrie.search(last, this.tailTable)) {
+                        handleNameSearch(id);
+                    }
                 }
                 const length = this.searchIndex.length;
+
                 for (let i = 0, nSearchIndex = length; i < nSearchIndex; ++i) {
+                    // queries that end in :: bypass the trie
+                    if (elem.normalizedPathLast === "") {
+                        handleNameSearch(i);
+                    }
                     const row = this.searchIndex[i];
                     if (filterCrates !== null && row.crate !== filterCrates) {
                         continue;
