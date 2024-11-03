@@ -4,13 +4,12 @@ use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
+use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer};
 use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, FieldIdx, Integer};
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{info, instrument, trace};
 
 use super::{
@@ -488,7 +487,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
         destination: &MPlaceTy<'tcx, M::Provenance>,
@@ -566,7 +565,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Special handling for the closure ABI: untuple the last argument.
                 let args: Cow<'_, [FnArg<'tcx, M::Provenance>]> =
-                    if caller_abi == Abi::RustCall && !args.is_empty() {
+                    if caller_abi == ExternAbi::RustCall && !args.is_empty() {
                         // Untuple
                         let (untuple_arg, args) = args.split_last().unwrap();
                         trace!("init_fn_call: Will pass last argument by untupling");
@@ -732,7 +731,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn init_fn_tail_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        (caller_abi, caller_fn_abi): (ExternAbi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, M::Provenance>],
         with_caller_location: bool,
     ) -> InterpResult<'tcx> {
@@ -817,7 +816,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         self.init_fn_call(
             FnVal::Instance(instance),
-            (Abi::Rust, fn_abi),
+            (ExternAbi::Rust, fn_abi),
             &[FnArg::Copy(arg.into())],
             false,
             &ret,
