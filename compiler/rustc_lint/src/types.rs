@@ -1,7 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
+use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::{Expr, ExprKind};
@@ -14,7 +14,6 @@ use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, source_map};
-use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -1294,10 +1293,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
-    fn is_internal_abi(&self, abi: SpecAbi) -> bool {
+    fn is_internal_abi(&self, abi: ExternAbi) -> bool {
         matches!(
             abi,
-            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustCold | SpecAbi::RustIntrinsic
+            ExternAbi::Rust | ExternAbi::RustCall | ExternAbi::RustCold | ExternAbi::RustIntrinsic
         )
     }
 
