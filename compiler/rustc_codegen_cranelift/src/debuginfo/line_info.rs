@@ -50,7 +50,12 @@ fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     if hash.kind == SourceFileHashAlgorithm::Md5 {
         let mut buf = [0u8; MD5_LEN];
         buf.copy_from_slice(hash.hash_bytes());
-        Some(FileInfo { timestamp: 0, size: 0, md5: buf })
+        Some(FileInfo {
+            timestamp: 0,
+            size: 0,
+            md5: buf,
+            source: None, // FIXME implement -Zembed-source
+        })
     } else {
         None
     }

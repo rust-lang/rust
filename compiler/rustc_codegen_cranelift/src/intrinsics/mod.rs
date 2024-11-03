@@ -47,7 +47,7 @@ fn report_atomic_type_validation_error<'tcx>(
         ),
     );
     // Prevent verifier error
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
@@ -449,7 +449,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
     match intrinsic {
         sym::abort => {
-            fx.bcx.ins().trap(TrapCode::User(0));
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+            fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());
         }
         sym::likely | sym::unlikely => {
