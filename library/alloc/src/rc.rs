@@ -2658,6 +2658,26 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> From<&mut [T]> for Rc<[T]> {
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = [1, 2, 3];
+    /// let original: &mut [i32] = &mut original;
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut [T]) -> Rc<[T]> {
+        Rc::from(&*v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
@@ -2673,6 +2693,26 @@ impl From<&str> for Rc<str> {
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl From<&mut str> for Rc<str> {
+    /// Allocates a reference-counted string slice and copies `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = String::from("statue");
+    /// let original: &mut str = &mut original;
+    /// let shared: Rc<str> = Rc::from(original);
+    /// assert_eq!("statue", &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut str) -> Rc<str> {
+        Rc::from(&*v)
     }
 }
 
