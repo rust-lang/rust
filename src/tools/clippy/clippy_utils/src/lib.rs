@@ -1209,8 +1209,8 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
                                 UpvarCapture::ByRef(kind) => match kind {
-                                    BorrowKind::ImmBorrow => CaptureKind::Ref(Mutability::Not),
-                                    BorrowKind::UniqueImmBorrow | BorrowKind::MutBorrow => {
+                                    BorrowKind::Immutable => CaptureKind::Ref(Mutability::Not),
+                                    BorrowKind::UniqueImmutable | BorrowKind::Mutable => {
                                         CaptureKind::Ref(Mutability::Mut)
                                     },
                                 },

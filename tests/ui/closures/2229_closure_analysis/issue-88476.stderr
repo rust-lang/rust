@@ -31,7 +31,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing f[(0, 0)] -> ImmBorrow
+note: Capturing f[(0, 0)] -> Immutable
   --> $DIR/issue-88476.rs:26:26
    |
 LL |         println!("{:?}", f.0);
@@ -69,7 +69,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing character[(0, 0)] -> ImmBorrow
+note: Capturing character[(0, 0)] -> Immutable
   --> $DIR/issue-88476.rs:54:24
    |
 LL |         println!("{}", character.hp)
