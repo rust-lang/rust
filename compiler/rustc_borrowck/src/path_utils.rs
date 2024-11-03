@@ -1,7 +1,7 @@
+use rustc_abi::FieldIdx;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::{BasicBlock, Body, BorrowKind, Location, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::TyCtxt;
-use rustc_target::abi::FieldIdx;
 use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};

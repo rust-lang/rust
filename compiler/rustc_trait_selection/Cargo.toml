@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 itertools = "0.12"
+rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr = { path = "../rustc_attr" }
@@ -22,7 +23,6 @@ rustc_query_system = { path = "../rustc_query_system" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_target = { path = "../rustc_target" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

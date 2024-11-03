@@ -21,6 +21,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::Diag;
@@ -45,7 +46,6 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::FieldIdx;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
