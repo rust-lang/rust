@@ -643,7 +643,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
         // Try to replace `_` with `()`.
         if let hir::TyKind::Infer = hir_ty.kind
-            && let ty = self.fcx.typeck_results.borrow().node_type(hir_ty.hir_id)
+            && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
         {
@@ -680,7 +680,8 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
             && let Res::Def(DefKind::AssocFn, def_id) = path.res
             && self.fcx.tcx.trait_of_item(def_id).is_some()
-            && let self_ty = self.fcx.typeck_results.borrow().node_args(expr.hir_id).type_at(0)
+            && let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(expr.hir_id)
+            && let self_ty = args.type_at(0)
             && let Some(vid) = self.fcx.root_vid(self_ty)
             && self.reachable_vids.contains(&vid)
             && let [.., trait_segment, _method_segment] = path.segments
@@ -701,7 +702,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) -> Self::Result {
         // For a local, try suggest annotating the type if it's missing.
         if let None = local.ty
-            && let ty = self.fcx.typeck_results.borrow().node_type(local.hir_id)
+            && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(local.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
         {
