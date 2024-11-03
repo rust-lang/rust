@@ -205,7 +205,6 @@ fn compare_method_predicate_entailment<'tcx>(
         trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
     );
 
-    // FIXME(effects): This should be replaced with a more dedicated method.
     let is_conditionally_const = tcx.is_conditionally_const(impl_def_id);
     if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions

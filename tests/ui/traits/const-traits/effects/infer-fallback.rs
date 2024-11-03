@@ -1,7 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
-#![allow(incomplete_features)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 const fn a() {}
 

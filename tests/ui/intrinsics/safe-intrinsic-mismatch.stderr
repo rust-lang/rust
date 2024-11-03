@@ -1,11 +1,11 @@
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
-  --> $DIR/safe-intrinsic-mismatch.rs:11:5
+  --> $DIR/safe-intrinsic-mismatch.rs:5:5
    |
 LL |     fn size_of<T>() -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
-  --> $DIR/safe-intrinsic-mismatch.rs:11:5
+  --> $DIR/safe-intrinsic-mismatch.rs:5:5
    |
 LL |     fn size_of<T>() -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,13 +13,13 @@ LL |     fn size_of<T>() -> usize;
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `assume`
-  --> $DIR/safe-intrinsic-mismatch.rs:16:1
+  --> $DIR/safe-intrinsic-mismatch.rs:10:1
    |
 LL | const fn assume(_b: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: intrinsic has wrong type
-  --> $DIR/safe-intrinsic-mismatch.rs:16:16
+  --> $DIR/safe-intrinsic-mismatch.rs:10:16
    |
 LL | const fn assume(_b: bool) {}
    |                ^ expected unsafe fn, found safe fn
@@ -28,13 +28,13 @@ LL | const fn assume(_b: bool) {}
               found signature `fn(_)`
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `const_deallocate`
-  --> $DIR/safe-intrinsic-mismatch.rs:20:1
+  --> $DIR/safe-intrinsic-mismatch.rs:14:1
    |
 LL | const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: intrinsic has wrong type
-  --> $DIR/safe-intrinsic-mismatch.rs:20:26
+  --> $DIR/safe-intrinsic-mismatch.rs:14:26
    |
 LL | const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
    |                          ^ expected unsafe fn, found safe fn

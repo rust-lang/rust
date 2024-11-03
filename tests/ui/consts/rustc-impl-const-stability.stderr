@@ -1,5 +1,5 @@
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
-  --> $DIR/rustc-impl-const-stability.rs:16:12
+  --> $DIR/rustc-impl-const-stability.rs:15:12
    |
 LL | impl const Default for Data {
    |            ^^^^^^^

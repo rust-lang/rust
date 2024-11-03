@@ -1,7 +1,7 @@
 error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
   --> $DIR/unify-op-with-fn-call.rs:3:12
    |
-LL | #![feature(generic_const_exprs, adt_const_params, const_trait_impl, effects)]
+LL | #![feature(generic_const_exprs, adt_const_params, const_trait_impl)]
    |            ^^^^^^^^^^^^^^^^^^^
    |
    = help: remove one of these features

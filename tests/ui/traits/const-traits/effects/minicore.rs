@@ -3,17 +3,24 @@
 //@ normalize-stderr-test: ".*note: .*\n\n" -> ""
 //@ normalize-stderr-test: "thread 'rustc' panicked.*:\n.*\n" -> ""
 //@ rustc-env:RUST_BACKTRACE=0
-// FIXME(effects) check-pass
+// FIXME(const_trait_impl) check-pass
 //@ compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
-#![feature(fundamental, marker_trait_attr)]
-#![feature(const_trait_impl, effects)]
+#![feature(
+    no_core,
+    lang_items,
+    unboxed_closures,
+    auto_traits,
+    intrinsics,
+    rustc_attrs,
+    fundamental,
+    marker_trait_attr,
+    const_trait_impl
+)]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
 #![no_core]
-#![stable(feature = "minicore", since = "1.0.0")]
 
 #[lang = "sized"]
 trait Sized {}

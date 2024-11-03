@@ -1,6 +1,3 @@
-#![feature(effects)]
-//~^ WARN: the feature `effects` is incomplete
-
 struct A();
 
 impl const Drop for A {}

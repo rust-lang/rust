@@ -20,7 +20,6 @@ use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_span::{Span, Symbol, sym};
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -419,13 +418,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            // FIXME(effects): Soon this should be unconditionally delaying a bug.
-            if matches!(call_source, CallSource::Normal) && tcx.features().effects() {
-                tcx.dcx()
-                    .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
-            } else {
-                infcx.err_ctxt().report_fulfillment_errors(errors);
-            }
+            tcx.dcx()
+                .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
         }
     }
 }
@@ -663,8 +657,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // typeck ensures the conditions for calling a const trait method are met,
                     // so we only error if the trait isn't const. We try to resolve the trait
                     // into the concrete method, and uses that for const stability checks.
-                    // FIXME(effects) we might consider moving const stability checks to typeck as well.
-                    if tcx.features().effects() && trait_is_const {
+                    // FIXME(const_trait_impl) we might consider moving const stability checks
+                    // to typeck as well.
+                    if tcx.features().const_trait_impl() && trait_is_const {
                         // This skips the check below that ensures we only call `const fn`.
                         is_trait = true;
 

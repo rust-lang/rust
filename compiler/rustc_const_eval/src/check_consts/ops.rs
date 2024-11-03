@@ -120,7 +120,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     let implsrc = selcx.select(&obligation);
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
-                        // FIXME(effects) revisit this
+                        // FIXME(const_trait_impl) revisit this
                         if !tcx.is_const_trait_impl(data.impl_def_id) {
                             let span = tcx.def_span(data.impl_def_id);
                             err.subdiagnostic(errors::NonConstImplNote { span });

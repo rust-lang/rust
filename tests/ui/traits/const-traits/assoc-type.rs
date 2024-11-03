@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Add<Rhs = Self> {

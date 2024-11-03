@@ -24,18 +24,6 @@ LL | const ADD_INT: Int = Int(1i32) + Int(2i32);
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const fn `<i32 as Plus>::plus` in constant functions
-  --> $DIR/call-const-trait-method-pass.rs:11:20
-   |
-LL |         Int(self.0.plus(rhs.0))
-   |                    ^^^^^^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
-
 error[E0015]: cannot call non-const fn `<Int as PartialEq>::eq` in constant functions
   --> $DIR/call-const-trait-method-pass.rs:20:15
    |
@@ -44,18 +32,6 @@ LL |         !self.eq(other)
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const fn `<i32 as Plus>::plus` in constant functions
-  --> $DIR/call-const-trait-method-pass.rs:36:7
-   |
-LL |     a.plus(b)
-   |       ^^^^^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: add `#![feature(effects)]` to the crate attributes to enable
-   |
-LL + #![feature(effects)]
-   |
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

@@ -4,8 +4,7 @@
 // i.e. check that we validate the const conditions for the associated type
 // when considering one of implied const bounds.
 
-#![allow(incomplete_features)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Trait {

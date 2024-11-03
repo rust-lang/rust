@@ -1,7 +1,7 @@
 //@ known-bug: #110395
 //@ compile-flags: -Znext-solver
-// FIXME(effects): check-pass
-#![feature(const_trait_impl, effects, generic_const_exprs)]
+// FIXME(const_trait_impl): check-pass
+#![feature(const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]
 
 fn main() {

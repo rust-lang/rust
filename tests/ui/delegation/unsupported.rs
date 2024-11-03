@@ -1,6 +1,5 @@
 #![feature(const_trait_impl)]
 #![feature(c_variadic)]
-#![feature(effects)]
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 

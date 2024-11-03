@@ -1,22 +1,13 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/derive-const-use.rs:3:76
-   |
-LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const, effects)]
-   |                                                                            ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0635]: unknown feature `const_cmp`
   --> $DIR/derive-const-use.rs:3:30
    |
-LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const, effects)]
+LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const)]
    |                              ^^^^^^^^^
 
 error[E0635]: unknown feature `const_default_impls`
   --> $DIR/derive-const-use.rs:3:41
    |
-LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const, effects)]
+LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const)]
    |                                         ^^^^^^^^^^^^^^^^^^^
 
 error: const `impl` for trait `Default` which is not marked with `#[const_trait]`
@@ -117,7 +108,7 @@ LL | pub struct S((), A);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 12 previous errors; 1 warning emitted
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.

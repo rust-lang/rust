@@ -2,7 +2,7 @@
 
 // Regression test for #69615.
 
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 #[const_trait]
 pub trait MyTrait {
