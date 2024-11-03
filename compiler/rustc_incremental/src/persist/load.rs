@@ -182,7 +182,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
+pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
     if sess.opts.incremental.is_none() {
         return None;
     }
@@ -194,11 +194,11 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
         LoadResult::Ok { data: (bytes, start_pos) } => {
             let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
-                OnDiskCache::new_empty(sess.source_map())
+                OnDiskCache::new_empty()
             });
             Some(cache)
         }
-        _ => Some(OnDiskCache::new_empty(sess.source_map())),
+        _ => Some(OnDiskCache::new_empty()),
     }
 }
 
