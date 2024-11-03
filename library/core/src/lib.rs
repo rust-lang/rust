@@ -120,7 +120,6 @@
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_methods)]
-#![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
 #![feature(const_option_ext)]
