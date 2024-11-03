@@ -151,3 +151,20 @@ mod issue_2329 {
         }
     }
 }
+
+fn issue_13641() {
+    'a: while std::hint::black_box(true) {
+        #[allow(clippy::never_loop)]
+        loop {
+            continue 'a;
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    while std::hint::black_box(true) {
+        'b: loop {
+            continue 'b;
+            //~^ ERROR: this `continue` expression is redundant
+        }
+    }
+}
