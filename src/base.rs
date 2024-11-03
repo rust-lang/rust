@@ -934,7 +934,7 @@ fn codegen_stmt<'tcx>(
                 let dst = codegen_operand(fx, dst);
                 let pointee = dst
                     .layout()
-                    .pointee_info_at(fx, rustc_target::abi::Size::ZERO)
+                    .pointee_info_at(fx, rustc_abi::Size::ZERO)
                     .expect("Expected pointer");
                 let dst = dst.load_scalar(fx);
                 let src = codegen_operand(fx, src).load_scalar(fx);
