@@ -984,9 +984,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // --- From now on we either have a glob resolution or no resolution. ---
 
+        // It is sorted before usage so ordering is not important.
+        #[allow(rustc::potential_query_instability)]
+        let mut single_imports: Vec<_> = resolution.single_imports.clone().into_iter().collect();
+        single_imports.sort_by_key(|import| import.0.id());
+
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
-        for single_import in &resolution.single_imports {
+        for single_import in &single_imports {
             if ignore_import == Some(*single_import) {
                 // This branch handles a cycle in single imports.
                 //
