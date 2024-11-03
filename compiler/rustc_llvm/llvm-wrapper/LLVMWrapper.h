@@ -1,55 +1,18 @@
+#ifndef INCLUDED_RUSTC_LLVM_LLVMWRAPPER_H
+#define INCLUDED_RUSTC_LLVM_LLVMWRAPPER_H
+
 #include "SuppressLLVMWarnings.h"
 
-#include "llvm-c/BitReader.h"
-#include "llvm-c/Core.h"
-#include "llvm-c/Object.h"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/Analysis/Lint.h"
-#include "llvm/Analysis/Passes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/DynamicLibrary.h"
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/JSON.h"
-#include "llvm/Support/Memory.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/Timer.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
-#include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/Scalar.h"
+#include "llvm/Config/llvm-config.h"  // LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR
+#include "llvm/Support/raw_ostream.h" // llvm::raw_ostream
+#include <cstddef>                    // size_t etc
+#include <cstdint>                    // uint64_t etc
 
 #define LLVM_VERSION_GE(major, minor)                                          \
   (LLVM_VERSION_MAJOR > (major) ||                                             \
    LLVM_VERSION_MAJOR == (major) && LLVM_VERSION_MINOR >= (minor))
 
 #define LLVM_VERSION_LT(major, minor) (!LLVM_VERSION_GE((major), (minor)))
-
-#if LLVM_VERSION_GE(20, 0)
-#include "llvm/Transforms/Utils/Instrumentation.h"
-#else
-#include "llvm/Transforms/Instrumentation.h"
-#endif
-
-#include "llvm/IR/LegacyPassManager.h"
-
-#include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
-
-#include "llvm/IR/DIBuilder.h"
-#include "llvm/IR/DebugInfo.h"
-#include "llvm/IR/IRPrintingPasses.h"
-#include "llvm/Linker/Linker.h"
-
-#include "llvm/TargetParser/Triple.h"
 
 extern "C" void LLVMRustSetLastError(const char *);
 
@@ -81,3 +44,5 @@ public:
     flush();
   }
 };
+
+#endif // INCLUDED_RUSTC_LLVM_LLVMWRAPPER_H
