@@ -136,7 +136,9 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Deref(Some(deref)) => {
                 // We don't need to do call adjust_span here since
                 // deref coercions always start with a built-in deref.
-                let call = deref.method_call(self.tcx(), expr.ty);
+                let call_def_id = deref.method_call(self.tcx());
+                let overloaded_callee =
+                    Ty::new_fn_def(self.tcx(), call_def_id, self.tcx().mk_args(&[expr.ty.into()]));
 
                 expr = Expr {
                     temp_lifetime,
@@ -150,7 +152,13 @@ impl<'tcx> Cx<'tcx> {
 
                 let expr = Box::new([self.thir.exprs.push(expr)]);
 
-                self.overloaded_place(hir_expr, adjustment.target, Some(call), expr, deref.span)
+                self.overloaded_place(
+                    hir_expr,
+                    adjustment.target,
+                    Some(overloaded_callee),
+                    expr,
+                    deref.span,
+                )
             }
             Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
                 borrow_kind: m.to_borrow_kind(),

@@ -1,0 +1,18 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/minicore-deref-fail.rs:4:39
+   |
+LL | #![feature(no_core, const_trait_impl, effects)]
+   |                                       ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `Ty: ~const minicore::Deref` is not satisfied
+  --> $DIR/minicore-deref-fail.rs:19:5
+   |
+LL |     *Ty;
+   |     ^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.
