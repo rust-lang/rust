@@ -1,4 +1,4 @@
-name: sync
+name: nightly
 on: workflow_dispatch
 permissions:
   contents: read
@@ -21,7 +21,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install LLVM
+        run: |
+          sudo apt-get install llvm
+      - name: Install ninja
+        run: sudo apt-get install ninja-build
       - name: Rebase
         run: src/ci/scripts/sync.sh
       - name: Build
-        run: ./x.py build --stage 1 library
+        run: ./x.py build --stage 1 library --set llvm.download-ci-llvm=false

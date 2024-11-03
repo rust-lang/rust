@@ -1,10 +1,12 @@
 #!/bin/bash
 ORIGIN="https://github.com/rust-lang"
+LLVM_FORK="https://github.com/borrow-sanitizer/llvm-project.git"
 RUST_UPSTREAM="$ORIGIN/rust.git"
 LLVM_UPSTREAM="$ORIGIN/llvm-project.git"
-BRANCH="bsan"
-
-git checkout $BRANCH || exit
+MAIN_BRANCH="bsan"
+BASE_TAG="base"
+BASE_COMMIT=$(git rev-list -n 1 $BASE_TAG)
+git checkout "$MAIN_BRANCH" || exit
 
 init_upstream() {
     local upstream=$1
@@ -32,17 +34,16 @@ fi
 
 NIGHTLY_TOOLCHAIN="nightly-$DATE"
 git submodule update --init --no-recommend-shallow src/llvm-project 
-
 (cd src/llvm-project && init_upstream $LLVM_UPSTREAM)
 init_upstream $RUST_UPSTREAM
-git branch -D nightly &> /dev/null
+git branch -D nightly
 git checkout -b nightly "$NIGHTLY_COMMIT_HASH" || exit
-
 git submodule update --rebase src/llvm-project
-if ! git diff-index --quiet HEAD --; then
-    git add src/llvm-project
-    git commit -m "$NIGHTLY_TOOLCHAIN"
-fi
-
-git checkout $BRANCH || exit
-git rebase nightly || exit
+git submodule set-url -- src/llvm-project $LLVM_FORK
+git submodule set-branch --branch $MAIN_BRANCH -- src/llvm-project 
+git add src/llvm-project .gitmodules
+git commit -m "$NIGHTLY_TOOLCHAIN"
+git tag -D $BASE_TAG
+git tag -a $BASE_TAG -m "$NIGHTLY_TOOLCHAIN"
+git checkout "$MAIN_BRANCH" || exit
+git rebase --onto nightly "$BASE_COMMIT" $MAIN_BRANCH || exit
