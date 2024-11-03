@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unstable'
+error[E0658]: use of unstable library feature `unstable`
   --> $DIR/const-unstable-intrinsic.rs:17:9
    |
 LL |         unstable_intrinsic::old_way::size_of_val(&x);
@@ -8,7 +8,7 @@ LL |         unstable_intrinsic::old_way::size_of_val(&x);
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable'
+error[E0658]: use of unstable library feature `unstable`
   --> $DIR/const-unstable-intrinsic.rs:20:9
    |
 LL |         unstable_intrinsic::old_way::min_align_of_val(&x);
@@ -18,7 +18,7 @@ LL |         unstable_intrinsic::old_way::min_align_of_val(&x);
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable'
+error[E0658]: use of unstable library feature `unstable`
   --> $DIR/const-unstable-intrinsic.rs:23:9
    |
 LL |         unstable_intrinsic::new_way::size_of_val(&x);
@@ -28,7 +28,7 @@ LL |         unstable_intrinsic::new_way::size_of_val(&x);
    = help: add `#![feature(unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable'
+error[E0658]: use of unstable library feature `unstable`
   --> $DIR/const-unstable-intrinsic.rs:26:9
    |
 LL |         unstable_intrinsic::new_way::min_align_of_val(&x);
