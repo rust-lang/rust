@@ -109,6 +109,16 @@
 //! parameters (corresponding to `format_spec` in [the syntax](#syntax)). These
 //! parameters affect the string representation of what's being formatted.
 //!
+//! The colon `:` in format syntax divides indentifier of the input data and
+//! the formatting options, the colon itself does not change anything, only
+//! introduces the options.
+//!
+//! ```
+//! let a = 5;
+//! let b = &a;
+//! println!("{a:e} {b:p}"); // => 5e0 0x7ffe37b7273c
+//! ```
+//!
 //! ## Width
 //!
 //! ```
