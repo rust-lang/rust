@@ -883,7 +883,6 @@ impl Duration {
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_millis_float", issue = "122451")]
     pub const fn as_millis_f64(&self) -> f64 {
         (self.secs as f64) * (MILLIS_PER_SEC as f64)
             + (self.nanos.0 as f64) / (NANOS_PER_MILLI as f64)
@@ -904,7 +903,6 @@ impl Duration {
     #[unstable(feature = "duration_millis_float", issue = "122451")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "duration_millis_float", issue = "122451")]
     pub const fn as_millis_f32(&self) -> f32 {
         (self.secs as f32) * (MILLIS_PER_SEC as f32)
             + (self.nanos.0 as f32) / (NANOS_PER_MILLI as f32)

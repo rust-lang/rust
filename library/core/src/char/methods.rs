@@ -1515,7 +1515,6 @@ impl char {
     /// ```
     #[must_use]
     #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
-    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
     #[inline]
     pub const fn is_ascii_octdigit(&self) -> bool {
         matches!(*self, '0'..='7')
