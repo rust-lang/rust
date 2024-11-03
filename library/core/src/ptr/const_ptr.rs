@@ -33,26 +33,24 @@ impl<T: ?Sized> *const T {
     #[rustc_diagnostic_item = "ptr_const_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
-        #[inline]
-        fn runtime_impl(ptr: *const u8) -> bool {
-            ptr.addr() == 0
-        }
-
-        #[inline]
-        #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
-        const fn const_impl(ptr: *const u8) -> bool {
-            match (ptr).guaranteed_eq(null_mut()) {
-                Some(res) => res,
-                // To remain maximally convervative, we stop execution when we don't
-                // know whether the pointer is null or not.
-                // We can *not* return `false` here, that would be unsound in `NonNull::new`!
-                None => panic!("null-ness of this pointer cannot be determined in const context"),
-            }
-        }
-
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        const_eval_select((self as *const u8,), const_impl, runtime_impl)
+        let ptr = self as *const u8;
+        const_eval_select!(
+            #[inline]
+            (ptr: *const u8) -> bool:
+            if const #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")] {
+                match (ptr).guaranteed_eq(null_mut()) {
+                    Some(res) => res,
+                    // To remain maximally convervative, we stop execution when we don't
+                    // know whether the pointer is null or not.
+                    // We can *not* return `false` here, that would be unsound in `NonNull::new`!
+                    None => panic!("null-ness of this pointer cannot be determined in const context"),
+                }
+            } else {
+                ptr.addr() == 0
+            }
+        )
     }
 
     /// Casts to a pointer of another type.
@@ -410,22 +408,20 @@ impl<T: ?Sized> *const T {
         #[inline]
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
-            #[inline]
-            fn runtime(this: *const (), count: isize, size: usize) -> bool {
-                // We know `size <= isize::MAX` so the `as` cast here is not lossy.
-                let Some(byte_offset) = count.checked_mul(size as isize) else {
-                    return false;
-                };
-                let (_, overflow) = this.addr().overflowing_add_signed(byte_offset);
-                !overflow
-            }
-
-            const fn comptime(_: *const (), _: isize, _: usize) -> bool {
-                true
-            }
-
             // We can use const_eval_select here because this is only for UB checks.
-            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+            const_eval_select!(
+                (this: *const (), count: isize, size: usize) -> bool:
+                if const {
+                    true
+                } else #[inline] {
+                    // We know `size <= isize::MAX` so the `as` cast here is not lossy.
+                    let Some(byte_offset) = count.checked_mul(size as isize) else {
+                        return false;
+                    };
+                    let (_, overflow) = this.addr().overflowing_add_signed(byte_offset);
+                    !overflow
+                }
+            )
         }
 
         ub_checks::assert_unsafe_precondition!(
@@ -763,14 +759,14 @@ impl<T: ?Sized> *const T {
     {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
-            fn runtime(this: *const (), origin: *const ()) -> bool {
-                this >= origin
-            }
-            const fn comptime(_: *const (), _: *const ()) -> bool {
-                true
-            }
-
-            intrinsics::const_eval_select((this, origin), comptime, runtime)
+            const_eval_select!(
+                (this: *const (), origin: *const ()) -> bool:
+                if const {
+                    true
+                } else {
+                    this >= origin
+                }
+            )
         }
 
         ub_checks::assert_unsafe_precondition!(
@@ -924,20 +920,18 @@ impl<T: ?Sized> *const T {
         #[inline]
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
-            #[inline]
-            fn runtime(this: *const (), count: usize, size: usize) -> bool {
-                let Some(byte_offset) = count.checked_mul(size) else {
-                    return false;
-                };
-                let (_, overflow) = this.addr().overflowing_add(byte_offset);
-                byte_offset <= (isize::MAX as usize) && !overflow
-            }
-
-            const fn comptime(_: *const (), _: usize, _: usize) -> bool {
-                true
-            }
-
-            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+            const_eval_select!(
+                (this: *const (), count: usize, size: usize) -> bool:
+                if const {
+                    true
+                } else #[inline] {
+                    let Some(byte_offset) = count.checked_mul(size) else {
+                        return false;
+                    };
+                    let (_, overflow) = this.addr().overflowing_add(byte_offset);
+                    byte_offset <= (isize::MAX as usize) && !overflow
+                }
+            )
         }
 
         #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
@@ -1033,19 +1027,17 @@ impl<T: ?Sized> *const T {
         #[inline]
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
-            #[inline]
-            fn runtime(this: *const (), count: usize, size: usize) -> bool {
-                let Some(byte_offset) = count.checked_mul(size) else {
-                    return false;
-                };
-                byte_offset <= (isize::MAX as usize) && this.addr() >= byte_offset
-            }
-
-            const fn comptime(_: *const (), _: usize, _: usize) -> bool {
-                true
-            }
-
-            intrinsics::const_eval_select((this, count, size), comptime, runtime)
+            const_eval_select!(
+                (this: *const (), count: usize, size: usize) -> bool:
+                if const {
+                    true
+                } else #[inline] {
+                    let Some(byte_offset) = count.checked_mul(size) else {
+                        return false;
+                    };
+                    byte_offset <= (isize::MAX as usize) && this.addr() >= byte_offset
+                }
+            )
         }
 
         #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.

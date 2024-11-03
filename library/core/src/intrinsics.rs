@@ -2788,6 +2788,65 @@ where
     unreachable!()
 }
 
+/// A macro to make it easier to invoke const_eval_select. Use as follows:
+/// ```rust,ignore (just a macro example)
+/// const_eval_select!(
+///     #[inline]
+///     (arg1: i32 = some_expr, arg2: T = other_expr) -> U:
+///     if const {
+///         // Compile-time code goes here.
+///     } else {
+///         // Run-time code goes here.
+///     }
+/// )
+/// ```
+pub(crate) macro const_eval_select {
+    (
+        $(#[$attr:meta])*
+        ($($arg:ident : $ty:ty = $val:expr),* $(,)?) $( -> $ret:ty )?:
+        if const
+            $(#[$compiletime_attr:meta])* $compiletime:block
+        else
+            $(#[$runtime_attr:meta])* $runtime:block
+    ) => {{
+        $(#[$attr])*
+        $(#[$runtime_attr])*
+        fn runtime($($arg: $ty),*) $( -> $ret )? {
+            $runtime
+        }
+
+        $(#[$attr])*
+        $(#[$compiletime_attr])*
+        const fn compiletime($($arg: $ty),*) $( -> $ret )? {
+            // Don't warn if one of the arguments is unused.
+            $(let _ = $arg;)*
+
+            $compiletime
+        }
+
+        const_eval_select(($($val,)*), compiletime, runtime)
+    }},
+    // We support leaving away the `val` expressions for *all* arguments
+    // (but not for *some* arguments, that's too tricky).
+    (
+        $(#[$attr:meta])*
+        ($($arg:ident : $ty:ty),* $(,)?) -> $ret:ty:
+        if const
+            $(#[$compiletime_attr:meta])* $compiletime:block
+        else
+            $(#[$runtime_attr:meta])* $runtime:block
+    ) => {
+        $crate::intrinsics::const_eval_select!(
+            $(#[$attr])*
+            ($($arg : $ty = $arg),*) -> $ret:
+            if const
+                $(#[$compiletime_attr])* $compiletime
+            else
+                $(#[$runtime_attr])* $runtime
+        )
+    },
+}
+
 /// Returns whether the argument's value is statically known at
 /// compile-time.
 ///
@@ -2830,7 +2889,7 @@ where
 /// # Stability concerns
 ///
 /// While it is safe to call, this intrinsic may behave differently in
-/// a `const` context than otherwise. See the [`const_eval_select`]
+/// a `const` context than otherwise. See the [`const_eval_select()`]
 /// documentation for an explanation of the issues this can cause. Unlike
 /// `const_eval_select`, this intrinsic isn't guaranteed to behave
 /// deterministically even in a `const` context.
@@ -3734,14 +3793,15 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
     }
 
-    fn runtime(ptr: *const (), align: usize) {
-        // SAFETY: this call is always safe.
-        unsafe {
-            miri_promise_symbolic_alignment(ptr, align);
+    const_eval_select!(
+        (ptr: *const (), align: usize):
+        if const {
+            // Do nothing.
+        } else {
+            // SAFETY: this call is always safe.
+            unsafe {
+                miri_promise_symbolic_alignment(ptr, align);
+            }
         }
-    }
-
-    const fn compiletime(_ptr: *const (), _align: usize) {}
-
-    const_eval_select((ptr, align), compiletime, runtime);
+    )
 }

@@ -95,20 +95,19 @@ pub use intrinsics::ub_checks as check_library_ub;
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn check_language_ub() -> bool {
-    #[inline]
-    fn runtime() -> bool {
-        // Disable UB checks in Miri.
-        !cfg!(miri)
-    }
-
-    #[inline]
-    const fn comptime() -> bool {
-        // Always disable UB checks.
-        false
-    }
-
     // Only used for UB checks so we may const_eval_select.
-    intrinsics::ub_checks() && const_eval_select((), comptime, runtime)
+    intrinsics::ub_checks()
+        && const_eval_select!(
+            #[inline]
+            () -> bool:
+            if const {
+                // Always disable UB checks.
+                false
+            } else {
+                // Disable UB checks in Miri.
+                !cfg!(miri)
+            }
+        )
 }
 
 /// Checks whether `ptr` is properly aligned with respect to the given alignment, and
@@ -154,26 +153,24 @@ pub(crate) const fn is_nonoverlapping(
     size: usize,
     count: usize,
 ) -> bool {
-    #[inline]
-    fn runtime(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
-        let src_usize = src.addr();
-        let dst_usize = dst.addr();
-        let Some(size) = size.checked_mul(count) else {
-            crate::panicking::panic_nounwind(
-                "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
-            )
-        };
-        let diff = src_usize.abs_diff(dst_usize);
-        // If the absolute distance between the ptrs is at least as big as the size of the buffer,
-        // they do not overlap.
-        diff >= size
-    }
-
-    #[inline]
-    const fn comptime(_: *const (), _: *const (), _: usize, _: usize) -> bool {
-        true
-    }
-
     // This is just for safety checks so we can const_eval_select.
-    const_eval_select((src, dst, size, count), comptime, runtime)
+    const_eval_select!(
+        #[inline]
+        (src: *const (), dst: *const (), size: usize, count: usize) -> bool:
+        if const {
+            true
+        } else {
+            let src_usize = src.addr();
+            let dst_usize = dst.addr();
+            let Some(size) = size.checked_mul(count) else {
+                crate::panicking::panic_nounwind(
+                    "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+                )
+            };
+            let diff = src_usize.abs_diff(dst_usize);
+            // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+            // they do not overlap.
+            diff >= size
+        }
+    )
 }

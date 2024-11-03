@@ -24,18 +24,6 @@ macro_rules! panic {
 #[doc(hidden)]
 pub macro const_panic {
     ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty = $val:expr),* $(,)?) => {{
-        #[inline]
-        #[track_caller]
-        fn runtime($($arg: $ty),*) -> ! {
-            $crate::panic!($runtime_msg);
-        }
-
-        #[inline]
-        #[track_caller]
-        const fn compiletime($(_: $ty),*) -> ! {
-            $crate::panic!($const_msg);
-        }
-
         // Wrap call to `const_eval_select` in a function so that we can
         // add the `rustc_allow_const_fn_unstable`. This is okay to do
         // because both variants will panic, just with different messages.
@@ -44,7 +32,16 @@ pub macro const_panic {
         #[track_caller]
         #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "CURRENT_RUSTC_VERSION"))]
         const fn do_panic($($arg: $ty),*) -> ! {
-            $crate::intrinsics::const_eval_select(($($arg),* ,), compiletime, runtime)
+            $crate::intrinsics::const_eval_select!(
+                #[inline]
+                #[track_caller]
+                ($($arg: $ty),*) -> !:
+                if const {
+                    $crate::panic!($const_msg)
+                } else {
+                    $crate::panic!($runtime_msg)
+                }
+            )
         }
 
         do_panic($($val),*)
