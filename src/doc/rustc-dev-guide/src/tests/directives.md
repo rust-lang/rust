@@ -190,9 +190,12 @@ The following directives will check LLVM support:
 - `needs-forced-clang-based-tests` — test is ignored unless the environment
   variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS` is set, which enables building
   clang alongside LLVM
-  - This is only set in one CI job ([`x86_64-gnu-debug`]), which only runs a
-    tiny subset of `run-make` tests. Other tests with this directive will not
+  - This is only set in two CI jobs ([`x86_64-gnu-debug`] and
+    [`aarch64-gnu-debug`]), which only runs a
+    subset of `run-make` tests. Other tests with this directive will not
     run at all, which is usually not what you want.
+  - Notably, the [`aarch64-gnu-debug`] CI job *currently* only runs `run-make`
+    tests which additionally contain `clang` in their test name.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for
 ignoring debuggers.
@@ -200,6 +203,7 @@ ignoring debuggers.
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [compare modes]: ui.md#compare-modes
 [`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
+[`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32
 
 ### Affecting how tests are built
 
