@@ -457,10 +457,11 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
 }
 
-mod parse {
+pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value and start with
     /// `no-`. This style of option is deprecated.
@@ -657,7 +658,7 @@ mod parse {
     }
 
     pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
-        match v.and_then(|s| s.parse().ok()) {
+        let ret = match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
                 *slot = std::thread::available_parallelism().map_or(1, NonZero::<usize>::get);
                 true
@@ -667,7 +668,11 @@ mod parse {
                 true
             }
             None => false,
-        }
+        };
+        // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
+        // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
+        *slot = slot.clone().min(MAX_THREADS_CAP);
+        ret
     }
 
     /// Use this for any numeric option that has a static default.
