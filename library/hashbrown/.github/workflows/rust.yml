@@ -87,8 +87,18 @@ jobs:
         TARGET: x86_64-unknown-linux-gnu
       run: sh ci/run.sh
 
+  dep_of_std:
+    runs-on: ubuntu-latest
+    needs: basics
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@nightly
+    - run: |
+        RUSTFLAGS="-Zforce-unstable-if-unmarked" cargo +nightly build --features rustc-dep-of-std
+
+
   conclusion:
-    needs: [test, msrv]
+    needs: [test, msrv, dep_of_std]
     # !cancelled() executes the job regardless of whether the previous jobs passed, failed or get skipped.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
