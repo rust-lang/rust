@@ -273,7 +273,7 @@ pub(super) fn keyword(
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
-        &markup(Some(docs.into()), description, None),
+        &markup(Some(docs.into()), description, None, None),
         config,
     );
     Some(HoverResult { markup, actions })
@@ -419,6 +419,7 @@ pub(super) fn definition(
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
+    hovered_definition: bool,
     config: &HoverConfig,
     edition: Edition,
 ) -> Markup {
@@ -456,7 +457,7 @@ pub(super) fn definition(
         _ => def.label(db, edition),
     };
     let docs = def.docs(db, famous_defs, edition);
-    let value = (|| match def {
+    let value = || match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
@@ -485,18 +486,24 @@ pub(super) fn definition(
             }
         }
         Definition::Static(it) => {
-            let source = it.source(db)?;
-            let mut body = source.value.body()?.syntax().clone();
-            if let Some(macro_file) = source.file_id.macro_file() {
-                let span_map = db.expansion_span_map(macro_file);
-                body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+            let body = it.render_eval(db, edition);
+            match body {
+                Ok(it) => Some(it),
+                Err(_) => {
+                    let source = it.source(db)?;
+                    let mut body = source.value.body()?.syntax().clone();
+                    if let Some(macro_file) = source.file_id.macro_file() {
+                        let span_map = db.expansion_span_map(macro_file);
+                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                    }
+                    Some(body.to_string())
+                }
             }
-            Some(body.to_string())
         }
         _ => None,
-    })();
+    };
 
-    let layout_info = match def {
+    let layout_info = || match def {
         Definition::Field(it) => render_memory_layout(
             config.memory_layout,
             || it.layout(db),
@@ -529,34 +536,38 @@ pub(super) fn definition(
         _ => None,
     };
 
-    let dyn_compatibility_info = if let Definition::Trait(it) = def {
-        let mut dyn_compatibility_info = String::new();
-        render_dyn_compatibility(db, &mut dyn_compatibility_info, it.dyn_compatibility(db));
-        Some(dyn_compatibility_info)
-    } else {
-        None
+    let dyn_compatibility_info = || match def {
+        Definition::Trait(it) => {
+            let mut dyn_compatibility_info = String::new();
+            render_dyn_compatibility(db, &mut dyn_compatibility_info, it.dyn_compatibility(db));
+            Some(dyn_compatibility_info)
+        }
+        _ => None,
     };
 
+    let mut extra = String::new();
+    if hovered_definition {
+        if let Some(notable_traits) = render_notable_trait(db, notable_traits, edition) {
+            extra.push_str("\n___\n");
+            extra.push_str(&notable_traits);
+        }
+        if let Some(layout_info) = layout_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&layout_info);
+        }
+        if let Some(dyn_compatibility_info) = dyn_compatibility_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&dyn_compatibility_info);
+        }
+    }
     let mut desc = String::new();
-    if let Some(notable_traits) = render_notable_trait_comment(db, notable_traits, edition) {
-        desc.push_str(&notable_traits);
-        desc.push('\n');
-    }
-    if let Some(layout_info) = layout_info {
-        desc.push_str(&layout_info);
-        desc.push('\n');
-    }
-    if let Some(dyn_compatibility_info) = dyn_compatibility_info {
-        desc.push_str(&dyn_compatibility_info);
-        desc.push('\n');
-    }
     desc.push_str(&label);
-    if let Some(value) = value {
+    if let Some(value) = value() {
         desc.push_str(" = ");
         desc.push_str(&value);
     }
 
-    markup(docs.map(Into::into), desc, mod_path)
+    markup(docs.map(Into::into), desc, extra.is_empty().not().then_some(extra), mod_path)
 }
 
 pub(super) fn literal(
@@ -626,7 +637,7 @@ pub(super) fn literal(
     Some(s.into())
 }
 
-fn render_notable_trait_comment(
+fn render_notable_trait(
     db: &RootDatabase,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     edition: Edition,
@@ -635,7 +646,7 @@ fn render_notable_trait_comment(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            "// Implements notable traits: "
+            "Implements notable traits: "
         } else {
             ", "
         });
@@ -728,13 +739,12 @@ fn type_info(
         )
         .into()
     } else {
-        let mut desc =
-            match render_notable_trait_comment(db, &notable_traits(db, &original), edition) {
-                Some(desc) => desc + "\n",
-                None => String::new(),
-            };
-        format_to!(desc, "{}", original.display(db, edition));
-        Markup::fenced_block(&desc)
+        let mut desc = format!("```rust\n{}\n```", original.display(db, edition));
+        if let Some(extra) = render_notable_trait(db, &notable_traits(db, &original), edition) {
+            desc.push_str("\n___\n");
+            desc.push_str(&extra);
+        };
+        desc.into()
     };
     if let Some(actions) = HoverAction::goto_type_from_targets(db, targets, edition) {
         res.actions.push(actions);
@@ -786,20 +796,16 @@ fn closure_ty(
     };
     let mut markup = format!("```rust\n{}", c.display_with_id(sema.db, edition));
 
-    if let Some(layout) =
-        render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
-    {
-        format_to!(markup, " {layout}");
-    }
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
     }
-    format_to!(
-        markup,
-        "\n{}\n```{adjusted}\n\n## Captures\n{}",
-        c.display_with_impl(sema.db, edition),
-        captures_rendered,
-    );
+    format_to!(markup, "\n{}\n```", c.display_with_impl(sema.db, edition),);
+    if let Some(layout) =
+        render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
+    {
+        format_to!(markup, "\n___\n{layout}");
+    }
+    format_to!(markup, "{adjusted}\n\n## Captures\n{}", captures_rendered,);
 
     let mut res = HoverResult::default();
     if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets, edition) {
@@ -824,7 +830,12 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition, edition: Edition) ->
         .map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
 }
 
-fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Markup {
+fn markup(
+    docs: Option<String>,
+    rust: String,
+    extra: Option<String>,
+    mod_path: Option<String>,
+) -> Markup {
     let mut buf = String::new();
 
     if let Some(mod_path) = mod_path {
@@ -832,7 +843,11 @@ fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Marku
             format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
         }
     }
-    format_to!(buf, "```rust\n{}\n```", desc);
+    format_to!(buf, "```rust\n{}\n```", rust);
+
+    if let Some(extra) = extra {
+        buf.push_str(&extra);
+    }
 
     if let Some(doc) = docs {
         format_to!(buf, "\n___\n\n{}", doc);
@@ -862,7 +877,7 @@ fn render_memory_layout(
     let config = config?;
     let layout = layout().ok()?;
 
-    let mut label = String::from("// ");
+    let mut label = String::new();
 
     if let Some(render) = config.size {
         let size = match tag(&layout) {
@@ -994,55 +1009,53 @@ fn render_dyn_compatibility(
     safety: Option<DynCompatibilityViolation>,
 ) {
     let Some(osv) = safety else {
-        buf.push_str("// Dyn Compatible: Yes");
+        buf.push_str("Is Dyn compatible");
         return;
     };
-    buf.push_str("// Dyn Compatible: No\n// - Reason: ");
+    buf.push_str("Is not Dyn compatible due to ");
     match osv {
         DynCompatibilityViolation::SizedSelf => {
-            buf.push_str("has a `Self: Sized` bound");
+            buf.push_str("having a `Self: Sized` bound");
         }
         DynCompatibilityViolation::SelfReferential => {
-            buf.push_str("has a bound that references `Self`");
+            buf.push_str("having a bound that references `Self`");
         }
         DynCompatibilityViolation::Method(func, mvc) => {
             let name = hir::Function::from(func).name(db);
-            format_to!(
-                buf,
-                "has a method `{}` that is non dispatchable because of:\n//   - ",
-                name.as_str()
-            );
+            format_to!(buf, "having a method `{}` that is not dispatchable due to ", name.as_str());
             let desc = match mvc {
                 MethodViolationCode::StaticMethod => "missing a receiver",
-                MethodViolationCode::ReferencesSelfInput => "a parameter references `Self`",
-                MethodViolationCode::ReferencesSelfOutput => "the return type references `Self`",
+                MethodViolationCode::ReferencesSelfInput => "having a parameter referencing `Self`",
+                MethodViolationCode::ReferencesSelfOutput => "the return type referencing `Self`",
                 MethodViolationCode::ReferencesImplTraitInTrait => {
-                    "the return type contains `impl Trait`"
+                    "the return type containing `impl Trait`"
                 }
                 MethodViolationCode::AsyncFn => "being async",
                 MethodViolationCode::WhereClauseReferencesSelf => {
-                    "a where clause references `Self`"
+                    "a where clause referencing `Self`"
                 }
-                MethodViolationCode::Generic => "a non-lifetime generic parameter",
-                MethodViolationCode::UndispatchableReceiver => "a non-dispatchable receiver type",
+                MethodViolationCode::Generic => "having a const or type generic parameter",
+                MethodViolationCode::UndispatchableReceiver => {
+                    "having a non-dispatchable receiver type"
+                }
             };
             buf.push_str(desc);
         }
         DynCompatibilityViolation::AssocConst(const_) => {
             let name = hir::Const::from(const_).name(db);
             if let Some(name) = name {
-                format_to!(buf, "has an associated constant `{}`", name.as_str());
+                format_to!(buf, "having an associated constant `{}`", name.as_str());
             } else {
-                buf.push_str("has an associated constant");
+                buf.push_str("having an associated constant");
             }
         }
         DynCompatibilityViolation::GAT(alias) => {
             let name = hir::TypeAlias::from(alias).name(db);
-            format_to!(buf, "has a generic associated type `{}`", name.as_str());
+            format_to!(buf, "having a generic associated type `{}`", name.as_str());
         }
         DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
             let name = hir::Trait::from(super_trait).name(db);
-            format_to!(buf, "has a dyn incompatible supertrait `{}`", name.as_str());
+            format_to!(buf, "having a dyn incompatible supertrait `{}`", name.as_str());
         }
     }
 }

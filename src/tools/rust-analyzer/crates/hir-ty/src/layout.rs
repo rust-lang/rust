@@ -6,8 +6,9 @@ use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        BackendRepr, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutData,
-        Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
+        BackendRepr, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError,
+        LayoutData, Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout,
+        WrappingRange,
     },
     LocalFieldId, StructId,
 };
@@ -294,11 +295,12 @@ pub fn layout_of_ty_query(
                 .checked_mul(count, dl)
                 .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
 
-            let backend_repr = if count != 0 && matches!(element.backend_repr, BackendRepr::Uninhabited) {
-                BackendRepr::Uninhabited
-            } else {
-                BackendRepr::Memory { sized: true }
-            };
+            let backend_repr =
+                if count != 0 && matches!(element.backend_repr, BackendRepr::Uninhabited) {
+                    BackendRepr::Uninhabited
+                } else {
+                    BackendRepr::Memory { sized: true }
+                };
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 

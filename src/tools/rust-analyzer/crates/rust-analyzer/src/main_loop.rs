@@ -417,8 +417,6 @@ impl GlobalState {
                 }
             }
 
-            let supports_diagnostic_pull_model = self.config.text_document_diagnostic();
-
             let client_refresh = became_quiescent || state_changed;
             if client_refresh {
                 // Refresh semantic tokens if the client supports it.
@@ -437,7 +435,7 @@ impl GlobalState {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
                 }
 
-                if supports_diagnostic_pull_model {
+                if self.config.diagnostics_refresh() {
                     self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
                         (),
                         |_, _| (),
@@ -448,7 +446,7 @@ impl GlobalState {
             let project_or_mem_docs_changed =
                 became_quiescent || state_changed || memdocs_added_or_removed;
             if project_or_mem_docs_changed
-                && !supports_diagnostic_pull_model
+                && !self.config.text_document_diagnostic()
                 && self.config.publish_diagnostics(None)
             {
                 self.update_diagnostics();

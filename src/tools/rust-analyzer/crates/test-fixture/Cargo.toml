@@ -5,7 +5,6 @@ rust-version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-publish = false
 
 [dependencies]
 hir-expand.workspace = true

@@ -34,7 +34,10 @@ pub mod term_search;
 
 mod display;
 
-use std::{mem::discriminant, ops::ControlFlow};
+use std::{
+    mem::discriminant,
+    ops::{ControlFlow, Not},
+};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin};
@@ -2303,22 +2306,15 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-    ) -> String {
+    ) -> Result<String, ConstEvalError> {
         let krate = HasModule::krate(&self.id, db.upcast());
         let edition = db.crate_graph()[krate].edition;
-        let body = match db.monomorphized_mir_body(
+        let body = db.monomorphized_mir_body(
             self.id.into(),
             Substitution::empty(Interner),
             db.trait_environment(self.id.into()),
-        ) {
-            Ok(body) => body,
-            Err(e) => {
-                let mut r = String::new();
-                _ = e.pretty_print(&mut r, db, &span_formatter, edition);
-                return r;
-            }
-        };
-        let (result, output) = interpret_mir(db, body, false, None);
+        )?;
+        let (result, output) = interpret_mir(db, body, false, None)?;
         let mut text = match result {
             Ok(_) => "pass".to_owned(),
             Err(e) => {
@@ -2337,7 +2333,7 @@ impl Function {
             text += "\n--------- stderr ---------\n";
             text += &stderr;
         }
-        text
+        Ok(text)
     }
 }
 
@@ -2560,9 +2556,9 @@ impl Const {
     /// Evaluate the constant and return the result as a string.
     ///
     /// This function is intended for IDE assistance, different from [`Const::render_eval`].
-    pub fn eval(self, db: &dyn HirDatabase, edition: Edition) -> Result<String, ConstEvalError> {
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
         let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        Ok(format!("{}", c.display(db, edition)))
+        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
     }
 
     /// Evaluate the constant and return the result as a string, with more detailed information.
@@ -2597,7 +2593,7 @@ impl Const {
                 }
             }
         }
-        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id, &c) {
+        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id.into(), &c) {
             Ok(s)
         } else {
             Ok(format!("{}", c.display(db, edition)))
@@ -2635,6 +2631,53 @@ impl Static {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_value_def(db, self.id)
+    }
+
+    /// Evaluate the static and return the result as a string.
+    ///
+    /// This function is intended for IDE assistance, different from [`Static::render_eval`].
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
+        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
+    }
+
+    /// Evaluate the static and return the result as a string, with more detailed information.
+    ///
+    /// This function is intended for user-facing display.
+    pub fn render_eval(
+        self,
+        db: &dyn HirDatabase,
+        edition: Edition,
+    ) -> Result<String, ConstEvalError> {
+        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
+        let data = &c.data(Interner);
+        if let TyKind::Scalar(s) = data.ty.kind(Interner) {
+            if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
+                if let hir_ty::ConstValue::Concrete(c) = &data.value {
+                    if let hir_ty::ConstScalar::Bytes(b, _) = &c.interned {
+                        let value = u128::from_le_bytes(mir::pad16(b, false));
+                        let value_signed =
+                            i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
+                        let mut result = if let Scalar::Int(_) = s {
+                            value_signed.to_string()
+                        } else {
+                            value.to_string()
+                        };
+                        if value >= 10 {
+                            format_to!(result, " ({value:#X})");
+                            return Ok(result);
+                        } else {
+                            return Ok(result);
+                        }
+                    }
+                }
+            }
+        }
+        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id.into(), &c) {
+            Ok(s)
+        } else {
+            Ok(format!("{}", c.display(db, edition)))
+        }
     }
 }
 
@@ -2695,6 +2738,18 @@ impl Trait {
 
     pub fn dyn_compatibility(&self, db: &dyn HirDatabase) -> Option<DynCompatibilityViolation> {
         hir_ty::dyn_compatibility::dyn_compatibility(db, self.id)
+    }
+
+    pub fn dyn_compatibility_all_violations(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<Vec<DynCompatibilityViolation>> {
+        let mut violations = vec![];
+        hir_ty::dyn_compatibility::dyn_compatibility_with_callback(db, self.id, &mut |violation| {
+            violations.push(violation);
+            ControlFlow::Continue(())
+        });
+        violations.is_empty().not().then_some(violations)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {

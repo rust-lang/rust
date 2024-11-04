@@ -37,6 +37,7 @@ pub struct FunctionData {
     pub name: Name,
     pub params: Box<[TypeRefId]>,
     pub ret_type: TypeRefId,
+    // FIXME: why are these stored here? They should be accessed via the query
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,

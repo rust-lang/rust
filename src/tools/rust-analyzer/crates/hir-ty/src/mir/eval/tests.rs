@@ -32,7 +32,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
-    let (result, output) = interpret_mir(db, body, false, None);
+    let (result, output) = interpret_mir(db, body, false, None)?;
     result?;
     Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
