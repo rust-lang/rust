@@ -71,6 +71,10 @@ LL |     cachedcoso.call_once(1);
    |
 note: required by a bound in `call_once`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+help: use a unary tuple instead
+   |
+LL |     cachedcoso.call_once((1,));
+   |                          + ++
 
 error: aborting due to 6 previous errors
 
