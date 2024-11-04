@@ -157,7 +157,7 @@ The `InstrumentCoverage` MIR pass is documented in
 [mir-passes]: mir/passes.md
 [mir-instrument-coverage]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src/coverage
 [`FunctionCoverageInfo`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/struct.FunctionCoverageInfo.html
-[code-region]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/struct.CodeRegion.html
+[code-region]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/ffi/struct.CodeRegion.html
 [`CoverageKind::CounterIncrement`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.CounterIncrement
 [coverage-statement]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.StatementKind.html#variant.Coverage
 [instrument-coverage-pass-details]: #implementation-details-of-the-instrumentcoverage-mir-pass
