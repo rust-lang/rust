@@ -65,7 +65,7 @@ jobs:
     defaults:
       run:
         shell: ${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}
-    timeout-minutes: 240
+    timeout-minutes: 360
     env:
       CI_JOB_NAME: ${{ matrix.image }}
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
