@@ -1,11 +1,15 @@
+use std::collections::hash_map::Entry;
+
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
+use rustc_span::BytePos;
 
 use super::metadata::file_metadata;
 use super::utils::DIB;
@@ -37,10 +41,20 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
         None
     };
     let mut instantiated = BitSet::new_empty(mir.source_scopes.len());
+    let mut discriminators = FxHashMap::default();
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, mir, &variables, debug_context, &mut instantiated, scope);
+        make_mir_scope(
+            cx,
+            instance,
+            mir,
+            &variables,
+            debug_context,
+            &mut instantiated,
+            &mut discriminators,
+            scope,
+        );
     }
     assert!(instantiated.count() == mir.source_scopes.len());
 }
@@ -52,6 +66,7 @@ fn make_mir_scope<'ll, 'tcx>(
     variables: &Option<BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, &'ll DIScope, &'ll DILocation>,
     instantiated: &mut BitSet<SourceScope>,
+    discriminators: &mut FxHashMap<BytePos, u32>,
     scope: SourceScope,
 ) {
     if instantiated.contains(scope) {
@@ -60,7 +75,16 @@ fn make_mir_scope<'ll, 'tcx>(
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, instance, mir, variables, debug_context, instantiated, parent);
+        make_mir_scope(
+            cx,
+            instance,
+            mir,
+            variables,
+            debug_context,
+            instantiated,
+            discriminators,
+            parent,
+        );
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
@@ -117,7 +141,37 @@ fn make_mir_scope<'ll, 'tcx>(
         // FIXME(eddyb) this doesn't account for the macro-related
         // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
         let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
-        cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span)
+        let loc = cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
+
+        // NB: In order to produce proper debug info for variables (particularly
+        // arguments) in multiply-inline functions, LLVM expects to see a single
+        // DILocalVariable with multiple different DILocations in the IR. While
+        // the source information for each DILocation would be identical, their
+        // inlinedAt attributes will be unique to the particular callsite.
+        //
+        // We generate DILocations here based on the callsite's location in the
+        // source code. A single location in the source code usually can't
+        // produce multiple distinct calls so this mostly works, until
+        // proc-macros get involved. A proc-macro can generate multiple calls
+        // at the same span, which breaks the assumption that we're going to
+        // produce a unique DILocation for every scope we process here. We
+        // have to explicitly add discriminators if we see inlines into the
+        // same source code location.
+        //
+        // Note further that we can't key this hashtable on the span itself,
+        // because these spans could have distinct SyntaxContexts. We have
+        // to key on exactly what we're giving to LLVM.
+        match discriminators.entry(callsite_span.lo()) {
+            Entry::Occupied(mut o) => {
+                *o.get_mut() += 1;
+                unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, *o.get()) }
+                    .expect("Failed to encode discriminator in DILocation")
+            }
+            Entry::Vacant(v) => {
+                v.insert(0);
+                loc
+            }
+        }
     });
 
     debug_context.scopes[scope] = DebugScope {
