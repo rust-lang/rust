@@ -132,6 +132,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
 
     fn print_results(&self) {
         let output_format = self.ctx.output_format;
+        // In this case we want to ensure that the `OutputFormat` is JSON and NOT the `DocContext`.
         if output_format.is_json() {
             println!("{}", self.to_json());
             return;
