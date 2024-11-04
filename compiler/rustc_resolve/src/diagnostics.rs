@@ -1366,9 +1366,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
 
         if lookup_ident.span.at_least_rust_2018() {
-            // Extended suggestions will be sorted at the end of this function.
+            // `idents` is sorted before usage so ordering is not important here.
             #[allow(rustc::potential_query_instability)]
-            for ident in self.extern_prelude.clone().into_keys() {
+            let mut idents: Vec<_> = self.extern_prelude.clone().into_keys().collect();
+            idents.sort_by_key(|ident| ident.span);
+
+            for ident in idents {
                 if ident.span.from_expansion() {
                     // Idents are adjusted to the root context before being
                     // resolved in the extern prelude, so reporting this to the
@@ -1422,8 +1425,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        // Make sure error reporting is deterministic.
-        suggestions.sort_by_key(|suggestion| suggestion.did.unwrap().index);
         suggestions
     }
 
