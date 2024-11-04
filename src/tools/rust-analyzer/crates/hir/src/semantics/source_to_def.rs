@@ -87,7 +87,6 @@
 
 use either::Either;
 use hir_def::{
-    child_by_source::ChildBySource,
     dyn_map::{
         keys::{self, Key},
         DynMap,
@@ -111,7 +110,10 @@ use syntax::{
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile, InlineAsmOperand, SemanticsImpl};
+use crate::{
+    db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand,
+    SemanticsImpl,
+};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {

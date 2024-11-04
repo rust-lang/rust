@@ -161,14 +161,14 @@ impl Expander {
         types_map: &mut TypesMap,
         types_source_map: &mut TypesSourceMap,
     ) -> Option<Path> {
-        let ctx = LowerCtx::with_span_map_cell(
+        let mut ctx = LowerCtx::with_span_map_cell(
             db,
             self.current_file_id,
             self.span_map.clone(),
             types_map,
             types_source_map,
         );
-        Path::from_src(&ctx, path)
+        Path::from_src(&mut ctx, path)
     }
 
     fn within_limit<F, T: ast::AstNode>(

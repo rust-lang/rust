@@ -8,7 +8,7 @@ use hir_def::{
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
+    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
 use stdx::never;
@@ -54,6 +54,21 @@ impl ConstExt for Const {
 pub enum ConstEvalError {
     MirLowerError(MirLowerError),
     MirEvalError(MirEvalError),
+}
+
+impl ConstEvalError {
+    pub fn pretty_print(
+        &self,
+        f: &mut String,
+        db: &dyn HirDatabase,
+        span_formatter: impl Fn(span::FileId, span::TextRange) -> String,
+        edition: span::Edition,
+    ) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            ConstEvalError::MirLowerError(e) => e.pretty_print(f, db, span_formatter, edition),
+            ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter, edition),
+        }
+    }
 }
 
 impl From<MirLowerError> for ConstEvalError {
@@ -236,6 +251,10 @@ pub(crate) fn const_eval_query(
         GeneralConstId::ConstId(c) => {
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
+        GeneralConstId::StaticId(s) => {
+            let krate = s.module(db.upcast()).krate();
+            db.monomorphized_mir_body(s.into(), subst, TraitEnvironment::empty(krate))?
+        }
         GeneralConstId::ConstBlockId(c) => {
             let ConstBlockLoc { parent, root } = db.lookup_intern_anonymous_const(c);
             let body = db.body(parent);
@@ -249,7 +268,7 @@ pub(crate) fn const_eval_query(
         }
         GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
-    let c = interpret_mir(db, body, false, trait_env).0?;
+    let c = interpret_mir(db, body, false, trait_env)?.0?;
     Ok(c)
 }
 
@@ -262,7 +281,7 @@ pub(crate) fn const_eval_static_query(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def.into()),
     )?;
-    let c = interpret_mir(db, body, false, None).0?;
+    let c = interpret_mir(db, body, false, None)?.0?;
     Ok(c)
 }
 
@@ -294,7 +313,7 @@ pub(crate) fn const_eval_discriminant_variant(
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
-    let c = interpret_mir(db, mir_body, false, None).0?;
+    let c = interpret_mir(db, mir_body, false, None)?.0?;
     let c = if is_signed {
         try_const_isize(db, &c).unwrap()
     } else {
@@ -335,7 +354,7 @@ pub(crate) fn eval_to_const(
         }
     }
     if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, ctx.body, &infer, expr) {
-        if let Ok(result) = interpret_mir(db, Arc::new(mir_body), true, None).0 {
+        if let Ok((Ok(result), _)) = interpret_mir(db, Arc::new(mir_body), true, None) {
             return result;
         }
     }

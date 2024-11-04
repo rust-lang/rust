@@ -151,7 +151,7 @@ impl InferenceContext<'_> {
             let last = path.segments().last()?;
 
             // Don't use `self.make_ty()` here as we need `orig_ns`.
-            let ctx = crate::lower::TyLoweringContext::new(
+            let mut ctx = crate::lower::TyLoweringContext::new(
                 self.db,
                 &self.resolver,
                 &self.body.types,

@@ -1,5 +1,6 @@
 //! See `Semantics`.
 
+mod child_by_source;
 mod source_to_def;
 
 use std::{
@@ -1271,9 +1272,9 @@ impl<'db> SemanticsImpl<'db> {
         let analyze = self.analyze(ty.syntax())?;
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let ctx =
+        let mut ctx =
             LowerCtx::new(self.db.upcast(), analyze.file_id, &mut types_map, &mut types_source_map);
-        let type_ref = crate::TypeRef::from_ast(&ctx, ty.clone());
+        let type_ref = crate::TypeRef::from_ast(&mut ctx, ty.clone());
         let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
@@ -1289,9 +1290,9 @@ impl<'db> SemanticsImpl<'db> {
         let analyze = self.analyze(path.syntax())?;
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let ctx =
+        let mut ctx =
             LowerCtx::new(self.db.upcast(), analyze.file_id, &mut types_map, &mut types_source_map);
-        let hir_path = Path::from_src(&ctx, path.clone())?;
+        let hir_path = Path::from_src(&mut ctx, path.clone())?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),
             _ => None,
@@ -1974,9 +1975,9 @@ impl SemanticsScope<'_> {
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let ctx =
+        let mut ctx =
             LowerCtx::new(self.db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
-        let path = Path::from_src(&ctx, ast_path.clone())?;
+        let path = Path::from_src(&mut ctx, ast_path.clone())?;
         resolve_hir_path(
             self.db,
             &self.resolver,

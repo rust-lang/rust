@@ -660,7 +660,7 @@ fn for_expr(p: &mut Parser<'_>, m: Option<Marker>) -> CompletedMarker {
 fn let_expr(p: &mut Parser<'_>) -> CompletedMarker {
     let m = p.start();
     p.bump(T![let]);
-    patterns::pattern_top(p);
+    patterns::pattern(p);
     p.expect(T![=]);
     expr_let(p);
     m.complete(p, LET_EXPR)

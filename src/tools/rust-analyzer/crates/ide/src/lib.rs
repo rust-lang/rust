@@ -33,7 +33,7 @@ mod goto_type_definition;
 mod highlight_related;
 mod hover;
 mod inlay_hints;
-mod interpret_function;
+mod interpret;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -350,7 +350,7 @@ impl Analysis {
     }
 
     pub fn interpret_function(&self, position: FilePosition) -> Cancellable<String> {
-        self.with_db(|db| interpret_function::interpret_function(db, position))
+        self.with_db(|db| interpret::interpret(db, position))
     }
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
