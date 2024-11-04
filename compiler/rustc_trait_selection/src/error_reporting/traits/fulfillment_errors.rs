@@ -466,6 +466,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         self.try_to_add_help_message(
+                            &root_obligation,
                             &obligation,
                             leaf_trait_predicate,
                             &mut err,
@@ -2428,6 +2429,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn try_to_add_help_message(
         &self,
+        root_obligation: &PredicateObligation<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
@@ -2511,6 +2513,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 impl_candidates.as_slice(),
                 span,
             );
+
+            self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
     }
 
