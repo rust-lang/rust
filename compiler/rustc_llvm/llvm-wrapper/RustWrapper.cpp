@@ -228,94 +228,140 @@ extern "C" LLVMValueRef LLVMRustInsertPrivateGlobal(LLVMModuleRef M,
                                  GlobalValue::PrivateLinkage, nullptr));
 }
 
-static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
+// Must match the layout of `rustc_codegen_llvm::llvm::ffi::AttributeKind`.
+enum class LLVMRustAttributeKind {
+  AlwaysInline = 0,
+  ByVal = 1,
+  Cold = 2,
+  InlineHint = 3,
+  MinSize = 4,
+  Naked = 5,
+  NoAlias = 6,
+  NoCapture = 7,
+  NoInline = 8,
+  NonNull = 9,
+  NoRedZone = 10,
+  NoReturn = 11,
+  NoUnwind = 12,
+  OptimizeForSize = 13,
+  ReadOnly = 14,
+  SExt = 15,
+  StructRet = 16,
+  UWTable = 17,
+  ZExt = 18,
+  InReg = 19,
+  SanitizeThread = 20,
+  SanitizeAddress = 21,
+  SanitizeMemory = 22,
+  NonLazyBind = 23,
+  OptimizeNone = 24,
+  ReadNone = 26,
+  SanitizeHWAddress = 28,
+  WillReturn = 29,
+  StackProtectReq = 30,
+  StackProtectStrong = 31,
+  StackProtect = 32,
+  NoUndef = 33,
+  SanitizeMemTag = 34,
+  NoCfCheck = 35,
+  ShadowCallStack = 36,
+  AllocSize = 37,
+  AllocatedPointer = 38,
+  AllocAlign = 39,
+  SanitizeSafeStack = 40,
+  FnRetThunkExtern = 41,
+  Writable = 42,
+  DeadOnUnwind = 43,
+};
+
+static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
   switch (Kind) {
-  case AlwaysInline:
+  case LLVMRustAttributeKind::AlwaysInline:
     return Attribute::AlwaysInline;
-  case ByVal:
+  case LLVMRustAttributeKind::ByVal:
     return Attribute::ByVal;
-  case Cold:
+  case LLVMRustAttributeKind::Cold:
     return Attribute::Cold;
-  case InlineHint:
+  case LLVMRustAttributeKind::InlineHint:
     return Attribute::InlineHint;
-  case MinSize:
+  case LLVMRustAttributeKind::MinSize:
     return Attribute::MinSize;
-  case Naked:
+  case LLVMRustAttributeKind::Naked:
     return Attribute::Naked;
-  case NoAlias:
+  case LLVMRustAttributeKind::NoAlias:
     return Attribute::NoAlias;
-  case NoCapture:
+  case LLVMRustAttributeKind::NoCapture:
     return Attribute::NoCapture;
-  case NoCfCheck:
+  case LLVMRustAttributeKind::NoCfCheck:
     return Attribute::NoCfCheck;
-  case NoInline:
+  case LLVMRustAttributeKind::NoInline:
     return Attribute::NoInline;
-  case NonNull:
+  case LLVMRustAttributeKind::NonNull:
     return Attribute::NonNull;
-  case NoRedZone:
+  case LLVMRustAttributeKind::NoRedZone:
     return Attribute::NoRedZone;
-  case NoReturn:
+  case LLVMRustAttributeKind::NoReturn:
     return Attribute::NoReturn;
-  case NoUnwind:
+  case LLVMRustAttributeKind::NoUnwind:
     return Attribute::NoUnwind;
-  case OptimizeForSize:
+  case LLVMRustAttributeKind::OptimizeForSize:
     return Attribute::OptimizeForSize;
-  case ReadOnly:
+  case LLVMRustAttributeKind::ReadOnly:
     return Attribute::ReadOnly;
-  case SExt:
+  case LLVMRustAttributeKind::SExt:
     return Attribute::SExt;
-  case StructRet:
+  case LLVMRustAttributeKind::StructRet:
     return Attribute::StructRet;
-  case UWTable:
+  case LLVMRustAttributeKind::UWTable:
     return Attribute::UWTable;
-  case ZExt:
+  case LLVMRustAttributeKind::ZExt:
     return Attribute::ZExt;
-  case InReg:
+  case LLVMRustAttributeKind::InReg:
     return Attribute::InReg;
-  case SanitizeThread:
+  case LLVMRustAttributeKind::SanitizeThread:
     return Attribute::SanitizeThread;
-  case SanitizeAddress:
+  case LLVMRustAttributeKind::SanitizeAddress:
     return Attribute::SanitizeAddress;
-  case SanitizeMemory:
+  case LLVMRustAttributeKind::SanitizeMemory:
     return Attribute::SanitizeMemory;
-  case NonLazyBind:
+  case LLVMRustAttributeKind::NonLazyBind:
     return Attribute::NonLazyBind;
-  case OptimizeNone:
+  case LLVMRustAttributeKind::OptimizeNone:
     return Attribute::OptimizeNone;
-  case ReadNone:
+  case LLVMRustAttributeKind::ReadNone:
     return Attribute::ReadNone;
-  case SanitizeHWAddress:
+  case LLVMRustAttributeKind::SanitizeHWAddress:
     return Attribute::SanitizeHWAddress;
-  case WillReturn:
+  case LLVMRustAttributeKind::WillReturn:
     return Attribute::WillReturn;
-  case StackProtectReq:
+  case LLVMRustAttributeKind::StackProtectReq:
     return Attribute::StackProtectReq;
-  case StackProtectStrong:
+  case LLVMRustAttributeKind::StackProtectStrong:
     return Attribute::StackProtectStrong;
-  case StackProtect:
+  case LLVMRustAttributeKind::StackProtect:
     return Attribute::StackProtect;
-  case NoUndef:
+  case LLVMRustAttributeKind::NoUndef:
     return Attribute::NoUndef;
-  case SanitizeMemTag:
+  case LLVMRustAttributeKind::SanitizeMemTag:
     return Attribute::SanitizeMemTag;
-  case ShadowCallStack:
+  case LLVMRustAttributeKind::ShadowCallStack:
     return Attribute::ShadowCallStack;
-  case AllocSize:
+  case LLVMRustAttributeKind::AllocSize:
     return Attribute::AllocSize;
-  case AllocatedPointer:
+  case LLVMRustAttributeKind::AllocatedPointer:
     return Attribute::AllocatedPointer;
-  case AllocAlign:
+  case LLVMRustAttributeKind::AllocAlign:
     return Attribute::AllocAlign;
-  case SanitizeSafeStack:
+  case LLVMRustAttributeKind::SanitizeSafeStack:
     return Attribute::SafeStack;
-  case FnRetThunkExtern:
+  case LLVMRustAttributeKind::FnRetThunkExtern:
     return Attribute::FnRetThunkExtern;
-  case Writable:
+  case LLVMRustAttributeKind::Writable:
     return Attribute::Writable;
-  case DeadOnUnwind:
+  case LLVMRustAttributeKind::DeadOnUnwind:
     return Attribute::DeadOnUnwind;
   }
-  report_fatal_error("bad AttributeKind");
+  report_fatal_error("bad LLVMRustAttributeKind");
 }
 
 template <typename T>
@@ -345,7 +391,7 @@ extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr,
 }
 
 extern "C" LLVMAttributeRef
-LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttribute RustAttr) {
+LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 
