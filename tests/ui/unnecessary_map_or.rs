@@ -54,6 +54,12 @@ fn main() {
     let r: Result<i32, S> = Ok(3);
     let _ = r.map_or(false, |x| x == 7);
 
+    // lint constructs that are not comparaisons as well
+    let func = |_x| true;
+    let r: Result<i32, S> = Ok(3);
+    let _ = r.map_or(false, func);
+    let _ = Some(5).map_or(false, func);
+
     #[derive(PartialEq)]
     struct S2;
     let r: Result<i32, S2> = Ok(4);

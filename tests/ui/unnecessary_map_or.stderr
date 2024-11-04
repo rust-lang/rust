@@ -92,8 +92,20 @@ LL |     let _ = r.map_or(false, |x| x == 7);
 error: this `map_or` is redundant
   --> tests/ui/unnecessary_map_or.rs:60:13
    |
+LL |     let _ = r.map_or(false, func);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use is_ok_and instead: `r.is_ok_and(func)`
+
+error: this `map_or` is redundant
+  --> tests/ui/unnecessary_map_or.rs:61:13
+   |
+LL |     let _ = Some(5).map_or(false, func);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(5).is_some_and(func)`
+
+error: this `map_or` is redundant
+  --> tests/ui/unnecessary_map_or.rs:66:13
+   |
 LL |     let _ = r.map_or(false, |x| x == 8);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a standard comparison instead: `(r == Ok(8))`
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 

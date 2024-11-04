@@ -51,6 +51,12 @@ fn main() {
     let r: Result<i32, S> = Ok(3);
     let _ = r.is_ok_and(|x| x == 7);
 
+    // lint constructs that are not comparaisons as well
+    let func = |_x| true;
+    let r: Result<i32, S> = Ok(3);
+    let _ = r.is_ok_and(func);
+    let _ = Some(5).is_some_and(func);
+
     #[derive(PartialEq)]
     struct S2;
     let r: Result<i32, S2> = Ok(4);
