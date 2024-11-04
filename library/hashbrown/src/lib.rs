@@ -21,7 +21,6 @@
         allocator_api,
         slice_ptr_get,
         maybe_uninit_array_assume_init,
-        strict_provenance
     )
 )]
 #![allow(
@@ -36,7 +35,6 @@
 )]
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
-#![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
 /// Default hasher for [`HashMap`] and [`HashSet`].
