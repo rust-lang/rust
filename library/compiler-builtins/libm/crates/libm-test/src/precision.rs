@@ -15,7 +15,7 @@ pub struct SpecialCase;
 const MUSL_DEFAULT_ULP: u32 = 2;
 
 /// Default ULP allowed to differ from multiprecision (i.e. infinite) results.
-const MULTIPREC_DEFAULT_ULP: u32 = 1;
+const MP_DEFAULT_ULP: u32 = 1;
 
 /// ULP allowed to differ from the results returned by a test basis.
 ///
@@ -52,7 +52,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         // Defaults
         (Musl, _) => MUSL_DEFAULT_ULP,
-        (Mpfr, _) => MULTIPREC_DEFAULT_ULP,
+        (Mpfr, _) => MP_DEFAULT_ULP,
     }
 }
 

@@ -7,7 +7,7 @@ use libm_test::mpfloat::MpOp;
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall};
 
 /// Implement a test against MPFR with random inputs.
-macro_rules! multiprec_rand_tests {
+macro_rules! mp_rand_tests {
     (
         fn_name: $fn_name:ident,
         attrs: [$($meta:meta)*]
@@ -15,7 +15,7 @@ macro_rules! multiprec_rand_tests {
         paste::paste! {
             #[test]
             $(#[$meta])*
-            fn [< multiprec_random_ $fn_name >]() {
+            fn [< mp_random_ $fn_name >]() {
                 test_one::<libm_test::op::$fn_name::Routine>();
             }
         }
@@ -40,7 +40,7 @@ where
 }
 
 libm_macros::for_each_function! {
-    callback: multiprec_rand_tests,
+    callback: mp_rand_tests,
     attributes: [
         // Also an assertion failure on i686: at `MPFR_ASSERTN (! mpfr_erangeflag_p ())`
         #[ignore = "large values are infeasible in MPFR"]
