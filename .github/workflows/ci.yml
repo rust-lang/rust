@@ -35,6 +35,7 @@ jobs:
           - aarch64-unknown-linux-gnu
           - arm64ec-pc-windows-msvc
           - armv7-unknown-linux-gnueabihf
+          - loongarch64-unknown-linux-gnu
           # non-nightly since https://github.com/rust-lang/rust/pull/113274
           # - mips-unknown-linux-gnu
           # - mips64-unknown-linux-gnuabi64
@@ -195,6 +196,7 @@ jobs:
           - powerpc-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu       # includes altivec by default
           - riscv64gc-unknown-linux-gnu
+          - loongarch64-unknown-linux-gnu
           # MIPS uses a nonstandard binary representation for NaNs which makes it worth testing
           # non-nightly since https://github.com/rust-lang/rust/pull/113274
           # - mips-unknown-linux-gnu
@@ -216,15 +218,9 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Install Cross
-        # Equivalent to `cargo install cross`, but downloading a prebuilt
-        # binary. Ideally we wouldn't hardcode a version, but the version number
-        # being part of the tarball means we can't just use the download/latest
-        # URL :(
+        # Install the latest git version for newer targets.
         run: |
-          CROSS_URL=https://github.com/cross-rs/cross/releases/download/v0.2.5/cross-x86_64-unknown-linux-gnu.tar.gz
-          mkdir -p "$HOME/.bin"
-          curl -sfSL --retry-delay 10 --retry 5 "${CROSS_URL}" | tar zxf - -C "$HOME/.bin"
-          echo "$HOME/.bin" >> $GITHUB_PATH
+          cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3
 
       - name: Configure Emulated CPUs
         run: |
