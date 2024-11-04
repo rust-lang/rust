@@ -22,7 +22,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
+use rustc_span::{BytePos, Pos, RelativeBytePos, SourceFile, Span};
 use tracing::{debug, debug_span, trace};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
@@ -122,6 +122,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
+        body_span: hir_info.body_span,
         num_counters: coverage_counters.num_counters(),
         mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         expressions: coverage_counters.into_expressions(),
@@ -142,19 +143,11 @@ fn create_mappings<'tcx>(
     coverage_counters: &CoverageCounters,
 ) -> Vec<Mapping> {
     let source_map = tcx.sess.source_map();
-    let body_span = hir_info.body_span;
-
-    let source_file = source_map.lookup_source_file(body_span.lo());
-
-    use rustc_session::RemapFileNameExt;
-    use rustc_session::config::RemapPathScopeComponents;
-    let file_name = Symbol::intern(
-        &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
-    );
+    let file = source_map.lookup_source_file(hir_info.body_span.lo());
 
     let term_for_bcb =
         |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
-    let region_for_span = |span: Span| make_source_region(source_map, hir_info, file_name, span);
+    let region_for_span = |span: Span| make_source_region(source_map, hir_info, &file, span);
 
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
@@ -398,7 +391,7 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
     data.statements.insert(0, statement);
 }
 
-/// Convert the Span into its file name, start line and column, and end line and column.
+/// Converts the span into its start line and column, and end line and column.
 ///
 /// Line numbers and column numbers are 1-based. Unlike most column numbers emitted by
 /// the compiler, these column numbers are denoted in **bytes**, because that's what
@@ -411,17 +404,11 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
 fn make_source_region(
     source_map: &SourceMap,
     hir_info: &ExtractedHirInfo,
-    file_name: Symbol,
+    file: &SourceFile,
     span: Span,
 ) -> Option<SourceRegion> {
     let lo = span.lo();
     let hi = span.hi();
-
-    let file = source_map.lookup_source_file(lo);
-    if !file.contains(hi) {
-        debug!(?span, ?file, ?lo, ?hi, "span crosses multiple files; skipping");
-        return None;
-    }
 
     // Column numbers need to be in bytes, so we can't use the more convenient
     // `SourceMap` methods for looking up file coordinates.
@@ -465,7 +452,6 @@ fn make_source_region(
     end_line = source_map.doctest_offset_line(&file.name, end_line);
 
     check_source_region(SourceRegion {
-        file_name,
         start_line: start_line as u32,
         start_col: start_col as u32,
         end_line: end_line as u32,
@@ -478,7 +464,7 @@ fn make_source_region(
 /// discard regions that are improperly ordered, or might be interpreted in a
 /// way that makes them improperly ordered.
 fn check_source_region(source_region: SourceRegion) -> Option<SourceRegion> {
-    let SourceRegion { file_name: _, start_line, start_col, end_line, end_col } = source_region;
+    let SourceRegion { start_line, start_col, end_line, end_col } = source_region;
 
     // Line/column coordinates are supposed to be 1-based. If we ever emit
     // coordinates of 0, `llvm-cov` might misinterpret them.

@@ -7,12 +7,13 @@
       let mut _2: bool;
       let mut _3: !;
   
++     coverage body span: $DIR/instrument_coverage.rs:10:11: 16:2 (#0)
 +     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Add, rhs: Counter(1) };
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:10:1 - 10:11;
-+     coverage Code(Expression(0)) => $DIR/instrument_coverage.rs:12:12 - 12:17;
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:13:13 - 13:18;
-+     coverage Code(Counter(1)) => $DIR/instrument_coverage.rs:14:10 - 14:11;
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:16:1 - 16:2;
++     coverage Code(Counter(0)) => 10:1 - 10:11;
++     coverage Code(Expression(0)) => 12:12 - 12:17;
++     coverage Code(Counter(0)) => 13:13 - 13:18;
++     coverage Code(Counter(1)) => 14:10 - 14:11;
++     coverage Code(Counter(0)) => 16:1 - 16:2;
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);

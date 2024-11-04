@@ -6,7 +6,6 @@ use rustc_middle::mir::coverage::{
     SourceRegion,
 };
 use rustc_middle::ty::Instance;
-use rustc_span::Symbol;
 use tracing::{debug, instrument};
 
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
@@ -180,7 +179,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
 }
 
 pub(crate) struct FunctionCoverage<'tcx> {
-    function_coverage_info: &'tcx FunctionCoverageInfo,
+    pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
 
     counters_seen: BitSet<CounterId>,
@@ -197,11 +196,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
-    }
-
-    /// Returns an iterator over all filenames used by this function's mappings.
-    pub(crate) fn all_file_names(&self) -> impl Iterator<Item = Symbol> + Captures<'_> {
-        self.function_coverage_info.mappings.iter().map(|mapping| mapping.source_region.file_name)
     }
 
     /// Convert this function's coverage expression data into a form that can be
