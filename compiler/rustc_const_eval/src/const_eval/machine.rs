@@ -1,7 +1,6 @@
 use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
-use std::ops::ControlFlow;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::Mutability;
@@ -10,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Span;
@@ -22,9 +21,9 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame, GlobalAlloc, ImmTy,
-    InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, RangeSet, Scalar,
-    StackPopCleanup, compile_time_machine, interp_ok, throw_exhaust, throw_inval, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, RangeSet, Scalar, compile_time_machine,
+    interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_custom, throw_unsup,
+    throw_unsup_format,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -226,8 +225,8 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[FnArg<'tcx>],
-        dest: &MPlaceTy<'tcx>,
-        ret: Option<mir::BasicBlock>,
+        _dest: &MPlaceTy<'tcx>,
+        _ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
 
@@ -259,83 +258,8 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             );
 
             return interp_ok(Some(new_instance));
-        } else if self.tcx.is_lang_item(def_id, LangItem::AlignOffset) {
-            let args = self.copy_fn_args(args);
-            // For align_offset, we replace the function call if the pointer has no address.
-            match self.align_offset(instance, &args, dest, ret)? {
-                ControlFlow::Continue(()) => return interp_ok(Some(instance)),
-                ControlFlow::Break(()) => return interp_ok(None),
-            }
         }
         interp_ok(Some(instance))
-    }
-
-    /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
-    /// may not have an address.
-    ///
-    /// If `ptr` does have a known address, then we return `Continue(())` and the function call should
-    /// proceed as normal.
-    ///
-    /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
-    /// `target_align`, then we call the function again with an dummy address relative to the
-    /// allocation.
-    ///
-    /// If `ptr` doesn't have an address and `target_align` is stricter than the underlying
-    /// allocation's alignment, then we return `usize::MAX` immediately.
-    fn align_offset(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
-        ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx, ControlFlow<()>> {
-        assert_eq!(args.len(), 2);
-
-        let ptr = self.read_pointer(&args[0])?;
-        let target_align = self.read_scalar(&args[1])?.to_target_usize(self)?;
-
-        if !target_align.is_power_of_two() {
-            throw_ub_custom!(
-                fluent::const_eval_align_offset_invalid_align,
-                target_align = target_align,
-            );
-        }
-
-        match self.ptr_try_get_alloc_id(ptr, 0) {
-            Ok((alloc_id, offset, _extra)) => {
-                let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
-
-                if target_align <= alloc_align.bytes() {
-                    // Extract the address relative to the allocation base that is definitely
-                    // sufficiently aligned and call `align_offset` again.
-                    let addr = ImmTy::from_uint(offset.bytes(), args[0].layout).into();
-                    let align = ImmTy::from_uint(target_align, args[1].layout).into();
-                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
-
-                    // Push the stack frame with our own adjusted arguments.
-                    self.init_stack_frame(
-                        instance,
-                        self.load_mir(instance.def, None)?,
-                        fn_abi,
-                        &[FnArg::Copy(addr), FnArg::Copy(align)],
-                        /* with_caller_location = */ false,
-                        dest,
-                        StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Unreachable },
-                    )?;
-                    interp_ok(ControlFlow::Break(()))
-                } else {
-                    // Not alignable in const, return `usize::MAX`.
-                    let usize_max = Scalar::from_target_usize(self.target_usize_max(), self);
-                    self.write_scalar(usize_max, dest)?;
-                    self.return_to_block(ret)?;
-                    interp_ok(ControlFlow::Break(()))
-                }
-            }
-            Err(_addr) => {
-                // The pointer has an address, continue with function call.
-                interp_ok(ControlFlow::Continue(()))
-            }
-        }
     }
 
     /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
