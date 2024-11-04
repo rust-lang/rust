@@ -13,6 +13,9 @@ used for many other purposes. For example, tests can also be configured to [run
 the resulting program](#controlling-passfail-expectations) to verify its
 behavior.
 
+If you need to work with `#![no_std]` cross-compiling tests, consult the
+[`minicore` test auxiliary](./minicore.md) chapter.
+
 [`tests/ui`]: https://github.com/rust-lang/rust/blob/master/tests/ui
 
 ## General structure of a test

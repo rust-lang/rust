@@ -283,6 +283,9 @@ more information.
 
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
 
+If you need to work with `#![no_std]` cross-compiling tests, consult the
+[`minicore` test auxiliary](./minicore.md) chapter.
+
 [`tests/codegen`]: https://github.com/rust-lang/rust/tree/master/tests/codegen
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
@@ -302,6 +305,9 @@ assembly output. See the [FileCheck] documentation for a tutorial and more
 information.
 
 See also the [codegen tests](#codegen-tests) for a similar set of tests.
+
+If you need to work with `#![no_std]` cross-compiling tests, consult the
+[`minicore` test auxiliary](./minicore.md) chapter.
 
 [`tests/assembly`]: https://github.com/rust-lang/rust/tree/master/tests/assembly
 
