@@ -58,10 +58,7 @@ use crate::spec::crt_objects::CrtObjects;
 pub mod crt_objects;
 
 pub mod abi {
-    pub use rustc_abi::{
-        AbiDisabled, AbiUnsupported, ExternAbi as Abi, all_names, enabled_names, is_enabled,
-        is_stable, lookup,
-    };
+    pub use rustc_abi::{AbiUnsupported, ExternAbi as Abi, all_names, lookup};
 }
 
 mod base;

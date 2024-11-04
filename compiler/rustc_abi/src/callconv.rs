@@ -1,6 +1,5 @@
 #[cfg(feature = "nightly")]
-use crate::{BackendRepr, FieldsShape, TyAbiInterface, TyAndLayout};
-use crate::{Primitive, Size, Variants};
+use crate::{BackendRepr, FieldsShape, Primitive, Size, TyAbiInterface, TyAndLayout, Variants};
 
 mod reg;
 
