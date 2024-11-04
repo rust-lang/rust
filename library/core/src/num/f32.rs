@@ -14,9 +14,9 @@
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
-use crate::macros::const_assert;
 use crate::mem;
 use crate::num::FpCategory;
+use crate::panic::const_assert;
 
 /// The radix or base of the internal representation of `f32`.
 /// Use [`f32::RADIX`] instead.

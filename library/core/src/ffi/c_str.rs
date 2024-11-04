@@ -413,7 +413,7 @@ impl CStr {
     #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         const_eval_select!(
-            (bytes: &[u8]) -> &CStr:
+            @capture { bytes: &[u8] } -> &CStr:
             if const {
                 // Saturating so that an empty slice panics in the assert with a good
                 // message, not here due to underflow.
@@ -429,7 +429,7 @@ impl CStr {
 
                 // SAFETY: See runtime cast comment below.
                 unsafe { &*(bytes as *const [u8] as *const CStr) }
-            } else #[inline] {
+            } else {
                 // Chance at catching some UB at runtime with debug builds.
                 debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
 
@@ -735,7 +735,7 @@ impl AsRef<CStr> for CStr {
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const unsafe fn strlen(ptr: *const c_char) -> usize {
     const_eval_select!(
-        (s: *const c_char = ptr) -> usize:
+        @capture { s: *const c_char = ptr } -> usize:
         if const {
             let mut len = 0;
 
@@ -745,7 +745,7 @@ const unsafe fn strlen(ptr: *const c_char) -> usize {
             }
 
             len
-        } else #[inline] {
+        } else {
             extern "C" {
                 /// Provided by libc or compiler_builtins.
                 fn strlen(s: *const c_char) -> usize;

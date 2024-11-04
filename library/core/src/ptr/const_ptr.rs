@@ -37,8 +37,7 @@ impl<T: ?Sized> *const T {
         // considering their "data" part for null-ness.
         let ptr = self as *const u8;
         const_eval_select!(
-            #[inline]
-            (ptr: *const u8) -> bool:
+            @capture { ptr: *const u8 } -> bool:
             if const #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")] {
                 match (ptr).guaranteed_eq(null_mut()) {
                     Some(res) => res,
@@ -410,11 +409,12 @@ impl<T: ?Sized> *const T {
         const fn runtime_offset_nowrap(this: *const (), count: isize, size: usize) -> bool {
             // We can use const_eval_select here because this is only for UB checks.
             const_eval_select!(
-                (this: *const (), count: isize, size: usize) -> bool:
+                @capture { this: *const (), count: isize, size: usize } -> bool:
                 if const {
                     true
-                } else #[inline] {
-                    // We know `size <= isize::MAX` so the `as` cast here is not lossy.
+                } else {
+                    // `size` is the size of a Rust type, so we know that
+                    // `size <= isize::MAX` and thus `as` cast here is not lossy.
                     let Some(byte_offset) = count.checked_mul(size as isize) else {
                         return false;
                     };
@@ -760,7 +760,7 @@ impl<T: ?Sized> *const T {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_ptr_ge(this: *const (), origin: *const ()) -> bool {
             const_eval_select!(
-                (this: *const (), origin: *const ()) -> bool:
+                @capture { this: *const (), origin: *const () } -> bool:
                 if const {
                     true
                 } else {
@@ -921,10 +921,10 @@ impl<T: ?Sized> *const T {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_add_nowrap(this: *const (), count: usize, size: usize) -> bool {
             const_eval_select!(
-                (this: *const (), count: usize, size: usize) -> bool:
+                @capture { this: *const (), count: usize, size: usize } -> bool:
                 if const {
                     true
-                } else #[inline] {
+                } else {
                     let Some(byte_offset) = count.checked_mul(size) else {
                         return false;
                     };
@@ -1028,10 +1028,10 @@ impl<T: ?Sized> *const T {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         const fn runtime_sub_nowrap(this: *const (), count: usize, size: usize) -> bool {
             const_eval_select!(
-                (this: *const (), count: usize, size: usize) -> bool:
+                @capture { this: *const (), count: usize, size: usize } -> bool:
                 if const {
                     true
-                } else #[inline] {
+                } else {
                     let Some(byte_offset) = count.checked_mul(size) else {
                         return false;
                     };

@@ -98,8 +98,7 @@ pub(crate) const fn check_language_ub() -> bool {
     // Only used for UB checks so we may const_eval_select.
     intrinsics::ub_checks()
         && const_eval_select!(
-            #[inline]
-            () -> bool:
+            @capture { } -> bool:
             if const {
                 // Always disable UB checks.
                 false
@@ -119,19 +118,15 @@ pub(crate) const fn check_language_ub() -> bool {
 #[inline]
 #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
 pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize, is_zst: bool) -> bool {
-    #[inline]
-    fn runtime(ptr: *const (), align: usize, is_zst: bool) -> bool {
-        ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
-    }
-
-    #[inline]
-    #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
-    const fn comptime(ptr: *const (), _align: usize, is_zst: bool) -> bool {
-        is_zst || !ptr.is_null()
-    }
-
     // This is just for safety checks so we can const_eval_select.
-    const_eval_select((ptr, align, is_zst), comptime, runtime)
+    const_eval_select!(
+        @capture { ptr: *const (), align: usize, is_zst: bool } -> bool:
+        if const #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")] {
+            is_zst || !ptr.is_null()
+        } else {
+            ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
+        }
+    )
 }
 
 #[inline]
@@ -155,8 +150,7 @@ pub(crate) const fn is_nonoverlapping(
 ) -> bool {
     // This is just for safety checks so we can const_eval_select.
     const_eval_select!(
-        #[inline]
-        (src: *const (), dst: *const (), size: usize, count: usize) -> bool:
+        @capture { src: *const (), dst: *const (), size: usize, count: usize } -> bool:
         if const {
             true
         } else {

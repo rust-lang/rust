@@ -2791,31 +2791,35 @@ where
 /// A macro to make it easier to invoke const_eval_select. Use as follows:
 /// ```rust,ignore (just a macro example)
 /// const_eval_select!(
-///     #[inline]
-///     (arg1: i32 = some_expr, arg2: T = other_expr) -> U:
-///     if const {
+///     @capture { arg1: i32 = some_expr, arg2: T = other_expr } -> U:
+///     if const #[attributes_for_const_arm] {
 ///         // Compile-time code goes here.
-///     } else {
+///     } else #[attributes_for_runtime_arm] {
 ///         // Run-time code goes here.
 ///     }
 /// )
 /// ```
+/// The `@capture` block declares which surrounding variables / expressions can be
+/// used inside the `if const`.
+/// Note that the two arms of this `if` really each become their own function, which is why the
+/// macro supports setting attributes for those functions. The runtime function is always
+/// markes as `#[inline]`.
+///
+/// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {
     (
-        $(#[$attr:meta])*
-        ($($arg:ident : $ty:ty = $val:expr),* $(,)?) $( -> $ret:ty )?:
+        @capture { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
         if const
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
             $(#[$runtime_attr:meta])* $runtime:block
     ) => {{
-        $(#[$attr])*
         $(#[$runtime_attr])*
+        #[inline]
         fn runtime($($arg: $ty),*) $( -> $ret )? {
             $runtime
         }
 
-        $(#[$attr])*
         $(#[$compiletime_attr])*
         const fn compiletime($($arg: $ty),*) $( -> $ret )? {
             // Don't warn if one of the arguments is unused.
@@ -2829,16 +2833,14 @@ pub(crate) macro const_eval_select {
     // We support leaving away the `val` expressions for *all* arguments
     // (but not for *some* arguments, that's too tricky).
     (
-        $(#[$attr:meta])*
-        ($($arg:ident : $ty:ty),* $(,)?) -> $ret:ty:
+        @capture { $($arg:ident : $ty:ty),* $(,)? } $( -> $ret:ty )? :
         if const
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
             $(#[$runtime_attr:meta])* $runtime:block
     ) => {
         $crate::intrinsics::const_eval_select!(
-            $(#[$attr])*
-            ($($arg : $ty = $arg),*) -> $ret:
+            @capture { $($arg : $ty = $arg),* } $(-> $ret)? :
             if const
                 $(#[$compiletime_attr])* $compiletime
             else
@@ -3794,7 +3796,7 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
     }
 
     const_eval_select!(
-        (ptr: *const (), align: usize):
+        @capture { ptr: *const (), align: usize}:
         if const {
             // Do nothing.
         } else {
