@@ -88,8 +88,9 @@ unsafe trait GenericRadix: Sized {
                 };
             }
         }
-        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented,
-        // so it is always in bounds.
+        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented, so it can't overflow. It is
+        // decremented exactly once for each digit. Since u128 is the widest fixed width integer format dupported,
+        // the maximum number of digits (bits) is 128 for base-2, so `curr` won't underflow as well.
         let buf = unsafe { buf.get_unchecked(curr..) };
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
