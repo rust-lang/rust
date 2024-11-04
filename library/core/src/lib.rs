@@ -114,7 +114,6 @@
 #![feature(const_align_of_val_raw)]
 #![feature(const_alloc_layout)]
 #![feature(const_black_box)]
-#![feature(const_char_encode_utf16)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
 #![feature(const_float_methods)]
