@@ -20,7 +20,7 @@ LL | |     V = 0xFF,
 LL | | }
    | |_- not a struct or union
 
-error[E0658]: use of unstable library feature 'transmutability'
+error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/thaw-transmute-invalid-enum.rs:4:20
    |
 LL |     use std::mem::{Assume, TransmuteFrom};
@@ -30,7 +30,7 @@ LL |     use std::mem::{Assume, TransmuteFrom};
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'transmutability'
+error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/thaw-transmute-invalid-enum.rs:4:28
    |
 LL |     use std::mem::{Assume, TransmuteFrom};
@@ -40,7 +40,7 @@ LL |     use std::mem::{Assume, TransmuteFrom};
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'transmutability'
+error[E0658]: use of unstable library feature `transmutability`
   --> $DIR/thaw-transmute-invalid-enum.rs:10:14
    |
 LL |         Dst: TransmuteFrom<Src>,
