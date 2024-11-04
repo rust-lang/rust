@@ -24,39 +24,13 @@ for the alternative lectures.
 
 ## Defining a Dataflow Analysis
 
-The interface for dataflow analyses is split into three traits. The first is
-[`AnalysisDomain`], which must be implemented by *all* analyses. In addition to
-the type of the dataflow state, this trait defines the initial value of that
-state at entry to each block, as well as the direction of the analysis, either
+A dataflow analysis is defined by the [`Analysis`] trait. In addition to the
+type of the dataflow state, this trait defines the initial value of that state
+at entry to each block, as well as the direction of the analysis, either
 forward or backward. The domain of your dataflow analysis must be a [lattice][]
 (strictly speaking a join-semilattice) with a well-behaved `join` operator. See
 documentation for the [`lattice`] module, as well as the [`JoinSemiLattice`]
 trait, for more information.
-
-You must then provide *either* a direct implementation of the [`Analysis`] trait
-*or* an implementation of the proxy trait [`GenKillAnalysis`]. The latter is for
-so-called ["gen-kill" problems], which have a simple class of transfer function
-that can be applied very efficiently. Analyses whose domain is not a `BitSet`
-of some index type, or whose transfer functions cannot be expressed through
-"gen" and "kill" operations, must implement `Analysis` directly, and will run
-slower as a result. All implementers of `GenKillAnalysis` also implement
-`Analysis` automatically via a default `impl`.
-
-
-```text
- AnalysisDomain
-       ^
-       |          | = has as a supertrait
-       |          . = provides a default impl for
-       |
-   Analysis
-     ^   ^
-     |   .
-     |   .
-     |   .
- GenKillAnalysis
-
-```
 
 ### Transfer Functions and Effects
 
@@ -68,12 +42,6 @@ for the entire basic block. It's also possible to define an effect for
 particular outgoing edges of some terminators (e.g.
 [`apply_call_return_effect`] for the `success` edge of a `Call`
 terminator). Collectively, these are referred to as "per-edge effects".
-
-The only meaningful difference (besides the "apply" prefix) between the methods
-of the `GenKillAnalysis` trait and the `Analysis` trait is that an `Analysis`
-has direct, mutable access to the dataflow state, whereas a `GenKillAnalysis`
-only sees an implementer of the `GenKill` trait, which only allows the `gen`
-and `kill` operations for mutation.
 
 ### "Before" Effects
 
@@ -143,25 +111,16 @@ println!("x: {}", x);
 
 ## Inspecting the Results of a Dataflow Analysis
 
-Once you have constructed an analysis, you must pass it to an [`Engine`], which
-is responsible for finding the steady-state solution to your dataflow problem.
-You should use the [`into_engine`] method defined on the `Analysis` trait for
-this, since it will use the more efficient `Engine::new_gen_kill` constructor
-when possible.
-
-Calling `iterate_to_fixpoint` on your `Engine` will return a `Results`, which
-contains the dataflow state at fixpoint upon entry of each block. Once you have
-a `Results`, you can inspect the dataflow state at fixpoint at any point in
-the CFG. If you only need the state at a few locations (e.g., each `Drop`
-terminator) use a [`ResultsCursor`]. If you need the state at *every* location,
-a [`ResultsVisitor`] will be more efficient.
+Once you have constructed an analysis, you must call `iterate_to_fixpoint`
+which will return a `Results`, which contains the dataflow state at fixpoint
+upon entry of each block. Once you have a `Results`, you can inspect the
+dataflow state at fixpoint at any point in the CFG. If you only need the state
+at a few locations (e.g., each `Drop` terminator) use a [`ResultsCursor`]. If
+you need the state at *every* location, a [`ResultsVisitor`] will be more
+efficient.
 
 ```text
                          Analysis
-                            |
-                            | into_engine(…)
-                            |
-                          Engine
                             |
                             | iterate_to_fixpoint()
                             |
@@ -181,9 +140,8 @@ let mut my_visitor = MyVisitor::new();
 
 // inspect the fixpoint state for every location within every block in RPO.
 let results = MyAnalysis::new()
-    .into_engine(tcx, body, def_id)
-    .iterate_to_fixpoint()
-    .visit_in_rpo_with(body, &mut my_visitor);
+    .iterate_to_fixpoint(tcx, body, None);
+results.visit_with(body, &mut my_visitor);`
 ```
 
 whereas this code uses [`ResultsCursor`]:
@@ -222,12 +180,10 @@ the example below:
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
 [Debugging MIR]: ./debugging.md
-[`AnalysisDomain`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.AnalysisDomain.html
 [`Analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html
-[`Engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/struct.Engine.html
 [`GenKillAnalysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.GenKillAnalysis.html
 [`JoinSemiLattice`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/lattice/trait.JoinSemiLattice.html
-[`NAME`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.AnalysisDomain.html#associatedconstant.NAME
+[`NAME`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html#associatedconstant.NAME
 [`ResultsCursor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/struct.ResultsCursor.html
 [`ResultsVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.ResultsVisitor.html
 [`apply_call_return_effect`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html#tymethod.apply_call_return_effect

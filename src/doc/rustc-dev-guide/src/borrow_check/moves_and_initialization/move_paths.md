@@ -54,13 +54,13 @@ move_data.move_paths[mpi].place
 One of the first things we do in the MIR borrow check is to construct
 the set of move paths. This is done as part of the
 [`MoveData::gather_moves`] function. This function uses a MIR visitor
-called [`Gatherer`] to walk the MIR and look at how each [`Place`]
+called [`MoveDataBuilder`] to walk the MIR and look at how each [`Place`]
 within is accessed. For each such [`Place`], it constructs a
 corresponding [`MovePathIndex`]. It also records when/where that
 particular move path is moved/initialized, but we'll get to that in a
 later section.
 
-[`Gatherer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.Gatherer.html
+[`MoveDataBuilder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.MoveDataBuilder.html
 [`MoveData::gather_moves`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#method.gather_moves
 
 ### Illegal move paths
@@ -82,7 +82,7 @@ those just discussed, the function returns an `Err`. This in turn
 means we don't have to bother tracking whether those places are
 initialized (which lowers overhead).
 
-[`move_path_for`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.Gatherer.html#method.move_path_for
+[`move_path_for`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.MoveDataBuilder.html#method.move_path_for
 
 ## Looking up a move-path
 
