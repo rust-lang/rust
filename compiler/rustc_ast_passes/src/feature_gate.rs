@@ -516,6 +516,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(
+        async_trait_bounds,
+        "`async` trait bounds are unstable",
+        "use the desugared name of the async trait, such as `AsyncFn`"
+    );
     gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
         closure_lifetime_binder,
