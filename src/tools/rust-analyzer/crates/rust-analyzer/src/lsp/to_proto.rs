@@ -88,6 +88,7 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
     match kind {
         StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
         StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,
+        StructureNodeKind::ExternBlock => lsp_types::SymbolKind::NAMESPACE,
     }
 }
 
