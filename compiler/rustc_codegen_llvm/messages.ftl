@@ -7,6 +7,11 @@ codegen_llvm_dynamic_linking_with_lto =
 
 codegen_llvm_fixed_x18_invalid_arch = the `-Zfixed-x18` flag is not supported on the `{$arch}` architecture
 
+codegen_llvm_forbidden_ctarget_feature =
+    target feature `{$feature}` cannot be toggled with `-Ctarget-feature`: {$reason}
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+codegen_llvm_forbidden_ctarget_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
 codegen_llvm_from_llvm_diag = {$message}
 
 codegen_llvm_from_llvm_optimization_diag = {$filename}:{$line}:{$column} {$pass_name} ({$kind}): {$message}

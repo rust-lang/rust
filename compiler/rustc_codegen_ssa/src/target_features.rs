@@ -11,13 +11,16 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
+use rustc_target::target_features::{self, Stability};
 
 use crate::errors;
 
-pub(crate) fn from_target_feature(
+/// Compute the enabled target features from the `#[target_feature]` function attribute.
+/// Enabled target features are added to `target_features`.
+pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
     attr: &ast::Attribute,
-    supported_target_features: &UnordMap<String, Option<Symbol>>,
+    rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
@@ -46,12 +49,12 @@ pub(crate) fn from_target_feature(
 
         // We allow comma separation to enable multiple features.
         added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
-            let Some(feature_gate) = supported_target_features.get(feature) else {
+            let Some(stability) = rust_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
                 err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
-                    let valid = supported_target_features.contains_key(stripped);
+                    let valid = rust_target_features.contains_key(stripped);
                     if valid {
                         err.help("consider removing the leading `+` in the feature name");
                     }
@@ -61,18 +64,31 @@ pub(crate) fn from_target_feature(
             };
 
             // Only allow target features whose feature gates have been enabled.
-            let allowed = match feature_gate.as_ref().copied() {
-                Some(name) => rust_features.enabled(name),
-                None => true,
+            let allowed = match stability {
+                Stability::Forbidden { .. } => false,
+                Stability::Stable => true,
+                Stability::Unstable(name) => rust_features.enabled(*name),
             };
             if !allowed {
-                feature_err(
-                    &tcx.sess,
-                    feature_gate.unwrap(),
-                    item.span(),
-                    format!("the target feature `{feature}` is currently unstable"),
-                )
-                .emit();
+                match stability {
+                    Stability::Stable => unreachable!(),
+                    &Stability::Unstable(lang_feature_name) => {
+                        feature_err(
+                            &tcx.sess,
+                            lang_feature_name,
+                            item.span(),
+                            format!("the target feature `{feature}` is currently unstable"),
+                        )
+                        .emit();
+                    }
+                    Stability::Forbidden { reason } => {
+                        tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                            span: item.span(),
+                            feature,
+                            reason,
+                        });
+                    }
+                }
             }
             Some(Symbol::intern(feature))
         }));
@@ -138,20 +154,20 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        supported_target_features: |tcx, cnum| {
+        rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
-                rustc_target::target_features::all_known_features()
-                    .map(|(a, b)| (a.to_string(), b.as_feature_name()))
+                rustc_target::target_features::all_rust_features()
+                    .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
                 tcx.sess
                     .target
-                    .supported_target_features()
+                    .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b.as_feature_name()))
+                    .map(|&(a, b, _)| (a.to_string(), b))
                     .collect()
             }
         },
