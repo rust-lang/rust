@@ -4107,24 +4107,32 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
     /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
+    /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
+    /// `opt.is_none_or(|val| val == 5)`.
     /// This lint offers readability and conciseness improvements.
     ///
     /// ### Example
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> bool {
-    ///     x.map_or(false, |n| n == 5)
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x.map_or(false, |n| n == 5),
+    ///         x.map_or(true, |n| n > 5),
+    ///     )
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> bool {
-    ///     x == Some(5)
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x == Some(5),
+    ///         x.is_none_or(|n| n > 5),
+    ///     )
     /// }
     /// ```
     #[clippy::version = "1.75.0"]
     pub UNNECESSARY_MAP_OR,
     style,
-    "reduce unnecessary pattern matching for constructs that implement `PartialEq`"
+    "reduce unnecessary calls to `.map_or(bool, …)`"
 }
 
 declare_clippy_lint! {
