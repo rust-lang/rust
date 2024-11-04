@@ -4531,7 +4531,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                         && method_config.output_type.matches(&sig.decl.output)
                         // in case there is no first arg, since we already have checked the number of arguments
                         // it's should be always true
-                        && first_arg_ty_opt.map_or(true, |first_arg_ty| method_config
+                        && first_arg_ty_opt.is_none_or(|first_arg_ty| method_config
                             .self_kind.matches(cx, self_ty, first_arg_ty)
                             )
                         && fn_header_equals(method_config.fn_header, sig.header)

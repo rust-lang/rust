@@ -351,7 +351,7 @@ fn used_underscore_binding<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 /// `unused_variables`'s idea
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    get_parent_expr(cx, expr).map_or(true, |parent| match parent.kind {
+    get_parent_expr(cx, expr).is_none_or(|parent| match parent.kind {
         ExprKind::Assign(_, rhs, _) | ExprKind::AssignOp(_, _, rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
         _ => is_used(cx, parent),
     })

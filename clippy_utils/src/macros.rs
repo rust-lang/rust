@@ -93,7 +93,7 @@ pub fn expn_is_local(expn: ExpnId) -> bool {
     std::iter::once((expn, data))
         .chain(backtrace)
         .find_map(|(_, data)| data.macro_def_id)
-        .map_or(true, DefId::is_local)
+        .is_none_or(DefId::is_local)
 }
 
 /// Returns an iterator of macro expansions that created the given span.
