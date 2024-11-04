@@ -117,16 +117,18 @@ pub struct DeterministicRandomSource {
     // block counter, resulting in a 128-bit counter that will realistically
     // never roll over.
     counter_nonce: u128,
-    block: [u8; 64],
+    block: [u8; chacha::BLOCK_SIZE],
     // The amount of bytes in block that were already used.
-    used: u8,
+    used: usize,
 }
 
-/// Implement the ChaCha round function as defined by
-/// [RFC 8439](https://datatracker.ietf.org/doc/html/rfc8439), but with reduced rounds.
+/// Implements the ChaCha block function as defined by
+/// [RFC 8439](https://datatracker.ietf.org/doc/html/rfc8439).
 #[doc(hidden)]
 #[unstable(feature = "deterministic_random_internals", issue = "none")] // Used for testing only.
 pub mod chacha {
+    pub const BLOCK_SIZE: usize = 64;
+
     pub const fn quarter_round(
         mut a: u32,
         mut b: u32,
@@ -152,7 +154,7 @@ pub mod chacha {
         (a, b, c, d)
     }
 
-    pub fn block(key: &[u8; 32], counter_nonce: u128, rounds: u32) -> [u8; 64] {
+    pub fn block(key: &[u8; 32], counter_nonce: u128, rounds: u32) -> [u8; BLOCK_SIZE] {
         assert!(rounds % 2 == 0);
 
         let mut state = [0; 16];
@@ -191,7 +193,7 @@ pub mod chacha {
             qr(3, 4, 9, 14);
         }
 
-        let mut out = [0; 64];
+        let mut out = [0; BLOCK_SIZE];
         for i in 0..16 {
             out[4 * i..][..4].copy_from_slice(&block[i].wrapping_add(state[i]).to_le_bytes());
         }
@@ -218,7 +220,12 @@ impl DeterministicRandomSource {
     /// ```
     #[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
     pub const fn from_seed(seed: [u8; 32]) -> DeterministicRandomSource {
-        DeterministicRandomSource { seed, counter_nonce: 0, block: [0; 64], used: 64 }
+        DeterministicRandomSource {
+            seed,
+            counter_nonce: 0,
+            block: [0; chacha::BLOCK_SIZE],
+            used: chacha::BLOCK_SIZE,
+        }
     }
 
     /// Returns the seed this random source was initialized with.
@@ -238,7 +245,7 @@ impl DeterministicRandomSource {
         &self.seed
     }
 
-    fn next_block(&mut self) -> [u8; 64] {
+    fn next_block(&mut self) -> [u8; chacha::BLOCK_SIZE] {
         let block = chacha::block(&self.seed, self.counter_nonce, Self::ROUNDS);
         self.counter_nonce = self.counter_nonce.wrapping_add(1);
         block
@@ -248,14 +255,14 @@ impl DeterministicRandomSource {
 #[unstable(feature = "deterministic_random_chacha8", issue = "131606")]
 impl RandomSource for DeterministicRandomSource {
     fn fill_bytes(&mut self, mut bytes: &mut [u8]) {
-        if self.used as usize != self.block.len() {
-            let len = usize::min(self.block.len() - self.used as usize, bytes.len());
-            bytes[..len].copy_from_slice(&self.block[self.used as usize..][..len]);
+        if self.used != self.block.len() {
+            let len = usize::min(self.block.len() - self.used, bytes.len());
+            bytes[..len].copy_from_slice(&self.block[self.used..][..len]);
             bytes = &mut bytes[len..];
-            self.used += len as u8;
+            self.used += len;
         }
 
-        let mut blocks = bytes.array_chunks_mut::<64>();
+        let mut blocks = bytes.array_chunks_mut::<{ chacha::BLOCK_SIZE }>();
         for block in &mut blocks {
             block.copy_from_slice(&self.next_block());
         }
@@ -264,7 +271,7 @@ impl RandomSource for DeterministicRandomSource {
         if !bytes.is_empty() {
             self.block = self.next_block();
             bytes.copy_from_slice(&self.block[..bytes.len()]);
-            self.used = bytes.len() as u8;
+            self.used = bytes.len();
         }
     }
 }
