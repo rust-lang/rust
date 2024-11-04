@@ -211,7 +211,15 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "powerpc64" => (Architecture::PowerPc64, None),
         "riscv32" => (Architecture::Riscv32, None),
         "riscv64" => (Architecture::Riscv64, None),
-        "sparc" => (Architecture::Sparc32Plus, None),
+        "sparc" => {
+            if sess.target.options.cpu == "v9" {
+                // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                (Architecture::Sparc32Plus, None)
+            } else {
+                // Target uses V7 or V8, aka EM_SPARC
+                (Architecture::Sparc, None)
+            }
+        }
         "sparc64" => (Architecture::Sparc64, None),
         "avr" => (Architecture::Avr, None),
         "msp430" => (Architecture::Msp430, None),
