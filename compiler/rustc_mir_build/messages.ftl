@@ -265,6 +265,8 @@ mir_build_pointer_pattern = function pointers and raw pointers not derived from 
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 
+mir_build_recursive_default_impl = ..default() in the Default impl does not apply a default for each struct field
+
 mir_build_rust_2024_incompatible_pat = patterns are not allowed to reset the default binding mode in edition 2024
 
 mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly

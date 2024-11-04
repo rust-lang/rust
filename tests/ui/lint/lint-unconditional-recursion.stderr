@@ -122,6 +122,7 @@ LL |         let x = Default::default();
    |                 ------------------ recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
+   = help: ..default() in the Default impl does not apply a default for each struct field
 
 error: function cannot return without recursing
   --> $DIR/lint-unconditional-recursion.rs:102:5
@@ -196,6 +197,7 @@ LL |             ..Default::default()
    |               ------------------ recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
+   = help: ..default() in the Default impl does not apply a default for each struct field
 
 error: aborting due to 18 previous errors
 
