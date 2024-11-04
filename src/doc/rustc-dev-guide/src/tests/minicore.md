@@ -51,4 +51,4 @@ impl Copy for Meow {} // `Copy` here is provided by `minicore`
 fn meow() {}
 ```
 
-[minicore]: https://github.com/rust-lang/rust/tree/master/tests/auxiliary/minicore.rs
+[`minicore`]: https://github.com/rust-lang/rust/tree/master/tests/auxiliary/minicore.rs
