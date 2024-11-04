@@ -324,17 +324,15 @@ pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tc
 pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
-        is_const: bool,
     }
+
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Result = ControlFlow<()>;
         type NestedFilter = intravisit::nested_filter::None;
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if !self.is_const {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
-                ExprKind::ConstBlock(_) => return,
+                ExprKind::ConstBlock(_) => return ControlFlow::Continue(()),
                 ExprKind::Call(
                     &Expr {
                         kind: ExprKind::Path(ref p),
@@ -394,37 +392,34 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                 | ExprKind::Type(..) => (),
 
                 _ => {
-                    self.is_const = false;
-                    return;
+                    return ControlFlow::Break(());
                 },
             }
-            walk_expr(self, e);
+
+            walk_expr(self, e)
         }
     }
 
-    let mut v = V { cx, is_const: true };
-    v.visit_expr(e);
-    v.is_const
+    let mut v = V { cx };
+    v.visit_expr(e).is_continue()
 }
 
 /// Checks if the given expression performs an unsafe operation outside of an unsafe block.
 pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
-        is_unsafe: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
+        type Result = ControlFlow<()>;
+
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.is_unsafe {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
                 ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => {
-                    self.is_unsafe = true;
+                    ControlFlow::Break(())
                 },
                 ExprKind::MethodCall(..)
                     if self
@@ -435,13 +430,13 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                             self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe
                         }) =>
                 {
-                    self.is_unsafe = true;
+                    ControlFlow::Break(())
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
                     ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
-                        self.is_unsafe = true;
+                        ControlFlow::Break(())
                     },
-                    ty::FnPtr(_, hdr) if hdr.safety == Safety::Unsafe => self.is_unsafe = true,
+                    ty::FnPtr(_, hdr) if hdr.safety == Safety::Unsafe => ControlFlow::Break(()),
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)
@@ -451,56 +446,54 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .opt_def_id()
                         .map_or(false, |id| self.cx.tcx.is_mutable_static(id)) =>
                 {
-                    self.is_unsafe = true;
+                    ControlFlow::Break(())
                 },
                 _ => walk_expr(self, e),
             }
         }
-        fn visit_block(&mut self, b: &'tcx Block<'_>) {
-            if !matches!(b.rules, BlockCheckMode::UnsafeBlock(_)) {
-                walk_block(self, b);
+        fn visit_block(&mut self, b: &'tcx Block<'_>) -> Self::Result {
+            if matches!(b.rules, BlockCheckMode::UnsafeBlock(_)) {
+                ControlFlow::Continue(())
+            } else {
+                walk_block(self, b)
             }
         }
-        fn visit_nested_item(&mut self, id: ItemId) {
-            if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind {
-                self.is_unsafe = i.safety == Safety::Unsafe;
+        fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
+            if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind
+                && i.safety == Safety::Unsafe
+            {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
             }
         }
     }
-    let mut v = V { cx, is_unsafe: false };
-    v.visit_expr(e);
-    v.is_unsafe
+    let mut v = V { cx };
+    v.visit_expr(e).is_break()
 }
 
 /// Checks if the given expression contains an unsafe block
 pub fn contains_unsafe_block<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
-        found_unsafe: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Result = ControlFlow<()>;
         type NestedFilter = nested_filter::OnlyBodies;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
 
-        fn visit_block(&mut self, b: &'tcx Block<'_>) {
-            if self.found_unsafe {
-                return;
-            }
+        fn visit_block(&mut self, b: &'tcx Block<'_>) -> Self::Result {
             if b.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                self.found_unsafe = true;
-                return;
+                ControlFlow::Break(())
+            } else {
+                walk_block(self, b)
             }
-            walk_block(self, b);
         }
     }
-    let mut v = V {
-        cx,
-        found_unsafe: false,
-    };
-    v.visit_expr(e);
-    v.found_unsafe
+    let mut v = V { cx };
+    v.visit_expr(e).is_break()
 }
 
 /// Runs the given function for each sub-expression producing the final value consumed by the parent
