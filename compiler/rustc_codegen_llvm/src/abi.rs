@@ -2,6 +2,7 @@ use std::cmp;
 
 use libc::c_uint;
 use rustc_abi as abi;
+pub(crate) use rustc_abi::ExternAbi;
 use rustc_abi::Primitive::Int;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_codegen_ssa::MemFlags;
@@ -13,9 +14,8 @@ use rustc_middle::ty::layout::LayoutOf;
 pub(crate) use rustc_middle::ty::layout::{WIDE_PTR_ADDR, WIDE_PTR_EXTRA};
 use rustc_middle::{bug, ty};
 use rustc_session::config;
-pub(crate) use rustc_target::abi::call::*;
+pub(crate) use rustc_target::callconv::*;
 use rustc_target::spec::SanitizerSet;
-pub(crate) use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 
 use crate::attributes::llfn_attrs_from_instance;
@@ -436,7 +436,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             i - 1
         };
 
-        let apply_range_attr = |idx: AttributePlace, scalar: rustc_target::abi::Scalar| {
+        let apply_range_attr = |idx: AttributePlace, scalar: rustc_abi::Scalar| {
             if cx.sess().opts.optimize != config::OptLevel::No
                 && llvm_util::get_version() >= (19, 0, 0)
                 && matches!(scalar.primitive(), Int(..))

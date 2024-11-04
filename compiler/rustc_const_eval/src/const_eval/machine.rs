@@ -3,6 +3,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
+use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -14,8 +15,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi as CallAbi;
 use tracing::debug;
 
 use super::error::*;
@@ -411,7 +410,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         orig_instance: ty::Instance<'tcx>,
-        _abi: CallAbi,
+        _abi: ExternAbi,
         args: &[FnArg<'tcx>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,

@@ -786,7 +786,7 @@ pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {
-    type FnAbiOfResult = Result<&'tcx rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>>, Error>;
+    type FnAbiOfResult = Result<&'tcx rustc_target::callconv::FnAbi<'tcx, ty::Ty<'tcx>>, Error>;
 
     #[inline]
     fn handle_fn_abi_err(

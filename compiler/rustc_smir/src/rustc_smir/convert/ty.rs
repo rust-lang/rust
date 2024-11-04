@@ -891,38 +891,38 @@ impl<'tcx> Stable<'tcx> for ty::Movability {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::spec::abi::Abi {
+impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     type T = stable_mir::ty::Abi;
 
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
-        use rustc_target::spec::abi;
+        use rustc_abi::ExternAbi;
         use stable_mir::ty::Abi;
         match *self {
-            abi::Abi::Rust => Abi::Rust,
-            abi::Abi::C { unwind } => Abi::C { unwind },
-            abi::Abi::Cdecl { unwind } => Abi::Cdecl { unwind },
-            abi::Abi::Stdcall { unwind } => Abi::Stdcall { unwind },
-            abi::Abi::Fastcall { unwind } => Abi::Fastcall { unwind },
-            abi::Abi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
-            abi::Abi::Thiscall { unwind } => Abi::Thiscall { unwind },
-            abi::Abi::Aapcs { unwind } => Abi::Aapcs { unwind },
-            abi::Abi::Win64 { unwind } => Abi::Win64 { unwind },
-            abi::Abi::SysV64 { unwind } => Abi::SysV64 { unwind },
-            abi::Abi::PtxKernel => Abi::PtxKernel,
-            abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
-            abi::Abi::X86Interrupt => Abi::X86Interrupt,
-            abi::Abi::EfiApi => Abi::EfiApi,
-            abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
-            abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
-            abi::Abi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
-            abi::Abi::CCmseNonSecureEntry => Abi::CCmseNonSecureEntry,
-            abi::Abi::System { unwind } => Abi::System { unwind },
-            abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
-            abi::Abi::RustCall => Abi::RustCall,
-            abi::Abi::Unadjusted => Abi::Unadjusted,
-            abi::Abi::RustCold => Abi::RustCold,
-            abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
-            abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
+            ExternAbi::Rust => Abi::Rust,
+            ExternAbi::C { unwind } => Abi::C { unwind },
+            ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+            ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+            ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+            ExternAbi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
+            ExternAbi::Thiscall { unwind } => Abi::Thiscall { unwind },
+            ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+            ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
+            ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+            ExternAbi::PtxKernel => Abi::PtxKernel,
+            ExternAbi::Msp430Interrupt => Abi::Msp430Interrupt,
+            ExternAbi::X86Interrupt => Abi::X86Interrupt,
+            ExternAbi::EfiApi => Abi::EfiApi,
+            ExternAbi::AvrInterrupt => Abi::AvrInterrupt,
+            ExternAbi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
+            ExternAbi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
+            ExternAbi::CCmseNonSecureEntry => Abi::CCmseNonSecureEntry,
+            ExternAbi::System { unwind } => Abi::System { unwind },
+            ExternAbi::RustIntrinsic => Abi::RustIntrinsic,
+            ExternAbi::RustCall => Abi::RustCall,
+            ExternAbi::Unadjusted => Abi::Unadjusted,
+            ExternAbi::RustCold => Abi::RustCold,
+            ExternAbi::RiscvInterruptM => Abi::RiscvInterruptM,
+            ExternAbi::RiscvInterruptS => Abi::RiscvInterruptS,
         }
     }
 }

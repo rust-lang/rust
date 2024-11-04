@@ -2,11 +2,10 @@ use std::num::NonZero;
 use std::ops::Bound;
 use std::{cmp, fmt};
 
-use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutCalculator,
-    LayoutData, PointeeInfo, PointerKind, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
-    Variants,
+    AddressSpace, Align, BackendRepr, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData,
+    PointeeInfo, PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
+    TyAbiInterface, VariantIdx, Variants,
 };
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
@@ -19,9 +18,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{FieldIdx, TyAbiInterface, VariantIdx, call};
-use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
 };
@@ -86,16 +83,16 @@ impl abi::Integer {
         repr: &ReprOptions,
         min: i128,
         max: i128,
-    ) -> (Integer, bool) {
+    ) -> (abi::Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
         // which can fit all i128 values, so the result remains unaffected.
-        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
-        let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
+        let unsigned_fit = abi::Integer::fit_unsigned(cmp::max(min as u128, max as u128));
+        let signed_fit = cmp::max(abi::Integer::fit_signed(min), abi::Integer::fit_signed(max));
 
         if let Some(ity) = repr.int {
-            let discr = Integer::from_attr(&tcx, ity);
+            let discr = abi::Integer::from_attr(&tcx, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
             if discr < fit {
                 bug!(
@@ -113,7 +110,7 @@ impl abi::Integer {
             tcx.data_layout().c_enum_min_size
         } else {
             // repr(Rust) enums try to be as small as possible
-            Integer::I8
+            abi::Integer::I8
         };
 
         // If there are no negative values, we can use the unsigned fit.
@@ -154,10 +151,10 @@ impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            Int(i, signed) => i.to_ty(tcx, signed),
-            Float(f) => f.to_ty(tcx),
+            Primitive::Int(i, signed) => i.to_ty(tcx, signed),
+            Primitive::Float(f) => f.to_ty(tcx),
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => Ty::new_mut_ptr(tcx, tcx.types.unit),
+            Primitive::Pointer(_) => Ty::new_mut_ptr(tcx, tcx.types.unit),
         }
     }
 
@@ -166,13 +163,13 @@ impl Primitive {
     #[inline]
     fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            Int(i, signed) => i.to_ty(tcx, signed),
+            Primitive::Int(i, signed) => i.to_ty(tcx, signed),
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => {
+            Primitive::Pointer(_) => {
                 let signed = false;
                 tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
             }
-            Float(_) => bug!("floats do not have an int type"),
+            Primitive::Float(_) => bug!("floats do not have an int type"),
         }
     }
 }
@@ -299,13 +296,13 @@ impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
 
 #[derive(Clone, Copy)]
 pub struct LayoutCx<'tcx> {
-    pub calc: LayoutCalculator<TyCtxt<'tcx>>,
+    pub calc: abi::LayoutCalculator<TyCtxt<'tcx>>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> LayoutCx<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        Self { calc: LayoutCalculator::new(tcx), param_env }
+        Self { calc: abi::LayoutCalculator::new(tcx), param_env }
     }
 }
 
@@ -645,7 +642,7 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-pub type TyAndLayout<'tcx> = rustc_target::abi::TyAndLayout<'tcx, Ty<'tcx>>;
+pub type TyAndLayout<'tcx> = rustc_abi::TyAndLayout<'tcx, Ty<'tcx>>;
 
 /// Trait for contexts that want to be able to compute layouts of types.
 /// This automatically gives access to `LayoutOf`, through a blanket `impl`.
@@ -1048,7 +1045,7 @@ where
                 if let Some(variant) = data_variant {
                     // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                     // (requires passing in the expected address space from the caller)
-                    let ptr_end = offset + Pointer(AddressSpace::DATA).size(cx);
+                    let ptr_end = offset + Primitive::Pointer(AddressSpace::DATA).size(cx);
                     for i in 0..variant.fields.count() {
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
@@ -1163,7 +1160,7 @@ where
 ///   affects various optimizations and codegen.
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
-pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
+pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) -> bool {
     if let Some(did) = fn_def_id {
         // Special attribute for functions which can't unwind.
         if tcx.codegen_fn_attrs(did).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
@@ -1195,7 +1192,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
     // ABIs have such an option. Otherwise the only other thing here is Rust
     // itself, and those ABIs are determined by the panic strategy configured
     // for this compilation.
-    use SpecAbi::*;
+    use ExternAbi::*;
     match abi {
         C { unwind }
         | System { unwind }
@@ -1231,17 +1228,16 @@ pub enum FnAbiError<'tcx> {
     Layout(LayoutError<'tcx>),
 
     /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-    AdjustForForeignAbi(call::AdjustForForeignAbiError),
+    AdjustForForeignAbi(rustc_target::callconv::AdjustForForeignAbiError),
 }
 
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
-            Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {
-                arch,
-                abi,
-            }) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diag(dcx, level),
+            Self::AdjustForForeignAbi(
+                rustc_target::callconv::AdjustForForeignAbiError::Unsupported { arch, abi },
+            ) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diag(dcx, level),
         }
     }
 }

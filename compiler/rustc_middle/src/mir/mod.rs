@@ -10,6 +10,7 @@ use std::{iter, mem};
 pub use basic_blocks::BasicBlocks;
 use either::Either;
 use polonius_engine::Atom;
+use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::Mutability;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -27,7 +28,6 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::trace;
 
 pub use self::query::*;

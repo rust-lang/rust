@@ -35,6 +35,7 @@
 //! Likewise, applying the optimisation can create a lot of new MIR, so we bound the instruction
 //! cost by `MAX_COST`.
 
+use rustc_abi::{TagEncoding, Variants};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
@@ -50,7 +51,6 @@ use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{TagEncoding, Variants};
 use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;

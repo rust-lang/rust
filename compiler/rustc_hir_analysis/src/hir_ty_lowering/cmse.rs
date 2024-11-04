@@ -1,9 +1,9 @@
+use rustc_abi::ExternAbi;
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, ParamEnv, TyCtxt};
-use rustc_target::spec::abi;
 
 use crate::errors;
 
@@ -14,13 +14,13 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     dcx: DiagCtxtHandle<'_>,
     hir_id: HirId,
-    abi: abi::Abi,
+    abi: ExternAbi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
     let abi_name = abi.name();
 
     match abi {
-        abi::Abi::CCmseNonSecureCall => {
+        ExternAbi::CCmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
             let hir::Node::Ty(hir::Ty {
                 span: bare_fn_span,
@@ -78,7 +78,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 }
             };
         }
-        abi::Abi::CCmseNonSecureEntry => {
+        ExternAbi::CCmseNonSecureEntry => {
             let hir_node = tcx.hir_node(hir_id);
             let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
@@ -195,17 +195,17 @@ fn is_valid_cmse_output<'tcx>(
     Ok(ret_ty == tcx.types.i64 || ret_ty == tcx.types.u64 || ret_ty == tcx.types.f64)
 }
 
-fn should_emit_generic_error<'tcx>(abi: abi::Abi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
+fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError<'tcx>) -> bool {
     use LayoutError::*;
 
     match layout_err {
         Unknown(ty) => {
             match abi {
-                abi::Abi::CCmseNonSecureCall => {
+                ExternAbi::CCmseNonSecureCall => {
                     // prevent double reporting of this error
                     !ty.is_impl_trait()
                 }
-                abi::Abi::CCmseNonSecureEntry => true,
+                ExternAbi::CCmseNonSecureEntry => true,
                 _ => bug!("invalid ABI: {abi}"),
             }
         }

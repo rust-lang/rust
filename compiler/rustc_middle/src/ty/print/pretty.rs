@@ -3,6 +3,7 @@ use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
+use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -17,8 +18,6 @@ use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::FileNameDisplayPreference;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_target::abi::Size;
-use rustc_target::spec::abi::Abi;
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -3029,7 +3028,7 @@ define_print! {
     ty::FnSig<'tcx> {
         p!(write("{}", self.safety.prefix_str()));
 
-        if self.abi != Abi::Rust {
+        if self.abi != ExternAbi::Rust {
             p!(write("extern {} ", self.abi));
         }
 

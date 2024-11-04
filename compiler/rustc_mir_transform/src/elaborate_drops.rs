@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::patch::MirPatch;
@@ -14,7 +15,6 @@ use rustc_mir_dataflow::{
     Analysis, MoveDataParamEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
 };
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;

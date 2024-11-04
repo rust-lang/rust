@@ -13,6 +13,7 @@
 
 use std::fmt::Write;
 
+use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -23,7 +24,6 @@ use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{
     self, ExistentialProjection, GenericArgKind, GenericArgsRef, ParamEnv, Ty, TyCtxt,
 };
-use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -364,7 +364,7 @@ fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push_str(sig.safety.prefix_str());
 
-                if sig.abi != rustc_target::spec::abi::Abi::Rust {
+                if sig.abi != rustc_abi::ExternAbi::Rust {
                     output.push_str("extern \"");
                     output.push_str(sig.abi.name());
                     output.push_str("\" ");

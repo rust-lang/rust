@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::iter;
 use std::ops::Range;
 
-use rustc_abi::Integer;
+use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -444,8 +443,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         cx.push("U");
                     }
                     match sig.abi {
-                        Abi::Rust => {}
-                        Abi::C { unwind: false } => cx.push("KC"),
+                        ExternAbi::Rust => {}
+                        ExternAbi::C { unwind: false } => cx.push("KC"),
                         abi => {
                             cx.push("K");
                             let name = abi.name();

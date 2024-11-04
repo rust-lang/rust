@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 use either::Either;
+use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
@@ -15,8 +16,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::WrappingRange;
-use rustc_target::abi::call::AdjustForForeignAbiError;
+use rustc_target::callconv::AdjustForForeignAbiError;
 
 use crate::interpret::InternKind;
 

@@ -1,4 +1,5 @@
 use either::{Left, Right};
+use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -15,8 +16,7 @@ use rustc_middle::ty::{
 use rustc_middle::{mir, span_bug};
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::callconv::FnAbi;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument, trace};
 
