@@ -14,9 +14,9 @@
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
-use crate::macros::const_assert;
 use crate::mem;
 use crate::num::FpCategory;
+use crate::panic::const_assert;
 
 /// Basic mathematical constants.
 #[unstable(feature = "f128", issue = "116909")]

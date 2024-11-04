@@ -2788,6 +2788,67 @@ where
     unreachable!()
 }
 
+/// A macro to make it easier to invoke const_eval_select. Use as follows:
+/// ```rust,ignore (just a macro example)
+/// const_eval_select!(
+///     @capture { arg1: i32 = some_expr, arg2: T = other_expr } -> U:
+///     if const #[attributes_for_const_arm] {
+///         // Compile-time code goes here.
+///     } else #[attributes_for_runtime_arm] {
+///         // Run-time code goes here.
+///     }
+/// )
+/// ```
+/// The `@capture` block declares which surrounding variables / expressions can be
+/// used inside the `if const`.
+/// Note that the two arms of this `if` really each become their own function, which is why the
+/// macro supports setting attributes for those functions. The runtime function is always
+/// markes as `#[inline]`.
+///
+/// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
+pub(crate) macro const_eval_select {
+    (
+        @capture { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
+        if const
+            $(#[$compiletime_attr:meta])* $compiletime:block
+        else
+            $(#[$runtime_attr:meta])* $runtime:block
+    ) => {{
+        $(#[$runtime_attr])*
+        #[inline]
+        fn runtime($($arg: $ty),*) $( -> $ret )? {
+            $runtime
+        }
+
+        $(#[$compiletime_attr])*
+        const fn compiletime($($arg: $ty),*) $( -> $ret )? {
+            // Don't warn if one of the arguments is unused.
+            $(let _ = $arg;)*
+
+            $compiletime
+        }
+
+        const_eval_select(($($val,)*), compiletime, runtime)
+    }},
+    // We support leaving away the `val` expressions for *all* arguments
+    // (but not for *some* arguments, that's too tricky).
+    (
+        @capture { $($arg:ident : $ty:ty),* $(,)? } $( -> $ret:ty )? :
+        if const
+            $(#[$compiletime_attr:meta])* $compiletime:block
+        else
+            $(#[$runtime_attr:meta])* $runtime:block
+    ) => {
+        $crate::intrinsics::const_eval_select!(
+            @capture { $($arg : $ty = $arg),* } $(-> $ret)? :
+            if const
+                $(#[$compiletime_attr])* $compiletime
+            else
+                $(#[$runtime_attr])* $runtime
+        )
+    },
+}
+
 /// Returns whether the argument's value is statically known at
 /// compile-time.
 ///
@@ -2830,7 +2891,7 @@ where
 /// # Stability concerns
 ///
 /// While it is safe to call, this intrinsic may behave differently in
-/// a `const` context than otherwise. See the [`const_eval_select`]
+/// a `const` context than otherwise. See the [`const_eval_select()`]
 /// documentation for an explanation of the issues this can cause. Unlike
 /// `const_eval_select`, this intrinsic isn't guaranteed to behave
 /// deterministically even in a `const` context.
@@ -3734,14 +3795,15 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
     }
 
-    fn runtime(ptr: *const (), align: usize) {
-        // SAFETY: this call is always safe.
-        unsafe {
-            miri_promise_symbolic_alignment(ptr, align);
+    const_eval_select!(
+        @capture { ptr: *const (), align: usize}:
+        if const {
+            // Do nothing.
+        } else {
+            // SAFETY: this call is always safe.
+            unsafe {
+                miri_promise_symbolic_alignment(ptr, align);
+            }
         }
-    }
-
-    const fn compiletime(_ptr: *const (), _align: usize) {}
-
-    const_eval_select((ptr, align), compiletime, runtime);
+    )
 }
