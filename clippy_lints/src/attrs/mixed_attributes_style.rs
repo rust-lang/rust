@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{AttrKind, AttrStyle, Attribute};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{SourceFile, Span, Symbol};
 
@@ -32,7 +32,7 @@ impl From<&AttrKind> for SimpleAttrKind {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute]) {
+pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute]) {
     let mut inner_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
     let mut outer_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
 
@@ -64,7 +64,7 @@ pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute]) 
     }
 }
 
-fn lint_mixed_attrs(cx: &LateContext<'_>, attrs: &[Attribute]) {
+fn lint_mixed_attrs(cx: &EarlyContext<'_>, attrs: &[Attribute]) {
     let mut attrs_iter = attrs.iter().filter(|attr| !attr.span.from_expansion());
     let span = if let (Some(first), Some(last)) = (attrs_iter.next(), attrs_iter.last()) {
         first.span.with_hi(last.span.hi())
