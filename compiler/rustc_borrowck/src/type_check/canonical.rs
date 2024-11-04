@@ -62,7 +62,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         {
             let universe_info = error_info.to_universe_info(old_universe);
             for u in (old_universe + 1)..=universe {
-                self.borrowck_context.constraints.universe_causes.insert(u, universe_info.clone());
+                self.constraints.universe_causes.insert(u, universe_info.clone());
             }
         }
 

@@ -39,8 +39,8 @@ pub(super) fn generate<'a, 'tcx>(
 
     let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
-        typeck.borrowck_context.universal_regions,
-        &typeck.borrowck_context.constraints.outlives_constraints,
+        typeck.universal_regions,
+        &typeck.constraints.outlives_constraints,
     );
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
@@ -59,11 +59,7 @@ pub(super) fn generate<'a, 'tcx>(
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
-    record_regular_live_regions(
-        typeck.tcx(),
-        &mut typeck.borrowck_context.constraints.liveness_constraints,
-        body,
-    );
+    record_regular_live_regions(typeck.tcx(), &mut typeck.constraints.liveness_constraints, body);
 }
 
 // The purpose of `compute_relevant_live_locals` is to define the subset of `Local`

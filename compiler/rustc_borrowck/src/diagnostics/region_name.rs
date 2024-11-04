@@ -30,8 +30,8 @@ pub(crate) struct RegionName {
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
-/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
-/// This helps to print the right kinds of diagnostics.
+/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get
+/// `Static`. This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
@@ -825,8 +825,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// async fn foo() -> i32 { 2 }
     /// ```
     ///
-    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
-    /// returns the `i32`.
+    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements
+    /// `Future<Output=i32>`, returns the `i32`.
     ///
     /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {

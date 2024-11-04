@@ -763,7 +763,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     }
 }
 
-///helper struct for explain_captures()
+/// Helper struct for `explain_captures`.
 struct CapturedMessageOpt {
     is_partial_move: bool,
     is_loop_message: bool,

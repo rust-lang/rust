@@ -20,7 +20,6 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -49,13 +48,21 @@ use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
-use self::location::LocationTable;
-use self::path_utils::*;
-use self::prefixes::PrefixSet;
+use crate::borrow_set::{BorrowData, BorrowSet};
+use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::dataflow::{BorrowIndex, BorrowckDomain, BorrowckResults, Borrows};
+use crate::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
+use crate::location::LocationTable;
+use crate::nll::PoloniusOutput;
+use crate::path_utils::*;
+use crate::place_ext::PlaceExt;
+use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::prefixes::PrefixSet;
+use crate::region_infer::RegionInferenceContext;
+use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 
-pub mod borrow_set;
+mod borrow_set;
 mod borrowck_errors;
 mod constraints;
 mod dataflow;
@@ -81,18 +88,11 @@ mod util;
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
-use borrow_set::{BorrowData, BorrowSet};
-use dataflow::{BorrowIndex, BorrowckDomain, BorrowckResults, Borrows};
-use nll::PoloniusOutput;
-use place_ext::PlaceExt;
-use places_conflict::{PlaceConflictBias, places_conflict};
-use region_infer::RegionInferenceContext;
-use renumber::RegionCtxt;
-
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);
+
 impl<'tcx> TyCtxtConsts<'tcx> {
     const DEREF_PROJECTION: &'tcx [PlaceElem<'tcx>; 1] = &[ProjectionElem::Deref];
 }
@@ -162,7 +162,7 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut diags = diags::BorrowckDiags::new();
+    let diags = &mut diags::BorrowckDiags::new();
 
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
@@ -227,14 +227,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(
-        &infcx,
-        body,
-        &regioncx,
-        &opt_closure_req,
-        &opaque_type_values,
-        &mut diags,
-    );
+    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
     // so it doesn't overlap with the others below. This reduces peak memory
@@ -299,7 +292,6 @@ fn do_mir_borrowck<'tcx>(
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
-        diags = promoted_mbcx.diags;
 
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -434,7 +426,7 @@ fn do_mir_borrowck<'tcx>(
     (result, body_with_facts)
 }
 
-pub struct BorrowckInferCtxt<'tcx> {
+pub(crate) struct BorrowckInferCtxt<'tcx> {
     pub(crate) infcx: InferCtxt<'tcx>,
     pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }
@@ -587,7 +579,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: diags::BorrowckDiags<'infcx, 'tcx>,
+    diags: &'a mut diags::BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -638,7 +630,9 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
                 );
             }
             StatementKind::Intrinsic(box kind) => match kind {
-                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), state),
+                NonDivergingIntrinsic::Assume(op) => {
+                    self.consume_operand(location, (op, span), state);
+                }
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
@@ -2105,7 +2099,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
                 let is_local_mutation_allowed = match mut_borrow_kind {
                     // `ClosureCapture` is used for mutable variable with an immutable binding.
-                    // This is only behaviour difference between `ClosureCapture` and mutable borrows.
+                    // This is only behaviour difference between `ClosureCapture` and mutable
+                    // borrows.
                     MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
                     MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
                         is_local_mutation_allowed
@@ -2350,23 +2345,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                 ) => Err(place),
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
-                                    // Subtle: this is an upvar
-                                    // reference, so it looks like
-                                    // `self.foo` -- we want to double
-                                    // check that the location `*self`
-                                    // is mutable (i.e., this is not a
-                                    // `Fn` closure). But if that
-                                    // check succeeds, we want to
-                                    // *blame* the mutability on
-                                    // `place` (that is,
-                                    // `self.foo`). This is used to
-                                    // propagate the info about
-                                    // whether mutability declarations
-                                    // are used outwards, so that we register
-                                    // the outer variable as mutable. Otherwise a
-                                    // test like this fails to record the `mut`
-                                    // as needed:
-                                    //
+                                    // Subtle: this is an upvar reference, so it looks like
+                                    // `self.foo` -- we want to double check that the location
+                                    // `*self` is mutable (i.e., this is not a `Fn` closure). But
+                                    // if that check succeeds, we want to *blame* the mutability on
+                                    // `place` (that is, `self.foo`). This is used to propagate the
+                                    // info about whether mutability declarations are used
+                                    // outwards, so that we register the outer variable as mutable.
+                                    // Otherwise a test like this fails to record the `mut` as
+                                    // needed:
                                     // ```
                                     // fn foo<F: FnOnce()>(_f: F) { }
                                     // fn main() {
@@ -2511,7 +2498,7 @@ mod diags {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
@@ -2519,7 +2506,7 @@ mod diags {
                     #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
 
             if !self.diags.buffered_diags.is_empty() {
