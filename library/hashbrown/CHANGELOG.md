@@ -13,7 +13,9 @@ This release removes the `borsh` feature introduced in 0.15.0 because it was
 found to be incorrectly implemented. Users should use the `hashbrown` feature of
 the `borsh` crate instead which provides the same trait implementations.
 
-## [v0.15.0] - 2024-10-01
+## ~~[v0.15.0] - 2024-10-01~~
+
+This release was _yanked_ due to a broken implementation of the `borsh` feature.
 
 This update contains breaking changes that remove the `raw` API with the hope of
 centralising on the `HashTable` API in the future. You can follow the discussion
