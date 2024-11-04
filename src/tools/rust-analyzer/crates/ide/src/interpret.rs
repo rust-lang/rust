@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use stdx::format_to;
 use syntax::{algo::ancestors_at_offset, ast, AstNode, TextRange};
 
-// Feature: Interpret a function, static or const.
+// Feature: Interpret A Function, Static Or Const.
 //
 // |===
 // | Editor  | Action Name
