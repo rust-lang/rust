@@ -61,11 +61,11 @@ mod cross_crate {
         <Foo as Trait>::trait_unstable(&foo); //~ ERROR use of unstable library feature
 
         unstable_text();
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         Trait::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         <Foo as Trait>::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
 
         stable();
         foo.method_stable();
@@ -152,9 +152,9 @@ mod cross_crate {
         Trait::trait_unstable(&foo); //~ ERROR use of unstable library feature
         <Foo as Trait>::trait_unstable(&foo); //~ ERROR use of unstable library feature
         Trait::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         <Foo as Trait>::trait_unstable_text(&foo);
-        //~^ ERROR use of unstable library feature 'unstable_test_feature': text
+        //~^ ERROR use of unstable library feature `unstable_test_feature`: text
         foo.trait_stable();
         Trait::trait_stable(&foo);
         <Foo>::trait_stable(&foo);

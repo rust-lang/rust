@@ -3197,6 +3197,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5c9f15eec8235d7cb775ee6f81891db79b98fd54ba1ad8fae565b88ef1ae4e2"
 
 [[package]]
+name = "rustc-std-workspace-alloc"
+version = "1.0.1"
+
+[[package]]
+name = "rustc-std-workspace-core"
+version = "1.0.1"
+
+[[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.1"
+
+[[package]]
 name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
