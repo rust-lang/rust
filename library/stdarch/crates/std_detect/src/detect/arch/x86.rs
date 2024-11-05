@@ -123,8 +123,10 @@ features! {
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rdseed: "rdseed";
     /// RDSEED
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] tsc: "tsc";
+    without cfg check: true;
     /// TSC (Time Stamp Counter)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] mmx: "mmx";
+    without cfg check: true;
     /// MMX (MultiMedia eXtensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse: "sse";
     /// SSE (Streaming SIMD Extensions)
@@ -157,8 +159,10 @@ features! {
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512cd: "avx512cd" ;
     /// AVX-512 CD (Conflict Detection Instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512er: "avx512er";
+    without cfg check: true;
     /// AVX-512 ER (Expo nential and Reciprocal Instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512pf: "avx512pf";
+    without cfg check: true;
     /// AVX-512 PF (Prefetch Instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bw: "avx512bw";
     /// AVX-512 BW (Byte and Word Instructions)

@@ -160,6 +160,7 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fp8fma: "fp8fma";
     /// FEAT_FP8FMA (F8FMA Instructions)
     @FEATURE: #[unstable(feature = "stdarch_aarch64_feature_detection", issue = "127764")] fpmr: "fpmr";
+    without cfg check: true;
     /// FEAT_FPMR (Special-purpose AArch64-FPMR register)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] frintts: "frintts";
     /// FEAT_FRINTTS (float to integer rounding instructions)

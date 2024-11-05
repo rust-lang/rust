@@ -14,6 +14,7 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")] neon: "neon";
     /// ARM Advanced SIMD (NEON) - Aarch32
     @FEATURE: #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")] pmull: "pmull";
+    without cfg check: true;
     /// Polynomial Multiply
     @FEATURE: #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")] crc: "crc";
     /// CRC32 (Cyclic Redundancy Check)

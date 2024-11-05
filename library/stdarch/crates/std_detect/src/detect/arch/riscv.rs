@@ -90,28 +90,36 @@ features! {
     /// [ISA manual]: https://github.com/riscv/riscv-isa-manual/
     #[stable(feature = "riscv_ratified", since = "1.76.0")]
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv32i: "rv32i";
+    without cfg check: true;
     /// RV32I Base Integer Instruction Set
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zifencei: "zifencei";
+    without cfg check: true;
     /// "Zifencei" Instruction-Fetch Fence
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihintpause: "zihintpause";
+    without cfg check: true;
     /// "Zihintpause" Pause Hint
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv64i: "rv64i";
+    without cfg check: true;
     /// RV64I Base Integer Instruction Set
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] m: "m";
     /// "M" Standard Extension for Integer Multiplication and Division
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] a: "a";
     /// "A" Standard Extension for Atomic Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicsr: "zicsr";
+    without cfg check: true;
     /// "Zicsr", Control and Status Register (CSR) Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zicntr: "zicntr";
+    without cfg check: true;
     /// "Zicntr", Standard Extension for Base Counters and Timers
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zihpm: "zihpm";
+    without cfg check: true;
     /// "Zihpm", Standard Extension for Hardware Performance Counters
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] f: "f";
     /// "F" Standard Extension for Single-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] d: "d";
     /// "D" Standard Extension for Double-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] q: "q";
+    without cfg check: true;
     /// "Q" Standard Extension for Quad-Precision Floating-Point
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] c: "c";
     /// "C" Standard Extension for Compressed Instructions
@@ -125,34 +133,45 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zhinxmin: "zhinxmin";
     /// "Zhinxmin" Standard Extension for Minimal Half-Precision Floating-Point in Integer Registers
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] ztso: "ztso";
+    without cfg check: true;
     /// "Ztso" Standard Extension for Total Store Ordering
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv32e: "rv32e";
+    without cfg check: true;
     /// RV32E Base Integer Instruction Set
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv128i: "rv128i";
+    without cfg check: true;
     /// RV128I Base Integer Instruction Set
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfh: "zfh";
     /// "Zfh" Standard Extension for 16-Bit Half-Precision Floating-Point
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zfhmin: "zfhmin";
     /// "Zfhmin" Standard Extension for Minimal Half-Precision Floating-Point Support
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] j: "j";
+    without cfg check: true;
     /// "J" Standard Extension for Dynamically Translated Languages
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] p: "p";
+    without cfg check: true;
     /// "P" Standard Extension for Packed-SIMD Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] v: "v";
     /// "V" Standard Extension for Vector Operations
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zam: "zam";
+    without cfg check: true;
     /// "Zam" Standard Extension for Misaligned Atomics
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] s: "s";
+    without cfg check: true;
     /// Supervisor-Level ISA
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svnapot: "svnapot";
+    without cfg check: true;
     /// "Svnapot" Standard Extension for NAPOT Translation Contiguity
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svpbmt: "svpbmt";
+    without cfg check: true;
     /// "Svpbmt" Standard Extension for Page-Based Memory Types
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] svinval: "svinval";
+    without cfg check: true;
     /// "Svinval" Standard Extension for Fine-Grained Address-Translation Cache Invalidation
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] h: "h";
+    without cfg check: true;
     /// Hypervisor Extension
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.76.0")] zba: "zba";

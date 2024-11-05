@@ -12,5 +12,6 @@ features! {
     @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] vsx: "vsx";
     /// VSX
     @FEATURE: #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")] power8: "power8";
+    without cfg check: true;
     /// Power8
 }
