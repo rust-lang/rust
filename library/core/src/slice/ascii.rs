@@ -52,10 +52,28 @@ impl [u8] {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_unstable(feature = "const_eq_ignore_ascii_case", issue = "131719")]
     #[must_use]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
+    pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        // FIXME(const-hack): Revert this implementation when `core::iter::zip` is allowed in const.
+        let mut a = self;
+        let mut b = other;
+
+        while let ([first_a, rest_a @ ..], [first_b, rest_b @ ..]) = (a, b) {
+            if first_a.eq_ignore_ascii_case(&first_b) {
+                a = rest_a;
+                b = rest_b;
+            } else {
+                return false;
+            }
+        }
+
+        true
     }
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
