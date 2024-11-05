@@ -3,11 +3,12 @@
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::ffi::c_char;
+use crate::intrinsics::const_eval_select;
 use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 use crate::slice::memchr;
-use crate::{fmt, intrinsics, ops, slice, str};
+use crate::{fmt, ops, slice, str};
 
 // FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
 //   depends on where the item is being documented. however, since this is libcore, we can't
@@ -411,37 +412,35 @@ impl CStr {
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
     #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        #[inline]
-        fn rt_impl(bytes: &[u8]) -> &CStr {
-            // Chance at catching some UB at runtime with debug builds.
-            debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
+        const_eval_select!(
+            @capture { bytes: &[u8] } -> &CStr:
+            if const {
+                // Saturating so that an empty slice panics in the assert with a good
+                // message, not here due to underflow.
+                let mut i = bytes.len().saturating_sub(1);
+                assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
 
-            // SAFETY: Casting to CStr is safe because its internal representation
-            // is a [u8] too (safe only inside std).
-            // Dereferencing the obtained pointer is safe because it comes from a
-            // reference. Making a reference is then safe because its lifetime
-            // is bound by the lifetime of the given `bytes`.
-            unsafe { &*(bytes as *const [u8] as *const CStr) }
-        }
+                // Ending nul byte exists, skip to the rest.
+                while i != 0 {
+                    i -= 1;
+                    let byte = bytes[i];
+                    assert!(byte != 0, "input contained interior nul");
+                }
 
-        const fn const_impl(bytes: &[u8]) -> &CStr {
-            // Saturating so that an empty slice panics in the assert with a good
-            // message, not here due to underflow.
-            let mut i = bytes.len().saturating_sub(1);
-            assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
+                // SAFETY: See runtime cast comment below.
+                unsafe { &*(bytes as *const [u8] as *const CStr) }
+            } else {
+                // Chance at catching some UB at runtime with debug builds.
+                debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
 
-            // Ending nul byte exists, skip to the rest.
-            while i != 0 {
-                i -= 1;
-                let byte = bytes[i];
-                assert!(byte != 0, "input contained interior nul");
+                // SAFETY: Casting to CStr is safe because its internal representation
+                // is a [u8] too (safe only inside std).
+                // Dereferencing the obtained pointer is safe because it comes from a
+                // reference. Making a reference is then safe because its lifetime
+                // is bound by the lifetime of the given `bytes`.
+                unsafe { &*(bytes as *const [u8] as *const CStr) }
             }
-
-            // SAFETY: See `rt_impl` cast.
-            unsafe { &*(bytes as *const [u8] as *const CStr) }
-        }
-
-        intrinsics::const_eval_select((bytes,), const_impl, rt_impl)
+        )
     }
 
     /// Returns the inner pointer to this C string.
@@ -735,29 +734,27 @@ impl AsRef<CStr> for CStr {
 #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0"))]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const unsafe fn strlen(ptr: *const c_char) -> usize {
-    const fn strlen_ct(s: *const c_char) -> usize {
-        let mut len = 0;
+    const_eval_select!(
+        @capture { s: *const c_char = ptr } -> usize:
+        if const {
+            let mut len = 0;
 
-        // SAFETY: Outer caller has provided a pointer to a valid C string.
-        while unsafe { *s.add(len) } != 0 {
-            len += 1;
+            // SAFETY: Outer caller has provided a pointer to a valid C string.
+            while unsafe { *s.add(len) } != 0 {
+                len += 1;
+            }
+
+            len
+        } else {
+            extern "C" {
+                /// Provided by libc or compiler_builtins.
+                fn strlen(s: *const c_char) -> usize;
+            }
+
+            // SAFETY: Outer caller has provided a pointer to a valid C string.
+            unsafe { strlen(s) }
         }
-
-        len
-    }
-
-    #[inline]
-    fn strlen_rt(s: *const c_char) -> usize {
-        extern "C" {
-            /// Provided by libc or compiler_builtins.
-            fn strlen(s: *const c_char) -> usize;
-        }
-
-        // SAFETY: Outer caller has provided a pointer to a valid C string.
-        unsafe { strlen(s) }
-    }
-
-    intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt)
+    )
 }
 
 /// An iterator over the bytes of a [`CStr`], without the nul terminator.

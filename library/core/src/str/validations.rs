@@ -132,19 +132,16 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 
     let ascii_block_size = 2 * USIZE_BYTES;
     let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
-    let align = {
-        const fn compiletime(_v: &[u8]) -> usize {
+    // Below, we safely fall back to a slower codepath if the offset is `usize::MAX`,
+    // so the end-to-end behavior is the same at compiletime and runtime.
+    let align = const_eval_select!(
+        @capture { v: &[u8] } -> usize:
+        if const {
             usize::MAX
-        }
-
-        fn runtime(v: &[u8]) -> usize {
+        } else {
             v.as_ptr().align_offset(USIZE_BYTES)
         }
-
-        // Below, we safely fall back to a slower codepath if the offset is `usize::MAX`,
-        // so the end-to-end behavior is the same at compiletime and runtime.
-        const_eval_select((v,), compiletime, runtime)
-    };
+    );
 
     while index < len {
         let old_offset = index;
