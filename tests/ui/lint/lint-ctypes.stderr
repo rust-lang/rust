@@ -4,6 +4,7 @@ error: `extern` block uses type `Foo`, which is not FFI-safe
 LL |     pub fn ptr_type1(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
    |
+   = note: this reference (`*const Foo`) is can safely be translated into a C pointer, but `Foo` itself is not FFI-safe
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -23,6 +24,7 @@ error: `extern` block uses type `Foo`, which is not FFI-safe
 LL |     pub fn ptr_type2(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
    |
+   = note: this reference (`*const Foo`) is can safely be translated into a C pointer, but `Foo` itself is not FFI-safe
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -37,26 +39,27 @@ error: `extern` block uses type `((),)`, which is not FFI-safe
 LL |     pub fn ptr_tuple(p: *const ((),));
    |                         ^^^^^^^^^^^^ not FFI-safe
    |
+   = note: this reference (`*const ((),)`) is can safely be translated into a C pointer, but `((),)` itself is not FFI-safe
    = help: consider using a struct instead
    = note: tuples have unspecified layout
 
-error: `extern` block uses type `[u32]`, which is not FFI-safe
+error: `extern` block uses type `&[u32]`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:51:26
    |
 LL |     pub fn slice_type(p: &[u32]);
    |                          ^^^^^^ not FFI-safe
    |
-   = help: consider using a raw pointer instead
-   = note: slices have no C equivalent
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `str`, which is not FFI-safe
+error: `extern` block uses type `&str`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:52:24
    |
 LL |     pub fn str_type(p: &str);
    |                        ^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: string slices have no C equivalent
+   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Box<u32>`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:53:24
@@ -101,13 +104,13 @@ LL |     pub fn u128_type(p: u128);
    |
    = note: 128-bit integers don't currently have a known stable ABI
 
-error: `extern` block uses type `dyn Bar`, which is not FFI-safe
+error: `extern` block uses type `&dyn Bar`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:59:26
    |
 LL |     pub fn trait_type(p: &dyn Bar);
    |                          ^^^^^^^^ not FFI-safe
    |
-   = note: trait objects have no C equivalent
+   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:60:26
@@ -197,14 +200,14 @@ LL |     pub fn transparent_i128(p: TransparentI128);
    |
    = note: 128-bit integers don't currently have a known stable ABI
 
-error: `extern` block uses type `str`, which is not FFI-safe
+error: `extern` block uses type `&str`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:71:31
    |
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: string slices have no C equivalent
+   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Box<u32>`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:72:30
@@ -259,4 +262,3 @@ LL |     pub static static_u128_array_type: [u128; 16];
    = note: 128-bit integers don't currently have a known stable ABI
 
 error: aborting due to 27 previous errors
-

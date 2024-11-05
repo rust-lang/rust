@@ -48,15 +48,15 @@ extern "C" {
     pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
     pub fn ptr_unit(p: *const ());
     pub fn ptr_tuple(p: *const ((),)); //~ ERROR: uses type `((),)`
-    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
-    pub fn str_type(p: &str); //~ ERROR: uses type `str`
+    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `&[u32]`
+    pub fn str_type(p: &str); //~ ERROR: uses type `&str`
     pub fn box_type(p: Box<u32>); //~ ERROR uses type `Box<u32>`
     pub fn opt_box_type(p: Option<Box<u32>>);
     //~^ ERROR uses type `Option<Box<u32>>`
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
-    pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `dyn Bar`
+    pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
     pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
     pub fn zero_size(p: ZeroSize); //~ ERROR uses type `ZeroSize`
@@ -68,7 +68,7 @@ extern "C" {
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `Box<u32>`
     pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
 

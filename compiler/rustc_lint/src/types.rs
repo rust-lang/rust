@@ -732,8 +732,6 @@ enum FfiResult<'tcx> {
         reason: DiagMessage,
         help: Option<DiagMessage>,
     },
-    // NOTE: this `allow` is only here for one retroactively-added commit
-    #[allow(dead_code)]
     FfiUnsafeWrapper {
         ty: Ty<'tcx>,
         reason: DiagMessage,
@@ -1044,16 +1042,47 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match *ty.kind() {
             ty::Adt(def, args) => {
-                if let Some(boxed) = ty.boxed_ty()
-                    && matches!(self.mode, CItemKind::Definition)
-                {
-                    if boxed.is_sized(tcx, self.cx.typing_env()) {
-                        return FfiSafe;
+                if let Some(inner_ty) = ty.boxed_ty() {
+                    if inner_ty.is_sized(tcx, self.cx.typing_env())
+                        || matches!(inner_ty.kind(), ty::Foreign(..))
+                    {
+                        // discussion on declaration vs definition:
+                        // see the `ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _)` arm
+                        // of this `match *ty.kind()` block
+                        if matches!(self.mode, CItemKind::Definition) {
+                            return FfiSafe;
+                        } else {
+                            let inner_res = self.check_type_for_ffi(acc, inner_ty);
+                            return match inner_res {
+                                FfiUnsafe { .. } | FfiUnsafeWrapper { .. } => FfiUnsafeWrapper {
+                                    ty,
+                                    reason: fluent::lint_improper_ctypes_sized_ptr_to_unsafe_type,
+                                    wrapped: Box::new(inner_res),
+                                    help: None,
+                                },
+                                _ => inner_res,
+                            };
+                        }
                     } else {
+                        let help = match inner_ty.kind() {
+                            ty::Str => Some(fluent::lint_improper_ctypes_str_help),
+                            ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
+                            ty::Adt(def, _)
+                                if matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union)
+                                    && matches!(
+                                        tcx.get_diagnostic_name(def.did()),
+                                        Some(sym::cstring_type | sym::cstr_type)
+                                    )
+                                    && !acc.base_ty.is_mutable_ptr() =>
+                            {
+                                Some(fluent::lint_improper_ctypes_cstr_help)
+                            }
+                            _ => None,
+                        };
                         return FfiUnsafe {
                             ty,
-                            reason: fluent::lint_improper_ctypes_box,
-                            help: None,
+                            reason: fluent::lint_improper_ctypes_unsized_box,
+                            help,
                         };
                     }
                 }
@@ -1209,15 +1238,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_tuple_help),
             },
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
-                if {
-                    matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx, self.cx.typing_env())
-                } =>
-            {
-                FfiSafe
-            }
-
             ty::RawPtr(ty, _)
                 if match ty.kind() {
                     ty::Tuple(tuple) => tuple.is_empty(),
@@ -1227,7 +1247,66 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => self.check_type_for_ffi(acc, ty),
+            ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _) => {
+                if inner_ty.is_sized(tcx, self.cx.typing_env())
+                    || matches!(inner_ty.kind(), ty::Foreign(..))
+                {
+                    // there's a nuance on what this lint should do for function definitions
+                    // (touched upon in https://github.com/rust-lang/rust/issues/66220 and https://github.com/rust-lang/rust/pull/72700)
+                    //
+                    // (`extern "C" fn fn_name(...) {...}`) versus declarations (`extern "C" {fn fn_name(...);}`).
+                    // The big question is: what does "ABI safety" mean? if you have something translated to a C pointer
+                    // (which has a stable layout) but points to FFI-unsafe type, is it safe?
+                    // on one hand, the function's ABI will match that of a similar C-declared function API,
+                    // on the other, dereferencing the pointer in not-rust will be painful.
+                    // In this code, the opinion is split between function declarations and function definitions.
+                    // For declarations, we see this as unsafe, but for definitions, we see this as safe.
+                    // This is mostly because, for extern function declarations, the actual definition of the function is written somewhere else,
+                    // so the fact that a pointer's pointee should be treated as opaque to one side or the other can be explicitely written out.
+                    // For extern function definitions, however, both callee and some callers can be written in rust,
+                    // so developers need to keep as much typing information as possible.
+                    if matches!(self.mode, CItemKind::Definition) {
+                        return FfiSafe;
+                    } else if matches!(ty.kind(), ty::RawPtr(..))
+                        && matches!(inner_ty.kind(), ty::Tuple(tuple) if tuple.is_empty())
+                    {
+                        FfiSafe
+                    } else {
+                        let inner_res = self.check_type_for_ffi(acc, inner_ty);
+                        return match inner_res {
+                            FfiSafe => inner_res,
+                            _ => FfiUnsafeWrapper {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_sized_ptr_to_unsafe_type,
+                                wrapped: Box::new(inner_res),
+                                help: None,
+                            },
+                        };
+                    }
+                } else {
+                    let help = match inner_ty.kind() {
+                        ty::Str => Some(fluent::lint_improper_ctypes_str_help),
+                        ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
+                        ty::Adt(def, _)
+                            if matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union)
+                                && matches!(
+                                    tcx.get_diagnostic_name(def.did()),
+                                    Some(sym::cstring_type | sym::cstr_type)
+                                )
+                                && !acc.base_ty.is_mutable_ptr() =>
+                        {
+                            Some(fluent::lint_improper_ctypes_cstr_help)
+                        }
+                        _ => None,
+                    };
+                    let reason = match ty.kind() {
+                        ty::RawPtr(..) => fluent::lint_improper_ctypes_unsized_ptr,
+                        ty::Ref(..) => fluent::lint_improper_ctypes_unsized_ref,
+                        _ => unreachable!(),
+                    };
+                    FfiUnsafe { ty, reason, help }
+                }
+            }
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(acc, inner_ty),
 
@@ -1245,7 +1324,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 for arg in sig.inputs() {
                     match self.check_type_for_ffi(acc, *arg) {
                         FfiSafe => {}
-                        r => return r,
+                        r => {
+                            return FfiUnsafeWrapper {
+                                ty,
+                                reason: fluent::lint_improper_ctypes_fnptr_indirect_reason,
+                                help: None,
+                                wrapped: Box::new(r),
+                            };
+                        }
                     }
                 }
 
@@ -1254,7 +1340,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return FfiSafe;
                 }
 
-                self.check_type_for_ffi(acc, ret_ty)
+                match self.check_type_for_ffi(acc, ret_ty) {
+                    r @ (FfiSafe | FfiPhantom(_)) => r,
+                    r => FfiUnsafeWrapper {
+                        ty: ty.clone(),
+                        reason: fluent::lint_improper_ctypes_fnptr_indirect_reason,
+                        help: None,
+                        wrapped: Box::new(r),
+                    },
+                }
             }
 
             ty::Foreign(..) => FfiSafe,
