@@ -354,14 +354,14 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
 pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
-    pub const_stable_indirect: bool,
+    pub const_stable: bool,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
-            safe_to_expose_on_stable: self.const_stable_indirect,
+            safe_to_expose_on_stable: self.const_stable,
             // We do *not* want to suggest to mark the intrinsic as `const_stable_indirect`,
             // that's not a trivial change!
             is_function_call: false,

@@ -136,8 +136,9 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 node_replacements.array_windows()
             {
                 assert!(
-                    node_range.0.end <= next_node_range.0.start,
-                    "Node ranges should be disjoint: ({:?}, {:?}) ({:?}, {:?})",
+                    node_range.0.end <= next_node_range.0.start
+                        || node_range.0.end >= next_node_range.0.end,
+                    "Node ranges should be disjoint or nested: ({:?}, {:?}) ({:?}, {:?})",
                     node_range,
                     tokens,
                     next_node_range,
@@ -145,8 +146,20 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
                 );
             }
 
-            // Process the replace ranges.
-            for (node_range, target) in node_replacements.into_iter() {
+            // Process the replace ranges, starting from the highest start
+            // position and working our way back. If have tokens like:
+            //
+            // `#[cfg(FALSE)] struct Foo { #[cfg(FALSE)] field: bool }`
+            //
+            // Then we will generate replace ranges for both
+            // the `#[cfg(FALSE)] field: bool` and the entire
+            // `#[cfg(FALSE)] struct Foo { #[cfg(FALSE)] field: bool }`
+            //
+            // By starting processing from the replace range with the greatest
+            // start position, we ensure that any (outer) replace range which
+            // encloses another (inner) replace range will fully overwrite the
+            // inner range's replacement.
+            for (node_range, target) in node_replacements.into_iter().rev() {
                 assert!(
                     !node_range.0.is_empty(),
                     "Cannot replace an empty node range: {:?}",
@@ -383,9 +396,10 @@ impl<'a> Parser<'a> {
             // from `ParserRange` form to `NodeRange` form. We will perform the actual
             // replacement only when we convert the `LazyAttrTokenStream` to an
             // `AttrTokenStream`.
-            self.capture_state
-                .parser_replacements
-                .drain(parser_replacements_start..parser_replacements_end)
+            self.capture_state.parser_replacements
+                [parser_replacements_start..parser_replacements_end]
+                .iter()
+                .cloned()
                 .chain(inner_attr_parser_replacements)
                 .map(|(parser_range, data)| {
                     (NodeRange::new(parser_range, collect_pos.start_pos), data)

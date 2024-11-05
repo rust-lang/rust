@@ -1663,6 +1663,7 @@ symbols! {
         rustc_const_panic_str,
         rustc_const_stable,
         rustc_const_stable_indirect,
+        rustc_const_stable_intrinsic,
         rustc_const_unstable,
         rustc_conversion_suggestion,
         rustc_deallocator,

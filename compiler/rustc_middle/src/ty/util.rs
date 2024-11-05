@@ -1789,6 +1789,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
             must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
+            const_stable: tcx.has_attr(def_id, sym::rustc_const_stable_intrinsic),
         })
     } else {
         None

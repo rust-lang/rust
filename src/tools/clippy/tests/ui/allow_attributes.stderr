@@ -19,13 +19,5 @@ error: #[allow] attribute found
 LL |     #[allow(unused)]
    |       ^^^^^ help: replace it with: `expect`
 
-error: #[allow] attribute found
-  --> tests/ui/allow_attributes.rs:52:7
-   |
-LL |     #[allow(unused)]
-   |       ^^^^^ help: replace it with: `expect`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
