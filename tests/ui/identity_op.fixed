@@ -232,6 +232,9 @@ fn issue_13470() {
     // If we don't maintain the parens here, the behavior changes
     let _ = -(x + y);
     //~^ ERROR: this operation has no effect
+    // Similarly, we need to maintain parens here
+    let _ = -(x / y);
+    //~^ ERROR: this operation has no effect
     // Maintain parenthesis if the parent expr is of higher precedence
     let _ = 2i32 * (x + y);
     //~^ ERROR: this operation has no effect

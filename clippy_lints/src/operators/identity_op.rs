@@ -67,13 +67,8 @@ pub(crate) fn check<'tcx>(
         },
         BinOpKind::Div => {
             if is_redundant_op(cx, right, 1) {
-                span_ineffective_operation(
-                    cx,
-                    expr.span,
-                    peeled_left_span,
-                    Parens::Unneeded,
-                    left_is_coerced_to_value,
-                );
+                let paren = needs_parenthesis(cx, expr, left);
+                span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::BitAnd => {
