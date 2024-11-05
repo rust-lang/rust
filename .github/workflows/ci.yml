@@ -110,11 +110,7 @@ jobs:
       # less disk space.
       - name: free up disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
-        if: contains(matrix.os, 'ubuntu')
-        with:
-          # Removing packages with APT saves ~5 GiB, but takes several
-          # minutes (and potentially removes important packages).
-          large-packages: false
+        if: matrix.free_disk
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
