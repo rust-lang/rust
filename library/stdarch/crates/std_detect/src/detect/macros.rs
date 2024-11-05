@@ -9,6 +9,9 @@ macro_rules! detect_feature {
         $(cfg!(target_feature = $target_feature_lit) ||)*
             $crate::detect::__is_feature_detected::$feature()
     };
+    ($feature:tt, $feature_lit:tt, without cfg check: true) => {
+        $crate::detect::__is_feature_detected::$feature()
+    };
 }
 
 #[allow(unused)]
@@ -21,6 +24,7 @@ macro_rules! features {
       $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; $(#[$deprecate_attr:meta];)?)*
       $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
       $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
+          $(without cfg check: $feature_cfg_check:literal;)?
           $(implied by target_features: [$($target_feature_lit:tt),*];)?
           $(#[$feature_comment:meta])*)*
     ) => {
@@ -32,7 +36,7 @@ macro_rules! features {
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
-                    $crate::detect_feature!($feature, $feature_lit $(: $($target_feature_lit),*)?)
+                    $crate::detect_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?)
                 };
             )*
             $(
