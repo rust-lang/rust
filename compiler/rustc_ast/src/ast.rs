@@ -1194,7 +1194,7 @@ impl Expr {
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self, strip_identity_block: bool) -> bool {
-        let this = if strip_identity_block { self.maybe_unwrap_block().1 } else { self };
+        let this = if strip_identity_block { self.maybe_unwrap_block() } else { self };
 
         if let ExprKind::Path(None, path) = &this.kind
             && path.is_potential_trivial_const_arg()
@@ -1206,14 +1206,41 @@ impl Expr {
     }
 
     /// Returns an expression with (when possible) *one* outter brace removed
-    pub fn maybe_unwrap_block(&self) -> (bool, &Expr) {
+    pub fn maybe_unwrap_block(&self) -> &Expr {
         if let ExprKind::Block(block, None) = &self.kind
             && let [stmt] = block.stmts.as_slice()
             && let StmtKind::Expr(expr) = &stmt.kind
         {
-            (true, expr)
+            expr
         } else {
-            (false, self)
+            self
+        }
+    }
+
+    /// Determines whether this expression is a macro call optionally wrapped in braces . If
+    /// `already_stripped_block` is set then we do not attempt to peel off a layer of braces.
+    ///
+    /// Returns the [`NodeId`] of the macro call and whether a layer of braces has been peeled
+    /// either before, or part of, this function.
+    pub fn optionally_braced_mac_call(
+        &self,
+        already_stripped_block: bool,
+    ) -> Option<(bool, NodeId)> {
+        match &self.kind {
+            ExprKind::Block(block, None)
+                if let [stmt] = &*block.stmts
+                    && !already_stripped_block =>
+            {
+                match &stmt.kind {
+                    StmtKind::MacCall(_) => Some((true, stmt.id)),
+                    StmtKind::Expr(expr) if let ExprKind::MacCall(_) = &expr.kind => {
+                        Some((true, expr.id))
+                    }
+                    _ => None,
+                }
+            }
+            ExprKind::MacCall(_) => Some((already_stripped_block, self.id)),
+            _ => None,
         }
     }
 
