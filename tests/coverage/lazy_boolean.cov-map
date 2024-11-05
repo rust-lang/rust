@@ -1,5 +1,5 @@
 Function name: lazy_boolean::main
-Raw bytes (158): 0x[01, 01, 07, 01, 05, 01, 09, 01, 0d, 01, 19, 01, 1d, 01, 21, 01, 25, 1c, 01, 04, 01, 07, 0f, 05, 07, 10, 04, 06, 02, 04, 06, 00, 07, 01, 02, 09, 00, 11, 01, 02, 0d, 00, 12, 06, 02, 0d, 00, 12, 01, 03, 09, 00, 11, 01, 02, 0d, 00, 12, 0a, 02, 0d, 00, 12, 01, 02, 09, 00, 11, 01, 00, 14, 00, 19, 11, 00, 1d, 00, 22, 01, 01, 09, 00, 11, 01, 00, 14, 00, 19, 15, 00, 1d, 00, 22, 01, 03, 09, 01, 10, 0e, 02, 05, 03, 06, 19, 03, 06, 00, 07, 01, 03, 09, 00, 10, 1d, 01, 05, 03, 06, 12, 05, 05, 03, 06, 01, 05, 08, 00, 10, 16, 00, 11, 02, 06, 21, 02, 06, 00, 07, 01, 02, 08, 00, 0f, 25, 00, 10, 02, 06, 1a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (158): 0x[01, 01, 07, 01, 05, 01, 09, 01, 0d, 01, 19, 01, 1d, 01, 21, 01, 25, 1c, 01, 04, 01, 07, 0f, 05, 07, 10, 04, 06, 02, 04, 05, 00, 06, 01, 02, 09, 00, 11, 01, 02, 0d, 00, 12, 06, 02, 0d, 00, 12, 01, 03, 09, 00, 11, 01, 02, 0d, 00, 12, 0a, 02, 0d, 00, 12, 01, 02, 09, 00, 11, 01, 00, 14, 00, 19, 11, 00, 1d, 00, 22, 01, 01, 09, 00, 11, 01, 00, 14, 00, 19, 15, 00, 1d, 00, 22, 01, 03, 09, 01, 10, 0e, 02, 05, 03, 06, 19, 03, 05, 00, 06, 01, 03, 09, 00, 10, 1d, 01, 05, 03, 06, 12, 05, 05, 03, 06, 01, 05, 08, 00, 10, 16, 00, 11, 02, 06, 21, 02, 05, 00, 06, 01, 02, 08, 00, 0f, 25, 00, 10, 02, 06, 1a, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 7
@@ -13,7 +13,7 @@ Number of expressions: 7
 Number of file 0 mappings: 28
 - Code(Counter(0)) at (prev + 4, 1) to (start + 7, 15)
 - Code(Counter(1)) at (prev + 7, 16) to (start + 4, 6)
-- Code(Expression(0, Sub)) at (prev + 4, 6) to (start + 0, 7)
+- Code(Expression(0, Sub)) at (prev + 4, 5) to (start + 0, 6)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 17)
 - Code(Counter(0)) at (prev + 2, 13) to (start + 0, 18)
@@ -32,7 +32,7 @@ Number of file 0 mappings: 28
 - Code(Counter(0)) at (prev + 3, 9) to (start + 1, 16)
 - Code(Expression(3, Sub)) at (prev + 2, 5) to (start + 3, 6)
     = (c0 - c6)
-- Code(Counter(6)) at (prev + 3, 6) to (start + 0, 7)
+- Code(Counter(6)) at (prev + 3, 5) to (start + 0, 6)
 - Code(Counter(0)) at (prev + 3, 9) to (start + 0, 16)
 - Code(Counter(7)) at (prev + 1, 5) to (start + 3, 6)
 - Code(Expression(4, Sub)) at (prev + 5, 5) to (start + 3, 6)
@@ -40,7 +40,7 @@ Number of file 0 mappings: 28
 - Code(Counter(0)) at (prev + 5, 8) to (start + 0, 16)
 - Code(Expression(5, Sub)) at (prev + 0, 17) to (start + 2, 6)
     = (c0 - c8)
-- Code(Counter(8)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Counter(8)) at (prev + 2, 5) to (start + 0, 6)
 - Code(Counter(0)) at (prev + 2, 8) to (start + 0, 15)
 - Code(Counter(9)) at (prev + 0, 16) to (start + 2, 6)
 - Code(Expression(6, Sub)) at (prev + 2, 12) to (start + 2, 6)

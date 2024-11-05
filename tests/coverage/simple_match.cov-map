@@ -1,5 +1,5 @@
 Function name: simple_match::main
-Raw bytes (72): 0x[01, 01, 09, 01, 05, 01, 23, 09, 0d, 1f, 11, 01, 23, 09, 0d, 1f, 11, 01, 23, 09, 0d, 0a, 01, 04, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 06, 00, 07, 1f, 05, 09, 00, 0d, 1a, 05, 0d, 00, 16, 09, 02, 0d, 00, 0e, 1a, 02, 11, 02, 12, 09, 04, 0d, 07, 0e, 0d, 0a, 0d, 00, 0f, 11, 03, 01, 00, 02]
+Raw bytes (72): 0x[01, 01, 09, 01, 05, 01, 23, 09, 0d, 1f, 11, 01, 23, 09, 0d, 1f, 11, 01, 23, 09, 0d, 0a, 01, 04, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 05, 00, 06, 1f, 05, 09, 00, 0d, 1a, 05, 0d, 00, 16, 09, 02, 0d, 00, 0e, 1a, 02, 11, 02, 12, 09, 04, 0d, 07, 0e, 0d, 0a, 0d, 00, 0f, 11, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 9
@@ -15,7 +15,7 @@ Number of expressions: 9
 Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 4, 1) to (start + 7, 15)
 - Code(Counter(1)) at (prev + 7, 16) to (start + 2, 6)
-- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Expression(0, Sub)) at (prev + 2, 5) to (start + 0, 6)
     = (c0 - c1)
 - Code(Expression(7, Add)) at (prev + 5, 9) to (start + 0, 13)
     = (c0 + (c2 + c3))

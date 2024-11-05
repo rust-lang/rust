@@ -22,7 +22,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, RelativeBytePos, SourceFile, Span};
+use rustc_span::{BytePos, Pos, SourceFile, Span};
 use tracing::{debug, debug_span, trace};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
@@ -391,6 +391,41 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
     data.statements.insert(0, statement);
 }
 
+fn ensure_non_empty_span(
+    source_map: &SourceMap,
+    hir_info: &ExtractedHirInfo,
+    span: Span,
+) -> Option<Span> {
+    if !span.is_empty() {
+        return Some(span);
+    }
+
+    let lo = span.lo();
+    let hi = span.hi();
+
+    // The span is empty, so try to expand it to cover an adjacent '{' or '}',
+    // but only within the bounds of the body span.
+    let try_next = hi < hir_info.body_span.hi();
+    let try_prev = hir_info.body_span.lo() < lo;
+    if !(try_next || try_prev) {
+        return None;
+    }
+
+    source_map
+        .span_to_source(span, |src, start, end| try {
+            // We're only checking for specific ASCII characters, so we don't
+            // have to worry about multi-byte code points.
+            if try_next && src.as_bytes()[end] == b'{' {
+                Some(span.with_hi(hi + BytePos(1)))
+            } else if try_prev && src.as_bytes()[start - 1] == b'}' {
+                Some(span.with_lo(lo - BytePos(1)))
+            } else {
+                None
+            }
+        })
+        .ok()?
+}
+
 /// Converts the span into its start line and column, and end line and column.
 ///
 /// Line numbers and column numbers are 1-based. Unlike most column numbers emitted by
@@ -407,44 +442,23 @@ fn make_source_region(
     file: &SourceFile,
     span: Span,
 ) -> Option<SourceRegion> {
+    let span = ensure_non_empty_span(source_map, hir_info, span)?;
+
     let lo = span.lo();
     let hi = span.hi();
 
     // Column numbers need to be in bytes, so we can't use the more convenient
     // `SourceMap` methods for looking up file coordinates.
-    let rpos_and_line_and_byte_column = |pos: BytePos| -> Option<(RelativeBytePos, usize, usize)> {
+    let line_and_byte_column = |pos: BytePos| -> Option<(usize, usize)> {
         let rpos = file.relative_position(pos);
         let line_index = file.lookup_line(rpos)?;
         let line_start = file.lines()[line_index];
         // Line numbers and column numbers are 1-based, so add 1 to each.
-        Some((rpos, line_index + 1, (rpos - line_start).to_usize() + 1))
+        Some((line_index + 1, (rpos - line_start).to_usize() + 1))
     };
 
-    let (lo_rpos, mut start_line, mut start_col) = rpos_and_line_and_byte_column(lo)?;
-    let (hi_rpos, mut end_line, mut end_col) = rpos_and_line_and_byte_column(hi)?;
-
-    // If the span is empty, try to expand it horizontally by one character's
-    // worth of bytes, so that it is more visible in `llvm-cov` reports.
-    // We do this after resolving line/column numbers, so that empty spans at the
-    // end of a line get an extra column instead of wrapping to the next line.
-    let body_span = hir_info.body_span;
-    if span.is_empty()
-        && body_span.contains(span)
-        && let Some(src) = &file.src
-    {
-        // Prefer to expand the end position, if it won't go outside the body span.
-        if hi < body_span.hi() {
-            let hi_rpos = hi_rpos.to_usize();
-            let nudge_bytes = src.ceil_char_boundary(hi_rpos + 1) - hi_rpos;
-            end_col += nudge_bytes;
-        } else if lo > body_span.lo() {
-            let lo_rpos = lo_rpos.to_usize();
-            let nudge_bytes = lo_rpos - src.floor_char_boundary(lo_rpos - 1);
-            // Subtract the nudge, but don't go below column 1.
-            start_col = start_col.saturating_sub(nudge_bytes).max(1);
-        }
-        // If neither nudge could be applied, stick with the empty span coordinates.
-    }
+    let (mut start_line, start_col) = line_and_byte_column(lo)?;
+    let (mut end_line, end_col) = line_and_byte_column(hi)?;
 
     // Apply an offset so that code in doctests has correct line numbers.
     // FIXME(#79417): Currently we have no way to offset doctest _columns_.

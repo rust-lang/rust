@@ -12,7 +12,7 @@
 +     coverage Code(Counter(0)) => 10:1 - 10:11;
 +     coverage Code(Expression(0)) => 12:12 - 12:17;
 +     coverage Code(Counter(0)) => 13:13 - 13:18;
-+     coverage Code(Counter(1)) => 14:10 - 14:11;
++     coverage Code(Counter(1)) => 14:9 - 14:10;
 +     coverage Code(Counter(0)) => 16:1 - 16:2;
 + 
       bb0: {

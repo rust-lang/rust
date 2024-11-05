@@ -30,7 +30,7 @@
   ------------------
    LL|      2|        say("not not a");
    LL|      2|    }
-                   ^1
+                  ^1
    LL|      3|    if !!!a {
   ------------------
   |  Branch (LL:8): [True: 1, False: 2]
@@ -54,7 +54,7 @@
   ------------------
    LL|      2|        say("not not (a as bool)");
    LL|      2|    }
-                   ^1
+                  ^1
    LL|      3|    if !!!(a as bool) {
   ------------------
   |  Branch (LL:8): [True: 1, False: 2]
