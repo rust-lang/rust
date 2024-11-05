@@ -22,10 +22,10 @@ mod improper_ctypes;
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
-    AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-    InvalidNanComparisonsSuggestion, UnpredictableFunctionPointerComparisons,
-    UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons,
-    VariantSizeDifferencesDiag,
+    AtomicOrderingStore, ImproperCTypes, ImproperCTypesLayer, InvalidAtomicOrderingDiag,
+    InvalidNanComparisons, InvalidNanComparisonsSuggestion,
+    UnpredictableFunctionPointerComparisons, UnpredictableFunctionPointerComparisonsSuggestion,
+    UnusedComparisons, VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
@@ -727,7 +727,19 @@ struct CTypesVisitorState<'tcx> {
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: DiagMessage, help: Option<DiagMessage> },
+    FfiUnsafe {
+        ty: Ty<'tcx>,
+        reason: DiagMessage,
+        help: Option<DiagMessage>,
+    },
+    // NOTE: this `allow` is only here for one retroactively-added commit
+    #[allow(dead_code)]
+    FfiUnsafeWrapper {
+        ty: Ty<'tcx>,
+        reason: DiagMessage,
+        help: Option<DiagMessage>,
+        wrapped: Box<FfiResult<'tcx>>,
+    },
 }
 
 pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
@@ -933,12 +945,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the type is array and emit an unsafe type lint.
     fn check_for_array_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         if let ty::Array(..) = ty.kind() {
-            self.emit_ffi_unsafe_type_lint(
+            self.emit_ffi_unsafe_type_lint(ty.clone(), sp, vec![ImproperCTypesLayer {
                 ty,
-                sp,
-                fluent::lint_improper_ctypes_array_reason,
-                Some(fluent::lint_improper_ctypes_array_help),
-            );
+                note: fluent::lint_improper_ctypes_array_reason,
+                help: Some(fluent::lint_improper_ctypes_array_help),
+                inner_ty: None,
+                span_note: None,
+            }]);
             true
         } else {
             false
@@ -995,9 +1008,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             all_phantom &= match self.check_field_type_for_ffi(acc, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
-                FfiUnsafe { ty, .. } if ty.is_unit() => false,
+                FfiUnsafe { ty, .. } | FfiUnsafeWrapper { ty, .. } if ty.is_unit() => false,
                 FfiPhantom(..) => true,
-                r @ FfiUnsafe { .. } => return r,
+                r @ (FfiUnsafe { .. } | FfiUnsafeWrapper { .. }) => return r,
             }
         }
 
@@ -1278,8 +1291,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         sp: Span,
-        note: DiagMessage,
-        help: Option<DiagMessage>,
+        mut reasons: Vec<ImproperCTypesLayer<'tcx>>,
     ) {
         let lint = match self.mode {
             CItemKind::Declaration => IMPROPER_CTYPES,
@@ -1289,21 +1301,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Declaration => "block",
             CItemKind::Definition => "fn",
         };
-        let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
-        {
-            Some(sp)
-        } else {
-            None
-        };
-        self.cx.emit_span_lint(lint, sp, ImproperCTypes {
-            ty,
-            desc,
-            label: sp,
-            help,
-            note,
-            span_note,
-        });
+        for reason in reasons.iter_mut() {
+            reason.span_note = if let ty::Adt(def, _) = reason.ty.kind()
+                && let Some(sp) = self.cx.tcx.hir().span_if_local(def.did())
+            {
+                Some(sp)
+            } else {
+                None
+            };
+        }
+
+        self.cx.emit_span_lint(lint, sp, ImproperCTypes { ty, desc, label: sp, reasons });
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
@@ -1332,7 +1340,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             .visit_with(&mut ProhibitOpaqueTypes)
             .break_value()
         {
-            self.emit_ffi_unsafe_type_lint(ty, sp, fluent::lint_improper_ctypes_opaque, None);
+            self.emit_ffi_unsafe_type_lint(ty.clone(), sp, vec![ImproperCTypesLayer {
+                ty,
+                note: fluent::lint_improper_ctypes_opaque,
+                span_note: Some(sp),
+                help: None,
+                inner_ty: None,
+            }]);
             true
         } else {
             false
@@ -1371,15 +1385,75 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match self.check_type_for_ffi(&mut acc, ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.emit_ffi_unsafe_type_lint(
+                self.emit_ffi_unsafe_type_lint(ty.clone(), sp, vec![ImproperCTypesLayer {
                     ty,
-                    sp,
-                    fluent::lint_improper_ctypes_only_phantomdata,
-                    None,
-                );
+                    note: fluent::lint_improper_ctypes_only_phantomdata,
+                    span_note: None, // filled later
+                    help: None,
+                    inner_ty: None,
+                }]);
             }
             FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
+                self.emit_ffi_unsafe_type_lint(ty.clone(), sp, vec![ImproperCTypesLayer {
+                    ty,
+                    help,
+                    note: reason,
+                    span_note: None, // filled later
+                    inner_ty: None,
+                }]);
+            }
+            ffir @ FfiResult::FfiUnsafeWrapper { .. } => {
+                let mut last_ty = None;
+                let mut ffiresult_recursor = Some(&ffir);
+                let mut cimproper_layers: Vec<ImproperCTypesLayer<'tcx>> = vec![];
+
+                // this whole while block converts the arbitrarily-deep
+                // FfiResult stack to a ImproperCTypesLayer Vec
+                while let Some(ref ffir_rec) = ffiresult_recursor {
+                    match ffir_rec {
+                        FfiResult::FfiPhantom(ty) => {
+                            last_ty = Some(ty.clone());
+                            let len = cimproper_layers.len();
+                            if len > 0 {
+                                cimproper_layers[len - 1].inner_ty = last_ty.clone();
+                            }
+                            cimproper_layers.push(ImproperCTypesLayer {
+                                ty: ty.clone(),
+                                inner_ty: None,
+                                help: None,
+                                note: fluent::lint_improper_ctypes_only_phantomdata,
+                                span_note: None, // filled later
+                            });
+                            ffiresult_recursor = None;
+                        }
+                        FfiResult::FfiUnsafe { ty, reason, help }
+                        | FfiResult::FfiUnsafeWrapper { ty, reason, help, .. } => {
+                            last_ty = Some(ty.clone());
+                            let len = cimproper_layers.len();
+                            if len > 0 {
+                                cimproper_layers[len - 1].inner_ty = last_ty.clone();
+                            }
+                            cimproper_layers.push(ImproperCTypesLayer {
+                                ty: ty.clone(),
+                                inner_ty: None,
+                                help: help.clone(),
+                                note: reason.clone(),
+                                span_note: None, // filled later
+                            });
+
+                            if let FfiResult::FfiUnsafeWrapper { wrapped, .. } = ffir_rec {
+                                ffiresult_recursor = Some(wrapped.as_ref());
+                            } else {
+                                ffiresult_recursor = None;
+                            }
+                        }
+                        FfiResult::FfiSafe => {
+                            bug!("malformed FfiResult stack: it should be unsafe all the way down")
+                        }
+                    };
+                }
+                let last_ty = last_ty.unwrap(); // populated by any run of the `while` block
+                self.emit_ffi_unsafe_type_lint(last_ty, sp, cimproper_layers);
             }
         }
     }
