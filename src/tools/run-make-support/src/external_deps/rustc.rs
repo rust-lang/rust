@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
-use crate::{is_darwin, is_msvc, is_windows, uname};
+use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -365,6 +365,9 @@ impl Rustc {
             if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
         } else if is_darwin() {
             Some("-lc++")
+        } else if is_aix() {
+            self.cmd.arg("-lc++");
+            Some("-lc++abi")
         } else {
             match &uname()[..] {
                 "FreeBSD" | "SunOS" | "OpenBSD" => None,
