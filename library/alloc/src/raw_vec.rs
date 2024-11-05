@@ -653,7 +653,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap.0 * 2, required_cap);
+        let cap = cmp::max(self.cap.0 << 1, required_cap);
         let cap = cmp::max(min_non_zero_cap(elem_layout.size()), cap);
 
         let new_layout = layout_array(cap, elem_layout)?;
