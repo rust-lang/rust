@@ -7,6 +7,12 @@ LL |
 LL | };
    | - value is dropped here
 
+error[E0492]: constants cannot refer to interior mutable data
+  --> $DIR/const-promoted-opaque.rs:32:19
+   |
+LL | const BAZ: &Foo = &FOO;
+   |                   ^^^^ this borrow of an interior mutable value may end up in the final value
+
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-promoted-opaque.rs:36:26
    |
@@ -18,7 +24,7 @@ LL |
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0493, E0716.
-For more information about an error, try `rustc --explain E0493`.
+Some errors have detailed explanations: E0492, E0493, E0716.
+For more information about an error, try `rustc --explain E0492`.

@@ -30,7 +30,7 @@ const BAR: () = {
 };
 
 const BAZ: &Foo = &FOO;
-//[atomic]~^ ERROR: constants cannot refer to interior mutable data
+//[string,atomic]~^ ERROR: constants cannot refer to interior mutable data
 
 fn main() {
     let _: &'static _ = &FOO;
