@@ -398,6 +398,7 @@ mod zombie_processes;
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
+use utils::attr_collector::{AttrCollector, AttrStorage};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 
@@ -464,6 +465,7 @@ pub(crate) enum LintCategory {
     #[cfg(feature = "internal")]
     Internal,
 }
+
 #[allow(clippy::enum_glob_use)]
 use LintCategory::*;
 
@@ -583,6 +585,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(utils::format_args_collector::FormatArgsCollector::new(
             format_args.clone(),
         ))
+    });
+
+    let attr_storage = AttrStorage::default();
+    let attrs = attr_storage.clone();
+    store.register_early_pass(move || {
+        Box::new(AttrCollector::new(attrs.clone()))
     });
 
     // all the internal lints
@@ -795,7 +803,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unwrap_in_result::UnwrapInResult));
     store.register_late_pass(|_| Box::new(semicolon_if_nothing_returned::SemicolonIfNothingReturned));
     store.register_late_pass(|_| Box::new(async_yields_async::AsyncYieldsAsync));
-    store.register_late_pass(move |tcx| Box::new(disallowed_macros::DisallowedMacros::new(tcx, conf)));
+    let attrs = attr_storage.clone();
+    store.register_late_pass(move |tcx| Box::new(disallowed_macros::DisallowedMacros::new(tcx, conf, attrs.clone())));
     store.register_late_pass(move |tcx| Box::new(disallowed_methods::DisallowedMethods::new(tcx, conf)));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
