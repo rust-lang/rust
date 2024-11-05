@@ -56,61 +56,59 @@ const fn memchr_naive(x: u8, text: &[u8]) -> Option<usize> {
 const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     // The runtime version behaves the same as the compiletime version, it's
     // just more optimized.
-    return const_eval_select((x, text), compiletime, runtime);
+    const_eval_select!(
+        @capture { x: u8, text: &[u8] } -> Option<usize>:
+        if const {
+            memchr_naive(x, text)
+        } else {
+            // Scan for a single byte value by reading two `usize` words at a time.
+            //
+            // Split `text` in three parts
+            // - unaligned initial part, before the first word aligned address in text
+            // - body, scan by 2 words at a time
+            // - the last remaining part, < 2 word size
 
-    const fn compiletime(x: u8, text: &[u8]) -> Option<usize> {
-        memchr_naive(x, text)
-    }
+            // search up to an aligned boundary
+            let len = text.len();
+            let ptr = text.as_ptr();
+            let mut offset = ptr.align_offset(USIZE_BYTES);
 
-    #[inline]
-    fn runtime(x: u8, text: &[u8]) -> Option<usize> {
-        // Scan for a single byte value by reading two `usize` words at a time.
-        //
-        // Split `text` in three parts
-        // - unaligned initial part, before the first word aligned address in text
-        // - body, scan by 2 words at a time
-        // - the last remaining part, < 2 word size
-
-        // search up to an aligned boundary
-        let len = text.len();
-        let ptr = text.as_ptr();
-        let mut offset = ptr.align_offset(USIZE_BYTES);
-
-        if offset > 0 {
-            offset = offset.min(len);
-            let slice = &text[..offset];
-            if let Some(index) = memchr_naive(x, slice) {
-                return Some(index);
-            }
-        }
-
-        // search the body of the text
-        let repeated_x = usize::repeat_u8(x);
-        while offset <= len - 2 * USIZE_BYTES {
-            // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
-            // between the offset and the end of the slice.
-            unsafe {
-                let u = *(ptr.add(offset) as *const usize);
-                let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
-
-                // break if there is a matching byte
-                let zu = contains_zero_byte(u ^ repeated_x);
-                let zv = contains_zero_byte(v ^ repeated_x);
-                if zu || zv {
-                    break;
+            if offset > 0 {
+                offset = offset.min(len);
+                let slice = &text[..offset];
+                if let Some(index) = memchr_naive(x, slice) {
+                    return Some(index);
                 }
             }
-            offset += USIZE_BYTES * 2;
-        }
 
-        // Find the byte after the point the body loop stopped.
-        // FIXME(const-hack): Use `?` instead.
-        // FIXME(const-hack, fee1-dead): use range slicing
-        let slice =
-        // SAFETY: offset is within bounds
-            unsafe { super::from_raw_parts(text.as_ptr().add(offset), text.len() - offset) };
-        if let Some(i) = memchr_naive(x, slice) { Some(offset + i) } else { None }
-    }
+            // search the body of the text
+            let repeated_x = usize::repeat_u8(x);
+            while offset <= len - 2 * USIZE_BYTES {
+                // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
+                // between the offset and the end of the slice.
+                unsafe {
+                    let u = *(ptr.add(offset) as *const usize);
+                    let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
+
+                    // break if there is a matching byte
+                    let zu = contains_zero_byte(u ^ repeated_x);
+                    let zv = contains_zero_byte(v ^ repeated_x);
+                    if zu || zv {
+                        break;
+                    }
+                }
+                offset += USIZE_BYTES * 2;
+            }
+
+            // Find the byte after the point the body loop stopped.
+            // FIXME(const-hack): Use `?` instead.
+            // FIXME(const-hack, fee1-dead): use range slicing
+            let slice =
+            // SAFETY: offset is within bounds
+                unsafe { super::from_raw_parts(text.as_ptr().add(offset), text.len() - offset) };
+            if let Some(i) = memchr_naive(x, slice) { Some(offset + i) } else { None }
+        }
+    )
 }
 
 /// Returns the last index matching the byte `x` in `text`.
