@@ -12,26 +12,26 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
-use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_hir::LangItem;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
+use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
+use rustc_middle::dep_graph::{dep_kinds, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
     Upcast,
 };
-use rustc_span::Symbol;
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -40,9 +40,9 @@ use super::coherence::{self, Conflict};
 use super::project::ProjectionTermObligation;
 use super::util::closure_trait_ref_and_return_type;
 use super::{
-    ImplDerivedCause, Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow,
-    PolyTraitObligation, PredicateObligation, Selection, SelectionError, SelectionResult,
-    TraitQueryMode, const_evaluatable, project, util, wf,
+    const_evaluatable, project, util, wf, ImplDerivedCause, Normalized, Obligation,
+    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
+    Selection, SelectionError, SelectionResult, TraitQueryMode,
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -1306,7 +1306,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let tcx = self.tcx();
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, trait_pred) {
             if let Some(res) = tcx.evaluation_cache.get(&(param_env, trait_pred), tcx) {
                 return Some(res);
             }
@@ -1335,7 +1335,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) && !trait_pred.has_infer() {
+        if self.can_use_global_caches(param_env, trait_pred) && !trait_pred.has_infer() {
             debug!(?trait_pred, ?result, "insert_evaluation_cache global");
             // This may overwrite the cache with the same value
             // FIXME: Due to #50507 this overwrites the different values
@@ -1479,7 +1479,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Returns `true` if the global caches can be used.
-    fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
+    fn can_use_global_caches(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
         // switch to a global cache.
@@ -1500,7 +1504,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Avoid using the global cache when we're defining opaque types
         // as their hidden type may impact the result of candidate selection.
-        if !self.infcx.defining_opaque_types().is_empty() {
+        //
+        // HACK: This is still theoretically unsound. Goals can indirectly rely
+        // on opaques in the defining scope, and it's easier to do so with TAIT.
+        // However, if we disqualify *all* goals from being cached, perf suffers.
+        // This is likely fixed by better caching in general in the new solver.
+        // See: <https://github.com/rust-lang/rust/issues/132064>.
+        if !self.infcx.defining_opaque_types().is_empty() && pred.has_opaque_types() {
             return false;
         }
 
@@ -1523,7 +1533,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let pred = cache_fresh_trait_pred.skip_binder();
 
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
                 return Some(res);
             }
@@ -1580,7 +1590,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.has_infer() && !candidate.has_infer() {
@@ -1787,7 +1797,11 @@ enum DropVictim {
 
 impl DropVictim {
     fn drop_if(should_drop: bool) -> DropVictim {
-        if should_drop { DropVictim::Yes } else { DropVictim::No }
+        if should_drop {
+            DropVictim::Yes
+        } else {
+            DropVictim::No
+        }
     }
 }
 
@@ -1891,7 +1905,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(victim_cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                if is_global(*victim_cand) { DropVictim::Yes } else { DropVictim::No }
+                if is_global(*victim_cand) {
+                    DropVictim::Yes
+                } else {
+                    DropVictim::No
+                }
             }
             (
                 ImplCandidate(_)
@@ -2450,9 +2468,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
                     // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(tcx, trait_def_id, &[
-                        normalized_ty.into(),
-                    ]);
+                    let err_args = ty::GenericArgs::extend_with_error(
+                        tcx,
+                        trait_def_id,
+                        &[normalized_ty.into()],
+                    );
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 
@@ -3154,7 +3174,11 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head { head.depth } else { 0 }
+        if let Some(head) = self.head {
+            head.depth
+        } else {
+            0
+        }
     }
 }
 
