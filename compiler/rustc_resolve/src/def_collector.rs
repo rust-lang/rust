@@ -130,8 +130,19 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(def) => {
                 let edition = i.span.edition();
+
+                // FIXME(jdonszelmann) make one of these in the resolver?
+                // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
+                // Does that prevents errors from happening? maybe
+                let parser = rustc_attr::AttributeParseContext::new(
+                    &self.resolver.tcx.sess,
+                    self.resolver.tcx.features(),
+                    Vec::new(),
+                );
+                let attrs = parser.parse_attribute_list(&i.attrs, i.span);
+
                 let macro_data =
-                    self.resolver.compile_macro(def, i.ident, &i.attrs, i.span, i.id, edition);
+                    self.resolver.compile_macro(def, i.ident, &attrs, i.span, i.id, edition);
                 let macro_kind = macro_data.ext.macro_kind();
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kind)

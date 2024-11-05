@@ -404,9 +404,11 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         if is_doc_keyword(keyword) {
                             return;
                         }
-                        cx.emit_span_lint(EXISTING_DOC_KEYWORD, attr.span, NonExistentDocKeyword {
-                            keyword,
-                        });
+                        cx.emit_span_lint(
+                            EXISTING_DOC_KEYWORD,
+                            attr.span(),
+                            NonExistentDocKeyword { keyword },
+                        );
                     }
                 }
             }

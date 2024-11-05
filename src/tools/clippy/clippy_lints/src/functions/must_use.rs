@@ -110,7 +110,12 @@ fn check_needless_must_use(
             fn_header_span,
             "this unit-returning function has a `#[must_use]` attribute",
             |diag| {
-                diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
+                diag.span_suggestion(
+                    attr.span(),
+                    "remove the attribute",
+                    "",
+                    Applicability::MachineApplicable,
+                );
             },
         );
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {

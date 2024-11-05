@@ -469,7 +469,7 @@ pub(crate) fn encode_ty<'tcx>(
                         )]
                         tcx.dcx()
                             .struct_span_err(
-                                cfi_encoding.span,
+                                cfi_encoding.span(),
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
@@ -520,7 +520,7 @@ pub(crate) fn encode_ty<'tcx>(
                         )]
                         tcx.dcx()
                             .struct_span_err(
-                                cfi_encoding.span,
+                                cfi_encoding.span(),
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();

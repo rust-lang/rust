@@ -2,8 +2,8 @@
 use gccjit::FnAttribute;
 use gccjit::Function;
 #[cfg(feature = "master")]
-use rustc_attr::InlineAttr;
-use rustc_attr::InstructionSetAttr;
+use rustc_hir::InlineAttr;
+use rustc_hir::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty;

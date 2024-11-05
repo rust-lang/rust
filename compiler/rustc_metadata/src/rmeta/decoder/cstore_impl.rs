@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::mem;
 
-use rustc_attr::Deprecation;
 use rustc_data_structures::sync::Lrc;
+use rustc_hir::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};

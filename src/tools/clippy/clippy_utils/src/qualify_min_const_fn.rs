@@ -5,9 +5,9 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr::StableSince;
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
+use rustc_hir::StableSince;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
@@ -381,14 +381,14 @@ fn check_terminator<'tcx>(
 fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).is_none_or(|const_stab| {
-            if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
+            if let rustc_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 let const_stab_rust_version = match since {
                     StableSince::Version(version) => version,
-                    StableSince::Current => rustc_session::RustcVersion::CURRENT,
+                    StableSince::Current => rustc_hir::RustcVersion::CURRENT,
                     StableSince::Err => return false,
                 };
 

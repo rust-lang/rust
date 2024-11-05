@@ -4,6 +4,17 @@
 //! There used to be only one definition of attributes in the compiler: `ast::Attribute`.
 //! These were then parsed or validated or both in places distributed all over the compiler.
 //!
+//! Attributes are markers on items. Most are actually attribute-like proc-macros, and are expanded
+//! but some remain as the built-in attributes to guide compilation.
+//!
+//! In this crate, syntactical attributes (sequences of tokens that look like
+//! `#[something(something else)]`) are parsed into more semantic attributes, markers on items.
+//! Multiple syntactic attributes might influence a single semantic attribute. For example,
+//! `#[stable(...)]` and `#[unstable()]` cannot occur together, and both semantically define
+//! a "stability". Stability defines an [`AttributeExtractor`](attributes::AttributeExtractor)
+//! that recognizes both `#[stable()]` and `#[unstable()]` syntactic attributes, and at the end
+//! produce a single [`ParsedAttributeKind::Stability`].
+//!
 //! FIXME(jdonszelmann): update devguide for best practices on attributes
 //! FIXME(jdonszelmann): rename to `rustc_attr` in the future, integrating it into this crate.
 //!
@@ -17,79 +28,40 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-mod builtin;
+#[macro_use]
+mod attributes;
+mod context;
+mod parser;
 mod session_diagnostics;
 
-use std::marker::PhantomData;
-
-pub use IntType::*;
-pub use ReprAttr::*;
-pub use StabilityLevel::*;
-pub use builtin::*;
+pub use attributes::cfg::*;
+pub use attributes::util::{find_crate_name, is_builtin_attr, parse_version};
 pub use context::AttributeParseContext;
-pub(crate) use rustc_session::HashStableContext;
-use {rustc_ast as ast, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-mod context;
-mod parser;
+#[macro_export]
+macro_rules! find_attr {
+    ($attributes_list: expr, $pattern: pat $(if $guard: expr)?) => {{
+        $crate::find_attr!($attributes_list, $pattern $(if $guard)? => ()).is_some()
+    }};
 
-pub enum MaybeParsedAttribute<'a> {
-    Parsed(hir::ParsedAttributeKind),
-    MustRemainUnparsed(&'a ast::NormalAttr),
-}
+    ($attributes_list: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
+        fn check_attribute_iterator<'a>(_: &'_ impl IntoIterator<Item = &'a rustc_hir::Attribute>) {}
+        check_attribute_iterator(&$attributes_list);
 
-pub trait AttributeCollection<'a> {
-    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a;
-    // pub fn filter_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> impl Iterator<Item = &A> {
-    //     attrs.iter().filter(move |attr| attr.has_name(name))
-    // }
-    //
-    // pub fn find_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> Option<&A> {
-    //     filter_by_name(attrs, name).next()
-    // }
-    //
-    // pub fn first_attr_value_str_by_name(attrs: &[impl AttributeExt], name: Symbol) -> Option<Symbol> {
-    //     find_by_name(attrs, name).and_then(|attr| attr.value_str())
-    // }
-    //
-    // pub fn contains_name(&self, name: Symbol) -> bool {
-    //     find_by_name(attrs, name).is_some()
-    // }
-}
+        let find_attribute = |iter| {
+            for i in $attributes_list {
+                match i {
+                    rustc_hir::Attribute::Parsed($pattern) $(if $guard: expr)? => {
+                        return Some($e);
+                    }
+                    _ => {}
+                }
+            }
 
-impl<'a> AttributeCollection<'a> for &'a [hir::Attribute] {
-    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
-        self.iter()
-    }
-}
-impl<'a> AttributeCollection<'a> for &'a Vec<hir::Attribute> {
-    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
-        <[_]>::iter(self)
-    }
-}
-
-pub struct AttributeIterator<'a, I>(pub I, PhantomData<&'a ()>);
-impl<'a, I> AttributeIterator<'a, I> {
-    pub fn new(i: I) -> Self {
-        Self(i, PhantomData)
-    }
-}
-
-impl<'a, I: Iterator<Item = &'a hir::Attribute>> Iterator for AttributeIterator<'a, I> {
-    type Item = &'a hir::Attribute;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}
-
-impl<'a, I: Iterator<Item = &'a hir::Attribute> + 'a> AttributeCollection<'a>
-    for AttributeIterator<'a, I>
-{
-    fn iter(self) -> impl Iterator<Item = &'a hir::Attribute> + 'a {
-        self
-    }
+            None
+        };
+        find_attribute($attributes_list)
+    }};
 }

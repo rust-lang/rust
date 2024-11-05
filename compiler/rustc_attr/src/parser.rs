@@ -1,16 +1,17 @@
 use std::borrow::Cow;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::iter::Peekable;
 
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenTree};
 use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path};
+use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
-pub struct SegmentIterator<'a> {
+pub(crate) struct SegmentIterator<'a> {
     offset: usize,
     path: &'a PathParser<'a>,
 }
@@ -34,78 +35,224 @@ impl<'a> Iterator for SegmentIterator<'a> {
 }
 
 #[derive(Clone)]
-pub enum PathParser<'a> {
+pub(crate) enum PathParser<'a> {
     Ast(&'a Path),
     Attr(AttrPath),
 }
 
 impl<'a> PathParser<'a> {
-    pub fn get_attribute_path(&self) -> hir::AttrPath {
+    pub(crate) fn get_attribute_path(&self) -> hir::AttrPath {
         AttrPath {
             segments: self.segments().copied().collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),
         }
     }
 
-    pub fn segments(&'a self) -> impl Iterator<Item = &'a Ident> {
+    pub(crate) fn segments(&'a self) -> impl Iterator<Item = &'a Ident> {
         SegmentIterator { offset: 0, path: self }
     }
 
-    pub fn span(&self) -> Span {
+    pub(crate) fn span(&self) -> Span {
         match self {
             PathParser::Ast(path) => path.span,
             PathParser::Attr(attr_path) => attr_path.span,
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         match self {
             PathParser::Ast(path) => path.segments.len(),
             PathParser::Attr(attr_path) => attr_path.segments.len(),
         }
     }
 
-    pub fn segments_is(&self, segments: &[Symbol]) -> bool {
+    pub(crate) fn segments_is(&self, segments: &[Symbol]) -> bool {
         self.len() == segments.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
     }
 
-    pub fn word(&self) -> Option<Ident> {
+    pub(crate) fn word(&self) -> Option<Ident> {
         (self.len() == 1).then(|| **self.segments().next().as_ref().unwrap())
+    }
+
+    pub(crate) fn word_or_empty(&self) -> Ident {
+        self.word().unwrap_or_else(Ident::empty)
     }
 
     /// Asserts that this MetaItem is some specific word.
     ///
     /// See [`word`](Self::word) for examples of what a word is.
-    pub fn word_is(&self, sym: Symbol) -> bool {
+    pub(crate) fn word_is(&self, sym: Symbol) -> bool {
         self.word().map(|i| i.name == sym).unwrap_or(false)
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Args<T> {
-    Empty,
-    Delimited(DelimArgs),
-    Eq { eq_span: Span, value: T },
-}
-
-impl Args<Expr> {
-    fn from_attr_args(value: AttrArgs) -> Self {
-        match value {
-            AttrArgs::Empty => Self::Empty,
-            AttrArgs::Delimited(delim_args) => Self::Delimited(delim_args),
-            AttrArgs::Eq { eq_span, expr } => Self::Eq { eq_span, value: expr.into_inner() },
+impl Display for PathParser<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PathParser::Ast(path) => write!(f, "{}", pprust::path_to_string(path)),
+            PathParser::Attr(attr_path) => write!(f, "{attr_path}"),
         }
     }
 }
 
-impl Args<MetaItemLit> {
+#[derive(Clone, Debug)]
+pub(crate) enum Args<'a, T: Clone> {
+    Empty,
+    Delimited(Cow<'a, DelimArgs>),
+    Eq { eq_span: Span, value: Cow<'a, T>, value_span: Span },
+}
+
+impl<'a, T: Clone> Args<'a, T> {
+    pub(crate) fn span(&self) -> Option<Span> {
+        match self {
+            Args::Empty => None,
+            Args::Delimited(delim_args) => Some(delim_args.dspan.entire()),
+            Args::Eq { eq_span, value_span, .. } => Some(value_span.with_lo(eq_span.lo())),
+        }
+    }
+}
+
+impl<'a> Args<'a, Expr> {
+    fn from_attr_args(value: &'a AttrArgs) -> Self {
+        match value {
+            AttrArgs::Empty => Self::Empty,
+            AttrArgs::Delimited(delim_args) => Self::Delimited(Cow::Borrowed(delim_args)),
+            AttrArgs::Eq { eq_span, expr } => {
+                Self::Eq { eq_span: *eq_span, value: Cow::Borrowed(expr), value_span: expr.span }
+            }
+        }
+    }
+}
+
+impl Args<'_, MetaItemLit> {
     fn from_attr_args(value: AttrArgs, dcx: DiagCtxtHandle<'_>) -> Self {
         match value {
             AttrArgs::Empty => Self::Empty,
-            AttrArgs::Delimited(delim_args) => Self::Delimited(delim_args),
-            AttrArgs::Eq { eq_span, expr } => {
-                Self::Eq { eq_span, value: expr_to_lit(dcx, &expr) }
+            AttrArgs::Delimited(delim_args) => Self::Delimited(Cow::Owned(delim_args)),
+            AttrArgs::Eq { eq_span, expr } => Self::Eq {
+                eq_span,
+                value: Cow::Owned(expr_to_lit(dcx, &expr)),
+                value_span: expr.span,
+            },
+        }
+    }
+}
+
+#[must_use]
+pub(crate) struct GenericArgParser<'a, T: Clone> {
+    args: Args<'a, T>,
+    dcx: DiagCtxtHandle<'a>,
+}
+
+pub(crate) trait ArgParser<'a> {
+    type NameValueParser: NameValueParser<'a>;
+
+    /// Asserts that this MetaItem is a list
+    ///
+    /// Some examples:
+    ///
+    /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
+    /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
+    fn list<'s, 'r>(&'s self) -> Option<MetaItemListParser<'r>>
+    where
+        's: 'r,
+        'a: 'r;
+
+    /// Asserts that this MetaItem is a name-value pair.
+    ///
+    /// Some examples:
+    ///
+    /// - `#[clippy::cyclomatic_complexity = "100"]`: `clippy::cyclomatic_complexity = "100"` is a name value pair,
+    ///   where the name is a path (`clippy::cyclomatic_complexity`). You already checked the path
+    ///   to get an `ArgParser`, so this method will effectively only assert that the `= "100"` is
+    ///   there
+    /// - `#[doc = "hello"]`: `doc = "hello`  is also a name value pair
+    fn name_value(&self) -> Option<Self::NameValueParser>;
+
+    /// Asserts that there are no arguments
+    fn no_args(&self) -> bool;
+}
+
+macro_rules! argparser {
+    ($ty: ty) => {
+        impl<'a> ArgParser<'a> for GenericArgParser<'a, $ty> {
+            type NameValueParser = GenericNameValueParser<'a, $ty>;
+
+            fn list<'s, 'r>(&'s self) -> Option<MetaItemListParser<'r>>
+            where
+                's: 'r,
+                'a: 'r,
+            {
+                match &self.args {
+                    Args::Delimited(args) if args.delim == Delimiter::Parenthesis => {
+                        MetaItemListParserContext {
+                            inside_delimiters: args.tokens.trees().peekable(),
+                            dcx: self.dcx,
+                        }
+                        .parse()
+                    }
+                    Args::Delimited(_) | Args::Eq { .. } | Args::Empty => None,
+                }
             }
+
+            fn name_value(&self) -> Option<GenericNameValueParser<'a, $ty>> {
+                match &self.args {
+                    Args::Eq { eq_span, value, value_span } => Some(GenericNameValueParser {
+                        eq_span: *eq_span,
+                        value: value.to_owned(),
+                        value_span: *value_span,
+                        dcx: self.dcx,
+                    }),
+                    Args::Delimited(_) | Args::Empty => None,
+                }
+            }
+
+            fn no_args(&self) -> bool {
+                matches!(&self.args, Args::Empty)
+            }
+        }
+    };
+}
+
+argparser!(Expr);
+argparser!(MetaItemLit);
+
+/// Inside lists, values could be either literals, or more deeply nested meta items.
+/// This enum represents that.
+///
+/// Choose which one you want using the provided methods.
+pub(crate) enum MetaItemOrLitParser<'a, T: Clone>
+where
+    GenericMetaItemParser<'a, T>: MetaItemParser<'a>,
+{
+    MetaItemParser(GenericMetaItemParser<'a, T>),
+    Lit(MetaItemLit),
+}
+
+impl<'a, T: Clone> MetaItemOrLitParser<'a, T>
+where
+    GenericMetaItemParser<'a, T>: MetaItemParser<'a>,
+{
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            MetaItemOrLitParser::MetaItemParser(generic_meta_item_parser) => {
+                generic_meta_item_parser.span()
+            }
+            MetaItemOrLitParser::Lit(meta_item_lit) => meta_item_lit.span,
+        }
+    }
+
+    pub(crate) fn lit(self) -> Option<MetaItemLit> {
+        match self {
+            MetaItemOrLitParser::Lit(meta_item_lit) => Some(meta_item_lit),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn meta_item(self) -> Option<GenericMetaItemParser<'a, T>> {
+        match self {
+            MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
+            _ => None,
         }
     }
 }
@@ -115,42 +262,72 @@ impl Args<MetaItemLit> {
 /// MetaItems are syntactically extremely flexible, but specific attributes want to parse
 /// them in custom, more restricted ways. This can be done using this struct.
 ///
+/// MetaItems consist of some path, and some args. The args could be empty. In other words:
+///
+/// - `name` -> args are empty
+/// - `name(...)` -> args are a [`list`](ArgParser::list), which is the bit between the parentheses
+/// - `name = value`-> arg is [`name_value`](ArgParser::name_value), where the argument is the
+///   `= value` part
+///
 /// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>
-pub struct MetaItemParser<'a, T> {
+pub(crate) struct GenericMetaItemParser<'a, T: Clone> {
     path: PathParser<'a>,
-    args: Args<T>,
+    args: Args<'a, T>,
     dcx: DiagCtxtHandle<'a>,
 }
 
-impl<'a> MetaItemParser<'a, Expr> {
+impl<'a> GenericMetaItemParser<'a, Expr> {
     /// Create a new parser from a [`NormalAttr`], which is stored inside of any
     /// [`ast::Attribute`](Attribute)
-    pub fn from_attr(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'a>) -> Self {
+    pub(crate) fn from_attr(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'a>) -> Self {
         Self {
             path: PathParser::Ast(&attr.item.path),
-            args: Args::<Expr>::from_attr_args(attr.item.args.clone()),
+            args: Args::<Expr>::from_attr_args(&attr.item.args),
             dcx,
         }
     }
 }
 
-impl<'a, T: Clone> MetaItemParser<'a, T> {
-    fn get_path_parser(&self) -> PathParser<'a> {
-        self.path.clone()
+pub(crate) trait MetaItemParser<'a>: 'a {
+    type ArgParser: ArgParser<'a>;
+
+    fn span(&self) -> Span;
+
+    /// Gets just the path, without the args.
+    fn path_without_args(&self) -> PathParser<'a>;
+
+    /// Gets just the args parser, without caring about the path.
+    fn args(&self) -> Self::ArgParser;
+
+    fn deconstruct(&self) -> (PathParser<'a>, Self::ArgParser) {
+        (self.path_without_args(), self.args())
     }
 
-    /// Asserts that this MetaItem is a path. Some examples:
+    /// Asserts that this MetaItem starts with a path. Some examples:
     ///
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
     /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
     /// - `#[inline]`: `inline` is a single segment path
     /// - `#[inline(always)]`: `always` is a single segment path, but `inline` is *not and
     ///    should be parsed using [`list`](Self::list)
-    pub fn path(&self) -> Option<PathParser<'a>> {
-        self.empty_args().then(|| self.path.clone())
+    fn path(&self) -> (PathParser<'a>, Self::ArgParser) {
+        self.deconstruct()
     }
 
-    /// Asserts that this MetaItem is a word, or single segment path.
+    /// Asserts that this MetaItem starts with a word, or single segment path.
+    /// Doesn't return the args parser.
+    ///
+    /// For examples. see [`Self::word`]
+    fn word_without_args(&self) -> Option<Ident> {
+        Some(self.word()?.0)
+    }
+
+    /// Like [`word`](Self::word), but returns an empty symbol instead of None
+    fn word_or_empty_without_args(&self) -> Ident {
+        self.word_or_empty().0
+    }
+
+    /// Asserts that this MetaItem starts with a word, or single segment path.
     ///
     /// Some examples:
     /// - `#[inline]`: `inline` is a word
@@ -159,121 +336,108 @@ impl<'a, T: Clone> MetaItemParser<'a, T> {
     ///   using [`path_list`](Self::path_list)
     /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is *not* a word, and should instead be parsed
     ///   using [`path`](Self::path)
-    pub fn word(&self) -> Option<Ident> {
-        self.empty_args().then(|| self.get_path_parser().word()).flatten()
+    fn word(&self) -> Option<(Ident, Self::ArgParser)> {
+        let (path, args) = self.deconstruct();
+        Some((path.word()?, args))
     }
 
-    fn empty_args(&self) -> bool {
-        matches!(self.args, Args::Empty)
+    /// Like [`word`](Self::word), but returns an empty symbol instead of None
+    fn word_or_empty(&self) -> (Ident, Self::ArgParser) {
+        let (path, args) = self.deconstruct();
+        (path.word().unwrap_or(Ident::empty()), args)
     }
 
-    /// Asserts that this MetaItem is some specific word.
+    /// Asserts that this MetaItem starts with some specific word.
     ///
     /// See [`word`](Self::word) for examples of what a word is.
-    pub fn word_is(&self, sym: Symbol) -> bool {
-        self.word().map(|i| i.name == sym).unwrap_or(false)
+    fn word_is(&self, sym: Symbol) -> Option<Self::ArgParser> {
+        self.path_without_args().word_is(sym).then(|| self.args())
     }
 
-    /// Asserts that this MetaItem is a list, starting with a path.
+    /// Asserts that this MetaItem starts with some specific path.
     ///
-    /// Some examples:
-    ///
-    /// - `#[rustfmt::skip::macros(target_macro_name)]`: `rustfmt::skip::macros` is a path
-    /// - `#[allow(clippy::complexity)]`: `allow` is a single segment path
-    pub fn path_list(&'a self) -> Option<(PathParser<'a>, MetaItemListParser<'a>)> {
-        Some((self.get_path_parser(), self.list()?))
-    }
-
-    /// Asserts that this MetaItem is a list, starting with a word.
-    ///
-    /// Some examples:
-    ///
-    /// - `#[allow(clippy::complexity)]`: `allow` is a word
-    /// - `#[rustfmt::skip::macros(target_macro_name)]`: `rustfmt::skip::macros` is a path, so you'd
-    ///   need [`path_list`](Self::path_list) to parse this.
-    pub fn word_list(&'a self) -> Option<(Ident, MetaItemListParser<'a>)> {
-        Some((self.get_path_parser().word()?, self.list()?))
-    }
-
-    /// Like [`path_list`](Self::path_list) but always compares the segments first
-    pub fn path_list_is(&'a self, segments: &[Symbol]) -> Option<MetaItemListParser<'a>> {
-        self.get_path_parser().segments_is(segments).then(|| self.list()).flatten()
-    }
-
-    /// Like [`word_list`](Self::word_list) but always compares the word first
-    pub fn word_list_is(&'a self, word: Symbol) -> Option<MetaItemListParser<'a>> {
-        self.get_path_parser().word_is(word).then(|| self.list()).flatten()
-    }
-
-    fn list(&'a self) -> Option<MetaItemListParser<'a>> {
-        match &self.args {
-            Args::Delimited(args) if args.delim == Delimiter::Parenthesis => {
-                MetaItemListParserContext {
-                    inside_delimiters: args.tokens.trees().peekable(),
-                    dcx: self.dcx,
-                }
-                .parse()
-            }
-            Args::Delimited(_) | Args::Eq { .. } | Args::Empty => None,
-        }
-    }
-
-    fn name_value(&'a self) -> Option<EqParser<'a, T>> {
-        match &self.args {
-            Args::Eq { eq_span, value } => {
-                Some(EqParser { eq_span: *eq_span, value: Cow::Borrowed(value), dcx: self.dcx })
-            }
-            Args::Delimited(_) | Args::Empty => None,
-        }
-    }
-
-    /// Asserts that this MetaItem is a name-value pair, starting with a path.
-    ///
-    /// Some examples:
-    ///
-    /// - `#[clippy::cyclomatic_complexity = "100"]`: `clippy::cyclomatic_complexity` is a path in a
-    ///   name-value attribute
-    /// - `#[doc = "hello"]`: `doc` is a single segment path in a name-value attribute
-    pub fn path_name_value(&'a self) -> Option<(PathParser<'a>, EqParser<'a, T>)> {
-        Some((self.get_path_parser(), self.name_value()?))
-    }
-
-    /// Asserts that this MetaItem is a name-value pair, starting with a path.
-    ///
-    /// Some examples:
-    ///
-    /// - `#[doc = "hello"]`: `doc` is a word in a name-value attribute
-    /// - `#[clippy::cyclomatic_complexity = "100"]`: `clippy::cyclomatic_complexity`, so you'd
-    ///   need [`path_name_value`](Self::path_name_value) to parse this.
-    pub fn word_name_value(&'a self) -> Option<(Ident, EqParser<'a, T>)> {
-        Some((self.get_path_parser().word()?, self.name_value()?))
-    }
-
-    /// Like [`path_name_value`](Self::path_name_value) but always compares the segments first
-    pub fn path_name_value_is(&'a self, segments: &[Symbol]) -> Option<EqParser<'a, T>> {
-        self.get_path_parser().segments_is(segments).then(|| self.name_value()).flatten()
-    }
-
-    /// Like [`word_name_value`](Self::word_name_value) but always compares the word first
-    pub fn word_name_value_is(&'a self, word: Symbol) -> Option<EqParser<'a, T>> {
-        self.get_path_parser().word_is(word).then(|| self.name_value()).flatten()
+    /// See [`word`](Self::path) for examples of what a word is.
+    fn path_is(&self, segments: &[Symbol]) -> Option<Self::ArgParser> {
+        self.path_without_args().segments_is(segments).then(|| self.args())
     }
 }
 
-pub struct EqParser<'a, T: Clone> {
-    pub eq_span: Span,
+impl<'a> MetaItemParser<'a> for GenericMetaItemParser<'a, Expr> {
+    type ArgParser = GenericArgParser<'a, Expr>;
+
+    fn span(&self) -> Span {
+        if let Some(other) = self.args.span() {
+            self.path.span().with_hi(other.hi())
+        } else {
+            self.path.span()
+        }
+    }
+
+    /// Gets just the path, without the args.
+    fn path_without_args(&self) -> PathParser<'a> {
+        self.path.clone()
+    }
+
+    /// Gets just the args parser, without caring about the path.
+    fn args(&self) -> GenericArgParser<'a, Expr> {
+        GenericArgParser { args: self.args.clone(), dcx: self.dcx }
+    }
+}
+
+impl<'a> MetaItemParser<'a> for GenericMetaItemParser<'a, MetaItemLit> {
+    type ArgParser = GenericArgParser<'a, MetaItemLit>;
+
+    fn span(&self) -> Span {
+        if let Some(other) = self.args.span() {
+            self.path.span().with_hi(other.hi())
+        } else {
+            self.path.span()
+        }
+    }
+
+    /// Gets just the path, without the args.
+    fn path_without_args(&self) -> PathParser<'a> {
+        self.path.clone()
+    }
+
+    /// Gets just the args parser, without caring about the path.
+    fn args(&self) -> GenericArgParser<'a, MetaItemLit> {
+        GenericArgParser { args: self.args.clone(), dcx: self.dcx }
+    }
+}
+
+pub(crate) struct GenericNameValueParser<'a, T: Clone> {
+    pub(crate) eq_span: Span,
     value: Cow<'a, T>,
+    pub(crate) value_span: Span,
     dcx: DiagCtxtHandle<'a>,
 }
 
-impl<'a> EqParser<'a, Expr> {
-    /// Returns the value as an ast expression.
-    pub fn value_as_ast_expr(&'a self) -> &'a Expr {
-        &self.value
+pub(crate) trait NameValueParser<'a> {
+    fn value_span(&self) -> Span;
+
+    fn value_as_lit(&self) -> MetaItemLit;
+    fn value_as_str(&self) -> Option<Symbol> {
+        self.value_as_lit().kind.str()
+    }
+}
+
+impl<'a> NameValueParser<'a> for GenericNameValueParser<'a, Expr> {
+    fn value_as_lit(&self) -> MetaItemLit {
+        expr_to_lit(self.dcx, &self.value)
     }
 
-    pub fn value_as_lit(&self) -> MetaItemLit {
-        expr_to_lit(self.dcx, &self.value)
+    fn value_span(&self) -> Span {
+        self.value_span
+    }
+}
+
+impl<'a> NameValueParser<'a> for GenericNameValueParser<'a, MetaItemLit> {
+    fn value_as_lit(&self) -> MetaItemLit {
+        self.value.clone().into_owned()
+    }
+    fn value_span(&self) -> Span {
+        self.value_span
     }
 }
 
@@ -287,12 +451,6 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr) -> MetaItemLit {
     } else {
         let guar = dcx.has_errors().unwrap();
         MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span: DUMMY_SP }
-    }
-}
-
-impl<'a> EqParser<'a, MetaItemLit> {
-    pub fn value_as_lit(&self) -> MetaItemLit {
-        self.value.clone().into_owned()
     }
 }
 
@@ -377,32 +535,46 @@ impl<'a> MetaItemListParserContext<'a> {
         }
     }
 
-    fn next(&mut self) -> Option<MetaItemParser<'a, MetaItemLit>> {
+    fn next(&mut self) -> Option<MetaItemOrLitParser<'a, MetaItemLit>> {
+        // a list element is either a literal
+        if let Some(TokenTree::Token(token, _)) = self.inside_delimiters.peek()
+            && let Some(lit) = MetaItemLit::from_token(token)
+        {
+            return Some(MetaItemOrLitParser::Lit(lit));
+        }
+
+        // or a path.
         let path = self.next_path()?;
 
-        Some(match self.inside_delimiters.peek() {
+        // Paths can be followed by:
+        // - `(more meta items)` (another list)
+        // - `= lit` (a name-value)
+        // - nothing
+        Some(MetaItemOrLitParser::MetaItemParser(match self.inside_delimiters.peek() {
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => MetaItemParser {
+                token::Nonterminal::NtMeta(item) => GenericMetaItemParser {
                     path: PathParser::Ast(&item.path),
                     args: Args::<MetaItemLit>::from_attr_args(item.args.clone(), self.dcx),
                     dcx: self.dcx,
                 },
-                token::Nonterminal::NtPath(path) => {
-                    MetaItemParser { path: PathParser::Ast(path), args: Args::Empty, dcx: self.dcx }
-                }
+                token::Nonterminal::NtPath(path) => GenericMetaItemParser {
+                    path: PathParser::Ast(path),
+                    args: Args::Empty,
+                    dcx: self.dcx,
+                },
                 _ => return None,
             },
             Some(TokenTree::Delimited(dspan, _, delim @ Delimiter::Parenthesis, inner_tokens)) => {
                 let inner_tokens = inner_tokens.clone();
                 self.inside_delimiters.next();
 
-                MetaItemParser {
+                GenericMetaItemParser {
                     path: PathParser::Attr(path),
-                    args: Args::Delimited(DelimArgs {
+                    args: Args::Delimited(Cow::Owned(DelimArgs {
                         dspan: *dspan,
                         delim: *delim,
                         tokens: inner_tokens,
-                    }),
+                    })),
                     dcx: self.dcx,
                 }
             }
@@ -411,17 +583,26 @@ impl<'a> MetaItemListParserContext<'a> {
             Some(TokenTree::Delimited(..)) => return None,
             Some(TokenTree::Token(Token { kind: token::Eq, span }, _)) => {
                 self.inside_delimiters.next();
-                MetaItemParser {
+                let value = self.value()?;
+                GenericMetaItemParser {
                     path: PathParser::Attr(path),
-                    args: Args::Eq { eq_span: *span, value: self.value()? },
+                    args: Args::Eq {
+                        eq_span: *span,
+                        value_span: value.span,
+                        value: Cow::Owned(value),
+                    },
                     dcx: self.dcx,
                 }
             }
-            _ => MetaItemParser { path: PathParser::Attr(path), args: Args::Empty, dcx: self.dcx },
-        })
+            _ => GenericMetaItemParser {
+                path: PathParser::Attr(path),
+                args: Args::Empty,
+                dcx: self.dcx,
+            },
+        }))
     }
 
-    pub fn parse(mut self) -> Option<MetaItemListParser<'a>> {
+    pub(crate) fn parse(mut self) -> Option<MetaItemListParser<'a>> {
         let mut sub_parsers = Vec::new();
 
         while !self.done() {
@@ -436,6 +617,37 @@ impl<'a> MetaItemListParserContext<'a> {
     }
 }
 
-pub struct MetaItemListParser<'a> {
-    sub_parsers: Vec<MetaItemParser<'a, MetaItemLit>>,
+pub(crate) struct MetaItemListParser<'a> {
+    sub_parsers: Vec<MetaItemOrLitParser<'a, MetaItemLit>>,
+}
+
+impl<'a> MetaItemListParser<'a> {
+    /// Lets you pick and choose as what you want to parse each element in the list
+    pub(crate) fn mixed(self) -> impl Iterator<Item = MetaItemOrLitParser<'a, MetaItemLit>> + 'a {
+        self.sub_parsers.into_iter()
+    }
+
+    /// Asserts that every item in the list is another list starting with a word.
+    ///
+    /// See [`MetaItemParser::word`] for examples of words.
+    pub(crate) fn all_word_list(self) -> Option<Vec<(Ident, GenericArgParser<'a, MetaItemLit>)>> {
+        self.mixed().map(|i| i.meta_item()?.word()).collect()
+    }
+
+    /// Asserts that every item in the list is another list starting with a full path.
+    ///
+    /// See [`MetaItemParser::path`] for examples of paths.
+    pub(crate) fn all_path_list(
+        self,
+    ) -> Option<Vec<(PathParser<'a>, GenericArgParser<'a, MetaItemLit>)>> {
+        self.mixed().map(|i| Some(i.meta_item()?.path())).collect()
+    }
+
+    /// Returns Some if the list contains only a single element.
+    ///
+    /// Inside the Some is the parser to parse this single element.
+    pub(crate) fn single(self) -> Option<MetaItemOrLitParser<'a, MetaItemLit>> {
+        let mut iter = self.mixed();
+        iter.next().filter(|_| iter.next().is_none())
+    }
 }

@@ -118,6 +118,7 @@ impl DisallowedMacros {
     }
 }
 
+// TODO: early pass?
 impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
 
 impl LateLintPass<'_> for DisallowedMacros {

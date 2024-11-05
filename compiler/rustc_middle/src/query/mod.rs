@@ -44,7 +44,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir, rustc_abi as abi};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -1215,19 +1215,19 @@ rustc_queries! {
         feedable
     }
 
-    query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<hir::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<attr::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<hir::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<hir::DefaultBodyStability> {
         desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

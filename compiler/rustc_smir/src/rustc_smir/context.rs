@@ -256,7 +256,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tcx.get_attrs_by_path(did, &attr_name)
             .map(|attribute| {
                 let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
+                let span = attribute.span();
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()
@@ -275,7 +275,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         attrs_iter
             .map(|attribute| {
                 let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
+                let span = attribute.span();
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()

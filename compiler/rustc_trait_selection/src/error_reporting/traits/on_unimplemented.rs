@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{AttrArgs, Attribute, AttributeKind};
+use rustc_hir::{AttrArgs, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -617,7 +617,14 @@ impl<'tcx> OnUnimplementedDirective {
         item_def_id: DefId,
     ) -> Result<Option<Self>, ErrorGuaranteed> {
         let result = if let Some(items) = attr.meta_item_list() {
-            Self::parse(tcx, item_def_id, &items, attr.span, true, is_diagnostic_namespace_variant)
+            Self::parse(
+                tcx,
+                item_def_id,
+                &items,
+                attr.span(),
+                true,
+                is_diagnostic_namespace_variant,
+            )
         } else if let Some(value) = attr.value_str() {
             if !is_diagnostic_namespace_variant {
                 Ok(Some(OnUnimplementedDirective {
@@ -628,7 +635,7 @@ impl<'tcx> OnUnimplementedDirective {
                         tcx,
                         item_def_id,
                         value,
-                        attr.span,
+                        attr.span(),
                         is_diagnostic_namespace_variant,
                     )?),
                     notes: Vec::new(),
@@ -654,14 +661,14 @@ impl<'tcx> OnUnimplementedDirective {
                 Ok(None)
             }
         } else if is_diagnostic_namespace_variant {
-            match &attr.kind {
-                AttributeKind::Unparsed(p) if !matches!(p.args, AttrArgs::Empty) => {
+            match attr {
+                Attribute::Unparsed(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
-                            attr.span,
-                            MalformedOnUnimplementedAttrLint::new(attr.span),
+                            attr.span(),
+                            MalformedOnUnimplementedAttrLint::new(attr.span()),
                         );
                     }
                 }
@@ -670,7 +677,7 @@ impl<'tcx> OnUnimplementedDirective {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                             tcx.local_def_id_to_hir_id(item_def_id),
-                            attr.span,
+                            attr.span(),
                             MissingOptionsForOnUnimplementedAttr,
                         )
                     }

@@ -27,8 +27,11 @@ pub mod hir_id;
 pub mod intravisit;
 pub mod lang_items;
 pub mod pat_util;
+mod stability;
 mod stable_hash_impls;
 mod target;
+mod version;
+pub use version::RustcVersion;
 pub mod weak_lang_items;
 
 #[cfg(test)]
@@ -39,6 +42,7 @@ pub use attribute::*;
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};
+pub use stability::*;
 pub use stable_hash_impls::HashStableContext;
 pub use target::{MethodKind, Target};
 

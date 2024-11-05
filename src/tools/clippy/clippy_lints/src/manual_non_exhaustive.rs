@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                             if let Some(non_exhaustive) =
                                 attr::find_by_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
                             {
-                                diag.span_note(non_exhaustive.span, "the struct is already non-exhaustive");
+                                diag.span_note(non_exhaustive.span(), "the struct is already non-exhaustive");
                             } else {
                                 let indent = snippet_indent(cx, item.span).unwrap_or_default();
                                 diag.span_suggestion_verbose(

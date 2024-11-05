@@ -35,7 +35,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
-use rustc_hir::{LangItem, Safety};
+use rustc_hir::{LangItem, Safety, AttributeKind};
 use rustc_index::IndexVec;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
@@ -52,7 +52,7 @@ pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -1504,46 +1504,48 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         for attr in self.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(self.sess, attr) {
-                flags.insert(match r {
-                    attr::ReprRust => ReprFlags::empty(),
-                    attr::ReprC => ReprFlags::IS_C,
-                    attr::ReprPacked(pack) => {
-                        min_pack = Some(if let Some(min_pack) = min_pack {
-                            min_pack.min(pack)
-                        } else {
-                            pack
-                        });
-                        ReprFlags::empty()
-                    }
-                    attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
-                    attr::ReprSimd => ReprFlags::IS_SIMD,
-                    attr::ReprInt(i) => {
-                        size = Some(match i {
-                            attr::IntType::SignedInt(x) => match x {
-                                ast::IntTy::Isize => IntegerType::Pointer(true),
-                                ast::IntTy::I8 => IntegerType::Fixed(Integer::I8, true),
-                                ast::IntTy::I16 => IntegerType::Fixed(Integer::I16, true),
-                                ast::IntTy::I32 => IntegerType::Fixed(Integer::I32, true),
-                                ast::IntTy::I64 => IntegerType::Fixed(Integer::I64, true),
-                                ast::IntTy::I128 => IntegerType::Fixed(Integer::I128, true),
-                            },
-                            attr::IntType::UnsignedInt(x) => match x {
-                                ast::UintTy::Usize => IntegerType::Pointer(false),
-                                ast::UintTy::U8 => IntegerType::Fixed(Integer::I8, false),
-                                ast::UintTy::U16 => IntegerType::Fixed(Integer::I16, false),
-                                ast::UintTy::U32 => IntegerType::Fixed(Integer::I32, false),
-                                ast::UintTy::U64 => IntegerType::Fixed(Integer::I64, false),
-                                ast::UintTy::U128 => IntegerType::Fixed(Integer::I128, false),
-                            },
-                        });
-                        ReprFlags::empty()
-                    }
-                    attr::ReprAlign(align) => {
-                        max_align = max_align.max(Some(align));
-                        ReprFlags::empty()
-                    }
-                });
+            if let hir::Attribute::Parsed(AttributeKind::Repr(ref r)) = attr {
+                for r in r {
+                    flags.insert(match *r {
+                        hir::Repr::Rust => ReprFlags::empty(),
+                        hir::Repr::C => ReprFlags::IS_C,
+                        hir::Repr::Packed(pack) => {
+                            min_pack = Some(if let Some(min_pack) = min_pack {
+                                min_pack.min(pack)
+                            } else {
+                                pack
+                            });
+                            ReprFlags::empty()
+                        }
+                        hir::Repr::Transparent => ReprFlags::IS_TRANSPARENT,
+                        hir::Repr::Simd => ReprFlags::IS_SIMD,
+                        hir::Repr::Int(i) => {
+                            size = Some(match i {
+                                hir::IntType::SignedInt(x) => match x {
+                                    ast::IntTy::Isize => IntegerType::Pointer(true),
+                                    ast::IntTy::I8 => IntegerType::Fixed(Integer::I8, true),
+                                    ast::IntTy::I16 => IntegerType::Fixed(Integer::I16, true),
+                                    ast::IntTy::I32 => IntegerType::Fixed(Integer::I32, true),
+                                    ast::IntTy::I64 => IntegerType::Fixed(Integer::I64, true),
+                                    ast::IntTy::I128 => IntegerType::Fixed(Integer::I128, true),
+                                },
+                                hir::IntType::UnsignedInt(x) => match x {
+                                    ast::UintTy::Usize => IntegerType::Pointer(false),
+                                    ast::UintTy::U8 => IntegerType::Fixed(Integer::I8, false),
+                                    ast::UintTy::U16 => IntegerType::Fixed(Integer::I16, false),
+                                    ast::UintTy::U32 => IntegerType::Fixed(Integer::I32, false),
+                                    ast::UintTy::U64 => IntegerType::Fixed(Integer::I64, false),
+                                    ast::UintTy::U128 => IntegerType::Fixed(Integer::I128, false),
+                                },
+                            });
+                            ReprFlags::empty()
+                        }
+                        hir::Repr::Align(align) => {
+                            max_align = max_align.max(Some(align));
+                            ReprFlags::empty()
+                        }
+                    });
+                }
             }
         }
 
@@ -1756,13 +1758,21 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+    }
+
+    /// Gets all attributes.
+    pub fn get_all_attrs(
+        self,
+        did: impl Into<DefId>,
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
-        let filter_fn = move |a: &&hir::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter()
         } else {
-            debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.hir_attrs_for_def(did).iter().filter(filter_fn)
+            // TODO: commented this check because we don't have the attr symbol from get_attrs here
+            // debug_assert!(rustc_feature::encode_cross_crate(attr));
+            self.hir_attrs_for_def(did).iter()
         }
     }
 

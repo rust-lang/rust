@@ -6,7 +6,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_hir::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -267,7 +267,7 @@ impl ExternalCrate {
                     let attr_value = attr.value_str().expect("syntax should already be validated");
                     let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
                         span_bug!(
-                            attr.span,
+                            attr.span(),
                             "primitive `{attr_value}` is not a member of `PrimitiveType`"
                         );
                     };
@@ -1238,19 +1238,6 @@ impl Attributes {
         aliases.into_iter().collect::<Vec<_>>().into()
     }
 }
-
-impl PartialEq for Attributes {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.doc_strings == rhs.doc_strings
-            && self
-                .other_attrs
-                .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
-    }
-}
-
-impl Eq for Attributes {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {

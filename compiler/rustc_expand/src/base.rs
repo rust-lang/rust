@@ -10,11 +10,13 @@ use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, Stability};
+use rustc_attr::find_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
+use rustc_hir as hir;
+use rustc_hir::{AttributeKind, Deprecation, Stability};
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
@@ -838,25 +840,27 @@ impl SyntaxExtension {
     /// and other properties converted from attributes.
     pub fn new(
         sess: &Session,
-        features: &Features,
         kind: SyntaxExtensionKind,
         span: Span,
         helper_attrs: Vec<Symbol>,
         edition: Edition,
         name: Symbol,
-        attrs: &[impl AttributeExt],
+        attrs: &[hir::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            rustc_attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
+            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i) => i)
+                .map(|i| i.as_slice())
+                .unwrap_or_default();
+        let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe);
 
-        let allow_internal_unsafe = ast_attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = ast_attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .is_some_and(|l| ast_attr::list_contains_name(&l, sym::local_inner_macros));
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
+        // TODO: apply https://github.com/rust-lang/rust/commit/e96808162ad7ff5906d7b58d32a25abe139e998c#diff-2d9556efb63fda44adf40abb2dd2d6ed383c37ac27c99c63c56de906fafb0cf4
         let (builtin_name, helper_attrs) = ast_attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
@@ -867,16 +871,17 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let stability = attr::find_stability(sess, attrs, span);
-        let const_stability = attr::find_const_stability(sess, attrs, span);
-        let body_stability = attr::find_body_stability(sess, attrs);
-        if let Some((_, sp)) = const_stability {
+
+
+        let stability = find_attr!(attrs, AttributeKind::Stability{stability, ..} => *stability);
+
+        if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability{span, ..} => *span) {
             sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
-        if let Some((_, sp)) = body_stability {
+        if let Some(sp) = find_attr!(attrs, AttributeKind::BodyStability{span, ..} => *span) {
             sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
@@ -887,9 +892,10 @@ impl SyntaxExtension {
             kind,
             span,
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
-                .then(|| allow_internal_unstable.into()),
-            stability: stability.map(|(s, _)| s),
-            deprecation: attr::find_deprecation(sess, features, attrs).map(|(d, _)| d),
+                // FIXME(jdonszelmann): avoid the into_iter/collect?
+                .then(|| allow_internal_unstable.iter().copied().collect::<Vec<_>>().into()),
+            stability,
+            deprecation: find_attr!(attrs, AttributeKind::Deprecation{deprecation, ..} => *deprecation),
             helper_attrs,
             edition,
             builtin_name,

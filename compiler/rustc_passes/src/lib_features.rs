@@ -4,9 +4,8 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_attr::VERSION_PLACEHOLDER;
-use rustc_hir::Attribute;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::{Attribute, VERSION_PLACEHOLDER};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};
@@ -69,10 +68,14 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                             | sym::rustc_default_body_unstable
                     );
                     if is_unstable {
-                        return Some((feature, FeatureStability::Unstable, attr.span));
+                        return Some((feature, FeatureStability::Unstable, attr.span()));
                     }
                     if let Some(since) = since {
-                        return Some((feature, FeatureStability::AcceptedSince(since), attr.span));
+                        return Some((
+                            feature,
+                            FeatureStability::AcceptedSince(since),
+                            attr.span(),
+                        ));
                     }
                 }
                 // We need to iterate over the other attributes, because

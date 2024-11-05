@@ -1,15 +1,16 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::attr as ast_attr;
+use rustc_attr::AttributeParseContext;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{AttrArgs, AttrItem, AttributeKind, GenericParamKind, PatKind};
+use rustc_hir::{AttrArgs, AttrItem, Attribute, AttributeKind, GenericParamKind, PatKind, Repr};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{BytePos, Span};
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -163,10 +164,10 @@ impl NonCamelCaseTypes {
 
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
-        let has_repr_c = it
-            .attrs
-            .iter()
-            .any(|attr| attr::find_repr_attrs(cx.sess(), attr).contains(&attr::ReprC));
+        let has_repr_c = matches!(
+            AttributeParseContext::parse_limited(cx.sess(), &it.attrs, sym::repr, it.span),
+            Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.contains(&Repr::C)
+        );
 
         if has_repr_c {
             return;
@@ -345,28 +346,28 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         } else {
             ast_attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name).and_then(
                 |attr| {
-                    if let AttributeKind::Unparsed(n) = &attr.kind
-                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: ref lit }, .. } =
+                    if let Attribute::Unparsed(n) = attr
+                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, ref expr }, .. } =
                             n.as_ref()
-                        && let ast::LitKind::Str(name, ..) = lit.kind
+                        && let ast::LitKind::Str(name, ..) = expr.kind
                     {
                         // Discard the double quotes surrounding the literal.
                         let sp = cx
                             .sess()
                             .source_map()
-                            .span_to_snippet(lit.span)
+                            .span_to_snippet(expr.span)
                             .ok()
                             .and_then(|snippet| {
                                 let left = snippet.find('"')?;
                                 let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
 
                                 Some(
-                                    lit.span
-                                        .with_lo(lit.span.lo() + BytePos(left as u32 + 1))
-                                        .with_hi(lit.span.hi() - BytePos(right as u32)),
+                                    expr.span
+                                        .with_lo(expr.span.lo() + BytePos(left as u32 + 1))
+                                        .with_hi(expr.span.hi() - BytePos(right as u32)),
                                 )
                             })
-                            .unwrap_or(lit.span);
+                            .unwrap_or(expr.span);
 
                         Some(Ident::new(name, sp))
                     } else {

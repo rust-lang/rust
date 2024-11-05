@@ -1,8 +1,8 @@
 //! Set and unset common attributes on LLVM values.
 
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, PatchableFunctionEntry};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};

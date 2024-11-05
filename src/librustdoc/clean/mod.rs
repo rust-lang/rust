@@ -2684,8 +2684,8 @@ fn add_without_unwanted_attributes<'hir>(
             continue;
         }
         let mut attr = attr.clone();
-        match attr.kind {
-            hir::AttributeKind::Unparsed(ref mut normal) => {
+        match attr {
+            hir::Attribute::Unparsed(ref mut normal) => {
                 if let [ident] = &*normal.path.segments {
                     let ident = ident.name;
                     if ident == sym::doc {

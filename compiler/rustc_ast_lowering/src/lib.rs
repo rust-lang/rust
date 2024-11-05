@@ -42,7 +42,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_attr::{AttributeParseContext, MaybeParsedAttribute};
+use rustc_attr::AttributeParseContext;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -180,7 +180,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
-            attribute_parse_context: AttributeParseContext::new(tcx.dcx(), registered_tools),
+
+            attribute_parse_context: AttributeParseContext::new(
+                tcx.sess,
+                tcx.features(),
+                registered_tools,
+            ),
         }
     }
 
@@ -843,11 +848,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [hir::Attribute] {
+    fn lower_attrs(
+        &mut self,
+        id: HirId,
+        attrs: &[Attribute],
+        target_span: Span,
+    ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
-            let lowered_attrs = self.lower_attrs_iter(attrs);
+            let lowered_attrs = self.lower_attrs_vec(attrs, target_span);
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -857,60 +867,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attrs_iter<'x>(
-        &'x self,
-        attrs: &'x [Attribute],
-    ) -> impl Iterator<Item = hir::Attribute> + use<'x, 'hir> {
-        let maybe_parsed = self.attribute_parse_context.parse_attribute_list(attrs);
-        let attrs_with_kinds = maybe_parsed.map(|(maybe_parsed, attr)| {
-            (attr, match maybe_parsed {
-                MaybeParsedAttribute::Parsed(p) => hir::AttributeKind::Parsed(p),
-                MaybeParsedAttribute::MustRemainUnparsed(n) => self.lower_normal_attr(n),
-            })
-        });
-
-        attrs_with_kinds.map(|(attr, kind)| self.lower_attr(attr, kind))
-    }
-
-    fn lower_normal_attr(&self, normal: &NormalAttr) -> hir::AttributeKind {
-        // Note that we explicitly do not walk the path. Since we don't really
-        // lower attributes (we use the AST version) there is nowhere to keep
-        // the `HirId`s. We don't actually need HIR version of attributes anyway.
-        // Tokens are also not needed after macro expansion and parsing.
-        hir::AttributeKind::Unparsed(Box::new(hir::AttrItem {
-            path: hir::AttrPath {
-                segments: normal
-                    .item
-                    .path
-                    .segments
-                    .iter()
-                    .map(|i| i.ident)
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
-                span: normal.item.path.span,
-            },
-            args: self.lower_attr_args(&normal.item.args),
-        }))
-    }
-
-    fn lower_attr(&self, attr: &Attribute, kind: hir::AttributeKind) -> hir::Attribute {
-        // In the AST, safety is only stored for non doc comments. However, since in the hir,
-        // doc comments are simply a normal instance of a "parsed attribute" safety is stored
-        // externally, for every attribute. This may costs marginally more storage, but it makes
-        // code that deals with attributes much simpler. Here we say that all doc comments are safe.
-        let unsafety = if let AttrKind::Normal(ref n) = attr.kind {
-            self.lower_safety(n.item.unsafety, hir::Safety::Safe)
-        } else {
-            hir::Safety::Safe
-        };
-
-        hir::Attribute {
-            kind,
-            id: attr.id,
-            style: attr.style,
-            span: self.lower_span(attr.span),
-            unsafety,
-        }
+    fn lower_attrs_vec(&self, attrs: &[Attribute], target_span: Span) -> Vec<hir::Attribute> {
+        self.attribute_parse_context.parse_attribute_list(attrs, target_span)
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
@@ -919,34 +877,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if let Some(&a) = self.attrs.get(&target_id.local_id) {
             debug_assert!(!a.is_empty());
             self.attrs.insert(id.local_id, a);
-        }
-    }
-
-    fn lower_attr_args(&self, args: &AttrArgs) -> hir::AttrArgs {
-        match args {
-            AttrArgs::Empty => hir::AttrArgs::Empty,
-            AttrArgs::Delimited(args) => hir::AttrArgs::Delimited(self.lower_delim_args(args)),
-            // This is an inert key-value attribute - it will never be visible to macros
-            // after it gets lowered to HIR. Therefore, we can extract literals to handle
-            // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            &AttrArgs::Eq { eq_span, ref expr } => {
-                // In valid code the value always ends up as a single literal. Otherwise, a dummy
-                // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
-                {
-                    lit
-                } else {
-                    let guar = self.dcx().has_errors().unwrap();
-                    MetaItemLit {
-                        symbol: kw::Empty,
-                        suffix: None,
-                        kind: LitKind::Err(guar),
-                        span: DUMMY_SP,
-                    }
-                };
-                hir::AttrArgs::Eq { eq_span, expr: lit }
-            }
         }
     }
 
@@ -1840,7 +1770,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs);
+        self.lower_attrs(hir_id, &param.attrs, param.span());
         hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),

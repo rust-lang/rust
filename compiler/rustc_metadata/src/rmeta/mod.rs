@@ -40,7 +40,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 
@@ -200,7 +200,7 @@ type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
-    stability: Option<attr::Stability>,
+    stability: Option<hir::Stability>,
     macros: LazyArray<DefIndex>,
 }
 
@@ -414,10 +414,10 @@ define_tables! {
     safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
-    lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,
-    lookup_const_stability: Table<DefIndex, LazyValue<attr::ConstStability>>,
-    lookup_default_body_stability: Table<DefIndex, LazyValue<attr::DefaultBodyStability>>,
-    lookup_deprecation_entry: Table<DefIndex, LazyValue<attr::Deprecation>>,
+    lookup_stability: Table<DefIndex, LazyValue<hir::Stability>>,
+    lookup_const_stability: Table<DefIndex, LazyValue<hir::ConstStability>>,
+    lookup_default_body_stability: Table<DefIndex, LazyValue<hir::DefaultBodyStability>>,
+    lookup_deprecation_entry: Table<DefIndex, LazyValue<hir::Deprecation>>,
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     type_of: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Ty<'static>>>>,

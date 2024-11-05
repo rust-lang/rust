@@ -378,7 +378,7 @@ impl<'tcx> Cx<'tcx> {
                     if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_box) {
                         if attrs.len() != 1 {
                             tcx.dcx().emit_err(errors::RustcBoxAttributeError {
-                                span: attrs[0].span,
+                                span: attrs[0].span(),
                                 reason: errors::RustcBoxAttrReason::Attributes,
                             });
                         } else if let Some(box_item) = tcx.lang_items().owned_box() {
@@ -406,7 +406,7 @@ impl<'tcx> Cx<'tcx> {
                             }
                         } else {
                             tcx.dcx().emit_err(errors::RustcBoxAttributeError {
-                                span: attrs[0].span,
+                                span: attrs[0].span(),
                                 reason: errors::RustcBoxAttrReason::MissingBox,
                             });
                         }

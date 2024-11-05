@@ -30,7 +30,6 @@ pub mod output;
 pub use getopts;
 
 mod version;
-pub use version::RustcVersion;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

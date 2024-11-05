@@ -450,7 +450,7 @@ impl<'tcx> Collector<'tcx> {
                 (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
             }
             let Some((name, name_span)) = name else {
-                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
+                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span() });
                 continue;
             };
 
@@ -485,7 +485,7 @@ impl<'tcx> Collector<'tcx> {
                             let link_ordinal_attr =
                                 self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
                             sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span,
+                                span: link_ordinal_attr.span(),
                             });
                         }
                     }

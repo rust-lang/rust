@@ -735,7 +735,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if in_external_macro(cx.sess(), attr.span) {
+            if in_external_macro(cx.sess(), attr.span()) {
                 None
             } else {
                 Some((attr, None))

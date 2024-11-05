@@ -202,7 +202,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_hir::InlineAttr::Never
         {
             return None;
         }

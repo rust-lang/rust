@@ -9,7 +9,8 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
-use rustc_session::{RustcVersion, impl_lint_pass};
+use rustc_session::{impl_lint_pass};
+use rustc_hir::RustcVersion;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 

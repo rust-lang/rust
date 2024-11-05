@@ -6,11 +6,11 @@ use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::attr as ast_attr;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{Lrc, par_map};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::OptimizeAttr;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_metadata::EncodedMetadata;
@@ -1057,8 +1057,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {
-                attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
-                attr::OptimizeAttr::Speed => true,
+                OptimizeAttr::None | OptimizeAttr::Size => false,
+                OptimizeAttr::Speed => true,
             }
         });
 

@@ -101,7 +101,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
-        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span, annotated: main_span });
+        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span(), annotated: main_span });
         error = true;
     }
 
@@ -224,7 +224,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     for attr in attrs {
                         if attr.has_name(sym::track_caller) {
                             tcx.dcx().emit_err(errors::StartTrackCaller {
-                                span: attr.span,
+                                span: attr.span(),
                                 start: start_span,
                             });
                             error = true;
@@ -236,7 +236,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                             && !tcx.sess.opts.actually_rustdoc
                         {
                             tcx.dcx().emit_err(errors::StartTargetFeature {
-                                span: attr.span,
+                                span: attr.span(),
                                 start: start_span,
                             });
                             error = true;

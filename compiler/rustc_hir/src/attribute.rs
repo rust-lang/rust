@@ -1,17 +1,48 @@
 use rustc_ast::{self as ast, MetaItemInner};
+use std::fmt::Display;
+
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrId, AttrStyle, DelimArgs, MetaItemLit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol, sym};
+use rustc_target::abi::Align;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
-use crate::ItemLocalId;
-use crate::hir::Safety;
+use crate::{ConstStability, DefaultBodyStability, ItemLocalId, RustcVersion, Stability};
+
+/// The derived implementation of [`HashStable_Generic`] on [`Attribute`]s shouldn't hash
+/// [`AttrId`]s. By wrapping them in this, we make sure we never do.
+#[derive(Copy, Debug, Encodable, Decodable, Clone)]
+pub struct HashIgnoredAttrId {
+    pub attr_id: AttrId,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum InlineAttr {
+    None,
+    Hint,
+    Always,
+    Never,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
+pub enum InstructionSetAttr {
+    ArmA32,
+    ArmT32,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum OptimizeAttr {
+    None,
+    Speed,
+    Size,
+}
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum DiagnosticAttribute {
@@ -21,12 +52,92 @@ pub enum DiagnosticAttribute {
     // tidy-alphabetical-end
 }
 
+#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic)]
+pub enum Repr {
+    Int(IntType),
+    Rust,
+    C,
+    Packed(Align),
+    Simd,
+    Transparent,
+    Align(Align),
+}
+
+pub enum TransparencyError {
+    UnknownTransparency(Symbol, Span),
+    MultipleTransparencyAttrs(Span, Span),
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum IntType {
+    SignedInt(ast::IntTy),
+    UnsignedInt(ast::UintTy),
+}
+
+impl IntType {
+    #[inline]
+    pub fn is_signed(self) -> bool {
+        use IntType::*;
+
+        match self {
+            SignedInt(..) => true,
+            UnsignedInt(..) => false,
+        }
+    }
+}
+
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+pub struct Deprecation {
+    pub since: DeprecatedSince,
+    /// The note to issue a reason.
+    pub note: Option<Symbol>,
+    /// A text snippet used to completely replace any use of the deprecated item in an expression.
+    ///
+    /// This is currently unstable.
+    pub suggestion: Option<Symbol>,
+}
+
+/// Release in which an API is deprecated.
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+pub enum DeprecatedSince {
+    RustcVersion(RustcVersion),
+    /// Deprecated in the future ("to be determined").
+    Future,
+    /// `feature(staged_api)` is off. Deprecation versions outside the standard
+    /// library are allowed to be arbitrary strings, for better or worse.
+    NonStandard(Symbol),
+    /// Deprecation version is unspecified but optional.
+    Unspecified,
+    /// Failed to parse a deprecation version, or the deprecation version is
+    /// unspecified and required. An error has already been emitted.
+    Err,
+}
+
+impl Deprecation {
+    /// Whether an item marked with #[deprecated(since = "X")] is currently
+    /// deprecated (i.e., whether X is not greater than the current rustc
+    /// version).
+    pub fn is_in_effect(&self) -> bool {
+        match self.since {
+            DeprecatedSince::RustcVersion(since) => since <= RustcVersion::CURRENT,
+            DeprecatedSince::Future => false,
+            // The `since` field doesn't have semantic purpose without `#![staged_api]`.
+            DeprecatedSince::NonStandard(_) => true,
+            // Assume deprecation is in effect if "since" field is absent or invalid.
+            DeprecatedSince::Unspecified | DeprecatedSince::Err => true,
+        }
+    }
+
+    pub fn is_since_rustc_version(&self) -> bool {
+        matches!(self.since, DeprecatedSince::RustcVersion(_))
+    }
+}
+
 // FIXME(jdonszelmann): guidelines for when an attribute should be "rustc".
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum RustcAttribute {
     // tidy-alphabetical-startt
-    AllowConstFnUnstable,
-    AllowedThroughUnstableModules,
     AllowIncoherentImpl,
     Coinductive,
     Confusables,
@@ -63,13 +174,16 @@ pub enum RustcAttribute {
 /// final structure, which on-site (the place where the attribute is useful for, think the
 /// the place where `must_use` is checked) little to no extra parsing or validating needs to
 /// happen.
+///
+/// For more docs, look in [`rustc_attr`](https://doc.rust-lang.org/stable/nightly-rustc/rustc_attr/index.html)
 // FIXME(jdonszelmann): rename to AttributeKind once hir::AttributeKind is dissolved
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
-pub enum ParsedAttributeKind {
+pub enum AttributeKind {
     // tidy-alphabetical-start
     Allow,
+    AllowConstFnUnstable(ThinVec<Symbol>),
     AllowInternalUnsafe,
-    AllowInternalUnstable,
+    AllowInternalUnstable(ThinVec<Symbol>),
     AutoDiff,
     AutomaticallyDerived,
     Cfg,
@@ -77,21 +191,40 @@ pub enum ParsedAttributeKind {
     CfiEncoding, // FIXME(cfi_encoding)
     Cold,
     CollapseDebuginfo,
+    Confusables(ThinVec<Symbol>),
+    ConstStability {
+        stability: ConstStability,
+        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        span: Span,
+    },
     ConstTrait,
     Coroutine,
     Coverage,
     CustomMir,
     DebuggerVisualizer,
+    BodyStability {
+        stability: DefaultBodyStability,
+        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
+        span: Span,
+    },
     DefaultLibAllocator,
     Deny,
-    Deprecated,
+    Deprecation {
+        deprecation: Deprecation,
+        span: Span,
+    },
     DeprecatedSafe, // FIXME(deprecated_safe)
     Diagnostic(DiagnosticAttribute),
     Doc,
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
-    DocComment(CommentKind, Symbol),
+    DocComment {
+        style: AttrStyle,
+        kind: CommentKind,
+        span: Span,
+        comment: Symbol,
+    },
     Expect,
     ExportName,
     FfiConst,
@@ -99,6 +232,7 @@ pub enum ParsedAttributeKind {
     Forbid,
     Fundamental,
     Ignore,
+    // TODO: must contain span for clippy
     Inline,
     InstructionSet, // broken on stable!!!
     Lang,
@@ -108,6 +242,7 @@ pub enum ParsedAttributeKind {
     LinkOrdinal,
     LinkSection,
     MacroExport,
+    MacroTransparency(Transparency),
     MacroUse,
     Marker,
     MayDangle,
@@ -128,9 +263,13 @@ pub enum ParsedAttributeKind {
     ProcMacro,
     ProcMacroAttribute,
     ProcMacroDerive,
-    Repr,
+    Repr(ThinVec<Repr>),
     Rustc(RustcAttribute),
-    Stable,
+    Stability {
+        stability: Stability,
+        /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute
+        span: Span,
+    },
     Start,
     TargetFeature,
     ThreadLocal,
@@ -164,55 +303,68 @@ pub struct AttrPath {
     pub span: Span,
 }
 
+impl AttrPath {
+    pub fn from_ast(path: &ast::Path) -> Self {
+        AttrPath {
+            segments: path.segments.iter().map(|i| i.ident).collect::<Vec<_>>().into_boxed_slice(),
+            span: path.span,
+        }
+    }
+}
+
+impl Display for AttrPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.segments.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"))
+    }
+}
+
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct AttrItem {
     // Not lowered to hir::Path because we have no NodeId to resolve to.
     pub path: AttrPath,
     pub args: AttrArgs,
+
+    pub id: HashIgnoredAttrId,
+    /// Denotes if the attribute decorates the following construct (outer)
+    /// or the construct this attribute is contained within (inner).
+    pub style: AttrStyle,
+    /// Span of the entire attribute
+    pub span: Span,
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub enum AttributeKind {
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+pub enum Attribute {
     /// A parsed built-in attribute.
-    Parsed(ParsedAttributeKind),
+    ///
+    /// Each attribute has a span connected to it. However, you must be somewhat careful using it.
+    /// That's because sometimes we merge multiple attributes together, like when an item has
+    /// multiple `repr` attributes. In this case the span might not be very useful.
+    Parsed(AttributeKind),
 
     /// An attribute that could not be parsed, out of a token-like representation.
     /// This is the case for custom tool attributes.
     Unparsed(Box<AttrItem>),
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub struct Attribute {
-    pub kind: AttributeKind,
-    pub id: AttrId,
-    /// Denotes if the attribute decorates the following construct (outer)
-    /// or the construct this attribute is contained within (inner).
-    pub style: AttrStyle,
-    /// Span of the entire attribute
-    pub span: Span,
-
-    pub unsafety: Safety
-}
-
 impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
-        match &self.kind {
-            AttributeKind::Unparsed(normal) => &normal,
+        match &self {
+            Attribute::Unparsed(normal) => &normal,
             _ => panic!("unexpected parsed attribute"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
-        match self.kind {
-            AttributeKind::Unparsed(normal) => *normal,
+        match self {
+            Attribute::Unparsed(normal) => *normal,
             _ => panic!("unexpected parsed attribute"),
         }
     }
 
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Eq { expr , .. }, .. } => Some(expr),
+        match &self {
+            Attribute::Unparsed(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
                 _ => None,
             },
             _ => None,
@@ -226,12 +378,15 @@ impl Attribute {
 // FIXME(jdonszelmann): remove when all attributes are parsed together
 impl AttributeExt for Attribute {
     fn id(&self) -> AttrId {
-        self.id
+        match &self {
+            Attribute::Unparsed(u) => u.id.attr_id,
+            _ => panic!(),
+        }
     }
 
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => match n.as_ref() {
+        match &self {
+            Attribute::Unparsed(n) => match n.as_ref() {
                 AttrItem { args: AttrArgs::Delimited(d), .. } => {
                     ast::MetaItemKind::list_from_tokens(d.tokens.clone())
                 }
@@ -251,8 +406,8 @@ impl AttributeExt for Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn ident(&self) -> Option<Ident> {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => {
+        match &self {
+            Attribute::Unparsed(n) => {
                 if let [ident] = n.path.segments.as_ref() {
                     Some(*ident)
                 } else {
@@ -264,8 +419,8 @@ impl AttributeExt for Attribute {
     }
 
     fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => {
+        match &self {
+            Attribute::Unparsed(n) => {
                 n.path.segments.len() == name.len()
                     && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
             }
@@ -274,16 +429,19 @@ impl AttributeExt for Attribute {
     }
 
     fn is_doc_comment(&self) -> bool {
-        matches!(self.kind, AttributeKind::Parsed(ParsedAttributeKind::DocComment(_, _)))
+        matches!(self, Attribute::Parsed(AttributeKind::DocComment {..}))
     }
 
     fn span(&self) -> Span {
-        self.span
+        match &self {
+            Attribute::Unparsed(u) => u.span,
+            _ => panic!(),
+        }
     }
 
     fn is_word(&self) -> bool {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => {
+        match &self {
+            Attribute::Unparsed(n) => {
                 matches!(n.args, AttrArgs::Empty)
             }
             _ => false,
@@ -291,25 +449,23 @@ impl AttributeExt for Attribute {
     }
 
     fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        match &self.kind {
-            AttributeKind::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
+        match &self {
+            Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
             _ => None,
         }
     }
 
     fn doc_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttributeKind::Parsed(ParsedAttributeKind::DocComment(.., data)) => Some(*data),
-            AttributeKind::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
+        match &self {
+            Attribute::Parsed(AttributeKind::DocComment{comment, ..}) => Some(*comment),
+            Attribute::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
             _ => None,
         }
     }
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        match &self.kind {
-            AttributeKind::Parsed(ParsedAttributeKind::DocComment(kind, data)) => {
-                Some((*data, *kind))
-            }
-            AttributeKind::Unparsed(_) if self.name_or_empty() == sym::doc => {
+        match &self {
+            Attribute::Parsed(AttributeKind::DocComment{kind, comment, ..}) => Some((*comment, *kind)),
+            Attribute::Unparsed(_) if self.name_or_empty() == sym::doc => {
                 self.value_str().map(|s| (s, CommentKind::Line))
             }
             _ => None,
@@ -317,7 +473,10 @@ impl AttributeExt for Attribute {
     }
 
     fn style(&self) -> AttrStyle {
-        self.style
+        match &self {
+            Attribute::Unparsed(u) => u.style,
+            _ => panic!(),
+        }
     }
 }
 
