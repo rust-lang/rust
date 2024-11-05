@@ -463,7 +463,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
+    /// Fetch the THIR for a given body.
     query thir_body(key: LocalDefId) -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed> {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash

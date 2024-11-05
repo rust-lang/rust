@@ -1005,10 +1005,6 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Runs all other queries that depend on THIR.
     tcx.ensure_with_value().mir_built(def);
     let thir = &thir.steal();
-    // If `thir` is empty, a type error occurred, skip this body.
-    if thir.exprs.is_empty() {
-        return;
-    }
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
