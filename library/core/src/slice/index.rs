@@ -1,6 +1,6 @@
 //! Indexing implementations for `[T]`.
 
-use crate::macros::const_panic;
+use crate::panic::const_panic;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ops, range};
 
