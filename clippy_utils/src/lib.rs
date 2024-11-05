@@ -1338,15 +1338,17 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
 pub struct ContainsName<'a, 'tcx> {
     pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
-    pub result: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> Self::Result {
         if self.name == name {
-            self.result = true;
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
@@ -1357,13 +1359,8 @@ impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
 
 /// Checks if an `Expr` contains a certain name.
 pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
-    let mut cn = ContainsName {
-        name,
-        result: false,
-        cx,
-    };
-    cn.visit_expr(expr);
-    cn.result
+    let mut cn = ContainsName { cx, name };
+    cn.visit_expr(expr).is_break()
 }
 
 /// Returns `true` if `expr` contains a return expression

@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::ast::LitKind;
@@ -23,11 +25,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arm
     if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind()
         && let ty::Str = ty.kind()
     {
-        let mut visitor = MatchExprVisitor { cx, case_method: None };
-
-        visitor.visit_expr(scrutinee);
-
-        if let Some(case_method) = visitor.case_method {
+        let mut visitor = MatchExprVisitor { cx };
+        if let ControlFlow::Break(case_method) = visitor.visit_expr(scrutinee) {
             if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
                 lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
             }
@@ -37,30 +36,33 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arm
 
 struct MatchExprVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    case_method: Option<CaseMethod>,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
-        match ex.kind {
-            ExprKind::MethodCall(segment, receiver, [], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
-            _ => walk_expr(self, ex),
+    type Result = ControlFlow<CaseMethod>;
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> Self::Result {
+        if let ExprKind::MethodCall(segment, receiver, [], _) = ex.kind {
+            let result = self.case_altered(segment.ident.as_str(), receiver);
+            if result.is_break() {
+                return result;
+            }
         }
+
+        walk_expr(self, ex)
     }
 }
 
 impl MatchExprVisitor<'_, '_> {
-    fn case_altered(&mut self, segment_ident: &str, receiver: &Expr<'_>) -> bool {
+    fn case_altered(&mut self, segment_ident: &str, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 
             if is_type_lang_item(self.cx, ty, LangItem::String) || ty.kind() == &ty::Str {
-                self.case_method = Some(case_method);
-                return true;
+                return ControlFlow::Break(case_method);
             }
         }
 
-        false
+        ControlFlow::Continue(())
     }
 }
 
