@@ -246,7 +246,7 @@ pub(crate) fn check_edit_with_config(
         .filter(|it| it.lookup() == what)
         .collect_tuple()
         .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
-    let mut actual = db.file_text(position.file_id).to_string();
+    let mut actual = db.file_text(position.file_id).text(&db).to_string();
 
     let mut combined_edit = completion.text_edit.clone();
 

@@ -714,6 +714,7 @@ pub(crate) fn lookup_impl_method_query(
     else {
         return (func, fn_subst);
     };
+
     (
         impl_fn,
         Substitution::from_iter(

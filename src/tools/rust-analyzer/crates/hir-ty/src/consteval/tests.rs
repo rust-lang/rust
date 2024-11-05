@@ -1,4 +1,4 @@
-use base_db::SourceDatabase;
+use base_db::RootQueryDb;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use rustc_apfloat::{

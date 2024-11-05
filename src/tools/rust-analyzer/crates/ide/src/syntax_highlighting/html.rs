@@ -1,6 +1,7 @@
 //! Renders a bit of code as HTML.
 
 use hir::Semantics;
+use ide_db::base_db::salsa::AsDynDatabase;
 use oorandom::Rand32;
 use span::EditionedFileId;
 use stdx::format_to;
@@ -16,7 +17,9 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
+    let editioned_file_id_wrapper =
+        ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), file_id);
+    let file = sema.parse(editioned_file_id_wrapper);
     let file = file.syntax();
     fn rainbowify(seed: u64) -> String {
         let mut rng = Rand32::new(seed);

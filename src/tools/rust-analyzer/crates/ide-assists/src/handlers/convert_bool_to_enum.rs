@@ -1136,7 +1136,7 @@ fn foo() {
 }
 
 //- /main.rs
-use foo::Foo;
+use foo::{Bool, Foo};
 
 mod foo;
 

@@ -277,7 +277,7 @@ fn get_receiver_text(
         range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
     }
     let file_text = sema.db.file_text(range.file_id.file_id());
-    let mut text = file_text[range.range].to_owned();
+    let mut text = file_text.text(sema.db)[range.range].to_owned();
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.

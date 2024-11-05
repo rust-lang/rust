@@ -2558,6 +2558,7 @@ impl Evaluator<'_> {
         } else {
             let (imp, generic_args) =
                 self.db.lookup_impl_method(self.trait_env.clone(), def, generic_args.clone());
+
             let mir_body = self
                 .db
                 .monomorphized_mir_body(imp.into(), generic_args, self.trait_env.clone())

@@ -3,9 +3,12 @@
 use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
-use intern::{sym, Symbol};
+use intern::{
+    sym::{self},
+    Symbol,
+};
 use mbe::{expect_fragment, DelimiterKind};
-use span::{Edition, EditionedFileId, Span};
+use span::{Edition, EditionedFileId, FileId, Span};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
@@ -401,7 +404,7 @@ fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
     // stack that does not have #[allow_internal_unstable(edition_panic)].
     // (To avoid using the edition of e.g. the assert!() or debug_assert!() definition.)
     loop {
-        let Some(expn) = db.lookup_intern_syntax_context(span.ctx).outer_expn else {
+        let Some(expn) = span.ctx.outer_expn(db) else {
             break false;
         };
         let expn = db.lookup_intern_macro_call(expn);
@@ -656,10 +659,10 @@ fn relative_file(
     allow_recursion: bool,
     err_span: Span,
 ) -> Result<EditionedFileId, ExpandError> {
-    let lookup = call_id.lookup(db);
+    let lookup = db.lookup_intern_macro_call(call_id);
     let call_site = lookup.kind.file_id().original_file_respecting_includes(db).file_id();
     let path = AnchoredPath { anchor: call_site, path: path_str };
-    let res = db
+    let res: FileId = db
         .resolve_path(path)
         .ok_or_else(|| ExpandError::other(err_span, format!("failed to load file `{path_str}`")))?;
     // Prevent include itself
@@ -725,8 +728,10 @@ fn include_expand(
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let file_id = match include_input_to_file_id(db, arg_id, tt) {
-        Ok(it) => it,
+    let (file_id_wrapper, editioned_file_id) = match include_input_to_file_id(db, arg_id, tt) {
+        Ok(editioned_file_id) => {
+            (base_db::EditionedFileId::new(db, editioned_file_id), editioned_file_id)
+        }
         Err(e) => {
             return ExpandResult::new(
                 tt::TopSubtree::empty(DelimSpan { open: span, close: span }),
@@ -734,10 +739,10 @@ fn include_expand(
             )
         }
     };
-    let span_map = db.real_span_map(file_id);
+    let span_map = db.real_span_map(editioned_file_id);
     // FIXME: Parse errors
     ExpandResult::ok(syntax_node_to_token_tree(
-        &db.parse(file_id).syntax_node(),
+        &db.parse(file_id_wrapper).syntax_node(),
         SpanMap::RealSpanMap(span_map),
         span,
         syntax_bridge::DocCommentDesugarMode::ProcMacro,
@@ -800,7 +805,7 @@ fn include_str_expand(
     };
 
     let text = db.file_text(file_id.file_id());
-    let text = &*text;
+    let text = &*text.text(db);
 
     ExpandResult::ok(quote!(span =>#text))
 }

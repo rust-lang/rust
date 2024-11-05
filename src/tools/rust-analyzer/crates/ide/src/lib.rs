@@ -64,9 +64,9 @@ use fetch_crates::CrateInfo;
 use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
-        ra_salsa::{self, ParallelDatabase},
-        CrateOrigin, CrateWorkspaceData, Env, FileLoader, FileSet, SourceDatabase,
-        SourceRootDatabase, VfsPath,
+        salsa::{AsDynDatabase, Cancelled},
+        CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, Upcast,
+        VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -125,7 +125,7 @@ pub use ide_completion::{
 };
 pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
-    base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
+    base_db::{CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
@@ -217,7 +217,7 @@ impl Default for AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: ra_salsa::Snapshot<RootDatabase>,
+    db: RootDatabase,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -276,12 +276,12 @@ impl Analysis {
     }
 
     pub fn source_root_id(&self, file_id: FileId) -> Cancellable<SourceRootId> {
-        self.with_db(|db| db.file_source_root(file_id))
+        self.with_db(|db| db.file_source_root(file_id).source_root_id(db))
     }
 
     pub fn is_local_source_root(&self, source_root_id: SourceRootId) -> Cancellable<bool> {
         self.with_db(|db| {
-            let sr = db.source_root(source_root_id);
+            let sr = db.source_root(source_root_id).source_root(db);
             !sr.is_library
         })
     }
@@ -295,18 +295,28 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| SourceDatabase::file_text(db, file_id))
+        self.with_db(|db| SourceDatabase::file_text(db, file_id).text(db))
     }
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
         // FIXME edition
-        self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
+        self.with_db(|db| {
+            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+                self.db.as_dyn_database(),
+                EditionedFileId::current_edition(file_id),
+            );
+
+            db.parse(editioned_file_id_wrapper).tree()
+        })
     }
 
     /// Returns true if this file belongs to an immutable library.
     pub fn is_library_file(&self, file_id: FileId) -> Cancellable<bool> {
-        self.with_db(|db| db.source_root(db.file_source_root(file_id)).is_library)
+        self.with_db(|db| {
+            let source_root = db.file_source_root(file_id).source_root_id(db);
+            db.source_root(source_root).source_root(db).is_library
+        })
     }
 
     /// Gets the file's `LineIndex`: data structure to convert between absolute
@@ -324,7 +334,11 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
-            let parse = db.parse(EditionedFileId::current_edition(position.file_id));
+            let file_id = ide_db::base_db::EditionedFileId::new(
+                self.db.as_dyn_database(),
+                EditionedFileId::current_edition(position.file_id),
+            );
+            let parse = db.parse(file_id);
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
         })
@@ -383,7 +397,11 @@ impl Analysis {
     /// stuff like trailing commas.
     pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
-            let parse = db.parse(EditionedFileId::current_edition(frange.file_id));
+            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+                self.db.as_dyn_database(),
+                EditionedFileId::current_edition(frange.file_id),
+            );
+            let parse = db.parse(editioned_file_id_wrapper);
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
     }
@@ -419,9 +437,12 @@ impl Analysis {
     pub fn file_structure(&self, file_id: FileId) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
-            file_structure::file_structure(
-                &db.parse(EditionedFileId::current_edition(file_id)).tree(),
-            )
+            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+                self.db.as_dyn_database(),
+                EditionedFileId::current_edition(file_id),
+            );
+
+            file_structure::file_structure(&db.parse(editioned_file_id_wrapper).tree())
         })
     }
 
@@ -450,9 +471,12 @@ impl Analysis {
     /// Returns the set of folding ranges.
     pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
         self.with_db(|db| {
-            folding_ranges::folding_ranges(
-                &db.parse(EditionedFileId::current_edition(file_id)).tree(),
-            )
+            let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+                self.db.as_dyn_database(),
+                EditionedFileId::current_edition(file_id),
+            );
+
+            folding_ranges::folding_ranges(&db.parse(editioned_file_id_wrapper).tree())
         })
     }
 
@@ -589,7 +613,10 @@ impl Analysis {
 
     /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
-        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
+        self.with_db(|db| {
+            let db = Upcast::<dyn RootQueryDb>::upcast(db);
+            db.relevant_crates(file_id).iter().copied().collect()
+        })
     }
 
     /// Returns the edition of the given crate.
@@ -828,7 +855,8 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        Cancelled::catch(|| f(&self.db))
+        let snap = self.db.snapshot();
+        Cancelled::catch(|| f(&snap))
     }
 }
 

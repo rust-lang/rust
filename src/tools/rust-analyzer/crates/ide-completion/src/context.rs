@@ -6,13 +6,14 @@ mod tests;
 
 use std::{iter, ops::ControlFlow};
 
+use base_db::{salsa::AsDynDatabase, RootQueryDb as _};
 use hir::{
     DisplayTarget, HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution,
     ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
-    FxHashMap, FxHashSet, RootDatabase,
+    famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition, FxHashMap, FxHashSet,
+    RootDatabase,
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
@@ -706,15 +707,19 @@ impl<'a> CompletionContext<'a> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
-        let file_id = sema.attach_first_edition(file_id)?;
-        let original_file = sema.parse(file_id);
+        let editioned_file_id = sema.attach_first_edition(file_id)?;
+        let editioned_file_id_wrapper =
+            ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), editioned_file_id);
+
+        let original_file = sema.parse(editioned_file_id_wrapper);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
         let file_with_fake_ident = {
-            let parse = db.parse(file_id);
-            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, file_id.edition()).tree()
+            let (_, edition) = editioned_file_id.unpack();
+            let parse = db.parse(editioned_file_id_wrapper);
+            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

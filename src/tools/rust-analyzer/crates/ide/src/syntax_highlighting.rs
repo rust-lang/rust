@@ -18,7 +18,9 @@ use either::Either;
 use hir::{
     DefWithBody, HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics,
 };
-use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
+use ide_db::{
+    base_db::salsa::AsDynDatabase, FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind,
+};
 use span::EditionedFileId;
 use syntax::{
     ast::{self, IsString},
@@ -203,7 +205,9 @@ pub(crate) fn highlight(
 
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {
-        let file = sema.parse(file_id);
+        let editioned_file_id_wrapper =
+            ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), file_id);
+        let file = sema.parse(editioned_file_id_wrapper);
         let source_file = file.syntax();
         match range_to_highlight {
             Some(range) => {

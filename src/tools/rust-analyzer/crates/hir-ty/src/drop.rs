@@ -1,6 +1,5 @@
 //! Utilities for computing drop info about types.
 
-use base_db::ra_salsa;
 use chalk_ir::cast::Cast;
 use hir_def::data::adt::StructFlags;
 use hir_def::lang_item::LangItem;
@@ -8,6 +7,7 @@ use hir_def::AdtId;
 use stdx::never;
 use triomphe::Arc;
 
+use crate::db::HirDatabaseData;
 use crate::{
     db::HirDatabase, method_resolution::TyFingerprint, AliasTy, Canonical, CanonicalVarKinds,
     InEnvironment, Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind,
@@ -201,9 +201,10 @@ fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
 
 pub(crate) fn has_drop_glue_recover(
     _db: &dyn HirDatabase,
-    _cycle: &ra_salsa::Cycle,
-    _ty: &Ty,
-    _env: &Arc<TraitEnvironment>,
+    _cycle: &salsa::Cycle,
+    _: HirDatabaseData,
+    _ty: Ty,
+    _env: Arc<TraitEnvironment>,
 ) -> DropGlue {
     DropGlue::None
 }

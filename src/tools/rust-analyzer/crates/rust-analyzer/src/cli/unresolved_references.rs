@@ -2,7 +2,7 @@
 use hir::{db::HirDatabase, sym, AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics};
 use ide::{AnalysisHost, RootDatabase, TextRange};
 use ide_db::{
-    base_db::{SourceDatabase, SourceRootDatabase},
+    base_db::{salsa::AsDynDatabase, SourceDatabase},
     defs::NameRefClass,
     EditionedFileId, FxHashSet, LineIndexDatabase as _,
 };
@@ -57,8 +57,8 @@ impl flags::UnresolvedReferences {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             !source_root.is_library
         });
 
@@ -77,7 +77,7 @@ impl flags::UnresolvedReferences {
                     let line_col = line_index.line_col(range.start());
                     let line = line_col.line + 1;
                     let col = line_col.col + 1;
-                    let text = &file_text[range];
+                    let text = &file_text.text(db)[range];
                     println!("{file_path}:{line}:{col}: {text}");
                 }
 
@@ -141,7 +141,9 @@ fn all_unresolved_references(
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
+    let editioned_file_id_wrapper =
+        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
+    let file = sema.parse(editioned_file_id_wrapper);
     let root = file.syntax();
 
     let mut unresolved_references = Vec::new();

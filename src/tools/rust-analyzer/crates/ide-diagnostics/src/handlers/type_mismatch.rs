@@ -1053,7 +1053,7 @@ fn test() -> String {
 fn f() {
     let mut x = (|| 1, 2);
     x = (|| 3, 4);
-       //^^^^ error: expected {closure#0}, found {closure#1}
+       //^^^^ error: expected {closure#23552}, found {closure#23553}
 }
             "#,
         );

@@ -9,7 +9,6 @@
 
 use std::mem;
 
-use base_db::ra_salsa::Cycle;
 use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
@@ -19,7 +18,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::{intern_const_scalar, unknown_const},
-    db::{HirDatabase, InternedClosure},
+    db::{HirDatabase, HirDatabaseData, InternedClosure},
     from_placeholder_idx,
     generics::{generics, Generics},
     infer::normalize,
@@ -314,12 +313,13 @@ pub fn monomorphized_mir_body_query(
     Ok(Arc::new(body))
 }
 
-pub fn monomorphized_mir_body_recover(
+pub(crate) fn monomorphized_mir_body_recover(
     _: &dyn HirDatabase,
-    _: &Cycle,
-    _: &DefWithBodyId,
-    _: &Substitution,
-    _: &Arc<crate::TraitEnvironment>,
+    _: &salsa::Cycle,
+    _: HirDatabaseData,
+    _: DefWithBodyId,
+    _: Substitution,
+    _: Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
     Err(MirLowerError::Loop)
 }

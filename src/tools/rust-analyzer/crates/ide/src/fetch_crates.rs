@@ -1,5 +1,5 @@
 use ide_db::{
-    base_db::{CrateOrigin, SourceDatabase},
+    base_db::{CrateOrigin, RootQueryDb},
     FileId, FxIndexSet, RootDatabase,
 };
 

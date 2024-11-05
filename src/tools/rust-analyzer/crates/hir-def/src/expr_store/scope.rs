@@ -324,8 +324,9 @@ fn compute_expr_scopes(
 
 #[cfg(test)]
 mod tests {
-    use base_db::SourceDatabase;
+    use base_db::RootQueryDb;
     use hir_expand::{name::AsName, InFile};
+    use salsa::AsDynDatabase;
     use span::FileId;
     use syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_fixture::WithFixture;
@@ -357,18 +358,22 @@ mod tests {
         };
 
         let (db, position) = TestDB::with_position(&code);
-        let file_id = position.file_id;
+        let editioned_file_id = position.file_id;
         let offset = position.offset;
 
-        let file_syntax = db.parse(file_id).syntax_node();
+        let (file_id, _) = editioned_file_id.unpack();
+        let editioned_file_id_wrapper =
+            base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
+
+        let file_syntax = db.parse(editioned_file_id_wrapper).syntax_node();
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
-        let function = find_function(&db, file_id.file_id());
+        let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
         let (_body, source_map) = db.body_with_source_map(function.into());
 
         let expr_id = source_map
-            .node_expr(InFile { file_id: file_id.into(), value: &marker.into() })
+            .node_expr(InFile { file_id: editioned_file_id.into(), value: &marker.into() })
             .unwrap()
             .as_expr()
             .unwrap();
@@ -511,15 +516,19 @@ fn foo() {
 
     fn do_check_local_name(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_offset: u32) {
         let (db, position) = TestDB::with_position(ra_fixture);
-        let file_id = position.file_id;
+        let editioned_file_id = position.file_id;
         let offset = position.offset;
 
-        let file = db.parse(file_id).ok().unwrap();
+        let (file_id, _) = editioned_file_id.unpack();
+        let file_id_wrapper =
+            base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
+
+        let file = db.parse(file_id_wrapper).ok().unwrap();
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();
 
-        let function = find_function(&db, file_id.file_id());
+        let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
         let (_, source_map) = db.body_with_source_map(function.into());
@@ -527,7 +536,7 @@ fn foo() {
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
             let expr_id = source_map
-                .node_expr(InFile { file_id: file_id.into(), value: &expr_ast })
+                .node_expr(InFile { file_id: editioned_file_id.into(), value: &expr_ast })
                 .unwrap()
                 .as_expr()
                 .unwrap();

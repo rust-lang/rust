@@ -32,16 +32,17 @@ pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{
     interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
 };
-pub use lower::{
-    lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
-};
+pub use lower::{lower_to_mir, mir_body_for_closure_query, mir_body_query, MirLowerError};
 pub use monomorphization::{
     monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
-    monomorphized_mir_body_query, monomorphized_mir_body_recover,
+    monomorphized_mir_body_query,
 };
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
 use stdx::{impl_from, never};
+
+pub(crate) use lower::mir_body_recover;
+pub(crate) use monomorphization::monomorphized_mir_body_recover;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 

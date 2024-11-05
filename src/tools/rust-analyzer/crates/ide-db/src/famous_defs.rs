@@ -1,6 +1,6 @@
 //! See [`FamousDefs`].
 
-use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
+use base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb as _};
 use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Trait};
 
 use crate::RootDatabase;

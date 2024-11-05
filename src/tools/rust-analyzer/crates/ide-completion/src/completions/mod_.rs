@@ -4,7 +4,7 @@ use std::iter;
 
 use hir::{HirFileIdExt, Module};
 use ide_db::{
-    base_db::{SourceRootDatabase, VfsPath},
+    base_db::{SourceDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
 use syntax::{ast, AstNode, SyntaxKind};
@@ -43,7 +43,10 @@ pub(crate) fn complete_mod(
 
     let module_definition_file =
         current_module.definition_source_file_id(ctx.db).original_file(ctx.db);
-    let source_root = ctx.db.source_root(ctx.db.file_source_root(module_definition_file.file_id()));
+    let source_root_id =
+        ctx.db.file_source_root(module_definition_file.file_id()).source_root_id(ctx.db);
+    let source_root = ctx.db.source_root(source_root_id).source_root(ctx.db);
+
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,
         ctx.db,

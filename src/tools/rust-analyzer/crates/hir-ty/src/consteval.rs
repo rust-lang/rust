@@ -1,6 +1,6 @@
 //! Constant evaluation details
 
-use base_db::{ra_salsa::Cycle, CrateId};
+use base_db::CrateId;
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
     expr_store::{Body, HygieneId},
@@ -11,14 +11,19 @@ use hir_def::{
     ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
+use salsa::Cycle;
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, display::DisplayTarget, generics::Generics, infer::InferenceContext,
-    lower::ParamLoweringMode, mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData,
-    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
-    TyBuilder,
+    db::{HirDatabase, HirDatabaseData},
+    display::DisplayTarget,
+    generics::Generics,
+    infer::InferenceContext,
+    lower::ParamLoweringMode,
+    mir::monomorphize_mir_body_bad,
+    to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -224,9 +229,10 @@ pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: &GeneralConstId,
-    _: &Substitution,
-    _: &Option<Arc<TraitEnvironment>>,
+    _: HirDatabaseData,
+    _: GeneralConstId,
+    _: Substitution,
+    _: Option<Arc<TraitEnvironment>>,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -234,7 +240,7 @@ pub(crate) fn const_eval_recover(
 pub(crate) fn const_eval_static_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: &StaticId,
+    _: StaticId,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -242,7 +248,7 @@ pub(crate) fn const_eval_static_recover(
 pub(crate) fn const_eval_discriminant_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: &EnumVariantId,
+    _: EnumVariantId,
 ) -> Result<i128, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }

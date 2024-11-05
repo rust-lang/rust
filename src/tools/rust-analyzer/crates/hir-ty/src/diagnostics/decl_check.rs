@@ -251,7 +251,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let (_, source_map) = self.db.body_with_source_map(func.into());
+        let source_map = self.db.body_with_source_map(func.into()).1;
         for (id, replacement) in pats_replacements {
             let Ok(source_ptr) = source_map.pat_syntax(id) else {
                 continue;
@@ -597,7 +597,7 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a> + HasModule + Copy,
+        L: Lookup<Data = S, Database = dyn DefDatabase> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,

@@ -8,7 +8,7 @@ use hir::{
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
 };
 use ide_db::{
-    base_db::SourceDatabase,
+    base_db::RootQueryDb,
     defs::Definition,
     documentation::HasDocs,
     famous_defs::FamousDefs,

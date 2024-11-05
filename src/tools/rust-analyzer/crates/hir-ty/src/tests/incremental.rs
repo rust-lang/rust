@@ -1,4 +1,4 @@
-use base_db::SourceDatabaseFileInputExt as _;
+use base_db::SourceDatabase;
 use hir_def::ModuleDefId;
 use test_fixture::WithFixture;
 
@@ -25,7 +25,7 @@ fn foo() -> i32 {
                 }
             });
         });
-        assert!(format!("{events:?}").contains("infer"))
+        assert!(format!("{events:?}").contains("infer_shim"))
     }
 
     let new_text = "
@@ -47,7 +47,7 @@ fn foo() -> i32 {
                 }
             });
         });
-        assert!(!format!("{events:?}").contains("infer"), "{events:#?}")
+        assert!(!format!("{events:?}").contains("infer_shim"), "{events:#?}")
     }
 }
 
@@ -76,7 +76,7 @@ fn baz() -> i32 {
                 }
             });
         });
-        assert!(format!("{events:?}").contains("infer"))
+        assert!(format!("{events:?}").contains("infer_shim"))
     }
 
     let new_text = "
@@ -103,6 +103,6 @@ fn baz() -> i32 {
                 }
             });
         });
-        assert!(format!("{events:?}").matches("infer").count() == 1, "{events:#?}")
+        assert!(format!("{events:?}").matches("infer_shim").count() == 1, "{events:#?}")
     }
 }

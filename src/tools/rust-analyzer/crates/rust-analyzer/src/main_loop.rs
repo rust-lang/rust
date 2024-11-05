@@ -10,7 +10,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{SourceDatabase, SourceRootDatabase, VfsPath};
+use ide_db::base_db::{RootQueryDb, SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
@@ -529,7 +529,7 @@ impl GlobalState {
         let num_worker_threads = self.config.prime_caches_num_threads();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
-            let analysis = self.snapshot().analysis;
+            let analysis = AssertUnwindSafe(self.snapshot().analysis);
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
                 let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
@@ -555,13 +555,14 @@ impl GlobalState {
                     (excluded == vfs::FileExcluded::No).then_some(file_id)
                 })
                 .filter(|&file_id| {
-                    let source_root = db.file_source_root(file_id);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                    let source_root = db.source_root(source_root_id).source_root(db);
                     // Only publish diagnostics for files in the workspace, not from crates.io deps
                     // or the sysroot.
                     // While theoretically these should never have errors, we have quite a few false
                     // positives particularly in the stdlib, and those diagnostics would stay around
                     // forever if we emitted them here.
-                    !db.source_root(source_root).is_library
+                    !source_root.is_library
                 })
                 .collect::<std::sync::Arc<_>>()
         };
@@ -642,8 +643,9 @@ impl GlobalState {
                 (excluded == vfs::FileExcluded::No).then_some(file_id)
             })
             .filter(|&file_id| {
-                let source_root = db.file_source_root(file_id);
-                !db.source_root(source_root).is_library
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                !source_root.is_library
             })
             .collect::<Vec<_>>();
         tracing::trace!("updating tests for {:?}", subscriptions);
@@ -908,12 +910,12 @@ impl GlobalState {
             }
             QueuedTask::CheckProcMacroSources(modified_rust_files) => {
                 let crate_graph = self.analysis_host.raw_database().crate_graph();
-                let snap = self.snapshot();
+                let analysis = AssertUnwindSafe(self.snapshot().analysis);
                 self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
                     move |sender| {
                         if modified_rust_files.into_iter().any(|file_id| {
                             // FIXME: Check whether these files could be build script related
-                            match snap.analysis.crates_for(file_id) {
+                            match analysis.crates_for(file_id) {
                                 Ok(crates) => {
                                     crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
                                 }

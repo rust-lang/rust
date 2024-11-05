@@ -475,7 +475,7 @@ fn search_maps(
 
 #[cfg(test)]
 mod tests {
-    use base_db::{SourceDatabase, Upcast};
+    use base_db::{RootQueryDb, Upcast};
     use expect_test::{expect, Expect};
     use test_fixture::WithFixture;
 

@@ -376,7 +376,7 @@ impl DefCollector<'_> {
         'resolve_attr: loop {
             let _p = tracing::info_span!("resolve_macros loop").entered();
             'resolve_macros: loop {
-                self.db.unwind_if_cancelled();
+                self.db.unwind_if_revision_cancelled();
 
                 {
                     let _p = tracing::info_span!("resolve_imports loop").entered();
@@ -977,7 +977,7 @@ impl DefCollector<'_> {
         vis: Visibility,
         import: Option<ImportOrExternCrate>,
     ) {
-        self.db.unwind_if_cancelled();
+        self.db.unwind_if_revision_cancelled();
         self.update_recursive(module_id, resolutions, vis, import, 0)
     }
 
@@ -2517,7 +2517,7 @@ impl ModCollector<'_, '_> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::SourceDatabase;
+    use base_db::RootQueryDb;
     use test_fixture::WithFixture;
 
     use crate::{nameres::DefMapCrateData, test_db::TestDB};

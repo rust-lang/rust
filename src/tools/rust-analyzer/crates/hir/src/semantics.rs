@@ -307,9 +307,10 @@ impl<'db> SemanticsImpl<'db> {
         SemanticsImpl { db, s2d_cache: Default::default(), macro_call_cache: Default::default() }
     }
 
-    pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
+    pub fn parse(&self, file_id: base_db::EditionedFileId) -> ast::SourceFile {
+        let hir_file_id = file_id.editioned_file_id(self.db).into();
         let tree = self.db.parse(file_id).tree();
-        self.cache(tree.syntax().clone(), file_id.into());
+        self.cache(tree.syntax().clone(), hir_file_id);
         tree
     }
 
@@ -329,11 +330,14 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
-        let file_id = self
+        let editioned_file_id = self
             .attach_first_edition(file_id)
             .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+
+        let file_id = base_db::EditionedFileId::new(self.db, editioned_file_id);
+
         let tree = self.db.parse(file_id).tree();
-        self.cache(tree.syntax().clone(), file_id.into());
+        self.cache(tree.syntax().clone(), editioned_file_id.into());
         tree
     }
 
@@ -1903,7 +1907,9 @@ fn macro_call_to_macro_id(
     match loc.def.ast_id() {
         Either::Left(it) => {
             let node = match it.file_id.repr() {
-                HirFileIdRepr::FileId(file_id) => {
+                HirFileIdRepr::FileId(editioned_file_id) => {
+                    let file_id = base_db::EditionedFileId::new(db, editioned_file_id);
+
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {
@@ -1915,7 +1921,9 @@ fn macro_call_to_macro_id(
         }
         Either::Right(it) => {
             let node = match it.file_id.repr() {
-                HirFileIdRepr::FileId(file_id) => {
+                HirFileIdRepr::FileId(editioned_file_id) => {
+                    let file_id = base_db::EditionedFileId::new(db, editioned_file_id);
+
                     it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
                 }
                 HirFileIdRepr::MacroFile(macro_file) => {

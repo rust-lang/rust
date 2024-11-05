@@ -12,7 +12,7 @@ use url::Url;
 
 use hir::{db::HirDatabase, sym, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
 use ide_db::{
-    base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
+    base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, RootQueryDb},
     defs::{Definition, NameClass, NameRefClass},
     documentation::{docs_with_rangemap, Documentation, HasDocs},
     helpers::pick_best_token,

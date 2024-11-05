@@ -546,7 +546,7 @@ impl Printer<'_> {
                 let MacroCall { path, ast_id, expand_to, ctxt } = &self.tree[it];
                 let _ = writeln!(
                     self,
-                    "// AstId: {:?}, SyntaxContext: {}, ExpandTo: {:?}",
+                    "// AstId: {:?}, SyntaxContextId: {}, ExpandTo: {:?}",
                     ast_id.erase().into_raw(),
                     ctxt,
                     expand_to

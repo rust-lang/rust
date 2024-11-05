@@ -164,13 +164,13 @@ impl Tester {
                     let analysis = self.host.analysis();
                     let root_file = self.root_file;
                     move || {
-                        let res = std::panic::catch_unwind(move || {
+                        let res = std::panic::catch_unwind(AssertUnwindSafe(move || {
                             analysis.full_diagnostics(
                                 diagnostic_config,
                                 ide::AssistResolveStrategy::None,
                                 root_file,
                             )
-                        });
+                        }));
                         main.unpark();
                         res
                     }

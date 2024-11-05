@@ -1,6 +1,6 @@
 use dot::{Id, LabelText};
 use ide_db::{
-    base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceRootDatabase},
+    base_db::{CrateGraph, CrateId, Dependency, RootQueryDb, SourceDatabase, Upcast},
     FxHashSet, RootDatabase,
 };
 use triomphe::Arc;
@@ -16,7 +16,7 @@ use triomphe::Arc;
 // |---------|-------------|
 // | VS Code | **rust-analyzer: View Crate Graph** |
 pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
-    let crate_graph = db.crate_graph();
+    let crate_graph = Upcast::<dyn RootQueryDb>::upcast(db).crate_graph();
     let crates_to_render = crate_graph
         .iter()
         .filter(|krate| {
@@ -24,8 +24,9 @@ pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, 
                 true
             } else {
                 // Only render workspace crates
-                let root_id = db.file_source_root(crate_graph[*krate].root_file_id);
-                !db.source_root(root_id).is_library
+                let root_id =
+                    db.file_source_root(crate_graph[*krate].root_file_id).source_root_id(db);
+                !db.source_root(root_id).source_root(db).is_library
             }
         })
         .collect();
