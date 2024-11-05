@@ -9,7 +9,7 @@ fn main() {
 
     || -> bool {
         if false {
-            return "hello" //~ ERROR mismatched types
+            return "hello"; //~ ERROR mismatched types
         };
         let b = true;
         b
