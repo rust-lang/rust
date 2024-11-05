@@ -9,7 +9,7 @@ use rustc_errors::{
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{FutureIncompatibilityReason, Level};
+use rustc_session::lint::{FutureIncompatibilityReason, LintId};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::edition::Edition;
@@ -242,12 +242,12 @@ impl_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.edition().at_least_rust_2024() {
+        if expr.span.edition().at_least_rust_2024()
+            || cx.tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(IF_LET_RESCOPE))
+        {
             return;
         }
-        if let (Level::Allow, _) = cx.tcx.lint_level_at_node(IF_LET_RESCOPE, expr.hir_id) {
-            return;
-        }
+
         if let hir::ExprKind::Loop(block, _label, hir::LoopSource::While, _span) = expr.kind
             && let Some(value) = block.expr
             && let hir::ExprKind::If(cond, _conseq, _alt) = value.kind
@@ -287,7 +287,6 @@ struct IfLetRescopeLint {
     rewrite: Option<IfLetRescopeRewrite>,
 }
 
-// #[derive(Subdiagnostic)]
 struct IfLetRescopeRewrite {
     match_heads: Vec<SingleArmMatchBegin>,
     consequent_heads: Vec<ConsequentRewrite>,
