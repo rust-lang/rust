@@ -784,8 +784,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   // the PassBuilder does not create a pipeline.
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       PipelineStartEPCallbacks;
+#if LLVM_VERSION_GE(20, 0)
+  std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
+                                 ThinOrFullLTOPhase)>>
+      OptimizerLastEPCallbacks;
+#else
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel)>>
       OptimizerLastEPCallbacks;
+#endif
 
   if (!IsLinkerPluginLTO && SanitizerOptions && SanitizerOptions->SanitizeCFI &&
       !NoPrepopulatePasses) {
@@ -832,7 +838,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           SanitizerOptions->SanitizeDataFlowABIList +
               SanitizerOptions->SanitizeDataFlowABIListLen);
       OptimizerLastEPCallbacks.push_back(
+#if LLVM_VERSION_GE(20, 0)
+          [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level,
+                         ThinOrFullLTOPhase phase) {
+#else
           [ABIListFiles](ModulePassManager &MPM, OptimizationLevel Level) {
+#endif
             MPM.addPass(DataFlowSanitizerPass(ABIListFiles));
           });
     }
@@ -844,23 +855,39 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           /*CompileKernel=*/false,
           /*EagerChecks=*/true);
       OptimizerLastEPCallbacks.push_back(
+#if LLVM_VERSION_GE(20, 0)
+          [Options](ModulePassManager &MPM, OptimizationLevel Level,
+                    ThinOrFullLTOPhase phase) {
+#else
           [Options](ModulePassManager &MPM, OptimizationLevel Level) {
+#endif
             MPM.addPass(MemorySanitizerPass(Options));
           });
     }
 
     if (SanitizerOptions->SanitizeThread) {
-      OptimizerLastEPCallbacks.push_back([](ModulePassManager &MPM,
-                                            OptimizationLevel Level) {
-        MPM.addPass(ModuleThreadSanitizerPass());
-        MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
-      });
+      OptimizerLastEPCallbacks.push_back(
+#if LLVM_VERSION_GE(20, 0)
+          [](ModulePassManager &MPM, OptimizationLevel Level,
+             ThinOrFullLTOPhase phase) {
+#else
+          [](ModulePassManager &MPM, OptimizationLevel Level) {
+#endif
+            MPM.addPass(ModuleThreadSanitizerPass());
+            MPM.addPass(
+                createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
+          });
     }
 
     if (SanitizerOptions->SanitizeAddress ||
         SanitizerOptions->SanitizeKernelAddress) {
       OptimizerLastEPCallbacks.push_back(
+#if LLVM_VERSION_GE(20, 0)
+          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level,
+                             ThinOrFullLTOPhase phase) {
+#else
           [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+#endif
             auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
             AddressSanitizerOptions opts = AddressSanitizerOptions{
                 CompileKernel,
@@ -874,7 +901,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     }
     if (SanitizerOptions->SanitizeHWAddress) {
       OptimizerLastEPCallbacks.push_back(
+#if LLVM_VERSION_GE(20, 0)
+          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level,
+                             ThinOrFullLTOPhase phase) {
+#else
           [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+#endif
             HWAddressSanitizerOptions opts(
                 /*CompileKernel=*/false,
                 SanitizerOptions->SanitizeHWAddressRecover,
@@ -935,7 +967,11 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     for (const auto &C : PipelineStartEPCallbacks)
       C(MPM, OptLevel);
     for (const auto &C : OptimizerLastEPCallbacks)
+#if LLVM_VERSION_GE(20, 0)
+      C(MPM, OptLevel, ThinOrFullLTOPhase::None);
+#else
       C(MPM, OptLevel);
+#endif
   }
 
   if (ExtraPassesLen) {
