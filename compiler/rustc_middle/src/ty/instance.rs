@@ -690,7 +690,7 @@ impl<'tcx> Instance<'tcx> {
                         && !matches!(
                             tcx.opt_associated_item(def),
                             Some(ty::AssocItem {
-                                container: ty::AssocItemContainer::TraitContainer,
+                                container: ty::AssocItemContainer::Trait,
                                 ..
                             })
                         )

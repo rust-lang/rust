@@ -890,9 +890,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
 
                         use rustc_hir::def::DefKind;
-                        use ty::Unevaluated;
                         match (c1.kind(), c2.kind()) {
-                            (Unevaluated(a), Unevaluated(b))
+                            (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b))
                                 if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
                             {
                                 if let Ok(InferOk { obligations, value: () }) = self
@@ -912,7 +911,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     );
                                 }
                             }
-                            (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
+                            (_, ty::ConstKind::Unevaluated(_))
+                            | (ty::ConstKind::Unevaluated(_), _) => (),
                             (_, _) => {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
@@ -3183,7 +3183,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
                         ty::ReErased => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_u32(counter),
-                                kind: ty::BrAnon,
+                                kind: ty::BoundRegionKind::Anon,
                             };
                             counter += 1;
                             ty::Region::new_bound(tcx, current_depth, br)
@@ -3196,9 +3196,11 @@ fn bind_coroutine_hidden_types_above<'tcx>(
             bty.instantiate(tcx, args)
         })
         .collect();
-    let bound_vars =
-        tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
-            (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon)),
-        ));
+    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+        bound_vars.iter().chain(
+            (num_bound_variables..counter)
+                .map(|_| ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)),
+        ),
+    );
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

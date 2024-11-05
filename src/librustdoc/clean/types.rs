@@ -703,8 +703,8 @@ impl Item {
             | TyMethodItem(..) | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
-                    ty::TraitContainer => true,
-                    ty::ImplContainer => {
+                    ty::AssocItemContainer::Trait => true,
+                    ty::AssocItemContainer::Impl => {
                         // Trait impl items always inherit the impl's visibility --
                         // we don't want to show `pub`.
                         tcx.impl_trait_ref(tcx.parent(assoc_item.def_id)).is_some()

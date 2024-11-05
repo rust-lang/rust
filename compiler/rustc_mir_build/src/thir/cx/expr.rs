@@ -1193,11 +1193,11 @@ impl<'tcx> Cx<'tcx> {
             ty::UpvarCapture::ByValue => captured_place_expr,
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let borrow_kind = match upvar_borrow {
-                    ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
-                    ty::BorrowKind::UniqueImmBorrow => {
+                    ty::BorrowKind::Immutable => BorrowKind::Shared,
+                    ty::BorrowKind::UniqueImmutable => {
                         BorrowKind::Mut { kind: mir::MutBorrowKind::ClosureCapture }
                     }
-                    ty::BorrowKind::MutBorrow => {
+                    ty::BorrowKind::Mutable => {
                         BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
                     }
                 };

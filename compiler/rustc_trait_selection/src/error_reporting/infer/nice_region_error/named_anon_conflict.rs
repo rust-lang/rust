@@ -60,7 +60,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let is_impl_item = region_info.is_impl_item;
 
         match br {
-            ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon => {}
+            ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime) | ty::BoundRegionKind::Anon => {}
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");

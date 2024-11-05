@@ -290,7 +290,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
             // Bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon }) => {
+            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + var.as_u32();
 
@@ -568,7 +568,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
             // We may still encounter unevaluated consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
                 return self.print_def_path(def, args);
             }
 

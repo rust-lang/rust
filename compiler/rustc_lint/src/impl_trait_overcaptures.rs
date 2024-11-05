@@ -154,7 +154,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
     }
 
     for bound_var in sig.bound_vars() {
-        let ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, name)) = bound_var
+        let ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name)) = bound_var
         else {
             span_bug!(tcx.def_span(parent_def_id), "unexpected non-lifetime binder on fn sig");
         };
@@ -215,7 +215,7 @@ where
         for arg in t.bound_vars() {
             let arg: ty::BoundVariableKind = arg;
             match arg {
-                ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(def_id, ..))
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, ..))
                 | ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, _)) => {
                     added.push(def_id);
                     let unique = self.in_scope_parameters.insert(def_id, ParamKind::Late);
@@ -318,7 +318,7 @@ where
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),
-                            ty::BoundRegionKind::BrNamed(def_id, name),
+                            ty::BoundRegionKind::Named(def_id, name),
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
@@ -489,11 +489,11 @@ fn extract_def_id_from_arg<'tcx>(
             ty::ReEarlyParam(ebr) => generics.region_param(ebr, tcx).def_id,
             ty::ReBound(
                 _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, ..), .. },
+                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, ..),
+                bound_region: ty::BoundRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => unreachable!(),
         },
@@ -558,11 +558,11 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
             ty::ReEarlyParam(ebr) => self.generics.region_param(ebr, self.tcx).def_id,
             ty::ReBound(
                 _,
-                ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, ..), .. },
+                ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, ..), .. },
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, ..),
+                bound_region: ty::BoundRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => {
                 return Ok(a);

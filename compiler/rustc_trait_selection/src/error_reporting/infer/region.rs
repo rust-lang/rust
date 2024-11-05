@@ -993,7 +993,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
-                ty::BrNamed(_, name) => name.to_string(),
+                ty::BoundRegionKind::Named(_, name) => name.to_string(),
                 _ => String::new(),
             };
             if !s.is_empty() {
@@ -1103,7 +1103,7 @@ fn msg_span_from_named_region<'tcx>(
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
                 match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(param_def_id, name) => {
+                    ty::BoundRegionKind::Named(param_def_id, name) => {
                         let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
@@ -1112,7 +1112,7 @@ fn msg_span_from_named_region<'tcx>(
                         };
                         (text, Some(span))
                     }
-                    ty::BrAnon => (
+                    ty::BoundRegionKind::Anon => (
                         "the anonymous lifetime as defined here".to_string(),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
@@ -1125,11 +1125,11 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, name), .. },
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon, .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Anon, .. },
             ..
         }) => ("an anonymous lifetime".to_owned(), None),
         _ => bug!("{:?}", region),

@@ -178,19 +178,19 @@ pub fn check_intrinsic_type(
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrEnv),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
             let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                 var: ty::BoundVar::ZERO,
-                kind: ty::BrAnon,
+                kind: ty::BoundRegionKind::Anon,
             });
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                 var: ty::BoundVar::from_u32(2),
-                kind: ty::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             });
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
@@ -509,7 +509,8 @@ pub fn check_intrinsic_type(
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
                 (
                     1,
                     0,
@@ -573,10 +574,14 @@ pub fn check_intrinsic_type(
             }
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
                 let param_ty_lhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon };
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_u32(1),
+                    kind: ty::BoundRegionKind::Anon,
+                };
                 let param_ty_rhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
                 (1, 0, vec![param_ty_lhs, param_ty_rhs], tcx.types.bool)

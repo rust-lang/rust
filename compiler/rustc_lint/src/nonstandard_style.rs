@@ -26,8 +26,8 @@ pub(crate) enum MethodLateContext {
 pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
     let item = cx.tcx.associated_item(id);
     match item.container {
-        ty::TraitContainer => MethodLateContext::TraitAutoImpl,
-        ty::ImplContainer => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
+        ty::AssocItemContainer::Trait => MethodLateContext::TraitAutoImpl,
+        ty::AssocItemContainer::Impl => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
             Some(_) => MethodLateContext::TraitImpl,
             None => MethodLateContext::PlainImpl,
         },

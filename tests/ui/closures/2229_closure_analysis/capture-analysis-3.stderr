@@ -25,7 +25,7 @@ note: Capturing a[(0, 0),(0, 0)] -> ByValue
    |
 LL |         let _x = a.b.c;
    |                  ^^^^^
-note: Capturing a[(0, 0)] -> ImmBorrow
+note: Capturing a[(0, 0)] -> Immutable
   --> $DIR/capture-analysis-3.rs:29:26
    |
 LL |         println!("{:?}", a.b);

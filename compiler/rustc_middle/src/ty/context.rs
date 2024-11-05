@@ -1059,7 +1059,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                     .map(|v| {
                         mk(ty::ReBound(ty::DebruijnIndex::from(i), ty::BoundRegion {
                             var: ty::BoundVar::from(v),
-                            kind: ty::BrAnon,
+                            kind: ty::BoundRegionKind::Anon,
                         }))
                     })
                     .collect()
@@ -1982,7 +1982,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 region = self.map_opaque_lifetime_to_parent_lifetime(def_id);
                 continue;
             }
-            break (scope, ty::BrNamed(def_id.into(), self.item_name(def_id.into())));
+            break (
+                scope,
+                ty::BoundRegionKind::Named(def_id.into(), self.item_name(def_id.into())),
+            );
         };
 
         let is_impl_item = match self.hir_node_by_def_id(suitable_region_binding_scope) {
@@ -3091,7 +3094,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::BoundRegionKind::BrNamed(
+                        ty::BoundRegionKind::Named(
                             lbv.to_def_id(),
                             self.item_name(lbv.to_def_id()),
                         ),

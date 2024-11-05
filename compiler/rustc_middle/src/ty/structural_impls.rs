@@ -62,15 +62,15 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon => write!(f, "BrAnon"),
-            ty::BrNamed(did, name) => {
+            ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
+            ty::BoundRegionKind::Named(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({name})")
                 } else {
                     write!(f, "BrNamed({did:?}, {name})")
                 }
             }
-            ty::BrEnv => write!(f, "BrEnv"),
+            ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
         }
     }
 }

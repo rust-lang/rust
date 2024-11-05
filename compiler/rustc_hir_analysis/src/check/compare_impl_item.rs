@@ -1189,8 +1189,8 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::ImplContainer => impl_trait_ref.self_ty(),
-            ty::TraitContainer => tcx.types.self_param,
+            ty::AssocItemContainer::Impl => impl_trait_ref.self_ty(),
+            ty::AssocItemContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
         let param_env = ty::ParamEnv::reveal_all();
@@ -2224,10 +2224,8 @@ fn param_env_with_gat_bounds<'tcx>(
 
     for impl_ty in impl_tys_to_install {
         let trait_ty = match impl_ty.container {
-            ty::AssocItemContainer::TraitContainer => impl_ty,
-            ty::AssocItemContainer::ImplContainer => {
-                tcx.associated_item(impl_ty.trait_item_def_id.unwrap())
-            }
+            ty::AssocItemContainer::Trait => impl_ty,
+            ty::AssocItemContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
@@ -2246,7 +2244,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     .into()
                 }
                 GenericParamDefKind::Lifetime => {
-                    let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                    let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
                     let bound_var = ty::BoundVariableKind::Region(kind);
                     bound_vars.push(bound_var);
                     ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {

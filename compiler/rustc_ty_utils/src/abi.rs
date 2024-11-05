@@ -76,12 +76,13 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Closure(def_id, args) => {
             let sig = args.as_closure().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
+            let bound_vars =
+                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                )));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(
@@ -105,12 +106,13 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::CoroutineClosure(def_id, args) => {
             let coroutine_ty = Ty::new_coroutine_closure(tcx, def_id, args);
             let sig = args.as_coroutine_closure().coroutine_closure_sig();
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
+            let bound_vars =
+                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                )));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
             // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
@@ -161,11 +163,11 @@ fn fn_sig_for_fn_abi<'tcx>(
             let sig = args.as_coroutine().sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(iter::once(
-                ty::BoundVariableKind::Region(ty::BrEnv),
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
             ));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
 
             let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
