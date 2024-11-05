@@ -66,7 +66,7 @@ fn lint_args(builder: &Builder<'_>, config: &LintConfig, ignored_rules: &[&str])
 /// We need to keep the order of the given clippy lint rules before passing them.
 /// Since clap doesn't offer any useful interface for this purpose out of the box,
 /// we have to handle it manually.
-fn get_clippy_rules_in_order(all_args: &[String], config: &LintConfig) -> Vec<String> {
+pub fn get_clippy_rules_in_order(all_args: &[String], config: &LintConfig) -> Vec<String> {
     let mut result = vec![];
 
     for (prefix, item) in
@@ -86,11 +86,11 @@ fn get_clippy_rules_in_order(all_args: &[String], config: &LintConfig) -> Vec<St
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct LintConfig {
-    allow: Vec<String>,
-    warn: Vec<String>,
-    deny: Vec<String>,
-    forbid: Vec<String>,
+pub struct LintConfig {
+    pub allow: Vec<String>,
+    pub warn: Vec<String>,
+    pub deny: Vec<String>,
+    pub forbid: Vec<String>,
 }
 
 impl LintConfig {
