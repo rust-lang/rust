@@ -48,6 +48,11 @@ extern "C" {
     fn c_abi_in_block(arg_one: u32, arg_two: usize);
 }
 
+mod r#fn {
+    #[unsafe(no_mangle)]
+    pub(in super::r#fn) fn with_some_fn_around() {}
+}
+
 fn main() {
     // test code goes here
 }

@@ -79,5 +79,20 @@ help: or explicitly set the default
 LL | extern "Rust" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
    | +++++++++++++
 
-error: aborting due to 5 previous errors
+error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
+  --> tests/ui/no_mangle_with_rust_abi.rs:53:5
+   |
+LL |     pub(in super::r#fn) fn with_some_fn_around() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: set an ABI
+   |
+LL |     pub(in super::r#fn) extern "C" fn with_some_fn_around() {}
+   |                         ++++++++++
+help: or explicitly set the default
+   |
+LL |     pub(in super::r#fn) extern "Rust" fn with_some_fn_around() {}
+   |                         +++++++++++++
+
+error: aborting due to 6 previous errors
 
