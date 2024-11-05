@@ -68,6 +68,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        profile:
+        - dev
+        - release
         target:
         # Dockers that are run through docker on linux
         - i686-unknown-linux-gnu
@@ -192,6 +195,8 @@ jobs:
     - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration
+    - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
+      shell: bash
     - run: echo "NORUN=1" >> $GITHUB_ENV
       shell: bash
       if: matrix.norun != '' || startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
