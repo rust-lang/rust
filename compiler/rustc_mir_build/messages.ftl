@@ -338,6 +338,13 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_covered_by_catchall = matches any value
     .unreachable_covered_by_one = matches all the relevant values
     .unreachable_covered_by_many = multiple earlier patterns match some of the same values
+    .unreachable_pattern_const_reexport_accessible = there is a constant of the same name imported in another scope, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it needs to be imported in the pattern's scope
+    .unreachable_pattern_wanted_const = you might have meant to pattern match against the value of {$is_typo ->
+        [true] similarly named constant
+        *[false] constant
+        } `{$const_name}` instead of introducing a new catch-all binding
+    .unreachable_pattern_const_inaccessible = there is a constant of the same name, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it is not accessible from this scope
+    .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
     .suggestion = remove the match arm
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
