@@ -1310,7 +1310,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<EvaluationResult> {
         let tcx = self.tcx();
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, trait_pred) {
             if let Some(res) = tcx.evaluation_cache.get(&(param_env, trait_pred), tcx) {
                 return Some(res);
             }
@@ -1331,7 +1331,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) && !trait_pred.has_infer() {
+        if self.can_use_global_caches(param_env, trait_pred) && !trait_pred.has_infer() {
             debug!(?trait_pred, ?result, "insert_evaluation_cache global");
             // This may overwrite the cache with the same value
             // FIXME: Due to #50507 this overwrites the different values
@@ -1476,7 +1476,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Returns `true` if the global caches can be used.
-    fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
+    fn can_use_global_caches(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
         // switch to a global cache.
@@ -1494,7 +1498,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Coherence => false,
             // Avoid using the global cache when we're defining opaque types
             // as their hidden type may impact the result of candidate selection.
-            TypingMode::Analysis { defining_opaque_types } => defining_opaque_types.is_empty(),
+            //
+            // HACK: This is still theoretically unsound. Goals can indirectly rely
+            // on opaques in the defining scope, and it's easier to do so with TAIT.
+            // However, if we disqualify *all* goals from being cached, perf suffers.
+            // This is likely fixed by better caching in general in the new solver.
+            // See: <https://github.com/rust-lang/rust/issues/132064>.
+            TypingMode::Analysis { defining_opaque_types } => {
+                defining_opaque_types.is_empty() || !pred.has_opaque_types()
+            }
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //
@@ -1512,7 +1524,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let pred = cache_fresh_trait_pred.skip_binder();
 
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
                 return Some(res);
             }
@@ -1562,7 +1574,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env) {
+        if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.has_infer() && !candidate.has_infer() {
