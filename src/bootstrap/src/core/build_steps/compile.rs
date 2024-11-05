@@ -219,8 +219,7 @@ impl Step for Std {
                 .join(compiler.host)
                 .join("bin");
             if src_sysroot_bin.exists() {
-                let target_sysroot_bin =
-                    builder.sysroot_target_libdir(compiler, target).parent().unwrap().join("bin");
+                let target_sysroot_bin = builder.sysroot_target_bindir(compiler, target);
                 t!(fs::create_dir_all(&target_sysroot_bin));
                 builder.cp_link_r(&src_sysroot_bin, &target_sysroot_bin);
             }
@@ -1975,6 +1974,14 @@ impl Step for Assemble {
                     &self_contained_lld_dir.join(exe(name, target_compiler.host)),
                 );
             }
+        }
+
+        {
+            // `llvm-strip` is used by rustc, which is actually just a symlink to `llvm-objcopy`,
+            // so copy and rename `llvm-objcopy`.
+            let src_exe = exe("llvm-objcopy", target_compiler.host);
+            let dst_exe = exe("rust-objcopy", target_compiler.host);
+            builder.copy_link(&libdir_bin.join(src_exe), &libdir_bin.join(dst_exe));
         }
 
         // In addition to `rust-lld` also install `wasm-component-ld` when

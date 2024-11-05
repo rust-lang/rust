@@ -1085,9 +1085,7 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        // Use system `strip` when running on host macOS.
-        // <https://github.com/rust-lang/rust/pull/130781>
-        let stripcmd = if cfg!(target_os = "macos") { "/usr/bin/strip" } else { "strip" };
+        let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
@@ -1103,11 +1101,14 @@ fn link_natively(
         }
     }
 
-    if sess.target.os == "illumos" {
+    if sess.target.is_like_solaris {
         // Many illumos systems will have both the native 'strip' utility and
         // the GNU one. Use the native version explicitly and do not rely on
         // what's in the path.
-        let stripcmd = "/usr/bin/strip";
+        //
+        // If cross-compiling and there is not a native version, then use
+        // `llvm-strip` and hope.
+        let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
@@ -1120,6 +1121,10 @@ fn link_natively(
     }
 
     if sess.target.is_like_aix {
+        // `llvm-strip` doesn't work for AIX - their strip must be used.
+        if !sess.host.is_like_aix {
+            sess.dcx().emit_warn(errors::AixStripNotUsed);
+        }
         let stripcmd = "/usr/bin/strip";
         match strip {
             Strip::Debuginfo => {
@@ -1147,6 +1152,13 @@ fn strip_symbols_with_external_utility(
     if let Some(option) = option {
         cmd.arg(option);
     }
+
+    let mut new_path = sess.get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
     let prog = cmd.arg(out_filename).output();
     match prog {
         Ok(prog) => {
