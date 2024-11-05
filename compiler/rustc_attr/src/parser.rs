@@ -93,7 +93,7 @@ impl Args<Expr> {
         match value {
             AttrArgs::Empty => Self::Empty,
             AttrArgs::Delimited(delim_args) => Self::Delimited(delim_args),
-            AttrArgs::Eq { eq_span, value } => Self::Eq { eq_span, value: value.into_inner() },
+            AttrArgs::Eq { eq_span, expr } => Self::Eq { eq_span, value: expr.into_inner() },
         }
     }
 }
@@ -103,8 +103,8 @@ impl Args<MetaItemLit> {
         match value {
             AttrArgs::Empty => Self::Empty,
             AttrArgs::Delimited(delim_args) => Self::Delimited(delim_args),
-            AttrArgs::Eq { eq_span, value } => {
-                Self::Eq { eq_span, value: expr_to_lit(dcx, &value) }
+            AttrArgs::Eq { eq_span, expr } => {
+                Self::Eq { eq_span, value: expr_to_lit(dcx, &expr) }
             }
         }
     }
@@ -365,7 +365,7 @@ impl<'a> MetaItemListParserContext<'a> {
 
     fn value(&mut self) -> Option<MetaItemLit> {
         match self.inside_delimiters.next() {
-            Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 MetaItemListParserContext {
                     inside_delimiters: inner_tokens.trees().peekable(),
                     dcx: self.dcx,

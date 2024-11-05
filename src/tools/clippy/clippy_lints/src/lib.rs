@@ -399,6 +399,7 @@ mod zombie_processes;
 
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
+use utils::attr_collector::{AttrCollector, AttrStorage};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 use utils::attr_collector::{AttrCollector, AttrStorage};
