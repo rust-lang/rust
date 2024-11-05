@@ -1492,9 +1492,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // it's not worth going to more trouble to increase the
             // hit-rate, I don't think.
             TypingMode::Coherence => false,
-            // Avoid using the global cache when we're defining opaque types
-            // as their hidden type may impact the result of candidate selection.
-            TypingMode::Analysis { defining_opaque_types } => defining_opaque_types.is_empty(),
+            // FIXME(new-solver): This is incorrect, we should not be using the
+            // global cache when we're defining opaque types, as their hidden
+            // type may impact the result of candidate selection. This is still
+            // a theoretical possibility, however, and we have no example of
+            // actual unsoundness it can trigger. Until then, not using the
+            // cache is too big of a compile-time regression.
+            TypingMode::Analysis { .. } => true,
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //
