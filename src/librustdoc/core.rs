@@ -121,6 +121,13 @@ impl<'tcx> DocContext<'tcx> {
             _ => None,
         }
     }
+
+    /// Returns `true` if the JSON output format is enabled for generating the crate content.
+    ///
+    /// If another option like `--show-coverage` is enabled, it will return `false`.
+    pub(crate) fn is_json_output(&self) -> bool {
+        self.output_format.is_json() && !self.show_coverage
+    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.

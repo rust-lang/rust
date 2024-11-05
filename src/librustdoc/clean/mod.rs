@@ -2907,7 +2907,7 @@ fn clean_extern_crate<'tcx>(
                     None => false,
                 }
         })
-        && !cx.output_format.is_json();
+        && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
     if please_inline {
@@ -3000,7 +3000,7 @@ fn clean_use_statement_inner<'tcx>(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = cx.output_format.is_json()
+    let mut denied = cx.is_json_output()
         || !(visibility.is_public()
             || (cx.render_options.document_private && is_visible_from_parent_mod))
         || pub_underscore
