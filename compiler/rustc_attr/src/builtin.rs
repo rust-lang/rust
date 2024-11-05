@@ -273,8 +273,7 @@ pub fn find_stability(
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
 ///
-/// `is_const_fn` indicates whether this is a function marked as `const`. It will always
-/// be false for intrinsics in an `extern` block!
+/// `is_const_fn` indicates whether this is a function marked as `const`.
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
@@ -330,7 +329,7 @@ pub fn find_const_stability(
         }
     }
 
-    // Merge promotable and not_exposed_on_stable into stability info
+    // Merge promotable and const_stable_indirect into stability info
     if promotable {
         match &mut const_stab {
             Some((stab, _)) => stab.promotable = promotable,
@@ -352,10 +351,7 @@ pub fn find_const_stability(
                     })
                 }
             }
-            _ => {
-                // We ignore the `#[rustc_const_stable_indirect]` here, it should be picked up by
-                // the `default_const_unstable` logic.
-            }
+            _ => {}
         }
     }
     // Make sure if `const_stable_indirect` is present, that is recorded. Also make sure all `const

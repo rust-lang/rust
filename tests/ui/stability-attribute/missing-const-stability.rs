@@ -36,10 +36,4 @@ impl const Bar for Foo {
 pub const unsafe fn size_of_val<T>(x: *const T) -> usize { 42 }
 //~^ ERROR function has missing const stability attribute
 
-extern "rust-intrinsic" {
-    #[stable(feature = "stable", since = "1.0.0")]
-    #[rustc_const_stable_indirect]
-    pub fn min_align_of_val<T>(x: *const T) -> usize;
-}
-
 fn main() {}
