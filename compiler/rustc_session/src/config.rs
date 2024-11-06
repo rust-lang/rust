@@ -1351,19 +1351,6 @@ pub fn build_target_config(early_dcx: &EarlyDiagCtxt, opts: &Options, sysroot: &
                 early_dcx.early_warn(warning)
             }
 
-            // The `wasm32-wasi` target is being renamed to `wasm32-wasip1` as
-            // part of rust-lang/compiler-team#607 and
-            // rust-lang/compiler-team#695. Warn unconditionally on usage to
-            // raise awareness of the renaming. This code will be deleted in
-            // October 2024.
-            if opts.target_triple.tuple() == "wasm32-wasi" {
-                early_dcx.early_warn(
-                    "the `wasm32-wasi` target is being renamed to \
-                    `wasm32-wasip1` and the `wasm32-wasi` target will be \
-                    removed from nightly in October 2024 and removed from \
-                    stable Rust in January 2025",
-                )
-            }
             if !matches!(target.pointer_width, 16 | 32 | 64) {
                 early_dcx.early_fatal(format!(
                     "target specification was invalid: unrecognized target-pointer-width {}",
