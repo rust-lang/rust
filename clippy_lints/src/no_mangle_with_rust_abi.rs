@@ -40,12 +40,12 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
         if let ItemKind::Fn(fn_sig, _, _) = &item.kind {
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             let mut app = Applicability::MaybeIncorrect;
-            let fn_snippet = snippet_with_applicability(cx, fn_sig.span, "..", &mut app);
+            let fn_snippet = snippet_with_applicability(cx, fn_sig.span.with_hi(item.ident.span.lo()), "..", &mut app);
             for attr in attrs {
                 if let Some(ident) = attr.ident()
                     && ident.name == rustc_span::sym::no_mangle
                     && fn_sig.header.abi == Abi::Rust
-                    && let Some((fn_attrs, _)) = fn_snippet.split_once("fn")
+                    && let Some((fn_attrs, _)) = fn_snippet.rsplit_once("fn")
                     && !fn_attrs.contains("extern")
                 {
                     let sugg_span = fn_sig
