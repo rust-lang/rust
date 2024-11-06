@@ -736,14 +736,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if tcx.sess.threads() > 1 {
+    let mut pre_compiled_cgus = if true || tcx.sess.threads() > 1 {
         tcx.sess.time("compile_first_CGU_batch", || {
             // Try to find one CGU to compile per thread.
             let cgus: Vec<_> = cgu_reuse
                 .iter()
                 .enumerate()
                 .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                .take(tcx.sess.threads())
+                //.take(tcx.sess.threads())
                 .collect();
 
             // Compile the found CGUs in parallel.
