@@ -675,13 +675,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             subpattern: box Pat { kind: PatKind::Constant { opt_def: Some(def_id), .. }, .. },
             ..
         } = pat.kind
-            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             let span = self.tcx.def_span(def_id);
+            let variable = self.tcx.item_name(def_id).to_string();
             // When we encounter a constant as the binding name, point at the `const` definition.
             interpreted_as_const = Some(span);
-            interpreted_as_const_sugg =
-                Some(InterpretedAsConst { span: pat.span, variable: snippet });
+            interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
         } else if let PatKind::Constant { .. }
         | PatKind::AscribeUserType {
             subpattern: box Pat { kind: PatKind::Constant { .. }, .. },

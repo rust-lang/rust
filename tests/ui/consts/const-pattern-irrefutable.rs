@@ -1,6 +1,6 @@
 mod foo {
     pub const b: u8 = 2;
-    //~^ missing patterns are not covered because `c` is interpreted as a constant pattern, not a new variable
+    //~^ missing patterns are not covered because `b` is interpreted as a constant pattern, not a new variable
     pub const d: u8 = 2;
     //~^ missing patterns are not covered because `d` is interpreted as a constant pattern, not a new variable
 }

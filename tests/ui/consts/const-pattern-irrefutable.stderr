@@ -18,13 +18,13 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:19:9
    |
 LL |     pub const b: u8 = 2;
-   |     --------------- missing patterns are not covered because `c` is interpreted as a constant pattern, not a new variable
+   |     --------------- missing patterns are not covered because `b` is interpreted as a constant pattern, not a new variable
 ...
 LL |     let c = 4;
    |         ^
    |         |
    |         patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
-   |         help: introduce a variable instead: `c_var`
+   |         help: introduce a variable instead: `b_var`
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
