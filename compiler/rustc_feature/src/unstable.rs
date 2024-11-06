@@ -434,6 +434,8 @@ declare_features! (
     (unstable, const_try, "1.56.0", Some(74935)),
     /// Allows coroutines to be cloned.
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
+    /// Allows aggressive merging coroutine saved slots
+    (unstable, coroutine_new_layout, "CURRENT_RUSTC_VERSION", Some(99999)),
     /// Allows defining coroutines.
     (unstable, coroutines, "1.21.0", Some(43122)),
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage

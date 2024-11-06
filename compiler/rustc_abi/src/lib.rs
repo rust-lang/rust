@@ -1508,8 +1508,10 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// a struct, and they all have space reserved for the tag.
     /// For enums, the tag is the sole field of the layout.
     Multiple {
+        /// Tag definition
         tag: Scalar,
         tag_encoding: TagEncoding<VariantIdx>,
+        /// Index of tag among fields
         tag_field: usize,
         variants: IndexVec<VariantIdx, LayoutData<FieldIdx, VariantIdx>>,
     },
@@ -1545,6 +1547,7 @@ pub enum TagEncoding<VariantIdx: Idx> {
 pub struct Niche {
     pub offset: Size,
     pub value: Primitive,
+    /// A range of valid values with both endpoints being inclusive
     pub valid_range: WrappingRange,
 }
 
@@ -1555,17 +1558,23 @@ impl Niche {
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
+    /// Compute how many values are outside the valid range, available for optimisation through niche filling
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
         let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
 
-        // Find out how many values are outside the valid range.
         let niche = v.end.wrapping_add(1)..v.start;
         niche.end.wrapping_sub(niche.start) & max_value
     }
 
+    /// Try to enlarge the valid value range to include another `count` values,
+    /// so that they can be used for niche-filling optimisation.
+    /// `None` signals impossibility of reservation.
+    /// Otherwise, `Some((start, scalar))` signifies that a reservation is possible,
+    /// the first value in the reservation is `start`, and the new scalar including
+    /// the reserved values is defined in `scalar`.
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 

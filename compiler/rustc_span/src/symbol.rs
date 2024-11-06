@@ -661,6 +661,7 @@ symbols! {
         core_panic_macro,
         coroutine,
         coroutine_clone,
+        coroutine_new_layout,
         coroutine_resume,
         coroutine_return,
         coroutine_state,

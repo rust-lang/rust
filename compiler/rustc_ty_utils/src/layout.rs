@@ -31,6 +31,7 @@ use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
 };
 
+mod coroutine;
 mod invariant;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -393,7 +394,13 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(unit)
         }
 
-        ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args) => {
+            if tcx.features().coroutine_new_layout() {
+                coroutine::coroutine_layout(cx, ty, def_id, args)?
+            } else {
+                coroutine_layout(cx, ty, def_id, args)?
+            }
+        }
 
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
@@ -1156,8 +1163,10 @@ fn variant_info_for_coroutine<'tcx>(
         .zip_eq(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {
-            let field_layout = layout.field(cx, field_idx);
-            let offset = layout.fields.offset(field_idx);
+            // Upvars occupies the Unresumed variant at index zero
+            let variant_layout = layout.for_variant(cx, VariantIdx::ZERO);
+            let field_layout = variant_layout.field(cx, field_idx);
+            let offset = variant_layout.fields.offset(field_idx);
             upvars_size = upvars_size.max(offset + field_layout.size);
             FieldInfo {
                 kind: FieldKind::Upvar,
@@ -1177,12 +1186,11 @@ fn variant_info_for_coroutine<'tcx>(
             let variant_layout = layout.for_variant(cx, variant_idx);
             let mut variant_size = Size::ZERO;
             let fields = variant_def
-                .iter()
-                .enumerate()
+                .iter_enumerated()
                 .map(|(field_idx, local)| {
                     let field_name = coroutine.field_names[*local];
-                    let field_layout = variant_layout.field(cx, field_idx);
-                    let offset = variant_layout.fields.offset(field_idx);
+                    let field_layout = variant_layout.field(cx, field_idx.index());
+                    let offset = variant_layout.fields.offset(field_idx.index());
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
