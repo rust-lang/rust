@@ -206,7 +206,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
 ) -> GenericArgs {
     let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
 
-    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
+    if cx.tcx.is_trait(did) && cx.tcx.trait_def(did).paren_sugar {
         let ty = ty_args
             .iter()
             .nth(if has_self { 1 } else { 0 })
