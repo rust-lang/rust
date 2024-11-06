@@ -424,13 +424,14 @@ fn run_compiler(
             }
 
             // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering());
+            let mut gcx = queries.global_ctxt()?;
+            gcx.enter(|tcx| tcx.resolver_for_lowering());
 
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
+            gcx.enter(|tcx| {
                 passes::write_dep_info(tcx);
             });
 
@@ -444,13 +445,13 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
+            gcx.enter(|tcx| tcx.analysis(()))?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
+            gcx.enter(|tcx| {
                 Ok(Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)?))
             })
         })?;
