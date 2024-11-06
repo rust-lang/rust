@@ -8,7 +8,7 @@ LL |         .into()?;
    = note: required for `FilterMap<Map<std::slice::Iter<'_, &str>, {closure@$DIR/into-inference-needs-type.rs:10:14: 10:17}>, fn(Option<&str>) -> Option<Option<&str>> {Option::<Option<&str>>::Some}>` to implement `Into<_>`
 help: try using a fully qualified path to specify the expected types
    |
-LL ~     let list = <_ as Into<_>>::into(vec
+LL ~     let list = <FilterMap<Map<std::slice::Iter<'_, &str>, _>, _> as Into<T>>::into(vec
 LL |         .iter()
 LL |         .map(|s| s.strip_prefix("t"))
 LL ~         .filter_map(Option::Some))?;

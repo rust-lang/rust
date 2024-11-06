@@ -843,7 +843,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     assoc
                 } else {
                     // The method isn't in this `impl` or `trait`? Not useful to us then.
-                return;
+                    return;
                 }
             };
             let Some(trait_assoc_item) = assoc.trait_item_def_id else {
@@ -863,7 +863,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     });
                 }
                 InferenceSuggestionFormat::FullyQualifiedMethodCall => {
-                    paths.push(self.tcx.value_path_str_with_args(def_id, args));
+                    if let Some(did) = tcx.get_diagnostic_item(sym::Into)
+                        && did == trait_def_id
+                        && let Some(arg) = impl_args.types().skip(1).next()
+                        && let ty::Infer(_) | ty::Param(_) = arg.kind()
+                    {
+                        // Skip `<T as Into<_>>` blanket
+                    } else {
+                        paths.push(self.tcx.value_path_str_with_args(def_id, args));
+                    }
                 }
             }
         });

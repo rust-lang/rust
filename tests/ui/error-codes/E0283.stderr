@@ -30,10 +30,6 @@ LL | impl Into<u32> for Impl {
              where U: From<T>;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     let bar = <_ as Into<_>>::into(foo_impl) * 1u32;
-   |               +++++++++++++++++++++        ~
-help: try using a fully qualified path to specify the expected types
-   |
 LL |     let bar = <Impl as Into<u32>>::into(foo_impl) * 1u32;
    |               ++++++++++++++++++++++++++        ~
 

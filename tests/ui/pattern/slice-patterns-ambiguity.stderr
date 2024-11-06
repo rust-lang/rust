@@ -19,10 +19,6 @@ LL |     if let &[a, b] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let &[a, b] = <_ as Into<_>>::into(Zeroes) {
-   |                      +++++++++++++++++++++      ~
-help: try using a fully qualified path to specify the expected types
-   |
 LL |     if let &[a, b] = <Zeroes as Into<&'static [usize; 2]>>::into(Zeroes) {
    |                      ++++++++++++++++++++++++++++++++++++++++++++      ~
 help: try using a fully qualified path to specify the expected types
@@ -38,10 +34,6 @@ LL |     if let &[a, b] = Zeroes.into() {
    |             |
    |             type must be known at this point
    |
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     if let &[a, b] = <_ as Into<_>>::into(Zeroes) {
-   |                      +++++++++++++++++++++      ~
 help: try using a fully qualified path to specify the expected types
    |
 LL |     if let &[a, b] = <Zeroes as Into<&'static [usize; 2]>>::into(Zeroes) {

@@ -23,10 +23,6 @@ LL |     if let [a, b, c] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let [a, b, c] = <_ as Into<_>>::into(Zeroes) {
-   |                        +++++++++++++++++++++      ~
-help: try using a fully qualified path to specify the expected types
-   |
 LL |     if let [a, b, c] = <Zeroes as Into<[usize; 3]>>::into(Zeroes) {
    |                        +++++++++++++++++++++++++++++++++++      ~
 
@@ -38,10 +34,6 @@ LL |     if let [a, b, c] = Zeroes.into() {
    |            |
    |            type must be known at this point
    |
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     if let [a, b, c] = <_ as Into<_>>::into(Zeroes) {
-   |                        +++++++++++++++++++++      ~
 help: try using a fully qualified path to specify the expected types
    |
 LL |     if let [a, b, c] = <Zeroes as Into<[usize; 3]>>::into(Zeroes) {
