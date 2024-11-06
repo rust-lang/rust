@@ -4,7 +4,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 
-#![feature(async_closure, unboxed_closures, async_fn_traits)]
+#![feature(unboxed_closures, async_fn_traits)]
 
 use std::ops::AsyncFn;
 

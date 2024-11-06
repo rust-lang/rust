@@ -1,5 +1,5 @@
 error[E0038]: the trait `AsyncFnMut` cannot be made into an object
-  --> $DIR/dyn-pos.rs:5:16
+  --> $DIR/dyn-pos.rs:3:16
    |
 LL | fn foo(x: &dyn AsyncFn()) {}
    |                ^^^^^^^^^ `AsyncFnMut` cannot be made into an object

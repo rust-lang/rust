@@ -2,7 +2,7 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure, async_fn_traits)]
+#![feature(async_fn_traits)]
 
 extern crate block_on;
 

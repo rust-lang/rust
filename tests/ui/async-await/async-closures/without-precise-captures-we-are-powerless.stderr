@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:16:13
+  --> $DIR/without-precise-captures-we-are-powerless.rs:14:13
    |
 LL | fn simple<'a>(x: &'a i32) {
    |           -- lifetime `'a` defined here
@@ -13,7 +13,7 @@ LL | }
    |  - `x` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:21:20
+  --> $DIR/without-precise-captures-we-are-powerless.rs:19:20
    |
 LL | fn simple<'a>(x: &'a i32) {
    |           -- lifetime `'a` defined here
@@ -30,7 +30,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:28:13
+  --> $DIR/without-precise-captures-we-are-powerless.rs:26:13
    |
 LL | fn through_field<'a>(x: S<'a>) {
    |                  -- lifetime `'a` defined here
@@ -44,7 +44,7 @@ LL | }
    |  - `x` dropped here while still borrowed
 
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/without-precise-captures-we-are-powerless.rs:32:13
+  --> $DIR/without-precise-captures-we-are-powerless.rs:30:13
    |
 LL | fn through_field<'a>(x: S<'a>) {
    |                  -- lifetime `'a` defined here
@@ -58,7 +58,7 @@ LL |     let c = async move || { println!("{}", *x.0); };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ move out of `x` occurs here
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:33:20
+  --> $DIR/without-precise-captures-we-are-powerless.rs:31:20
    |
 LL | fn through_field<'a>(x: S<'a>) {
    |                  -- lifetime `'a` defined here
@@ -75,7 +75,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0505]: cannot move out of `c` because it is borrowed
-  --> $DIR/without-precise-captures-we-are-powerless.rs:34:30
+  --> $DIR/without-precise-captures-we-are-powerless.rs:32:30
    |
 LL | fn through_field<'a>(x: S<'a>) {
    |                  -- lifetime `'a` defined here
@@ -91,7 +91,7 @@ LL |     outlives::<'a>(call_once(c));
    |                              ^ move out of `c` occurs here
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:38:13
+  --> $DIR/without-precise-captures-we-are-powerless.rs:36:13
    |
 LL | fn through_field_and_ref<'a>(x: &S<'a>) {
    |                          -- lifetime `'a` defined here
@@ -104,7 +104,7 @@ LL | }
    |  - `x` dropped here while still borrowed
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/without-precise-captures-we-are-powerless.rs:40:20
+  --> $DIR/without-precise-captures-we-are-powerless.rs:38:20
    |
 LL | fn through_field_and_ref<'a>(x: &S<'a>) {
    |                                 ------ help: add explicit lifetime `'a` to the type of `x`: `&'a S<'a>`
@@ -113,7 +113,7 @@ LL |     outlives::<'a>(call_once(c));
    |                    ^^^^^^^^^^^^ lifetime `'a` required
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/without-precise-captures-we-are-powerless.rs:45:20
+  --> $DIR/without-precise-captures-we-are-powerless.rs:43:20
    |
 LL | fn through_field_and_ref_move<'a>(x: &S<'a>) {
    |                               -- lifetime `'a` defined here
@@ -129,7 +129,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/without-precise-captures-we-are-powerless.rs:46:20
+  --> $DIR/without-precise-captures-we-are-powerless.rs:44:20
    |
 LL | fn through_field_and_ref_move<'a>(x: &S<'a>) {
    |                                      ------ help: add explicit lifetime `'a` to the type of `x`: `&'a S<'a>`

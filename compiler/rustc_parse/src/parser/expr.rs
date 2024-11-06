@@ -2366,10 +2366,7 @@ impl<'a> Parser<'a> {
         };
 
         match coroutine_kind {
-            Some(CoroutineKind::Async { span, .. }) => {
-                // Feature-gate `async ||` closures.
-                self.psess.gated_spans.gate(sym::async_closure, span);
-            }
+            Some(CoroutineKind::Async { .. }) => {}
             Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
                 // Feature-gate `gen ||` and `async gen ||` closures.
                 // FIXME(gen_blocks): This perhaps should be a different gate.

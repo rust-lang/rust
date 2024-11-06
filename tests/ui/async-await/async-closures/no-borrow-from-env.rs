@@ -1,8 +1,6 @@
 //@ edition: 2021
 //@ check-pass
 
-#![feature(async_closure)]
-
 fn outlives<'a>(_: impl Sized + 'a) {}
 
 async fn call_once(f: impl AsyncFnOnce()) {
