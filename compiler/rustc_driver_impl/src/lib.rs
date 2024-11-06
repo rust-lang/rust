@@ -403,10 +403,6 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
                         pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        Ok(())
-                    })?;
-
-                    queries.global_ctxt()?.enter(|tcx| {
                         passes::write_dep_info(tcx);
                     });
                 } else {
