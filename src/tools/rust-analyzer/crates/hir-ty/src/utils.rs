@@ -43,6 +43,17 @@ pub(crate) fn fn_traits(
         .flat_map(|it| it.as_trait())
 }
 
+/// Returns an iterator over the direct super traits (including the trait itself).
+pub fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    let mut result = smallvec![trait_];
+    direct_super_traits_cb(db, trait_, |tt| {
+        if !result.contains(&tt) {
+            result.push(tt);
+        }
+    });
+    result
+}
+
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
 pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
@@ -54,7 +65,7 @@ pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trai
     while let Some(&t) = result.get(i) {
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
-        direct_super_traits(db, t, |tt| {
+        direct_super_traits_cb(db, t, |tt| {
             if !result.contains(&tt) {
                 result.push(tt);
             }
@@ -153,7 +164,7 @@ impl Iterator for ClauseElaborator<'_> {
     }
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
+fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
     let generic_params = db.generic_params(trait_.into());
     let trait_self = generic_params.trait_self_param();
