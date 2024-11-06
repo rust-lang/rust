@@ -157,7 +157,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                     kind => (kind, None, None),
                 };
-                let value = if let PatKind::Constant { value } = kind {
+                let value = if let PatKind::Constant { value }
+                | PatKind::NamedConstant { value, span: _ } = kind
+                {
                     value
                 } else {
                     let msg = format!(
@@ -560,9 +562,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
         };
 
+        // HERE
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let pattern = self.const_to_pat(c, ty, id, span);
+        let def_span = self.tcx.def_span(def_id);
+        let mut pattern = self.const_to_pat(c, ty, id, span);
+        if let PatKind::Constant { value } = pattern.kind {
+            pattern.kind = PatKind::NamedConstant { value, span: def_span };
+        }
+        tracing::info!("pattern {pattern:#?} {c:?} {ty:?} {id:?}");
 
         if !is_associated_const {
             return pattern;

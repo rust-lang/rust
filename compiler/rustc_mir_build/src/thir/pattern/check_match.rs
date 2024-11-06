@@ -668,8 +668,20 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut let_suggestion = None;
         let mut misc_suggestion = None;
         let mut interpreted_as_const = None;
+        let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::Constant { .. }
+        if let PatKind::NamedConstant { span, .. }
+        | PatKind::AscribeUserType {
+            subpattern: box Pat { kind: PatKind::NamedConstant { span, .. }, .. },
+            ..
+        } = pat.kind
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
+        {
+            // When we encounter a constant as the binding name, point at the `const` definition.
+            interpreted_as_const = Some(span);
+            interpreted_as_const_sugg =
+                Some(InterpretedAsConst { span: pat.span, variable: snippet });
+        } else if let PatKind::Constant { .. }
         | PatKind::AscribeUserType {
             subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
             ..
@@ -683,7 +695,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     start_span: pat.span.shrink_to_lo(),
                 });
             } else if snippet.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                interpreted_as_const =
+                interpreted_as_const = Some(pat.span);
+                interpreted_as_const_sugg =
                     Some(InterpretedAsConst { span: pat.span, variable: snippet });
             }
         }
@@ -733,6 +746,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
+            interpreted_as_const_sugg,
             witness_1_is_privately_uninhabited,
             _p: (),
             pattern_ty,

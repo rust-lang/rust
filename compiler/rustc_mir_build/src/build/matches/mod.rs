@@ -882,6 +882,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Constant { .. }
+            | PatKind::NamedConstant { .. }
             | PatKind::Range { .. }
             | PatKind::Wild
             | PatKind::Never

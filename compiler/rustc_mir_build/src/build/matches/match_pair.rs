@@ -129,7 +129,9 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 }
             }
 
-            PatKind::Constant { value } => TestCase::Constant { value },
+            PatKind::Constant { value } | PatKind::NamedConstant { value, span: _ } => {
+                TestCase::Constant { value }
+            }
 
             PatKind::AscribeUserType {
                 ascription: thir::Ascription { ref annotation, variance },

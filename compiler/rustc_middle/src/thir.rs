@@ -640,6 +640,7 @@ impl<'tcx> Pat<'tcx> {
             | Range(..)
             | Binding { subpattern: None, .. }
             | Constant { .. }
+            | NamedConstant { .. }
             | Error(_) => {}
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
@@ -786,6 +787,12 @@ pub enum PatKind<'tcx> {
     /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: mir::Const<'tcx>,
+    },
+
+    /// Same as `Constant`, but that came from a `const` that we can point at in diagnostics.
+    NamedConstant {
+        value: mir::Const<'tcx>,
+        span: Span,
     },
 
     /// Inline constant found while lowering a pattern.
@@ -1084,8 +1091,8 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 64);
-    static_assert_size!(PatKind<'_>, 48);
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);
     // tidy-alphabetical-end

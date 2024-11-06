@@ -536,7 +536,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ),
                 }
             }
-            PatKind::Constant { value } => {
+            PatKind::Constant { value } | PatKind::NamedConstant { value, span: _ } => {
                 match ty.kind() {
                     ty::Bool => {
                         ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
