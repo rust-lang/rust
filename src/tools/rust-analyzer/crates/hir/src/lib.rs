@@ -2714,8 +2714,7 @@ impl Trait {
     }
 
     pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        let traits = all_super_traits(db.upcast(), self.into());
-        traits.iter().flat_map(|tr| Trait::from(*tr).items(db)).collect()
+        self.all_supertraits(db).into_iter().flat_map(|tr| tr.items(db)).collect()
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
