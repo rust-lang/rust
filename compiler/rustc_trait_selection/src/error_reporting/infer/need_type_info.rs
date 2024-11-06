@@ -833,9 +833,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             // We're at the `impl` level, but we want to get the same method we
             // called *on this `impl`*, in order to get the right DefId and args.
-            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
-                // The method isn't in this `impl`? Not useful to us then.
+            let assoc = if let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() {
+                // Method in the `impl`.
+                assoc
+            } else {
+                let assocs = tcx.associated_items(trait_def_id);
+                if let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() {
+                    // Method in the `trait`.
+                    assoc
+                } else {
+                    // The method isn't in this `impl` or `trait`? Not useful to us then.
                 return;
+                }
             };
             let Some(trait_assoc_item) = assoc.trait_item_def_id else {
                 return;
