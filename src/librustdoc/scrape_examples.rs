@@ -9,7 +9,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
 use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -107,8 +106,6 @@ pub(crate) type AllCallLocations = FxIndexMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    map: Map<'tcx>,
     cx: Context<'tcx>,
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
@@ -122,13 +119,13 @@ where
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
+        self.cx.tcx().hir()
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
 
-        let tcx = self.tcx;
+        let tcx = self.cx.tcx();
 
         // If we visit an item that contains an expression outside a function body,
         // then we need to exit before calling typeck (which will panic). See
@@ -294,8 +291,7 @@ pub(crate) fn run(
 
         // Run call-finder on all items
         let mut calls = FxIndexMap::default();
-        let mut finder =
-            FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates, bin_crate };
+        let mut finder = FindCalls { calls: &mut calls, cx, target_crates, bin_crate };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
 
         // The visitor might have found a type error, which we need to
