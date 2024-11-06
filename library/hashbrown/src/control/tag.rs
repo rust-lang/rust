@@ -69,11 +69,13 @@ pub(crate) trait TagSliceExt {
     fn fill_tag(&mut self, tag: Tag);
 
     /// Clears out the control.
+    #[inline]
     fn fill_empty(&mut self) {
         self.fill_tag(Tag::EMPTY)
     }
 }
 impl TagSliceExt for [Tag] {
+    #[inline]
     fn fill_tag(&mut self, tag: Tag) {
         // SAFETY: We have access to the entire slice, so, we can write to the entire slice.
         unsafe { self.as_mut_ptr().write_bytes(tag.0, self.len()) }
