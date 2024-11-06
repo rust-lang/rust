@@ -531,6 +531,7 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use]
     #[stable(feature = "repeat_str", since = "1.16.0")]
+    #[inline]
     pub fn repeat(&self, n: usize) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
