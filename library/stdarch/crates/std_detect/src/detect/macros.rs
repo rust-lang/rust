@@ -14,6 +14,21 @@ macro_rules! detect_feature {
     };
 }
 
+#[allow(unused_macros, reason = "it's used in the features! macro below")]
+macro_rules! check_cfg_feature {
+    ($feature:tt, $feature_lit:tt) => {
+        check_cfg_feature!($feature, $feature_lit : $feature_lit)
+    };
+    ($feature:tt, $feature_lit:tt : $($target_feature_lit:tt),*) => {
+        $(cfg!(target_feature = $target_feature_lit);)*
+    };
+    ($feature:tt, $feature_lit:tt, without cfg check: $feature_cfg_check:literal) => {
+        // FIXME: Enable once rust-lang/rust#132577 hit's nightly
+        // #[expect(unexpected_cfgs, reason = $feature_lit)]
+        // { cfg!(target_feature = $feature_lit) }
+    };
+}
+
 #[allow(unused)]
 macro_rules! features {
     (
@@ -115,6 +130,15 @@ macro_rules! features {
                     )
                 )
             };
+        }
+
+        #[test]
+        #[deny(unexpected_cfgs)]
+        #[deny(unfulfilled_lint_expectations)]
+        fn unexpected_cfgs() {
+            $(
+                check_cfg_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?);
+            )*
         }
 
         /// Each variant denotes a position in a bitset for a particular feature.
