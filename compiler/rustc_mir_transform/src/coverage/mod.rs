@@ -23,7 +23,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
-use tracing::{debug, debug_span, instrument, trace};
+use tracing::{debug, debug_span, trace};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
 use crate::coverage::graph::CoverageGraph;
@@ -154,7 +154,7 @@ fn create_mappings<'tcx>(
 
     let term_for_bcb =
         |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
-    let region_for_span = |span: Span| make_source_region(source_map, file_name, span, body_span);
+    let region_for_span = |span: Span| make_source_region(source_map, hir_info, file_name, span);
 
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
@@ -408,12 +408,11 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
 /// but it's hard to rule out entirely (especially in the presence of complex macros
 /// or other expansions), and if it does happen then skipping a span or function is
 /// better than an ICE or `llvm-cov` failure that the user might have no way to avoid.
-#[instrument(level = "debug", skip(source_map))]
 fn make_source_region(
     source_map: &SourceMap,
+    hir_info: &ExtractedHirInfo,
     file_name: Symbol,
     span: Span,
-    body_span: Span,
 ) -> Option<SourceRegion> {
     let lo = span.lo();
     let hi = span.hi();
@@ -441,6 +440,7 @@ fn make_source_region(
     // worth of bytes, so that it is more visible in `llvm-cov` reports.
     // We do this after resolving line/column numbers, so that empty spans at the
     // end of a line get an extra column instead of wrapping to the next line.
+    let body_span = hir_info.body_span;
     if span.is_empty()
         && body_span.contains(span)
         && let Some(src) = &file.src
