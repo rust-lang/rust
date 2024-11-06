@@ -572,7 +572,7 @@ pub mod white_space {
         0, 0, 0, 0, 0, 0, 0, 0, 0,
     ];
     #[inline]
-    pub fn lookup(c: char) -> bool {
+    pub const fn lookup(c: char) -> bool {
         match c as u32 >> 8 {
             0 => WHITESPACE_MAP[c as usize & 0xff] & 1 != 0,
             22 => c as u32 == 0x1680,
