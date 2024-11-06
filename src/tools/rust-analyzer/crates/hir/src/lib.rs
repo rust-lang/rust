@@ -68,7 +68,7 @@ use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     diagnostics::BodyValidationDiagnostic,
-    error_lifetime, known_const_to_ast,
+    direct_super_traits, error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{interpret_mir, MutBorrowKind},
@@ -2702,6 +2702,11 @@ impl Trait {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.trait_data(self.id).name.clone()
+    }
+
+    pub fn direct_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        let traits = direct_super_traits(db.upcast(), self.into());
+        traits.iter().map(|tr| Trait::from(*tr)).collect()
     }
 
     pub fn all_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
