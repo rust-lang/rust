@@ -26,7 +26,8 @@ use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
-use crate::infer::{InferCtxt, InferCtxtExt};
+use crate::infer::InferCtxt;
+use crate::traits::{ObligationCause, ObligationCtxt};
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -757,7 +758,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let impl_trait_ref =
                 tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
             let impl_self_ty = impl_trait_ref.self_ty();
-            if self.infcx.can_eq(param_env, impl_self_ty, self_ty) {
+            if self.probe(|_| {
+                ObligationCtxt::new(self.infcx)
+                    .eq(&ObligationCause::dummy(), param_env, self_ty, impl_self_ty)
+                    .is_ok()
+            }) {
                 // The expr's self type could conform to this impl's self type.
             } else {
                 // Nope, don't bother.
