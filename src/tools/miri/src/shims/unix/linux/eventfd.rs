@@ -144,9 +144,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn eventfd(&mut self, val: &OpTy<'tcx>, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // eventfd is Linux specific.
-        this.assert_target_os("linux", "eventfd");
-
         let val = this.read_scalar(val)?.to_u32()?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
 

@@ -3,6 +3,7 @@
 //! and therefore still report a data race for things that need to see the second event
 //! to be considered synchronized.
 //@only-target: linux
+//@only-target: android
 // ensure deterministic schedule
 //@compile-flags: -Zmiri-preemption-rate=0
 

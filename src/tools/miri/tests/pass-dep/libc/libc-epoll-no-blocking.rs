@@ -1,4 +1,5 @@
 //@only-target: linux
+//@only-target: android
 
 use std::convert::TryInto;
 

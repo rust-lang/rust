@@ -1,6 +1,8 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
+use self::shims::unix::linux::epoll::EvalContextExt as _;
+use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use crate::shims::unix::android::thread::prctl;
 use crate::shims::unix::linux::syscall::syscall;
 use crate::*;
@@ -20,6 +22,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
+            // epoll, eventfd
+            "epoll_create1" => {
+                let [flag] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.epoll_create1(flag)?;
+                this.write_scalar(result, dest)?;
+            }
+            "epoll_ctl" => {
+                let [epfd, op, fd, event] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.epoll_ctl(epfd, op, fd, event)?;
+                this.write_scalar(result, dest)?;
+            }
+            "epoll_wait" => {
+                let [epfd, events, maxevents, timeout] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
+            }
+            "eventfd" => {
+                let [val, flag] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.eventfd(val, flag)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Miscellaneous
             "__errno" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
