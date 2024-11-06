@@ -42,7 +42,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_attr::AttributeParseContext;
+use rustc_attr::{AttributeParseContext, OmitDoc};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -868,7 +868,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_attrs_vec(&self, attrs: &[Attribute], target_span: Span) -> Vec<hir::Attribute> {
-        self.attribute_parse_context.parse_attribute_list(attrs, target_span)
+        self.attribute_parse_context.parse_attribute_list(attrs, target_span, OmitDoc::Lower)
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {

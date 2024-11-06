@@ -36,7 +36,7 @@ mod session_diagnostics;
 
 pub use attributes::cfg::*;
 pub use attributes::util::{find_crate_name, is_builtin_attr, parse_version};
-pub use context::AttributeParseContext;
+pub use context::{AttributeParseContext, OmitDoc};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

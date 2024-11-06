@@ -40,7 +40,11 @@ fn get<'a>(
             false
         }
     } else {
-        cx.dcx().emit_err(session_diagnostics::IncorrectMetaItem { span: param_span });
+        // FIXME(jdonszelmann): suggestion?
+        cx.dcx().emit_err(session_diagnostics::IncorrectMetaItem {
+            span: param_span,
+            suggestion: None,
+        });
         false
     }
 }
@@ -48,12 +52,13 @@ fn get<'a>(
 impl SingleAttributeGroup for DeprecationGroup {
     const PATH: &'static [rustc_span::Symbol] = &[sym::deprecated];
 
-    fn on_duplicate(
-        _cx: &crate::context::AttributeAcceptContext<'_>,
-        _first_span: rustc_span::Span,
-    ) {
-        // TODO: investigate duplicate deprecation attr
-        todo!()
+    fn on_duplicate(cx: &crate::context::AttributeAcceptContext<'_>, first_span: rustc_span::Span) {
+        // FIXME(jdonszelmann): merge with errors from check_attrs.rs
+        cx.dcx().emit_err(session_diagnostics::UnusedMultiple {
+            this: cx.attr_span,
+            other: first_span,
+            name: sym::deprecated,
+        });
     }
 
     fn convert(

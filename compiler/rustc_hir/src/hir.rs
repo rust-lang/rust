@@ -3,8 +3,8 @@ use std::fmt;
 use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
-    self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
-    IntTy, Label, LitKind, TraitObjectSyntax, UintTy,
+    self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitKind,
+    TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,

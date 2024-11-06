@@ -1,13 +1,13 @@
 use std::num::NonZero;
 
 use rustc_hir::{
-    AttributeKind, ConstStability, DefaultBodyStability, Stability, StabilityLevel, StableSince,
-    UnstableReason, VERSION_PLACEHOLDER,
+    AttributeKind, DefaultBodyStability, PartialConstStability, Stability, StabilityLevel,
+    StableSince, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AttributeFilter, AttributeGroup, AttributeMapping};
+use super::{AttributeFilter, AttributeGroup, AttributeMapping, SingleAttributeGroup};
 use crate::attribute_filter;
 use crate::context::{AttributeAcceptContext, AttributeGroupContext};
 use crate::parser::{ArgParser, MetaItemParser, NameValueParser};
@@ -67,6 +67,11 @@ impl AttributeGroup for StabilityGroup {
             }
         }
 
+        // Emit errors for non-staged-api crates.
+        if !cx.features().staged_api() {
+            cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
+        }
+
         Some((AttributeKind::Stability { stability, span }, attribute_filter!(allow all)))
     }
 }
@@ -88,17 +93,38 @@ impl AttributeGroup for BodyStabilityGroup {
             }
         })];
 
-    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
         let (stability, span) = self.stability?;
+
+        // Emit errors for non-staged-api crates.
+        if !cx.features().staged_api() {
+            cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
+        }
+
         Some((AttributeKind::BodyStability { stability, span }, attribute_filter!(allow all)))
+    }
+}
+
+pub(crate) struct ConstStabilityIndirectGroup;
+// TODO: single word attribute group
+impl SingleAttributeGroup for ConstStabilityIndirectGroup {
+    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_const_stable_indirect];
+
+    // ignore
+    fn on_duplicate(_cx: &AttributeAcceptContext<'_>, _first_span: Span) {}
+
+    fn convert(
+        _cx: &AttributeAcceptContext<'_>,
+        _args: &super::GenericArgParser<'_, rustc_ast::Expr>,
+    ) -> Option<(AttributeKind, AttributeFilter)> {
+        Some((AttributeKind::ConstStabilityIndirect, attribute_filter!(allow all)))
     }
 }
 
 #[derive(Default)]
 pub(crate) struct ConstStabilityGroup {
     promotable: bool,
-    const_stable_indirect: Option<Span>,
-    stability: Option<(ConstStability, Span)>,
+    stability: Option<(PartialConstStability, Span)>,
 }
 
 impl ConstStabilityGroup {
@@ -120,12 +146,7 @@ impl AttributeGroup for ConstStabilityGroup {
                 && let Some((feature, level)) = parse_stability(cx, args)
             {
                 this.stability = Some((
-                    ConstStability {
-                        level,
-                        feature,
-                        promotable: false,
-                        const_stable_indirect: false,
-                    },
+                    PartialConstStability { level, feature, promotable: false },
                     cx.attr_span,
                 ));
             }
@@ -135,21 +156,13 @@ impl AttributeGroup for ConstStabilityGroup {
                 && let Some((feature, level)) = parse_unstability(cx, args)
             {
                 this.stability = Some((
-                    ConstStability {
-                        level,
-                        feature,
-                        promotable: false,
-                        const_stable_indirect: false,
-                    },
+                    PartialConstStability { level, feature, promotable: false },
                     cx.attr_span,
                 ));
             }
         }),
         (&[sym::rustc_promotable], |this, _, _| {
             this.promotable = true;
-        }),
-        (&[sym::rustc_const_stable_indirect], |this, cx, _| {
-            this.const_stable_indirect = Some(cx.attr_span);
         }),
     ];
 
@@ -166,47 +179,13 @@ impl AttributeGroup for ConstStabilityGroup {
             }
         }
 
-        if self.const_stable_indirect.is_some() {
-            if let Some((ref mut stab, _)) = self.stability {
-                if stab.is_const_unstable() {
-                    stab.const_stable_indirect = true;
-                } else {
-                    _ = cx.dcx().emit_err(session_diagnostics::RustcConstStableIndirectPairing {
-                        span: cx.target_span,
-                    })
-                }
-            } else {
-                // We ignore the `#[rustc_const_stable_indirect]` here, it should be picked up by
-                // the `default_const_unstable` logic.
-            }
-        }
-        // Make sure if `const_stable_indirect` is present, that is recorded. Also make sure all `const
-        // fn` get *some* marker, since we are a staged_api crate and therefore will do recursive const
-        // stability checks for them. We need to do this because the default for whether an unmarked
-        // function enforces recursive stability differs between staged-api crates and force-unmarked
-        // crates: in force-unmarked crates, only functions *explicitly* marked `const_stable_indirect`
-        // enforce recursive stability. Therefore when `lookup_const_stability` is `None`, we have to
-        // assume the function does not have recursive stability. All functions that *do* have recursive
-        // stability must explicitly record this, and so that's what we do for all `const fn` in a
-        // staged_api crate.
-        // TODO(jdonszelmann): defer this check to when we know what item it is. Possibly engineer
-        // something in that checks
-        // if (is_const_fn || const_stable_indirect.is_some()) && const_stab.is_none() {
-        //     let c = ConstStability {
-        //         feature: None,
-        //         const_stable_indirect: const_stable_indirect.is_some(),
-        //         promotable: false,
-        //         level: StabilityLevel::Unstable {
-        //             reason: UnstableReason::Default,
-        //             issue: None,
-        //             is_soft: false,
-        //             implied_by: None,
-        //         },
-        //     };
-        //     const_stab = Some((c, const_stable_indirect.unwrap_or(DUMMY_SP)));
-        // }
-
         let (stability, span) = self.stability?;
+
+        // Emit errors for non-staged-api crates.
+        if !cx.features().staged_api() {
+            cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
+        }
+
         Some((AttributeKind::ConstStability { stability, span }, attribute_filter!(allow all)))
     }
 }
@@ -232,7 +211,10 @@ fn insert_value_into_option_or_error<'a>(
         *item = Some(s);
         Some(())
     } else {
-        cx.dcx().emit_err(session_diagnostics::IncorrectMetaItem { span: param.span() });
+        cx.dcx().emit_err(session_diagnostics::IncorrectMetaItem {
+            span: param.span(),
+            suggestion: None,
+        });
         None
     }
 }
@@ -284,7 +266,7 @@ pub(crate) fn parse_stability<'a>(
         if since.as_str() == VERSION_PLACEHOLDER {
             StableSince::Current
         } else if let Some(version) = parse_version(since) {
-            StableSince::Version(version)
+            StableSince::Version(version, since)
         } else {
             cx.dcx().emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
             StableSince::Err

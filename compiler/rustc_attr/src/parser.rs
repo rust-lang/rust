@@ -34,7 +34,7 @@ impl<'a> Iterator for SegmentIterator<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum PathParser<'a> {
     Ast(&'a Path),
     Attr(AttrPath),
@@ -184,13 +184,14 @@ macro_rules! argparser {
                 'a: 'r,
             {
                 match &self.args {
-                    Args::Delimited(args) if args.delim == Delimiter::Parenthesis => {
+                    Args::Delimited(args) if args.delim == Delimiter::Parenthesis => Some(
                         MetaItemListParserContext {
                             inside_delimiters: args.tokens.trees().peekable(),
                             dcx: self.dcx,
                         }
                         .parse()
-                    }
+                        .unwrap(),
+                    ),
                     Args::Delimited(_) | Args::Eq { .. } | Args::Empty => None,
                 }
             }
@@ -221,6 +222,7 @@ argparser!(MetaItemLit);
 /// This enum represents that.
 ///
 /// Choose which one you want using the provided methods.
+#[derive(Debug)]
 pub(crate) enum MetaItemOrLitParser<'a, T: Clone>
 where
     GenericMetaItemParser<'a, T>: MetaItemParser<'a>,
@@ -276,6 +278,15 @@ pub(crate) struct GenericMetaItemParser<'a, T: Clone> {
     dcx: DiagCtxtHandle<'a>,
 }
 
+impl<'a, T: Clone + Debug> Debug for GenericMetaItemParser<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GenericMetaItemParser")
+            .field("path", &self.path)
+            .field("args", &self.args)
+            .finish()
+    }
+}
+
 impl<'a> GenericMetaItemParser<'a, Expr> {
     /// Create a new parser from a [`NormalAttr`], which is stored inside of any
     /// [`ast::Attribute`](Attribute)
@@ -288,7 +299,7 @@ impl<'a> GenericMetaItemParser<'a, Expr> {
     }
 }
 
-pub(crate) trait MetaItemParser<'a>: 'a {
+pub(crate) trait MetaItemParser<'a>: Debug + 'a {
     type ArgParser: ArgParser<'a>;
 
     fn span(&self) -> Span;
@@ -413,7 +424,17 @@ pub(crate) struct GenericNameValueParser<'a, T: Clone> {
     dcx: DiagCtxtHandle<'a>,
 }
 
-pub(crate) trait NameValueParser<'a> {
+impl<'a, T: Clone + Debug> Debug for GenericNameValueParser<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GenericNameValueParser")
+            .field("eq_span", &self.eq_span)
+            .field("value", &self.value)
+            .field("value_span", &self.value_span)
+            .finish()
+    }
+}
+
+pub(crate) trait NameValueParser<'a>: Debug {
     fn value_span(&self) -> Span;
 
     fn value_as_lit(&self) -> MetaItemLit;
@@ -540,6 +561,7 @@ impl<'a> MetaItemListParserContext<'a> {
         if let Some(TokenTree::Token(token, _)) = self.inside_delimiters.peek()
             && let Some(lit) = MetaItemLit::from_token(token)
         {
+            self.inside_delimiters.next();
             return Some(MetaItemOrLitParser::Lit(lit));
         }
 
@@ -617,6 +639,7 @@ impl<'a> MetaItemListParserContext<'a> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct MetaItemListParser<'a> {
     sub_parsers: Vec<MetaItemOrLitParser<'a, MetaItemLit>>,
 }
@@ -625,6 +648,14 @@ impl<'a> MetaItemListParser<'a> {
     /// Lets you pick and choose as what you want to parse each element in the list
     pub(crate) fn mixed(self) -> impl Iterator<Item = MetaItemOrLitParser<'a, MetaItemLit>> + 'a {
         self.sub_parsers.into_iter()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.sub_parsers.len()
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Asserts that every item in the list is another list starting with a word.

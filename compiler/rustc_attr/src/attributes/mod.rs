@@ -29,7 +29,6 @@ pub(crate) mod allow_unstable;
 pub(crate) mod cfg;
 pub(crate) mod confusables;
 pub(crate) mod deprecation;
-pub(crate) mod inline;
 pub(crate) mod repr;
 pub(crate) mod stability;
 pub(crate) mod transparency;

@@ -6,12 +6,11 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_hir::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyId, Mutability};
+use rustc_hir::{BodyId, ConstStability, Deprecation, Mutability, Stability, StableSince};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;

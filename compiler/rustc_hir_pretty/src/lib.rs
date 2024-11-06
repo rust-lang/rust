@@ -11,7 +11,7 @@ use std::vec;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
-use rustc_ast::{DUMMY_NODE_ID, DelimArgs, AttrStyle};
+use rustc_ast::{AttrStyle, DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
@@ -88,6 +88,10 @@ impl<'a> State<'a> {
     }
 
     fn print_either_attributes(&mut self, attrs: &[hir::Attribute], style: ast::AttrStyle) {
+        if attrs.is_empty() {
+            return;
+        }
+
         for attr in attrs {
             self.print_attribute_inline(attr, style);
         }
@@ -105,11 +109,11 @@ impl<'a> State<'a> {
                 self.print_attr_item(&unparsed, unparsed.span);
                 self.word("]");
             }
-            hir::Attribute::Parsed(hir::AttributeKind::DocComment{style, kind, comment, ..}) => {
+            hir::Attribute::Parsed(hir::AttributeKind::DocComment {
+                style, kind, comment, ..
+            }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
-                    *kind,
-                    *style,
-                    *comment,
+                    *kind, *style, *comment,
                 ));
                 self.hardbreak()
             }

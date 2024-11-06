@@ -308,9 +308,6 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
-passes_empty_confusables =
-    expected at least one confusable name
-
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -358,9 +355,6 @@ passes_implied_feature_not_exist =
 
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-
-passes_incorrect_meta_item = expected a quoted string literal
-passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 passes_incorrect_target =
     `{$name}` lang item must be applied to a {$kind} with {$at_least ->
@@ -643,6 +637,8 @@ passes_rustc_allow_const_fn_unstable =
     attribute should be applied to `const fn`
     .label = not a `const fn`
 
+passes_rustc_const_stable_indirect_pairing =
+    `const_stable_indirect` attribute does not make sense on `rustc_const_stable` function, its behavior is already implied
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
 

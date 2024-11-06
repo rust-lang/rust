@@ -872,9 +872,9 @@ impl SyntaxExtension {
             })
             .unwrap_or_else(|| (None, helper_attrs));
 
-
         let stability = find_attr!(attrs, AttributeKind::Stability{stability, ..} => *stability);
 
+        // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
         if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability{span, ..} => *span) {
             sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,

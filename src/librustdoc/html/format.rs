@@ -15,12 +15,12 @@ use std::iter::{self, once};
 
 use itertools::Itertools;
 use rustc_abi::ExternAbi;
-use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::{ConstStability, StabilityLevel, StableSince};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;

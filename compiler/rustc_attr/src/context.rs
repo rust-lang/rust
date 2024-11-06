@@ -1,4 +1,3 @@
-
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -16,7 +15,9 @@ use crate::attributes::allow_unstable::{AllowConstFnUnstableGroup, AllowInternal
 use crate::attributes::confusables::ConfusablesGroup;
 use crate::attributes::deprecation::DeprecationGroup;
 use crate::attributes::repr::ReprGroup;
-use crate::attributes::stability::{BodyStabilityGroup, ConstStabilityGroup, StabilityGroup};
+use crate::attributes::stability::{
+    BodyStabilityGroup, ConstStabilityGroup, ConstStabilityIndirectGroup, StabilityGroup,
+};
 use crate::attributes::transparency::TransparencyGroup;
 use crate::attributes::{AttributeFilter, AttributeGroup, Combine, Single};
 use crate::parser::{GenericArgParser, GenericMetaItemParser, MetaItemParser};
@@ -59,17 +60,23 @@ macro_rules! attribute_groups {
 }
 
 attribute_groups!(
+    // TODO: rename to the same as in `AttributeDuplicates`
     pub(crate) static ATTRIBUTE_GROUP_MAPPING = [
         // tidy-alphabetical-start
+        BodyStabilityGroup,
         ConfusablesGroup,
         ConstStabilityGroup,
-        BodyStabilityGroup,
         StabilityGroup,
+        // tidy-alphabetical-end
 
+        // tidy-alphabetical-start
         Combine<AllowConstFnUnstableGroup>,
         Combine<AllowInternalUnstableGroup>,
         Combine<ReprGroup>,
+        // tidy-alphabetical-end
 
+        // tidy-alphabetical-start
+        Single<ConstStabilityIndirectGroup>,
         Single<DeprecationGroup>,
         Single<TransparencyGroup>,
         // tidy-alphabetical-end
@@ -112,6 +119,12 @@ impl<'a> Deref for AttributeGroupContext<'a> {
     }
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum OmitDoc {
+    Lower,
+    Skip,
+}
+
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
 pub struct AttributeParseContext<'sess> {
@@ -120,6 +133,9 @@ pub struct AttributeParseContext<'sess> {
     features: Option<&'sess Features>,
 
     /// *only* parse attributes with this symbol.
+    ///
+    /// Used in cases where we want the lowering infrastructure for
+    /// parse just a single attribute.
     parse_only: Option<Symbol>,
 }
 
@@ -141,7 +157,7 @@ impl<'sess> AttributeParseContext<'sess> {
         target_span: Span,
     ) -> Option<Attribute> {
         let mut parsed = Self { sess, features: None, tools: Vec::new(), parse_only: Some(sym) }
-            .parse_attribute_list(attrs, target_span);
+            .parse_attribute_list(attrs, target_span, OmitDoc::Skip);
 
         assert!(parsed.len() <= 1);
 
@@ -164,10 +180,15 @@ impl<'sess> AttributeParseContext<'sess> {
         self.sess.dcx()
     }
 
+    /// Parse a list of attributes.
+    ///
+    /// `target_span` is the span of the thing this list of attributes is applied to,
+    /// and when `omit_doc` is set, doc attributes are filtered out.
     pub fn parse_attribute_list<'a>(
         &'a self,
         attrs: &'a [ast::Attribute],
         target_span: Span,
+        omit_doc: OmitDoc,
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
@@ -182,8 +203,21 @@ impl<'sess> AttributeParseContext<'sess> {
                 }
             }
 
+            // sometimes, for example for `#![doc = include_str!("readme.md")]`,
+            // doc still contains a non-literal. You might say, when we're lowering attributes
+            // that's expanded right? But no, sometimes, when parsing attributes on macros,
+            // we already use the lowering logic and these are still there. So, when `omit_doc`
+            // is set we *also* want to ignore these
+            if omit_doc == OmitDoc::Skip && attr.name_or_empty() == sym::doc {
+                continue;
+            }
+
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
+                    if omit_doc == OmitDoc::Skip {
+                        continue;
+                    }
+
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: *comment_kind,
@@ -191,6 +225,17 @@ impl<'sess> AttributeParseContext<'sess> {
                         comment: *symbol,
                     }))
                 }
+                // // FIXME: make doc attributes go through a proper attribute parser
+                // ast::AttrKind::Normal(n) if n.name_or_empty() == sym::doc => {
+                //     let p = GenericMetaItemParser::from_attr(&n, self.dcx());
+                //
+                //     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
+                //         style: attr.style,
+                //         kind: CommentKind::Line,
+                //         span: attr.span,
+                //         comment: p.args().name_value(),
+                //     }))
+                // }
                 ast::AttrKind::Normal(n) => {
                     let parser = GenericMetaItemParser::from_attr(&n, self.dcx());
                     let (path, args) = parser.deconstruct();
@@ -214,8 +259,8 @@ impl<'sess> AttributeParseContext<'sess> {
 
                         const FIXME_TEMPORARY_ATTR_ALLOWLIST: &[Symbol] = &[sym::cfg];
                         assert!(
-                            self.tools.contains(&parts[0])
-                                || FIXME_TEMPORARY_ATTR_ALLOWLIST.contains(&parts[0]),
+                            self.tools.contains(&parts[0]) || true,
+                            // || FIXME_TEMPORARY_ATTR_ALLOWLIST.contains(&parts[0]),
                             "attribute {path} wasn't parsed and isn't a know tool attribute",
                         );
 

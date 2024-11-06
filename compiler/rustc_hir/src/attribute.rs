@@ -1,9 +1,8 @@
-use rustc_ast::{self as ast, MetaItemInner};
 use std::fmt::Display;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::CommentKind;
-use rustc_ast::{AttrId, AttrStyle, DelimArgs, MetaItemLit};
+use rustc_ast::{self as ast, AttrId, AttrStyle, DelimArgs, MetaItemInner, MetaItemLit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -14,7 +13,7 @@ use rustc_target::abi::Align;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
-use crate::{ConstStability, DefaultBodyStability, ItemLocalId, RustcVersion, Stability};
+use crate::{DefaultBodyStability, ItemLocalId, PartialConstStability, RustcVersion, Stability};
 
 /// The derived implementation of [`HashStable_Generic`] on [`Attribute`]s shouldn't hash
 /// [`AttrId`]s. By wrapping them in this, we make sure we never do.
@@ -140,9 +139,6 @@ pub enum RustcAttribute {
     // tidy-alphabetical-startt
     AllowIncoherentImpl,
     Coinductive,
-    Confusables,
-    ConstStable,
-    ConstUnstable,
     DenyExplicitImpl,
     HasIncoherentImpls,
     LayoutScalarValidRangeEnd,
@@ -186,14 +182,24 @@ pub enum AttributeKind {
     AllowInternalUnstable(ThinVec<Symbol>),
     AutoDiff,
     AutomaticallyDerived,
+    BodyStability {
+        stability: DefaultBodyStability,
+        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
+        span: Span,
+    },
     Cfg,
     CfgAttr,
     CfiEncoding, // FIXME(cfi_encoding)
     Cold,
     CollapseDebuginfo,
-    Confusables(ThinVec<Symbol>),
+    Confusables {
+        symbols: ThinVec<Symbol>,
+        // FIXME(jdonszelmann): remove when target validation code is moved
+        first_span: Span,
+    },
+    ConstStabilityIndirect,
     ConstStability {
-        stability: ConstStability,
+        stability: PartialConstStability,
         /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
         span: Span,
     },
@@ -202,18 +208,13 @@ pub enum AttributeKind {
     Coverage,
     CustomMir,
     DebuggerVisualizer,
-    BodyStability {
-        stability: DefaultBodyStability,
-        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
-        span: Span,
-    },
     DefaultLibAllocator,
     Deny,
+    DeprecatedSafe, // FIXME(deprecated_safe)
     Deprecation {
         deprecation: Deprecation,
         span: Span,
     },
-    DeprecatedSafe, // FIXME(deprecated_safe)
     Diagnostic(DiagnosticAttribute),
     Doc,
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
@@ -429,7 +430,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_doc_comment(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::DocComment {..}))
+        matches!(self, Attribute::Parsed(AttributeKind::DocComment { .. }))
     }
 
     fn span(&self) -> Span {
@@ -457,14 +458,16 @@ impl AttributeExt for Attribute {
 
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment{comment, ..}) => Some(*comment),
+            Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
             Attribute::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
             _ => None,
         }
     }
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment{kind, comment, ..}) => Some((*comment, *kind)),
+            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
+                Some((*comment, *kind))
+            }
             Attribute::Unparsed(_) if self.name_or_empty() == sym::doc => {
                 self.value_str().map(|s| (s, CommentKind::Line))
             }

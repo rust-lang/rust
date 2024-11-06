@@ -209,8 +209,6 @@ ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syn
 
 ast_passes_show_span = {$msg}
 
-ast_passes_stability_outside_std = stability attributes may not be used outside of the standard library
-
 ast_passes_static_without_body =
     free static item without body
     .suggestion = provide a definition for the static

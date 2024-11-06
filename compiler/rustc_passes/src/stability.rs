@@ -14,8 +14,8 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, AttributeKind, ConstStability, DeprecatedSince, FieldDef, Item, ItemKind,
-    Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
-    VERSION_PLACEHOLDER, Variant,
+    PartialConstStability, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind,
+    UnstableReason, VERSION_PLACEHOLDER, Variant,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
@@ -118,6 +118,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
         let depr = attr::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
+        let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
 
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
@@ -151,10 +152,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 if inherit_deprecation.yes() && stab.is_unstable() {
                     self.index.stab_map.insert(def_id, stab);
                     if fn_sig.is_some_and(|s| s.header.is_const()) {
-                        self.index.const_stab_map.insert(def_id, ConstStability::unmarked(
-                            find_attr!(attrs, AttributeKind::ConstStability { stability, .. } => stability.const_stable_indirect).unwrap_or_default(),
-                            stab
-                        ));
+                        self.index.const_stab_map.insert(
+                            def_id,
+                            ConstStability::unmarked(const_stability_indirect, stab),
+                        );
                     }
                 }
             }
@@ -210,7 +211,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             .dcx()
                             .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                     }
-                    StableSince::Version(stab_since) => {
+                    StableSince::Version(stab_since, _) => {
                         if dep_since < stab_since {
                             self.tcx
                                 .dcx()
@@ -269,7 +270,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
 
-        // TODO: fn_sig.is_some_and(|s| s.header.is_const()),
         // If this is marked const *stable*, it must also be regular-stable.
         if let Some((const_stab, const_span)) = const_stab
             && let Some(fn_sig) = fn_sig
@@ -284,9 +284,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         // Stable *language* features shouldn't be used as unstable library features.
         // (Not doing this for stable library features is checked by tidy.)
         if let Some((
-            ConstStability {
-                level: StabilityLevel::Unstable { .. }, feature, ..
-            },
+            PartialConstStability { level: StabilityLevel::Stable { .. }, feature, .. },
             const_span,
         )) = const_stab
         {
@@ -298,9 +296,17 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
+        if let Some((stab, span)) = &const_stab
+            && stab.is_const_stable()
+            && const_stability_indirect
+        {
+            self.tcx.dcx().emit_err(errors::RustcConstStableIndirectPairing { span: *span });
+        }
+
         // After checking the immediate attributes, get rid of the span and compute implied
         // const stability: inherit feature gate from regular stability.
-        let mut const_stab = const_stab.map(|(stab, _span)| stab);
+        let mut const_stab = const_stab
+            .map(|(stab, _span)| ConstStability::from_partial(stab, const_stability_indirect));
 
         // If this is a const fn but not annotated with stability markers, see if we can inherit regular stability.
         if fn_sig.is_some_and(|s| s.header.is_const())  && const_stab.is_none() &&
@@ -786,8 +792,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
 
                     let stab = attr::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
-                    // TODO: matches!(constness, Constness::Const),
-                    let const_stab = attr::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => stability);
+                    // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
+                    let const_stab = attr::find_attr!(attrs, AttributeKind::ConstStability{stability, ..} => *stability);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

@@ -1,4 +1,5 @@
 use std::num::NonZero;
+use std::ops::Deref;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Symbol, sym};
@@ -42,13 +43,30 @@ impl Stability {
 pub struct ConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
-    /// This is true iff the `const_stable_indirect` attribute is present.
-    pub const_stable_indirect: bool,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
+    /// This is true iff the `const_stable_indirect` attribute is present.
+    pub const_stable_indirect: bool,
 }
 
 impl ConstStability {
+    pub fn from_partial(
+        PartialConstStability { level, feature, promotable }: PartialConstStability,
+        const_stable_indirect: bool,
+    ) -> Self {
+        Self { const_stable_indirect, level, feature, promotable }
+    }
+
+    /// The stability assigned to unmarked items when -Zforce-unstable-if-unmarked is set.
+    pub fn unmarked(const_stable_indirect: bool, regular_stab: Stability) -> Self {
+        Self {
+            feature: regular_stab.feature,
+            promotable: false,
+            level: regular_stab.level,
+            const_stable_indirect,
+        }
+    }
+
     pub fn is_const_unstable(&self) -> bool {
         self.level.is_unstable()
     }
@@ -56,15 +74,26 @@ impl ConstStability {
     pub fn is_const_stable(&self) -> bool {
         self.level.is_stable()
     }
+}
 
-    /// The stability assigned to unmarked items when -Zforce-unstable-if-unmarked is set.
-    pub fn unmarked(const_stable_indirect: bool, regular_stab: Stability) -> Self {
-        ConstStability {
-            feature: regular_stab.feature,
-            const_stable_indirect,
-            promotable: false,
-            level: regular_stab.level,
-        }
+/// Excludes `const_stable_indirect`. This is necessary because when `-Zforce-unstable-if-unmarked`
+/// is set, we need to encode standalone `#[rustc_const_stable_indirect]` attributes
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub struct PartialConstStability {
+    pub level: StabilityLevel,
+    pub feature: Symbol,
+    /// whether the function has a `#[rustc_promotable]` attribute
+    pub promotable: bool,
+}
+
+impl PartialConstStability {
+    pub fn is_const_unstable(&self) -> bool {
+        self.level.is_unstable()
+    }
+
+    pub fn is_const_stable(&self) -> bool {
+        self.level.is_stable()
     }
 }
 
@@ -114,7 +143,8 @@ pub enum StabilityLevel {
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StableSince {
-    Version(RustcVersion),
+    /// also stores the original symbol for printing
+    Version(RustcVersion, Symbol),
     /// Stabilized in the upcoming version, whatever number that is.
     Current,
     /// Failed to parse a stabilization version.

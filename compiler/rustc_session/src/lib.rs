@@ -29,8 +29,6 @@ pub mod output;
 
 pub use getopts;
 
-mod version;
-
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

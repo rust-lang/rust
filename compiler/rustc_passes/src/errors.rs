@@ -697,31 +697,6 @@ pub(crate) struct Linkage {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_empty_confusables)]
-pub(crate) struct EmptyConfusables {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_incorrect_meta_item, code = E0539)]
-pub(crate) struct IncorrectMetaItem {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: IncorrectMetaItemSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_incorrect_meta_item_suggestion, applicability = "maybe-incorrect")]
-pub(crate) struct IncorrectMetaItemSuggestion {
-    #[suggestion_part(code = "\"")]
-    pub lo: Span,
-    #[suggestion_part(code = "\"")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_stability_promotable)]
 pub(crate) struct StabilityPromotable {
     #[primary_span]
@@ -1849,4 +1824,12 @@ pub(crate) struct NoSanitize<'a> {
     pub defn_span: Span,
     pub accepted_kind: &'a str,
     pub attr_str: &'a str,
+}
+
+// TODO: move back to rustc_attr
+#[derive(Diagnostic)]
+#[diag(passes_rustc_const_stable_indirect_pairing)]
+pub(crate) struct RustcConstStableIndirectPairing {
+    #[primary_span]
+    pub span: Span,
 }

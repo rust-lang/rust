@@ -1868,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(candidates) = rustc_attr::find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::Confusables(c) => c)
+                    if let Some(candidates) = rustc_attr::find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::Confusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
                         && let ty::AssocKind::Fn = inherent_method.kind
                     {
