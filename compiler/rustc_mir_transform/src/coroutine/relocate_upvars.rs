@@ -4,24 +4,38 @@
 //! This pass performs the following transformations.
 //! 1. It generates a fresh batch of locals for each captured upvars.
 //!
-//! For each upvar, whether used or not, a fresh local is created with the same type.
+//! For each upvar, whether used or not, a fresh local is created with the same
+//! type.
 //!
-//! 2. It replaces the places pointing into those upvars with places pointing into those locals instead
+//! 2. It replaces the places pointing into those upvars with places pointing
+//! into those locals instead
 //!
-//! Each place that starts with access into the coroutine structure `_1` is replaced with the fresh local as
-//! the base. For instance, `(_1.4 as Some).0` is rewritten into `(_34 as Some).0` when `_34` is the fresh local
+//! Each place that starts with access into the coroutine structure `_1` is
+//! replaced with the fresh local as the base. For instance, `(_1.4 as Some).0`
+//! is rewritten into `(_34 as Some).0` when `_34` is the fresh local
 //! corresponding to the captured upvar stored in `_1.4`.
 //!
 //! 3. It assembles an prologue to replace the current entry block.
 //!
-//! This prologue block transfers every captured upvar into its corresponding fresh local, *via scratch locals*.
-//! The upvars are first completely moved into the scratch locals in batch, and then moved into the destination
-//! locals in batch.
-//! The reason is that it is possible that coroutine layout may change and the source memory location of
-//! an upvar may not necessarily be mapped exactly to the same place as in the `Unresumed` state.
-//! While coroutine layout ensures that the same saved local has stable offsets throughout its lifetime,
-//! technically the upvar in `Unresumed` state and their fresh locals are different saved locals.
-//! This scratch locals re-estabilish safety so that the correct data permutation can take place.
+//! This prologue block transfers every captured upvar into its corresponding
+//! fresh local, *via scratch locals*.
+//! The upvars are first completely moved into the scratch locals in batch,
+//! and then moved into the destination locals in batch.
+//! The reason is that it is possible that coroutine layout may change and the
+//! source memory location of an upvar may not necessarily be mapped exactly to
+//! the same place as in the `Unresumed` state.
+//! While coroutine layout ensures that the same saved local has stable offsets
+//! throughout its lifetime, technically the upvar in `Unresumed` state and
+//! their fresh locals are different saved locals.
+//! This scratch locals re-estabilish safety so that the correct data
+//! permutation can take place.
+//!
+//! By enabling the feature gate `new_coroutine_layout`, the new coroutine
+//! layout calculator enters in effect and further guarantee that the upvars in
+//! the `Unresumed` state will share the same memory offsets as
+//! their corresponding saved locals, if exist.
+//! This policy enables further optimisation opportunities, so that the
+//! copies inserted by this pass will be elided away beyond the codegen phase.
 
 use rustc_abi::FieldIdx;
 use rustc_index::{IndexSlice, IndexVec};

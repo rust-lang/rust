@@ -14,9 +14,9 @@ print-type-size         field `.value`: 2052 bytes
 print-type-size type: `{async fn body of calls_fut<{async fn body of big_fut()}>()}`: 2052 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 2051 bytes
-print-type-size         upvar `.fut`: 1 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1026 bytes
 print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
+print-type-size         upvar `.fut`: 1025 bytes, offset: 1027 bytes, alignment: 1 bytes
 print-type-size     variant `Suspend0`: 1027 bytes
 print-type-size         local `.fut`: 1025 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
@@ -29,8 +29,8 @@ print-type-size     variant `Suspend2`: 1027 bytes
 print-type-size         local `.fut`: 1025 bytes
 print-type-size         local `..coroutine_field4`: 1 bytes, type: bool
 print-type-size         local `.__awaitee`: 1 bytes, type: {async fn body of wait()}
-print-type-size     variant `Returned`: 0 bytes
-print-type-size     variant `Panicked`: 0 bytes
+print-type-size     variant `Returned`: 2051 bytes
+print-type-size     variant `Panicked`: 2051 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1025 bytes
 print-type-size type: `std::mem::MaybeUninit<{async fn body of big_fut()}>`: 1025 bytes, alignment: 1 bytes
@@ -40,10 +40,10 @@ print-type-size         field `.value`: 1025 bytes
 print-type-size type: `{async fn body of big_fut()}`: 1025 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes
-print-type-size         upvar `.arg`: 1 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         local `.arg`: 1024 bytes
-print-type-size     variant `Returned`: 0 bytes
-print-type-size     variant `Panicked`: 0 bytes
+print-type-size         upvar `.arg`: 1024 bytes, offset: 1 bytes, alignment: 1 bytes
+print-type-size     variant `Returned`: 1024 bytes
+print-type-size     variant `Panicked`: 1024 bytes
 print-type-size type: `std::mem::ManuallyDrop<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1024 bytes
 print-type-size type: `std::mem::MaybeUninit<[u8; 1024]>`: 1024 bytes, alignment: 1 bytes

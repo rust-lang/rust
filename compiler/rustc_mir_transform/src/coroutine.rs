@@ -976,9 +976,17 @@ fn compute_layout<'tcx>(
         suspension_point_at_block,
     } = liveness;
 
+    // We need to later establish the map between upvars in UNRESUMED and locals in other states.
+    let local_upvar_map: UnordMap<_, _> = body
+        .local_upvar_map
+        .iter_enumerated()
+        .filter_map(|(field, local)| local.map(|local| (local, field)))
+        .collect();
+
     // Gather live local types and their indices.
     let mut locals = IndexVec::<CoroutineSavedLocal, _>::new();
     let mut tys = IndexVec::<CoroutineSavedLocal, _>::new();
+    let mut saved_local_upvar_map = UnordMap::default();
     for (saved_local, local) in saved_locals.iter_enumerated() {
         debug!("coroutine saved local {:?} => {:?}", saved_local, local);
 
@@ -1006,6 +1014,10 @@ fn compute_layout<'tcx>(
         debug!(?decl);
 
         tys.push(decl);
+
+        if let Some(&field) = local_upvar_map.get(&local) {
+            saved_local_upvar_map.insert(field, saved_local);
+        }
     }
     // These are the "saved locals" sourced from the UNRESUMED state.
     let upvar_saved_locals: IndexVec<FieldIdx, CoroutineSavedLocal> = upvar_tys
@@ -1058,8 +1070,7 @@ fn compute_layout<'tcx>(
         SourceInfo::outermost(body_span.shrink_to_hi()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .collect();
 
     // Build the coroutine variant field list.
@@ -1101,17 +1112,24 @@ fn compute_layout<'tcx>(
             field_names.get_or_insert_with(saved_local, || var.name);
         }
     }
-    for (capture, saved_local) in upvar_infos.iter().zip(upvar_saved_locals) {
+    for (capture, &saved_local) in upvar_infos.iter().zip(&upvar_saved_locals) {
         field_names.get_or_insert_with(saved_local, || capture.var_ident.name);
     }
     debug!(field_names = ?field_names.debug_map_view());
 
+    let relocated_upvars = upvar_saved_locals
+        .iter_enumerated()
+        .filter_map(|(field, &source)| {
+            saved_local_upvar_map.get(&field).map(|&dest| (source, dest))
+        })
+        .collect();
     let layout = CoroutineLayout {
         field_tys: tys,
         field_names,
         variant_fields,
         variant_source_info,
         storage_conflicts,
+        relocated_upvars,
     };
     debug!(?layout);
 
