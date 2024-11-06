@@ -144,9 +144,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         let mut targets = Vec::new();
         for arm in rest {
             let arm = &self.thir[*arm];
-            let (PatKind::Constant { value } | PatKind::NamedConstant { value, span: _ }) =
-                arm.pattern.kind
-            else {
+            let PatKind::Constant { value, opt_def: _ } = arm.pattern.kind else {
                 return Err(ParseError {
                     span: arm.pattern.span,
                     item_description: format!("{:?}", arm.pattern.kind),

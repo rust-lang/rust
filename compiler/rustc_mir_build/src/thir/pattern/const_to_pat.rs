@@ -266,6 +266,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // optimization for now.
                 ty::Str => PatKind::Constant {
                     value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
+                    opt_def: None,
                 },
                 // All other references are converted into deref patterns and then recursively
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
@@ -311,13 +312,17 @@ impl<'tcx> ConstToPat<'tcx> {
                 } else {
                     PatKind::Constant {
                         value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
+                        opt_def: None,
                     }
                 }
             }
             ty::Pat(..) | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
                 // just integers, so we simply allow them.
-                PatKind::Constant { value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)) }
+                PatKind::Constant {
+                    value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
+                    opt_def: None,
+                }
             }
             ty::FnPtr(..) => {
                 unreachable!(

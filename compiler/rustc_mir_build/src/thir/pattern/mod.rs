@@ -157,9 +157,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                     kind => (kind, None, None),
                 };
-                let value = if let PatKind::Constant { value }
-                | PatKind::NamedConstant { value, span: _ } = kind
-                {
+                let value = if let PatKind::Constant { value, opt_def: _ } = kind {
                     value
                 } else {
                     let msg = format!(
@@ -253,7 +251,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
+                kind = PatKind::Constant { value: lo.as_finite().unwrap(), opt_def: None };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
@@ -562,15 +560,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
         };
 
-        // HERE
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let def_span = self.tcx.def_span(def_id);
         let mut pattern = self.const_to_pat(c, ty, id, span);
-        if let PatKind::Constant { value } = pattern.kind {
-            pattern.kind = PatKind::NamedConstant { value, span: def_span };
+        if let PatKind::Constant { value, opt_def: None } = pattern.kind {
+            pattern.kind = PatKind::Constant { value, opt_def: Some(def_id) };
         }
-        tracing::info!("pattern {pattern:#?} {c:?} {ty:?} {id:?}");
 
         if !is_associated_const {
             return pattern;

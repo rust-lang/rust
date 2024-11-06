@@ -670,13 +670,14 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::NamedConstant { span, .. }
+        if let PatKind::Constant { opt_def: Some(def_id), .. }
         | PatKind::AscribeUserType {
-            subpattern: box Pat { kind: PatKind::NamedConstant { span, .. }, .. },
+            subpattern: box Pat { kind: PatKind::Constant { opt_def: Some(def_id), .. }, .. },
             ..
         } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
+            let span = self.tcx.def_span(def_id);
             // When we encounter a constant as the binding name, point at the `const` definition.
             interpreted_as_const = Some(span);
             interpreted_as_const_sugg =
