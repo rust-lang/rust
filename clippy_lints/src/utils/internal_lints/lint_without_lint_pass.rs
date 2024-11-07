@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     .expect("lints must have a description field");
 
                 if let ExprKind::Lit(Spanned {
-                    node: LitKind::Str(ref sym, _),
+                    node: LitKind::Str(sym, _),
                     ..
                 }) = field.expr.kind
                 {
@@ -218,9 +218,7 @@ pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
     if let Some(value) = extract_clippy_version_value(cx, item) {
-        // The `sym!` macro doesn't work as it only expects a single token.
-        // It's better to keep it this way and have a direct `Symbol::intern` call here.
-        if value == Symbol::intern("pre 1.29.0") {
+        if value.as_str() == "pre 1.29.0" {
             return;
         }
 
@@ -251,7 +249,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind
+        if let ast::AttrKind::Normal(attr_kind) = &attr.kind
             // Identify attribute
             && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
             && tool_name.ident.name == sym::clippy

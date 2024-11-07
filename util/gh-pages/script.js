@@ -138,25 +138,27 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
-function highlightIfNeeded(elem) {
-    onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
+function highlightIfNeeded(lintId) {
+    onEachLazy(document.querySelectorAll(`#${lintId} pre > code:not(.hljs)`), el => {
         hljs.highlightElement(el.parentElement)
         el.classList.add("highlighted");
     });
 }
 
 function expandLint(lintId) {
-    const lintElem = document.getElementById(lintId);
-    const isCollapsed = lintElem.classList.toggle("collapsed");
-    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "−";
-    highlightIfNeeded(lintElem);
+    const elem = document.querySelector(`#${lintId} > input[type="checkbox"]`);
+    elem.checked = true;
+    highlightIfNeeded(lintId);
 }
 
-// Show details for one lint
-function openLint(event) {
+function lintAnchor(event) {
     event.preventDefault();
     event.stopPropagation();
-    expandLint(event.target.getAttribute("href").slice(1));
+
+    const id = event.target.getAttribute("href").replace("#", "");
+    window.location.hash = id;
+
+    expandLint(id);
 }
 
 function copyToClipboard(event) {
@@ -520,7 +522,7 @@ function scrollToLint(lintId) {
 
 // If the page we arrive on has link to a given lint, we scroll to it.
 function scrollToLintByURL() {
-    const lintId = window.location.hash.substring(2);
+    const lintId = window.location.hash.substring(1);
     if (lintId.length > 0) {
         scrollToLint(lintId);
     }

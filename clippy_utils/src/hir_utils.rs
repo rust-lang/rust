@@ -128,7 +128,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         self.inter_expr().eq_path_segments(left, right)
     }
 
-    pub fn eq_modifiers(&mut self, left: TraitBoundModifiers, right: TraitBoundModifiers) -> bool {
+    pub fn eq_modifiers(left: TraitBoundModifiers, right: TraitBoundModifiers) -> bool {
         std::mem::discriminant(&left.constness) == std::mem::discriminant(&right.constness)
             && std::mem::discriminant(&left.polarity) == std::mem::discriminant(&right.polarity)
     }
@@ -1201,11 +1201,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
                 self.hash_pat(pat);
             },
-            TyKind::Ptr(ref mut_ty) => {
+            TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::Ref(lifetime, ref mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
@@ -1230,14 +1230,19 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(ref qpath) => self.hash_qpath(qpath),
+            TyKind::Path(qpath) => self.hash_qpath(qpath),
             TyKind::TraitObject(_, lifetime, _) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
-            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) | TyKind::OpaqueDef(_) | TyKind::AnonAdt(_) => {},
+            TyKind::Err(_)
+            | TyKind::Infer
+            | TyKind::Never
+            | TyKind::InferDelegation(..)
+            | TyKind::OpaqueDef(_)
+            | TyKind::AnonAdt(_) => {},
         }
     }
 

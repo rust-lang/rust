@@ -2,7 +2,6 @@
 #![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
 #![feature(const_trait_impl, abi_vectorcall)]
 
-
 use std::mem::transmute;
 
 struct Game {

@@ -1,3 +1,7 @@
+//! A simple const eval API, for use on arbitrary HIR expressions.
+//!
+//! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
+//! executable MIR bodies, so we have to do this instead.
 #![allow(clippy::float_cmp)]
 
 use crate::macros::HirNode;
@@ -379,6 +383,8 @@ impl Ord for FullInt {
 /// The context required to evaluate a constant expression.
 ///
 /// This is currently limited to constant folding and reading the value of named constants.
+///
+/// See the module level documentation for some context.
 pub struct ConstEvalCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,

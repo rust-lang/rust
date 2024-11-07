@@ -106,13 +106,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
 
 fn future_trait_ref<'tcx>(cx: &LateContext<'tcx>, opaque: &'tcx OpaqueTy<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
     if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
-            if let GenericBound::Trait(poly) = bound {
-                Some(&poly.trait_ref)
-            } else {
-                None
-            }
-        })
-        && trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait()
+        if let GenericBound::Trait(poly) = bound {
+            Some(&poly.trait_ref)
+        } else {
+            None
+        }
+    }) && trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait()
     {
         return Some(trait_ref);
     }
@@ -156,16 +155,18 @@ fn captures_all_lifetimes(cx: &LateContext<'_>, fn_def_id: LocalDefId, opaque_de
         .tcx
         .opaque_captured_lifetimes(opaque_def_id)
         .iter()
-        .filter(|&(lifetime, _)| match *lifetime {
-            ResolvedArg::EarlyBound(_) | ResolvedArg::LateBound(ty::INNERMOST, _, _) => true,
-            _ => false,
+        .filter(|&(lifetime, _)| {
+            matches!(
+                *lifetime,
+                ResolvedArg::EarlyBound(_) | ResolvedArg::LateBound(ty::INNERMOST, _, _)
+            )
         })
         .count();
     num_captured_lifetimes == num_early_lifetimes + num_late_lifetimes
 }
 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
-    if let Some(Expr {
+    if let Some(&Expr {
         kind: ExprKind::Closure(&Closure { kind, body, .. }),
         ..
     }) = block.expr

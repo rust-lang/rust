@@ -39,7 +39,7 @@ toml = "0.7.3"
 walkdir = "2.3"
 filetime = "0.2.9"
 itertools = "0.12"
-pulldown-cmark = "0.11"
+pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 rinja = { version = "0.3", default-features = false, features = ["config"] }
 
 # UI test dependencies
@@ -69,3 +69,10 @@ harness = false
 [[test]]
 name = "dogfood"
 harness = false
+
+# quine-mc_cluskey makes up a significant part of the runtime in dogfood
+# due to the number of conditions in the clippy_lints crate
+# and enabling optimizations for that specific dependency helps a bit
+# without increasing total build times.
+[profile.dev.package.quine-mc_cluskey]
+opt-level = 3

@@ -3,6 +3,7 @@ use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::{Symbol, sym};
 use serde::Deserialize;
+use smallvec::{SmallVec, smallvec};
 use std::fmt;
 
 macro_rules! msrv_aliases {
@@ -18,7 +19,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY }
-    1,82,0 { IS_NONE_OR }
+    1,82,0 { IS_NONE_OR, REPEAT_N }
     1,81,0 { LINT_REASONS_STABILIZATION }
     1,80,0 { BOX_INTO_ITER}
     1,77,0 { C_STR_LITERALS }
@@ -54,7 +55,7 @@ msrv_aliases! {
     1,33,0 { UNDERSCORE_IMPORTS }
     1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
     1,29,0 { ITER_FLATTEN }
-    1,28,0 { FROM_BOOL }
+    1,28,0 { FROM_BOOL, REPEAT_WITH }
     1,27,0 { ITERATOR_TRY_FOLD }
     1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN }
     1,24,0 { IS_ASCII_DIGIT }
@@ -67,7 +68,7 @@ msrv_aliases! {
 /// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]`
 #[derive(Debug, Clone)]
 pub struct Msrv {
-    stack: Vec<RustcVersion>,
+    stack: SmallVec<[RustcVersion; 2]>,
 }
 
 impl fmt::Display for Msrv {
@@ -87,14 +88,14 @@ impl<'de> Deserialize<'de> for Msrv {
     {
         let v = String::deserialize(deserializer)?;
         parse_version(Symbol::intern(&v))
-            .map(|v| Msrv { stack: vec![v] })
+            .map(|v| Msrv { stack: smallvec![v] })
             .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
     }
 }
 
 impl Msrv {
     pub fn empty() -> Msrv {
-        Msrv { stack: Vec::new() }
+        Msrv { stack: SmallVec::new() }
     }
 
     pub fn read_cargo(&mut self, sess: &Session) {
@@ -103,7 +104,7 @@ impl Msrv {
             .and_then(|v| parse_version(Symbol::intern(&v)));
 
         match (self.current(), cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.stack = vec![cargo_msrv],
+            (None, Some(cargo_msrv)) => self.stack = smallvec![cargo_msrv],
             (Some(clippy_msrv), Some(cargo_msrv)) => {
                 if clippy_msrv != cargo_msrv {
                     sess.dcx().warn(format!(

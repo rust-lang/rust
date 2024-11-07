@@ -540,24 +540,22 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
             .iter()
             .filter(|&&(_, name)| !name.as_str().starts_with('_'))
             .any(|&(_, name)| {
-                let mut walker = ContainsName {
-                    name,
-                    result: false,
-                    cx,
-                };
+                let mut walker = ContainsName { name, cx };
 
                 // Scan block
-                block
+                let mut res = block
                     .stmts
                     .iter()
                     .filter(|stmt| !ignore_span.overlaps(stmt.span))
-                    .for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
+                    .try_for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
 
                 if let Some(expr) = block.expr {
-                    intravisit::walk_expr(&mut walker, expr);
+                    if res.is_continue() {
+                        res = intravisit::walk_expr(&mut walker, expr);
+                    }
                 }
 
-                walker.result
+                res.is_break()
             })
     })
 }
