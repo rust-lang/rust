@@ -1105,15 +1105,14 @@ fn link_natively(
         // Many illumos systems will have both the native 'strip' utility and
         // the GNU one. Use the native version explicitly and do not rely on
         // what's in the path.
-        //
-        // If cross-compiling and there is not a native version, then use
-        // `llvm-strip` and hope.
-        let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
-            Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
-            }
+            Strip::Debuginfo => strip_symbols_with_external_utility(
+                sess,
+                "/usr/bin/strip",
+                out_filename,
+                Some("-x"),
+            ),
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
             Strip::None => {}
