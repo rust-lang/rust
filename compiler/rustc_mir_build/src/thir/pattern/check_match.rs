@@ -1116,13 +1116,13 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             if ty.is_ptr_sized_integral() {
                 if ty.inner() == cx.tcx.types.usize {
                     err.note(format!(
-                        "`{ty}` does not have a fixed maximum value, so half-open ranges are necessary to match \
-                             exhaustively",
+                        "`{ty}` does not have a fixed maximum value, so half-open ranges are \
+                         necessary to match exhaustively",
                     ));
                 } else if ty.inner() == cx.tcx.types.isize {
                     err.note(format!(
-                        "`{ty}` does not have fixed minimum and maximum values, so half-open ranges are necessary to match \
-                             exhaustively",
+                        "`{ty}` does not have fixed minimum and maximum values, so half-open \
+                         ranges are necessary to match exhaustively",
                     ));
                 }
             } else if ty.inner() == cx.tcx.types.str_ {
@@ -1140,6 +1140,27 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
         if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
+        }
+    }
+
+    for &arm in arms {
+        let arm = &thir.arms[arm];
+        if let PatKind::Constant { opt_def: Some(def_id), .. } = arm.pattern.kind {
+            let const_name = cx.tcx.item_name(def_id);
+            err.span_label(
+                arm.pattern.span,
+                format!(
+                    "this pattern doesn't introduce a new catch-all binding, but rather pattern \
+                     matches against the value of constant `{const_name}`",
+                ),
+            );
+            err.span_note(cx.tcx.def_span(def_id), format!("constant `{const_name}` defined here"));
+            err.span_suggestion_verbose(
+                arm.pattern.span.shrink_to_hi(),
+                "if you meant to introduce a binding, use a different name",
+                "_var".to_string(),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
