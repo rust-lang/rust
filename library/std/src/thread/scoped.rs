@@ -1,4 +1,4 @@
-use super::{Builder, JoinInner, Result, Thread, current, park};
+use super::{Builder, JoinInner, Result, Thread, current_or_unnamed};
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
@@ -140,7 +140,7 @@ where
     let scope = Scope {
         data: Arc::new(ScopeData {
             num_running_threads: AtomicUsize::new(0),
-            main_thread: current(),
+            main_thread: current_or_unnamed(),
             a_thread_panicked: AtomicBool::new(false),
         }),
         env: PhantomData,
@@ -152,7 +152,8 @@ where
 
     // Wait until all the threads are finished.
     while scope.data.num_running_threads.load(Ordering::Acquire) != 0 {
-        park();
+        // SAFETY: this is the main thread, the handle belongs to us.
+        unsafe { scope.data.main_thread.park() };
     }
 
     // Throw any panic from `f`, or the return value of `f` if no thread panicked.

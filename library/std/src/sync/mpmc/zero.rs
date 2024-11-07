@@ -190,7 +190,8 @@ impl<T> Channel<T> {
             drop(inner);
 
             // Block the current thread.
-            let sel = cx.wait_until(deadline);
+            // SAFETY: the context belongs to the current thread.
+            let sel = unsafe { cx.wait_until(deadline) };
 
             match sel {
                 Selected::Waiting => unreachable!(),
@@ -257,7 +258,8 @@ impl<T> Channel<T> {
             drop(inner);
 
             // Block the current thread.
-            let sel = cx.wait_until(deadline);
+            // SAFETY: the context belongs to the current thread.
+            let sel = unsafe { cx.wait_until(deadline) };
 
             match sel {
                 Selected::Waiting => unreachable!(),
