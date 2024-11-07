@@ -1,4 +1,4 @@
-//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
+//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`,
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
 macro_rules! intrinsic_args {
