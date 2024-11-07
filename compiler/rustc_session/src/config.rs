@@ -12,7 +12,7 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{fmt, fs, iter};
+use std::{cmp, fmt, fs, iter};
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
@@ -1367,9 +1367,34 @@ pub fn build_target_config(early_dcx: &EarlyDiagCtxt, opts: &Options, sysroot: &
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum OptionStability {
+pub enum OptionStability {
     Stable,
     Unstable,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum OptionKind {
+    /// An option that takes a value, and cannot appear more than once (e.g. `--out-dir`).
+    ///
+    /// Corresponds to [`getopts::Options::optopt`].
+    Opt,
+
+    /// An option that takes a value, and can appear multiple times (e.g. `--emit`).
+    ///
+    /// Corresponds to [`getopts::Options::optmulti`].
+    Multi,
+
+    /// An option that does not take a value, and cannot appear more than once (e.g. `--help`).
+    ///
+    /// Corresponds to [`getopts::Options::optflag`].
+    /// The `hint` string must be empty.
+    Flag,
+
+    /// An option that does not take a value, and can appear multiple times (e.g. `-O`).
+    ///
+    /// Corresponds to [`getopts::Options::optflagmulti`].
+    /// The `hint` string must be empty.
+    FlagMulti,
 }
 
 pub struct RustcOptGroup {
@@ -1402,58 +1427,37 @@ impl RustcOptGroup {
     }
 }
 
-// The `opt` local module holds wrappers around the `getopts` API that
-// adds extra rustc-specific metadata to each option; such metadata
-// is exposed by . The public
-// functions below ending with `_u` are the functions that return
-// *unstable* options, i.e., options that are only enabled when the
-// user also passes the `-Z unstable-options` debugging flag.
-mod opt {
-    // The `fn flag*` etc below are written so that we can use them
-    // in the future; do not warn about them not being used right now.
-    #![allow(dead_code)]
-
-    use super::RustcOptGroup;
-
-    type R = RustcOptGroup;
-    type S = &'static str;
-
-    fn stable<F>(name: S, f: F) -> R
-    where
-        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-    {
-        RustcOptGroup::stable(name, f)
-    }
-
-    fn unstable<F>(name: S, f: F) -> R
-    where
-        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-    {
-        RustcOptGroup::unstable(name, f)
-    }
-
-    fn longer(a: S, b: S) -> S {
-        if a.len() > b.len() { a } else { b }
-    }
-
-    pub(crate) fn opt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
-    }
-    pub(crate) fn multi_s(a: S, b: S, c: S, d: S) -> R {
-        stable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
-    }
-    pub(crate) fn flag_s(a: S, b: S, c: S) -> R {
-        stable(longer(a, b), move |opts| opts.optflag(a, b, c))
-    }
-    pub(crate) fn flagmulti_s(a: S, b: S, c: S) -> R {
-        stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
-    }
-
-    fn opt(a: S, b: S, c: S, d: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
-    }
-    pub(crate) fn multi(a: S, b: S, c: S, d: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
+pub fn make_opt(
+    stability: OptionStability,
+    kind: OptionKind,
+    short_name: &'static str,
+    long_name: &'static str,
+    desc: &'static str,
+    hint: &'static str,
+) -> RustcOptGroup {
+    RustcOptGroup {
+        name: cmp::max_by_key(short_name, long_name, |s| s.len()),
+        stability,
+        apply: match kind {
+            OptionKind::Opt => Box::new(move |opts: &mut getopts::Options| {
+                opts.optopt(short_name, long_name, desc, hint)
+            }),
+            OptionKind::Multi => Box::new(move |opts: &mut getopts::Options| {
+                opts.optmulti(short_name, long_name, desc, hint)
+            }),
+            OptionKind::Flag => {
+                assert_eq!(hint, "");
+                Box::new(move |opts: &mut getopts::Options| {
+                    opts.optflag(short_name, long_name, desc)
+                })
+            }
+            OptionKind::FlagMulti => {
+                assert_eq!(hint, "");
+                Box::new(move |opts: &mut getopts::Options| {
+                    opts.optflagmulti(short_name, long_name, desc)
+                })
+            }
+        },
     }
 }
 
@@ -1468,46 +1472,60 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+    use OptionKind::{Flag, FlagMulti, Multi, Opt};
+    use OptionStability::Stable;
+
+    use self::make_opt as opt;
+
     vec![
-        opt::flag_s("h", "help", "Display this message"),
-        opt::multi_s("", "cfg", "Configure the compilation environment.
-                             SPEC supports the syntax `NAME[=\"VALUE\"]`.", "SPEC"),
-        opt::multi_s("", "check-cfg", "Provide list of expected cfgs for checking", "SPEC"),
-        opt::multi_s(
+        opt(Stable, Flag, "h", "help", "Display this message", ""),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "cfg",
+            "Configure the compilation environment.\n\
+                SPEC supports the syntax `NAME[=\"VALUE\"]`.",
+            "SPEC",
+        ),
+        opt(Stable, Multi, "", "check-cfg", "Provide list of expected cfgs for checking", "SPEC"),
+        opt(
+            Stable,
+            Multi,
             "L",
             "",
-            "Add a directory to the library search path. The
-                             optional KIND can be one of dependency, crate, native,
-                             framework, or all (the default).",
+            "Add a directory to the library search path. \
+                The optional KIND can be one of dependency, crate, native, framework, or all (the default).",
             "[KIND=]PATH",
         ),
-        opt::multi_s(
+        opt(
+            Stable,
+            Multi,
             "l",
             "",
-            "Link the generated crate(s) to the specified native
-                             library NAME. The optional KIND can be one of
-                             static, framework, or dylib (the default).
-                             Optional comma separated MODIFIERS (bundle|verbatim|whole-archive|as-needed)
-                             may be specified each with a prefix of either '+' to
-                             enable or '-' to disable.",
+            "Link the generated crate(s) to the specified native\n\
+                library NAME. The optional KIND can be one of\n\
+                static, framework, or dylib (the default).\n\
+                Optional comma separated MODIFIERS\n\
+                (bundle|verbatim|whole-archive|as-needed)\n\
+                may be specified each with a prefix of either '+' to\n\
+                enable or '-' to disable.",
             "[KIND[:MODIFIERS]=]NAME[:RENAME]",
         ),
         make_crate_type_option(),
-        opt::opt_s("", "crate-name", "Specify the name of the crate being built", "NAME"),
-        opt::opt_s(
-            "",
-            "edition",
-            &EDITION_STRING,
-            EDITION_NAME_LIST,
-        ),
-        opt::multi_s(
+        opt(Stable, Opt, "", "crate-name", "Specify the name of the crate being built", "NAME"),
+        opt(Stable, Opt, "", "edition", &EDITION_STRING, EDITION_NAME_LIST),
+        opt(
+            Stable,
+            Multi,
             "",
             "emit",
-            "Comma separated list of types of output for \
-             the compiler to emit",
+            "Comma separated list of types of output for the compiler to emit",
             "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]",
         ),
-        opt::multi_s(
+        opt(
+            Stable,
+            Multi,
             "",
             "print",
             "Compiler information to print on stdout",
@@ -1516,41 +1534,36 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              tls-models|target-spec-json|all-target-specs-json|native-static-libs|\
              stack-protector-strategies|link-args|deployment-target]",
         ),
-        opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
-        opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
-        opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
-        opt::opt_s(
-            "",
-            "out-dir",
-            "Write output to compiler-chosen filename \
-             in <dir>",
-            "DIR",
-        ),
-        opt::opt_s(
+        opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
+        opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=2", ""),
+        opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
+        opt(Stable, Opt, "", "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
+        opt(
+            Stable,
+            Opt,
             "",
             "explain",
-            "Provide a detailed explanation of an error \
-             message",
+            "Provide a detailed explanation of an error message",
             "OPT",
         ),
-        opt::flag_s("", "test", "Build a test harness"),
-        opt::opt_s("", "target", "Target triple for which the code is compiled", "TARGET"),
-        opt::multi_s("A", "allow", "Set lint allowed", "LINT"),
-        opt::multi_s("W", "warn", "Set lint warnings", "LINT"),
-        opt::multi_s("", "force-warn", "Set lint force-warn", "LINT"),
-        opt::multi_s("D", "deny", "Set lint denied", "LINT"),
-        opt::multi_s("F", "forbid", "Set lint forbidden", "LINT"),
-        opt::multi_s(
+        opt(Stable, Flag, "", "test", "Build a test harness", ""),
+        opt(Stable, Opt, "", "target", "Target triple for which the code is compiled", "TARGET"),
+        opt(Stable, Multi, "A", "allow", "Set lint allowed", "LINT"),
+        opt(Stable, Multi, "W", "warn", "Set lint warnings", "LINT"),
+        opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "LINT"),
+        opt(Stable, Multi, "D", "deny", "Set lint denied", "LINT"),
+        opt(Stable, Multi, "F", "forbid", "Set lint forbidden", "LINT"),
+        opt(
+            Stable,
+            Multi,
             "",
             "cap-lints",
-            "Set the most restrictive lint level. \
-             More restrictive lints are capped at this \
-             level",
+            "Set the most restrictive lint level. More restrictive lints are capped at this level",
             "LEVEL",
         ),
-        opt::multi_s("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
-        opt::flag_s("V", "version", "Print version info and exit"),
-        opt::flag_s("v", "verbose", "Use verbose output"),
+        opt(Stable, Multi, "C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+        opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
+        opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
     ]
 }
 
@@ -1558,25 +1571,36 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
 /// each option, such as whether the option is part of the stable
 /// long-term interface for rustc.
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
+    use OptionKind::{Multi, Opt};
+    use OptionStability::{Stable, Unstable};
+
+    use self::make_opt as opt;
+
     let mut opts = rustc_short_optgroups();
     // FIXME: none of these descriptions are actually used
     opts.extend(vec![
-        opt::multi_s(
+        opt(
+            Stable,
+            Multi,
             "",
             "extern",
             "Specify where an external rust library is located",
             "NAME[=PATH]",
         ),
-        opt::opt_s("", "sysroot", "Override the system root", "PATH"),
-        opt::multi("Z", "", "Set unstable / perma-unstable options", "FLAG"),
-        opt::opt_s(
+        opt(Stable, Opt, "", "sysroot", "Override the system root", "PATH"),
+        opt(Unstable, Multi, "Z", "", "Set unstable / perma-unstable options", "FLAG"),
+        opt(
+            Stable,
+            Opt,
             "",
             "error-format",
             "How errors and other messages are produced",
             "human|json|short",
         ),
-        opt::multi_s("", "json", "Configure the JSON output of the compiler", "CONFIG"),
-        opt::opt_s(
+        opt(Stable, Multi, "", "json", "Configure the JSON output of the compiler", "CONFIG"),
+        opt(
+            Stable,
+            Opt,
             "",
             "color",
             "Configure coloring of output:
@@ -1585,19 +1609,23 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  never  = never colorize output",
             "auto|always|never",
         ),
-        opt::opt_s(
+        opt(
+            Stable,
+            Opt,
             "",
             "diagnostic-width",
             "Inform rustc of the width of the output so that diagnostics can be truncated to fit",
             "WIDTH",
         ),
-        opt::multi_s(
+        opt(
+            Stable,
+            Multi,
             "",
             "remap-path-prefix",
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
-        opt::multi("", "env-set", "Inject an environment variable", "VAR=VALUE"),
+        opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2760,7 +2788,9 @@ fn parse_pretty(early_dcx: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> O
 }
 
 pub fn make_crate_type_option() -> RustcOptGroup {
-    opt::multi_s(
+    make_opt(
+        OptionStability::Stable,
+        OptionKind::Multi,
         "",
         "crate-type",
         "Comma separated list of types of crates
