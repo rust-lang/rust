@@ -332,7 +332,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Wild |
                 // these just wrap other patterns, which we recurse on below.
                 PatKind::Or { .. } |
-                PatKind::InlineConstant { .. } |
+                PatKind::ExpandedConstant { .. } |
                 PatKind::AscribeUserType { .. } |
                 PatKind::Error(_) => {}
             }
@@ -386,8 +386,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;
             }
-            PatKind::InlineConstant { def, .. } => {
-                self.visit_inner_body(*def);
+            PatKind::ExpandedConstant { def_id, is_inline, .. } => {
+                if let Some(def) = def_id.as_local()
+                    && *is_inline
+                {
+                    self.visit_inner_body(def);
+                }
                 visit::walk_pat(self, pat);
             }
             _ => {

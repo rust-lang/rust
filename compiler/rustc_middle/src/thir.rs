@@ -645,7 +645,7 @@ impl<'tcx> Pat<'tcx> {
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
             | DerefPattern { subpattern, .. }
-            | InlineConstant { subpattern, .. } => subpattern.walk_(it),
+            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -786,16 +786,18 @@ pub enum PatKind<'tcx> {
     /// * `String`, if `string_deref_patterns` is enabled.
     Constant {
         value: mir::Const<'tcx>,
-        /// The `const` item this constant came from, if any.
-        opt_def: Option<DefId>,
     },
 
-    /// Inline constant found while lowering a pattern.
-    InlineConstant {
-        /// [LocalDefId] of the constant, we need this so that we have a
+    /// Inline or named constant found while lowering a pattern.
+    ExpandedConstant {
+        /// [DefId] of the constant, we need this so that we have a
         /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants.
-        def: LocalDefId,
+        /// unevaluated constants. If the `DefId` doesn't correspond to a local
+        /// crate, it points at the `const` item.
+        def_id: DefId,
+        /// If `false`, then `def_id` points at a `const` item, otherwise it
+        /// corresponds to a local inline const.
+        is_inline: bool,
         /// If the inline constant is used in a range pattern, this subpattern
         /// represents the range (if both ends are inline constants, there will
         /// be multiple InlineConstant wrappers).
@@ -1086,8 +1088,8 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(PatKind<'_>, 56);
+    static_assert_size!(Pat<'_>, 64);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);
     // tidy-alphabetical-end

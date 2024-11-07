@@ -670,11 +670,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::Constant { opt_def: Some(def_id), .. }
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. }
         | PatKind::AscribeUserType {
-            subpattern: box Pat { kind: PatKind::Constant { opt_def: Some(def_id), .. }, .. },
+            subpattern:
+                box Pat { kind: PatKind::ExpandedConstant { def_id, is_inline: false, .. }, .. },
             ..
         } = pat.kind
+            && let DefKind::Const = self.tcx.def_kind(def_id)
         {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
@@ -1145,7 +1147,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::Constant { opt_def: Some(def_id), .. } = arm.pattern.kind {
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind {
             let const_name = cx.tcx.item_name(def_id);
             err.span_label(
                 arm.pattern.span,

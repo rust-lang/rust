@@ -149,15 +149,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             None => Ok((None, None, None)),
             Some(expr) => {
                 let (kind, ascr, inline_const) = match self.lower_lit(expr) {
-                    PatKind::InlineConstant { subpattern, def } => {
-                        (subpattern.kind, None, Some(def))
+                    PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
+                        (subpattern.kind, None, def_id.as_local())
+                    }
+                    PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
+                        (subpattern.kind, None, None)
                     }
                     PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
                         (kind, Some(ascription), None)
                     }
                     kind => (kind, None, None),
                 };
-                let value = if let PatKind::Constant { value, opt_def: _ } = kind {
+                let value = if let PatKind::Constant { value } = kind {
                     value
                 } else {
                     let msg = format!(
@@ -251,7 +254,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => {}
             // `x..=y` where `x == y` and `x` and `y` are finite.
             (RangeEnd::Included, Some(Ordering::Equal)) if lo.is_finite() && hi.is_finite() => {
-                kind = PatKind::Constant { value: lo.as_finite().unwrap(), opt_def: None };
+                kind = PatKind::Constant { value: lo.as_finite().unwrap() };
             }
             // `..=x` where `x == ty::MIN`.
             (RangeEnd::Included, Some(Ordering::Equal)) if !lo.is_finite() => {}
@@ -288,7 +291,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             };
         }
         for def in [lo_inline, hi_inline].into_iter().flatten() {
-            kind = PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
+            kind = PatKind::ExpandedConstant {
+                def_id: def.to_def_id(),
+                is_inline: true,
+                subpattern: Box::new(Pat { span, ty, kind }),
+            };
         }
         Ok(kind)
     }
@@ -562,10 +569,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let mut pattern = self.const_to_pat(c, ty, id, span);
-        if let PatKind::Constant { value, opt_def: None } = pattern.kind {
-            pattern.kind = PatKind::Constant { value, opt_def: Some(def_id) };
-        }
+        let subpattern = self.const_to_pat(c, ty, id, span);
+        let pattern = if let hir::QPath::Resolved(None, path) = qpath
+            && path.segments.len() == 1
+        {
+            // We only want to mark constants when referenced as bare names that could have been
+            // new bindings if the `const` didn't exist.
+            Box::new(Pat {
+                span,
+                ty,
+                kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
+            })
+        } else {
+            subpattern
+        };
 
         if !is_associated_const {
             return pattern;
@@ -640,7 +657,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
-        PatKind::InlineConstant { subpattern, def: def_id }
+        PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
     }
 
     /// Converts literals, paths and negation of literals to patterns.
