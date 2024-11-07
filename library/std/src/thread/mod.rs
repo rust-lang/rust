@@ -1850,7 +1850,7 @@ impl<T> JoinHandle<T> {
     /// `is_finished`, and calling `join` if it returns `true`. This function does not block. To
     /// block while waiting on the thread to finish, use [`join`][Self::join].
     ///
-    /// This might return `true` for a brief moment after the thread's main
+    /// This might return `false` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
     /// However, once this returns `true`, [`join`][Self::join] can be expected
     /// to return quickly, without blocking for any significant amount of time.
