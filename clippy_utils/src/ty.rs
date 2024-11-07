@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr, TypingMode,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -274,11 +274,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
         .collect::<Vec<_>>();
 
-    let trait_ref = TraitRef::new(
-        tcx,
-        trait_id,
-        [GenericArg::from(ty)].into_iter().chain(args),
-    );
+    let trait_ref = TraitRef::new(tcx, trait_id, [GenericArg::from(ty)].into_iter().chain(args));
 
     debug_assert_matches!(
         tcx.def_kind(trait_id),
@@ -975,9 +971,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
-        (Err(_), ty::Array(t, n)) => {
-            n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, *t)
-        },
+        (Err(_), ty::Array(t, n)) => n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, *t),
         (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
             .variants()
             .iter()
@@ -1284,7 +1278,12 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 
 pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let cause = ObligationCause::dummy();
-    match tcx.infer_ctxt().build(TypingMode::from_param_env(param_env)).at(&cause, param_env).query_normalize(ty) {
+    match tcx
+        .infer_ctxt()
+        .build(TypingMode::from_param_env(param_env))
+        .at(&cause, param_env)
+        .query_normalize(ty)
+    {
         Ok(ty) => ty.value,
         Err(_) => ty,
     }

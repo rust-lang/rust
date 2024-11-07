@@ -29,11 +29,7 @@ pub(super) fn check(
             if !msrv.meets(msrvs::ARRAY_INTO_ITERATOR) {
                 return;
             }
-        } else if count
-            .try_to_target_usize(cx.tcx)
-            .map_or(true, |x| x > 32)
-            && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN)
-        {
+        } else if count.try_to_target_usize(cx.tcx).map_or(true, |x| x > 32) && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN) {
             return;
         }
     }

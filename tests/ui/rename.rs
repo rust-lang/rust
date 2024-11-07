@@ -54,7 +54,7 @@
 #![allow(enum_intrinsics_non_enums)]
 #![allow(non_fmt_panics)]
 #![allow(named_arguments_used_positionally)]
-#![allow(temporary_cstring_as_ptr)]
+#![allow(dangling_pointers_from_temporaries)]
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]

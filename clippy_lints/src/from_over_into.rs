@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use clippy_config::Conf;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -115,25 +117,26 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
 }
 
 /// Finds the occurrences of `Self` and `self`
+///
+/// Returns `ControlFlow::break` if any of the `self`/`Self` usages were from an expansion, or the
+/// body contained a binding already named `val`.
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// Occurrences of `Self`
     upper: Vec<Span>,
     /// Occurrences of `self`
     lower: Vec<Span>,
-    /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
-    /// already named `val`
-    invalid: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),
@@ -141,17 +144,19 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
                 _ => continue,
             }
 
-            self.invalid |= segment.ident.span.from_expansion();
+            if segment.ident.span.from_expansion() {
+                return ControlFlow::Break(());
+            }
         }
 
-        if !self.invalid {
-            walk_path(self, path);
-        }
+        walk_path(self, path)
     }
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> Self::Result {
         if name == sym::val {
-            self.invalid = true;
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }
@@ -209,11 +214,9 @@ fn convert_to_from(
         cx,
         upper: Vec::new(),
         lower: Vec::new(),
-        invalid: false,
     };
-    finder.visit_expr(body.value);
 
-    if finder.invalid {
+    if finder.visit_expr(body.value).is_break() {
         return None;
     }
 

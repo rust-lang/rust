@@ -10,8 +10,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicate, BoundPolarity,
+    BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
+    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut self_bounds_map = FxHashMap::default();
 
         for predicate in item.generics.predicates {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate
+            if let WherePredicate::BoundPredicate(bound_predicate) = predicate
                 && bound_predicate.origin != PredicateOrigin::ImplTrait
                 && !bound_predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
@@ -268,7 +268,7 @@ impl TraitBounds {
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in generics.predicates {
-            if let WherePredicate::BoundPredicate(ref p) = bound
+            if let WherePredicate::BoundPredicate(p) = bound
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
                 && !p.span.from_expansion()
@@ -379,7 +379,7 @@ struct ComparableTraitRef<'a, 'tcx> {
 
 impl PartialEq for ComparableTraitRef<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
-        SpanlessEq::new(self.cx).eq_modifiers(self.modifiers, other.modifiers)
+        SpanlessEq::eq_modifiers(self.modifiers, other.modifiers)
             && SpanlessEq::new(self.cx)
                 .paths_by_resolution()
                 .eq_path(self.trait_ref.path, other.trait_ref.path)

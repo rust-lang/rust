@@ -203,6 +203,21 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: &Msrv, expr: &Expr<'_>) {
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
         && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
     {
+        use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+        let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
+            match sug {
+                Sugg::BinOp(..) => true,
+                Sugg::MaybeParen(sug) if !has_enclosing_paren(&sug) => true,
+                _ => false,
+            }
+        } else {
+            false
+        };
+        let suggestion = if maybe_par {
+            format!("({suggestion})")
+        } else {
+            suggestion
+        };
         span_lint_and_sugg(
             cx,
             NONMINIMAL_BOOL,
