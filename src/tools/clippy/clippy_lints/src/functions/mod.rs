@@ -441,7 +441,7 @@ declare_clippy_lint! {
     /// fn bar(&self) -> Option<&String> { None }
     /// # }
     /// ```
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.83.0"]
     pub REF_OPTION,
     pedantic,
     "function signature uses `&Option<T>` instead of `Option<&T>`"

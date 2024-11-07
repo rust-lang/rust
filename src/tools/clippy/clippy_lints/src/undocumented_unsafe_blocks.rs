@@ -295,7 +295,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     if cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, ref node)| {
         matches!(
             node,
-            Node::Block(&Block {
+            Node::Block(Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
                 ..
             }),

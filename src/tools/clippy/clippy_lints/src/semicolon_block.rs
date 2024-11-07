@@ -101,17 +101,21 @@ impl SemicolonBlock {
         );
     }
 
-    fn semicolon_outside_block(
-        &self,
-        cx: &LateContext<'_>,
-        block: &Block<'_>,
-        tail_stmt_expr: &Expr<'_>,
-        semi_span: Span,
-    ) {
+    fn semicolon_outside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>) {
         let insert_span = block.span.with_lo(block.span.hi());
-        // account for macro calls
-        let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
-        let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
+
+        // For macro call semicolon statements (`mac!();`), the statement's span does not actually
+        // include the semicolon itself, so use `mac_call_stmt_semi_span`, which finds the semicolon
+        // based on a source snippet.
+        // (Does not use `stmt_span` as that requires `.from_expansion()` to return true,
+        // which is not the case for e.g. `line!();` and `asm!();`)
+        let Some(remove_span) = cx
+            .sess()
+            .source_map()
+            .mac_call_stmt_semi_span(tail_stmt_expr.span.source_callsite())
+        else {
+            return;
+        };
 
         if self.semicolon_outside_block_ignore_multiline && get_line(cx, remove_span) != get_line(cx, insert_span) {
             return;
@@ -150,13 +154,12 @@ impl LateLintPass<'_> for SemicolonBlock {
                 };
                 let &Stmt {
                     kind: StmtKind::Semi(expr),
-                    span,
                     ..
                 } = stmt
                 else {
                     return;
                 };
-                self.semicolon_outside_block(cx, block, expr, span);
+                self.semicolon_outside_block(cx, block, expr);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),

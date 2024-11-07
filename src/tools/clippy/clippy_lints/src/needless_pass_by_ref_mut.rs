@@ -183,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             .iter()
             .zip(fn_sig.inputs())
             .zip(body.params)
-            .filter(|((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
+            .filter(|&((&input, &ty), arg)| !should_skip(cx, input, ty, arg))
             .peekable();
         if it.peek().is_none() {
             return;
