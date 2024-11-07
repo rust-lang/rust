@@ -2861,7 +2861,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
 dependencies = [
  "bitflags 2.6.0",
- "getopts",
  "memchr",
  "pulldown-cmark-escape 0.11.0",
  "unicase",
