@@ -1411,20 +1411,6 @@ impl RustcOptGroup {
     pub fn apply(&self, options: &mut getopts::Options) {
         (self.apply)(options);
     }
-
-    pub fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
-    where
-        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-    {
-        RustcOptGroup { name, apply: Box::new(f), stability: OptionStability::Stable }
-    }
-
-    pub fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
-    where
-        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-    {
-        RustcOptGroup { name, apply: Box::new(f), stability: OptionStability::Unstable }
-    }
 }
 
 pub fn make_opt(
