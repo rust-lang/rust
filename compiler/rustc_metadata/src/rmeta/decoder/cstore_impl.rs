@@ -384,6 +384,7 @@ provide! { tcx, def_id, other, cdata,
     crate_hash => { cdata.root.header.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
+    num_extern_def_ids => { cdata.num_def_ids() }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
