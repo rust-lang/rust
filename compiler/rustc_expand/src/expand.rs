@@ -424,13 +424,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     /// Recursively expand all macro invocations in this AST fragment.
-    pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
+    pub fn fully_expand_fragment(&mut self, mut fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;
 
         // Collect all macro invocations and replace them with placeholders.
-        let (mut fragment_with_placeholders, mut invocations) =
-            self.collect_invocations(input_fragment, &[]);
+        let mut invocations = self.collect_invocations(&mut fragment, &[]);
 
         // Optimization: if we resolve all imports now,
         // we'll be able to immediately resolve most of imported macros.
@@ -492,7 +491,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let fragment_kind = invoc.fragment_kind;
             match self.expand_invoc(invoc, &ext.kind) {
-                ExpandResult::Ready(fragment) => {
+                ExpandResult::Ready(mut fragment) => {
                     let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
                         .cx
@@ -523,8 +522,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         })
                         .unwrap_or_default();
 
-                    let (expanded_fragment, collected_invocations) =
-                        self.collect_invocations(fragment, &derive_placeholders);
+                    let collected_invocations =
+                        self.collect_invocations(&mut fragment, &derive_placeholders);
                     // We choose to expand any derive invocations associated with this macro
                     // invocation *before* any macro invocations collected from the output
                     // fragment.
@@ -534,7 +533,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if expanded_fragments.len() < depth {
                         expanded_fragments.push(Vec::new());
                     }
-                    expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
+                    expanded_fragments[depth - 1].push((expn_id, fragment));
                     invocations.extend(derive_invocations.into_iter().rev());
                 }
                 ExpandResult::Retry(invoc) => {
@@ -562,8 +561,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     .add(NodeId::placeholder_from_expn_id(expn_id), expanded_fragment);
             }
         }
-        fragment_with_placeholders.mut_visit_with(&mut placeholder_expander);
-        fragment_with_placeholders
+        fragment.mut_visit_with(&mut placeholder_expander);
+        fragment
     }
 
     fn resolve_imports(&mut self) {
@@ -578,9 +577,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// prepares data for resolving paths of macro invocations.
     fn collect_invocations(
         &mut self,
-        mut fragment: AstFragment,
+        fragment: &mut AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>) {
+    ) -> Vec<(Invocation, Option<Lrc<SyntaxExtension>>)> {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -615,7 +614,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        (fragment, invocations)
+        invocations
     }
 
     fn error_recursion_limit_reached(&mut self) -> ErrorGuaranteed {
