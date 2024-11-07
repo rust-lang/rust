@@ -1199,7 +1199,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             // Still doesn't deal with upvars
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
-                                    None if rib_ident.as_str() == "self" => (span, LowercaseSelf),
+                                    None if rib_ident.name == kw::SelfLower => {
+                                        (span, LowercaseSelf)
+                                    }
                                     None => {
                                         // If we have a `let name = expr;`, we have the span for
                                         // `name` and use that to see if it is followed by a type
