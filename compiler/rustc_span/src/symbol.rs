@@ -2175,6 +2175,7 @@ symbols! {
         yes,
         yield_expr,
         ymm_reg,
+        yreg,
         zfh,
         zfhmin,
         zmm_reg,

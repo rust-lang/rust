@@ -268,6 +268,15 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::S390x => {
                     constraints.push("~{cc}".to_string());
                 }
+                InlineAsmArch::Sparc | InlineAsmArch::Sparc64 => {
+                    // In LLVM, ~{icc} represents icc and xcc in 64-bit code.
+                    // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/SparcRegisterInfo.td#L64
+                    constraints.push("~{icc}".to_string());
+                    constraints.push("~{fcc0}".to_string());
+                    constraints.push("~{fcc1}".to_string());
+                    constraints.push("~{fcc2}".to_string());
+                    constraints.push("~{fcc3}".to_string());
+                }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
@@ -672,6 +681,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
+            Sparc(SparcInlineAsmRegClass::reg) => "r",
+            Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
             Msp430(Msp430InlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg_addr) => "a",
@@ -765,6 +776,7 @@ fn modifier_to_llvm(
         },
         Avr(_) => None,
         S390x(_) => None,
+        Sparc(_) => None,
         Msp430(_) => None,
         SpirV(SpirVInlineAsmRegClass::reg) => bug!("LLVM backend does not support SPIR-V"),
         M68k(_) => None,
@@ -835,6 +847,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
+        Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),
