@@ -11,7 +11,7 @@ error: the following explicit lifetimes could be elided: 'a
   --> tests/ui/issue_4266.rs:10:21
    |
 LL | async fn one_to_one<'a>(s: &'a str) -> &'a str {
-   |                     ^^      ^^
+   |                     ^^      ^^          ^^
 
 error: methods called `new` usually take no `self`
   --> tests/ui/issue_4266.rs:31:22

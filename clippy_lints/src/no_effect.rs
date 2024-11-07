@@ -159,8 +159,12 @@ impl NoEffect {
 
                                 // Remove `impl Future<Output = T>` to get `T`
                                 if cx.tcx.ty_is_opaque_future(ret_ty)
-                                    && let Some(true_ret_ty) =
-                                        cx.tcx.infer_ctxt().build().err_ctxt().get_impl_future_output_ty(ret_ty)
+                                    && let Some(true_ret_ty) = cx
+                                        .tcx
+                                        .infer_ctxt()
+                                        .build(cx.typing_mode())
+                                        .err_ctxt()
+                                        .get_impl_future_output_ty(ret_ty)
                                 {
                                     ret_ty = true_ret_ty;
                                 }

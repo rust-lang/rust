@@ -418,7 +418,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         let (required_refs, msg) = if can_auto_borrow {
                             (1, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
                             ..
                         }) = next_adjust
                             && matches!(mutability, AutoBorrowMutability::Mut { .. })

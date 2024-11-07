@@ -14,8 +14,8 @@ mod utils;
 
 use clippy_config::Conf;
 use clippy_config::msrvs::{self, Msrv};
-use rustc_ast::{Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
+use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
+use rustc_hir::{ImplItem, Item, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -414,15 +414,7 @@ pub struct Attributes {
 }
 
 impl_lint_pass!(Attributes => [
-    ALLOW_ATTRIBUTES,
-    ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
-    DEPRECATED_SEMVER,
-    USELESS_ATTRIBUTE,
-    BLANKET_CLIPPY_RESTRICTION_LINTS,
-    SHOULD_PANIC_WITHOUT_EXPECT,
-    MIXED_ATTRIBUTES_STYLE,
-    DUPLICATED_ATTRIBUTES,
 ]);
 
 impl Attributes {
@@ -434,53 +426,11 @@ impl Attributes {
 }
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        blanket_clippy_restriction_lints::check_command_line(cx);
-        duplicated_attributes::check(cx, cx.tcx.hir().krate_attrs());
-    }
-
-    fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
-        if let Some(items) = &attr.meta_item_list() {
-            if let Some(ident) = attr.ident() {
-                if is_lint_level(ident.name, attr.id) {
-                    blanket_clippy_restriction_lints::check(cx, ident.name, items);
-                }
-                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
-                    allow_attributes::check(cx, attr);
-                }
-                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
-                {
-                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
-                }
-                if items.is_empty() || !attr.has_name(sym::deprecated) {
-                    return;
-                }
-                for item in items {
-                    if let MetaItemInner::MetaItem(mi) = &item
-                        && let MetaItemKind::NameValue(lit) = &mi.kind
-                        && mi.has_name(sym::since)
-                    {
-                        deprecated_semver::check(cx, item.span(), lit);
-                    }
-                }
-            }
-        }
-        if attr.has_name(sym::should_panic) {
-            should_panic_without_expect::check(cx, attr);
-        }
-    }
-
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_relevant_item(cx, item) {
             inline_always::check(cx, item.span, item.ident.name, attrs);
         }
-        match item.kind {
-            ItemKind::ExternCrate(..) | ItemKind::Use(..) => useless_attribute::check(cx, item, attrs),
-            _ => {},
-        }
-        mixed_attributes_style::check(cx, item.span, attrs);
-        duplicated_attributes::check(cx, attrs);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
@@ -522,6 +472,80 @@ impl EarlyLintPass for EarlyAttributes {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
         deprecated_cfg_attr::check_clippy(cx, attr);
         non_minimal_cfg::check(cx, attr);
+    }
+
+    extract_msrv_attr!(EarlyContext);
+}
+
+pub struct PostExpansionEarlyAttributes {
+    msrv: Msrv,
+}
+
+impl PostExpansionEarlyAttributes {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
+}
+
+impl_lint_pass!(PostExpansionEarlyAttributes => [
+    ALLOW_ATTRIBUTES,
+    ALLOW_ATTRIBUTES_WITHOUT_REASON,
+    DEPRECATED_SEMVER,
+    USELESS_ATTRIBUTE,
+    BLANKET_CLIPPY_RESTRICTION_LINTS,
+    SHOULD_PANIC_WITHOUT_EXPECT,
+    MIXED_ATTRIBUTES_STYLE,
+    DUPLICATED_ATTRIBUTES,
+]);
+
+impl EarlyLintPass for PostExpansionEarlyAttributes {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+        blanket_clippy_restriction_lints::check_command_line(cx);
+        duplicated_attributes::check(cx, &krate.attrs);
+    }
+
+    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+        if let Some(items) = &attr.meta_item_list() {
+            if let Some(ident) = attr.ident() {
+                if matches!(ident.name, sym::allow) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                    allow_attributes::check(cx, attr);
+                }
+                if matches!(ident.name, sym::allow | sym::expect) && self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION)
+                {
+                    allow_attributes_without_reason::check(cx, ident.name, items, attr);
+                }
+                if is_lint_level(ident.name, attr.id) {
+                    blanket_clippy_restriction_lints::check(cx, ident.name, items);
+                }
+                if items.is_empty() || !attr.has_name(sym::deprecated) {
+                    return;
+                }
+                for item in items {
+                    if let MetaItemInner::MetaItem(mi) = &item
+                        && let MetaItemKind::NameValue(lit) = &mi.kind
+                        && mi.has_name(sym::since)
+                    {
+                        deprecated_semver::check(cx, item.span(), lit);
+                    }
+                }
+            }
+        }
+
+        if attr.has_name(sym::should_panic) {
+            should_panic_without_expect::check(cx, attr);
+        }
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &'_ ast::Item) {
+        match item.kind {
+            ast::ItemKind::ExternCrate(..) | ast::ItemKind::Use(..) => useless_attribute::check(cx, item, &item.attrs),
+            _ => {},
+        }
+
+        mixed_attributes_style::check(cx, item.span, &item.attrs);
+        duplicated_attributes::check(cx, &item.attrs);
     }
 
     extract_msrv_attr!(EarlyContext);

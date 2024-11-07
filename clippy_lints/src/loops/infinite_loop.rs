@@ -158,14 +158,11 @@ fn is_never_return(ret_ty: FnRetTy<'_>) -> bool {
 
     match hir_ty.kind {
         TyKind::Never => true,
-        TyKind::OpaqueDef(
-            hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::AsyncFn { .. },
-                bounds,
-                ..
-            },
-            _,
-        ) => {
+        TyKind::OpaqueDef(hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::AsyncFn { .. },
+            bounds,
+            ..
+        }) => {
             if let Some(trait_ref) = bounds.iter().find_map(|b| b.trait_ref())
                 && let Some(segment) = trait_ref
                     .path

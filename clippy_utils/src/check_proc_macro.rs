@@ -21,7 +21,7 @@ use rustc_hir::{
     ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
     TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
@@ -435,10 +435,11 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: ImplItem<'_>) => impl_item_
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: FieldDef<'_>) => field_def_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Variant<'_>) => variant_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(self));
-impl_with_search_pat!((_cx: LateContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+
+impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;
