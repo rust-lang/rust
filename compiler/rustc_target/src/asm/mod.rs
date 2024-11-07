@@ -1128,6 +1128,21 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmClobberAbi::PowerPC => clobbered_regs! {
                 PowerPC PowerPCInlineAsmReg {
+                    // Refs:
+                    // - PPC32 SysV: "3.2. Function Calling Sequence" in Power Architecture® 32-bit Application Binary Interface Supplement 1.0 - Linux® & Embedded
+                    //   https://web.archive.org/web/20120608163804/https://www.power.org/resources/downloads/Power-Arch-32-bit-ABI-supp-1.0-Unified.pdf
+                    // - PPC64 ELFv1: "3.2. Function Calling Sequence" in 64-bit PowerPC ELF Application Binary Interface Supplement 1.9
+                    //   https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi.html#FUNC-CALL
+                    // - PPC64 ELFv2: "2.2 Function Calling Sequence" in 64-Bit ELF V2 ABI Specification: Power Architecture, Revision 1.5
+                    //   https://openpowerfoundation.org/specifications/64bitelfabi/
+                    // - AIX:
+                    //   - Register usage and conventions
+                    //     https://www.ibm.com/docs/en/aix/7.3?topic=overview-register-usage-conventions
+                    //   - Special registers in the PowerPC®
+                    //     https://www.ibm.com/docs/en/aix/7.3?topic=overview-special-registers-in-powerpc
+                    //   - AIX vector programming
+                    //     https://www.ibm.com/docs/en/aix/7.3?topic=concepts-aix-vector-programming
+
                     // r0, r3-r12
                     r0,
                     r3, r4, r5, r6, r7,
@@ -1138,8 +1153,6 @@ impl InlineAsmClobberAbi {
                     f8, f9, f10, f11, f12, f13,
 
                     // v0-v19
-                    // FIXME: PPC32 SysV ABI does not mention vector registers processing.
-                    // https://refspecs.linuxfoundation.org/elf/elfspec_ppc.pdf
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14,
                     v15, v16, v17, v18, v19,
