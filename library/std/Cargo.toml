@@ -22,10 +22,6 @@ unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
-# FIXME(#127890): `object` depends on `memchr`, but `memchr` > v2.5 causes
-# issues with LTO. This dependency is not used directly, but pin it here so
-# it resolves to 2.5. To be removed once rust-lang/rust#127890 is fixed.
-memchr = { version = "=2.5.0", default-features = false, features = ["rustc-dep-of-std"] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
