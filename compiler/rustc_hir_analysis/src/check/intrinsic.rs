@@ -3,7 +3,7 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, struct_span_code_err};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Safety};
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -75,10 +75,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
     let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
         tcx.fn_sig(intrinsic_id).skip_binder().safety()
     } else {
-        match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
-            true => hir::Safety::Safe,
-            false => hir::Safety::Unsafe,
-        }
+        // Old-style intrinsics are never safe
+        Safety::Unsafe
     };
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,

@@ -904,43 +904,49 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn prefetch_write_instruction<T>(data: *const T, locality: i32);
 
-    /// Magic intrinsic that derives its meaning from attributes
-    /// attached to the function.
-    ///
-    /// For example, dataflow uses this to inject static assertions so
-    /// that `rustc_peek(potentially_uninitialized)` would actually
-    /// double-check that dataflow did indeed compute that it is
-    /// uninitialized at that point in the control flow.
-    ///
-    /// This intrinsic should not be used outside of the compiler.
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn rustc_peek<T>(_: T) -> T;
-
-    /// Aborts the execution of the process.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
-    /// as its behavior is more user-friendly and more stable.
-    ///
-    /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
-    /// on most platforms.
-    /// On Unix, the
-    /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
-    /// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn abort() -> !;
-
     /// Executes a breakpoint trap, for inspection by a debugger.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     pub fn breakpoint();
+}
+
+/// Magic intrinsic that derives its meaning from attributes
+/// attached to the function.
+///
+/// For example, dataflow uses this to inject static assertions so
+/// that `rustc_peek(potentially_uninitialized)` would actually
+/// double-check that dataflow did indeed compute that it is
+/// uninitialized at that point in the control flow.
+///
+/// This intrinsic should not be used outside of the compiler.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn rustc_peek<T>(_: T) -> T {
+    unreachable!()
+}
+
+/// Aborts the execution of the process.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
+/// as its behavior is more user-friendly and more stable.
+///
+/// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
+/// on most platforms.
+/// On Unix, the
+/// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
+/// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn abort() -> ! {
+    unreachable!()
 }
 
 /// Informs the optimizer that this point in the code is not reachable,
@@ -1512,19 +1518,22 @@ pub const unsafe fn arith_offset<T>(_dst: *const T, _offset: isize) -> *const T 
     unreachable!()
 }
 
-extern "rust-intrinsic" {
-    /// Masks out bits of the pointer according to a mask.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// Consider using [`pointer::mask`] instead.
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
+/// Masks out bits of the pointer according to a mask.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// Consider using [`pointer::mask`] instead.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn ptr_mask<T>(_ptr: *const T, _mask: usize) -> *const T {
+    unreachable!()
+}
 
+extern "rust-intrinsic" {
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
@@ -2140,47 +2149,62 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
 
-    /// Float addition that allows optimizations based on algebraic rules.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_safe_intrinsic]
-    pub fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
-
-    /// Float subtraction that allows optimizations based on algebraic rules.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_safe_intrinsic]
-    pub fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
-
-    /// Float multiplication that allows optimizations based on algebraic rules.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_safe_intrinsic]
-    pub fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
-
-    /// Float division that allows optimizations based on algebraic rules.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_safe_intrinsic]
-    pub fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
-
-    /// Float remainder that allows optimizations based on algebraic rules.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_safe_intrinsic]
-    pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
-
     /// Converts with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
     /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
     #[rustc_nounwind]
     pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+}
+
+/// Float addition that allows optimizations based on algebraic rules.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn fadd_algebraic<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+
+/// Float subtraction that allows optimizations based on algebraic rules.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn fsub_algebraic<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+
+/// Float multiplication that allows optimizations based on algebraic rules.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn fmul_algebraic<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+
+/// Float division that allows optimizations based on algebraic rules.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn fdiv_algebraic<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
+}
+
+/// Float remainder that allows optimizations based on algebraic rules.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn frem_algebraic<T: Copy>(_a: T, _b: T) -> T {
+    unimplemented!()
 }
 
 /// Returns the number of bits set in an integer type `T`
