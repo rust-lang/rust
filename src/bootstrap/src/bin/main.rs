@@ -33,7 +33,7 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = fs::read_to_string(&lock_path).unwrap_or_default();
+        let pid = fs::read_to_string(&lock_path);
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
             .write(true)
@@ -47,7 +47,11 @@ fn main() {
             }
             err => {
                 drop(err);
-                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                if let Ok(pid) = pid {
+                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                } else {
+                    println!("WARNING: build directory locked, waiting for lock");
+                }
                 let mut lock = t!(build_lock.write());
                 t!(lock.write(process::id().to_string().as_ref()));
                 lock
