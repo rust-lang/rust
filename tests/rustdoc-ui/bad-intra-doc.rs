@@ -5,9 +5,9 @@
 
 /// this is not a link to [`example.com`] //~ERROR unresolved link
 ///
-/// this link [`has spaces in it`].
+/// this link [`has spaces in it`]. //~ERROR unresolved link
 ///
-/// attempted link to method: [`Foo.bar()`]
+/// attempted link to method: [`Foo.bar()`] //~ERROR unresolved link
 ///
-/// classic broken intra-doc link: [`Bar`]
+/// classic broken intra-doc link: [`Bar`] //~ERROR unresolved link
 pub struct Foo;
