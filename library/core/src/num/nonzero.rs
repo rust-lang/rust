@@ -1214,6 +1214,35 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
                 *self = *self % other;
             }
         }
+
+        impl NonZero<$Int> {
+            /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+            ///
+            /// The result is guaranteed to be non-zero.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(unsigned_nonzero_div_ceil)]
+            /// # use std::num::NonZero;
+            #[doc = concat!("let one = NonZero::new(1", stringify!($Int), ").unwrap();")]
+            #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX).unwrap();")]
+            /// assert_eq!(one.div_ceil(max), one);
+            ///
+            #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ").unwrap();")]
+            #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
+            /// assert_eq!(three.div_ceil(two), two);
+            /// ```
+            #[unstable(feature = "unsigned_nonzero_div_ceil", issue = "none")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn div_ceil(self, rhs: Self) -> Self {
+                let v = self.get().div_ceil(rhs.get());
+                // SAFETY: ceiled division of two positive integers can never be zero.
+                unsafe { Self::new_unchecked(v) }
+            }
+        }
     };
     // Impls for signed nonzero types only.
     (signed $Int:ty) => {
