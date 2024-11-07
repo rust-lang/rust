@@ -3,7 +3,7 @@
 
 // regression test for https://github.com/rust-lang/rust/issues/54191
 
-/// this is not a link to [`example.com`]
+/// this is not a link to [`example.com`] //~ERROR unresolved link
 ///
 /// this link [`has spaces in it`].
 ///
