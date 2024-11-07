@@ -47,10 +47,6 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
   Each triaged issue should have one of these labels.
 * [fun](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Afun)
   is for cool, but probably hard stuff.
-* [Design](https://github.com/rust-lang/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%Design)
-  is for moderate/large scale architecture discussion.
-  Also a kind of fun.
-  These issues should generally include a link to a Zulip discussion thread.
 
 # Code Style & Review Process
 
