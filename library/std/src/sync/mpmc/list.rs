@@ -63,14 +63,14 @@ struct Block<T> {
 
 impl<T> Block<T> {
     /// Creates an empty block.
-    fn new() -> Block<T> {
+    fn new() -> Box<Block<T>> {
         // SAFETY: This is safe because:
         //  [1] `Block::next` (AtomicPtr) may be safely zero initialized.
         //  [2] `Block::slots` (Array) may be safely zero initialized because of [3, 4].
         //  [3] `Slot::msg` (UnsafeCell) may be safely zero initialized because it
         //       holds a MaybeUninit.
         //  [4] `Slot::state` (AtomicUsize) may be safely zero initialized.
-        unsafe { MaybeUninit::zeroed().assume_init() }
+        unsafe { Box::new_zeroed().assume_init() }
     }
 
     /// Waits until the next pointer is set.
@@ -199,13 +199,13 @@ impl<T> Channel<T> {
             // If we're going to have to install the next block, allocate it in advance in order to
             // make the wait for other threads as short as possible.
             if offset + 1 == BLOCK_CAP && next_block.is_none() {
-                next_block = Some(Box::new(Block::<T>::new()));
+                next_block = Some(Block::<T>::new());
             }
 
             // If this is the first message to be sent into the channel, we need to allocate the
             // first block and install it.
             if block.is_null() {
-                let new = Box::into_raw(Box::new(Block::<T>::new()));
+                let new = Box::into_raw(Block::<T>::new());
 
                 if self
                     .tail
