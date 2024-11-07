@@ -167,9 +167,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.5.0"
+version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
@@ -335,7 +335,6 @@ dependencies = [
  "hashbrown",
  "hermit-abi",
  "libc",
- "memchr",
  "miniz_oxide",
  "object",
  "panic_abort",
