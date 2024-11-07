@@ -8,9 +8,7 @@ use rustc_macros::HashStable;
 use rustc_middle::bug;
 use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 
-use super::{
-    DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata, unknown_file_metadata,
-};
+use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
 use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};

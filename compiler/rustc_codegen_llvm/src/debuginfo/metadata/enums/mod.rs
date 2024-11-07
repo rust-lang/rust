@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_abi::{FieldIdx, TagEncoding, VariantIdx, Variants};
 use rustc_codegen_ssa::debuginfo::type_names::{compute_debuginfo_type_name, cpp_like_debuginfo};
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
+use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
 use rustc_middle::bug;
