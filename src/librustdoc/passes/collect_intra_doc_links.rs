@@ -941,13 +941,18 @@ fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
+    // certain link kinds cannot have their path be urls,
+    // so they should not be ignored, no matter how much they look like urls.
+    // e.g. [https://example.com/] is not a link to example.com.
+    let can_be_url = ori_link.kind == LinkType::Inline || ori_link.kind == LinkType::Autolink;
+
     // [] is mostly likely not supposed to be a link
     if ori_link.link.is_empty() {
         return None;
     }
 
     // Bail early for real links.
-    if ori_link.link.contains('/') {
+    if can_be_url && ori_link.link.contains('/') {
         return None;
     }
 
@@ -972,7 +977,7 @@ fn preprocess_link(
         Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
-            if !should_ignore_link_with_disambiguators(link) {
+            if can_be_url && !should_ignore_link_with_disambiguators(link) {
                 let disambiguator_range = match range_between_backticks(&ori_link.range, dox) {
                     MarkdownLinkRange::Destination(no_backticks_range) => {
                         MarkdownLinkRange::Destination(
@@ -989,7 +994,7 @@ fn preprocess_link(
         }
     };
 
-    if should_ignore_link(path_str) {
+    if can_be_url && should_ignore_link(path_str) {
         return None;
     }
 
@@ -1006,7 +1011,7 @@ fn preprocess_link(
     assert!(!path_str.contains(['<', '>'].as_slice()));
 
     // The link is not an intra-doc link if it still contains spaces after stripping generics.
-    if path_str.contains(' ') {
+    if can_be_url && path_str.contains(' ') {
         return None;
     }
 
