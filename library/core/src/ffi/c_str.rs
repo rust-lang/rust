@@ -125,13 +125,11 @@ pub struct CStr {
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
-pub struct FromBytesWithNulError {
-    kind: FromBytesWithNulErrorKind,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-enum FromBytesWithNulErrorKind {
+pub enum FromBytesWithNulError {
+    /// Supplied bytes contain an interior `NUL`. The inner value is the
+    /// position of the `NUL`.
     InteriorNul(usize),
+    /// Supplied bytes are not terminated by `NUL`.
     NotNulTerminated,
 }
 
@@ -139,11 +137,11 @@ enum FromBytesWithNulErrorKind {
 impl FromBytesWithNulError {
     #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     const fn interior_nul(pos: usize) -> FromBytesWithNulError {
-        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
+        FromBytesWithNulError::InteriorNul(pos)
     }
     #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     const fn not_nul_terminated() -> FromBytesWithNulError {
-        FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
+        FromBytesWithNulError::NotNulTerminated
     }
 }
 
@@ -151,11 +149,9 @@ impl FromBytesWithNulError {
 impl Error for FromBytesWithNulError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        match self.kind {
-            FromBytesWithNulErrorKind::InteriorNul(..) => {
-                "data provided contains an interior nul byte"
-            }
-            FromBytesWithNulErrorKind::NotNulTerminated => "data provided is not nul terminated",
+        match self {
+            Self::InteriorNul(..) => "data provided contains an interior nul byte",
+            Self::NotNulTerminated => "data provided is not nul terminated",
         }
     }
 }
@@ -200,7 +196,7 @@ impl fmt::Display for FromBytesWithNulError {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
-        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
+        if let Self::InteriorNul(pos) = self {
             write!(f, " at byte pos {pos}")?;
         }
         Ok(())
