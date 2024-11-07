@@ -311,13 +311,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Walk backwards up the ribs in scope.
         let mut module = self.graph_root;
-        for i in (0..ribs.len()).rev() {
-            debug!("walk rib\n{:?}", ribs[i].bindings);
+        for (i, rib) in ribs.iter().enumerate().rev() {
+            debug!("walk rib\n{:?}", rib.bindings);
             // Use the rib kind to determine whether we are resolving parameters
             // (macro 2.0 hygiene) or local variables (`macro_rules` hygiene).
-            let rib_ident = if ribs[i].kind.contains_params() { normalized_ident } else { ident };
-            if let Some((original_rib_ident_def, res)) = ribs[i].bindings.get_key_value(&rib_ident)
-            {
+            let rib_ident = if rib.kind.contains_params() { normalized_ident } else { ident };
+            if let Some((original_rib_ident_def, res)) = rib.bindings.get_key_value(&rib_ident) {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
                     i,
@@ -329,7 +328,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )));
             }
 
-            module = match ribs[i].kind {
+            module = match rib.kind {
                 RibKind::Module(module) => module,
                 RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
