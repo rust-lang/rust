@@ -913,7 +913,8 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
 #[suggestion(
     mir_build_interpreted_as_const,
     code = "{variable}_var",
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct InterpretedAsConst {
     #[primary_span]
