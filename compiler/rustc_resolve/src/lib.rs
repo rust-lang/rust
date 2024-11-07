@@ -1809,12 +1809,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> bool {
         match (trait_module, assoc_item) {
-            (Some(trait_module), Some((name, ns))) => {
-                self.resolutions(trait_module).borrow().iter().any(|resolution| {
-                    let (&BindingKey { ident: assoc_ident, ns: assoc_ns, .. }, _) = resolution;
-                    assoc_ns == ns && assoc_ident.name == name
-                })
-            }
+            (Some(trait_module), Some((name, ns))) => self
+                .resolutions(trait_module)
+                .borrow()
+                .iter()
+                .any(|(key, _name_resolution)| key.ns == ns && key.ident.name == name),
             _ => true,
         }
     }
