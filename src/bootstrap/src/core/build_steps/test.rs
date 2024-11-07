@@ -1938,9 +1938,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--json");
 
-        if builder.config.rust_debug_assertions_std {
-            cmd.arg("--with-debug-assertions");
-        };
+        if builder.config.rustc_debug_assertions {
+            cmd.arg("--with-rustc-debug-assertions");
+        }
+
+        if builder.config.std_debug_assertions {
+            cmd.arg("--with-std-debug-assertions");
+        }
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
