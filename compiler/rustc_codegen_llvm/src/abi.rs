@@ -172,7 +172,6 @@ impl LlvmType for CastTarget {
 }
 
 trait ArgAbiExt<'ll, 'tcx> {
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
@@ -188,12 +187,6 @@ trait ArgAbiExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
-    /// Gets the LLVM type for a place of the original Rust type of
-    /// this argument/return, i.e., the result of `type_of::type_of`.
-    fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
-        self.layout.llvm_type(cx)
-    }
-
     /// Stores a direct/indirect value described by this ArgAbi into a
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -301,9 +294,6 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
         arg_abi.store(self, val, dst)
-    }
-    fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> &'ll Type {
-        arg_abi.memory_ty(self)
     }
 }
 
