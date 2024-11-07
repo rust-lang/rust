@@ -1009,10 +1009,10 @@ fn render_dyn_compatibility(
     safety: Option<DynCompatibilityViolation>,
 ) {
     let Some(osv) = safety else {
-        buf.push_str("Is Dyn compatible");
+        buf.push_str("Is dyn-compatible");
         return;
     };
-    buf.push_str("Is not Dyn compatible due to ");
+    buf.push_str("Is not dyn-compatible due to ");
     match osv {
         DynCompatibilityViolation::SizedSelf => {
             buf.push_str("having a `Self: Sized` bound");
@@ -1055,7 +1055,7 @@ fn render_dyn_compatibility(
         }
         DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait) => {
             let name = hir::Trait::from(super_trait).name(db);
-            format_to!(buf, "having a dyn incompatible supertrait `{}`", name.as_str());
+            format_to!(buf, "having a dyn-incompatible supertrait `{}`", name.as_str());
         }
     }
 }
