@@ -3,8 +3,6 @@ name: Remark
 on:
   merge_group:
   pull_request:
-    paths:
-    - '**.md'
 
 jobs:
   remark:

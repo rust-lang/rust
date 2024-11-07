@@ -2,12 +2,6 @@ name: Clippy Test
 
 on:
   pull_request:
-    # Don't run Clippy tests, when only text files were modified
-    paths-ignore:
-    - 'COPYRIGHT'
-    - 'LICENSE-*'
-    - '**.md'
-    - '**.txt'
 
 env:
   RUST_BACKTRACE: 1

@@ -3,12 +3,6 @@ name: Clippy Dev Test
 on:
   merge_group:
   pull_request:
-    # Only run on paths, that get checked by the clippy_dev tool
-    paths:
-    - 'CHANGELOG.md'
-    - 'README.md'
-    - '**.stderr'
-    - '**.rs'
 
 env:
   RUST_BACKTRACE: 1
