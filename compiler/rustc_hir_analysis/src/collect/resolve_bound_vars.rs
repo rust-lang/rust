@@ -2061,23 +2061,27 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 match path.res {
                     Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { trait_: _ } => {
                         let mut bounds =
-                            self.for_each_in_scope_predicate(path.res).filter_map(|trait_| {
+                            self.for_each_trait_bound_on_res(path.res).filter_map(|trait_def_id| {
                                 BoundVarContext::supertrait_hrtb_vars(
                                     self.tcx,
-                                    trait_.trait_ref.trait_def_id()?,
+                                    trait_def_id,
                                     item_segment.ident,
                                     ty::AssocKind::Fn,
                                 )
                             });
 
                         let one_bound = bounds.next();
-                        let second_bound = bounds.next();
 
-                        if second_bound.is_some() {
-                            self.tcx
-                                .dcx()
-                                .span_delayed_bug(path.span, "ambiguous resolution for RTN path");
-                            return;
+                        // Don't bail if we have identical bounds, which may be collected from
+                        // something like `T: Bound + Bound`, or via elaborating supertraits.
+                        for second_bound in bounds {
+                            if Some(&second_bound) != one_bound.as_ref() {
+                                self.tcx.dcx().span_delayed_bug(
+                                    path.span,
+                                    "ambiguous resolution for RTN path",
+                                );
+                                return;
+                            }
                         }
 
                         let Some((bound_vars, assoc_item)) = one_bound else {
@@ -2086,6 +2090,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                                 .span_delayed_bug(path.span, "no resolution for RTN path");
                             return;
                         };
+
                         (bound_vars, assoc_item.def_id, item_segment)
                     }
                     // If we have a self type alias (in an impl), try to resolve an
@@ -2152,12 +2157,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         self.record_late_bound_vars(item_segment.hir_id, existing_bound_vars_saved);
     }
 
-    /// Walk the generics of the item for a trait-ref whose self type
-    /// corresponds to the expected res.
-    fn for_each_in_scope_predicate(
+    /// Walk the generics of the item for a trait bound whose self type
+    /// corresponds to the expected res, and return the trait def id.
+    fn for_each_trait_bound_on_res(
         &self,
         expected_res: Res,
-    ) -> impl Iterator<Item = &'tcx hir::PolyTraitRef<'tcx>> + use<'tcx, '_> {
+    ) -> impl Iterator<Item = DefId> + use<'tcx, '_> {
         std::iter::from_coroutine(
             #[coroutine]
             move || {
@@ -2173,7 +2178,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
                         | Scope::TraitRefBoundary { s }
-                        | Scope::LateBoundary { s, .. } => {
+                        | Scope::LateBoundary { s, .. }
+                        | Scope::Opaque { s, .. } => {
                             next_scope = Some(s);
                             continue;
                         }
@@ -2186,7 +2192,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         }
                     };
                     let node = self.tcx.hir_node(hir_id);
-                    if let Some(generics) = node.generics() {
+                    // If this is a `Self` bound in a trait, yield the trait itself.
+                    // Specifically, we don't need to look at any supertraits since
+                    // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
+                    if let Res::SelfTyParam { trait_: _ } = expected_res
+                        && let hir::Node::Item(item) = node
+                        && let hir::ItemKind::Trait(..) = item.kind
+                    {
+                        // Yield the trait's def id. Supertraits will be
+                        // elaborated from that.
+                        yield item.owner_id.def_id.to_def_id();
+                    } else if let Some(generics) = node.generics() {
                         for pred in generics.predicates {
                             let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind else {
                                 continue;
@@ -2200,24 +2216,24 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             if bounded_path.res != expected_res {
                                 continue;
                             }
-                            yield pred.bounds;
+                            for pred in pred.bounds {
+                                match pred {
+                                    hir::GenericBound::Trait(poly_trait_ref) => {
+                                        if let Some(def_id) =
+                                            poly_trait_ref.trait_ref.trait_def_id()
+                                        {
+                                            yield def_id;
+                                        }
+                                    }
+                                    hir::GenericBound::Outlives(_)
+                                    | hir::GenericBound::Use(_, _) => {}
+                                }
+                            }
                         }
-                    }
-                    // Also consider supertraits for `Self` res...
-                    if let Res::SelfTyParam { trait_: _ } = expected_res
-                        && let hir::Node::Item(item) = node
-                        && let hir::ItemKind::Trait(_, _, _, supertraits, _) = item.kind
-                    {
-                        yield supertraits;
                     }
                 }
             },
         )
-        .flatten()
-        .filter_map(|pred| match pred {
-            hir::GenericBound::Trait(poly_trait_ref) => Some(poly_trait_ref),
-            hir::GenericBound::Outlives(_) | hir::GenericBound::Use(_, _) => None,
-        })
         .fuse()
     }
 }
