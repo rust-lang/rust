@@ -979,7 +979,7 @@ fn preprocess_link(
         Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
-            if can_be_url && !should_ignore_link_with_disambiguators(link) {
+            if !(can_be_url && should_ignore_link_with_disambiguators(link)) {
                 let disambiguator_range = match range_between_backticks(&ori_link.range, dox) {
                     MarkdownLinkRange::Destination(no_backticks_range) => {
                         MarkdownLinkRange::Destination(
