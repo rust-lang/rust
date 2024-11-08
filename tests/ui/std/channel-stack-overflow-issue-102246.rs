@@ -1,4 +1,5 @@
 //@ run-pass
+//@ needs-threads
 //@ compile-flags: -Copt-level=0
 
 // The channel's `Block::new` was causing a stack overflow because it held 32 item slots, which is
