@@ -154,6 +154,11 @@ pub(crate) unsafe fn create_module<'ll>(
             // See https://github.com/llvm/llvm-project/pull/106951
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
+        if sess.target.arch.starts_with("mips64") {
+            // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/112084
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
