@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, ConstKind};
+use rustc_middle::ty::{self, ParamEnv};
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
 
@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && !item.span.from_expansion()
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && let ty::Array(element_type, cst) = ty.kind()
-            && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
+            && let Ok((_, ty::ValTree::Leaf(element_count))) = cst.eval_valtree(cx.tcx, ParamEnv::empty(), item.span)
             && let element_count = element_count.to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
             && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)

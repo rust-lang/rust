@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_hir::{GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, BoundPolarity, WherePredicate};
+use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{ClauseKind, PredicatePolarity};
 use rustc_session::declare_lint_pass;

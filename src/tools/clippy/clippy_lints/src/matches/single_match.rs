@@ -247,7 +247,10 @@ impl<'a> PatState<'a> {
         let states = match self {
             Self::Wild => return None,
             Self::Other => {
-                *self = Self::StdEnum(cx.arena.alloc_from_iter((0..adt.variants().len()).map(|_| Self::Other)));
+                *self = Self::StdEnum(
+                    cx.arena
+                        .alloc_from_iter(std::iter::repeat_with(|| Self::Other).take(adt.variants().len())),
+                );
                 let Self::StdEnum(x) = self else {
                     unreachable!();
                 };

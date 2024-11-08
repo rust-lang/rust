@@ -1,10 +1,9 @@
-use super::utils::{extract_clippy_lint, is_lint_level, is_word};
 use super::USELESS_ATTRIBUTE;
+use super::utils::{extract_clippy_lint, is_lint_level, is_word};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, first_line_of_span};
-use rustc_ast::MetaItemInner;
+use rustc_ast::{Attribute, Item, ItemKind, MetaItemInner};
 use rustc_errors::Applicability;
-use rustc_ast::{Item, ItemKind, Attribute};
 use rustc_lint::{EarlyContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;

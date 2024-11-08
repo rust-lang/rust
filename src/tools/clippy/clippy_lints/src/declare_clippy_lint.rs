@@ -4,7 +4,7 @@ macro_rules! declare_clippy_lint {
     (@
         $(#[doc = $lit:literal])*
         pub $lint_name:ident,
-        $category:ident,
+        $level:ident,
         $lintcategory:expr,
         $desc:literal,
         $version_expr:expr,
@@ -15,7 +15,7 @@ macro_rules! declare_clippy_lint {
             $(#[doc = $lit])*
             #[clippy::version = $version_lit]
             pub clippy::$lint_name,
-            $category,
+            $level,
             $desc,
             report_in_external_macro:true
             $(, @eval_always = $eval_always)?
@@ -35,12 +35,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         restriction,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Allow, crate::LintCategory::Restriction, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -49,12 +50,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         style,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Warn, crate::LintCategory::Style, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -63,12 +65,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         correctness,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Deny, crate::LintCategory::Correctness, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
 
         }
     };
@@ -78,12 +81,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         perf,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Warn, crate::LintCategory::Perf, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -92,12 +96,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         complexity,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Warn, crate::LintCategory::Complexity, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -106,12 +111,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         suspicious,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Warn, crate::LintCategory::Suspicious, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -120,12 +126,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         nursery,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Allow, crate::LintCategory::Nursery, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -134,12 +141,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         pedantic,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Allow, crate::LintCategory::Pedantic, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
     (
@@ -148,12 +156,13 @@ macro_rules! declare_clippy_lint {
         pub $lint_name:ident,
         cargo,
         $desc:literal
-        $(@eval_always = $eval_always: literal)?
+        $(, @eval_always = $eval_always: literal)?
     ) => {
         declare_clippy_lint! {@
             $(#[doc = $lit])*
             pub $lint_name, Allow, crate::LintCategory::Cargo, $desc,
-            Some($version), $version $(, $eval_always)?
+            Some($version), $version
+            $(, $eval_always)?
         }
     };
 

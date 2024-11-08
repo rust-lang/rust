@@ -322,7 +322,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
             if args.is_empty()
-                && method_name.ident.name == sym!(collect)
+                && method_name.ident.name.as_str() == "collect"
                 && is_trait_method(self.cx, expr, sym::Iterator)
             {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
