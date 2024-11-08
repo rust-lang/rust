@@ -545,6 +545,13 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
+    ("v9", Unstable(sym::sparc_target_feature), &[]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -563,6 +570,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(CSKY_FEATURES)
         .chain(LOONGARCH_FEATURES)
         .chain(IBMZ_FEATURES)
+        .chain(SPARC_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -582,6 +590,7 @@ impl super::spec::Target {
             "csky" => CSKY_FEATURES,
             "loongarch64" => LOONGARCH_FEATURES,
             "s390x" => IBMZ_FEATURES,
+            "sparc" | "sparc64" => SPARC_FEATURES,
             _ => &[],
         }
     }

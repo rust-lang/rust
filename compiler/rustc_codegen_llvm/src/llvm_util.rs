@@ -228,6 +228,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         "x86"
     } else if sess.target.arch == "arm64ec" {
         "aarch64"
+    } else if sess.target.arch == "sparc64" {
+        "sparc"
     } else {
         &*sess.target.arch
     };
@@ -280,6 +282,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Support for `wide-arithmetic` will first land in LLVM 20 as part of
         // llvm/llvm-project#111598
         ("wasm32" | "wasm64", "wide-arithmetic") if get_version() < (20, 0, 0) => None,
+        ("sparc", "leoncasa") => Some(LLVMFeature::new("hasleoncasa")),
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
