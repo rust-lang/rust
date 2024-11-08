@@ -1063,6 +1063,7 @@ unsafe extern "C" {
 
     // Metadata
     pub fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: *const Metadata);
+    pub fn LLVMGetCurrentDebugLocation2<'a>(Builder: &Builder<'a>) -> Option<&'a Metadata>;
 
     // Terminators
     pub fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
