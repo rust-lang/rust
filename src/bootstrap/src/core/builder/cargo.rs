@@ -833,9 +833,9 @@ impl Builder<'_> {
         cargo.env(
             profile_var("DEBUG_ASSERTIONS"),
             if mode == Mode::Std {
-                self.config.rust_debug_assertions_std.to_string()
+                self.config.std_debug_assertions.to_string()
             } else {
-                self.config.rust_debug_assertions.to_string()
+                self.config.rustc_debug_assertions.to_string()
             },
         );
         cargo.env(
