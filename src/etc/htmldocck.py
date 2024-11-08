@@ -350,7 +350,7 @@ class CachedFiles(object):
     def get_absolute_path(self, path):
         return os.path.join(self.root, path)
 
-    def get_file(self, path):
+    def get_file(self, path, need_content):
         path = self.resolve_path(path)
         if path in self.files:
             return self.files[path]
@@ -358,6 +358,9 @@ class CachedFiles(object):
         abspath = self.get_absolute_path(path)
         if not(os.path.exists(abspath) and os.path.isfile(abspath)):
             raise FailedCheck('File does not exist {!r}'.format(path))
+
+        if not need_content:
+            return None
 
         with io.open(abspath, encoding='utf-8') as f:
             data = f.read()
@@ -614,7 +617,7 @@ def check_command(c, cache):
             # has <path> = file existence
             if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
-                    cache.get_file(c.args[0])
+                    cache.get_file(c.args[0], False)
                     ret = True
                 except FailedCheck as err:
                     cerr = str(err)
@@ -622,7 +625,7 @@ def check_command(c, cache):
             # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
-                ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
+                ret = check_string(cache.get_file(c.args[0], True), c.args[1], regexp)
             # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
