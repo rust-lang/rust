@@ -100,9 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
         unsatisfied_predicates: &Vec<(
-            ty::Predicate<'_>,
-            Option<ty::Predicate<'_>>,
-            Option<ObligationCause<'_>>,
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
         )>,
     ) -> bool {
         fn predicate_bounds_generic_param<'tcx>(
@@ -131,15 +131,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        fn is_iterator_predicate(predicate: ty::Predicate<'_>, tcx: TyCtxt<'_>) -> bool {
+        let is_iterator_predicate = |predicate: ty::Predicate<'tcx>| -> bool {
             if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
                 predicate.kind().as_ref().skip_binder()
             {
-                tcx.is_diagnostic_item(sym::Iterator, trait_pred.trait_ref.def_id)
+                self.tcx.is_diagnostic_item(sym::Iterator, trait_pred.trait_ref.def_id)
+                    // ignore unsatisfied predicates generated from trying to auto-ref ty (#127511)
+                    && trait_pred.trait_ref.self_ty() == ty
             } else {
                 false
             }
-        }
+        };
 
         // Does the `ty` implement `IntoIterator`?
         let Some(into_iterator_trait) = self.tcx.get_diagnostic_item(sym::IntoIterator) else {
@@ -164,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         generics,
                         generic_param,
                         self.tcx,
-                    ) && is_iterator_predicate(unsatisfied.0, self.tcx)
+                    ) && is_iterator_predicate(unsatisfied.0)
                     {
                         return true;
                     }
@@ -172,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Slice(..) | ty::Adt(..) | ty::Alias(ty::Opaque, _) => {
                 for unsatisfied in unsatisfied_predicates.iter() {
-                    if is_iterator_predicate(unsatisfied.0, self.tcx) {
+                    if is_iterator_predicate(unsatisfied.0) {
                         return true;
                     }
                 }
