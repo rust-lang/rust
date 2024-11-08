@@ -490,15 +490,19 @@
                         "type": "string",
                         "enum": [
                             "auto",
+                            "llvm-vs-code-extensions.lldb-dap",
                             "vadimcn.vscode-lldb",
-                            "ms-vscode.cpptools"
+                            "ms-vscode.cpptools",
+                            "webfreak.debug"
                         ],
                         "default": "auto",
                         "description": "Preferred debug engine.",
                         "markdownEnumDescriptions": [
-                            "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
+                            "Use the first available extension out of [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap), [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools), and [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug).",
+                            "Use [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap)",
                             "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
-                            "Use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)"
+                            "Use [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)",
+                            "Use [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug)"
                         ]
                     },
                     "rust-analyzer.debug.sourceFileMap": {
