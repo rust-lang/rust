@@ -241,6 +241,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        let _timer = sess.timer("finish_ongoing_codegen");
+
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
             sess,
             outputs,
