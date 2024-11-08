@@ -220,13 +220,7 @@ fn span_ineffective_operation(
         expr_snippet.into_owned()
     };
     let suggestion = match parens {
-        Parens::Needed => {
-            if !expr_snippet.starts_with('(') && !expr_snippet.ends_with(')') {
-                format!("({expr_snippet})")
-            } else {
-                expr_snippet
-            }
-        },
+        Parens::Needed => format!("({expr_snippet})"),
         Parens::Unneeded => expr_snippet,
     };
 
