@@ -1,0 +1,27 @@
+// This test checks the intra doc links to code examples.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/index.html"
+
+assert-attribute: (
+    "//a[text()='check']",
+    {
+        "href": "../src/check/check.rs.html",
+        "title": "Example check",
+    },
+)
+assert-attribute: (
+    "//a[text()='check/check.rs']",
+    {
+        "href": "../src/check/check.rs.html",
+        "title": "Example check",
+    },
+)
+assert-attribute: (
+    "//a[text()='check/sub.rs']",
+    {
+        "href": "../src/check/sub.rs.html",
+        "title": "Example check",
+    },
+)
+// We now click on the link to ensure it works.
+click: "//a[text()='check/sub.rs']"
+wait-for-text: (".main-heading h1", "check/sub.rs")
