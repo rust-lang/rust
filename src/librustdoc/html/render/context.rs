@@ -132,6 +132,8 @@ pub(crate) struct SharedContext<'tcx> {
     /// Controls whether we read / write to cci files in the doc root. Defaults read=true,
     /// write=true
     should_merge: ShouldMerge,
+    /// Paths of generated files.
+    pub(crate) emitted_local_sources: RefCell<FxIndexSet<String>>,
 }
 
 impl SharedContext<'_> {
@@ -554,6 +556,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
             should_merge: options.should_merge,
+            emitted_local_sources: Default::default(),
         };
 
         let dst = output;

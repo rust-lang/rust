@@ -15,7 +15,7 @@ use rustc_span::{Pos, Symbol, sym};
 use rustdoc_json_types::*;
 
 use super::FullItemId;
-use crate::clean::{self, ItemId};
+use crate::clean::{self, ItemId, ItemLink, ItemLinkKind};
 use crate::formats::FormatRenderer;
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
@@ -30,14 +30,20 @@ impl JsonRenderer<'_> {
             .get(&item.item_id)
             .into_iter()
             .flatten()
-            .map(|clean::ItemLink { link, page_id, fragment, .. }| {
-                let id = match fragment {
-                    Some(UrlFragment::Item(frag_id)) => *frag_id,
-                    // FIXME: Pass the `UserWritten` segment to JSON consumer.
-                    Some(UrlFragment::UserWritten(_)) | None => *page_id,
-                };
+            .filter_map(|ItemLink { link, kind, fragment, .. }| {
+                if let ItemLinkKind::Item { page_id } = kind
+                    && let Some(page_id) = page_id
+                {
+                    let id = match fragment {
+                        Some(UrlFragment::Item(frag_id)) => *frag_id,
+                        // FIXME: Pass the `UserWritten` segment to JSON consumer.
+                        Some(UrlFragment::UserWritten(_)) | None => *page_id,
+                    };
 
-                (String::from(&**link), self.id_from_item_default(id.into()))
+                    Some((String::from(&**link), self.id_from_item_default(id.into())))
+                } else {
+                    None
+                }
             })
             .collect();
         let docs = item.opt_doc_value();

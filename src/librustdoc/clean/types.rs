@@ -487,21 +487,38 @@ impl Item {
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
         links
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
-                debug!(?id);
-                if let Ok((mut href, ..)) = href(*id, cx) {
-                    debug!(?href);
-                    if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut href, cx.tcx())
+            .filter_map(|ItemLink { link: s, link_text, ref kind, ref fragment }| match kind {
+                ItemLinkKind::Item { page_id: id } => {
+                    debug!(?id);
+                    if let Some(id) = id {
+                        if let Ok((mut href, ..)) = href(*id, cx) {
+                            debug!(?href);
+                            if let Some(ref fragment) = *fragment {
+                                fragment.render(&mut href, cx.tcx())
+                            }
+                            return Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                tooltip: link_tooltip(*id, fragment, cx),
+                                href,
+                            });
+                        }
                     }
+                    None
+                }
+                ItemLinkKind::Example { file_path } => {
+                    let example_name = file_path.split('/').next().unwrap_or(file_path);
+                    let mut href =
+                        std::iter::repeat("../").take(cx.current.len()).collect::<String>();
+                    href.push_str("src/");
+                    href.push_str(file_path);
+                    href.push_str(".html");
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx),
+                        tooltip: format!("Example {example_name}"),
                         href,
                     })
-                } else {
-                    None
                 }
             })
             .collect()
@@ -1110,6 +1127,23 @@ impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
     }
 }
 
+/// The kind of a link that has not yet been rendered.
+///
+/// It is used in [`ItemLink`].
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum ItemLinkKind {
+    Item {
+        /// The `DefId` of the Item whose **HTML Page** contains the item being
+        /// linked to. This will be different to `item_id` on item's that don't
+        /// have their own page, such as struct fields and enum variants.
+        page_id: Option<DefId>,
+    },
+    Example {
+        /// The path of the example file.
+        file_path: String,
+    },
+}
+
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
@@ -1122,12 +1156,9 @@ pub(crate) struct ItemLink {
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: Box<str>,
-    /// The `DefId` of the Item whose **HTML Page** contains the item being
-    /// linked to. This will be different to `item_id` on item's that don't
-    /// have their own page, such as struct fields and enum variants.
-    pub(crate) page_id: DefId,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<UrlFragment>,
+    pub(crate) kind: ItemLinkKind,
 }
 
 pub struct RenderedLink {

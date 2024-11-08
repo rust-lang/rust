@@ -30,7 +30,7 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
     let crate_name = crate_name.as_str();
 
     let mut collector =
-        SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default(), crate_name };
+        SourceCollector { dst, cx, crate_name, emitted_paths: FxHashSet::default() };
     collector.visit_crate(krate);
     Ok(())
 }
@@ -117,9 +117,10 @@ struct SourceCollector<'a, 'tcx> {
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
-    emitted_local_sources: FxHashSet<PathBuf>,
 
     crate_name: &'a str,
+
+    emitted_paths: FxHashSet<PathBuf>,
 }
 
 impl DocVisitor<'_> for SourceCollector<'_, '_> {
@@ -182,7 +183,7 @@ impl SourceCollector<'_, '_> {
             }
             _ => return Ok(()),
         };
-        if self.emitted_local_sources.contains(&*p) {
+        if self.emitted_paths.contains(&*p) {
             // We've already emitted this source
             return Ok(());
         }
@@ -245,6 +246,7 @@ impl SourceCollector<'_, '_> {
             resource_suffix: &shared.resource_suffix,
             rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
+        let file_path_s = file_path.display().to_string();
         let v = layout::render(
             &shared.layout,
             &page,
@@ -264,7 +266,8 @@ impl SourceCollector<'_, '_> {
             &shared.style_files,
         );
         shared.fs.write(cur, v)?;
-        self.emitted_local_sources.insert(p);
+        self.emitted_paths.insert(p);
+        self.cx.shared.emitted_local_sources.borrow_mut().insert(file_path_s);
         Ok(())
     }
 }

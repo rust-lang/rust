@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
@@ -109,6 +109,14 @@ pub(crate) struct CallData {
 
 pub(crate) type FnCallLocations = FxIndexMap<PathBuf, CallData>;
 pub(crate) type AllCallLocations = FxIndexMap<DefPathHash, FnCallLocations>;
+pub(crate) type AllExampleFiles = FxIndexMap<String, FxIndexSet<String>>;
+
+#[derive(Encodable, Decodable, Debug, Clone)]
+pub(crate) struct ScrapedInfo {
+    calls: AllCallLocations,
+    files: FxIndexSet<String>,
+    crate_name: String,
+}
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -279,7 +287,10 @@ pub(crate) fn run(
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
         renderopts.no_emit_shared = true;
+        let crate_name = krate.name(tcx).as_str().to_string();
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
+
+        let files = cx.shared.emitted_local_sources.take();
 
         // Collect CrateIds corresponding to provided target crates
         // If two different versions of the crate in the dependency tree, then examples will be
@@ -320,7 +331,7 @@ pub(crate) fn run(
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
-        calls.encode(&mut encoder);
+        ScrapedInfo { calls, files, crate_name }.encode(&mut encoder);
         encoder.finish().map_err(|(_path, e)| e.to_string())?;
 
         Ok(())
@@ -338,8 +349,10 @@ pub(crate) fn run(
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     dcx: DiagCtxtHandle<'_>,
-) -> AllCallLocations {
+) -> (AllCallLocations, AllExampleFiles) {
     let mut all_calls: AllCallLocations = FxIndexMap::default();
+    let mut crate_files: AllExampleFiles = FxIndexMap::default();
+
     for path in with_examples {
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
@@ -348,12 +361,13 @@ pub(crate) fn load_call_locations(
         let Ok(mut decoder) = MemDecoder::new(&bytes, 0) else {
             dcx.fatal(format!("Corrupt metadata encountered in {path}"))
         };
-        let calls = AllCallLocations::decode(&mut decoder);
+        let ScrapedInfo { calls, crate_name, files } = ScrapedInfo::decode(&mut decoder);
 
         for (function, fn_calls) in calls.into_iter() {
             all_calls.entry(function).or_default().extend(fn_calls.into_iter());
         }
+        crate_files.entry(crate_name).or_default().extend(files.into_iter());
     }
 
-    all_calls
+    (all_calls, crate_files)
 }
