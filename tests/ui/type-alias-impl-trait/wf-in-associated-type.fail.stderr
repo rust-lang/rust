@@ -5,8 +5,13 @@ LL |     impl<'a, T> Trait<'a, T> for () {
    |          -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
 ...
 LL |             req
-   |             ^^^ ...so that the type `&'a T` will meet its required lifetime bounds
+   |             ^^^ ...so that the type `&'a T` will meet its required lifetime bounds...
    |
+note: ...that is required by this bound
+  --> $DIR/wf-in-associated-type.rs:38:36
+   |
+LL |         type Opaque = impl Sized + 'a;
+   |                                    ^^
 help: consider adding an explicit lifetime bound
    |
 LL |     impl<'a, T: 'a> Trait<'a, T> for () {

@@ -8,7 +8,7 @@ use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
 };
@@ -267,7 +267,12 @@ fn check_opaque_meets_bounds<'tcx>(
     def_id: LocalDefId,
     origin: hir::OpaqueTyOrigin<LocalDefId>,
 ) -> Result<(), ErrorGuaranteed> {
-    let span = span_of_opaque(tcx, def_id, origin).unwrap_or_else(|| tcx.def_span(def_id));
+    let (span, definition_def_id) =
+        if let Some((span, def_id)) = best_definition_site_of_opaque(tcx, def_id, origin) {
+            (span, Some(def_id))
+        } else {
+            (tcx.def_span(def_id), None)
+        };
 
     let defining_use_anchor = match origin {
         hir::OpaqueTyOrigin::FnReturn { parent, .. }
@@ -305,8 +310,32 @@ fn check_opaque_meets_bounds<'tcx>(
         _ => re,
     });
 
-    let misc_cause = traits::ObligationCause::misc(span, def_id);
+    // HACK: We eagerly instantiate some bounds to report better errors for them...
+    // This isn't necessary for correctness, since we register these bounds when
+    // equating the opaque below, but we should clean this up in the new solver.
+    for (predicate, pred_span) in
+        tcx.explicit_item_bounds(def_id).iter_instantiated_copied(tcx, args)
+    {
+        let predicate = predicate.fold_with(&mut BottomUpFolder {
+            tcx,
+            ty_op: |ty| if ty == opaque_ty { hidden_ty } else { ty },
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+        });
 
+        ocx.register_obligation(Obligation::new(
+            tcx,
+            ObligationCause::new(
+                span,
+                def_id,
+                ObligationCauseCode::OpaqueTypeBound(pred_span, definition_def_id),
+            ),
+            param_env,
+            predicate,
+        ));
+    }
+
+    let misc_cause = ObligationCause::misc(span, def_id);
     // FIXME: We should just register the item bounds here, rather than equating.
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
@@ -364,17 +393,17 @@ fn check_opaque_meets_bounds<'tcx>(
     }
 }
 
-fn span_of_opaque<'tcx>(
+fn best_definition_site_of_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_def_id: LocalDefId,
     origin: hir::OpaqueTyOrigin<LocalDefId>,
-) -> Option<Span> {
+) -> Option<(Span, LocalDefId)> {
     struct TaitConstraintLocator<'tcx> {
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
     }
     impl<'tcx> TaitConstraintLocator<'tcx> {
-        fn check(&self, item_def_id: LocalDefId) -> ControlFlow<Span> {
+        fn check(&self, item_def_id: LocalDefId) -> ControlFlow<(Span, LocalDefId)> {
             if !self.tcx.has_typeck_results(item_def_id) {
                 return ControlFlow::Continue(());
             }
@@ -382,7 +411,7 @@ fn span_of_opaque<'tcx>(
             if let Some(hidden_ty) =
                 self.tcx.mir_borrowck(item_def_id).concrete_opaque_types.get(&self.opaque_def_id)
             {
-                ControlFlow::Break(hidden_ty.span)
+                ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
                 ControlFlow::Continue(())
             }
@@ -390,7 +419,7 @@ fn span_of_opaque<'tcx>(
     }
     impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         type NestedFilter = nested_filter::All;
-        type Result = ControlFlow<Span>;
+        type Result = ControlFlow<(Span, LocalDefId)>;
         fn nested_visit_map(&mut self) -> Self::Map {
             self.tcx.hir()
         }
