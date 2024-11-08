@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(extern_types)]
 
 #![allow(private_interfaces)]
 #![deny(improper_ctypes)]
@@ -6,7 +7,9 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ffi::{c_int, c_uint};
+use std::fmt::Debug;
 
+unsafe extern "C" {type UnsizedOpaque;}
 trait Bar { }
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
@@ -39,6 +42,16 @@ pub struct TransparentLifetime<'a>(*const u8, PhantomData<&'a ()>);
 pub struct TransparentUnit<U>(f32, PhantomData<U>);
 #[repr(transparent)]
 pub struct TransparentCustomZst(i32, ZeroSize);
+#[repr(C)]
+pub struct UnsizedStructBecauseForeign {
+    sized: u32,
+    unszd: UnsizedOpaque,
+}
+#[repr(C)]
+pub struct UnsizedStructBecauseDyn {
+    sized: u32,
+    unszd: dyn Debug,
+}
 
 #[repr(C)]
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
@@ -71,6 +84,9 @@ extern "C" {
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
+
+    pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
+    pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`
 
     pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
     //~^ ERROR: uses type `Option<UnsafeCell<extern "C" fn()>>`

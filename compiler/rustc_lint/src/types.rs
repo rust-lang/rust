@@ -740,6 +740,69 @@ enum FfiResult<'tcx> {
     },
 }
 
+pub(crate) fn is_unsized_because_foreign<'tcx, 'a>(
+    cx: &'a LateContext<'tcx>,
+    ty: Ty<'tcx>,
+) -> Result<bool, ()> {
+    let tcx = cx.tcx;
+
+    if ty.is_sized(tcx, cx.typing_env()) {
+        Err(())
+    } else {
+        Ok(match ty.kind() {
+            ty::Slice(_) => false,
+            ty::Str => false,
+            ty::Dynamic(..) => false,
+            ty::Foreign(..) => true,
+            ty::Alias(ty::Opaque, ..) => todo!("why"),
+            ty::Adt(def, args) => {
+                // for now assume: boxes and phantoms don't mess with this
+                match def.adt_kind() {
+                    AdtKind::Union | AdtKind::Enum => true,
+                    AdtKind::Struct => {
+                        if let Some(sym::cstring_type | sym::cstr_type) =
+                            tcx.get_diagnostic_name(def.did())
+                        {
+                            return Ok(false);
+                        }
+                        // FIXME: how do we deal with non-exhaustive unsized structs/unions?
+
+                        if def.non_enum_variant().fields.is_empty() {
+                            bug!("empty unsized struct/union. what?");
+                        }
+
+                        let variant = def.non_enum_variant();
+
+                        // only the last field may be unsized
+                        let n_fields = variant.fields.len();
+                        let last_field = &variant.fields[(n_fields - 1).into()];
+                        let field_ty = last_field.ty(cx.tcx, args);
+                        let field_ty = cx
+                            .tcx
+                            .try_normalize_erasing_regions(cx.typing_env(), field_ty)
+                            .unwrap_or(field_ty);
+                        return Ok(is_unsized_because_foreign(cx, field_ty).unwrap());
+                    }
+                }
+            }
+            ty::Tuple(tuple) => {
+                // only the last field may be unsized
+                let n_fields = tuple.len();
+                let field_ty: Ty<'tcx> = tuple[n_fields - 1];
+                //let field_ty = last_field.ty(cx.tcx, args);
+                let field_ty = cx
+                    .tcx
+                    .try_normalize_erasing_regions(cx.typing_env(), field_ty)
+                    .unwrap_or(field_ty);
+                is_unsized_because_foreign(cx, field_ty).unwrap()
+            }
+            t => {
+                bug!("we shouldn't be looking if this is unsized for a reason or another: {:?}", t)
+            }
+        })
+    }
+}
+
 pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
@@ -1044,7 +1107,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
                     if inner_ty.is_sized(tcx, self.cx.typing_env())
-                        || matches!(inner_ty.kind(), ty::Foreign(..))
+                        || is_unsized_because_foreign(self.cx, inner_ty).unwrap()
                     {
                         // discussion on declaration vs definition:
                         // see the `ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _)` arm
@@ -1249,7 +1312,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _) => {
                 if inner_ty.is_sized(tcx, self.cx.typing_env())
-                    || matches!(inner_ty.kind(), ty::Foreign(..))
+                    || is_unsized_because_foreign(self.cx, inner_ty).unwrap()
                 {
                     // there's a nuance on what this lint should do for function definitions
                     // (touched upon in https://github.com/rust-lang/rust/issues/66220 and https://github.com/rust-lang/rust/pull/72700)
