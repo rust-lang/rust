@@ -8,9 +8,9 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{
-    Applicability, Diag, DiagMessage, EmissionGuarantee, MultiSpan, SubdiagMessage, SubstitutionPart, Suggestions,
-};
+use rustc_errors::{Applicability, Diag, DiagMessage, MultiSpan, SubdiagMessage};
+#[cfg(debug_assertions)]
+use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
@@ -38,6 +38,7 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 /// only started triggered there.
 ///
 /// This function makes sure we also validate them in debug clippy builds.
+#[cfg(debug_assertions)]
 fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
     let suggestions = match &diag.suggestions {
         Suggestions::Enabled(suggs) => &**suggs,
