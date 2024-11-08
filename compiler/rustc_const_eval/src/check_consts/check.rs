@@ -15,7 +15,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
@@ -627,11 +627,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let ConstCx { tcx, body, param_env, .. } = *self.ccx;
+                let ConstCx { tcx, body, .. } = *self.ccx;
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (mut callee, mut fn_args) = match *fn_ty.kind() {
+                let (callee, fn_args) = match *fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
 
                     ty::FnPtr(..) => {
@@ -647,55 +647,25 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 self.revalidate_conditional_constness(callee, fn_args, call_source, *fn_span);
 
-                let mut is_trait = false;
                 // Attempting to call a trait method?
                 if let Some(trait_did) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
 
-                    let trait_is_const = tcx.is_const_trait(trait_did);
-                    // trait method calls are only permitted when `effects` is enabled.
-                    // typeck ensures the conditions for calling a const trait method are met,
-                    // so we only error if the trait isn't const. We try to resolve the trait
-                    // into the concrete method, and uses that for const stability checks.
-                    // FIXME(const_trait_impl) we might consider moving const stability checks
-                    // to typeck as well.
-                    if tcx.features().const_trait_impl() && trait_is_const {
-                        // This skips the check below that ensures we only call `const fn`.
-                        is_trait = true;
+                    // We are not allowed to use const traits in stable const functions yet.
+                    // FIXME: apply more fine-grained per-trait const stability checks
+                    // (see <https://github.com/rust-lang/project-const-traits/issues/5>).
+                    self.check_op(ops::FnCallNonConst {
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source,
+                        feature: tcx.is_const_trait(trait_did).then_some(sym::const_trait_impl),
+                    });
 
-                        if let Ok(Some(instance)) =
-                            Instance::try_resolve(tcx, param_env, callee, fn_args)
-                            && let InstanceKind::Item(def) = instance.def
-                        {
-                            // Resolve a trait method call to its concrete implementation, which may be in a
-                            // `const` trait impl. This is only used for the const stability check below, since
-                            // we want to look at the concrete impl's stability.
-                            fn_args = instance.args;
-                            callee = def;
-                        }
-                    } else {
-                        // if the trait is const but the user has not enabled the feature(s),
-                        // suggest them.
-                        let feature = if trait_is_const {
-                            Some(if tcx.features().const_trait_impl() {
-                                sym::effects
-                            } else {
-                                sym::const_trait_impl
-                            })
-                        } else {
-                            None
-                        };
-                        self.check_op(ops::FnCallNonConst {
-                            callee,
-                            args: fn_args,
-                            span: *fn_span,
-                            call_source,
-                            feature,
-                        });
-                        // If we allowed this, we're in miri-unleashed mode, so we might
-                        // as well skip the remaining checks.
-                        return;
-                    }
+                    // We don't know which function is being called here, so we can't run the checks below.
+                    // FIXME: apply more fine-grained per-trait const stability checks
+                    // (see <https://github.com/rust-lang/project-const-traits/issues/5>).
+                    return;
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
@@ -784,7 +754,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Trait functions are not `const fn` so we have to skip them here.
-                if !tcx.is_const_fn(callee) && !is_trait {
+                if !tcx.is_const_fn(callee) {
                     self.check_op(ops::FnCallNonConst {
                         callee,
                         args: fn_args,

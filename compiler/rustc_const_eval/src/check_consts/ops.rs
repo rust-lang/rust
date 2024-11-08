@@ -81,6 +81,17 @@ pub(crate) struct FnCallNonConst<'tcx> {
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        match self.feature {
+            Some(feature) => Status::Unstable {
+                gate: feature,
+                safe_to_expose_on_stable: false,
+                is_function_call: false,
+            },
+            None => Status::Forbidden,
+        }
+    }
+
     // FIXME: make this translatable
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[allow(rustc::untranslatable_diagnostic)]

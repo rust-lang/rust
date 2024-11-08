@@ -1,3 +1,7 @@
+//@ known-bug: project-const-traits#5
+// staged const APIs are intentionally broken pending us deciding how to handle
+// recursive const stability checks.
+
 //@ revisions: stable unstable
 //@ compile-flags: -Znext-solver
 
@@ -19,7 +23,6 @@ pub struct Foo;
 #[cfg_attr(unstable, rustc_const_unstable(feature = "local_feature", issue = "none"))]
 #[cfg_attr(stable, rustc_const_stable(feature = "local_feature", since = "1.0.0"))]
 impl const MyTrait for Foo {
-    //[stable]~^ ERROR trait implementations cannot be const stable yet
     fn func() {}
 }
 
@@ -32,28 +35,18 @@ fn non_const_context() {
 #[unstable(feature = "none", issue = "none")]
 const fn const_context() {
     Unstable::func();
-    //[unstable]~^ ERROR cannot use `#[feature(unstable)]`
-    //[stable]~^^ ERROR not yet stable as a const fn
     Foo::func();
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
-    //[stable]~^^ cannot be (indirectly) exposed to stable
-    // We get the error on `stable` since this is a trait function.
     Unstable2::func();
-    //~^ ERROR not yet stable as a const fn
     // ^ fails, because the `unstable2` feature is not active
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(unstable, rustc_const_unstable(feature = "local_feature", issue = "none"))]
 pub const fn const_context_not_const_stable() {
-    //[stable]~^ ERROR function has missing const stability attribute
     Unstable::func();
-    //[stable]~^ ERROR not yet stable as a const fn
     Foo::func();
-    //[stable]~^ cannot be (indirectly) exposed to stable
     // We get the error on `stable` since this is a trait function.
     Unstable2::func();
-    //~^ ERROR not yet stable as a const fn
     // ^ fails, because the `unstable2` feature is not active
 }
 
@@ -61,14 +54,9 @@ pub const fn const_context_not_const_stable() {
 #[rustc_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
-    //[unstable]~^ ERROR cannot use `#[feature(unstable)]`
-    //[stable]~^^ ERROR not yet stable as a const fn
     Foo::func();
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
-    //[stable]~^^ cannot be (indirectly) exposed to stable
     // We get the error on `stable` since this is a trait function.
     const_context_not_const_stable()
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
 }
 
 fn main() {}
