@@ -92,6 +92,9 @@ rendered as `Foo`. The following prefixes are available: `struct`, `enum`, `trai
 `mod`, `module`, `const`, `constant`, `fn`, `function`, `field`, `variant`, `method`, `derive`,
 `type`, `value`, `macro`, `prim` or `primitive`.
 
+There is another disambiguator available: `example`. If you want more information about this one,
+take a look at the [scraped examples chapter](../scraped-examples.md).
+
 You can also disambiguate for functions by adding `()` after the function name,
 or for macros by adding `!` after the macro name. The macro `!` can be followed by `()`, `{}`,
 or `[]`. Example:

@@ -47,6 +47,24 @@ Rustdoc has a few techniques to ensure these examples don't overwhelm documentat
 
 For a given item, Rustdoc sorts its examples based on the size of the example &mdash; smaller ones are shown first.
 
+## Linking to an example source code
+
+You can use intra-doc links to link to a scraped example source file with `example@` disambiguator:
+
+```rust
+// If your example is named "foo":
+/// [example@foo]
+struct Item;
+```
+
+By default, the intra-doc link will link to the file containing the `main` function. If you want to
+link to another file, you can specify its path:
+
+```rust
+// If your example is named "foo":
+/// [example@foo/another_file.rs]
+struct Item;
+```
 
 ## FAQ
 
