@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{Visitor, walk_item};
+use rustc_ast::visit::{AssocCtxt, Visitor, walk_item};
 use rustc_ast::{ModKind, attr};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
@@ -144,7 +144,15 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            walk_item_kind(&mut item.kind, item.span, item.id, self);
+            walk_item_kind(
+                &mut item.kind,
+                item.span,
+                item.id,
+                &mut item.ident,
+                &mut item.vis,
+                AssocCtxt::Trait, /* ignored */
+                self,
+            );
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.

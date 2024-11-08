@@ -66,7 +66,7 @@ impl BoundKind {
 #[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, &'a Generics, Option<&'a Block>),
+    Fn(FnCtxt, &'a Ident, &'a FnSig, &'a Visibility, &'a Generics, &'a Option<P<Block>>),
 
     /// E.g., `|x, y| body`.
     Closure(&'a ClosureBinder, &'a Option<CoroutineKind>, &'a FnDecl, &'a Expr),
@@ -357,7 +357,7 @@ impl WalkItemKind for ItemKind {
                 visit_opt!(visitor, visit_expr, expr);
             }
             ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind = FnKind::Fn(FnCtxt::Free, *ident, sig, vis, generics, body.as_deref());
+                let kind = FnKind::Fn(FnCtxt::Free, ident, sig, vis, generics, body);
                 try_visit!(visitor.visit_fn(kind, *span, *id));
             }
             ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
@@ -687,15 +687,15 @@ impl WalkItemKind for ForeignItemKind {
         _ctxt: AssocCtxt,
         visitor: &mut V,
     ) -> V::Result {
-        let &Item { id, span, ident, ref vis, .. } = item;
+        let Item { id, span, ident, vis, .. } = item;
         match self {
             ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
             ForeignItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, generics, body.as_deref());
-                try_visit!(visitor.visit_fn(kind, span, id));
+                let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, generics, body);
+                try_visit!(visitor.visit_fn(kind, *span, *id));
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 generics,
@@ -850,7 +850,7 @@ impl WalkItemKind for AssocItemKind {
         ctxt: AssocCtxt,
         visitor: &mut V,
     ) -> V::Result {
-        let &Item { id, span, ident, ref vis, .. } = item;
+        let Item { id, span, ident, vis, .. } = item;
         match self {
             AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
                 try_visit!(visitor.visit_generics(generics));
@@ -858,9 +858,8 @@ impl WalkItemKind for AssocItemKind {
                 visit_opt!(visitor, visit_expr, expr);
             }
             AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
-                try_visit!(visitor.visit_fn(kind, span, id));
+                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body);
+                try_visit!(visitor.visit_fn(kind, *span, *id));
             }
             AssocItemKind::Type(box TyAlias {
                 generics,
@@ -891,7 +890,7 @@ impl WalkItemKind for AssocItemKind {
             }
             AssocItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
                 try_visit!(walk_qself(visitor, qself));
-                try_visit!(visitor.visit_path(prefix, id));
+                try_visit!(visitor.visit_path(prefix, *id));
                 if let Some(suffixes) = suffixes {
                     for (ident, rename) in suffixes {
                         visitor.visit_ident(ident);
