@@ -14,7 +14,6 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
-            env: "gnu".into(),
             features: "+v6,+vfp2,-d32".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
