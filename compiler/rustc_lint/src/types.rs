@@ -740,35 +740,49 @@ enum FfiResult<'tcx> {
     },
 }
 
-pub(crate) fn is_unsized_because_foreign<'tcx, 'a>(
-    cx: &'a LateContext<'tcx>,
-    ty: Ty<'tcx>,
-) -> Result<bool, ()> {
+/// Determine if a type is sized or not, and wether it affects references/pointers/boxes to it
+#[derive(Clone, Copy)]
+enum TypeSizedness {
+    /// sized type (pointers are C-compatible)
+    Sized,
+    /// unsized type because it includes an opaque/foreign type (pointers are C-compatible)
+    UnsizedBecauseForeign,
+    /// unsized type for other reasons (slice, string, dyn Trait, closure, ...) (pointers are not C-compatible)
+    UnsizedWithMetadata,
+}
+
+/// Is this type unsized because it contains (or is) a foreign type?
+/// (Returns Err if the type happens to be sized after all)
+fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> TypeSizedness {
     let tcx = cx.tcx;
 
     if ty.is_sized(tcx, cx.typing_env()) {
-        Err(())
+        TypeSizedness::Sized
     } else {
-        Ok(match ty.kind() {
-            ty::Slice(_) => false,
-            ty::Str => false,
-            ty::Dynamic(..) => false,
-            ty::Foreign(..) => true,
-            ty::Alias(ty::Opaque, ..) => todo!("why"),
+        match ty.kind() {
+            ty::Slice(_) => TypeSizedness::UnsizedWithMetadata,
+            ty::Str => TypeSizedness::UnsizedWithMetadata,
+            ty::Dynamic(..) => TypeSizedness::UnsizedWithMetadata,
+            ty::Foreign(..) => TypeSizedness::UnsizedBecauseForeign,
+            // While opaque types are checked for earlier, if a projection in a struct field
+            // normalizes to an opaque type, then it will reach this branch.
+            ty::Alias(ty::Opaque, ..) => todo!("We... don't know enough about this type yet?"),
             ty::Adt(def, args) => {
                 // for now assume: boxes and phantoms don't mess with this
                 match def.adt_kind() {
-                    AdtKind::Union | AdtKind::Enum => true,
+                    AdtKind::Union | AdtKind::Enum => {
+                        bug!("unions and enums are necessarily sized")
+                    }
                     AdtKind::Struct => {
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
                         {
-                            return Ok(false);
+                            return TypeSizedness::UnsizedWithMetadata;
                         }
                         // FIXME: how do we deal with non-exhaustive unsized structs/unions?
 
                         if def.non_enum_variant().fields.is_empty() {
-                            bug!("empty unsized struct/union. what?");
+                            bug!("an empty struct is necessarily sized");
                         }
 
                         let variant = def.non_enum_variant();
@@ -781,7 +795,13 @@ pub(crate) fn is_unsized_because_foreign<'tcx, 'a>(
                             .tcx
                             .try_normalize_erasing_regions(cx.typing_env(), field_ty)
                             .unwrap_or(field_ty);
-                        return Ok(is_unsized_because_foreign(cx, field_ty).unwrap());
+                        match get_type_sizedness(cx, field_ty) {
+                            s @ (TypeSizedness::UnsizedWithMetadata
+                            | TypeSizedness::UnsizedBecauseForeign) => s,
+                            TypeSizedness::Sized => {
+                                bug!("failed to find the reason why struct `{:?}` is unsized", ty)
+                            }
+                        }
                     }
                 }
             }
@@ -794,12 +814,21 @@ pub(crate) fn is_unsized_because_foreign<'tcx, 'a>(
                     .tcx
                     .try_normalize_erasing_regions(cx.typing_env(), field_ty)
                     .unwrap_or(field_ty);
-                is_unsized_because_foreign(cx, field_ty).unwrap()
+                match get_type_sizedness(cx, field_ty) {
+                    s @ (TypeSizedness::UnsizedWithMetadata
+                    | TypeSizedness::UnsizedBecauseForeign) => s,
+                    TypeSizedness::Sized => {
+                        bug!("failed to find the reason why tuple `{:?}` is unsized", ty)
+                    }
+                }
             }
             t => {
-                bug!("we shouldn't be looking if this is unsized for a reason or another: {:?}", t)
+                bug!(
+                    "we shouldn't be trying to determine if this is unsized for a reason or another: `{:?}`",
+                    t
+                )
             }
-        })
+        }
     }
 }
 
@@ -1106,8 +1135,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
-                    if inner_ty.is_sized(tcx, self.cx.typing_env())
-                        || is_unsized_because_foreign(self.cx, inner_ty).unwrap()
+                    if let TypeSizedness::UnsizedBecauseForeign | TypeSizedness::Sized =
+                        get_type_sizedness(self.cx, inner_ty)
                     {
                         // discussion on declaration vs definition:
                         // see the `ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _)` arm
@@ -1311,13 +1340,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _) => {
-                if inner_ty.is_sized(tcx, self.cx.typing_env())
-                    || is_unsized_because_foreign(self.cx, inner_ty).unwrap()
+                if let TypeSizedness::UnsizedBecauseForeign | TypeSizedness::Sized =
+                    get_type_sizedness(self.cx, inner_ty)
                 {
                     // there's a nuance on what this lint should do for function definitions
-                    // (touched upon in https://github.com/rust-lang/rust/issues/66220 and https://github.com/rust-lang/rust/pull/72700)
-                    //
                     // (`extern "C" fn fn_name(...) {...}`) versus declarations (`extern "C" {fn fn_name(...);}`).
+                    // (this is touched upon in https://github.com/rust-lang/rust/issues/66220
+                    // and https://github.com/rust-lang/rust/pull/72700)
+                    //
                     // The big question is: what does "ABI safety" mean? if you have something translated to a C pointer
                     // (which has a stable layout) but points to FFI-unsafe type, is it safe?
                     // on one hand, the function's ABI will match that of a similar C-declared function API,
@@ -1609,7 +1639,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
                     };
                 }
-                let last_ty = last_ty.unwrap(); // populated by any run of the `while` block
+                let last_ty = match last_ty {
+                    Some(last_ty) => last_ty,
+                    None => bug!(
+                        "This option should definitely have been filled by the loop that just finished"
+                    ),
+                };
                 self.emit_ffi_unsafe_type_lint(last_ty, sp, cimproper_layers);
             }
         }
