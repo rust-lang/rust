@@ -461,13 +461,11 @@ impl File {
         cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) })?;
         let result =
             cvt(unsafe { c::UnlockFile(self.handle.as_raw_handle(), 0, 0, u32::MAX, u32::MAX) });
-        if let Err(ref err) = result {
-            if err.raw_os_error() == Some(c::ERROR_NOT_LOCKED as i32) {
-                return Ok(());
-            }
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) if err.raw_os_error() == Some(c::ERROR_NOT_LOCKED as i32) => Ok(()),
+            Err(err) => Err(err),
         }
-        result?;
-        Ok(())
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
