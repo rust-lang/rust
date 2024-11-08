@@ -140,7 +140,6 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - Channel: `stable`, `beta`
 - When cross compiling: `cross-compile`
 - When [remote testing] is used: `remote`
-- When debug-assertions are enabled: `debug`
 - When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
 - When particular debugger versions are matched: `ignore-gdb-version`
 - Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
@@ -172,6 +171,14 @@ settings:
 - `needs-symlink` — ignores if the target does not support symlinks. This can be
   the case on Windows if the developer did not enable privileged symlink
   permissions.
+- `ignore-std-debug-assertions` — ignores if std was built with debug
+  assertions.
+- `needs-std-debug-assertions` — ignores if std was not built with debug
+  assertions.
+- `ignore-rustc-debug-assertions` — ignores if rustc was built with debug
+  assertions.
+- `needs-rustc-debug-assertions` — ignores if rustc was not built with debug
+  assertions.
 
 The following directives will check LLVM support:
 
