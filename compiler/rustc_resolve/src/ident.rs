@@ -349,6 +349,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 ns,
                 parent_scope,
+                false,
                 finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                 ignore_binding,
                 None,
@@ -493,7 +494,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Scope::CrateRoot => {
                         let root_ident = Ident::new(kw::PathRoot, ident.span);
                         let root_module = this.resolve_crate_root(root_ident);
-                        let binding = this.resolve_ident_in_module_ext(
+                        let binding = this.resolve_ident_in_module(
                             ModuleOrUniformRoot::Module(root_module),
                             ident,
                             ns,
@@ -515,7 +516,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Scope::Module(module, derive_fallback_lint_id) => {
                         let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
-                        let binding = this.resolve_ident_in_module_unadjusted_ext(
+                        let binding = this.resolve_ident_in_module_unadjusted(
                             ModuleOrUniformRoot::Module(module),
                             ident,
                             ns,
@@ -589,6 +590,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 ident,
                                 ns,
                                 parent_scope,
+                                false,
                                 None,
                                 ignore_binding,
                                 ignore_import,
@@ -747,35 +749,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, None, ignore_import)
+        self.resolve_ident_in_module(module, ident, ns, parent_scope, None, None, ignore_import)
             .map_err(|(determinacy, _)| determinacy)
     }
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn resolve_ident_in_module(
-        &mut self,
-        module: ModuleOrUniformRoot<'ra>,
-        ident: Ident,
-        ns: Namespace,
-        parent_scope: &ParentScope<'ra>,
-        finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
-        ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
-        self.resolve_ident_in_module_ext(
-            module,
-            ident,
-            ns,
-            parent_scope,
-            finalize,
-            ignore_binding,
-            ignore_import,
-        )
-        .map_err(|(determinacy, _)| determinacy)
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn resolve_ident_in_module_ext(
         &mut self,
         module: ModuleOrUniformRoot<'ra>,
         mut ident: Ident,
@@ -802,7 +781,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // No adjustments
             }
         }
-        self.resolve_ident_in_module_unadjusted_ext(
+        self.resolve_ident_in_module_unadjusted(
             module,
             ident,
             ns,
@@ -814,34 +793,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         )
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn resolve_ident_in_module_unadjusted(
-        &mut self,
-        module: ModuleOrUniformRoot<'ra>,
-        ident: Ident,
-        ns: Namespace,
-        parent_scope: &ParentScope<'ra>,
-        finalize: Option<Finalize>,
-        ignore_binding: Option<NameBinding<'ra>>,
-        ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, Determinacy> {
-        self.resolve_ident_in_module_unadjusted_ext(
-            module,
-            ident,
-            ns,
-            parent_scope,
-            false,
-            finalize,
-            ignore_binding,
-            ignore_import,
-        )
-        .map_err(|(determinacy, _)| determinacy)
-    }
-
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
     #[instrument(level = "debug", skip(self))]
-    fn resolve_ident_in_module_unadjusted_ext(
+    fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
@@ -1046,13 +1001,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ignore_binding,
                 ignore_import,
             ) {
-                Err(Determined) => continue,
+                Err((Determined, _)) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
                 {
                     continue;
                 }
-                Ok(_) | Err(Undetermined) => return Err((Undetermined, Weak::No)),
+                Ok(_) | Err((Undetermined, _)) => return Err((Undetermined, Weak::No)),
             }
         }
 
@@ -1121,19 +1076,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 ns,
                 adjusted_parent_scope,
+                false,
                 None,
                 ignore_binding,
                 ignore_import,
             );
 
             match result {
-                Err(Determined) => continue,
+                Err((Determined, _)) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, glob_import.parent_scope.module) =>
                 {
                     continue;
                 }
-                Ok(_) | Err(Undetermined) => return Err((Undetermined, Weak::Yes)),
+                Ok(_) | Err((Undetermined, _)) => return Err((Undetermined, Weak::Yes)),
             }
         }
 
@@ -1564,6 +1520,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ignore_binding,
                     ignore_import,
                 )
+                .map_err(|(determinacy, _)| determinacy)
             } else if let Some(ribs) = ribs
                 && let Some(TypeNS | ValueNS) = opt_ns
             {
