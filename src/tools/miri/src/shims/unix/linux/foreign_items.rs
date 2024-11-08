@@ -81,13 +81,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_setname_np" => {
                 let [thread, name] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let res = this.pthread_setname_np(
+                let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     TASK_COMM_LEN,
                     /* truncate */ false,
-                )?;
-                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
+                    // Act like we faild to open `/proc/self/task/$tid/comm`.
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ENOENT"),
+                };
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
@@ -97,14 +101,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // In case of glibc, the length of the output buffer must
                 // be not shorter than TASK_COMM_LEN.
                 let len = this.read_scalar(len)?;
-                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN as u64
-                    && this.pthread_getname_np(
+                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN as u64 {
+                    match this.pthread_getname_np(
                         this.read_scalar(thread)?,
                         this.read_scalar(name)?,
                         len,
                         /* truncate*/ false,
                     )? {
-                    Scalar::from_u32(0)
+                        ThreadNameResult::Ok => Scalar::from_u32(0),
+                        ThreadNameResult::NameTooLong => unreachable!(),
+                        // Act like we faild to open `/proc/self/task/$tid/comm`.
+                        ThreadNameResult::ThreadNotFound => this.eval_libc("ENOENT"),
+                    }
                 } else {
                     this.eval_libc("ERANGE")
                 };

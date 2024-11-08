@@ -14,7 +14,7 @@ pub enum PseudoHandle {
 pub enum Handle {
     Null,
     Pseudo(PseudoHandle),
-    Thread(ThreadId),
+    Thread(u32),
 }
 
 impl PseudoHandle {
@@ -51,7 +51,7 @@ impl Handle {
         match self {
             Self::Null => 0,
             Self::Pseudo(pseudo_handle) => pseudo_handle.value(),
-            Self::Thread(thread) => thread.to_u32(),
+            Self::Thread(thread) => thread,
         }
     }
 
@@ -95,7 +95,7 @@ impl Handle {
         match discriminant {
             Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
             Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
-            Self::THREAD_DISCRIMINANT => Some(Self::Thread(data.into())),
+            Self::THREAD_DISCRIMINANT => Some(Self::Thread(data)),
             _ => None,
         }
     }
@@ -154,17 +154,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )))
     }
 
-    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let handle = this.read_scalar(handle_op)?;
-
-        match Handle::from_scalar(handle, this)? {
-            Some(Handle::Thread(thread)) =>
-                this.detach_thread(thread, /*allow_terminated_joined*/ true)?,
+        let ret = match Handle::from_scalar(handle, this)? {
+            Some(Handle::Thread(thread)) => {
+                if let Ok(thread) = this.thread_id_try_from(thread) {
+                    this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
+                    this.eval_windows("c", "TRUE")
+                } else {
+                    this.invalid_handle("CloseHandle")?
+                }
+            }
             _ => this.invalid_handle("CloseHandle")?,
-        }
+        };
 
-        interp_ok(())
+        interp_ok(ret)
     }
 }
