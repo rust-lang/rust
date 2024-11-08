@@ -997,22 +997,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
         EncodeCrossCrate::Yes, r#"`rustc_doc_primitive` is a rustc internal attribute"#,
     ),
-    rustc_attr!(
-        rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::No,
-        "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
-    ),
-    rustc_attr!(
-        rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+    gated!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
+    gated!(
+        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
+        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
     ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
-    ),
-    rustc_attr!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
     ),
 
     // ==========================================================================

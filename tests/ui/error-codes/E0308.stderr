@@ -1,11 +1,11 @@
 error[E0308]: intrinsic has wrong type
-  --> $DIR/E0308.rs:6:20
+  --> $DIR/E0308.rs:6:16
    |
-LL |     fn size_of<T>();
-   |                    ^ expected `usize`, found `()`
+LL | fn size_of<T>() {
+   |                ^ expected `usize`, found `()`
    |
-   = note: expected signature `extern "rust-intrinsic" fn() -> usize`
-              found signature `extern "rust-intrinsic" fn() -> ()`
+   = note: expected signature `fn() -> usize`
+              found signature `fn() -> ()`
 
 error: aborting due to 1 previous error
 

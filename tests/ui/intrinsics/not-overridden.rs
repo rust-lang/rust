@@ -1,6 +1,6 @@
 //! Check that intrinsics that do not get overridden, but are marked as such,
 //! cause an error instead of silently invoking the body.
-#![feature(rustc_attrs)]
+#![feature(intrinsics)]
 //@ build-fail
 //@ failure-status:101
 //@ normalize-stderr-test: ".*note: .*\n\n" -> ""
