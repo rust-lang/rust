@@ -1113,6 +1113,7 @@ pub fn rustc_cargo(
             // Apparently necessary to avoid overflowing the counters during
             // a Cargo build profile
             cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+            cargo.rustflag("-Cllvm-args=-enable-pgo-force-function-attrs");
             true
         } else {
             false
@@ -1120,6 +1121,7 @@ pub fn rustc_cargo(
     } else if let Some(path) = &builder.config.rust_profile_use {
         if compiler.stage == 1 {
             cargo.rustflag(&format!("-Cprofile-use={path}"));
+            cargo.rustflag("-Cllvm-args=-enable-pgo-force-function-attrs");
             if builder.is_verbose() {
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
             }

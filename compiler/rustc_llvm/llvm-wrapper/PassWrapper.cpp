@@ -712,7 +712,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     PGOOpt = PGOOptions(PGOGenPath, "", "", "", FS, PGOOptions::IRInstr,
                         PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
+                        PGOOptions::ColdFuncOpt::OptSize,
 #endif
                         DebugInfoForProfiling);
   } else if (PGOUsePath) {
@@ -720,7 +720,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     PGOOpt = PGOOptions(PGOUsePath, "", "", "", FS, PGOOptions::IRUse,
                         PGOOptions::NoCSAction,
 #if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
+                        PGOOptions::ColdFuncOpt::OptSize,
 #endif
                         DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
