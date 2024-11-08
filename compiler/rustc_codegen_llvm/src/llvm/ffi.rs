@@ -1765,11 +1765,13 @@ unsafe extern "C" {
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
-    /// Print the pass timings since static dtors aren't picking them up.
-    pub fn LLVMRustPrintPassTimings(size: *const size_t) -> *const c_char;
+    /// Prints the timing information collected by `-Ztime-llvm-passes`.
+    #[expect(improper_ctypes)]
+    pub(crate) fn LLVMRustPrintPassTimings(OutStr: &RustString);
 
-    /// Print the statistics since static dtors aren't picking them up.
-    pub fn LLVMRustPrintStatistics(size: *const size_t) -> *const c_char;
+    /// Prints the statistics collected by `-Zprint-codegen-stats`.
+    #[expect(improper_ctypes)]
+    pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(
