@@ -367,26 +367,16 @@ impl File {
                 Ok(_) => Ok(()),
                 Err(err) => {
                     if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
-                        // Wait for the lock to be acquired. This can happen asynchronously,
-                        // if the file handle was opened for async IO
-                        let wait_result = c::WaitForSingleObject(overlapped.hEvent, c::INFINITE);
-                        if wait_result == c::WAIT_OBJECT_0 {
-                            // Wait completed successfully, get the lock operation status
-                            let mut bytes_transferred = 0;
-                            cvt(c::GetOverlappedResult(
-                                self.handle.as_raw_handle(),
-                                &mut overlapped,
-                                &mut bytes_transferred,
-                                c::TRUE,
-                            ))
-                            .map(|_| ())
-                        } else if wait_result == c::WAIT_FAILED {
-                            // Wait failed
-                            Err(io::Error::last_os_error())
-                        } else {
-                            // WAIT_ABANDONED and WAIT_TIMEOUT should not be possible
-                            unreachable!()
-                        }
+                        // Wait for the lock to be acquired, and get the lock operation status.
+                        // This can happen asynchronously, if the file handle was opened for async IO
+                        let mut bytes_transferred = 0;
+                        cvt(c::GetOverlappedResult(
+                            self.handle.as_raw_handle(),
+                            &mut overlapped,
+                            &mut bytes_transferred,
+                            c::TRUE,
+                        ))
+                        .map(|_| ())
                     } else {
                         Err(err)
                     }
@@ -418,15 +408,16 @@ impl File {
             )
         });
 
-        if let Err(ref err) = result {
-            if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32)
+        match result {
+            Ok(_) => Ok(true),
+            Err(err)
+                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
             {
-                return Ok(false);
+                Ok(false)
             }
+            Err(err) => Err(err),
         }
-        result?;
-        Ok(true)
     }
 
     pub fn try_lock_shared(&self) -> io::Result<bool> {
@@ -442,15 +433,16 @@ impl File {
             )
         });
 
-        if let Err(ref err) = result {
-            if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32)
+        match result {
+            Ok(_) => Ok(true),
+            Err(err)
+                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
+                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
             {
-                return Ok(false);
+                Ok(false)
             }
+            Err(err) => Err(err),
         }
-        result?;
-        Ok(true)
     }
 
     pub fn unlock(&self) -> io::Result<()> {
