@@ -1,10 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::OpaqueTyOrigin;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
-use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_macros::extension;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
@@ -12,7 +9,6 @@ use rustc_middle::ty::{
     TypingMode,
 };
 use rustc_span::Span;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
@@ -303,91 +299,7 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ty::new_error(self.tcx, e);
         }
 
-        // `definition_ty` does not live in of the current inference context,
-        // so lets make sure that we don't accidentally misuse our current `infcx`.
-        match check_opaque_type_well_formed(
-            self.tcx,
-            self.next_trait_solver(),
-            opaque_type_key.def_id,
-            instantiated_ty.span,
-            definition_ty,
-        ) {
-            Ok(hidden_ty) => hidden_ty,
-            Err(guar) => Ty::new_error(self.tcx, guar),
-        }
-    }
-}
-
-/// This logic duplicates most of `check_opaque_meets_bounds`.
-/// FIXME(oli-obk): Also do region checks here and then consider removing
-/// `check_opaque_meets_bounds` entirely.
-fn check_opaque_type_well_formed<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    next_trait_solver: bool,
-    def_id: LocalDefId,
-    definition_span: Span,
-    definition_ty: Ty<'tcx>,
-) -> Result<Ty<'tcx>, ErrorGuaranteed> {
-    // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
-    // on stable and we'd break that.
-    let opaque_ty_hir = tcx.hir().expect_opaque_ty(def_id);
-    let OpaqueTyOrigin::TyAlias { .. } = opaque_ty_hir.origin else {
-        return Ok(definition_ty);
-    };
-    let param_env = tcx.param_env(def_id);
-
-    let mut parent_def_id = def_id;
-    while tcx.def_kind(parent_def_id) == DefKind::OpaqueTy {
-        parent_def_id = tcx.local_parent(parent_def_id);
-    }
-
-    // FIXME(#132279): This should eventually use the already defined hidden types
-    // instead. Alternatively we'll entirely remove this function given we also check
-    // the opaque in `check_opaque_meets_bounds` later.
-    let infcx = tcx
-        .infer_ctxt()
-        .with_next_trait_solver(next_trait_solver)
-        .build(TypingMode::analysis_in_body(tcx, parent_def_id));
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let identity_args = GenericArgs::identity_for_item(tcx, def_id);
-
-    // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
-    // the bounds that the function supplies.
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), identity_args);
-    ocx.eq(&ObligationCause::misc(definition_span, def_id), param_env, opaque_ty, definition_ty)
-        .map_err(|err| {
-            infcx
-                .err_ctxt()
-                .report_mismatched_types(
-                    &ObligationCause::misc(definition_span, def_id),
-                    param_env,
-                    opaque_ty,
-                    definition_ty,
-                    err,
-                )
-                .emit()
-        })?;
-
-    // Require the hidden type to be well-formed with only the generics of the opaque type.
-    // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-    // hidden type is well formed even without those bounds.
-    let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-        definition_ty.into(),
-    )));
-    ocx.register_obligation(Obligation::misc(tcx, definition_span, def_id, param_env, predicate));
-
-    // Check that all obligations are satisfied by the implementation's
-    // version.
-    let errors = ocx.select_all_or_error();
-
-    // This is fishy, but we check it again in `check_opaque_meets_bounds`.
-    // Remove once we can prepopulate with known hidden types.
-    let _ = infcx.take_opaque_types();
-
-    if errors.is_empty() {
-        Ok(definition_ty)
-    } else {
-        Err(infcx.err_ctxt().report_fulfillment_errors(errors))
+        definition_ty
     }
 }
 

@@ -1,8 +1,13 @@
 error[E0277]: `*mut ()` cannot be shared between threads safely
-  --> $DIR/issue-70935-complex-spans.rs:15:23
+  --> $DIR/issue-70935-complex-spans.rs:17:5
    |
-LL | fn foo(x: NotSync) -> impl Future + Send {
-   |                       ^^^^^^^^^^^^^^^^^^ `*mut ()` cannot be shared between threads safely
+LL | /     async move {
+LL | |
+LL | |         baz(|| async {
+LL | |             foo(x.clone());
+LL | |         }).await;
+LL | |     }
+   | |_____^ `*mut ()` cannot be shared between threads safely
    |
    = help: within `NotSync`, the trait `Sync` is not implemented for `*mut ()`
 note: required because it appears within the type `PhantomData<*mut ()>`
@@ -26,7 +31,7 @@ LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
 LL | | }
    | |_^
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:18:5
+  --> $DIR/issue-70935-complex-spans.rs:17:5
    |
 LL |     async move {
    |     ^^^^^^^^^^
@@ -59,11 +64,10 @@ LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
 LL | | }
    | |_^
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:18:5
+  --> $DIR/issue-70935-complex-spans.rs:17:5
    |
 LL |     async move {
    |     ^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

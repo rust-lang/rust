@@ -1,11 +1,11 @@
 error[E0310]: the parameter type `A` may not live long enough
-  --> $DIR/implied_lifetime_wf_check4_static.rs:4:22
+  --> $DIR/implied_lifetime_wf_check4_static.rs:6:9
    |
-LL |     pub type Ty<A> = impl Sized + 'static;
-   |                      ^^^^^^^^^^^^^^^^^^^^
-   |                      |
-   |                      the parameter type `A` must be valid for the static lifetime...
-   |                      ...so that the type `A` will meet its required lifetime bounds
+LL |         s
+   |         ^
+   |         |
+   |         the parameter type `A` must be valid for the static lifetime...
+   |         ...so that the type `A` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound
    |
