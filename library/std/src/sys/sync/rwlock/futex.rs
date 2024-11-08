@@ -195,7 +195,7 @@ impl RwLock {
     #[inline]
     pub unsafe fn downgrade(&self) {
         // Removes all write bits and adds a single read bit.
-        let state = self.state.fetch_add(DOWNGRADE, Relaxed);
+        let state = self.state.fetch_add(DOWNGRADE, Release);
         debug_assert!(is_write_locked(state), "RwLock must be write locked to call `downgrade`");
 
         if has_readers_waiting(state) {

@@ -3,8 +3,8 @@ use rand::Rng;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
 use crate::sync::{
-    Arc, Barrier, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard,
-    RwLockWriteGuard, TryLockError,
+    Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+    TryLockError,
 };
 use crate::thread;
 
@@ -511,57 +511,42 @@ fn test_downgrade_basic() {
 }
 
 #[test]
-fn test_downgrade_readers() {
-    // This test creates 1 writing thread and `R` reader threads doing `N` iterations.
-    const R: usize = 10;
-    const N: usize = if cfg!(target_pointer_width = "64") { 100 } else { 20 };
+fn test_downgrade_observe() {
+    // Taken from the test `test_rwlock_downgrade` from:
+    // https://github.com/Amanieu/parking_lot/blob/master/src/rwlock.rs
 
-    // The writer thread will constantly update the value inside the `RwLock`, and this test will
-    // only pass if every reader observes all values between 0 and `N`.
-    let rwlock = Arc::new(RwLock::new(0));
-    let barrier = Arc::new(Barrier::new(R + 1));
+    const W: usize = if cfg!(target_pointer_width = "64") { 100 } else { 20 };
+    const N: usize = 100;
 
-    // Create the writing thread.
-    let r_writer = rwlock.clone();
-    let b_writer = barrier.clone();
-    thread::spawn(move || {
-        for i in 0..N {
-            let mut write_guard = r_writer.write().unwrap();
-            *write_guard = i;
+    // This test spawns `W` writer threads, where each will increment a counter `N` times, ensuring
+    // that the value they wrote has not changed after downgrading.
 
-            let read_guard = RwLockWriteGuard::downgrade(write_guard);
-            assert_eq!(*read_guard, i);
+    let rw = Arc::new(RwLock::new(0));
 
-            // Wait for all readers to observe the new value.
-            b_writer.wait();
-        }
-    });
+    // Spawn the writers that will do `W * N` operations and checks.
+    let handles: Vec<_> = (0..W)
+        .map(|_| {
+            let rw = rw.clone();
+            thread::spawn(move || {
+                for _ in 0..N {
+                    // Increment the counter.
+                    let mut write_guard = rw.write().unwrap();
+                    *write_guard += 1;
+                    let cur_val = *write_guard;
 
-    for _ in 0..R {
-        let rwlock = rwlock.clone();
-        let barrier = barrier.clone();
-        thread::spawn(move || {
-            // Every reader thread needs to observe every value up to `N`.
-            for i in 0..N {
-                let read_guard = rwlock.read().unwrap();
-                assert_eq!(*read_guard, i);
-                drop(read_guard);
-
-                // Wait for everyone to read and for the writer to change the value again.
-                barrier.wait();
-
-                // Spin until the writer has changed the value.
-                loop {
-                    let read_guard = rwlock.read().unwrap();
-                    assert!(*read_guard >= i);
-
-                    if *read_guard > i {
-                        break;
-                    }
+                    // Downgrade the lock to read mode, where the value protected cannot be modified.
+                    let read_guard = RwLockWriteGuard::downgrade(write_guard);
+                    assert_eq!(cur_val, *read_guard);
                 }
-            }
-        });
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        handle.join().unwrap();
     }
+
+    assert_eq!(*rw.read().unwrap(), W * N);
 }
 
 #[test]
