@@ -5,7 +5,7 @@
 
 /// this is not a link to [`example.com`] //~ERROR unresolved link
 ///
-/// this link [`has spaces in it`]. //~ERROR unresolved link
+/// this link [`has spaces in it`].
 ///
 /// attempted link to method: [`Foo.bar()`] //~ERROR unresolved link
 ///

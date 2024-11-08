@@ -1003,7 +1003,7 @@ fn preprocess_link(
     assert!(!path_str.contains(['<', '>'].as_slice()));
 
     // The link is not an intra-doc link if it still contains spaces after stripping generics.
-    if can_be_url && path_str.contains(' ') {
+    if path_str.contains(' ') {
         return None;
     }
 
