@@ -880,7 +880,11 @@ where
         self.base.get(k)
     }
 
-    /// Returns the key-value pair corresponding to the supplied key.
+    /// Returns the key-value pair corresponding to the supplied key. This is
+    /// potentially useful:
+    /// - for key types where non-identical keys can be considered equal;
+    /// - for getting the `&K` stored key value from a borrowed `&Q` lookup key; or
+    /// - for getting a reference to a key with the same lifetime as the collection.
     ///
     /// The supplied key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
@@ -890,11 +894,39 @@ where
     ///
     /// ```
     /// use std::collections::HashMap;
+    /// use std::hash::{Hash, Hasher};
+    ///
+    /// #[derive(Clone, Copy, Debug)]
+    /// struct S {
+    ///     id: u32,
+    /// #   #[allow(unused)] // prevents a "field `name` is never read" error
+    ///     name: &'static str, // ignored by equality and hashing operations
+    /// }
+    ///
+    /// impl PartialEq for S {
+    ///     fn eq(&self, other: &S) -> bool {
+    ///         self.id == other.id
+    ///     }
+    /// }
+    ///
+    /// impl Eq for S {}
+    ///
+    /// impl Hash for S {
+    ///     fn hash<H: Hasher>(&self, state: &mut H) {
+    ///         self.id.hash(state);
+    ///     }
+    /// }
+    ///
+    /// let j_a = S { id: 1, name: "Jessica" };
+    /// let j_b = S { id: 1, name: "Jess" };
+    /// let p = S { id: 2, name: "Paul" };
+    /// assert_eq!(j_a, j_b);
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(1, "a");
-    /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
-    /// assert_eq!(map.get_key_value(&2), None);
+    /// map.insert(j_a, "Paris");
+    /// assert_eq!(map.get_key_value(&j_a), Some((&j_a, &"Paris")));
+    /// assert_eq!(map.get_key_value(&j_b), Some((&j_a, &"Paris"))); // the notable case
+    /// assert_eq!(map.get_key_value(&p), None);
     /// ```
     #[inline]
     #[stable(feature = "map_get_key_value", since = "1.40.0")]
