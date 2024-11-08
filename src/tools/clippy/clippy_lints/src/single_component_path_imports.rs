@@ -174,7 +174,7 @@ impl SingleComponentPathImports {
         }
 
         match &item.kind {
-            ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) => {
+            ItemKind::Mod(_, ModKind::Loaded(items, ..)) => {
                 self.check_mod(items);
             },
             ItemKind::MacroDef(MacroDef { macro_rules: true, .. }) => {

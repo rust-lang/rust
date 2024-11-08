@@ -14,7 +14,7 @@ mod utils;
 
 use clippy_config::Conf;
 use clippy_config::msrvs::{self, Msrv};
-use rustc_ast::{Attribute, MetaItemInner, MetaItemKind, self as ast};
+use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;

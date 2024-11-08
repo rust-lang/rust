@@ -9,11 +9,13 @@ pub struct S {
 // Should lint
 pub(crate) const FOO_PUB_CRATE: [u32; 1_000_000] = [0u32; 1_000_000];
 pub const FOO_PUB: [u32; 1_000_000] = [0u32; 1_000_000];
+const FOO_COMPUTED: [u32; 1_000 * 100] = [0u32; 1_000 * 100];
 const FOO: [u32; 1_000_000] = [0u32; 1_000_000];
 
 // Good
 pub(crate) const G_FOO_PUB_CRATE: [u32; 250] = [0u32; 250];
 pub const G_FOO_PUB: [u32; 250] = [0u32; 250];
+const G_FOO_COMPUTED: [u32; 25 * 10] = [0u32; 25 * 10];
 const G_FOO: [u32; 250] = [0u32; 250];
 
 fn main() {

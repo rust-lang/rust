@@ -21,13 +21,11 @@ new_pr = true
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
     "matthiaskrgr",
-    "giraffate",
 ]
 
 [assign.owners]
 "/.github" = ["@flip1995"]
 "/book" = ["@flip1995"]
-"/util/gh-pages" = ["@xFrednet"]
 "*" = [
     "@Manishearth",
     "@llogiq",
