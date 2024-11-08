@@ -2756,9 +2756,19 @@ impl Config {
 
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
-            None | Some(StringOrBool::Bool(false)) => return None,
+            None => self.rust_info.is_managed_git_subrepository(),
+            Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
+                if !self.rust_info.is_managed_git_subrepository() {
+                    println!(
+                        "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
+                    );
+                    crate::exit!(1);
+                }
+
+                true
+            }
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-rustc: {other}")
             }
@@ -2785,7 +2795,7 @@ impl Config {
                     }
                     println!("ERROR: could not find commit hash for downloading rustc");
                     println!("HELP: maybe your repository history is too shallow?");
-                    println!("HELP: consider disabling `download-rustc`");
+                    println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
                     println!("HELP: or fetch enough history to include one upstream commit");
                     crate::exit!(1);
                 }
