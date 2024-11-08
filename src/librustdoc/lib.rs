@@ -685,7 +685,7 @@ fn opts() -> Vec<RustcOptGroup> {
 fn usage(argv0: &str) {
     let mut options = getopts::Options::new();
     for option in opts() {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
@@ -769,7 +769,7 @@ fn main_args(
 
     let mut options = getopts::Options::new();
     for option in opts() {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     let matches = match options.parse(&args) {
         Ok(m) => m,

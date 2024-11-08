@@ -1373,7 +1373,7 @@ enum OptionStability {
 }
 
 pub struct RustcOptGroup {
-    pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
     pub name: &'static str,
     stability: OptionStability,
 }
@@ -1381,6 +1381,10 @@ pub struct RustcOptGroup {
 impl RustcOptGroup {
     pub fn is_stable(&self) -> bool {
         self.stability == OptionStability::Stable
+    }
+
+    pub fn apply(&self, options: &mut getopts::Options) {
+        (self.apply)(options);
     }
 
     pub fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
