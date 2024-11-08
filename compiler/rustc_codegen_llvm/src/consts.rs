@@ -194,16 +194,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         unsafe { llvm::LLVMSetInitializer(g2, g1) };
         g2
     } else if cx.tcx.sess.target.arch == "x86"
+        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
-        cx.declare_global(
-            &common::i686_decorated_name(
-                dllimport,
-                common::is_mingw_gnu_toolchain(&cx.tcx.sess.target),
-                true,
-            ),
-            llty,
-        )
+        cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global

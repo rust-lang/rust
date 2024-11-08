@@ -45,7 +45,7 @@ use rustc_target::spec::{
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder, ImportLibraryItem};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
@@ -495,16 +495,35 @@ fn create_dll_import_libs<'a>(
 
             let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
 
-            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+            let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
                     if sess.target.arch == "x86" {
-                        (
-                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
-                            import.ordinal(),
-                        )
+                        ImportLibraryItem {
+                            name: common::i686_decorated_name(
+                                import,
+                                mingw_gnu_toolchain,
+                                false,
+                                false,
+                            ),
+                            ordinal: import.ordinal(),
+                            symbol_name: import.is_missing_decorations().then(|| {
+                                common::i686_decorated_name(
+                                    import,
+                                    mingw_gnu_toolchain,
+                                    false,
+                                    true,
+                                )
+                            }),
+                            is_data: !import.is_fn,
+                        }
                     } else {
-                        (import.name.to_string(), import.ordinal())
+                        ImportLibraryItem {
+                            name: import.name.to_string(),
+                            ordinal: import.ordinal(),
+                            symbol_name: None,
+                            is_data: !import.is_fn,
+                        }
                     }
                 })
                 .collect();
@@ -512,7 +531,7 @@ fn create_dll_import_libs<'a>(
             archive_builder_builder.create_dll_import_lib(
                 sess,
                 &raw_dylib_name,
-                import_name_and_ordinal_vector,
+                items,
                 &output_path,
             );
 
