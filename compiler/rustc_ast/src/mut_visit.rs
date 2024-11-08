@@ -37,13 +37,14 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait WalkItemKind {
+    type Ctxt;
     fn walk(
         &mut self,
         span: Span,
         id: NodeId,
         ident: &mut Ident,
         visibility: &mut Visibility,
-        ctxt: AssocCtxt,
+        ctxt: Self::Ctxt,
         visitor: &mut impl MutVisitor,
     );
 }
@@ -1088,26 +1089,27 @@ pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
     vis.visit_span(span);
 }
 
-pub fn walk_item_kind(
-    kind: &mut impl WalkItemKind,
+pub fn walk_item_kind<K: WalkItemKind>(
+    kind: &mut K,
     span: Span,
     id: NodeId,
     ident: &mut Ident,
     visibility: &mut Visibility,
-    ctxt: AssocCtxt,
+    ctxt: K::Ctxt,
     vis: &mut impl MutVisitor,
 ) {
     kind.walk(span, id, ident, visibility, ctxt, vis)
 }
 
 impl WalkItemKind for ItemKind {
+    type Ctxt = ();
     fn walk(
         &mut self,
         span: Span,
         id: NodeId,
         ident: &mut Ident,
         visibility: &mut Visibility,
-        _ctxt: AssocCtxt,
+        _ctxt: Self::Ctxt,
         vis: &mut impl MutVisitor,
     ) {
         match self {
@@ -1225,13 +1227,14 @@ impl WalkItemKind for ItemKind {
 }
 
 impl WalkItemKind for AssocItemKind {
+    type Ctxt = AssocCtxt;
     fn walk(
         &mut self,
         span: Span,
         id: NodeId,
         ident: &mut Ident,
         visibility: &mut Visibility,
-        ctxt: AssocCtxt,
+        ctxt: Self::Ctxt,
         visitor: &mut impl MutVisitor,
     ) {
         match self {
@@ -1324,17 +1327,17 @@ pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
     vis.visit_span(inject_use_span);
 }
 
-pub fn walk_flat_map_item<K: WalkItemKind>(
+pub fn walk_flat_map_item<K: WalkItemKind<Ctxt = ()>>(
     visitor: &mut impl MutVisitor,
     item: P<Item<K>>,
 ) -> SmallVec<[P<Item<K>>; 1]> {
-    walk_flat_map_assoc_item(visitor, item, AssocCtxt::Trait /* ignored */)
+    walk_flat_map_assoc_item(visitor, item, ())
 }
 
 pub fn walk_flat_map_assoc_item<K: WalkItemKind>(
     visitor: &mut impl MutVisitor,
     mut item: P<Item<K>>,
-    ctxt: AssocCtxt,
+    ctxt: K::Ctxt,
 ) -> SmallVec<[P<Item<K>>; 1]> {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
     visitor.visit_id(id);
@@ -1348,13 +1351,14 @@ pub fn walk_flat_map_assoc_item<K: WalkItemKind>(
 }
 
 impl WalkItemKind for ForeignItemKind {
+    type Ctxt = ();
     fn walk(
         &mut self,
         span: Span,
         id: NodeId,
         ident: &mut Ident,
         visibility: &mut Visibility,
-        _ctxt: AssocCtxt,
+        _ctxt: Self::Ctxt,
         visitor: &mut impl MutVisitor,
     ) {
         match self {

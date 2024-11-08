@@ -113,10 +113,11 @@ pub enum LifetimeCtxt {
 }
 
 pub trait WalkItemKind: Sized {
+    type Ctxt;
     fn walk<'a, V: Visitor<'a>>(
         &'a self,
         item: &'a Item<Self>,
-        ctxt: AssocCtxt,
+        ctxt: Self::Ctxt,
         visitor: &mut V,
     ) -> V::Result;
 }
@@ -337,10 +338,11 @@ pub fn walk_trait_ref<'a, V: Visitor<'a>>(visitor: &mut V, trait_ref: &'a TraitR
 }
 
 impl WalkItemKind for ItemKind {
+    type Ctxt = ();
     fn walk<'a, V: Visitor<'a>>(
         &'a self,
         item: &'a Item<Self>,
-        _ctxt: AssocCtxt,
+        _ctxt: Self::Ctxt,
         visitor: &mut V,
     ) -> V::Result {
         let Item { id, span, vis, ident, .. } = item;
@@ -449,9 +451,9 @@ impl WalkItemKind for ItemKind {
 
 pub fn walk_item<'a, V: Visitor<'a>>(
     visitor: &mut V,
-    item: &'a Item<impl WalkItemKind>,
+    item: &'a Item<impl WalkItemKind<Ctxt = ()>>,
 ) -> V::Result {
-    walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
+    walk_assoc_item(visitor, item, ())
 }
 
 pub fn walk_enum_def<'a, V: Visitor<'a>>(
@@ -681,10 +683,11 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
 }
 
 impl WalkItemKind for ForeignItemKind {
+    type Ctxt = ();
     fn walk<'a, V: Visitor<'a>>(
         &'a self,
         item: &'a Item<Self>,
-        _ctxt: AssocCtxt,
+        _ctxt: Self::Ctxt,
         visitor: &mut V,
     ) -> V::Result {
         let Item { id, span, ident, vis, .. } = item;
@@ -844,10 +847,11 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
 }
 
 impl WalkItemKind for AssocItemKind {
+    type Ctxt = AssocCtxt;
     fn walk<'a, V: Visitor<'a>>(
         &'a self,
         item: &'a Item<Self>,
-        ctxt: AssocCtxt,
+        ctxt: Self::Ctxt,
         visitor: &mut V,
     ) -> V::Result {
         let Item { id, span, ident, vis, .. } = item;
@@ -906,10 +910,10 @@ impl WalkItemKind for AssocItemKind {
     }
 }
 
-pub fn walk_assoc_item<'a, V: Visitor<'a>>(
+pub fn walk_assoc_item<'a, V: Visitor<'a>, K: WalkItemKind>(
     visitor: &mut V,
-    item: &'a Item<impl WalkItemKind>,
-    ctxt: AssocCtxt,
+    item: &'a Item<K>,
+    ctxt: K::Ctxt,
 ) -> V::Result {
     let Item { id: _, span: _, ident, vis, attrs, kind, tokens: _ } = item;
     walk_list!(visitor, visit_attribute, attrs);
