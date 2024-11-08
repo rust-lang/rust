@@ -548,6 +548,7 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
+    ("v8plus", Unstable(sym::sparc_target_feature), &[]),
     ("v9", Unstable(sym::sparc_target_feature), &[]),
     // tidy-alphabetical-end
 ];
