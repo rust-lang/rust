@@ -11,6 +11,7 @@ extended = true
 # Most users installing from source want to build all parts of the project from source.
 [llvm]
 download-ci-llvm = false
+
 [rust]
 # We have several defaults in bootstrap that depend on whether the channel is `dev` (e.g. `omit-git-hash` and `download-ci-llvm`).
 # Make sure they don't get set when installing from source.
