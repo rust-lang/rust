@@ -1765,11 +1765,13 @@ unsafe extern "C" {
     /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
-    /// Print the pass timings since static dtors aren't picking them up.
-    pub fn LLVMRustPrintPassTimings(size: *const size_t) -> *const c_char;
+    /// Prints the timing information collected by `-Ztime-llvm-passes`.
+    #[expect(improper_ctypes)]
+    pub(crate) fn LLVMRustPrintPassTimings(OutStr: &RustString);
 
-    /// Print the statistics since static dtors aren't picking them up.
-    pub fn LLVMRustPrintStatistics(size: *const size_t) -> *const c_char;
+    /// Prints the statistics collected by `-Zprint-codegen-stats`.
+    #[expect(improper_ctypes)]
+    pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(
@@ -1790,7 +1792,7 @@ unsafe extern "C" {
     ) -> bool;
 
     #[allow(improper_ctypes)]
-    pub(crate) fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFilenamesToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
         Lengths: *const size_t,
@@ -1799,19 +1801,19 @@ unsafe extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub(crate) fn LLVMRustCoverageWriteMappingToBuffer(
+    pub(crate) fn LLVMRustCoverageWriteFunctionMappingsToBuffer(
         VirtualFileMappingIDs: *const c_uint,
-        NumVirtualFileMappingIDs: c_uint,
+        NumVirtualFileMappingIDs: size_t,
         Expressions: *const crate::coverageinfo::ffi::CounterExpression,
-        NumExpressions: c_uint,
+        NumExpressions: size_t,
         CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
-        NumCodeRegions: c_uint,
+        NumCodeRegions: size_t,
         BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
-        NumBranchRegions: c_uint,
+        NumBranchRegions: size_t,
         MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
-        NumMCDCBranchRegions: c_uint,
+        NumMCDCBranchRegions: size_t,
         MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
-        NumMCDCDecisionRegions: c_uint,
+        NumMCDCDecisionRegions: size_t,
         BufferOut: &RustString,
     );
 
@@ -1820,16 +1822,16 @@ unsafe extern "C" {
         FuncName: *const c_char,
         FuncNameLen: size_t,
     ) -> &Value;
-    pub(crate) fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
+    pub(crate) fn LLVMRustCoverageHashBytes(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
-    pub(crate) fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovmapSectionNameToString(M: &Module, OutStr: &RustString);
 
     #[allow(improper_ctypes)]
-    pub(crate) fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovfunSectionNameToString(M: &Module, OutStr: &RustString);
 
     #[allow(improper_ctypes)]
-    pub(crate) fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+    pub(crate) fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
 
     pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;

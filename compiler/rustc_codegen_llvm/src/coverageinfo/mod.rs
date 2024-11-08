@@ -1,24 +1,23 @@
 use std::cell::{OnceCell, RefCell};
 use std::ffi::{CStr, CString};
 
-use libc::c_uint;
 use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
     BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_llvm::RustString;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::coverageinfo::map_data::FunctionCoverageCollector;
 use crate::llvm;
 
 pub(crate) mod ffi;
+mod llvm_cov;
 pub(crate) mod map_data;
 mod mapgen;
 
@@ -80,12 +79,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// - `__LLVM_COV,__llvm_covfun` on macOS (includes `__LLVM_COV,` segment prefix)
     /// - `.lcovfun$M` on Windows (includes `$M` sorting suffix)
     fn covfun_section_name(&self) -> &CStr {
-        self.coverage_cx().covfun_section_name.get_or_init(|| {
-            CString::new(llvm::build_byte_buffer(|s| unsafe {
-                llvm::LLVMRustCoverageWriteFuncSectionNameToString(self.llmod, s);
-            }))
-            .expect("covfun section name should not contain NUL")
-        })
+        self.coverage_cx()
+            .covfun_section_name
+            .get_or_init(|| llvm_cov::covfun_section_name(self.llmod))
     }
 
     /// For LLVM codegen, returns a function-specific `Value` for a global
@@ -95,9 +91,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
         debug!("getting pgo_func_name_var for instance={:?}", instance);
         let mut pgo_func_name_var_map = self.coverage_cx().pgo_func_name_var_map.borrow_mut();
-        pgo_func_name_var_map
-            .entry(instance)
-            .or_insert_with(|| create_pgo_func_name_var(self, instance))
+        pgo_func_name_var_map.entry(instance).or_insert_with(|| {
+            let llfn = self.get_fn(instance);
+            let mangled_fn_name: &str = self.tcx.symbol_name(instance).name;
+            llvm_cov::create_pgo_func_name_var(llfn, mangled_fn_name)
+        })
     }
 }
 
@@ -224,81 +222,4 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
         }
     }
-}
-
-/// Calls llvm::createPGOFuncNameVar() with the given function instance's
-/// mangled function name. The LLVM API returns an llvm::GlobalVariable
-/// containing the function name, with the specific variable name and linkage
-/// required by LLVM InstrProf source-based coverage instrumentation. Use
-/// `bx.get_pgo_func_name_var()` to ensure the variable is only created once per
-/// `Instance`.
-fn create_pgo_func_name_var<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    instance: Instance<'tcx>,
-) -> &'ll llvm::Value {
-    let mangled_fn_name: &str = cx.tcx.symbol_name(instance).name;
-    let llfn = cx.get_fn(instance);
-    unsafe {
-        llvm::LLVMRustCoverageCreatePGOFuncNameVar(
-            llfn,
-            mangled_fn_name.as_c_char_ptr(),
-            mangled_fn_name.len(),
-        )
-    }
-}
-
-pub(crate) fn write_filenames_section_to_buffer<'a>(
-    filenames: impl IntoIterator<Item = &'a str>,
-    buffer: &RustString,
-) {
-    let (pointers, lengths) = filenames
-        .into_iter()
-        .map(|s: &str| (s.as_c_char_ptr(), s.len()))
-        .unzip::<_, _, Vec<_>, Vec<_>>();
-
-    unsafe {
-        llvm::LLVMRustCoverageWriteFilenamesSectionToBuffer(
-            pointers.as_ptr(),
-            pointers.len(),
-            lengths.as_ptr(),
-            lengths.len(),
-            buffer,
-        );
-    }
-}
-
-pub(crate) fn write_mapping_to_buffer(
-    virtual_file_mapping: Vec<u32>,
-    expressions: Vec<ffi::CounterExpression>,
-    code_regions: &[ffi::CodeRegion],
-    branch_regions: &[ffi::BranchRegion],
-    mcdc_branch_regions: &[ffi::MCDCBranchRegion],
-    mcdc_decision_regions: &[ffi::MCDCDecisionRegion],
-    buffer: &RustString,
-) {
-    unsafe {
-        llvm::LLVMRustCoverageWriteMappingToBuffer(
-            virtual_file_mapping.as_ptr(),
-            virtual_file_mapping.len() as c_uint,
-            expressions.as_ptr(),
-            expressions.len() as c_uint,
-            code_regions.as_ptr(),
-            code_regions.len() as c_uint,
-            branch_regions.as_ptr(),
-            branch_regions.len() as c_uint,
-            mcdc_branch_regions.as_ptr(),
-            mcdc_branch_regions.len() as c_uint,
-            mcdc_decision_regions.as_ptr(),
-            mcdc_decision_regions.len() as c_uint,
-            buffer,
-        );
-    }
-}
-
-pub(crate) fn hash_bytes(bytes: &[u8]) -> u64 {
-    unsafe { llvm::LLVMRustCoverageHashByteArray(bytes.as_c_char_ptr(), bytes.len()) }
-}
-
-pub(crate) fn mapping_version() -> u32 {
-    unsafe { llvm::LLVMRustCoverageMappingVersion() }
 }
