@@ -4,8 +4,8 @@ use std::ptr::{self, NonNull};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::svh::Svh;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::LocalExpnId;
+use rustc_span::profiling::SpannedEventArgRecorder;
 
 use crate::base::ExtCtxt;
 use crate::errors;
