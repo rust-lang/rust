@@ -448,6 +448,11 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
     .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
     .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
+hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer lifetimes than in trait
+    .suggestion = modify the `use<..>` bound to capture the same lifetimes that the trait does
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
