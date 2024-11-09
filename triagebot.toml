@@ -395,6 +395,7 @@ new_issue = true
 exclude_labels = [
     "C-tracking-issue",
     "A-diagnostics",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."WG-trait-system-refactor"]
