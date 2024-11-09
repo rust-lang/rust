@@ -1751,6 +1751,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: ty::Clauses<'tcx>,
 ) -> ty::Clauses<'tcx> {
+    assert!(!tcx.next_trait_solver_globally());
     let mut visitor = OpaqueTypeExpander {
         seen_opaque_tys: FxHashSet::default(),
         expanded_cache: FxHashMap::default(),
