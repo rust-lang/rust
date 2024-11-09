@@ -8,14 +8,14 @@
 // * https://github.com/llvm/llvm-project/blob/ef6d1ec07c693352c4a60dd58db08d2d8558f6ea/llvm/lib/Object/ArchiveWriter.cpp
 
 #include "LLVMWrapper.h"
-#include "SuppressLLVMWarnings.h"
+
 #include "llvm/ADT/SmallString.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/COFF.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/IRObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
-#include <llvm/Support/raw_ostream.h>
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 using namespace llvm::sys;
