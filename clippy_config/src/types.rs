@@ -1,6 +1,8 @@
 use clippy_utils::def_path_def_ids;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Span;
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;
@@ -16,7 +18,11 @@ pub struct Rename {
 #[serde(untagged)]
 pub enum DisallowedPath {
     Simple(String),
-    WithReason { path: String, reason: Option<String> },
+    WithReason {
+        path: String,
+        reason: Option<String>,
+        replacement: Option<String>,
+    },
 }
 
 impl DisallowedPath {
@@ -26,9 +32,31 @@ impl DisallowedPath {
         path
     }
 
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_> {
+        move |diag| {
+            if let Some(replacement) = self.replacement() {
+                diag.span_suggestion(
+                    span,
+                    self.reason().map_or_else(|| String::from("use"), ToOwned::to_owned),
+                    replacement,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(reason) = self.reason() {
+                diag.note(reason.to_owned());
+            }
+        }
+    }
+
     pub fn reason(&self) -> Option<&str> {
         match &self {
             Self::WithReason { reason, .. } => reason.as_deref(),
+            Self::Simple(_) => None,
+        }
+    }
+
+    fn replacement(&self) -> Option<&str> {
+        match &self {
+            Self::WithReason { replacement, .. } => replacement.as_deref(),
             Self::Simple(_) => None,
         }
     }
@@ -38,11 +66,13 @@ impl DisallowedPath {
 pub fn create_disallowed_map(
     tcx: TyCtxt<'_>,
     disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, Option<&'static str>)> {
+) -> DefIdMap<(&'static str, &'static DisallowedPath)> {
     disallowed
         .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
-        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
+        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
+        .flat_map(|(name, path, disallowed_path)| {
+            def_path_def_ids(tcx, &path).map(move |id| (id, (name, disallowed_path)))
+        })
         .collect()
 }
 
