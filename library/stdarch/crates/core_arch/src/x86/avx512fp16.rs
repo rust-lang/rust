@@ -1107,7 +1107,7 @@ pub unsafe fn _mm_mask_load_sh(src: __m128h, k: __mmask8, mem_addr: *const f16) 
         dst = inout(xmm_reg) dst,
         k = in(kreg) k,
         p = in(reg) mem_addr,
-        options(pure, nomem, nostack, preserves_flags)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
@@ -1126,7 +1126,7 @@ pub unsafe fn _mm_maskz_load_sh(k: __mmask8, mem_addr: *const f16) -> __m128h {
         dst = out(xmm_reg) dst,
         k = in(kreg) k,
         p = in(reg) mem_addr,
-        options(pure, nomem, nostack, preserves_flags)
+        options(pure, readonly, nostack, preserves_flags)
     );
     dst
 }
