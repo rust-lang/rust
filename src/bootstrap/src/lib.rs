@@ -688,8 +688,8 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc && check("jemalloc") {
-            features.push("jemalloc");
+        if self.config.mimalloc && check("mimalloc") {
+            features.push("mimalloc");
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");

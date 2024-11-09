@@ -304,7 +304,7 @@ pub struct Config {
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
-    pub jemalloc: bool,
+    pub mimalloc: bool,
     pub control_flow_guard: bool,
     pub ehcont_guard: bool,
 
@@ -1155,7 +1155,7 @@ define_config! {
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
-        jemalloc: Option<bool> = "jemalloc",
+        mimalloc: Option<bool> = "mimalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         control_flow_guard: Option<bool> = "control-flow-guard",
@@ -1711,7 +1711,7 @@ impl Config {
                 verify_llvm_ir,
                 thin_lto_import_instr_limit,
                 remap_debuginfo,
-                jemalloc,
+                mimalloc,
                 test_compare_mode,
                 llvm_libunwind,
                 control_flow_guard,
@@ -1758,7 +1758,7 @@ impl Config {
             set(&mut config.rust_strip, strip);
             set(&mut config.rust_frame_pointers, frame_pointers);
             config.rust_stack_protector = stack_protector;
-            set(&mut config.jemalloc, jemalloc);
+            set(&mut config.mimalloc, mimalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
             set(&mut config.backtrace, backtrace);
             config.description = description;
@@ -3064,7 +3064,7 @@ fn check_incompatible_options_for_ci_rustc(
         stack_protector,
         strip,
         lld_mode,
-        jemalloc,
+        mimalloc,
         rpath,
         channel,
         description,
@@ -3128,7 +3128,7 @@ fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.lld_mode, lld_mode);
     err!(current_rust_config.llvm_tools, llvm_tools);
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker);
-    err!(current_rust_config.jemalloc, jemalloc);
+    err!(current_rust_config.mimalloc, mimalloc);
     err!(current_rust_config.default_linker, default_linker);
     err!(current_rust_config.stack_protector, stack_protector);
     err!(current_rust_config.lto, lto);

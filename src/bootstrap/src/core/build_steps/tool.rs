@@ -636,8 +636,8 @@ impl Step for Rustdoc {
         // to build rustdoc.
         //
         let mut features = Vec::new();
-        if builder.config.jemalloc {
-            features.push("jemalloc".to_string());
+        if builder.config.mimalloc {
+            features.push("mimalloc".to_string());
         }
 
         // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
