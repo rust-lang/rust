@@ -41,6 +41,7 @@ pub use libc;
 pub use object;
 pub use regex;
 pub use serde_json;
+pub use similar;
 pub use wasmparser;
 // tidy-alphabetical-end
 
