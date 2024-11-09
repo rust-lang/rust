@@ -4553,7 +4553,7 @@ impl<T> [T] {
     /// let num = &nums[2];
     ///
     /// assert_eq!(num, &1);
-    /// assert_eq!(nums.elem_offset(num), Some(2));
+    /// assert_eq!(nums.element_offset(num), Some(2));
     /// ```
     /// Returning `None` with an in-between element:
     /// ```
@@ -4568,12 +4568,12 @@ impl<T> [T] {
     /// assert_eq!(ok_elm, &[0, 1]);
     /// assert_eq!(weird_elm, &[1, 2]);
     ///
-    /// assert_eq!(arr.elem_offset(ok_elm), Some(0)); // Points to element 0
-    /// assert_eq!(arr.elem_offset(weird_elm), None); // Points between element 0 and 1
+    /// assert_eq!(arr.element_offset(ok_elm), Some(0)); // Points to element 0
+    /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]
-    pub fn elem_offset(&self, element: &T) -> Option<usize> {
+    pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
         }
