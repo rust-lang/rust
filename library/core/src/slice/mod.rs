@@ -4533,7 +4533,7 @@ impl<T> [T] {
 
     /// Returns the index that an element reference points to.
     ///
-    /// Returns `None` if `element` does not point within the slice or if it points between elements.
+    /// Returns `None` if `element` does not point to the start of an element within the slice.
     ///
     /// This method is useful for extending slice iterators like [`slice::split`].
     ///
@@ -4555,7 +4555,7 @@ impl<T> [T] {
     /// assert_eq!(num, &1);
     /// assert_eq!(nums.element_offset(num), Some(2));
     /// ```
-    /// Returning `None` with an in-between element:
+    /// Returning `None` with an unaligned element:
     /// ```
     /// #![feature(substr_range)]
     ///
@@ -4594,7 +4594,8 @@ impl<T> [T] {
 
     /// Returns the range of indices that a subslice points to.
     ///
-    /// Returns `None` if `subslice` does not point within the slice or if it points between elements.
+    /// Returns `None` if `subslice` does not point within the slice or if it is not aligned with the
+    /// elements in the slice.
     ///
     /// This method **does not compare elements**. Instead, this method finds the location in the slice that
     /// `subslice` was obtained from. To find the index of a subslice via comparison, instead use
