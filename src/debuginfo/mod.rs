@@ -20,7 +20,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
 use rustc_span::{FileNameDisplayPreference, SourceFileHash, StableSourceFileId};
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::types::TypeDebugContext;
