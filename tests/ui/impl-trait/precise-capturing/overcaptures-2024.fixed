@@ -29,4 +29,12 @@ fn hrtb() -> impl for<'a> Higher<'a, Output = impl Sized + use<>> {}
 //~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
 //~| WARN this changes meaning in Rust 2024
 
+fn apit<T: Sized>(_: &T) -> impl Sized + use<T> {}
+//~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+//~| WARN this changes meaning in Rust 2024
+
+fn apit2<U, T: Sized>(_: &T, _: U) -> impl Sized + use<U, T> {}
+//~^ ERROR `impl Sized` will capture more lifetimes than possibly intended in edition 2024
+//~| WARN this changes meaning in Rust 2024
+
 fn main() {}
