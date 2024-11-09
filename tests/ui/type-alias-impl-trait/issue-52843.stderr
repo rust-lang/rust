@@ -4,6 +4,16 @@ error[E0277]: the trait bound `T: Default` is not satisfied
 LL |     t
    |     ^ the trait `Default` is not implemented for `T`
    |
+note: required by a bound in an opaque type
+  --> $DIR/issue-52843.rs:3:20
+   |
+LL | type Foo<T> = impl Default;
+   |                    ^^^^^^^
+note: this definition site has more where clauses than the opaque type
+  --> $DIR/issue-52843.rs:6:1
+   |
+LL | fn foo<T: Default>(t: T) -> Foo<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider restricting type parameter `T`
    |
 LL | type Foo<T: std::default::Default> = impl Default;

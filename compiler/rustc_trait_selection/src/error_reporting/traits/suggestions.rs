@@ -2953,6 +2953,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
+            ObligationCauseCode::OpaqueTypeBound(span, definition_def_id) => {
+                err.span_note(span, "required by a bound in an opaque type");
+                if let Some(definition_def_id) = definition_def_id
+                    // If there are any stalled coroutine obligations, then this
+                    // error may be due to that, and not because the body has more
+                    // where-clauses.
+                    && self.tcx.typeck(definition_def_id).coroutine_stalled_predicates.is_empty()
+                {
+                    // FIXME(compiler-errors): We could probably point to something
+                    // specific here if we tried hard enough...
+                    err.span_note(
+                        tcx.def_span(definition_def_id),
+                        "this definition site has more where clauses than the opaque type",
+                    );
+                }
+            }
             ObligationCauseCode::Coercion { source, target } => {
                 let source =
                     tcx.short_ty_string(self.resolve_vars_if_possible(source), long_ty_file);
