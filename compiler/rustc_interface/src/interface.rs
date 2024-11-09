@@ -441,7 +441,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     temps_dir,
                 },
                 bundle,
-                config.registry.clone(),
+                config.registry,
                 locale_resources,
                 config.lint_caps,
                 target,
@@ -499,7 +499,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 // If `f` panics, `finish_diagnostics` will run during
                 // unwinding because of the `defer`.
                 let sess_abort_guard = defer(|| {
-                    compiler.sess.finish_diagnostics(&config.registry);
+                    compiler.sess.finish_diagnostics();
                 });
 
                 let res = f(&compiler);
