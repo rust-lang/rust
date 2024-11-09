@@ -90,7 +90,7 @@ pub trait CodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        link_binary(sess, &ArArchiveBuilderBuilder, &codegen_results, outputs)
+        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs)
     }
 
     /// Returns `true` if this backend can be safely called from multiple threads.
