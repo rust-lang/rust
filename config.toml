@@ -1,0 +1,12 @@
+# Includes one of the default files in src/bootstrap/defaults
+profile = "dist"
+change-id = 132494
+
+[rust]
+llvm-tools = false
+
+[llvm]
+download-ci-llvm = false
+
+[build]
+sanitizers = true
