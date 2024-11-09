@@ -459,8 +459,7 @@ fn run_compiler(
         // Linking is done outside the `compiler.enter()` so that the
         // `GlobalCtxt` within `Queries` can be freed as early as possible.
         if let Some(linker) = linker {
-            let _timer = sess.timer("link");
-            linker.link(sess, codegen_backend)?
+            linker.link(sess, codegen_backend)?;
         }
 
         Ok(())

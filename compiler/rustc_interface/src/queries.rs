@@ -154,12 +154,15 @@ impl Linker {
     }
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
-        let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
+        let (codegen_results, work_products) = sess.time("finish_ongoing_codegen", || {
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
+        });
 
         if let Some(guar) = sess.dcx().has_errors() {
             return Err(guar);
         }
+
+        let _timer = sess.timer("link");
 
         sess.time("serialize_work_products", || {
             rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
