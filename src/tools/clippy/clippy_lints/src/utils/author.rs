@@ -396,7 +396,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.pat(field!(let_expr.pat));
                 // Does what ExprKind::Cast does, only adds a clause for the type
                 // if it's a path
-                if let Some(TyKind::Path(ref qpath)) = let_expr.value.ty.as_ref().map(|ty| &ty.kind) {
+                if let Some(TyKind::Path(qpath)) = let_expr.value.ty.as_ref().map(|ty| &ty.kind) {
                     bind!(self, qpath);
                     chain!(self, "let TyKind::Path(ref {qpath}) = {let_expr}.ty.kind");
                     self.qpath(qpath);

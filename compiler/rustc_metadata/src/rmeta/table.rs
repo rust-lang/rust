@@ -223,8 +223,8 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     ty::AssocItemContainer {
-        ( TraitContainer )
-        ( ImplContainer  )
+        ( Trait )
+        ( Impl  )
     }
 }
 

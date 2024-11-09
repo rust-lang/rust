@@ -1420,7 +1420,7 @@ impl<'a> InferenceContext<'a> {
             Some(path) => path,
             None => return (self.err_ty(), None),
         };
-        let ctx = crate::lower::TyLoweringContext::new(
+        let mut ctx = crate::lower::TyLoweringContext::new(
             self.db,
             &self.resolver,
             &self.body.types,

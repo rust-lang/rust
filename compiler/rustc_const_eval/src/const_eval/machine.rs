@@ -2,6 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt;
 use std::hash::Hash;
 
+use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -13,8 +14,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi as CallAbi;
 use tracing::debug;
 
 use super::error::*;
@@ -335,7 +334,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         orig_instance: ty::Instance<'tcx>,
-        _abi: CallAbi,
+        _abi: ExternAbi,
         args: &[FnArg<'tcx>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -355,7 +354,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // sensitive check here. But we can at least rule out functions that are not const at
             // all. That said, we have to allow calling functions inside a trait marked with
             // #[const_trait]. These *are* const-checked!
-            // FIXME(effects): why does `is_const_fn` not classify them as const?
+            // FIXME(const_trait_impl): why does `is_const_fn` not classify them as const?
             if (!ecx.tcx.is_const_fn(def) && !ecx.tcx.is_const_default_method(def))
                 || ecx.tcx.has_attr(def, sym::rustc_do_not_const_check)
             {

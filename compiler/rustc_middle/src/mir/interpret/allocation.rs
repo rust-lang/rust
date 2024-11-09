@@ -12,10 +12,10 @@ use either::{Left, Right};
 use init_mask::*;
 pub use init_mask::{InitChunk, InitChunkIter};
 use provenance_map::*;
+use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,

@@ -1,5 +1,5 @@
 error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const`
-  --> $DIR/ice-120503-async-const-method.rs:7:11
+  --> $DIR/ice-120503-async-const-method.rs:6:11
    |
 LL |     async const fn bar(&self) {
    |     ------^^^^^
@@ -10,7 +10,7 @@ LL |     async const fn bar(&self) {
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error[E0379]: functions in trait impls cannot be declared const
-  --> $DIR/ice-120503-async-const-method.rs:7:11
+  --> $DIR/ice-120503-async-const-method.rs:6:11
    |
 LL |     async const fn bar(&self) {
    |           ^^^^^-
@@ -19,7 +19,7 @@ LL |     async const fn bar(&self) {
    |           help: remove the `const`
 
 error: functions cannot be both `const` and `async`
-  --> $DIR/ice-120503-async-const-method.rs:7:5
+  --> $DIR/ice-120503-async-const-method.rs:6:5
    |
 LL |       async const fn bar(&self) {
    |       -^^^^ ^^^^^ `const` because of this
@@ -35,7 +35,7 @@ LL | |     }
    | |_____-
 
 error[E0407]: method `bar` is not a member of trait `MyTrait`
-  --> $DIR/ice-120503-async-const-method.rs:7:5
+  --> $DIR/ice-120503-async-const-method.rs:6:5
    |
 LL | /     async const fn bar(&self) {
 LL | |
@@ -46,17 +46,8 @@ LL | |
 LL | |     }
    | |_____^ not a member of trait `MyTrait`
 
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/ice-120503-async-const-method.rs:2:12
-   |
-LL | #![feature(effects)]
-   |            ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0425]: cannot find function `main8` in this scope
-  --> $DIR/ice-120503-async-const-method.rs:12:9
+  --> $DIR/ice-120503-async-const-method.rs:11:9
    |
 LL |         main8().await;
    |         ^^^^^ help: a function with a similar name exists: `main`
@@ -64,7 +55,7 @@ LL |         main8().await;
 LL | fn main() {}
    | --------- similarly named function `main` defined here
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0379, E0407, E0425.
 For more information about an error, try `rustc --explain E0379`.

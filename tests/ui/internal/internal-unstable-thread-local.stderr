@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'function'
+error[E0658]: use of unstable library feature `function`
   --> $DIR/internal-unstable-thread-local.rs:9:32
    |
 LL | thread_local!(static BAR: () = internal_unstable::unstable());

@@ -1,6 +1,7 @@
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
+use rustc_abi::FieldIdx;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
@@ -20,7 +21,6 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, Span};
-use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
@@ -2071,6 +2071,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 s = pluralize!(len),
                 them = if len == 1 { "it" } else { "them" },
             ),
+            format!(
+                "{}{}{}{}",
+                prefix,
+                unmentioned_fields
+                    .iter()
+                    .map(|(_, name)| {
+                        let field_name = name.to_string();
+                        format!("{field_name}: _")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                if have_inaccessible_fields { ", .." } else { "" },
+                postfix,
+            ),
+            Applicability::MachineApplicable,
+        );
+        err.span_suggestion(
+            sp,
+            "or always ignore missing fields here",
             format!("{prefix}..{postfix}"),
             Applicability::MachineApplicable,
         );

@@ -45,7 +45,7 @@ use rustc_target::spec::{
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder, ImportLibraryItem};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
@@ -85,11 +85,7 @@ pub fn link_binary(
         }
 
         if invalid_output_for_target(sess, crate_type) {
-            bug!(
-                "invalid output type `{:?}` for target os `{}`",
-                crate_type,
-                sess.opts.target_triple
-            );
+            bug!("invalid output type `{:?}` for target `{}`", crate_type, sess.opts.target_triple);
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
@@ -499,16 +495,35 @@ fn create_dll_import_libs<'a>(
 
             let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
 
-            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+            let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
                     if sess.target.arch == "x86" {
-                        (
-                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
-                            import.ordinal(),
-                        )
+                        ImportLibraryItem {
+                            name: common::i686_decorated_name(
+                                import,
+                                mingw_gnu_toolchain,
+                                false,
+                                false,
+                            ),
+                            ordinal: import.ordinal(),
+                            symbol_name: import.is_missing_decorations().then(|| {
+                                common::i686_decorated_name(
+                                    import,
+                                    mingw_gnu_toolchain,
+                                    false,
+                                    true,
+                                )
+                            }),
+                            is_data: !import.is_fn,
+                        }
                     } else {
-                        (import.name.to_string(), import.ordinal())
+                        ImportLibraryItem {
+                            name: import.name.to_string(),
+                            ordinal: import.ordinal(),
+                            symbol_name: None,
+                            is_data: !import.is_fn,
+                        }
                     }
                 })
                 .collect();
@@ -516,7 +531,7 @@ fn create_dll_import_libs<'a>(
             archive_builder_builder.create_dll_import_lib(
                 sess,
                 &raw_dylib_name,
-                import_name_and_ordinal_vector,
+                items,
                 &output_path,
             );
 
@@ -996,6 +1011,7 @@ fn link_natively(
                         && (code < 1000 || code > 9999)
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        // FIXME(cc-rs#1265) pass only target arch to find_tool()
                         let has_linker = windows_registry::find_tool(
                             sess.opts.target_triple.tuple(),
                             "link.exe",
@@ -1088,9 +1104,7 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        // Use system `strip` when running on host macOS.
-        // <https://github.com/rust-lang/rust/pull/130781>
-        let stripcmd = if cfg!(target_os = "macos") { "/usr/bin/strip" } else { "strip" };
+        let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
@@ -1106,11 +1120,14 @@ fn link_natively(
         }
     }
 
-    if sess.target.os == "illumos" {
+    if sess.target.is_like_solaris {
         // Many illumos systems will have both the native 'strip' utility and
         // the GNU one. Use the native version explicitly and do not rely on
         // what's in the path.
-        let stripcmd = "/usr/bin/strip";
+        //
+        // If cross-compiling and there is not a native version, then use
+        // `llvm-strip` and hope.
+        let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
@@ -1123,6 +1140,10 @@ fn link_natively(
     }
 
     if sess.target.is_like_aix {
+        // `llvm-strip` doesn't work for AIX - their strip must be used.
+        if !sess.host.is_like_aix {
+            sess.dcx().emit_warn(errors::AixStripNotUsed);
+        }
         let stripcmd = "/usr/bin/strip";
         match strip {
             Strip::Debuginfo => {
@@ -1150,6 +1171,13 @@ fn strip_symbols_with_external_utility(
     if let Some(option) = option {
         cmd.arg(option);
     }
+
+    let mut new_path = sess.get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
     let prog = cmd.arg(out_filename).output();
     match prog {
         Ok(prog) => {

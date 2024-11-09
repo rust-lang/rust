@@ -1161,9 +1161,14 @@ impl<'a> Builder<'a> {
         self.ensure(compile::Sysroot::new(compiler))
     }
 
+    /// Returns the bindir for a compiler's sysroot.
+    pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+        self.sysroot_target_libdir(compiler, target).parent().unwrap().join("bin")
+    }
+
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+    pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         struct Libdir {
             compiler: Compiler,
@@ -1211,7 +1216,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
-        self.sysroot_libdir(compiler, compiler.host).with_file_name("codegen-backends")
+        self.sysroot_target_libdir(compiler, compiler.host).with_file_name("codegen-backends")
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that

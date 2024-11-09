@@ -3,6 +3,9 @@ resolver = "2"
 members = [
   "compiler/rustc",
   "src/etc/test-float-parse",
+  "src/rustc-std-workspace/rustc-std-workspace-core",
+  "src/rustc-std-workspace/rustc-std-workspace-alloc",
+  "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
   "src/tools/build_helper",
   "src/tools/cargotest",

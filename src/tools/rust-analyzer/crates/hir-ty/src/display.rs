@@ -2033,7 +2033,7 @@ impl HirDisplayWithTypesMap for TypeRefId {
             TypeRef::Macro(macro_call) => {
                 let (mut types_map, mut types_source_map) =
                     (TypesMap::default(), TypesSourceMap::default());
-                let ctx = hir_def::lower::LowerCtx::new(
+                let mut ctx = hir_def::lower::LowerCtx::new(
                     f.db.upcast(),
                     macro_call.file_id,
                     &mut types_map,
@@ -2041,7 +2041,7 @@ impl HirDisplayWithTypesMap for TypeRefId {
                 );
                 let macro_call = macro_call.to_node(f.db.upcast());
                 match macro_call.path() {
-                    Some(path) => match Path::from_src(&ctx, path) {
+                    Some(path) => match Path::from_src(&mut ctx, path) {
                         Some(path) => path.hir_fmt(f, &types_map)?,
                         None => write!(f, "{{macro}}")?,
                     },

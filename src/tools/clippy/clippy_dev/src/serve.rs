@@ -20,8 +20,14 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
 
     loop {
         let index_time = mtime("util/gh-pages/index.html");
+        let times = [
+            "clippy_lints/src",
+            "util/gh-pages/index_template.html",
+            "tests/compile-test.rs",
+        ]
+        .map(mtime);
 
-        if index_time < mtime("clippy_lints/src") || index_time < mtime("util/gh-pages/index_template.html") {
+        if times.iter().any(|&time| index_time < time) {
             Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .arg("collect-metadata")
                 .spawn()

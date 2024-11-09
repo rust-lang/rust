@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MyStructLint {
         // Check our expr is calling a method
         if let hir::ExprKind::MethodCall(path, _, _self_arg, ..) = &expr.kind
             // Check the name of this method is `some_method`
-            && path.ident.name == sym!(some_method)
+            && path.ident.name.as_str() == "some_method"
             // Optionally, check the type of the self argument.
             // - See "Checking for a specific type"
         {
@@ -167,7 +167,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
         // Check if item is a method/function
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // Check the method is named `some_method`
-            && impl_item.ident.name == sym!(some_method)
+            && impl_item.ident.name.as_str() == "some_method"
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go further and even check if its return type is `String`

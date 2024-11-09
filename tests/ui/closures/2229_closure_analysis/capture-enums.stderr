@@ -30,7 +30,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing point[] -> ImmBorrow
+note: Capturing point[] -> Immutable
   --> $DIR/capture-enums.rs:23:41
    |
 LL |         if let Info::Point(_, _, str) = point {
@@ -40,7 +40,7 @@ note: Capturing point[(2, 0)] -> ByValue
    |
 LL |         if let Info::Point(_, _, str) = point {
    |                                         ^^^^^
-note: Capturing meta[] -> ImmBorrow
+note: Capturing meta[] -> Immutable
   --> $DIR/capture-enums.rs:30:35
    |
 LL |         if let Info::Meta(_, v) = meta {

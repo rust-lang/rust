@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::iter;
 
 use itertools::Itertools as _;
 use rustc_abi::Align;
@@ -17,9 +18,9 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::ffi;
 use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
-use crate::{coverageinfo, llvm};
+use crate::coverageinfo::{ffi, llvm_cov};
+use crate::llvm;
 
 /// Generates and exports the coverage map, which is embedded in special
 /// linker sections in the final binary.
@@ -33,7 +34,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     // agrees with our Rust-side code. Expected versions (encoded as n-1) are:
     // - `CovMapVersion::Version7` (6) used by LLVM 18-19
     let covmap_version = {
-        let llvm_covmap_version = coverageinfo::mapping_version();
+        let llvm_covmap_version = llvm_cov::mapping_version();
         let expected_versions = 6..=6;
         assert!(
             expected_versions.contains(&llvm_covmap_version),
@@ -78,7 +79,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     let filenames_size = filenames_buffer.len();
     let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
+    let filenames_ref = llvm_cov::hash_bytes(&filenames_buffer);
 
     // Generate the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
@@ -187,13 +188,10 @@ impl GlobalFileTable {
             .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
             .to_string_lossy();
 
-        llvm::build_byte_buffer(|buffer| {
-            coverageinfo::write_filenames_section_to_buffer(
-                // Insert the working dir at index 0, before the other filenames.
-                std::iter::once(working_dir).chain(self.raw_file_table.iter().map(Symbol::as_str)),
-                buffer,
-            );
-        })
+        // Insert the working dir at index 0, before the other filenames.
+        let filenames =
+            iter::once(working_dir).chain(self.raw_file_table.iter().map(Symbol::as_str));
+        llvm_cov::write_filenames_to_buffer(filenames)
     }
 }
 
@@ -296,17 +294,14 @@ fn encode_mappings_for_function(
     }
 
     // Encode the function's coverage mappings into a buffer.
-    llvm::build_byte_buffer(|buffer| {
-        coverageinfo::write_mapping_to_buffer(
-            virtual_file_mapping.into_vec(),
-            expressions,
-            &code_regions,
-            &branch_regions,
-            &mcdc_branch_regions,
-            &mcdc_decision_regions,
-            buffer,
-        );
-    })
+    llvm_cov::write_function_mappings_to_buffer(
+        &virtual_file_mapping.into_vec(),
+        &expressions,
+        &code_regions,
+        &branch_regions,
+        &mcdc_branch_regions,
+        &mcdc_decision_regions,
+    )
 }
 
 /// Generates the contents of the covmap record for this CGU, which mostly
@@ -335,23 +330,11 @@ fn generate_covmap_record<'ll>(
     let covmap_data =
         cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false);
 
-    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-    }))
-    .unwrap();
-    debug!("covmap var name: {:?}", covmap_var_name);
-
-    let covmap_section_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
-    }))
-    .expect("covmap section name should not contain NUL");
-    debug!("covmap section name: {:?}", covmap_section_name);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &covmap_var_name);
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &llvm_cov::covmap_var_name());
     llvm::set_initializer(llglobal, covmap_data);
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-    llvm::set_section(llglobal, &covmap_section_name);
+    llvm::set_section(llglobal, &llvm_cov::covmap_section_name(cx.llmod));
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     // <https://llvm.org/docs/CoverageMappingFormat.html>
     llvm::set_alignment(llglobal, Align::EIGHT);
@@ -373,7 +356,7 @@ fn generate_covfun_record(
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
-    let func_name_hash = coverageinfo::hash_bytes(mangled_function_name.as_bytes());
+    let func_name_hash = llvm_cov::hash_bytes(mangled_function_name.as_bytes());
     let func_name_hash_val = cx.const_u64(func_name_hash);
     let coverage_mapping_size_val = cx.const_u32(coverage_mapping_size as u32);
     let source_hash_val = cx.const_u64(source_hash);

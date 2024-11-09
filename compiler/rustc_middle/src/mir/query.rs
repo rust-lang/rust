@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::fmt::{self, Debug};
 
 use derive_where::derive_where;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
@@ -12,7 +13,6 @@ use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
@@ -317,7 +317,10 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
         let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
-                let br = ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon };
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::new(vid.index()),
+                    kind: ty::BoundRegionKind::Anon,
+                };
                 ty::Region::new_bound(tcx, depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),

@@ -69,6 +69,7 @@
 //! in case precise captures (edition 2021 closure capture rules) caused the inner coroutine
 //! to split one field capture into two.
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
@@ -80,7 +81,6 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::kw;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,

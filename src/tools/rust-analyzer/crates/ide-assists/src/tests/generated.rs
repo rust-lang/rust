@@ -1549,6 +1549,36 @@ fn main() {
 }
 
 #[test]
+fn doctest_generate_fn_type_alias_named() {
+    check_doc_test(
+        "generate_fn_type_alias_named",
+        r#####"
+unsafe fn fo$0o(n: i32) -> i32 { 42i32 }
+"#####,
+        r#####"
+type ${0:FooFn} = unsafe fn(n: i32) -> i32;
+
+unsafe fn foo(n: i32) -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_fn_type_alias_unnamed() {
+    check_doc_test(
+        "generate_fn_type_alias_unnamed",
+        r#####"
+unsafe fn fo$0o(n: i32) -> i32 { 42i32 }
+"#####,
+        r#####"
+type ${0:FooFn} = unsafe fn(i32) -> i32;
+
+unsafe fn foo(n: i32) -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_from_impl_for_enum() {
     check_doc_test(
         "generate_from_impl_for_enum",

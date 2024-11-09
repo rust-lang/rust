@@ -54,6 +54,7 @@ mod by_move_body;
 use std::{iter, ops};
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -75,7 +76,6 @@ use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;

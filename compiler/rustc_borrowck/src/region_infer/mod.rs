@@ -99,9 +99,9 @@ impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         let (representative_is_placeholder, representative_is_existential) = match definition.origin
         {
-            rustc_infer::infer::NllRegionVariableOrigin::FreeRegion => (false, false),
-            rustc_infer::infer::NllRegionVariableOrigin::Placeholder(_) => (true, false),
-            rustc_infer::infer::NllRegionVariableOrigin::Existential { .. } => (false, true),
+            NllRegionVariableOrigin::FreeRegion => (false, false),
+            NllRegionVariableOrigin::Placeholder(_) => (true, false),
+            NllRegionVariableOrigin::Existential { .. } => (false, true),
         };
 
         let placeholder_universe =
@@ -553,7 +553,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns an iterator over all the region indices.
-    pub fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
+    pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> + 'tcx {
         self.definitions.indices()
     }
 
@@ -561,12 +561,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// corresponding index.
     ///
     /// (Panics if `r` is not a registered universal region.)
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions.to_region_vid(r)
     }
 
     /// Returns an iterator over all the outlives constraints.
-    pub fn outlives_constraints(&self) -> impl Iterator<Item = OutlivesConstraint<'tcx>> + '_ {
+    pub(crate) fn outlives_constraints(
+        &self,
+    ) -> impl Iterator<Item = OutlivesConstraint<'tcx>> + '_ {
         self.constraints.outlives().iter().copied()
     }
 
@@ -1495,6 +1497,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
         self.constraint_sccs().annotation(scc).min_universe()
     }
+
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
     /// wound up in `fr`'s final value; for each `end(X)` where `X !=
@@ -1667,7 +1670,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 placeholder,
             });
 
-            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+            // Stop after the first error, it gets too noisy otherwise, and does not provide more
+            // information.
             break;
         }
         debug!("check_bound_universal_region: all bounds satisfied");
@@ -2000,8 +2004,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
         // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple `ConstraintCategory::Predicate`
-        // constraints. Currently, we just pick the first one.
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
         let cause_code = path
             .iter()
             .find_map(|constraint| {

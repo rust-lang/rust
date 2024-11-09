@@ -98,10 +98,6 @@ the target with:
 rustup target add wasm32-wasip1
 ```
 
-> **Note**: the `wasm32-wasip1` target is new and may only be available
-> on nightly by the time you're reading this. If `wasm32-wasip1` isn't
-> available on stable Rust then `wasm32-wasi` should be available instead.
-
 Rust programs can be built for that target:
 
 ```text

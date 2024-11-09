@@ -52,7 +52,7 @@ jobs:
       run: cargo generate-lockfile
 
     - name: Cache
-      uses: Swatinem/rust-cache@v2.7.0
+      uses: Swatinem/rust-cache@v2
       with:
         save-if: ${{ github.ref == 'refs/heads/master' }}
 

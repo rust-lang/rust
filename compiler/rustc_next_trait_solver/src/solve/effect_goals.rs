@@ -84,7 +84,7 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
-        // FIXME(effects): We elaborate here because the implied const bounds
+        // FIXME(const_trait_impl): We elaborate here because the implied const bounds
         // aren't necessarily elaborated. We probably should prefix this query
         // with `explicit_`...
         for clause in elaborate::elaborate(

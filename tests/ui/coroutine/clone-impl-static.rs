@@ -1,3 +1,4 @@
+//@compile-flags: --diagnostic-width=300
 // gate-test-coroutine_clone
 // Verifies that static coroutines cannot be cloned/copied.
 

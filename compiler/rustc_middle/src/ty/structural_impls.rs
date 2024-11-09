@@ -5,11 +5,11 @@
 
 use std::fmt::{self, Debug};
 
+use rustc_abi::TyAndLayout;
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::ConstKind;
 
 use super::print::PrettyPrinter;
@@ -62,15 +62,15 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon => write!(f, "BrAnon"),
-            ty::BrNamed(did, name) => {
+            ty::BoundRegionKind::Anon => write!(f, "BrAnon"),
+            ty::BoundRegionKind::Named(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({name})")
                 } else {
                     write!(f, "BrNamed({did:?}, {name})")
                 }
             }
-            ty::BrEnv => write!(f, "BrEnv"),
+            ty::BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
         }
     }
 }
@@ -218,8 +218,8 @@ TrivialLiftImpls! {
 // provide any traversal implementations, we need to provide a traversal
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
-    ::rustc_target::abi::FieldIdx,
-    ::rustc_target::abi::VariantIdx,
+    ::rustc_abi::FieldIdx,
+    ::rustc_abi::VariantIdx,
     crate::middle::region::Scope,
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
@@ -271,12 +271,12 @@ TrivialTypeTraversalAndLiftImpls! {
     interpret::AllocId,
     interpret::CtfeProvenance,
     interpret::Scalar,
-    rustc_target::abi::Size,
+    rustc_abi::Size,
 }
 
 TrivialLiftImpls! {
     ::rustc_hir::Safety,
-    ::rustc_target::spec::abi::Abi,
+    ::rustc_abi::ExternAbi,
 }
 
 ///////////////////////////////////////////////////////////////////////////

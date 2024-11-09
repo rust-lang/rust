@@ -226,7 +226,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 }
 
 impl<T, F> LazyLock<T, F> {
-    /// Returns a reference to the value if initialized, or `None` if not.
+    /// Returns a mutable reference to the value if initialized, or `None` if not.
     ///
     /// # Examples
     ///
@@ -255,7 +255,7 @@ impl<T, F> LazyLock<T, F> {
         }
     }
 
-    /// Returns a mutable reference to the value if initialized, or `None` if not.
+    /// Returns a reference to the value if initialized, or `None` if not.
     ///
     /// # Examples
     ///

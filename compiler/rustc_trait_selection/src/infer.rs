@@ -60,6 +60,24 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
     /// `Ty: Trait` causes overflow, EvaluatedToAmbigStackDependent will be returned.
+    ///
+    /// `type_implements_trait` is a convenience function for simple cases like
+    ///
+    /// ```ignore (illustrative)
+    /// let copy_trait = infcx.tcx.require_lang_item(LangItem::Copy, span);
+    /// let implements_copy = infcx.type_implements_trait(copy_trait, [ty], param_env)
+    /// .must_apply_modulo_regions();
+    /// ```
+    ///
+    /// In most cases you should instead create an [Obligation] and check whether
+    ///  it holds via [`evaluate_obligation`] or one of its helper functions like
+    /// [`predicate_must_hold_modulo_regions`], because it properly handles higher ranked traits
+    /// and it is more convenient and safer when your `params` are inside a [`Binder`].
+    ///
+    /// [Obligation]: traits::Obligation
+    /// [`evaluate_obligation`]: crate::traits::query::evaluate_obligation::InferCtxtExt::evaluate_obligation
+    /// [`predicate_must_hold_modulo_regions`]: crate::traits::query::evaluate_obligation::InferCtxtExt::predicate_must_hold_modulo_regions
+    /// [`Binder`]: ty::Binder
     #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,

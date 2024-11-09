@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `{async block@$DIR/issue-55872-3.rs:15:9: 15:14}: Copy` is not satisfied
-  --> $DIR/issue-55872-3.rs:13:20
+error[E0277]: the trait bound `{async block@$DIR/issue-55872-3.rs:16:9: 16:14}: Copy` is not satisfied
+  --> $DIR/issue-55872-3.rs:14:20
    |
 LL |     fn foo<T>() -> Self::E {
-   |                    ^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/issue-55872-3.rs:15:9: 15:14}`
+   |                    ^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/issue-55872-3.rs:16:9: 16:14}`
 LL |
 LL |         async {}
-   |         -------- return type was inferred to be `{async block@$DIR/issue-55872-3.rs:15:9: 15:14}` here
+   |         -------- return type was inferred to be `{async block@$DIR/issue-55872-3.rs:16:9: 16:14}` here
 
 error: aborting due to 1 previous error
 

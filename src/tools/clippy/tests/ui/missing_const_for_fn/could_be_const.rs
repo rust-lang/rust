@@ -2,7 +2,6 @@
 #![allow(incomplete_features, clippy::let_and_return, clippy::missing_transmute_annotations)]
 #![feature(const_trait_impl, abi_vectorcall)]
 
-
 use std::mem::transmute;
 
 struct Game {
@@ -104,7 +103,7 @@ fn main() {}
 
 struct D;
 
-/* FIXME(effects)
+/* FIXME(const_trait_impl)
 impl const Drop for D {
     fn drop(&mut self) {
         todo!();
@@ -113,7 +112,7 @@ impl const Drop for D {
 */
 
 // Lint this, since it can be dropped in const contexts
-// FIXME(effects)
+// FIXME(const_trait_impl)
 fn d(this: D) {}
 //~^ ERROR: this could be a `const fn`
 

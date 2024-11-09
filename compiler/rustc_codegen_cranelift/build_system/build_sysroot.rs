@@ -102,15 +102,6 @@ pub(crate) fn build_sysroot(
         .install_into_sysroot(&dist_dir);
     }
 
-    // Copy std for the host to the lib dir. This is necessary for the jit mode to find
-    // libstd.
-    for lib in host.libs {
-        let filename = lib.file_name().unwrap().to_str().unwrap();
-        if filename.contains("std-") && !filename.contains(".rlib") {
-            try_hard_link(&lib, dist_dir.join("lib").join(lib.file_name().unwrap()));
-        }
-    }
-
     let mut target_compiler = {
         let rustc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustc-clif"));
         let rustdoc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif"));

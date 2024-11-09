@@ -762,13 +762,19 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
             Literal{..}(desc)
         );
 
-        if let Some(LintDeclSearchResult {
-            token_kind: TokenKind::CloseBrace,
-            range,
-            ..
-        }) = iter.next()
-        {
-            lints.push(Lint::new(name, group, desc, module, start..range.end));
+        if let Some(end) = iter.find_map(|t| {
+            if let LintDeclSearchResult {
+                token_kind: TokenKind::CloseBrace,
+                range,
+                ..
+            } = t
+            {
+                Some(range.end)
+            } else {
+                None
+            }
+        }) {
+            lints.push(Lint::new(name, group, desc, module, start..end));
         }
     }
 }

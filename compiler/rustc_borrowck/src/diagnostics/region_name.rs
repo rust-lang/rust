@@ -30,8 +30,8 @@ pub(crate) struct RegionName {
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
-/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
-/// This helps to print the right kinds of diagnostics.
+/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get
+/// `Static`. This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
@@ -301,7 +301,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
 
             ty::ReLateParam(late_param) => match late_param.bound_region {
-                ty::BoundRegionKind::BrNamed(region_def_id, name) => {
+                ty::BoundRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
@@ -332,7 +332,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::BrEnv => {
+                ty::BoundRegionKind::ClosureEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     let closure_kind = match def_ty {
@@ -369,7 +369,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     })
                 }
 
-                ty::BoundRegionKind::BrAnon => None,
+                ty::BoundRegionKind::Anon => None,
             },
 
             ty::ReBound(..)
@@ -825,8 +825,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// async fn foo() -> i32 { 2 }
     /// ```
     ///
-    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
-    /// returns the `i32`.
+    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements
+    /// `Future<Output=i32>`, returns the `i32`.
     ///
     /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {

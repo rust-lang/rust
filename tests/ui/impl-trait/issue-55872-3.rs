@@ -1,4 +1,5 @@
 //@ edition:2018
+//@compile-flags: --diagnostic-width=300
 
 #![feature(impl_trait_in_assoc_type)]
 

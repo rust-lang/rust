@@ -459,7 +459,7 @@ fn trait_predicates_eq<'tcx>(
     predicate1: ty::Predicate<'tcx>,
     predicate2: ty::Predicate<'tcx>,
 ) -> bool {
-    // FIXME(effects)
+    // FIXME(const_trait_impl)
     predicate1 == predicate2
 }
 

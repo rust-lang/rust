@@ -12,8 +12,8 @@ use hir_def::{
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
-    AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    StaticId, VariantId,
+    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
+    VariantId,
 };
 use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
 use intern::sym;
@@ -40,8 +40,8 @@ use crate::{
     static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
-    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
+    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -585,13 +585,9 @@ pub fn interpret_mir(
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
     trait_env: Option<Arc<TraitEnvironment>>,
-) -> (Result<Const>, MirOutput) {
+) -> Result<(Result<Const>, MirOutput)> {
     let ty = body.locals[return_slot()].ty.clone();
-    let mut evaluator =
-        match Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env) {
-            Ok(it) => it,
-            Err(e) => return (Err(e), MirOutput { stdout: vec![], stderr: vec![] }),
-        };
+    let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
@@ -613,7 +609,7 @@ pub fn interpret_mir(
         };
         Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty))
     })();
-    (it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr })
+    Ok((it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr }))
 }
 
 #[cfg(test)]
@@ -1899,8 +1895,8 @@ impl Evaluator<'_> {
 
     #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(&mut self, locals: &Locals, konst: &Const) -> Result<Interval> {
-        let ty = &konst.data(Interner).ty;
-        let chalk_ir::ConstValue::Concrete(c) = &konst.data(Interner).value else {
+        let ConstData { ty, value: chalk_ir::ConstValue::Concrete(c) } = &konst.data(Interner)
+        else {
             not_supported!("evaluating non concrete constant");
         };
         let result_owner;
@@ -2908,14 +2904,14 @@ impl Evaluator<'_> {
 
 pub fn render_const_using_debug_impl(
     db: &dyn HirDatabase,
-    owner: ConstId,
+    owner: DefWithBodyId,
     c: &Const,
 ) -> Result<String> {
-    let mut evaluator = Evaluator::new(db, owner.into(), false, None)?;
+    let mut evaluator = Evaluator::new(db, owner, false, None)?;
     let locals = &Locals {
         ptr: ArenaMap::new(),
         body: db
-            .mir_body(owner.into())
+            .mir_body(owner)
             .map_err(|_| MirEvalError::NotSupported("unreachable".to_owned()))?,
         drop_flags: DropFlags::default(),
     };

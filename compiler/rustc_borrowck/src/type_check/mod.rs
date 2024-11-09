@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use either::Either;
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -40,7 +41,6 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };
@@ -156,24 +156,23 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    let mut borrowck_context = BorrowCheckContext {
+    let mut checker = TypeChecker {
+        infcx,
+        param_env,
+        last_span: body.span,
+        body,
+        user_type_annotations: &body.user_type_annotations,
+        region_bound_pairs: &region_bound_pairs,
+        known_type_outlives_obligations,
+        implicit_region_bound,
+        reported_errors: Default::default(),
         universal_regions: &universal_regions,
         location_table,
-        borrow_set,
         all_facts,
+        borrow_set,
         constraints: &mut constraints,
         upvars,
     };
-
-    let mut checker = TypeChecker::new(
-        infcx,
-        body,
-        param_env,
-        &region_bound_pairs,
-        known_type_outlives_obligations,
-        implicit_region_bound,
-        &mut borrowck_context,
-    );
 
     checker.check_user_type_annotations();
 
@@ -221,13 +220,12 @@ pub(crate) fn type_check<'a, 'tcx>(
                 infcx.tcx.fold_regions((opaque_type_key, hidden_type), |region, _| {
                     match region.kind() {
                         ty::ReVar(_) => region,
-                        ty::RePlaceholder(placeholder) => checker
-                            .borrowck_context
-                            .constraints
-                            .placeholder_region(infcx, placeholder),
+                        ty::RePlaceholder(placeholder) => {
+                            checker.constraints.placeholder_region(infcx, placeholder)
+                        }
                         _ => ty::Region::new_var(
                             infcx.tcx,
-                            checker.borrowck_context.universal_regions.to_region_vid(region),
+                            checker.universal_regions.to_region_vid(region),
                         ),
                     }
                 });
@@ -240,25 +238,26 @@ pub(crate) fn type_check<'a, 'tcx>(
 }
 
 fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
-    let cx = &mut typeck.borrowck_context;
-    if let Some(facts) = cx.all_facts {
+    if let Some(facts) = typeck.all_facts {
         let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-        let location_table = cx.location_table;
-        facts.subset_base.extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
-            |constraint: &OutlivesConstraint<'_>| {
-                if let Some(from_location) = constraint.locations.from_location() {
-                    Either::Left(iter::once((
-                        constraint.sup.into(),
-                        constraint.sub.into(),
-                        location_table.mid_index(from_location),
-                    )))
-                } else {
-                    Either::Right(location_table.all_points().map(move |location| {
-                        (constraint.sup.into(), constraint.sub.into(), location)
-                    }))
-                }
-            },
-        ));
+        let location_table = typeck.location_table;
+        facts.subset_base.extend(
+            typeck.constraints.outlives_constraints.outlives().iter().flat_map(
+                |constraint: &OutlivesConstraint<'_>| {
+                    if let Some(from_location) = constraint.locations.from_location() {
+                        Either::Left(iter::once((
+                            constraint.sup.into(),
+                            constraint.sub.into(),
+                            location_table.mid_index(from_location),
+                        )))
+                    } else {
+                        Either::Right(location_table.all_points().map(move |location| {
+                            (constraint.sup.into(), constraint.sub.into(), location)
+                        }))
+                    }
+                },
+            ),
+        );
     }
 }
 
@@ -303,13 +302,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         let ty = self.sanitize_type(constant, constant.const_.ty());
 
         self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
-            let live_region_vid =
-                self.cx.borrowck_context.universal_regions.to_region_vid(live_region);
-            self.cx
-                .borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_location(live_region_vid, location);
+            let live_region_vid = self.cx.universal_regions.to_region_vid(live_region);
+            self.cx.constraints.liveness_constraints.add_location(live_region_vid, location);
         });
 
         // HACK(compiler-errors): Constants that are gathered into Body.required_consts
@@ -561,15 +555,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
-            mem::swap(this.cx.borrowck_context.all_facts, all_facts);
-            mem::swap(
-                &mut this.cx.borrowck_context.constraints.outlives_constraints,
-                &mut constraints,
-            );
-            mem::swap(
-                &mut this.cx.borrowck_context.constraints.liveness_constraints,
-                &mut liveness_constraints,
-            );
+            mem::swap(this.cx.all_facts, all_facts);
+            mem::swap(&mut this.cx.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut this.cx.constraints.liveness_constraints, &mut liveness_constraints);
         };
 
         swap_constraints(self);
@@ -594,7 +582,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 // temporary from the user's point of view.
                 constraint.category = ConstraintCategory::Boring;
             }
-            self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
+            self.cx.constraints.outlives_constraints.push(constraint)
         }
         // If the region is live at least one location in the promoted MIR,
         // then add a liveness constraint to the main MIR for this region
@@ -604,11 +592,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         // unordered.
         #[allow(rustc::potential_query_instability)]
         for region in liveness_constraints.live_regions_unordered() {
-            self.cx
-                .borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_location(region, location);
+            self.cx.constraints.liveness_constraints.add_location(region, location);
         }
     }
 
@@ -863,15 +847,11 @@ struct TypeChecker<'a, 'tcx> {
     known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
-    borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-}
-
-struct BorrowCheckContext<'a, 'tcx> {
-    pub(crate) universal_regions: &'a UniversalRegions<'tcx>,
+    universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
-    pub(crate) constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     upvars: &'a [&'a ty::CapturedPlace<'tcx>],
 }
 
@@ -1006,29 +986,6 @@ impl Locations {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    fn new(
-        infcx: &'a BorrowckInferCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
-        implicit_region_bound: ty::Region<'tcx>,
-        borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-    ) -> Self {
-        Self {
-            infcx,
-            last_span: body.span,
-            body,
-            user_type_annotations: &body.user_type_annotations,
-            param_env,
-            region_bound_pairs,
-            known_type_outlives_obligations,
-            implicit_region_bound,
-            borrowck_context,
-            reported_errors: Default::default(),
-        }
-    }
-
     fn body(&self) -> &Body<'tcx> {
         self.body
     }
@@ -1067,7 +1024,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
-            self.borrowck_context.universal_regions,
+            self.universal_regions,
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
@@ -1075,7 +1032,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             locations,
             locations.span(self.body),
             category,
-            self.borrowck_context.constraints,
+            self.constraints,
         )
         .convert_all(data);
     }
@@ -1191,7 +1148,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // though.
                 let category = match place.as_local() {
                     Some(RETURN_PLACE) => {
-                        let defining_ty = &self.borrowck_context.universal_regions.defining_ty;
+                        let defining_ty = &self.universal_regions.defining_ty;
                         if defining_ty.is_const() {
                             if tcx.is_static(defining_ty.def_id()) {
                                 ConstraintCategory::UseAsStatic
@@ -1375,9 +1332,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     let region_ctxt_fn = || {
                         let reg_info = match br.kind {
-                            ty::BoundRegionKind::BrAnon => sym::anon,
-                            ty::BoundRegionKind::BrNamed(_, name) => name,
-                            ty::BoundRegionKind::BrEnv => sym::env,
+                            ty::BoundRegionKind::Anon => sym::anon,
+                            ty::BoundRegionKind::Named(_, name) => name,
+                            ty::BoundRegionKind::ClosureEnv => sym::env,
                         };
 
                         RegionCtxt::LateBound(reg_info)
@@ -1439,12 +1396,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    let region_vid =
-                        self.borrowck_context.universal_regions.to_region_vid(late_bound_region);
-                    self.borrowck_context
-                        .constraints
-                        .liveness_constraints
-                        .add_location(region_vid, term_location);
+                    let region_vid = self.universal_regions.to_region_vid(late_bound_region);
+                    self.constraints.liveness_constraints.add_location(region_vid, term_location);
                 }
 
                 self.check_call_inputs(body, term, func, &sig, args, term_location, call_source);
@@ -1532,18 +1485,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let dest_ty = self.normalize(dest_ty, term_location);
                 let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
-                        if let BorrowCheckContext {
-                            universal_regions:
-                                UniversalRegions {
-                                    defining_ty:
-                                        DefiningTy::Const(def_id, _)
-                                        | DefiningTy::InlineConst(def_id, _),
-                                    ..
-                                },
-                            ..
-                        } = self.borrowck_context
+                        if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
+                            self.universal_regions.defining_ty
                         {
-                            if tcx.is_static(*def_id) {
+                            if tcx.is_static(def_id) {
                                 ConstraintCategory::UseAsStatic
                             } else {
                                 ConstraintCategory::UseAsConst
@@ -1606,9 +1551,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let func_ty = func.ty(body, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
-            // Some of the SIMD intrinsics are special: they need a particular argument to be a constant.
-            // (Eventually this should use const-generics, but those are not up for the task yet:
-            // https://github.com/rust-lang/rust/issues/85229.)
+            // Some of the SIMD intrinsics are special: they need a particular argument to be a
+            // constant. (Eventually this should use const-generics, but those are not up for the
+            // task yet: https://github.com/rust-lang/rust/issues/85229.)
             if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
                 self.tcx().intrinsic(def_id).map(|i| i.name)
             {
@@ -1921,7 +1866,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
-                            // These are always okay: direct use of a const, or a value that can evidently be copied.
+                            // These are always okay: direct use of a const, or a value that can
+                            // evidently be copied.
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
@@ -2402,9 +2348,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 let dst_tail = self.struct_tail(dst.ty, location);
 
                                 // This checks (lifetime part of) vtable validity for pointer casts,
-                                // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).
+                                // which is irrelevant when there are aren't principal traits on
+                                // both sides (aka only auto traits).
                                 //
-                                // Note that other checks (such as denying `dyn Send` -> `dyn Debug`) are in `rustc_hir_typeck`.
+                                // Note that other checks (such as denying `dyn Send` -> `dyn
+                                // Debug`) are in `rustc_hir_typeck`.
                                 if let ty::Dynamic(src_tty, ..) = src_tail.kind()
                                     && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
                                     && src_tty.principal().is_some()
@@ -2427,8 +2375,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         ty::Dyn,
                                     ));
 
-                                    // Replace trait object lifetimes with fresh vars, to allow casts like
-                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`,
+                                    // Replace trait object lifetimes with fresh vars, to allow
+                                    // casts like
+                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`
                                     let src_obj =
                                         freshen_single_trait_object_lifetime(self.infcx, src_obj);
                                     let dst_obj =
@@ -2650,8 +2599,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         borrowed_place: &Place<'tcx>,
     ) {
         // These constraints are only meaningful during borrowck:
-        let BorrowCheckContext { borrow_set, location_table, all_facts, constraints, .. } =
-            self.borrowck_context;
+        let Self { borrow_set, location_table, all_facts, constraints, .. } = self;
 
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region (in some cases, though,
@@ -2681,12 +2629,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
-        let field = path_utils::is_upvar_field_projection(
-            tcx,
-            self.borrowck_context.upvars,
-            borrowed_place.as_ref(),
-            body,
-        );
+        let field =
+            path_utils::is_upvar_field_projection(tcx, self.upvars, borrowed_place.as_ref(), body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {
@@ -2840,7 +2784,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
-                self.borrowck_context.universal_regions,
+                self.universal_regions,
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
@@ -2848,7 +2792,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 locations,
                 self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
-                self.borrowck_context.constraints,
+                self.constraints,
             )
             .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
         }

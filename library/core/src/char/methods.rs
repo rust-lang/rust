@@ -1,7 +1,7 @@
 //! impl char {}
 
 use super::*;
-use crate::intrinsics::const_eval_select;
+use crate::panic::const_panic;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -320,7 +320,7 @@ impl char {
     /// '1'.is_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_char_is_digit", issue = "132241")]
+    #[rustc_const_unstable(feature = "const_char_classify", issue = "132241")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -711,7 +711,7 @@ impl char {
     /// '𝕊'.encode_utf16(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    #[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
+    #[rustc_const_stable(feature = "const_char_encode_utf16", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
         encode_utf16_raw(self as u32, dst)
@@ -856,8 +856,9 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_char_classify", issue = "132241")]
     #[inline]
-    pub fn is_whitespace(self) -> bool {
+    pub const fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09'..='\x0d' => true,
             c => c > '\x7f' && unicode::White_Space(c),
@@ -1773,17 +1774,7 @@ const fn len_utf16(code: u32) -> usize {
 #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_char_encode_utf8", since = "1.83.0"))]
 #[doc(hidden)]
 #[inline]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
 pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
-    const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
-        // Note that we cannot format in constant expressions.
-        panic!("encode_utf8: buffer does not have enough bytes to encode code point");
-    }
-    fn panic_at_rt(code: u32, len: usize, dst_len: usize) {
-        panic!(
-            "encode_utf8: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
-        );
-    }
     let len = len_utf8(code);
     match (len, &mut *dst) {
         (1, [a, ..]) => {
@@ -1804,8 +1795,15 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
             *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
             *d = (code & 0x3F) as u8 | TAG_CONT;
         }
-        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        _ => const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt),
+        _ => {
+            const_panic!(
+                "encode_utf8: buffer does not have enough bytes to encode code point",
+                "encode_utf8: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
+                code: u32 = code,
+                len: usize = len,
+                dst_len: usize = dst.len(),
+            )
+        }
     };
     // SAFETY: `<&mut [u8]>::as_mut_ptr` is guaranteed to return a valid pointer and `len` has been tested to be within bounds.
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
@@ -1822,19 +1820,13 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
 /// Panics if the buffer is not large enough.
 /// A buffer of length 2 is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-#[rustc_const_unstable(feature = "const_char_encode_utf16", issue = "130660")]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_char_encode_utf16", since = "CURRENT_RUSTC_VERSION")
+)]
 #[doc(hidden)]
 #[inline]
 pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
-    const fn panic_at_const(_code: u32, _len: usize, _dst_len: usize) {
-        // Note that we cannot format in constant expressions.
-        panic!("encode_utf16: buffer does not have enough bytes to encode code point");
-    }
-    fn panic_at_rt(code: u32, len: usize, dst_len: usize) {
-        panic!(
-            "encode_utf16: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
-        );
-    }
     let len = len_utf16(code);
     match (len, &mut *dst) {
         (1, [a, ..]) => {
@@ -1845,8 +1837,15 @@ pub const fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
             *a = (code >> 10) as u16 | 0xD800;
             *b = (code & 0x3FF) as u16 | 0xDC00;
         }
-        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        _ => const_eval_select((code, len, dst.len()), panic_at_const, panic_at_rt),
+        _ => {
+            const_panic!(
+                "encode_utf16: buffer does not have enough bytes to encode code point",
+                "encode_utf16: need {len} bytes to encode U+{code:04X} but buffer has just {dst_len}",
+                code: u32 = code,
+                len: usize = len,
+                dst_len: usize = dst.len(),
+            )
+        }
     };
     // SAFETY: `<&mut [u16]>::as_mut_ptr` is guaranteed to return a valid pointer and `len` has been tested to be within bounds.
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }

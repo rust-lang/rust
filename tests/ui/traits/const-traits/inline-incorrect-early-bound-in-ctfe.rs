@@ -8,8 +8,7 @@
 
 //@ compile-flags: -Znext-solver -Zinline-mir=yes
 
-#![feature(const_trait_impl, effects)]
-//~^ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 trait Trait {
     fn foo(self);

@@ -1,4 +1,5 @@
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::collections::VecDeque;
+use std::ffi::{CStr, CString};
 use std::fmt::Write;
 use std::path::Path;
 use std::sync::Once;
@@ -16,12 +17,12 @@ use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
-use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
+use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES, Stability};
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    FixedX18InvalidArch, InvalidTargetFeaturePrefix, PossibleFeature, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    FixedX18InvalidArch, ForbiddenCTargetFeature, InvalidTargetFeaturePrefix, PossibleFeature,
+    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 
@@ -276,23 +277,36 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
         }
+        // Support for `wide-arithmetic` will first land in LLVM 20 as part of
+        // llvm/llvm-project#111598
+        ("wasm32" | "wasm64", "wide-arithmetic") if get_version() < (20, 0, 0) => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
 
-/// Used to generate cfg variables and apply features
-/// Must express features in the way Rust understands them
+/// Used to generate cfg variables and apply features.
+/// Must express features in the way Rust understands them.
+///
+/// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-    let mut features = vec![];
+    let mut features: FxHashSet<Symbol> = Default::default();
 
-    // Add base features for the target
+    // Add base features for the target.
+    // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
+    // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
+    // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
+    // the target CPU, that is still expanded to target features (with all their implied features) by
+    // LLVM.
     let target_machine = create_informational_target_machine(sess, true);
+    // Compute which of the known target features are enabled in the 'base' target machine.
+    // We only consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
     features.extend(
         sess.target
-            .supported_target_features()
+            .rust_target_features()
             .iter()
+            .filter(|(_, gate, _)| gate.is_supported())
             .filter(|(feature, _, _)| {
-                // skip checking special features, as LLVM may not understands them
+                // skip checking special features, as LLVM may not understand them
                 if RUSTC_SPECIAL_FEATURES.contains(feature) {
                     return true;
                 }
@@ -323,7 +337,12 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         if enabled {
             features.extend(sess.target.implied_target_features(std::iter::once(feature)));
         } else {
+            // We don't care about the order in `features` since the only thing we use it for is the
+            // `features.contains` below.
+            #[allow(rustc::potential_query_instability)]
             features.retain(|f| {
+                // Keep a feature if it does not imply `feature`. Or, equivalently,
+                // remove the reverse-dependencies of `feature`.
                 !sess.target.implied_target_features(std::iter::once(*f)).contains(&feature)
             });
         }
@@ -331,8 +350,9 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
 
     // Filter enabled features based on feature gates
     sess.target
-        .supported_target_features()
+        .rust_target_features()
         .iter()
+        .filter(|(_, gate, _)| gate.is_supported())
         .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
@@ -387,14 +407,76 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
     ret
 }
 
-fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMachine) {
+pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
+    require_inited();
+    let tm = create_informational_target_machine(sess, false);
+    match req.kind {
+        PrintKind::TargetCPUs => print_target_cpus(sess, &tm, out),
+        PrintKind::TargetFeatures => print_target_features(sess, &tm, out),
+        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
+    }
+}
+
+fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
+    let cpu_names = llvm::build_string(|s| unsafe {
+        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+    })
+    .unwrap();
+
+    struct Cpu<'a> {
+        cpu_name: &'a str,
+        remark: String,
+    }
+    // Compare CPU against current target to label the default.
+    let target_cpu = handle_native(&sess.target.cpu);
+    let make_remark = |cpu_name| {
+        if cpu_name == target_cpu {
+            // FIXME(#132514): This prints the LLVM target string, which can be
+            // different from the Rust target string. Is that intended?
+            let target = &sess.target.llvm_target;
+            format!(
+                " - This is the default target CPU for the current build target (currently {target})."
+            )
+        } else {
+            "".to_owned()
+        }
+    };
+    let mut cpus = cpu_names
+        .lines()
+        .map(|cpu_name| Cpu { cpu_name, remark: make_remark(cpu_name) })
+        .collect::<VecDeque<_>>();
+
+    // Only print the "native" entry when host and target are the same arch,
+    // since otherwise it could be wrong or misleading.
+    if sess.host.arch == sess.target.arch {
+        let host = get_host_cpu_name();
+        cpus.push_front(Cpu {
+            cpu_name: "native",
+            remark: format!(" - Select the CPU of the current host (currently {host})."),
+        });
+    }
+
+    let max_name_width = cpus.iter().map(|cpu| cpu.cpu_name.len()).max().unwrap_or(0);
+    writeln!(out, "Available CPUs for this target:").unwrap();
+    for Cpu { cpu_name, remark } in cpus {
+        // Only pad the CPU name if there's a remark to print after it.
+        let width = if remark.is_empty() { 0 } else { max_name_width };
+        writeln!(out, "    {cpu_name:<width$}{remark}").unwrap();
+    }
+}
+
+fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let mut llvm_target_features = llvm_target_features(tm);
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
     let mut rustc_target_features = sess
         .target
-        .supported_target_features()
+        .rust_target_features()
         .iter()
-        .filter_map(|(feature, _gate, _implied)| {
+        .filter_map(|(feature, gate, _implied)| {
+            if !gate.is_supported() {
+                // Only list (experimentally) supported features.
+                return None;
+            }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
             let llvm_feature = to_llvm_features(sess, *feature)?.llvm_feature_name;
@@ -447,52 +529,31 @@ fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMach
     writeln!(out, "and may be renamed or removed in a future version of LLVM or rustc.\n").unwrap();
 }
 
-pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
-    require_inited();
-    let tm = create_informational_target_machine(sess, false);
-    match req.kind {
-        PrintKind::TargetCPUs => {
-            // SAFETY generate a C compatible string from a byte slice to pass
-            // the target CPU name into LLVM, the lifetime of the reference is
-            // at least as long as the C function
-            let cpu_cstring = CString::new(handle_native(sess.target.cpu.as_ref()))
-                .unwrap_or_else(|e| bug!("failed to convert to cstring: {}", e));
-            unsafe extern "C" fn callback(out: *mut c_void, string: *const c_char, len: usize) {
-                let out = unsafe { &mut *(out as *mut &mut String) };
-                let bytes = unsafe { slice::from_raw_parts(string as *const u8, len) };
-                write!(out, "{}", String::from_utf8_lossy(bytes)).unwrap();
-            }
-            unsafe {
-                llvm::LLVMRustPrintTargetCPUs(
-                    &tm,
-                    cpu_cstring.as_ptr(),
-                    callback,
-                    (&raw mut out) as *mut c_void,
-                );
-            }
-        }
-        PrintKind::TargetFeatures => print_target_features(out, sess, &tm),
-        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
-    }
+/// Returns the host CPU name, according to LLVM.
+fn get_host_cpu_name() -> &'static str {
+    let mut len = 0;
+    // SAFETY: The underlying C++ global function returns a `StringRef` that
+    // isn't tied to any particular backing buffer, so it must be 'static.
+    let slice: &'static [u8] = unsafe {
+        let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
+        assert!(!ptr.is_null());
+        slice::from_raw_parts(ptr, len)
+    };
+    str::from_utf8(slice).expect("host CPU name should be UTF-8")
 }
 
-fn handle_native(name: &str) -> &str {
-    if name != "native" {
-        return name;
-    }
-
-    unsafe {
-        let mut len = 0;
-        let ptr = llvm::LLVMRustGetHostCPUName(&mut len);
-        str::from_utf8(slice::from_raw_parts(ptr as *const u8, len)).unwrap()
+/// If the given string is `"native"`, returns the host CPU name according to
+/// LLVM. Otherwise, the string is returned as-is.
+fn handle_native(cpu_name: &str) -> &str {
+    match cpu_name {
+        "native" => get_host_cpu_name(),
+        _ => cpu_name,
     }
 }
 
 pub(crate) fn target_cpu(sess: &Session) -> &str {
-    match sess.opts.cg.target_cpu {
-        Some(ref name) => handle_native(name),
-        None => handle_native(sess.target.cpu.as_ref()),
-    }
+    let cpu_name = sess.opts.cg.target_cpu.as_deref().unwrap_or_else(|| &sess.target.cpu);
+    handle_native(cpu_name)
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
@@ -567,7 +628,7 @@ pub(crate) fn global_llvm_features(
 
     // -Ctarget-features
     if !only_base_features {
-        let supported_features = sess.target.supported_target_features();
+        let known_features = sess.target.rust_target_features();
         let mut featsmap = FxHashMap::default();
 
         // insert implied features
@@ -601,50 +662,53 @@ pub(crate) fn global_llvm_features(
                     }
                 };
 
+                // Get the backend feature name, if any.
+                // This excludes rustc-specific features, which do not get passed to LLVM.
                 let feature = backend_feature_name(sess, s)?;
                 // Warn against use of LLVM specific feature names and unstable features on the CLI.
                 if diagnostics {
-                    let feature_state = supported_features.iter().find(|&&(v, _, _)| v == feature);
-                    if feature_state.is_none() {
-                        let rust_feature =
-                            supported_features.iter().find_map(|&(rust_feature, _, _)| {
-                                let llvm_features = to_llvm_features(sess, rust_feature)?;
-                                if llvm_features.contains(feature)
-                                    && !llvm_features.contains(rust_feature)
-                                {
-                                    Some(rust_feature)
-                                } else {
-                                    None
+                    let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
+                    match feature_state {
+                        None => {
+                            let rust_feature =
+                                known_features.iter().find_map(|&(rust_feature, _, _)| {
+                                    let llvm_features = to_llvm_features(sess, rust_feature)?;
+                                    if llvm_features.contains(feature)
+                                        && !llvm_features.contains(rust_feature)
+                                    {
+                                        Some(rust_feature)
+                                    } else {
+                                        None
+                                    }
+                                });
+                            let unknown_feature = if let Some(rust_feature) = rust_feature {
+                                UnknownCTargetFeature {
+                                    feature,
+                                    rust_feature: PossibleFeature::Some { rust_feature },
                                 }
-                            });
-                        let unknown_feature = if let Some(rust_feature) = rust_feature {
-                            UnknownCTargetFeature {
-                                feature,
-                                rust_feature: PossibleFeature::Some { rust_feature },
-                            }
-                        } else {
-                            UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                        };
-                        sess.dcx().emit_warn(unknown_feature);
-                    } else if feature_state
-                        .is_some_and(|(_name, feature_gate, _implied)| !feature_gate.is_stable())
-                    {
-                        // An unstable feature. Warn about using it.
-                        sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                            } else {
+                                UnknownCTargetFeature {
+                                    feature,
+                                    rust_feature: PossibleFeature::None,
+                                }
+                            };
+                            sess.dcx().emit_warn(unknown_feature);
+                        }
+                        Some((_, Stability::Stable, _)) => {}
+                        Some((_, Stability::Unstable(_), _)) => {
+                            // An unstable feature. Warn about using it.
+                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                        }
+                        Some((_, Stability::Forbidden { reason }, _)) => {
+                            sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
+                        }
                     }
-                }
 
-                if diagnostics {
                     // FIXME(nagisa): figure out how to not allocate a full hashset here.
                     featsmap.insert(feature, enable_disable == '+');
                 }
 
-                // rustc-specific features do not get passed down to LLVM…
-                if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-                    return None;
-                }
-
-                // ... otherwise though we run through `to_llvm_features` when
+                // We run through `to_llvm_features` when
                 // passing requests down to LLVM. This means that all in-language
                 // features also work on the command line instead of having two
                 // different names when the LLVM name and the Rust name differ.

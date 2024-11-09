@@ -1,10 +1,17 @@
+//! Declares Rust's target feature names for each target.
+//! Note that these are similar to but not always identical to LLVM's feature names,
+//! and Rust adds some features that do not correspond to LLVM features at all.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::symbol::{Symbol, sym};
 
 /// Features that control behaviour of rustc, rather than the codegen.
+/// These exist globally and are not in the target-specific lists below.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
-/// Features that require special handling when passing to LLVM.
+/// Features that require special handling when passing to LLVM:
+/// these are target-specific (i.e., must also be listed in the target-specific list below)
+/// but do not correspond to an LLVM target feature.
 pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
 
 /// Stability information for target features.
@@ -16,25 +23,46 @@ pub enum Stability {
     /// This target feature is unstable; using it in `#[target_feature]` or `#[cfg(target_feature)]`
     /// requires enabling the given nightly feature.
     Unstable(Symbol),
+    /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be set in the basic
+    /// target definition. Used in particular for features that change the floating-point ABI.
+    Forbidden { reason: &'static str },
 }
 use Stability::*;
 
-impl Stability {
-    pub fn as_feature_name(self) -> Option<Symbol> {
+impl<CTX> HashStable<CTX> for Stability {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            Stable => None,
-            Unstable(s) => Some(s),
+            Stable => {}
+            Unstable(sym) => {
+                sym.hash_stable(hcx, hasher);
+            }
+            Forbidden { .. } => {}
         }
     }
+}
 
+impl Stability {
     pub fn is_stable(self) -> bool {
         matches!(self, Stable)
+    }
+
+    /// Forbidden features are not supported.
+    pub fn is_supported(self) -> bool {
+        !matches!(self, Forbidden { .. })
     }
 }
 
 // Here we list target features that rustc "understands": they can be used in `#[target_feature]`
 // and `#[cfg(target_feature)]`. They also do not trigger any warnings when used with
 // `-Ctarget-feature`.
+//
+// Note that even unstable (and even entirely unlisted) features can be used with `-Ctarget-feature`
+// on stable. Using a feature not on the list of Rust target features only emits a warning.
+// Only `cfg(target_feature)` and `#[target_feature]` actually do any stability gating.
+// `cfg(target_feature)` for unstable features just works on nightly without any feature gate.
+// `#[target_feature]` requires a feature gate.
 //
 // When adding features to the below lists
 // check whether they're named already elsewhere in rust
@@ -46,17 +74,27 @@ impl Stability {
 // per-function level, since we would then allow safe calls from functions with `+soft-float` to
 // functions without that feature!
 //
-// When adding a new feature, be particularly mindful of features that affect function ABIs. Those
-// need to be treated very carefully to avoid introducing unsoundness! This often affects features
-// that enable/disable hardfloat support (see https://github.com/rust-lang/rust/issues/116344 for an
-// example of this going wrong), but features enabling new SIMD registers are also a concern (see
-// https://github.com/rust-lang/rust/issues/116558 for an example of this going wrong).
+// It is important for soundness that features allowed here do *not* change the function call ABI.
+// For example, disabling the `x87` feature on x86 changes how scalar floats are passed as
+// arguments, so enabling toggling that feature would be unsound. In fact, since `-Ctarget-feature`
+// will just allow unknown features (with a warning), we have to explicitly list features that change
+// the ABI as `Forbidden` to ensure using them causes an error. Note that this is only effective if
+// such features can never be toggled via `-Ctarget-cpu`! If that is ever a possibility, we will need
+// extra checks ensuring that the LLVM-computed target features for a CPU did not (un)set a
+// `Forbidden` feature. See https://github.com/rust-lang/rust/issues/116344 for some more context.
+// FIXME: add such "forbidden" features for non-x86 targets.
+//
+// The one exception to features that change the ABI is features that enable larger vector
+// registers. Those are permitted to be listed here. This is currently unsound (see
+// https://github.com/rust-lang/rust/issues/116558); in the future we will have to ensure that
+// functions can only use such vectors as arguments/return types if the corresponding target feature
+// is enabled.
 //
 // Stabilizing a target feature requires t-lang approval.
 
 type ImpliedFeatures = &'static [&'static str];
 
-const ARM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("aclass", Unstable(sym::arm_target_feature), &[]),
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
@@ -70,6 +108,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("neon", Unstable(sym::arm_target_feature), &["vfp3"]),
     ("rclass", Unstable(sym::arm_target_feature), &[]),
     ("sha2", Unstable(sym::arm_target_feature), &["neon"]),
+    ("soft-float", Forbidden { reason: "unsound because it changes float ABI" }, &[]),
     // This is needed for inline assembly, but shouldn't be stabilized as-is
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].
@@ -87,9 +126,10 @@ const ARM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("vfp4", Unstable(sym::arm_target_feature), &["vfp3"]),
     ("virtualization", Unstable(sym::arm_target_feature), &[]),
     // tidy-alphabetical-end
+    // FIXME: need to also forbid turning off `fpregs` on hardfloat targets
 ];
 
-const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     // FEAT_AES & FEAT_PMULL
     ("aes", Stable, &["neon"]),
@@ -277,7 +317,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
-const X86_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("adx", Stable, &[]),
     ("aes", Stable, &["sse2"]),
@@ -328,6 +368,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sha512", Unstable(sym::sha512_sm_x86), &["avx2"]),
     ("sm3", Unstable(sym::sha512_sm_x86), &["avx"]),
     ("sm4", Unstable(sym::sha512_sm_x86), &["avx2"]),
+    ("soft-float", Forbidden { reason: "unsound because it changes float ABI" }, &[]),
     ("sse", Stable, &[]),
     ("sse2", Stable, &["sse"]),
     ("sse3", Stable, &["sse2"]),
@@ -344,16 +385,17 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("xsaveopt", Stable, &["xsave"]),
     ("xsaves", Stable, &["xsave"]),
     // tidy-alphabetical-end
+    // FIXME: need to also forbid turning off `x87` on hardfloat targets
 ];
 
-const HEXAGON_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("hvx", Unstable(sym::hexagon_target_feature), &[]),
     ("hvx-length128b", Unstable(sym::hexagon_target_feature), &["hvx"]),
     // tidy-alphabetical-end
 ];
 
-const POWERPC_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
@@ -367,7 +409,7 @@ const POWERPC_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const MIPS_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("fp64", Unstable(sym::mips_target_feature), &[]),
     ("msa", Unstable(sym::mips_target_feature), &[]),
@@ -375,7 +417,7 @@ const MIPS_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const RISCV_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("c", Stable, &[]),
@@ -415,7 +457,7 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const WASM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("atomics", Unstable(sym::wasm_target_feature), &[]),
     ("bulk-memory", Stable, &[]),
@@ -428,13 +470,14 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("relaxed-simd", Stable, &["simd128"]),
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
+    ("wide-arithmetic", Unstable(sym::wasm_target_feature), &[]),
     // tidy-alphabetical-end
 ];
 
-const BPF_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
+const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
     &[("alu32", Unstable(sym::bpf_target_feature), &[])];
 
-const CSKY_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("10e60", Unstable(sym::csky_target_feature), &["7e10"]),
     ("2e3", Unstable(sym::csky_target_feature), &["e2"]),
@@ -481,7 +524,7 @@ const CSKY_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature), &["f"]),
     ("f", Unstable(sym::loongarch_target_feature), &[]),
@@ -495,7 +538,7 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const IBMZ_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("backchain", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
@@ -506,20 +549,20 @@ const IBMZ_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 /// primitives may be documented.
 ///
 /// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
-pub fn all_known_features() -> impl Iterator<Item = (&'static str, Stability)> {
+pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
     std::iter::empty()
-        .chain(ARM_ALLOWED_FEATURES.iter())
-        .chain(AARCH64_ALLOWED_FEATURES.iter())
-        .chain(X86_ALLOWED_FEATURES.iter())
-        .chain(HEXAGON_ALLOWED_FEATURES.iter())
-        .chain(POWERPC_ALLOWED_FEATURES.iter())
-        .chain(MIPS_ALLOWED_FEATURES.iter())
-        .chain(RISCV_ALLOWED_FEATURES.iter())
-        .chain(WASM_ALLOWED_FEATURES.iter())
-        .chain(BPF_ALLOWED_FEATURES.iter())
-        .chain(CSKY_ALLOWED_FEATURES)
-        .chain(LOONGARCH_ALLOWED_FEATURES)
-        .chain(IBMZ_ALLOWED_FEATURES)
+        .chain(ARM_FEATURES.iter())
+        .chain(AARCH64_FEATURES.iter())
+        .chain(X86_FEATURES.iter())
+        .chain(HEXAGON_FEATURES.iter())
+        .chain(POWERPC_FEATURES.iter())
+        .chain(MIPS_FEATURES.iter())
+        .chain(RISCV_FEATURES.iter())
+        .chain(WASM_FEATURES.iter())
+        .chain(BPF_FEATURES.iter())
+        .chain(CSKY_FEATURES)
+        .chain(LOONGARCH_FEATURES)
+        .chain(IBMZ_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -532,22 +575,20 @@ const X86_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
 const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
 
 impl super::spec::Target {
-    pub fn supported_target_features(
-        &self,
-    ) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
+    pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
         match &*self.arch {
-            "arm" => ARM_ALLOWED_FEATURES,
-            "aarch64" | "arm64ec" => AARCH64_ALLOWED_FEATURES,
-            "x86" | "x86_64" => X86_ALLOWED_FEATURES,
-            "hexagon" => HEXAGON_ALLOWED_FEATURES,
-            "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
-            "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
-            "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
-            "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
-            "bpf" => BPF_ALLOWED_FEATURES,
-            "csky" => CSKY_ALLOWED_FEATURES,
-            "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
-            "s390x" => IBMZ_ALLOWED_FEATURES,
+            "arm" => ARM_FEATURES,
+            "aarch64" | "arm64ec" => AARCH64_FEATURES,
+            "x86" | "x86_64" => X86_FEATURES,
+            "hexagon" => HEXAGON_FEATURES,
+            "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES,
+            "powerpc" | "powerpc64" => POWERPC_FEATURES,
+            "riscv32" | "riscv64" => RISCV_FEATURES,
+            "wasm32" | "wasm64" => WASM_FEATURES,
+            "bpf" => BPF_FEATURES,
+            "csky" => CSKY_FEATURES,
+            "loongarch64" => LOONGARCH_FEATURES,
+            "s390x" => IBMZ_FEATURES,
             _ => &[],
         }
     }
@@ -574,7 +615,7 @@ impl super::spec::Target {
         base_features: impl Iterator<Item = Symbol>,
     ) -> FxHashSet<Symbol> {
         let implied_features = self
-            .supported_target_features()
+            .rust_target_features()
             .iter()
             .map(|(f, _, i)| (Symbol::intern(f), i))
             .collect::<FxHashMap<_, _>>();

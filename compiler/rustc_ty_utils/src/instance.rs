@@ -81,7 +81,6 @@ fn resolve_instance_raw<'tcx>(
             }
         } else {
             debug!(" => free item");
-            // FIXME(effects): we may want to erase the effect param if that is present on this item.
             ty::InstanceKind::Item(def_id)
         };
 

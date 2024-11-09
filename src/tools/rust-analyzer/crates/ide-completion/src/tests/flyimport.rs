@@ -1669,3 +1669,54 @@ mod module {
         "#]],
     );
 }
+
+#[test]
+fn re_export_aliased() {
+    check(
+        r#"
+mod outer {
+    mod inner {
+        pub struct BarStruct;
+        pub fn bar_fun() {}
+        pub mod bar {}
+    }
+    pub use inner::bar as foo;
+    pub use inner::bar_fun as foo_fun;
+    pub use inner::BarStruct as FooStruct;
+}
+fn function() {
+    foo$0
+}
+"#,
+        expect![[r#"
+            st FooStruct (use outer::FooStruct) BarStruct
+            md foo (use outer::foo)
+            fn foo_fun() (use outer::foo_fun) fn()
+        "#]],
+    );
+}
+
+#[test]
+fn re_export_aliased_pattern() {
+    check(
+        r#"
+mod outer {
+    mod inner {
+        pub struct BarStruct;
+        pub fn bar_fun() {}
+        pub mod bar {}
+    }
+    pub use inner::bar as foo;
+    pub use inner::bar_fun as foo_fun;
+    pub use inner::BarStruct as FooStruct;
+}
+fn function() {
+    let foo$0
+}
+"#,
+        expect![[r#"
+            st FooStruct (use outer::FooStruct)
+            md foo (use outer::foo)
+        "#]],
+    );
+}

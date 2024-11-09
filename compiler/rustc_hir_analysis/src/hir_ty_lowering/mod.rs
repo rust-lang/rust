@@ -47,7 +47,6 @@ use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -315,7 +314,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let name = lifetime_name(def_id);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BrNamed(def_id.to_def_id(), name),
+                    kind: ty::BoundRegionKind::Named(def_id.to_def_id(), name),
                 };
                 ty::Region::new_bound(tcx, debruijn, br)
             }
@@ -333,7 +332,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Region::new_late_param(
                     tcx,
                     scope.to_def_id(),
-                    ty::BrNamed(id.to_def_id(), name),
+                    ty::BoundRegionKind::Named(id.to_def_id(), name),
                 )
 
                 // (*) -- not late-bound, won't change
@@ -563,7 +562,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar).into();
                         }
-                        // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
                                 .instantiate(tcx, preceding_args)
@@ -2353,7 +2351,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_id: HirId,
         safety: hir::Safety,
-        abi: abi::Abi,
+        abi: rustc_abi::ExternAbi,
         decl: &hir::FnDecl<'tcx>,
         generics: Option<&hir::Generics<'_>>,
         hir_ty: Option<&hir::Ty<'_>>,
@@ -2451,15 +2449,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon | ty::BrEnv => {
-                    "an anonymous lifetime".to_string()
-                }
-                ty::BrNamed(_, name) => format!("lifetime `{name}`"),
+                ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
+                | ty::BoundRegionKind::Anon
+                | ty::BoundRegionKind::ClosureEnv => "an anonymous lifetime".to_string(),
+                ty::BoundRegionKind::Named(_, name) => format!("lifetime `{name}`"),
             };
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon = *br {
+            if let ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
+            | ty::BoundRegionKind::Anon = *br
+            {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

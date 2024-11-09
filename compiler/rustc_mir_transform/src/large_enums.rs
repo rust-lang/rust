@@ -1,10 +1,10 @@
+use rustc_abi::{HasDataLayout, Size, TagEncoding, Variants};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 
 /// A pass that seeks to optimize unnecessary moves of large enum types, if there is a large
 /// enough discrepancy between them.
@@ -249,8 +249,8 @@ impl EnumSizeOpt {
         macro_rules! encode_store {
             ($curr_idx: expr, $endian: expr, $bytes: expr) => {
                 let bytes = match $endian {
-                    rustc_target::abi::Endian::Little => $bytes.to_le_bytes(),
-                    rustc_target::abi::Endian::Big => $bytes.to_be_bytes(),
+                    rustc_abi::Endian::Little => $bytes.to_le_bytes(),
+                    rustc_abi::Endian::Big => $bytes.to_be_bytes(),
                 };
                 for (i, b) in bytes.into_iter().enumerate() {
                     data[$curr_idx + i] = b;
@@ -263,10 +263,10 @@ impl EnumSizeOpt {
                 target_bytes * adt_def.discriminant_for_variant(tcx, var_idx).val as usize;
             let sz = layout.size;
             match ptr_sized_int {
-                rustc_target::abi::Integer::I32 => {
+                rustc_abi::Integer::I32 => {
                     encode_store!(curr_idx, data_layout.endian, sz.bytes() as u32);
                 }
-                rustc_target::abi::Integer::I64 => {
+                rustc_abi::Integer::I64 => {
                     encode_store!(curr_idx, data_layout.endian, sz.bytes());
                 }
                 _ => unreachable!(),

@@ -110,26 +110,40 @@ impl_zeroable_primitive!(
 pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
 
 macro_rules! impl_nonzero_fmt {
-    ($Trait:ident) => {
-        #[stable(feature = "nonzero", since = "1.28.0")]
-        impl<T> fmt::$Trait for NonZero<T>
-        where
-            T: ZeroablePrimitive + fmt::$Trait,
-        {
-            #[inline]
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                self.get().fmt(f)
+    ($(#[$Attribute:meta] $Trait:ident)*) => {
+        $(
+            #[$Attribute]
+            impl<T> fmt::$Trait for NonZero<T>
+            where
+                T: ZeroablePrimitive + fmt::$Trait,
+            {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.get().fmt(f)
+                }
             }
-        }
+        )*
     };
 }
 
-impl_nonzero_fmt!(Debug);
-impl_nonzero_fmt!(Display);
-impl_nonzero_fmt!(Binary);
-impl_nonzero_fmt!(Octal);
-impl_nonzero_fmt!(LowerHex);
-impl_nonzero_fmt!(UpperHex);
+impl_nonzero_fmt! {
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Debug
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Display
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Binary
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    Octal
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    LowerHex
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    UpperHex
+    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    LowerExp
+    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    UpperExp
+}
 
 macro_rules! impl_nonzero_auto_trait {
     (unsafe $Trait:ident) => {
@@ -458,7 +472,15 @@ macro_rules! nonzero_integer {
         reversed = $reversed:literal,
         leading_zeros_test = $leading_zeros_test:expr,
     ) => {
-        /// An integer that is known not to equal zero.
+        #[doc = sign_dependent_expr!{
+            $signedness ?
+            if signed {
+                concat!("An [`", stringify!($Int), "`] that is known not to equal zero.")
+            }
+            if unsigned {
+                concat!("A [`", stringify!($Int), "`] that is known not to equal zero.")
+            }
+        }]
         ///
         /// This enables some memory layout optimization.
         #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
@@ -1190,6 +1212,35 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             #[inline]
             fn rem_assign(&mut self, other: NonZero<$Int>) {
                 *self = *self % other;
+            }
+        }
+
+        impl NonZero<$Int> {
+            /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+            ///
+            /// The result is guaranteed to be non-zero.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(unsigned_nonzero_div_ceil)]
+            /// # use std::num::NonZero;
+            #[doc = concat!("let one = NonZero::new(1", stringify!($Int), ").unwrap();")]
+            #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX).unwrap();")]
+            /// assert_eq!(one.div_ceil(max), one);
+            ///
+            #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ").unwrap();")]
+            #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
+            /// assert_eq!(three.div_ceil(two), two);
+            /// ```
+            #[unstable(feature = "unsigned_nonzero_div_ceil", issue = "none")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub const fn div_ceil(self, rhs: Self) -> Self {
+                let v = self.get().div_ceil(rhs.get());
+                // SAFETY: ceiled division of two positive integers can never be zero.
+                unsafe { Self::new_unchecked(v) }
             }
         }
     };

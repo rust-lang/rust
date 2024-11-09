@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
+    /// An intrinsic `fn` item (with `"rust-intrinsic"` ABI).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -690,7 +690,7 @@ impl<'tcx> Instance<'tcx> {
                         && !matches!(
                             tcx.opt_associated_item(def),
                             Some(ty::AssocItem {
-                                container: ty::AssocItemContainer::TraitContainer,
+                                container: ty::AssocItemContainer::Trait,
                                 ..
                             })
                         )

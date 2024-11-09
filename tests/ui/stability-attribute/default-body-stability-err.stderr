@@ -5,7 +5,7 @@ LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: default implementation of `CONSTANT` is unstable
-   = note: use of unstable library feature 'constant_default_body'
+   = note: use of unstable library feature `constant_default_body`
    = help: add `#![feature(constant_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -16,7 +16,7 @@ LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: default implementation of `fun` is unstable
-   = note: use of unstable library feature 'fun_default_body'
+   = note: use of unstable library feature `fun_default_body`
    = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -27,7 +27,7 @@ LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: default implementation of `fun2` is unstable
-   = note: use of unstable library feature 'fun_default_body': reason
+   = note: use of unstable library feature `fun_default_body`: reason
    = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -43,7 +43,7 @@ LL | | }
    | |_^
    |
    = note: default implementation of `eq` is unstable
-   = note: use of unstable library feature 'eq_default_body'
+   = note: use of unstable library feature `eq_default_body`
    = help: add `#![feature(eq_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

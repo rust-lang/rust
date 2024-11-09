@@ -8,6 +8,7 @@ edition = "2021"
 either = "1.5.0"
 itertools = "0.12"
 polonius-engine = "0.13.0"
+rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
@@ -21,7 +22,6 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

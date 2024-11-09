@@ -2009,6 +2009,7 @@ pub(crate) struct StaticParts<'a> {
     safety: ast::Safety,
     vis: &'a ast::Visibility,
     ident: symbol::Ident,
+    generics: Option<&'a ast::Generics>,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
     expr_opt: Option<&'a ptr::P<ast::Expr>>,
@@ -2018,8 +2019,10 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (defaultness, prefix, safety, ty, mutability, expr) = match &item.kind {
-            ast::ItemKind::Static(s) => (None, "static", s.safety, &s.ty, s.mutability, &s.expr),
+        let (defaultness, prefix, safety, ty, mutability, expr, generics) = match &item.kind {
+            ast::ItemKind::Static(s) => {
+                (None, "static", s.safety, &s.ty, s.mutability, &s.expr, None)
+            }
             ast::ItemKind::Const(c) => (
                 Some(c.defaultness),
                 "const",
@@ -2027,6 +2030,7 @@ impl<'a> StaticParts<'a> {
                 &c.ty,
                 ast::Mutability::Not,
                 &c.expr,
+                Some(&c.generics),
             ),
             _ => unreachable!(),
         };
@@ -2035,6 +2039,7 @@ impl<'a> StaticParts<'a> {
             safety,
             vis: &item.vis,
             ident: item.ident,
+            generics,
             ty,
             mutability,
             expr_opt: expr.as_ref(),
@@ -2044,8 +2049,8 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
-        let (defaultness, ty, expr_opt) = match &ti.kind {
-            ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr),
+        let (defaultness, ty, expr_opt, generics) = match &ti.kind {
+            ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr, Some(&c.generics)),
             _ => unreachable!(),
         };
         StaticParts {
@@ -2053,6 +2058,7 @@ impl<'a> StaticParts<'a> {
             safety: ast::Safety::Default,
             vis: &ti.vis,
             ident: ti.ident,
+            generics,
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr_opt.as_ref(),
@@ -2062,8 +2068,8 @@ impl<'a> StaticParts<'a> {
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
-        let (defaultness, ty, expr) = match &ii.kind {
-            ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr),
+        let (defaultness, ty, expr, generics) = match &ii.kind {
+            ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr, Some(&c.generics)),
             _ => unreachable!(),
         };
         StaticParts {
@@ -2071,6 +2077,7 @@ impl<'a> StaticParts<'a> {
             safety: ast::Safety::Default,
             vis: &ii.vis,
             ident: ii.ident,
+            generics,
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr.as_ref(),
@@ -2085,6 +2092,14 @@ fn rewrite_static(
     static_parts: &StaticParts<'_>,
     offset: Indent,
 ) -> Option<String> {
+    // For now, if this static (or const) has generics, then bail.
+    if static_parts
+        .generics
+        .is_some_and(|g| !g.params.is_empty() || !g.where_clause.is_empty())
+    {
+        return None;
+    }
+
     let colon = colon_spaces(context.config);
     let mut prefix = format!(
         "{}{}{}{} {}{}{}",

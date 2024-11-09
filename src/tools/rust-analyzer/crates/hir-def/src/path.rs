@@ -121,7 +121,7 @@ pub enum GenericArg {
 impl Path {
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(ctx: &LowerCtx<'_>, path: ast::Path) -> Option<Path> {
+    pub fn from_src(ctx: &mut LowerCtx<'_>, path: ast::Path) -> Option<Path> {
         lower::lower_path(ctx, path)
     }
 
@@ -284,7 +284,7 @@ impl<'a> PathSegments<'a> {
 
 impl GenericArgs {
     pub(crate) fn from_ast(
-        lower_ctx: &LowerCtx<'_>,
+        lower_ctx: &mut LowerCtx<'_>,
         node: ast::GenericArgList,
     ) -> Option<GenericArgs> {
         lower::lower_generic_args(lower_ctx, node)

@@ -148,7 +148,7 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
         }) => Some(*b),
         ExprKind::Block(
             rustc_hir::Block {
-                stmts: &[],
+                stmts: [],
                 expr: Some(exp),
                 ..
             },

@@ -20,12 +20,12 @@ impl Trait3<usize> for S {
 fn main() {
     let _ = S;
 
-    let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<isize> = Struct1 { field: 1 }; //~ ERROR use of unstable library feature `unstable_default`
 
     let _ = STRUCT1; // ok
     let _: Struct1 = STRUCT1; // ok
-    let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Struct1<isize> = Struct1 { field: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature `unstable_default`
+    let _: Struct1<isize> = Struct1 { field: 0 }; //~ ERROR use of unstable library feature `unstable_default`
 
     // Instability is not enforced for generic type parameters used in public fields.
     // Note how the unstable type default `usize` leaks,
@@ -54,10 +54,10 @@ fn main() {
 
     let _ = STRUCT3;
     let _: Struct3 = STRUCT3; // ok
-    let _: Struct3<isize, usize> = STRUCT3; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct3<isize, usize> = STRUCT3; //~ ERROR use of unstable library feature `unstable_default`
     let _: Struct3<isize> = STRUCT3; // ok
-    let _: Struct3<isize, isize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct3<isize, isize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature `unstable_default`
+    let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature `unstable_default`
     let _ = STRUCT3.field1; // ok
     let _: isize = STRUCT3.field1; // ok
     let _ = STRUCT3.field1 + 1; // ok
@@ -81,15 +81,15 @@ fn main() {
     //~^^^ use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
 
     let _ = STRUCT5;
-    let _: Struct5<isize> = Struct5 { field: 1 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct5<isize> = Struct5 { field: 1 }; //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
     let _ = STRUCT5;
     let _: Struct5 = STRUCT5; //~ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    let _: Struct5<usize> = STRUCT5; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct5<usize> = STRUCT5; //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    let _: Struct5<isize> = Struct5 { field: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct5<isize> = Struct5 { field: 0 }; //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
@@ -97,12 +97,12 @@ fn main() {
     let _: Struct6<isize> = Struct6 { field: 1 }; // ok
     let _: Struct6<isize> = Struct6 { field: 0 }; // ok
 
-    let _: Alias1<isize> = Alias1::Some(1); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias1<isize> = Alias1::Some(1); //~ ERROR use of unstable library feature `unstable_default`
 
     let _ = ALIAS1; // ok
     let _: Alias1 = ALIAS1; // ok
-    let _: Alias1<usize> = ALIAS1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Alias1<isize> = Alias1::Some(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias1<usize> = ALIAS1; //~ ERROR use of unstable library feature `unstable_default`
+    let _: Alias1<isize> = Alias1::Some(0); //~ ERROR use of unstable library feature `unstable_default`
 
     // Instability is not enforced for generic type parameters used in public fields.
     // Note how the unstable type default `usize` leaks,
@@ -130,10 +130,10 @@ fn main() {
 
     let _ = ALIAS3;
     let _: Alias3 = ALIAS3; // ok
-    let _: Alias3<isize, usize> = ALIAS3; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias3<isize, usize> = ALIAS3; //~ ERROR use of unstable library feature `unstable_default`
     let _: Alias3<isize> = ALIAS3; // ok
-    let _: Alias3<isize, isize> = Alias3::Ok(0); //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Alias3<usize, usize> = Alias3::Ok(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias3<isize, isize> = Alias3::Ok(0); //~ ERROR use of unstable library feature `unstable_default`
+    let _: Alias3<usize, usize> = Alias3::Ok(0); //~ ERROR use of unstable library feature `unstable_default`
     let _ = ALIAS3.unwrap(); // ok
     let _: isize = ALIAS3.unwrap(); // ok
     let _ = ALIAS3.unwrap() + 1; // ok
@@ -155,26 +155,26 @@ fn main() {
     //~^^ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
 
     let _ = ALIAS5;
-    let _: Alias5<isize> = Alias5::Some(1); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias5<isize> = Alias5::Some(1); //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     //~^^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     let _ = ALIAS5;
     let _: Alias5 = ALIAS5; //~ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
-    let _: Alias5<usize> = ALIAS5; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias5<usize> = ALIAS5; //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
-    let _: Alias5<isize> = Alias5::Some(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Alias5<isize> = Alias5::Some(0); //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     //~^^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
 
     let _: Alias6<isize> = Alias6::Some(1); // ok
     let _: Alias6<isize> = Alias6::Some(0); // ok
 
-    let _: Enum1<isize> = Enum1::Some(1); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum1<isize> = Enum1::Some(1); //~ ERROR use of unstable library feature `unstable_default`
 
     let _ = ENUM1; // ok
     let _: Enum1 = ENUM1; // ok
-    let _: Enum1<usize> = ENUM1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Enum1<isize> = Enum1::Some(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum1<usize> = ENUM1; //~ ERROR use of unstable library feature `unstable_default`
+    let _: Enum1<isize> = Enum1::Some(0); //~ ERROR use of unstable library feature `unstable_default`
 
     // Instability is not enforced for generic type parameters used in public fields.
     // Note how the unstable type default `usize` leaks,
@@ -202,10 +202,10 @@ fn main() {
 
     let _ = ENUM3;
     let _: Enum3 = ENUM3; // ok
-    let _: Enum3<isize, usize> = ENUM3; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum3<isize, usize> = ENUM3; //~ ERROR use of unstable library feature `unstable_default`
     let _: Enum3<isize> = ENUM3; // ok
-    let _: Enum3<isize, isize> = Enum3::Ok(0); //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Enum3<usize, usize> = Enum3::Ok(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum3<isize, isize> = Enum3::Ok(0); //~ ERROR use of unstable library feature `unstable_default`
+    let _: Enum3<usize, usize> = Enum3::Ok(0); //~ ERROR use of unstable library feature `unstable_default`
     if let Enum3::Ok(x) = ENUM3 {let _ = x;} // ok
     if let Enum3::Ok(x) = ENUM3 {let _: isize = x;} // ok
     if let Enum3::Ok(x) = ENUM3 {let _ = x + 1;} // ok
@@ -227,21 +227,21 @@ fn main() {
     //~^^ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
 
     let _ = ENUM5;
-    let _: Enum5<isize> = Enum5::Some(1); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum5<isize> = Enum5::Some(1); //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _ = ENUM5;
     let _: Enum5 = ENUM5; //~ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
-    let _: Enum5<usize> = ENUM5; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum5<usize> = ENUM5; //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
-    let _: Enum5<isize> = Enum5::Some(0); //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Enum5<isize> = Enum5::Some(0); //~ ERROR use of unstable library feature `unstable_default`
     //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
     //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
 
     let _: Enum6<isize> = Enum6::Some(1); // ok
     let _: Enum6<isize> = Enum6::Some(0); // ok
 
-    let _: Box1<isize, System> = Box1::new(1); //~ ERROR use of unstable library feature 'box_alloc_param'
+    let _: Box1<isize, System> = Box1::new(1); //~ ERROR use of unstable library feature `box_alloc_param`
     let _: Box1<isize> = Box1::new(1); // ok
 
     let _: Box2<isize, System> = Box2::new(1); // ok

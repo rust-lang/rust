@@ -616,9 +616,9 @@ impl SourceAnalyzer {
     ) -> Option<Macro> {
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let ctx =
+        let mut ctx =
             LowerCtx::new(db.upcast(), macro_call.file_id, &mut types_map, &mut types_source_map);
-        let path = macro_call.value.path().and_then(|ast| Path::from_src(&ctx, ast))?;
+        let path = macro_call.value.path().and_then(|ast| Path::from_src(&mut ctx, ast))?;
         self.resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path()?, Some(MacroSubNs::Bang))
             .map(|(it, _)| it.into())
@@ -731,8 +731,9 @@ impl SourceAnalyzer {
 
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let ctx = LowerCtx::new(db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
-        let hir_path = Path::from_src(&ctx, path.clone())?;
+        let mut ctx =
+            LowerCtx::new(db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
+        let hir_path = Path::from_src(&mut ctx, path.clone())?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.

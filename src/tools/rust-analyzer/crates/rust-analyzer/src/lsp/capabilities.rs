@@ -463,6 +463,11 @@ impl ClientCapabilities {
             .unwrap_or_default()
     }
 
+    pub fn diagnostics_refresh(&self) -> bool {
+        (|| -> _ { self.0.workspace.as_ref()?.diagnostic.as_ref()?.refresh_support })()
+            .unwrap_or_default()
+    }
+
     pub fn inlay_hint_resolve_support_properties(&self) -> FxHashSet<&str> {
         self.0
             .text_document

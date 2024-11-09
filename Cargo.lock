@@ -2861,7 +2861,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
 dependencies = [
  "bitflags 2.6.0",
- "getopts",
  "memchr",
  "pulldown-cmark-escape 0.11.0",
  "unicase",
@@ -3197,6 +3196,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5c9f15eec8235d7cb775ee6f81891db79b98fd54ba1ad8fae565b88ef1ae4e2"
 
 [[package]]
+name = "rustc-std-workspace-alloc"
+version = "1.0.1"
+
+[[package]]
+name = "rustc-std-workspace-core"
+version = "1.0.1"
+
+[[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.1"
+
+[[package]]
 name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
@@ -3262,7 +3273,6 @@ name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
- "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -3346,6 +3356,7 @@ dependencies = [
  "either",
  "itertools",
  "polonius-engine",
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -3359,7 +3370,6 @@ dependencies = [
  "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "rustc_trait_selection",
  "rustc_traits",
  "smallvec",
@@ -3457,7 +3467,6 @@ dependencies = [
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
- "rustc_monomorphize",
  "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
@@ -3706,6 +3715,7 @@ name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
  "odht",
+ "rustc_abi",
  "rustc_arena",
  "rustc_ast",
  "rustc_data_structures",
@@ -3732,7 +3742,6 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
- "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_lint_defs",
@@ -3780,7 +3789,6 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "rustc_trait_selection",
  "rustc_type_ir",
  "smallvec",
@@ -3840,9 +3848,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
- "rustc_next_trait_solver",
  "rustc_span",
- "rustc_target",
  "rustc_type_ir",
  "smallvec",
  "thin-vec",
@@ -3921,7 +3927,6 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
- "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_macros",
@@ -4092,7 +4097,6 @@ dependencies = [
  "rustc_macros",
  "rustc_middle",
  "rustc_span",
- "rustc_target",
  "smallvec",
  "tracing",
 ]
@@ -4131,6 +4135,7 @@ dependencies = [
 name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4149,7 +4154,6 @@ dependencies = [
 name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
- "bitflags 2.6.0",
  "derive-where",
  "rustc_ast_ir",
  "rustc_data_structures",
@@ -4235,7 +4239,6 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "smallvec",
  "tracing",
  "tracing-subscriber",
@@ -4335,6 +4338,7 @@ name = "rustc_sanitizers"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.6.0",
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
@@ -4434,7 +4438,6 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "tracing",
 ]
 
@@ -4446,9 +4449,7 @@ dependencies = [
  "object 0.36.4",
  "rustc_abi",
  "rustc_data_structures",
- "rustc_feature",
  "rustc_fs_util",
- "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
@@ -4467,6 +4468,7 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "itertools",
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4479,11 +4481,8 @@ dependencies = [
  "rustc_middle",
  "rustc_next_trait_solver",
  "rustc_parse_format",
- "rustc_query_system",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "rustc_transmute",
  "rustc_type_ir",
  "smallvec",

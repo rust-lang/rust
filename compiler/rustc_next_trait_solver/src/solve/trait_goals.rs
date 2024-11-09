@@ -609,8 +609,6 @@ where
             return Err(NoSolution);
         }
 
-        // FIXME(effects): Implement this when we get const working in the new solver
-
         // `Destruct` is automatically implemented for every type in
         // non-const environments.
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)

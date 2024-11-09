@@ -1,5 +1,5 @@
 //@ known-bug: #119701
-#![feature(const_trait_impl, effects, generic_const_exprs)]
+#![feature(const_trait_impl, generic_const_exprs)]
 
 fn main() {
     let _ = process::<()>([()]);

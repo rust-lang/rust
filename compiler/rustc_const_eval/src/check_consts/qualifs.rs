@@ -192,7 +192,7 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        // FIXME(effects): Reimplement const drop checking.
+        // FIXME(const_trait_impl): Reimplement const drop checking.
         NeedsDrop::in_any_value_of_ty(cx, ty)
     }
 

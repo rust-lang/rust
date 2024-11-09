@@ -9,6 +9,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
+#![feature(array_windows)]
 #![recursion_limit = "512"]
 #![allow(
     clippy::missing_errors_doc,
@@ -688,11 +689,11 @@ pub fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> Vec<Res> {
 ///
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(tcx: TyCtxt<'_>, path: &[&str]) -> Vec<Res> {
-    let (base, path) = match *path {
+    let (base, path) = match path {
         [primitive] => {
             return vec![PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy)];
         },
-        [base, ref path @ ..] => (base, path),
+        [base, path @ ..] => (base, path),
         _ => return Vec::new(),
     };
 
@@ -744,7 +745,7 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
 }
 
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
-pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> {
+pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> + use<> {
     def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
 }
 
@@ -934,7 +935,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             }
         },
         ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
-        ExprKind::Call(from_func, [ref arg]) => is_default_equivalent_from(cx, from_func, arg),
+        ExprKind::Call(from_func, [arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
@@ -947,7 +948,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
     {
         match arg.kind {
             ExprKind::Lit(hir::Lit {
-                node: LitKind::Str(ref sym, _),
+                node: LitKind::Str(sym, _),
                 ..
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
@@ -1209,8 +1210,8 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
                                 UpvarCapture::ByRef(kind) => match kind {
-                                    BorrowKind::ImmBorrow => CaptureKind::Ref(Mutability::Not),
-                                    BorrowKind::UniqueImmBorrow | BorrowKind::MutBorrow => {
+                                    BorrowKind::Immutable => CaptureKind::Ref(Mutability::Not),
+                                    BorrowKind::UniqueImmutable | BorrowKind::Mutable => {
                                         CaptureKind::Ref(Mutability::Mut)
                                     },
                                 },
@@ -1337,15 +1338,17 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
 pub struct ContainsName<'a, 'tcx> {
     pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
-    pub result: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> Self::Result {
         if self.name == name {
-            self.result = true;
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
@@ -1356,13 +1359,8 @@ impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
 
 /// Checks if an `Expr` contains a certain name.
 pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
-    let mut cn = ContainsName {
-        name,
-        result: false,
-        cx,
-    };
-    cn.visit_expr(expr);
-    cn.result
+    let mut cn = ContainsName { cx, name };
+    cn.visit_expr(expr).is_break()
 }
 
 /// Returns `true` if `expr` contains a return expression
@@ -3340,8 +3338,8 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
     match assoc_item.container {
-        rustc_ty::TraitContainer => get_path_to_callee(tcx, from, def_id),
-        rustc_ty::ImplContainer => {
+        rustc_ty::AssocItemContainer::Trait => get_path_to_callee(tcx, from, def_id),
+        rustc_ty::AssocItemContainer::Impl => {
             let ty = tcx.type_of(def_id).instantiate_identity();
             get_path_to_ty(tcx, from, ty, args)
         },
@@ -3459,7 +3457,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
 pub fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
     matches!(
         cx.tcx.parent_hir_node(id),
-        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
+        Node::Stmt(..) | Node::Block(Block { stmts: [], .. })
     )
 }
 
