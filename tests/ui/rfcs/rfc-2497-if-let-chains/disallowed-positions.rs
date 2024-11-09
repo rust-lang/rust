@@ -1,4 +1,5 @@
 //@ revisions: no_feature feature nothing
+//@ edition: 2021
 // Here we test that `lowering` behaves correctly wrt. `let $pats = $expr` expressions.
 //
 // We want to make sure that `let` is banned in situations other than:
@@ -156,6 +157,32 @@ fn nested_within_if_expr() {
 
     if let true = let true = true {}
     //~^ ERROR expected expression, found `let` statement
+
+    if return let 0 = 0 {}
+    //~^ ERROR expected expression, found `let` statement
+
+    loop { if break let 0 = 0 {} }
+    //~^ ERROR expected expression, found `let` statement
+
+    if (match let 0 = 0 { _ => { false } }) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    if (let 0 = 0, false).1 {}
+    //~^ ERROR expected expression, found `let` statement
+
+    if (let 0 = 0,) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    async fn foo() {
+        if (let 0 = 0).await {}
+        //~^ ERROR expected expression, found `let` statement
+    }
+
+    if (|| let 0 = 0) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    if (let 0 = 0)() {}
+    //~^ ERROR expected expression, found `let` statement
 }
 
 #[cfg(not(nothing))]
@@ -220,6 +247,32 @@ fn nested_within_while_expr() {
     //[feature,no_feature]~| ERROR mismatched types
 
     while let true = let true = true {}
+    //~^ ERROR expected expression, found `let` statement
+
+    while return let 0 = 0 {}
+    //~^ ERROR expected expression, found `let` statement
+
+    'outer: loop { while break 'outer let 0 = 0 {} }
+    //~^ ERROR expected expression, found `let` statement
+
+    while (match let 0 = 0 { _ => { false } }) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    while (let 0 = 0, false).1 {}
+    //~^ ERROR expected expression, found `let` statement
+
+    while (let 0 = 0,) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    async fn foo() {
+        while (let 0 = 0).await {}
+        //~^ ERROR expected expression, found `let` statement
+    }
+
+    while (|| let 0 = 0) {}
+    //~^ ERROR expected expression, found `let` statement
+
+    while (let 0 = 0)() {}
     //~^ ERROR expected expression, found `let` statement
 }
 
