@@ -1933,6 +1933,7 @@ impl<'tcx> Ty<'tcx> {
                 ty::UintTy::U64 => Some(sym::u64),
                 ty::UintTy::U128 => Some(sym::u128),
             },
+            ty::Str => Some(sym::str),
             _ => None,
         }
     }
