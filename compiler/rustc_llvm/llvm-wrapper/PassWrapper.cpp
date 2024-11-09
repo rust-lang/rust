@@ -1624,5 +1624,6 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
                            CfiFunctionDefs, CfiFunctionDecls);
 #endif
 
-  LLVMRustStringWriteImpl(KeyOut, Key.c_str(), Key.size());
+  auto OS = RawRustStringOstream(KeyOut);
+  OS << Key.str();
 }
