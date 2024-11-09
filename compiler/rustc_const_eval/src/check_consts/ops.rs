@@ -89,12 +89,15 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::ConditionallyConstCall {
-            span,
-            def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
-            def_descr: ccx.tcx.def_descr(self.callee),
-            kind: ccx.const_kind(),
-        })
+        ccx.tcx.sess.create_feature_err(
+            errors::ConditionallyConstCall {
+                span,
+                def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
+                def_descr: ccx.tcx.def_descr(self.callee),
+                kind: ccx.const_kind(),
+            },
+            sym::const_trait_impl,
+        )
     }
 }
 
@@ -417,15 +420,8 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
-        if let hir::CoroutineKind::Desugared(
-            hir::CoroutineDesugaring::Async,
-            hir::CoroutineSource::Block,
-        ) = self.0
-        {
-            ccx.tcx.sess.create_feature_err(
-                errors::UnallowedOpInConstContext { span, msg },
-                sym::const_async_blocks,
-            )
+        if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
+            ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
         } else {
             ccx.dcx().create_err(errors::UnallowedOpInConstContext { span, msg })
         }
