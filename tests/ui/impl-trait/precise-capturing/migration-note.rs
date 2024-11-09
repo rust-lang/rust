@@ -187,4 +187,19 @@ fn returned() -> impl Sized {
 }
 //~^ NOTE `x` dropped here while still borrowed
 
+fn capture_apit(x: &impl Sized) -> impl Sized {}
+//~^ NOTE you could use a `use<...>` bound to explicitly specify captures, but
+
+fn test_apit() {
+    let x = String::new();
+    //~^ NOTE binding `x` declared here
+    let y = capture_apit(&x);
+    //~^ NOTE borrow of `x` occurs here
+    //~| NOTE this call may capture more lifetimes than intended
+    drop(x);
+    //~^ ERROR cannot move out of `x` because it is borrowed
+    //~| NOTE move out of `x` occurs here
+}
+//~^ NOTE borrow might be used here, when `y` is dropped
+
 fn main() {}

@@ -22,7 +22,9 @@ use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
-use rustc_trait_selection::errors::{impl_trait_overcapture_suggestion, AddPreciseCapturingForOvercapture};
+use rustc_trait_selection::errors::{
+    AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
+};
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 

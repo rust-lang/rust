@@ -6,8 +6,8 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_hir::def::DefKind;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{FnRetTy, GenericParamKind};
@@ -1793,10 +1793,17 @@ impl Subdiagnostic for AddPreciseCapturingAndParams {
             self.suggs,
             Applicability::MaybeIncorrect,
         );
-        diag.span_note(self.apit_spans, fluent::trait_selection_warn_removing_apit_params_for_undercapture);
+        diag.span_note(
+            self.apit_spans,
+            fluent::trait_selection_warn_removing_apit_params_for_undercapture,
+        );
     }
 }
 
+/// Given a set of captured `DefId` for an RPIT (opaque_def_id) and a given
+/// function (fn_def_id), try to suggest adding `+ use<...>` to capture just
+/// the specified parameters. If one of those parameters is an APIT, then try
+/// to suggest turning it into a regular type parameter.
 pub fn impl_trait_overcapture_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_def_id: LocalDefId,
@@ -1839,12 +1846,12 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         let mut new_params = String::new();
         for (i, (span, name)) in synthetics.into_iter().enumerate() {
             apit_spans.push(span);
-    
+
             let fresh_param = next_fresh_param();
-    
+
             // Suggest renaming.
             suggs.push((span, fresh_param.to_string()));
-    
+
             // Super jank. Turn `impl Trait` into `T: Trait`.
             //
             // This currently involves stripping the `impl` from the name of
@@ -1860,12 +1867,12 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             new_params += ": ";
             new_params += name_as_bounds;
         }
-    
+
         let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
             // This shouldn't happen, but don't ICE.
             return None;
         };
-    
+
         // Add generics or concatenate to the end of the list.
         suggs.push(if let Some(params_span) = generics.span_for_param_suggestion() {
             (params_span, format!(", {new_params}"))
@@ -1886,10 +1893,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         format!(" + use<{concatenated_bounds}>"),
     ));
 
-    Some(AddPreciseCapturingForOvercapture {
-        suggs,
-        apit_spans,
-    })
+    Some(AddPreciseCapturingForOvercapture { suggs, apit_spans })
 }
 
 pub struct AddPreciseCapturingForOvercapture {
@@ -1909,7 +1913,10 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             Applicability::MaybeIncorrect,
         );
         if !self.apit_spans.is_empty() {
-            diag.span_note(self.apit_spans, fluent::trait_selection_warn_removing_apit_params_for_overcapture);
+            diag.span_note(
+                self.apit_spans,
+                fluent::trait_selection_warn_removing_apit_params_for_overcapture,
+            );
         }
     }
 }
