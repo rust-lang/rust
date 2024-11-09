@@ -1,13 +1,13 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Float, Integer, Primitive};
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
@@ -162,8 +162,8 @@ pub(crate) fn codegen_icmp_imm(
 pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
     let mut flags = MemFlags::new();
     flags.set_endianness(match fx.tcx.data_layout.endian {
-        rustc_target::abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
-        rustc_target::abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
+        rustc_abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
+        rustc_abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
     });
     fx.bcx.ins().bitcast(dst_ty, flags, val)
 }
@@ -333,8 +333,8 @@ impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> rustc_target::abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
-    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
+impl<'tcx> rustc_abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
@@ -491,8 +491,8 @@ impl<'tcx> layout::HasTyCtxt<'tcx> for RevealAllLayoutCx<'tcx> {
     }
 }
 
-impl<'tcx> rustc_target::abi::HasDataLayout for RevealAllLayoutCx<'tcx> {
-    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
+impl<'tcx> rustc_abi::HasDataLayout for RevealAllLayoutCx<'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         &self.0.data_layout
     }
 }

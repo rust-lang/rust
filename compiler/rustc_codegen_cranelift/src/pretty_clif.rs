@@ -64,7 +64,7 @@ use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::{OutputFilenames, OutputType};
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use crate::prelude::*;
 
