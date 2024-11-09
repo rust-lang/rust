@@ -524,7 +524,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match self.ptr_try_get_alloc_id(ptr, 0) {
             Err(addr) => is_offset_misaligned(addr, align),
             Ok((alloc_id, offset, _prov)) => {
-                let (_size, alloc_align, kind) = self.get_alloc_info(alloc_id);
+                let (_size, alloc_align, kind, _mutbl) = self.get_alloc_info(alloc_id);
                 if let Some(misalign) =
                     M::alignment_check(self, alloc_id, alloc_align, kind, offset, align)
                 {
@@ -818,19 +818,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
-    pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind) {
+    pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind, Mutability) {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a global's allocation in miri
         if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
-            return (alloc.size(), alloc.align, AllocKind::LiveData);
+            return (alloc.size(), alloc.align, AllocKind::LiveData, alloc.mutability);
         }
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if self.get_fn_alloc(id).is_some() {
-            return (Size::ZERO, Align::ONE, AllocKind::Function);
+            return (Size::ZERO, Align::ONE, AllocKind::Function, Mutability::Not);
         }
 
         // # Statics
@@ -842,17 +842,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
                 assert!(!self.tcx.is_thread_local_static(def_id));
 
-                let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else {
+                let DefKind::Static { nested, mutability, .. } = self.tcx.def_kind(def_id) else {
                     bug!("GlobalAlloc::Static is not a static")
                 };
 
-                let (size, align) = if nested {
+                let (size, align, mutability) = if nested {
                     // Nested anonymous statics are untyped, so let's get their
                     // size and alignment from the allocation itself. This always
                     // succeeds, as the query is fed at DefId creation time, so no
                     // evaluation actually occurs.
                     let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
-                    (alloc.0.size(), alloc.0.align)
+                    (alloc.0.size(), alloc.0.align, alloc.0.mutability)
                 } else {
                     // Use size and align of the type for everything else. We need
                     // to do that to
@@ -865,22 +865,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         .expect("statics should not have generic parameters");
                     let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                     assert!(layout.is_sized());
-                    (layout.size, layout.align.abi)
+                    let mutability = match mutability {
+                        Mutability::Not if !ty.is_freeze(*self.tcx, ParamEnv::empty()) => {
+                            Mutability::Not
+                        }
+                        _ => Mutability::Mut,
+                    };
+                    (layout.size, layout.align.abi, mutability)
                 };
-                (size, align, AllocKind::LiveData)
+                (size, align, AllocKind::LiveData, mutability)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
                 let alloc = alloc.inner();
-                (alloc.size(), alloc.align, AllocKind::LiveData)
+                (alloc.size(), alloc.align, AllocKind::LiveData, alloc.mutability)
             }
             Some(GlobalAlloc::Function { .. }) => {
                 bug!("We already checked function pointers above")
             }
             Some(GlobalAlloc::VTable(..)) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
+                return (
+                    Size::ZERO,
+                    self.tcx.data_layout.pointer_align.abi,
+                    AllocKind::VTable,
+                    Mutability::Not,
+                );
             }
             // The rest must be dead.
             None => {
@@ -891,7 +902,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     .dead_alloc_map
                     .get(&id)
                     .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
-                (size, align, AllocKind::Dead)
+                (size, align, AllocKind::Dead, Mutability::Not)
             }
         }
     }
@@ -902,7 +913,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         id: AllocId,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let (size, align, kind) = self.get_alloc_info(id);
+        let (size, align, kind, _mutbl) = self.get_alloc_info(id);
         if matches!(kind, AllocKind::Dead) {
             throw_ub!(PointerUseAfterFree(id, msg))
         }
@@ -1458,7 +1469,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
-                        let (size, _align, _kind) = self.get_alloc_info(alloc_id);
+                        let (size, _align, _kind, _mutbl) = self.get_alloc_info(alloc_id);
                         // If the pointer is out-of-bounds, it may be null.
                         // Note that one-past-the-end (offset == size) is still inbounds, and never null.
                         offset > size

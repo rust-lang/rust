@@ -1125,7 +1125,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let Provenance::Concrete { alloc_id, .. } = ptr.provenance else {
                 panic!("extern_statics cannot contain wildcards")
             };
-            let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
+            let (shim_size, shim_align, _kind, _mutbl) = ecx.get_alloc_info(alloc_id);
             let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
             let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
             if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {

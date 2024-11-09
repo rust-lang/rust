@@ -157,7 +157,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, u64> {
         let ecx = self.eval_context_ref();
         let mut rng = ecx.machine.rng.borrow_mut();
-        let (size, align, kind) = ecx.get_alloc_info(alloc_id);
+        let (size, align, kind, _mutbl) = ecx.get_alloc_info(alloc_id);
         // This is either called immediately after allocation (and then cached), or when
         // adjusting `tcx` pointers (which never get freed). So assert that we are looking
         // at a live allocation. This also ensures that we never re-assign an address to an

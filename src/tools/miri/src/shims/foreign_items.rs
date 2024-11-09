@@ -409,7 +409,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                 }
                 if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr, 0) {
-                    let (_size, alloc_align, _kind) = this.get_alloc_info(alloc_id);
+                    let (_size, alloc_align, _kind, _mutbl) = this.get_alloc_info(alloc_id);
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align

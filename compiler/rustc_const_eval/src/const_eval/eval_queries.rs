@@ -472,7 +472,7 @@ fn report_validation_error<'tcx>(
     backtrace.print_backtrace();
 
     let bytes = ecx.print_alloc_bytes_for_diagnostics(alloc_id);
-    let (size, align, _) = ecx.get_alloc_info(alloc_id);
+    let (size, align, ..) = ecx.get_alloc_info(alloc_id);
     let raw_bytes = errors::RawBytesNote { size: size.bytes(), align: align.bytes(), bytes };
 
     crate::const_eval::report(

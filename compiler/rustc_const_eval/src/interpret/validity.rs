@@ -594,7 +594,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     }
 
                     // Dangling and Mutability check.
-                    let (size, _align, alloc_kind) = self.ecx.get_alloc_info(alloc_id);
+                    let (size, _align, alloc_kind, _mutbl) = self.ecx.get_alloc_info(alloc_id);
                     if alloc_kind == AllocKind::Dead {
                         // This can happen for zero-sized references. We can't have *any* references to
                         // non-existing allocations in const-eval though, interning rejects them all as
