@@ -1305,6 +1305,14 @@ LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
   return wrap(Loc);
 }
 
+extern "C" LLVMMetadataRef
+LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
+                                             unsigned BD) {
+  DILocation *Loc = unwrapDIPtr<DILocation>(Location);
+  auto NewLoc = Loc->cloneWithBaseDiscriminator(BD);
+  return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
+}
+
 extern "C" uint64_t LLVMRustDIBuilderCreateOpDeref() {
   return dwarf::DW_OP_deref;
 }
