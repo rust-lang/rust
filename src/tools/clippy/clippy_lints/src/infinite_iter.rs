@@ -157,7 +157,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                     .and(cap);
                 }
             }
-            if method.ident.name == sym!(flat_map) && args.len() == 1 {
+            if method.ident.name.as_str() == "flat_map" && args.len() == 1 {
                 if let ExprKind::Closure(&Closure { body, .. }) = args[0].kind {
                     let body = cx.tcx.hir().body(body);
                     return is_infinite(cx, body.value);
@@ -224,7 +224,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                     return MaybeInfinite.and(is_infinite(cx, receiver));
                 }
             }
-            if method.ident.name == sym!(last) && args.is_empty() {
+            if method.ident.name.as_str() == "last" && args.is_empty() {
                 let not_double_ended = cx
                     .tcx
                     .get_diagnostic_item(sym::DoubleEndedIterator)
@@ -234,7 +234,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 if not_double_ended {
                     return is_infinite(cx, receiver);
                 }
-            } else if method.ident.name == sym!(collect) {
+            } else if method.ident.name.as_str() == "collect" {
                 let ty = cx.typeck_results().expr_ty(expr);
                 if matches!(
                     get_type_diagnostic_name(cx, ty),

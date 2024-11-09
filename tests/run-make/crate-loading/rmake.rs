@@ -18,47 +18,39 @@ fn main() {
         .extern_("dependency", rust_lib_name("dependency"))
         .extern_("dep_2_reexport", rust_lib_name("foo"))
         .run_fail()
-        .assert_stderr_contains(
-            r#"error[E0277]: the trait bound `dep_2_reexport::Type: Trait` is not satisfied
-  --> multiple-dep-versions.rs:7:18
-   |
-7  |     do_something(Type);
-   |     ------------ ^^^^ the trait `Trait` is not implemented for `dep_2_reexport::Type`
-   |     |
-   |     required by a bound introduced by this call
-   |
-help: there are multiple different versions of crate `dependency` in the dependency graph
-  --> multiple-dep-versions.rs:1:1
-   |
-1  | extern crate dep_2_reexport;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one version of crate `dependency` is used here, as a dependency of crate `foo`
-2  | extern crate dependency;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ one version of crate `dependency` is used here, as a direct dependency of the current crate"#,
-        )
-        .assert_stderr_contains(
-            r#"
-3  | pub struct Type(pub i32);
-   | ^^^^^^^^^^^^^^^ this type implements the required trait
-4  | pub trait Trait {
-   | --------------- this is the required trait"#,
-        )
-        .assert_stderr_contains(
-            r#"
-3  | pub struct Type;
-   | ^^^^^^^^^^^^^^^ this type doesn't implement the required trait"#,
-        )
-        .assert_stderr_contains(
-            r#"
-error[E0599]: no method named `foo` found for struct `dep_2_reexport::Type` in the current scope
+        .assert_stderr_contains(r#"error[E0277]: the trait bound `dep_2_reexport::Type: Trait` is not satisfied because the trait comes from a different crate version
+ --> multiple-dep-versions.rs:7:18
+  |
+7 |     do_something(Type);
+  |                  ^^^^ the trait `Trait` is not implemented for `dep_2_reexport::Type`
+  |
+note: there are multiple different versions of crate `dependency` in the dependency graph"#)
+        .assert_stderr_contains(r#"
+3 | pub struct Type(pub i32);
+  | --------------- this type implements the required trait
+4 | pub trait Trait {
+  | ^^^^^^^^^^^^^^^ this is the required trait
+"#)
+        .assert_stderr_contains(r#"
+1 | extern crate dep_2_reexport;
+  | ---------------------------- one version of crate `dependency` is used here, as a dependency of crate `foo`
+2 | extern crate dependency;
+  | ------------------------ one version of crate `dependency` is used here, as a direct dependency of the current crate"#)
+        .assert_stderr_contains(r#"
+3 | pub struct Type;
+  | --------------- this type doesn't implement the required trait
+4 | pub trait Trait {
+  | --------------- this is the found trait
+  = note: two types coming from two different versions of the same crate are different types even if they look the same
+  = help: you can use `cargo tree` to explore your dependency tree"#)
+        .assert_stderr_contains(r#"error[E0599]: no method named `foo` found for struct `dep_2_reexport::Type` in the current scope
  --> multiple-dep-versions.rs:8:10
   |
 8 |     Type.foo();
   |          ^^^ method not found in `Type`
   |
-note: there are multiple different versions of crate `dependency` in the dependency graph"#,
-        )
-        .assert_stderr_contains(
-            r#"
+note: there are multiple different versions of crate `dependency` in the dependency graph"#)
+        .assert_stderr_contains(r#"
 4 | pub trait Trait {
   | ^^^^^^^^^^^^^^^ this is the trait that is needed
 5 |     fn foo(&self);
@@ -67,25 +59,19 @@ note: there are multiple different versions of crate `dependency` in the depende
  ::: multiple-dep-versions.rs:4:18
   |
 4 | use dependency::{Trait, do_something};
-  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
-        )
-        .assert_stderr_contains(
-            r#"
+  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#)
+        .assert_stderr_contains(r#"
 4 | pub trait Trait {
-  | --------------- this is the trait that was imported"#,
-        )
-        .assert_stderr_contains(
-            r#"
+  | --------------- this is the trait that was imported"#)
+        .assert_stderr_contains(r#"
 error[E0599]: no function or associated item named `bar` found for struct `dep_2_reexport::Type` in the current scope
  --> multiple-dep-versions.rs:9:11
   |
 9 |     Type::bar();
   |           ^^^ function or associated item not found in `Type`
   |
-note: there are multiple different versions of crate `dependency` in the dependency graph"#,
-        )
-        .assert_stderr_contains(
-            r#"
+note: there are multiple different versions of crate `dependency` in the dependency graph"#)
+        .assert_stderr_contains(r#"
 4 | pub trait Trait {
   | ^^^^^^^^^^^^^^^ this is the trait that is needed
 5 |     fn foo(&self);
@@ -95,6 +81,9 @@ note: there are multiple different versions of crate `dependency` in the depende
  ::: multiple-dep-versions.rs:4:18
   |
 4 | use dependency::{Trait, do_something};
-  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
-        );
+  |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#)
+        .assert_stderr_contains(
+          r#"
+6  | pub struct OtherType;
+   | -------------------- this type doesn't implement the required trait"#);
 }

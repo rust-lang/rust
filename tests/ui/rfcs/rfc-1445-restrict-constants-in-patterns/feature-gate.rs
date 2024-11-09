@@ -27,7 +27,7 @@ fn main() { //[with_gate]~ ERROR fatal error triggered by #[rustc_error]
 }
 
 impl std::marker::StructuralPartialEq for Foo { }
-//[no_gate]~^ ERROR use of unstable library feature 'structural_match'
+//[no_gate]~^ ERROR use of unstable library feature `structural_match`
 
 impl PartialEq<Foo> for Foo {
     fn eq(&self, other: &Self) -> bool {

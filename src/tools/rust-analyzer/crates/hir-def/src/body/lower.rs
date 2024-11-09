@@ -407,7 +407,7 @@ impl ExprCollector<'_> {
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args = e
                     .generic_arg_list()
-                    .and_then(|it| GenericArgs::from_ast(&self.ctx(), it))
+                    .and_then(|it| GenericArgs::from_ast(&mut self.ctx(), it))
                     .map(Box::new);
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
@@ -533,7 +533,7 @@ impl ExprCollector<'_> {
             ast::Expr::TryExpr(e) => self.collect_try_operator(syntax_ptr, e),
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.ty());
+                let type_ref = TypeRef::from_ast_opt(&mut self.ctx(), e.ty());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -572,13 +572,15 @@ impl ExprCollector<'_> {
                     arg_types.reserve_exact(num_params);
                     for param in pl.params() {
                         let pat = this.collect_pat_top(param.pat());
-                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&this.ctx(), it));
+                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&mut this.ctx(), it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type =
-                    e.ret_type().and_then(|r| r.ty()).map(|it| TypeRef::from_ast(&this.ctx(), it));
+                let ret_type = e
+                    .ret_type()
+                    .and_then(|r| r.ty())
+                    .map(|it| TypeRef::from_ast(&mut this.ctx(), it));
 
                 let prev_is_lowering_coroutine = mem::take(&mut this.is_lowering_coroutine);
                 let prev_try_block_label = this.current_try_block_label.take();
@@ -705,7 +707,7 @@ impl ExprCollector<'_> {
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
             ast::Expr::AsmExpr(e) => self.lower_inline_asm(e, syntax_ptr),
             ast::Expr::OffsetOfExpr(e) => {
-                let container = TypeRef::from_ast_opt(&self.ctx(), e.ty());
+                let container = TypeRef::from_ast_opt(&mut self.ctx(), e.ty());
                 let fields = e.fields().map(|it| it.as_name()).collect();
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
@@ -1317,7 +1319,7 @@ impl ExprCollector<'_> {
                     return;
                 }
                 let pat = self.collect_pat_top(stmt.pat());
-                let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&mut self.ctx(), it));
                 let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                 let else_branch = stmt
                     .let_else()

@@ -9,8 +9,7 @@ use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Saf
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt,
-    TypeckResults,
+    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -204,11 +203,16 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
                             // 'cuz currently nothing changes after deleting this check.
                             local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
                         }) {
-                            match cx.tcx.infer_ctxt().build(cx.typing_mode()).err_ctxt().type_implements_fn_trait(
-                                cx.param_env,
-                                Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                ty::PredicatePolarity::Positive,
-                            ) {
+                            match cx
+                                .tcx
+                                .infer_ctxt()
+                                .build(cx.typing_mode())
+                                .err_ctxt()
+                                .type_implements_fn_trait(
+                                    cx.param_env,
+                                    Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                                    ty::PredicatePolarity::Positive,
+                                ) {
                                 // Mutable closure is used after current expr; we cannot consume it.
                                 Ok((ClosureKind::FnMut, _)) => snippet = format!("&mut {snippet}"),
                                 Ok((ClosureKind::Fn, _)) if !callee_ty_raw.is_ref() => {

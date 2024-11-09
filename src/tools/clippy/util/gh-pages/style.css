@@ -204,7 +204,7 @@ details[open] {
 }
 
 /* Expanding the mdBook theme*/
-.light {
+.light, body:not([class]) {
     --inline-code-bg: #f6f7f6;
 }
 .rust {
@@ -218,6 +218,21 @@ details[open] {
 }
 .ayu {
     --inline-code-bg: #191f26;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([class]) {
+        /*
+        In case JS is disabled and the user's system is in dark mode, we take "coal" as default
+        dark theme.
+        */
+        --inline-code-bg: #1d1f21;
+    }
+}
+
+html:not(.js) #settings-dropdown,
+html:not(.js)#menu-filters {
+    display: none;
 }
 
 #settings-dropdown {
@@ -309,12 +324,12 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
 .page-header {
     border-color: var(--theme-popup-border);
 }
-.panel-default > .panel-heading {
+.panel-default .panel-heading {
     background: var(--theme-hover);
     color: var(--fg);
     border: 1px solid var(--theme-popup-border);
 }
-.panel-default > .panel-heading:hover {
+.panel-default .panel-heading:hover {
     filter: brightness(90%);
 }
 .list-group-item {
@@ -410,8 +425,24 @@ body {
     color: var(--fg);
 }
 
-article.collapsed .lint-docs {
+article > label {
+    width: 100%;
+    margin: 0;
+}
+article > input[type="checkbox"] {
     display: none;
+}
+article > input[type="checkbox"] + label .label-doc-folding::before {
+    content: "+";
+}
+article > input[type="checkbox"]:checked + label .label-doc-folding::before {
+    content: "−";
+}
+.lint-docs {
+    display: none;
+}
+article > input[type="checkbox"]:checked ~ .lint-docs {
+    display: block;
 }
 
 .github-corner svg {

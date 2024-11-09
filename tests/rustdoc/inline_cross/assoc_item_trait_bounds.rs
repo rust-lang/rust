@@ -22,6 +22,7 @@ extern crate assoc_item_trait_bounds as aux;
 //@ has - '//*[@id="associatedtype.Out12"]' "type Out12: for<'w> Helper<B<'w> = Cow<'w, str>, A<'w> = bool>"
 //@ has - '//*[@id="associatedtype.Out13"]' "type Out13: for<'fst, 'snd> Aid<'snd, Result<'fst> = &'fst mut str>"
 //@ has - '//*[@id="associatedtype.Out14"]' "type Out14<P: Copy + Eq, Q: ?Sized>"
+//@ has - '//*[@id="associatedtype.Out15"]' "type Out15: AsyncFnMut(i32) -> bool"
 //
 // Snapshots:
 // Check that we don't render any where-clauses for the following associated types since

@@ -3,6 +3,7 @@ use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
+use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -17,8 +18,6 @@ use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::FileNameDisplayPreference;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_target::abi::Size;
-use rustc_target::spec::abi::Abi;
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -2484,7 +2483,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
-                if let ty::BrNamed(_, name) = br
+                if let ty::BoundRegionKind::Named(_, name) = br
                     && br.is_named()
                 {
                     p!(write("{}", name));
@@ -2570,7 +2569,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon | ty::BrEnv => r,
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind };
@@ -2689,12 +2688,13 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon | ty::BrEnv => {
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
-                                let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
+                                let kind =
+                                    ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name);
                                 return ty::Region::new_bound(
                                     tcx,
                                     ty::INNERMOST,
@@ -2703,14 +2703,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             }
                         }
 
-                        (name, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name))
+                        (name, ty::BoundRegionKind::Named(CRATE_DEF_ID.to_def_id(), name))
                     }
-                    ty::BrNamed(def_id, kw::UnderscoreLifetime | kw::Empty) => {
+                    ty::BoundRegionKind::Named(def_id, kw::UnderscoreLifetime | kw::Empty) => {
                         let name = next_name(self);
 
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
-                                let kind = ty::BrNamed(def_id, name);
+                                let kind = ty::BoundRegionKind::Named(def_id, name);
                                 return ty::Region::new_bound(
                                     tcx,
                                     ty::INNERMOST,
@@ -2719,9 +2719,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             }
                         }
 
-                        (name, ty::BrNamed(def_id, name))
+                        (name, ty::BoundRegionKind::Named(def_id, name))
                     }
-                    ty::BrNamed(_, name) => {
+                    ty::BoundRegionKind::Named(_, name) => {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
@@ -3029,7 +3029,7 @@ define_print! {
     ty::FnSig<'tcx> {
         p!(write("{}", self.safety.prefix_str()));
 
-        if self.abi != Abi::Rust {
+        if self.abi != ExternAbi::Rust {
             p!(write("extern {} ", self.abi));
         }
 

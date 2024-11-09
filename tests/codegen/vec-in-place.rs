@@ -1,4 +1,4 @@
-//@ ignore-debug: FIXME: checks for call detect scoped noalias metadata
+//@ ignore-std-debug-assertions (FIXME: checks for call detect scoped noalias metadata)
 //@ compile-flags: -O -Z merge-functions=disabled
 #![crate_type = "lib"]
 

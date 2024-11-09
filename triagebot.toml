@@ -611,6 +611,10 @@ cc = ["@bjorn3"]
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
+[mentions."compiler/rustc_const_eval/src/"]
+message = "Some changes occurred to the CTFE machinery"
+cc = ["@rust-lang/wg-const-eval"]
+
 [mentions."compiler/rustc_const_eval/src/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
@@ -633,7 +637,7 @@ cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
-cc = ["@rust-lang/miri"]
+cc = ["@rust-lang/miri", "@rust-lang/wg-const-eval"]
 
 [mentions."compiler/rustc_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
@@ -706,7 +710,7 @@ message = """
 Some changes occurred to the intrinsics. Make sure the CTFE / Miri interpreter
 gets adapted for the changes, if necessary.
 """
-cc = ["@rust-lang/miri"]
+cc = ["@rust-lang/miri", "@rust-lang/wg-const-eval"]
 
 [mentions."library/portable-simd"]
 message = """

@@ -1,5 +1,8 @@
 use std::ops::Range;
 
+use rustc_abi::{
+    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
+};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
@@ -14,9 +17,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
-use rustc_target::abi::{
-    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
 use tracing::{debug, instrument, trace};
 
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -194,16 +194,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         unsafe { llvm::LLVMSetInitializer(g2, g1) };
         g2
     } else if cx.tcx.sess.target.arch == "x86"
+        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
-        cx.declare_global(
-            &common::i686_decorated_name(
-                dllimport,
-                common::is_mingw_gnu_toolchain(&cx.tcx.sess.target),
-                true,
-            ),
-            llty,
-        )
+        cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global

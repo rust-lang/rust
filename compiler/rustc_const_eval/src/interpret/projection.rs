@@ -10,10 +10,10 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use rustc_abi::{self as abi, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_target::abi::{self, Size, VariantIdx};
 use tracing::{debug, instrument};
 
 use super::{

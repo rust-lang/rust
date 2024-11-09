@@ -22,7 +22,6 @@
 
 use std::any::Any;
 use std::ffi::CStr;
-use std::io::Write;
 use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
@@ -165,30 +164,12 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
-        unsafe {
-            let mut size = 0;
-            let cstr = llvm::LLVMRustPrintPassTimings(&raw mut size);
-            if cstr.is_null() {
-                println!("failed to get pass timings");
-            } else {
-                let timings = std::slice::from_raw_parts(cstr as *const u8, size);
-                std::io::stdout().write_all(timings).unwrap();
-                libc::free(cstr as *mut _);
-            }
-        }
+        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+        print!("{timings}");
     }
     fn print_statistics(&self) {
-        unsafe {
-            let mut size = 0;
-            let cstr = llvm::LLVMRustPrintStatistics(&raw mut size);
-            if cstr.is_null() {
-                println!("failed to get pass stats");
-            } else {
-                let stats = std::slice::from_raw_parts(cstr as *const u8, size);
-                std::io::stdout().write_all(stats).unwrap();
-                libc::free(cstr as *mut _);
-            }
-        }
+        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+        print!("{stats}");
     }
     fn run_link(
         cgcx: &CodegenContext<Self>,

@@ -48,7 +48,7 @@ impl<'a> DescriptionCtx<'a> {
                 } else {
                     let scope = fr.scope.expect_local();
                     match fr.bound_region {
-                        ty::BoundRegionKind::BrNamed(_, name) => {
+                        ty::BoundRegionKind::Named(_, name) => {
                             let span = if let Some(param) = tcx
                                 .hir()
                                 .get_generics(scope)
@@ -64,7 +64,7 @@ impl<'a> DescriptionCtx<'a> {
                                 (Some(span), "as_defined", name.to_string())
                             }
                         }
-                        ty::BrAnon => {
+                        ty::BoundRegionKind::Anon => {
                             let span = Some(tcx.def_span(scope));
                             (span, "defined_here", String::new())
                         }

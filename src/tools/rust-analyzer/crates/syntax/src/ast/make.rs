@@ -15,7 +15,11 @@ use parser::{Edition, T};
 use rowan::NodeOrToken;
 use stdx::{format_to, format_to_acc, never};
 
-use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{
+    ast::{self, Param},
+    utils::is_raw_identifier,
+    AstNode, SourceFile, SyntaxKind, SyntaxToken,
+};
 
 /// While the parent module defines basic atomic "constructors", the `ext`
 /// module defines shortcuts for common things.
@@ -195,6 +199,38 @@ pub fn ty_alias(
     }
 
     s.push(';');
+    ast_from_text(&s)
+}
+
+pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
+    for_lifetime_list: Option<ast::GenericParamList>,
+    is_unsafe: bool,
+    abi: Option<ast::Abi>,
+    params: I,
+    ret_type: Option<ast::RetType>,
+) -> ast::FnPtrType {
+    let mut s = String::from("type __ = ");
+
+    if let Some(list) = for_lifetime_list {
+        format_to!(s, "for{} ", list);
+    }
+
+    if is_unsafe {
+        s.push_str("unsafe ");
+    }
+
+    if let Some(abi) = abi {
+        format_to!(s, "{} ", abi)
+    }
+
+    s.push_str("fn");
+
+    format_to!(s, "({})", params.map(|p| p.to_string()).join(", "));
+
+    if let Some(ret_type) = ret_type {
+        format_to!(s, " {}", ret_type);
+    }
+
     ast_from_text(&s)
 }
 
@@ -860,6 +896,10 @@ pub fn item_const(
         Some(it) => format!("{it} "),
     };
     ast_from_text(&format!("{visibility} const {name}: {ty} = {expr};"))
+}
+
+pub fn unnamed_param(ty: ast::Type) -> ast::Param {
+    ast_from_text(&format!("fn f({ty}) {{ }}"))
 }
 
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {

@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::infer::canonical::CanonicalQueryInput;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt as _,
@@ -21,7 +20,6 @@ use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::NiceRegionError;
 use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::query::type_op;
 use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
 use tracing::{debug, instrument};
 
@@ -31,12 +29,9 @@ use crate::session_diagnostics::{
     HigherRankedErrorCause, HigherRankedLifetimeError, HigherRankedSubtypeError,
 };
 
-#[derive(Clone)]
-pub(crate) struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
-
 /// What operation a universe was created for.
 #[derive(Clone)]
-enum UniverseInfoInner<'tcx> {
+pub(crate) enum UniverseInfo<'tcx> {
     /// Relating two types which have binders.
     RelateTys { expected: Ty<'tcx>, found: Ty<'tcx> },
     /// Created from performing a `TypeOp`.
@@ -47,11 +42,11 @@ enum UniverseInfoInner<'tcx> {
 
 impl<'tcx> UniverseInfo<'tcx> {
     pub(crate) fn other() -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::Other)
+        UniverseInfo::Other
     }
 
     pub(crate) fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
+        UniverseInfo::RelateTys { expected, found }
     }
 
     pub(crate) fn report_error(
@@ -61,8 +56,8 @@ impl<'tcx> UniverseInfo<'tcx> {
         error_element: RegionElement,
         cause: ObligationCause<'tcx>,
     ) {
-        match self.0 {
-            UniverseInfoInner::RelateTys { expected, found } => {
+        match *self {
+            UniverseInfo::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
                     &cause,
                     mbcx.param_env,
@@ -72,10 +67,10 @@ impl<'tcx> UniverseInfo<'tcx> {
                 );
                 mbcx.buffer_error(err);
             }
-            UniverseInfoInner::TypeOp(ref type_op_info) => {
+            UniverseInfo::TypeOp(ref type_op_info) => {
                 type_op_info.report_error(mbcx, placeholder, error_element, cause);
             }
-            UniverseInfoInner::Other => {
+            UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
                 // up in the existing UI tests. Consider investigating this
                 // some more.
@@ -93,19 +88,16 @@ pub(crate) trait ToUniverseInfo<'tcx> {
 
 impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
+        UniverseInfo::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
             base_universe: Some(base_universe),
             ..self
-        })))
+        }))
     }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpProvePredicateGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(PredicateQuery {
-            canonical_query: self,
-            base_universe,
-        })))
+        UniverseInfo::TypeOp(Rc::new(PredicateQuery { canonical_query: self, base_universe }))
     }
 }
 
@@ -113,26 +105,13 @@ impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUnivers
     for CanonicalTypeOpNormalizeGoal<'tcx, T>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(NormalizeQuery {
-            canonical_query: self,
-            base_universe,
-        })))
+        UniverseInfo::TypeOp(Rc::new(NormalizeQuery { canonical_query: self, base_universe }))
     }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpAscribeUserTypeGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(AscribeUserTypeQuery {
-            canonical_query: self,
-            base_universe,
-        })))
-    }
-}
-
-impl<'tcx, F> ToUniverseInfo<'tcx> for CanonicalQueryInput<'tcx, type_op::custom::CustomTypeOp<F>> {
-    fn to_universe_info(self, _base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        // We can't rerun custom type ops.
-        UniverseInfo::other()
+        UniverseInfo::TypeOp(Rc::new(AscribeUserTypeQuery { canonical_query: self, base_universe }))
     }
 }
 
@@ -143,7 +122,7 @@ impl<'tcx> ToUniverseInfo<'tcx> for ! {
 }
 
 #[allow(unused_lifetimes)]
-trait TypeOpInfo<'tcx> {
+pub(crate) trait TypeOpInfo<'tcx> {
     /// Returns an error to be reported if rerunning the type op fails to
     /// recover the error's cause.
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx>;
@@ -289,8 +268,8 @@ where
         // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
         // `ObligationCause`. The normalization results are currently different between
         // `QueryNormalizeExt::query_normalize` used in the query and `normalize` called below:
-        // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test.
-        // Check after #85499 lands to see if its fixes have erased this difference.
+        // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs`
+        // test. Check after #85499 lands to see if its fixes have erased this difference.
         let (param_env, value) = key.into_parts();
         let _ = ocx.normalize(&cause, param_env, value.value);
 

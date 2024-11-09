@@ -5,7 +5,7 @@
 
 use core::alloc::Layout;
 
-#[alloc_error_handler] //~ ERROR use of unstable library feature 'alloc_error_handler'
+#[alloc_error_handler] //~ ERROR use of unstable library feature `alloc_error_handler`
 fn oom(info: Layout) -> ! {
     loop {}
 }

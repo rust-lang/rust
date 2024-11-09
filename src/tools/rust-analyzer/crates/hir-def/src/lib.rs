@@ -47,7 +47,6 @@ pub mod resolver;
 
 pub mod nameres;
 
-pub mod child_by_source;
 pub mod src;
 
 pub mod find_path;
@@ -354,9 +353,9 @@ impl_loc!(ProcMacroLoc, id: Function, container: CrateRootModuleId);
 pub struct BlockId(ra_salsa::InternId);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BlockLoc {
-    ast_id: AstId<ast::BlockExpr>,
+    pub ast_id: AstId<ast::BlockExpr>,
     /// The containing module.
-    module: ModuleId,
+    pub module: ModuleId,
 }
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
@@ -838,16 +837,18 @@ impl InTypeConstId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeneralConstId {
     ConstId(ConstId),
+    StaticId(StaticId),
     ConstBlockId(ConstBlockId),
     InTypeConstId(InTypeConstId),
 }
 
-impl_from!(ConstId, ConstBlockId, InTypeConstId for GeneralConstId);
+impl_from!(ConstId, StaticId, ConstBlockId, InTypeConstId for GeneralConstId);
 
 impl GeneralConstId {
     pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
+            GeneralConstId::StaticId(_) => None,
             GeneralConstId::ConstBlockId(it) => it.lookup(db).parent.as_generic_def_id(db),
             GeneralConstId::InTypeConstId(it) => it.lookup(db).owner.as_generic_def_id(db),
         }
@@ -855,6 +856,9 @@ impl GeneralConstId {
 
     pub fn name(self, db: &dyn DefDatabase) -> String {
         match self {
+            GeneralConstId::StaticId(it) => {
+                db.static_data(it).name.display(db.upcast(), Edition::CURRENT).to_string()
+            }
             GeneralConstId::ConstId(const_id) => db
                 .const_data(const_id)
                 .name
@@ -935,7 +939,7 @@ impl_from!(
 );
 
 impl GenericDefId {
-    fn file_id_and_params_of(
+    pub fn file_id_and_params_of(
         self,
         db: &dyn DefDatabase,
     ) -> (HirFileId, Option<ast::GenericParamList>) {

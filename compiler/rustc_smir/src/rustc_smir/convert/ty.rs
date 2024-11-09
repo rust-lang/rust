@@ -243,11 +243,11 @@ impl<'tcx> Stable<'tcx> for ty::BoundRegionKind {
         use stable_mir::ty::BoundRegionKind;
 
         match self {
-            ty::BoundRegionKind::BrAnon => BoundRegionKind::BrAnon,
-            ty::BoundRegionKind::BrNamed(def_id, symbol) => {
+            ty::BoundRegionKind::Anon => BoundRegionKind::BrAnon,
+            ty::BoundRegionKind::Named(def_id, symbol) => {
                 BoundRegionKind::BrNamed(tables.br_named_def(*def_id), symbol.to_string())
             }
-            ty::BoundRegionKind::BrEnv => BoundRegionKind::BrEnv,
+            ty::BoundRegionKind::ClosureEnv => BoundRegionKind::BrEnv,
         }
     }
 }
@@ -418,7 +418,7 @@ pub(crate) fn mir_const_from_ty_const<'tcx>(
     ty: Ty<'tcx>,
 ) -> stable_mir::ty::MirConst {
     let kind = match ty_const.kind() {
-        ty::Value(ty, val) => {
+        ty::ConstKind::Value(ty, val) => {
             let val = match val {
                 ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
                 ty::ValTree::Branch(branch) => {
@@ -435,19 +435,19 @@ pub(crate) fn mir_const_from_ty_const<'tcx>(
                 ))
             }
         }
-        ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
-        ty::ErrorCt(_) => unreachable!(),
-        ty::InferCt(_) => unreachable!(),
-        ty::BoundCt(_, _) => unimplemented!(),
-        ty::PlaceholderCt(_) => unimplemented!(),
-        ty::Unevaluated(uv) => {
+        ty::ConstKind::Param(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
+        ty::ConstKind::Error(_) => unreachable!(),
+        ty::ConstKind::Infer(_) => unreachable!(),
+        ty::ConstKind::Bound(_, _) => unimplemented!(),
+        ty::ConstKind::Placeholder(_) => unimplemented!(),
+        ty::ConstKind::Unevaluated(uv) => {
             stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
                 def: tables.const_def(uv.def),
                 args: uv.args.stable(tables),
                 promoted: None,
             })
         }
-        ty::ExprCt(_) => unimplemented!(),
+        ty::ConstKind::Expr(_) => unimplemented!(),
     };
     let stable_ty = tables.intern_ty(ty);
     let id = tables.intern_mir_const(mir::Const::Ty(ty, ty_const));
@@ -459,7 +459,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         let kind = match self.kind() {
-            ty::Value(ty, val) => {
+            ty::ConstKind::Value(ty, val) => {
                 let val = match val {
                     ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
                     ty::ValTree::Branch(branch) => {
@@ -478,16 +478,16 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                     )
                 }
             }
-            ty::ParamCt(param) => stable_mir::ty::TyConstKind::Param(param.stable(tables)),
-            ty::Unevaluated(uv) => stable_mir::ty::TyConstKind::Unevaluated(
+            ty::ConstKind::Param(param) => stable_mir::ty::TyConstKind::Param(param.stable(tables)),
+            ty::ConstKind::Unevaluated(uv) => stable_mir::ty::TyConstKind::Unevaluated(
                 tables.const_def(uv.def),
                 uv.args.stable(tables),
             ),
-            ty::ErrorCt(_) => unreachable!(),
-            ty::InferCt(_) => unreachable!(),
-            ty::BoundCt(_, _) => unimplemented!(),
-            ty::PlaceholderCt(_) => unimplemented!(),
-            ty::ExprCt(_) => unimplemented!(),
+            ty::ConstKind::Error(_) => unreachable!(),
+            ty::ConstKind::Infer(_) => unreachable!(),
+            ty::ConstKind::Bound(_, _) => unimplemented!(),
+            ty::ConstKind::Placeholder(_) => unimplemented!(),
+            ty::ConstKind::Expr(_) => unimplemented!(),
         };
         let id = tables.intern_ty_const(tables.tcx.lift(*self).unwrap());
         stable_mir::ty::TyConst::new(kind, id)
@@ -891,38 +891,38 @@ impl<'tcx> Stable<'tcx> for ty::Movability {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_target::spec::abi::Abi {
+impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     type T = stable_mir::ty::Abi;
 
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
-        use rustc_target::spec::abi;
+        use rustc_abi::ExternAbi;
         use stable_mir::ty::Abi;
         match *self {
-            abi::Abi::Rust => Abi::Rust,
-            abi::Abi::C { unwind } => Abi::C { unwind },
-            abi::Abi::Cdecl { unwind } => Abi::Cdecl { unwind },
-            abi::Abi::Stdcall { unwind } => Abi::Stdcall { unwind },
-            abi::Abi::Fastcall { unwind } => Abi::Fastcall { unwind },
-            abi::Abi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
-            abi::Abi::Thiscall { unwind } => Abi::Thiscall { unwind },
-            abi::Abi::Aapcs { unwind } => Abi::Aapcs { unwind },
-            abi::Abi::Win64 { unwind } => Abi::Win64 { unwind },
-            abi::Abi::SysV64 { unwind } => Abi::SysV64 { unwind },
-            abi::Abi::PtxKernel => Abi::PtxKernel,
-            abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
-            abi::Abi::X86Interrupt => Abi::X86Interrupt,
-            abi::Abi::EfiApi => Abi::EfiApi,
-            abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
-            abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
-            abi::Abi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
-            abi::Abi::CCmseNonSecureEntry => Abi::CCmseNonSecureEntry,
-            abi::Abi::System { unwind } => Abi::System { unwind },
-            abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
-            abi::Abi::RustCall => Abi::RustCall,
-            abi::Abi::Unadjusted => Abi::Unadjusted,
-            abi::Abi::RustCold => Abi::RustCold,
-            abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
-            abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
+            ExternAbi::Rust => Abi::Rust,
+            ExternAbi::C { unwind } => Abi::C { unwind },
+            ExternAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+            ExternAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+            ExternAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+            ExternAbi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
+            ExternAbi::Thiscall { unwind } => Abi::Thiscall { unwind },
+            ExternAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+            ExternAbi::Win64 { unwind } => Abi::Win64 { unwind },
+            ExternAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+            ExternAbi::PtxKernel => Abi::PtxKernel,
+            ExternAbi::Msp430Interrupt => Abi::Msp430Interrupt,
+            ExternAbi::X86Interrupt => Abi::X86Interrupt,
+            ExternAbi::EfiApi => Abi::EfiApi,
+            ExternAbi::AvrInterrupt => Abi::AvrInterrupt,
+            ExternAbi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
+            ExternAbi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
+            ExternAbi::CCmseNonSecureEntry => Abi::CCmseNonSecureEntry,
+            ExternAbi::System { unwind } => Abi::System { unwind },
+            ExternAbi::RustIntrinsic => Abi::RustIntrinsic,
+            ExternAbi::RustCall => Abi::RustCall,
+            ExternAbi::Unadjusted => Abi::Unadjusted,
+            ExternAbi::RustCold => Abi::RustCold,
+            ExternAbi::RiscvInterruptM => Abi::RiscvInterruptM,
+            ExternAbi::RiscvInterruptS => Abi::RiscvInterruptS,
         }
     }
 }

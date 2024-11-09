@@ -1,8 +1,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
-#![feature(const_trait_impl, effects)]
-//~^ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Trait {

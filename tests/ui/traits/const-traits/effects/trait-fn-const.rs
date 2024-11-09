@@ -1,5 +1,5 @@
 // Regression test for issue #113378.
-#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Trait {

@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![feature(const_type_id, const_trait_impl, effects)]
-#![allow(incomplete_features)]
+#![feature(const_type_id, const_trait_impl)]
 
 use std::any::TypeId;
 
@@ -13,6 +12,6 @@ fn main() {
         let _a = TypeId::of::<u8>() < TypeId::of::<u16>();
         //~^ ERROR cannot call non-const operator in constants
         // can't assert `_a` because it is not deterministic
-        // FIXME(effects) make it pass
+        // FIXME(const_trait_impl) make it pass
     }
 }

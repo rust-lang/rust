@@ -48,9 +48,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // FIXME(async_closures): It's kind of wacky that we must apply this
         // transformation here, since we do the same thing in HIR typeck.
         // Maybe we could just fix up the canonicalized signature during HIR typeck?
-        if let DefiningTy::CoroutineClosure(_, args) =
-            self.borrowck_context.universal_regions.defining_ty
-        {
+        if let DefiningTy::CoroutineClosure(_, args) = self.universal_regions.defining_ty {
             assert_matches!(
                 self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
                 Some(hir::CoroutineKind::Desugared(
@@ -59,8 +57,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 )),
                 "this needs to be modified if we're lowering non-async closures"
             );
-            // Make sure to use the args from `DefiningTy` so the right NLL region vids are prepopulated
-            // into the type.
+            // Make sure to use the args from `DefiningTy` so the right NLL region vids are
+            // prepopulated into the type.
             let args = args.as_coroutine_closure();
             let tupled_upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
                 self.tcx(),
@@ -195,8 +193,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // doing so ends up causing some other trouble.
             let b = self.normalize(b, Locations::All(span));
 
-            // Note: if we have to introduce new placeholders during normalization above, then we won't have
-            // added those universes to the universe info, which we would want in `relate_tys`.
+            // Note: if we have to introduce new placeholders during normalization above, then we
+            // won't have added those universes to the universe info, which we would want in
+            // `relate_tys`.
             if let Err(terr) =
                 self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
             {

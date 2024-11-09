@@ -64,6 +64,7 @@ use rustc_span::source_map::FileLoader;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use time::OffsetDateTime;
+use time::macros::format_description;
 use tracing::trace;
 
 #[allow(unused_macros)]
@@ -1356,8 +1357,7 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
         let file_now = now
             .format(
                 // Don't use a standard datetime format because Windows doesn't support `:` in paths
-                &time::format_description::parse("[year]-[month]-[day]T[hour]_[minute]_[second]")
-                    .unwrap(),
+                &format_description!("[year]-[month]-[day]T[hour]_[minute]_[second]"),
             )
             .unwrap_or_default();
         let pid = std::process::id();

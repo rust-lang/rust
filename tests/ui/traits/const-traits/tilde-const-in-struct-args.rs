@@ -2,7 +2,7 @@
 //@ known-bug: #132067
 //@ check-pass
 
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 struct S;
 #[const_trait]

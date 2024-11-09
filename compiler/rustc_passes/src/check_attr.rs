@@ -210,9 +210,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 | [sym::rustc_promotable, ..] => self.check_stability_promotable(attr, target),
                 [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
                 [sym::rustc_confusables, ..] => self.check_confusables(attr, target),
-                [sym::rustc_safe_intrinsic, ..] => {
-                    self.check_rustc_safe_intrinsic(hir_id, attr, span, target)
-                }
                 [sym::cold, ..] => self.check_cold(hir_id, attr, span, target),
                 [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                 [sym::link_name, ..] => self.check_link_name(hir_id, attr, span, target),
@@ -2053,25 +2050,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .emit_err(errors::RustcAllowConstFnUnstable { attr_span: attr.span, span });
             }
         }
-    }
-
-    fn check_rustc_safe_intrinsic(
-        &self,
-        hir_id: HirId,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) {
-        if let Target::ForeignFn = target
-            && let hir::Node::Item(Item {
-                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic, .. },
-                ..
-            }) = self.tcx.parent_hir_node(hir_id)
-        {
-            return;
-        }
-
-        self.dcx().emit_err(errors::RustcSafeIntrinsic { attr_span: attr.span, span });
     }
 
     fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {

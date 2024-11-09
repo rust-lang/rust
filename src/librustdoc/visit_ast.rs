@@ -235,7 +235,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         }
 
-        if self.cx.output_format.is_json() {
+        if self.cx.is_json_output() {
             return false;
         }
 

@@ -1,5 +1,6 @@
 //! Performs various peephole optimizations.
 
+use rustc_abi::ExternAbi;
 use rustc_ast::attr;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
@@ -8,7 +9,6 @@ use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, layout};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
@@ -321,8 +321,8 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         let body_ty = self.tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(self.tcx).abi(),
-            ty::Closure(..) => Abi::RustCall,
-            ty::Coroutine(..) => Abi::Rust,
+            ty::Closure(..) => ExternAbi::RustCall,
+            ty::Coroutine(..) => ExternAbi::Rust,
             _ => bug!("unexpected body ty: {:?}", body_ty),
         };
 

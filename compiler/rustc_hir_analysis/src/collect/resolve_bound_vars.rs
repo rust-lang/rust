@@ -322,7 +322,7 @@ fn late_arg_as_bound_arg<'tcx>(
     let name = tcx.item_name(def_id);
     match param.kind {
         GenericParamKind::Lifetime { .. } => {
-            ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
         }
         GenericParamKind::Type { .. } => {
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
@@ -337,7 +337,7 @@ fn late_arg_as_bound_arg<'tcx>(
 fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
     match param.kind {
         ty::GenericParamDefKind::Lifetime => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(param.def_id, param.name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id, param.name))
         }
         ty::GenericParamDefKind::Type { .. } => {
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))

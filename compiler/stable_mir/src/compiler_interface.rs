@@ -34,6 +34,12 @@ pub trait Context {
     /// Check whether the body of a function is available.
     fn has_body(&self, item: DefId) -> bool;
     fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef>;
+
+    /// Retrieve all functions defined in this crate.
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef>;
+
+    /// Retrieve all static items defined in this crate.
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef>;
     fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule;
     fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef>;
     fn all_trait_decls(&self) -> TraitDecls;

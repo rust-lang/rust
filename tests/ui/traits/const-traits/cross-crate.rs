@@ -1,7 +1,7 @@
 //@ revisions: stock gated stocknc gatednc
 //@ [gated] check-pass
 //@ compile-flags: -Znext-solver
-#![cfg_attr(any(gated, gatednc), feature(const_trait_impl, effects))]
+#![cfg_attr(any(gated, gatednc), feature(const_trait_impl))]
 #![allow(incomplete_features)]
 
 //@ aux-build: cross-crate.rs

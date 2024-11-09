@@ -67,7 +67,7 @@ pub(crate) mod entry {
         }
 
         pub(crate) fn pat_top(p: &mut Parser<'_>) {
-            patterns::pattern_top(p);
+            patterns::pattern(p);
         }
 
         pub(crate) fn ty(p: &mut Parser<'_>) {
@@ -80,7 +80,8 @@ pub(crate) mod entry {
             paths::type_path(p);
         }
         pub(crate) fn item(p: &mut Parser<'_>) {
-            items::item_or_macro(p, true);
+            // We can set `is_in_extern=true`, because it only allows `safe fn`, and there is no ambiguity here.
+            items::item_or_macro(p, true, true);
         }
         // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
         pub(crate) fn meta_item(p: &mut Parser<'_>) {
@@ -116,7 +117,7 @@ pub(crate) mod entry {
 
         pub(crate) fn pattern(p: &mut Parser<'_>) {
             let m = p.start();
-            patterns::pattern_top(p);
+            patterns::pattern(p);
             if p.at(EOF) {
                 m.abandon(p);
                 return;

@@ -94,7 +94,7 @@ pub(crate) fn assoc_item_list(p: &mut Parser<'_>) {
             error_block(p, "expected an item");
             continue;
         }
-        item_or_macro(p, true);
+        item_or_macro(p, true, false);
     }
     p.expect(T!['}']);
     m.complete(p, ASSOC_ITEM_LIST);

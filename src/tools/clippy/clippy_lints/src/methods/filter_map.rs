@@ -21,8 +21,8 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
-        ExprKind::Closure(&Closure { body, .. }) => {
-            let body = cx.tcx.hir().body(body);
+        ExprKind::Closure(Closure { body, .. }) => {
+            let body = cx.tcx.hir().body(*body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
                 ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {
@@ -234,12 +234,12 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym!(is_some) {
+            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name.as_str() == "is_some" {
                 Some(Self::IsSome {
                     receiver,
                     side_effect_expr_span,
                 })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym!(is_ok) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name.as_str() == "is_ok" {
                 Some(Self::IsOk {
                     receiver,
                     side_effect_expr_span,

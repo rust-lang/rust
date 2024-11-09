@@ -1,5 +1,5 @@
 error[E0658]: const trait impls are experimental
-  --> $DIR/const_drop_is_valid.rs:6:6
+  --> $DIR/const_drop_is_valid.rs:3:6
    |
 LL | impl const Drop for A {}
    |      ^^^^^
@@ -8,17 +8,8 @@ LL | impl const Drop for A {}
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/const_drop_is_valid.rs:1:12
-   |
-LL | #![feature(effects)]
-   |            ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const_drop_is_valid.rs:6:12
+  --> $DIR/const_drop_is_valid.rs:3:12
    |
 LL | impl const Drop for A {}
    |            ^^^^
@@ -27,14 +18,14 @@ LL | impl const Drop for A {}
    = note: adding a non-const method body in the future would be a breaking change
 
 error[E0046]: not all trait items implemented, missing: `drop`
-  --> $DIR/const_drop_is_valid.rs:6:1
+  --> $DIR/const_drop_is_valid.rs:3:1
    |
 LL | impl const Drop for A {}
    | ^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
    |
    = help: implement the missing item: `fn drop(&mut self) { todo!() }`
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0046, E0658.
 For more information about an error, try `rustc --explain E0046`.

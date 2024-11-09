@@ -40,22 +40,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing a[(0, 0)] -> ImmBorrow
+note: Capturing a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:30:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Capturing a[(1, 0)] -> ImmBorrow
+note: Capturing a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:33:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
-note: Capturing b[(0, 0)] -> ImmBorrow
+note: Capturing b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:37:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
-note: Capturing b[(1, 0)] -> ImmBorrow
+note: Capturing b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:40:26
    |
 LL |         println!("{:?}", b.1);
@@ -73,22 +73,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture a[(0, 0)] -> ImmBorrow
+note: Min Capture a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:30:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Min Capture a[(1, 0)] -> ImmBorrow
+note: Min Capture a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:33:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
-note: Min Capture b[(0, 0)] -> ImmBorrow
+note: Min Capture b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:37:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
-note: Min Capture b[(1, 0)] -> ImmBorrow
+note: Min Capture b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:40:26
    |
 LL |         println!("{:?}", b.1);
@@ -106,22 +106,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing a[(1, 0)] -> ImmBorrow
+note: Capturing a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:57:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
-note: Capturing a[(0, 0)] -> ImmBorrow
+note: Capturing a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:60:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Capturing b[(1, 0)] -> ImmBorrow
+note: Capturing b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:64:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
-note: Capturing b[(0, 0)] -> ImmBorrow
+note: Capturing b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:67:26
    |
 LL |         println!("{:?}", b.0);
@@ -139,22 +139,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture a[(0, 0)] -> ImmBorrow
+note: Min Capture a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:60:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Min Capture a[(1, 0)] -> ImmBorrow
+note: Min Capture a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:57:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
-note: Min Capture b[(0, 0)] -> ImmBorrow
+note: Min Capture b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:67:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
-note: Min Capture b[(1, 0)] -> ImmBorrow
+note: Min Capture b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:64:26
    |
 LL |         println!("{:?}", b.1);
@@ -172,22 +172,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing b[(1, 0)] -> ImmBorrow
+note: Capturing b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:84:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
-note: Capturing a[(1, 0)] -> ImmBorrow
+note: Capturing a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:87:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
-note: Capturing a[(0, 0)] -> ImmBorrow
+note: Capturing a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:90:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Capturing b[(0, 0)] -> ImmBorrow
+note: Capturing b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:94:26
    |
 LL |         println!("{:?}", b.0);
@@ -205,22 +205,22 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture b[(0, 0)] -> ImmBorrow
+note: Min Capture b[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:94:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
-note: Min Capture b[(1, 0)] -> ImmBorrow
+note: Min Capture b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:84:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
-note: Min Capture a[(0, 0)] -> ImmBorrow
+note: Min Capture a[(0, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:90:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
-note: Min Capture a[(1, 0)] -> ImmBorrow
+note: Min Capture a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:87:26
    |
 LL |         println!("{:?}", a.1);

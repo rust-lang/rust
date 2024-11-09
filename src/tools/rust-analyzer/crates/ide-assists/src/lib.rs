@@ -161,6 +161,7 @@ mod handlers {
     mod generate_enum_is_method;
     mod generate_enum_projection_method;
     mod generate_enum_variant;
+    mod generate_fn_type_alias;
     mod generate_from_impl_for_enum;
     mod generate_function;
     mod generate_getter_or_setter;
@@ -289,6 +290,7 @@ mod handlers {
             generate_enum_projection_method::generate_enum_as_method,
             generate_enum_projection_method::generate_enum_try_into_method,
             generate_enum_variant::generate_enum_variant,
+            generate_fn_type_alias::generate_fn_type_alias,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
             generate_impl::generate_impl,

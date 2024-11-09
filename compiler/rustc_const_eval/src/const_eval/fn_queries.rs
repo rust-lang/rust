@@ -25,15 +25,9 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
             hir::Constness::Const
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
-        hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
-            // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
-            // foreign items cannot be evaluated at compile-time.
-            let is_const = if tcx.intrinsic(def_id).is_some() {
-                tcx.lookup_const_stability(def_id).is_some()
-            } else {
-                false
-            };
-            if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
+        hir::Node::ForeignItem(_) => {
+            // Foreign items cannot be evaluated at compile-time.
+            hir::Constness::NotConst
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
         _ => {

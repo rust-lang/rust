@@ -1,5 +1,6 @@
 use std::cmp;
 
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
@@ -13,9 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode, Reg};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -977,7 +976,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         });
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
             let (tup, args) = args.split_last().unwrap();
             (args, Some(tup))
         } else {

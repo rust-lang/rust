@@ -237,10 +237,10 @@ impl RustcInternal for FnSig {
 }
 
 impl RustcInternal for VariantIdx {
-    type T<'tcx> = rustc_target::abi::VariantIdx;
+    type T<'tcx> = rustc_abi::VariantIdx;
 
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
-        rustc_target::abi::VariantIdx::from(self.to_index())
+        rustc_abi::VariantIdx::from(self.to_index())
     }
 }
 
@@ -335,12 +335,12 @@ impl RustcInternal for BoundVariableKind {
                 ),
             }),
             BoundVariableKind::Region(kind) => rustc_ty::BoundVariableKind::Region(match kind {
-                BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::BrAnon,
-                BoundRegionKind::BrNamed(def, symbol) => rustc_ty::BoundRegionKind::BrNamed(
+                BoundRegionKind::BrAnon => rustc_ty::BoundRegionKind::Anon,
+                BoundRegionKind::BrNamed(def, symbol) => rustc_ty::BoundRegionKind::Named(
                     def.0.internal(tables, tcx),
                     Symbol::intern(symbol),
                 ),
-                BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::BrEnv,
+                BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::ClosureEnv,
             }),
             BoundVariableKind::Const => rustc_ty::BoundVariableKind::Const,
         }
@@ -451,35 +451,35 @@ impl RustcInternal for AdtDef {
 }
 
 impl RustcInternal for Abi {
-    type T<'tcx> = rustc_target::spec::abi::Abi;
+    type T<'tcx> = rustc_abi::ExternAbi;
 
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match *self {
-            Abi::Rust => rustc_target::spec::abi::Abi::Rust,
-            Abi::C { unwind } => rustc_target::spec::abi::Abi::C { unwind },
-            Abi::Cdecl { unwind } => rustc_target::spec::abi::Abi::Cdecl { unwind },
-            Abi::Stdcall { unwind } => rustc_target::spec::abi::Abi::Stdcall { unwind },
-            Abi::Fastcall { unwind } => rustc_target::spec::abi::Abi::Fastcall { unwind },
-            Abi::Vectorcall { unwind } => rustc_target::spec::abi::Abi::Vectorcall { unwind },
-            Abi::Thiscall { unwind } => rustc_target::spec::abi::Abi::Thiscall { unwind },
-            Abi::Aapcs { unwind } => rustc_target::spec::abi::Abi::Aapcs { unwind },
-            Abi::Win64 { unwind } => rustc_target::spec::abi::Abi::Win64 { unwind },
-            Abi::SysV64 { unwind } => rustc_target::spec::abi::Abi::SysV64 { unwind },
-            Abi::PtxKernel => rustc_target::spec::abi::Abi::PtxKernel,
-            Abi::Msp430Interrupt => rustc_target::spec::abi::Abi::Msp430Interrupt,
-            Abi::X86Interrupt => rustc_target::spec::abi::Abi::X86Interrupt,
-            Abi::EfiApi => rustc_target::spec::abi::Abi::EfiApi,
-            Abi::AvrInterrupt => rustc_target::spec::abi::Abi::AvrInterrupt,
-            Abi::AvrNonBlockingInterrupt => rustc_target::spec::abi::Abi::AvrNonBlockingInterrupt,
-            Abi::CCmseNonSecureCall => rustc_target::spec::abi::Abi::CCmseNonSecureCall,
-            Abi::CCmseNonSecureEntry => rustc_target::spec::abi::Abi::CCmseNonSecureEntry,
-            Abi::System { unwind } => rustc_target::spec::abi::Abi::System { unwind },
-            Abi::RustIntrinsic => rustc_target::spec::abi::Abi::RustIntrinsic,
-            Abi::RustCall => rustc_target::spec::abi::Abi::RustCall,
-            Abi::Unadjusted => rustc_target::spec::abi::Abi::Unadjusted,
-            Abi::RustCold => rustc_target::spec::abi::Abi::RustCold,
-            Abi::RiscvInterruptM => rustc_target::spec::abi::Abi::RiscvInterruptM,
-            Abi::RiscvInterruptS => rustc_target::spec::abi::Abi::RiscvInterruptS,
+            Abi::Rust => rustc_abi::ExternAbi::Rust,
+            Abi::C { unwind } => rustc_abi::ExternAbi::C { unwind },
+            Abi::Cdecl { unwind } => rustc_abi::ExternAbi::Cdecl { unwind },
+            Abi::Stdcall { unwind } => rustc_abi::ExternAbi::Stdcall { unwind },
+            Abi::Fastcall { unwind } => rustc_abi::ExternAbi::Fastcall { unwind },
+            Abi::Vectorcall { unwind } => rustc_abi::ExternAbi::Vectorcall { unwind },
+            Abi::Thiscall { unwind } => rustc_abi::ExternAbi::Thiscall { unwind },
+            Abi::Aapcs { unwind } => rustc_abi::ExternAbi::Aapcs { unwind },
+            Abi::Win64 { unwind } => rustc_abi::ExternAbi::Win64 { unwind },
+            Abi::SysV64 { unwind } => rustc_abi::ExternAbi::SysV64 { unwind },
+            Abi::PtxKernel => rustc_abi::ExternAbi::PtxKernel,
+            Abi::Msp430Interrupt => rustc_abi::ExternAbi::Msp430Interrupt,
+            Abi::X86Interrupt => rustc_abi::ExternAbi::X86Interrupt,
+            Abi::EfiApi => rustc_abi::ExternAbi::EfiApi,
+            Abi::AvrInterrupt => rustc_abi::ExternAbi::AvrInterrupt,
+            Abi::AvrNonBlockingInterrupt => rustc_abi::ExternAbi::AvrNonBlockingInterrupt,
+            Abi::CCmseNonSecureCall => rustc_abi::ExternAbi::CCmseNonSecureCall,
+            Abi::CCmseNonSecureEntry => rustc_abi::ExternAbi::CCmseNonSecureEntry,
+            Abi::System { unwind } => rustc_abi::ExternAbi::System { unwind },
+            Abi::RustIntrinsic => rustc_abi::ExternAbi::RustIntrinsic,
+            Abi::RustCall => rustc_abi::ExternAbi::RustCall,
+            Abi::Unadjusted => rustc_abi::ExternAbi::Unadjusted,
+            Abi::RustCold => rustc_abi::ExternAbi::RustCold,
+            Abi::RiscvInterruptM => rustc_abi::ExternAbi::RiscvInterruptM,
+            Abi::RiscvInterruptS => rustc_abi::ExternAbi::RiscvInterruptS,
         }
     }
 }
@@ -503,7 +503,7 @@ impl RustcInternal for Span {
 }
 
 impl RustcInternal for Layout {
-    type T<'tcx> = rustc_target::abi::Layout<'tcx>;
+    type T<'tcx> = rustc_abi::Layout<'tcx>;
 
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         tcx.lift(tables.layouts[*self]).unwrap()

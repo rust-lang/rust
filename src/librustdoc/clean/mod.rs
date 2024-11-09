@@ -304,7 +304,9 @@ pub(crate) fn clean_middle_region(region: ty::Region<'_>) -> Option<Lifetime> {
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
         _ if !region.has_name() => None,
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => Some(Lifetime(name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
+            Some(Lifetime(name))
+        }
         ty::ReEarlyParam(ref data) => Some(Lifetime(data.name)),
         ty::ReBound(..)
         | ty::ReLateParam(..)
@@ -369,7 +371,7 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstArgHasType(..)
-        // FIXME(effects): We can probably use this `HostEffect` pred to render `~const`.
+        // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
     }
 }
@@ -379,7 +381,7 @@ fn clean_poly_trait_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-    // FIXME(effects) check constness
+    // FIXME(const_trait_impl) check constness
     if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
         return None;
     }
@@ -1317,8 +1319,8 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             let provided = match assoc_item.container {
-                ty::ImplContainer => true,
-                ty::TraitContainer => tcx.defaultness(assoc_item.def_id).has_value(),
+                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::Trait => tcx.defaultness(assoc_item.def_id).has_value(),
             };
             if provided {
                 AssocConstItem(Box::new(Constant {
@@ -1335,10 +1337,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
-                    ty::ImplContainer => {
+                    ty::AssocItemContainer::Impl => {
                         tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
                     }
-                    ty::TraitContainer => tcx.types.self_param,
+                    ty::AssocItemContainer::Trait => tcx.types.self_param,
                 };
                 let self_arg_ty =
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
@@ -1355,13 +1357,13 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let provided = match assoc_item.container {
-                ty::ImplContainer => true,
-                ty::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             };
             if provided {
                 let defaultness = match assoc_item.container {
-                    ty::ImplContainer => Some(assoc_item.defaultness(tcx)),
-                    ty::TraitContainer => None,
+                    ty::AssocItemContainer::Impl => Some(assoc_item.defaultness(tcx)),
+                    ty::AssocItemContainer::Trait => None,
                 };
                 MethodItem(item, defaultness)
             } else {
@@ -1392,7 +1394,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
-            if let ty::TraitContainer = assoc_item.container {
+            if let ty::AssocItemContainer::Trait = assoc_item.container {
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
@@ -1403,7 +1405,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 });
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            if let ty::TraitContainer = assoc_item.container {
+            if let ty::AssocItemContainer::Trait = assoc_item.container {
                 // Move bounds that are (likely) directly attached to the associated type
                 // from the where-clause to the associated type.
                 // There is no guarantee that this is what the user actually wrote but we have
@@ -1896,7 +1898,9 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
         ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) if name != kw::Empty => {
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. })
+            if name != kw::Empty =>
+        {
             Some(Lifetime(name))
         }
         ty::ReEarlyParam(_)
@@ -2141,7 +2145,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .iter()
                 .flat_map(|pred| pred.bound_vars())
                 .filter_map(|var| match var {
-                    ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
                         if name != kw::UnderscoreLifetime =>
                     {
                         Some(GenericParamDef::lifetime(def_id, name))
@@ -2907,7 +2911,7 @@ fn clean_extern_crate<'tcx>(
                     None => false,
                 }
         })
-        && !cx.output_format.is_json();
+        && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
     if please_inline {
@@ -3000,7 +3004,7 @@ fn clean_use_statement_inner<'tcx>(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = cx.output_format.is_json()
+    let mut denied = cx.is_json_output()
         || !(visibility.is_public()
             || (cx.render_options.document_private && is_visible_from_parent_mod))
         || pub_underscore
@@ -3118,7 +3122,7 @@ fn clean_bound_vars(bound_vars: &ty::List<ty::BoundVariableKind>) -> Vec<Generic
     bound_vars
         .into_iter()
         .filter_map(|var| match var {
-            ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
                 if name != kw::UnderscoreLifetime =>
             {
                 Some(GenericParamDef::lifetime(def_id, name))

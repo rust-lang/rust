@@ -2,6 +2,7 @@
 
 use std::{fmt, iter};
 
+use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
@@ -14,8 +15,6 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::Limit;
 use rustc_span::sym;
-use rustc_target::abi::{Float, Integer, IntegerType, Size};
-use rustc_target::spec::abi::Abi;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -736,8 +735,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 let ty = self.fold_regions(decl.ty, |re, debruijn| {
                     assert_eq!(re, self.lifetimes.re_erased);
                     let var = ty::BoundVar::from_usize(vars.len());
-                    vars.push(ty::BoundVariableKind::Region(ty::BrAnon));
-                    ty::Region::new_bound(self, debruijn, ty::BoundRegion { var, kind: ty::BrAnon })
+                    vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
+                    ty::Region::new_bound(self, debruijn, ty::BoundRegion {
+                        var,
+                        kind: ty::BoundRegionKind::Anon,
+                    })
                 });
                 ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
                     ty,
@@ -1783,13 +1785,14 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// the compiler to make some assumptions about its shape; if the user doesn't use a feature gate, they may
 /// cause an ICE that we otherwise may want to prevent.
 pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
-    if (matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
-        && tcx.features().intrinsics())
-        || (tcx.has_attr(def_id, sym::rustc_intrinsic) && tcx.features().rustc_attrs())
+    if tcx.features().intrinsics()
+        && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
+            || tcx.has_attr(def_id, sym::rustc_intrinsic))
     {
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
             must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
+            const_stable: tcx.has_attr(def_id, sym::rustc_const_stable_intrinsic),
         })
     } else {
         None

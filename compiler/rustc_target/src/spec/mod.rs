@@ -1595,11 +1595,10 @@ macro_rules! supported_targets {
         pub const TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
+            let t = match target {
                 $( $tuple => targets::$module::target(), )+
                 _ => return None,
             };
-            t.is_builtin = true;
             debug!("got builtin target: {:?}", t);
             Some(t)
         }
@@ -1806,7 +1805,6 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32v1-none", wasm32v1_none),
-    ("wasm32-wasi", wasm32_wasi),
     ("wasm32-wasip1", wasm32_wasip1),
     ("wasm32-wasip2", wasm32_wasip2),
     ("wasm32-wasip1-threads", wasm32_wasip1_threads),
@@ -2128,9 +2126,6 @@ type StaticCow<T> = Cow<'static, T>;
 /// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
 pub struct TargetOptions {
-    /// Whether the target is built-in or loaded from a custom target specification.
-    pub is_builtin: bool,
-
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
@@ -2606,7 +2601,6 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
-            is_builtin: false,
             endian: Endian::Little,
             c_int_width: "32".into(),
             os: "none".into(),
@@ -3349,7 +3343,6 @@ impl Target {
             }
         }
 
-        key!(is_builtin, bool);
         key!(c_int_width = "target-c-int-width");
         key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
@@ -3462,10 +3455,6 @@ impl Target {
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
 
-        if base.is_builtin {
-            // This can cause unfortunate ICEs later down the line.
-            return Err("may not set is_builtin for targets not built-in".into());
-        }
         base.update_from_cli();
 
         // Each field should have been read using `Json::remove` so any keys remaining are unused.
@@ -3635,7 +3624,6 @@ impl ToJson for Target {
         target_val!(arch);
         target_val!(data_layout);
 
-        target_option_val!(is_builtin);
         target_option_val!(endian, "target-endian");
         target_option_val!(c_int_width, "target-c-int-width");
         target_option_val!(os);

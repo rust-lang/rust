@@ -1,6 +1,5 @@
 //@ check-pass
-#![feature(const_trait_impl, rustc_attrs, effects)]
-//~^ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl, rustc_attrs)]
 
 #[const_trait]
 trait IntoIter {

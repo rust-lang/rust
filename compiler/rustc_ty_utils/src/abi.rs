@@ -1,7 +1,7 @@
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{BackendRepr, PointerKind, Scalar, Size};
+use rustc_abi::{BackendRepr, ExternAbi, PointerKind, Scalar, Size};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -12,10 +12,9 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::call::{
+use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, RiscvInterruptKind,
 };
-use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -39,7 +38,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
-            rustc_target::spec::abi::Abi::Unadjusted,
+            rustc_abi::ExternAbi::Unadjusted,
         ));
     }
 
@@ -77,12 +76,13 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::Closure(def_id, args) => {
             let sig = args.as_closure().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
+            let bound_vars =
+                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                )));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(
@@ -106,12 +106,13 @@ fn fn_sig_for_fn_abi<'tcx>(
         ty::CoroutineClosure(def_id, args) => {
             let coroutine_ty = Ty::new_coroutine_closure(tcx, def_id, args);
             let sig = args.as_coroutine_closure().coroutine_closure_sig();
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
+            let bound_vars =
+                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                )));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
             // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
@@ -162,11 +163,11 @@ fn fn_sig_for_fn_abi<'tcx>(
             let sig = args.as_coroutine().sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(iter::once(
-                ty::BoundVariableKind::Region(ty::BrEnv),
+                ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
             ));
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             };
 
             let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
@@ -270,7 +271,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     ret_ty,
                     false,
                     hir::Safety::Safe,
-                    rustc_target::spec::abi::Abi::Rust,
+                    rustc_abi::ExternAbi::Rust,
                 )
             } else {
                 // `Iterator::next` doesn't have a `resume` argument.
@@ -279,7 +280,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     ret_ty,
                     false,
                     hir::Safety::Safe,
-                    rustc_target::spec::abi::Abi::Rust,
+                    rustc_abi::ExternAbi::Rust,
                 )
             };
             ty::Binder::bind_with_vars(fn_sig, bound_vars)
@@ -289,8 +290,8 @@ fn fn_sig_for_fn_abi<'tcx>(
 }
 
 #[inline]
-fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
-    use rustc_target::spec::abi::Abi::*;
+fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
+    use rustc_abi::ExternAbi::*;
     match tcx.sess.target.adjust_abi(abi, c_variadic) {
         RustIntrinsic | Rust | RustCall => Conv::Rust,
 
@@ -453,52 +454,73 @@ fn adjust_for_rust_scalar<'tcx>(
 fn fn_abi_sanity_check<'tcx>(
     cx: &LayoutCx<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-    spec_abi: SpecAbi,
+    spec_abi: ExternAbi,
 ) {
     fn fn_arg_sanity_check<'tcx>(
         cx: &LayoutCx<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        spec_abi: SpecAbi,
+        spec_abi: ExternAbi,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
     ) {
         let tcx = cx.tcx();
+
+        if spec_abi == ExternAbi::Rust
+            || spec_abi == ExternAbi::RustCall
+            || spec_abi == ExternAbi::RustCold
+        {
+            if arg.layout.is_zst() {
+                // Casting closures to function pointers depends on ZST closure types being
+                // omitted entirely in the calling convention.
+                assert!(arg.is_ignore());
+            }
+            if let PassMode::Indirect { on_stack, .. } = arg.mode {
+                assert!(!on_stack, "rust abi shouldn't use on_stack");
+            }
+        }
+
         match &arg.mode {
-            PassMode::Ignore => {}
+            PassMode::Ignore => {
+                assert!(arg.layout.is_zst() || arg.layout.is_uninhabited());
+            }
             PassMode::Direct(_) => {
                 // Here the Rust type is used to determine the actual ABI, so we have to be very
-                // careful. Scalar/ScalarPair is fine, since backends will generally use
-                // `layout.abi` and ignore everything else. We should just reject `Aggregate`
-                // entirely here, but some targets need to be fixed first.
-                if matches!(arg.layout.backend_repr, BackendRepr::Memory { .. }) {
-                    // For an unsized type we'd only pass the sized prefix, so there is no universe
-                    // in which we ever want to allow this.
-                    assert!(
-                        arg.layout.is_sized(),
-                        "`PassMode::Direct` for unsized type in ABI: {:#?}",
-                        fn_abi
-                    );
-                    // This really shouldn't happen even for sized aggregates, since
-                    // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
-                    // LLVM type. This means all sorts of Rust type details leak into the ABI.
-                    // However wasm sadly *does* currently use this mode so we have to allow it --
-                    // but we absolutely shouldn't let any more targets do that.
-                    // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
-                    //
-                    // The unstable abi `PtxKernel` also uses Direct for now.
-                    // It needs to switch to something else before stabilization can happen.
-                    // (See issue: https://github.com/rust-lang/rust/issues/117271)
-                    assert!(
-                        matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64")
-                            || matches!(spec_abi, SpecAbi::PtxKernel | SpecAbi::Unadjusted),
-                        "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
+                // careful. Scalar/Vector is fine, since backends will generally use
+                // `layout.backend_repr` and ignore everything else. We should just reject
+                //`Aggregate` entirely here, but some targets need to be fixed first.
+                match arg.layout.backend_repr {
+                    BackendRepr::Uninhabited
+                    | BackendRepr::Scalar(_)
+                    | BackendRepr::Vector { .. } => {}
+                    BackendRepr::ScalarPair(..) => {
+                        panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
+                    }
+                    BackendRepr::Memory { sized } => {
+                        // For an unsized type we'd only pass the sized prefix, so there is no universe
+                        // in which we ever want to allow this.
+                        assert!(sized, "`PassMode::Direct` for unsized type in ABI: {:#?}", fn_abi);
+                        // This really shouldn't happen even for sized aggregates, since
+                        // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
+                        // LLVM type. This means all sorts of Rust type details leak into the ABI.
+                        // However wasm sadly *does* currently use this mode so we have to allow it --
+                        // but we absolutely shouldn't let any more targets do that.
+                        // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
+                        //
+                        // The unstable abi `PtxKernel` also uses Direct for now.
+                        // It needs to switch to something else before stabilization can happen.
+                        // (See issue: https://github.com/rust-lang/rust/issues/117271)
+                        assert!(
+                            matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64")
+                                || matches!(spec_abi, ExternAbi::PtxKernel | ExternAbi::Unadjusted),
+                            "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
                           Problematic type: {:#?}",
-                        arg.layout,
-                    );
+                            arg.layout,
+                        );
+                    }
                 }
             }
             PassMode::Pair(_, _) => {
-                // Similar to `Direct`, we need to make sure that backends use `layout.abi` and
-                // ignore the rest of the layout.
+                // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
+                // and ignore the rest of the layout.
                 assert!(
                     matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
                     "PassMode::Pair for type {}",
@@ -556,7 +578,7 @@ fn fn_abi_new_uncached<'tcx>(
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
-    let extra_args = if sig.abi == SpecAbi::RustCall {
+    let extra_args = if sig.abi == ExternAbi::RustCall {
         assert!(!sig.c_variadic && extra_args.is_empty());
 
         if let Some(input) = sig.inputs().last() {
@@ -649,10 +671,10 @@ fn fn_abi_new_uncached<'tcx>(
 fn fn_abi_adjust_for_abi<'tcx>(
     cx: &LayoutCx<'tcx>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
-    abi: SpecAbi,
+    abi: ExternAbi,
     fn_def_id: Option<DefId>,
 ) -> Result<(), &'tcx FnAbiError<'tcx>> {
-    if abi == SpecAbi::Unadjusted {
+    if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
         fn unadjust<'tcx>(arg: &mut ArgAbi<'tcx, Ty<'tcx>>) {
@@ -676,7 +698,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     let tcx = cx.tcx();
 
-    if abi == SpecAbi::Rust || abi == SpecAbi::RustCall || abi == SpecAbi::RustIntrinsic {
+    if abi == ExternAbi::Rust || abi == ExternAbi::RustCall || abi == ExternAbi::RustIntrinsic {
         fn_abi.adjust_for_rust_abi(cx, abi);
 
         // Look up the deduced parameter attributes for this function, if we have its def ID and

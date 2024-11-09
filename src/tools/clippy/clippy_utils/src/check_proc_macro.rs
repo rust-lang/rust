@@ -21,7 +21,7 @@ use rustc_hir::{
     ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
     TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
@@ -63,8 +63,8 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
-            Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
-            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
+            Pat::MultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
+            Pat::OwnedMultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
         })
@@ -333,26 +333,32 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
             if let Some(ident) = attr.ident() {
-                // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
-                // refactoring
                 // NOTE: This will likely have false positives, like `allow = 1`
-                (
-                    Pat::OwnedMultiStr(vec![ident.to_string(), "#".to_owned()]),
-                    Pat::Str(""),
-                )
+                let ident_string = ident.to_string();
+                if attr.style == AttrStyle::Outer {
+                    (
+                        Pat::OwnedMultiStr(vec!["#[".to_owned() + &ident_string, ident_string]),
+                        Pat::Str(""),
+                    )
+                } else {
+                    (
+                        Pat::OwnedMultiStr(vec!["#![".to_owned() + &ident_string, ident_string]),
+                        Pat::Str(""),
+                    )
+                }
             } else {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
-            if matches!(attr.style, AttrStyle::Outer) {
+            if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))
             } else {
                 (Pat::Str("//!"), Pat::Str(""))
             }
         },
         AttrKind::DocComment(_kind @ CommentKind::Block, ..) => {
-            if matches!(attr.style, AttrStyle::Outer) {
+            if attr.style == AttrStyle::Outer {
                 (Pat::Str("/**"), Pat::Str("*/"))
             } else {
                 (Pat::Str("/*!"), Pat::Str("*/"))
@@ -429,10 +435,11 @@ impl_with_search_pat!((_cx: LateContext<'tcx>, self: ImplItem<'_>) => impl_item_
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: FieldDef<'_>) => field_def_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Variant<'_>) => variant_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ty<'_>) => ty_search_pat(self));
-impl_with_search_pat!((_cx: LateContext<'tcx>, self: Attribute) => attr_search_pat(self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Ident) => ident_search_pat(*self));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Lit) => lit_search_pat(&self.node));
 impl_with_search_pat!((_cx: LateContext<'tcx>, self: Path<'_>) => path_search_pat(self));
+
+impl_with_search_pat!((_cx: EarlyContext<'tcx>, self: Attribute) => attr_search_pat(self));
 
 impl<'cx> WithSearchPat<'cx> for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
     type Context = LateContext<'cx>;

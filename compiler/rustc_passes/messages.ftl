@@ -679,10 +679,6 @@ passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
     .label = not a `#[repr(transparent)]` type
 
-passes_rustc_safe_intrinsic =
-    attribute should be applied to intrinsic functions
-    .label = not an intrinsic function
-
 passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics
     .label = not a function or static

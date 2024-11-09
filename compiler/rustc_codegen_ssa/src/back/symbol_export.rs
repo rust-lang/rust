@@ -548,7 +548,7 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
 ) -> String {
-    use rustc_target::abi::call::Conv;
+    use rustc_target::callconv::Conv;
 
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 

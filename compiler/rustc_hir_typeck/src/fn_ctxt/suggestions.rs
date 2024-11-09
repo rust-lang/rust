@@ -1796,7 +1796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 false,
                 |did| {
                     let assoc_item = self.tcx.associated_item(did);
-                    assoc_item.container == ty::AssocItemContainer::TraitContainer
+                    assoc_item.container == ty::AssocItemContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
                 },
             )
@@ -3388,6 +3388,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         } else {
             err.span_label(block.span, "this block is missing a tail expression");
+        }
+    }
+
+    pub(crate) fn suggest_swapping_lhs_and_rhs(
+        &self,
+        err: &mut Diag<'_>,
+        rhs_ty: Ty<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        op: hir::BinOp,
+    ) {
+        match op.node {
+            hir::BinOpKind::Eq => {
+                if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().eq_trait()
+                    && self
+                        .infcx
+                        .type_implements_trait(partial_eq_def_id, [rhs_ty, lhs_ty], self.param_env)
+                        .must_apply_modulo_regions()
+                {
+                    let sm = self.tcx.sess.source_map();
+                    if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_expr.span)
+                        && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_expr.span)
+                    {
+                        err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
+                        err.multipart_suggestion(
+                            "consider swapping the equality",
+                            vec![(lhs_expr.span, rhs_snippet), (rhs_expr.span, lhs_snippet)],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }

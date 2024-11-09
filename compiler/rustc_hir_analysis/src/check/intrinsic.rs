@@ -1,16 +1,15 @@
-//! Type-checking for the rust-intrinsic and platform-intrinsic
-//! intrinsics that the compiler exposes.
+//! Type-checking for the rust-intrinsic intrinsics that the compiler exposes.
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, struct_span_code_err};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Safety};
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::abi::Abi;
 
 use crate::check::check_function_signature;
 use crate::errors::{
@@ -76,10 +75,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
     let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
         tcx.fn_sig(intrinsic_id).skip_binder().safety()
     } else {
-        match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
-            true => hir::Safety::Safe,
-            false => hir::Safety::Unsafe,
-        }
+        // Old-style intrinsics are never safe
+        Safety::Unsafe
     };
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
@@ -163,7 +160,7 @@ pub fn check_intrinsic_type(
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
-    abi: Abi,
+    abi: ExternAbi,
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
@@ -178,19 +175,19 @@ pub fn check_intrinsic_type(
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrEnv),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
             let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                 var: ty::BoundVar::ZERO,
-                kind: ty::BrAnon,
+                kind: ty::BoundRegionKind::Anon,
             });
             let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                 var: ty::BoundVar::from_u32(2),
-                kind: ty::BrEnv,
+                kind: ty::BoundRegionKind::ClosureEnv,
             });
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
@@ -509,7 +506,8 @@ pub fn check_intrinsic_type(
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
                 (
                     1,
                     0,
@@ -533,14 +531,14 @@ pub fn check_intrinsic_type(
                     tcx.types.unit,
                     false,
                     hir::Safety::Safe,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                 ));
                 let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                     [mut_u8, mut_u8],
                     tcx.types.unit,
                     false,
                     hir::Safety::Safe,
-                    Abi::Rust,
+                    ExternAbi::Rust,
                 ));
                 (
                     0,
@@ -573,10 +571,14 @@ pub fn check_intrinsic_type(
             }
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BrAnon };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
                 let param_ty_lhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon };
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_u32(1),
+                    kind: ty::BoundRegionKind::Anon,
+                };
                 let param_ty_rhs =
                     Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
                 (1, 0, vec![param_ty_lhs, param_ty_rhs], tcx.types.bool)

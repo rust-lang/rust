@@ -20,7 +20,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing p[(0, 0)] -> ImmBorrow
+note: Capturing p[(0, 0)] -> Immutable
   --> $DIR/capture-disjoint-field-struct.rs:20:24
    |
 LL |         println!("{}", p.x);
@@ -38,7 +38,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture p[(0, 0)] -> ImmBorrow
+note: Min Capture p[(0, 0)] -> Immutable
   --> $DIR/capture-disjoint-field-struct.rs:20:24
    |
 LL |         println!("{}", p.x);

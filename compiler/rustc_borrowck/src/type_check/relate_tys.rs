@@ -240,11 +240,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         let universe = self.type_checker.infcx.create_next_universe();
-        self.type_checker
-            .borrowck_context
-            .constraints
-            .universe_causes
-            .insert(universe, self.universe_info.clone());
+        self.type_checker.constraints.universe_causes.insert(universe, self.universe_info.clone());
         universe
     }
 
@@ -264,16 +260,13 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        let reg = self
-            .type_checker
-            .borrowck_context
-            .constraints
-            .placeholder_region(self.type_checker.infcx, placeholder);
+        let reg =
+            self.type_checker.constraints.placeholder_region(self.type_checker.infcx, placeholder);
 
         let reg_info = match placeholder.bound.kind {
-            ty::BoundRegionKind::BrAnon => sym::anon,
-            ty::BoundRegionKind::BrNamed(_, name) => name,
-            ty::BoundRegionKind::BrEnv => sym::env,
+            ty::BoundRegionKind::Anon => sym::anon,
+            ty::BoundRegionKind::Named(_, name) => name,
+            ty::BoundRegionKind::ClosureEnv => sym::env,
         };
 
         if cfg!(debug_assertions) {
@@ -294,19 +287,17 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         sub: ty::Region<'tcx>,
         info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
     ) {
-        let sub = self.type_checker.borrowck_context.universal_regions.to_region_vid(sub);
-        let sup = self.type_checker.borrowck_context.universal_regions.to_region_vid(sup);
-        self.type_checker.borrowck_context.constraints.outlives_constraints.push(
-            OutlivesConstraint {
-                sup,
-                sub,
-                locations: self.locations,
-                span: self.locations.span(self.type_checker.body),
-                category: self.category,
-                variance_info: info,
-                from_closure: false,
-            },
-        );
+        let sub = self.type_checker.universal_regions.to_region_vid(sub);
+        let sup = self.type_checker.universal_regions.to_region_vid(sup);
+        self.type_checker.constraints.outlives_constraints.push(OutlivesConstraint {
+            sup,
+            sub,
+            locations: self.locations,
+            span: self.locations.span(self.type_checker.body),
+            category: self.category,
+            variance_info: info,
+            from_closure: false,
+        });
     }
 }
 

@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_uint};
 use std::str;
 
+use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
@@ -24,7 +25,6 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -152,6 +152,11 @@ pub(crate) unsafe fn create_module<'ll>(
         if sess.target.arch.starts_with("sparc") {
             // LLVM 20 updates the sparc layout to correctly align 128 bit integers to 128 bit.
             // See https://github.com/llvm/llvm-project/pull/106951
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("mips64") {
+            // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/112084
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
     }
@@ -308,7 +313,13 @@ pub(crate) unsafe fn create_module<'ll>(
                 "sign-return-address",
                 pac_ret.is_some().into(),
             );
-            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
+            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "branch-protection-pauth-lr",
+                pac_opts.pc.into(),
+            );
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,

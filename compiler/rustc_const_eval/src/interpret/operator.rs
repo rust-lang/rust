@@ -1,4 +1,5 @@
 use either::Either;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::NullOp;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
@@ -6,7 +7,6 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
-use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, interp_ok, throw_ub};

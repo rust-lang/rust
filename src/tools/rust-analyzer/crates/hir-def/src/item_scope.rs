@@ -361,9 +361,7 @@ impl ItemScope {
         self.macro_invocations.get(&call).copied()
     }
 
-    pub(crate) fn iter_macro_invoc(
-        &self,
-    ) -> impl Iterator<Item = (&AstId<ast::MacroCall>, &MacroCallId)> {
+    pub fn iter_macro_invoc(&self) -> impl Iterator<Item = (&AstId<ast::MacroCall>, &MacroCallId)> {
         self.macro_invocations.iter()
     }
 }
@@ -401,9 +399,7 @@ impl ItemScope {
         self.macro_invocations.insert(call, call_id);
     }
 
-    pub(crate) fn attr_macro_invocs(
-        &self,
-    ) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
+    pub fn attr_macro_invocs(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.attr_macros.iter().map(|(k, v)| (*k, *v))
     }
 
@@ -440,7 +436,7 @@ impl ItemScope {
         });
     }
 
-    pub(crate) fn derive_macro_invocs(
+    pub fn derive_macro_invocs(
         &self,
     ) -> impl Iterator<
         Item = (

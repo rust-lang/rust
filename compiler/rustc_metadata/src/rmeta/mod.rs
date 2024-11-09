@@ -6,7 +6,7 @@ use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -27,7 +27,7 @@ use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{
-    self, DeducedParamAttrs, ParameterizedOverTcx, ReprOptions, Ty, TyCtxt, UnusedGenericParams,
+    self, DeducedParamAttrs, ParameterizedOverTcx, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{mir, trivially_parameterized_over_tcx};

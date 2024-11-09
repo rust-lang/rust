@@ -396,7 +396,8 @@ struct Renderer<'a> {
 
 impl Renderer<'_> {
     fn markdown(input: &str) -> Safe<String> {
-        let parser = Parser::new_ext(input, Options::all());
+        let input = clippy_config::sanitize_explanation(input);
+        let parser = Parser::new_ext(&input, Options::all());
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
         // Oh deer, what a hack :O

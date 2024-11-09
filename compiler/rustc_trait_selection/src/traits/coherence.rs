@@ -540,7 +540,7 @@ fn plug_infer_with_placeholders<'tcx>(
                                 universe: self.universe,
                                 bound: ty::BoundRegion {
                                     var: self.next_var(),
-                                    kind: ty::BoundRegionKind::BrAnon,
+                                    kind: ty::BoundRegionKind::Anon,
                                 },
                             }),
                         )

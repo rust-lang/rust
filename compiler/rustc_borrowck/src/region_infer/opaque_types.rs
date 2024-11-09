@@ -145,9 +145,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
             // Sometimes two opaque types are the same only after we remap the generic parameters
-            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
-            // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
-            // once we convert the generic parameters to those of the opaque type.
+            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to
+            // `(X, Y)` and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we
+            // only know that once we convert the generic parameters to those of the opaque type.
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {

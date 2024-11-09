@@ -10,12 +10,12 @@ use std::hash::Hash;
 use std::intrinsics;
 use std::marker::DiscriminantKind;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 
 use crate::arena::ArenaAllocatable;

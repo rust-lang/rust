@@ -93,7 +93,7 @@ enum IfBlockType<'hir> {
 
 fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir Expr<'hir>> {
     if let Block {
-        stmts: &[],
+        stmts: [],
         expr: Some(els),
         ..
     } = block
@@ -163,8 +163,8 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
             is_type_diagnostic_item(cx, caller_ty, smbl)
                 && expr_return_none_or_err(smbl, cx, if_then, caller, None)
                 && match smbl {
-                    sym::Option => call_sym == sym!(is_none),
-                    sym::Result => call_sym == sym!(is_err),
+                    sym::Option => call_sym.as_str() == "is_none",
+                    sym::Result => call_sym.as_str() == "is_err",
                     _ => false,
                 }
         },

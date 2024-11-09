@@ -4,6 +4,7 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
+use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{
     AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
@@ -11,7 +12,6 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::graphviz::write_mir_fn_graphviz;

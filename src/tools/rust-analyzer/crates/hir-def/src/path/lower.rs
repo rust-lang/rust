@@ -19,12 +19,11 @@ use crate::{
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
-pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path> {
+pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
-    let span_map = ctx.span_map();
     loop {
         let segment = path.segment()?;
 
@@ -37,7 +36,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
                 if name_ref.text() == "$crate" {
                     break kind = resolve_crate_root(
                         ctx.db.upcast(),
-                        span_map.span_for_range(name_ref.syntax().text_range()).ctx,
+                        ctx.span_map().span_for_range(name_ref.syntax().text_range()).ctx,
                     )
                     .map(PathKind::DollarCrate)
                     .unwrap_or(PathKind::Crate);
@@ -151,7 +150,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            let syn_ctxt = span_map.span_for_range(path.segment()?.syntax().text_range()).ctx;
+            let syn_ctxt = ctx.span_map().span_for_range(path.segment()?.syntax().text_range()).ctx;
             if let Some(macro_call_id) = ctx.db.lookup_intern_syntax_context(syn_ctxt).outer_expn {
                 if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     kind = match resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
@@ -183,7 +182,7 @@ pub(super) fn lower_path(ctx: &LowerCtx<'_>, mut path: ast::Path) -> Option<Path
 }
 
 pub(super) fn lower_generic_args(
-    lower_ctx: &LowerCtx<'_>,
+    lower_ctx: &mut LowerCtx<'_>,
     node: ast::GenericArgList,
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
@@ -192,13 +191,7 @@ pub(super) fn lower_generic_args(
         match generic_arg {
             ast::GenericArg::TypeArg(type_arg) => {
                 let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
-                let types_map = lower_ctx.types_map();
-                TypeRef::walk(type_ref, &types_map, &mut |tr| {
-                    if let TypeRef::ImplTrait(bounds) = tr {
-                        lower_ctx.update_impl_traits_bounds(bounds.clone());
-                    }
-                });
-                drop(types_map);
+                lower_ctx.update_impl_traits_bounds_from_type_ref(type_ref);
                 args.push(GenericArg::Type(type_ref));
             }
             ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
@@ -208,27 +201,22 @@ pub(super) fn lower_generic_args(
                 }
                 if let Some(name_ref) = assoc_type_arg.name_ref() {
                     // Nested impl traits like `impl Foo<Assoc = impl Bar>` are allowed
-                    let _guard = lower_ctx.outer_impl_trait_scope(false);
-                    let name = name_ref.as_name();
-                    let args = assoc_type_arg
-                        .generic_arg_list()
-                        .and_then(|args| lower_generic_args(lower_ctx, args));
-                    let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
-                    let type_ref = type_ref.inspect(|&tr| {
-                        let types_map = lower_ctx.types_map();
-                        TypeRef::walk(tr, &types_map, &mut |tr| {
-                            if let TypeRef::ImplTrait(bounds) = tr {
-                                lower_ctx.update_impl_traits_bounds(bounds.clone());
-                            }
-                        });
-                        drop(types_map);
+                    lower_ctx.with_outer_impl_trait_scope(false, |lower_ctx| {
+                        let name = name_ref.as_name();
+                        let args = assoc_type_arg
+                            .generic_arg_list()
+                            .and_then(|args| lower_generic_args(lower_ctx, args));
+                        let type_ref =
+                            assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
+                        let type_ref = type_ref
+                            .inspect(|&tr| lower_ctx.update_impl_traits_bounds_from_type_ref(tr));
+                        let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
+                            l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
+                        } else {
+                            Box::default()
+                        };
+                        bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
                     });
-                    let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                        l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
-                    } else {
-                        Box::default()
-                    };
-                    bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
                 }
             }
             ast::GenericArg::LifetimeArg(lifetime_arg) => {
@@ -258,7 +246,7 @@ pub(super) fn lower_generic_args(
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
 /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
 fn lower_generic_args_from_fn_path(
-    ctx: &LowerCtx<'_>,
+    ctx: &mut LowerCtx<'_>,
     params: Option<ast::ParamList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {

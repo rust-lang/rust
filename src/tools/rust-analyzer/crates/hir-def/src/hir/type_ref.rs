@@ -98,7 +98,7 @@ pub struct TraitRef {
 
 impl TraitRef {
     /// Converts an `ast::PathType` to a `hir::TraitRef`.
-    pub(crate) fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> Option<Self> {
+    pub(crate) fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::Type) -> Option<Self> {
         // FIXME: Use `Path::from_src`
         match node {
             ast::Type::PathType(path) => {
@@ -240,7 +240,7 @@ pub enum TraitBoundModifier {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> TypeRefId {
+    pub fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::Type) -> TypeRefId {
         let ty = match &node {
             ast::Type::ParenType(inner) => return TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::TupleType(inner) => TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(
@@ -321,8 +321,9 @@ impl TypeRef {
                     // Disallow nested impl traits
                     TypeRef::Error
                 } else {
-                    let _guard = ctx.outer_impl_trait_scope(true);
-                    TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
+                    ctx.with_outer_impl_trait_scope(true, |ctx| {
+                        TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
+                    })
                 }
             }
             ast::Type::DynTraitType(inner) => {
@@ -336,7 +337,7 @@ impl TypeRef {
         ctx.alloc_type_ref(ty, AstPtr::new(&node))
     }
 
-    pub(crate) fn from_ast_opt(ctx: &LowerCtx<'_>, node: Option<ast::Type>) -> TypeRefId {
+    pub(crate) fn from_ast_opt(ctx: &mut LowerCtx<'_>, node: Option<ast::Type>) -> TypeRefId {
         match node {
             Some(node) => TypeRef::from_ast(ctx, node),
             None => ctx.alloc_error_type(),
@@ -410,7 +411,7 @@ impl TypeRef {
 }
 
 pub(crate) fn type_bounds_from_ast(
-    lower_ctx: &LowerCtx<'_>,
+    lower_ctx: &mut LowerCtx<'_>,
     type_bounds_opt: Option<ast::TypeBoundList>,
 ) -> ThinVec<TypeBound> {
     if let Some(type_bounds) = type_bounds_opt {
@@ -423,8 +424,8 @@ pub(crate) fn type_bounds_from_ast(
 }
 
 impl TypeBound {
-    pub(crate) fn from_ast(ctx: &LowerCtx<'_>, node: ast::TypeBound) -> Self {
-        let lower_path_type = |path_type: ast::PathType| ctx.lower_path(path_type.path()?);
+    pub(crate) fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::TypeBound) -> Self {
+        let mut lower_path_type = |path_type: ast::PathType| ctx.lower_path(path_type.path()?);
 
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {

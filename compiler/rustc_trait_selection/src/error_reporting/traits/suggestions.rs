@@ -6,6 +6,7 @@ use std::iter;
 use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
@@ -38,7 +39,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, ExpnKind, MacroKind, Span};
-use rustc_target::spec::abi;
 use tracing::{debug, instrument};
 
 use super::{
@@ -1916,7 +1916,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         infcx.next_ty_var(DUMMY_SP),
                         false,
                         hir::Safety::Safe,
-                        abi::Abi::Rust,
+                        ExternAbi::Rust,
                     )
                 }
                 _ => infcx.tcx.mk_fn_sig(
@@ -1924,7 +1924,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     infcx.next_ty_var(DUMMY_SP),
                     false,
                     hir::Safety::Safe,
-                    abi::Abi::Rust,
+                    ExternAbi::Rust,
                 ),
             };
 
@@ -3751,7 +3751,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     trait_pred.skip_binder().self_ty(),
                     diagnostic_name,
                 ),
-                // FIXME(effects, const_trait_impl) derive_const as suggestion?
+                // FIXME(const_trait_impl) derive_const as suggestion?
                 format!("#[derive({diagnostic_name})]\n"),
                 Applicability::MaybeIncorrect,
             );
@@ -3996,7 +3996,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
             && let fn_sig @ ty::FnSig {
-                abi: abi::Abi::Rust,
+                abi: ExternAbi::Rust,
                 c_variadic: false,
                 safety: hir::Safety::Safe,
                 ..
@@ -4449,6 +4449,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             } else {
                 err.span_help(span, msg);
             }
+        }
+    }
+
+    /// If the type failed selection but the trait is implemented for `(T,)`, suggest that the user
+    /// creates a unary tuple
+    ///
+    /// This is a common gotcha when using libraries that emulate variadic functions with traits for tuples.
+    pub(super) fn suggest_tuple_wrapping(
+        &self,
+        err: &mut Diag<'_>,
+        root_obligation: &PredicateObligation<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code() else {
+            return;
+        };
+
+        let Some(root_pred) = root_obligation.predicate.as_trait_clause() else { return };
+
+        let trait_ref = root_pred.map_bound(|root_pred| {
+            root_pred
+                .trait_ref
+                .with_self_ty(self.tcx, Ty::new_tup(self.tcx, &[root_pred.trait_ref.self_ty()]))
+        });
+
+        let obligation =
+            Obligation::new(self.tcx, obligation.cause.clone(), obligation.param_env, trait_ref);
+
+        if self.predicate_must_hold_modulo_regions(&obligation) {
+            let arg_span = self.tcx.hir().span(*arg_hir_id);
+            err.multipart_suggestion_verbose(
+                format!("use a unary tuple instead"),
+                vec![(arg_span.shrink_to_lo(), "(".into()), (arg_span.shrink_to_hi(), ",)".into())],
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 

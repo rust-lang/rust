@@ -26,8 +26,6 @@ ignore = [
     "/tests/ui-fulldeps/",            # Some are whitespace-sensitive (e.g. `// ~ERROR` comments).
 
     # Do not format submodules.
-    # FIXME: sync submodule list with tidy/bootstrap/etc
-    # tidy/src/walk.rs:filter_dirs
     "library/backtrace",
     "library/portable-simd",
     "library/stdarch",
@@ -41,6 +39,7 @@ ignore = [
     "src/llvm-project",
     "src/tools/cargo",
     "src/tools/clippy",
+    "src/tools/enzyme",
     "src/tools/miri",
     "src/tools/rust-analyzer",
     "src/tools/rustc-perf",

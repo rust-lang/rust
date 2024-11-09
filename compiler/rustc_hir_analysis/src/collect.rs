@@ -18,6 +18,7 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -38,7 +39,6 @@ use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMo
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -634,7 +634,7 @@ fn get_new_lifetime_name<'tcx>(
         .collect_referenced_late_bound_regions(poly_trait_ref)
         .into_iter()
         .filter_map(|lt| {
-            if let ty::BoundRegionKind::BrNamed(_, name) = lt {
+            if let ty::BoundRegionKind::Named(_, name) = lt {
                 Some(name.as_str().to_string())
             } else {
                 None
@@ -1361,7 +1361,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                 (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
                 _ => hir::Safety::Unsafe,
             };
-            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, abi::Abi::Rust))
+            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, ExternAbi::Rust))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1686,10 +1686,10 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     decl: &'tcx hir::FnDecl<'tcx>,
-    abi: abi::Abi,
+    abi: ExternAbi,
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
-    let safety = if abi == abi::Abi::RustIntrinsic {
+    let safety = if abi == ExternAbi::RustIntrinsic {
         intrinsic_operation_unsafety(tcx, def_id)
     } else {
         safety
@@ -1700,7 +1700,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
-    if abi != abi::Abi::RustIntrinsic && !tcx.features().simd_ffi() {
+    if abi != ExternAbi::RustIntrinsic && !tcx.features().simd_ffi() {
         let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx

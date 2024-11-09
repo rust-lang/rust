@@ -3,6 +3,7 @@
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
+use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -18,8 +19,6 @@ use rustc_middle::ty::{
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
-use rustc_target::abi::FieldIdx;
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
@@ -254,7 +253,7 @@ impl<'tcx> Inliner<'tcx> {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
-        if callsite.fn_sig.abi() == Abi::RustCall {
+        if callsite.fn_sig.abi() == ExternAbi::RustCall {
             // FIXME: Don't inline user-written `extern "rust-call"` functions,
             // since this is generally perf-negative on rustc, and we hope that
             // LLVM will inline these functions instead.
@@ -808,7 +807,7 @@ impl<'tcx> Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
+        if callsite.fn_sig.abi() == ExternAbi::RustCall && callee_body.spread_arg.is_none() {
             // FIXME(edition_2024): switch back to a normal method call.
             let mut args = <_>::into_iter(args);
             let self_ = self.create_temp_if_necessary(

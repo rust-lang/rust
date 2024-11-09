@@ -945,23 +945,10 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
     asm
 }
 
-fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    let triple = cgcx.opts.target_triple.tuple();
-    triple.contains("-ios")
-        || triple.contains("-darwin")
-        || triple.contains("-tvos")
-        || triple.contains("-watchos")
-        || triple.contains("-visionos")
-}
-
-fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    cgcx.opts.target_triple.tuple().contains("-aix")
-}
-
 pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
-    if target_is_apple(cgcx) {
+    if cgcx.target_is_like_osx {
         c"__LLVM,__bitcode"
-    } else if target_is_aix(cgcx) {
+    } else if cgcx.target_is_like_aix {
         c".ipa"
     } else {
         c".llvmbc"
@@ -1028,10 +1015,12 @@ unsafe fn embed_bitcode(
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
-    let is_aix = target_is_aix(cgcx);
-    let is_apple = target_is_apple(cgcx);
     unsafe {
-        if is_apple || is_aix || cgcx.opts.target_triple.tuple().starts_with("wasm") {
+        if cgcx.target_is_like_osx
+            || cgcx.target_is_like_aix
+            || cgcx.target_arch == "wasm32"
+            || cgcx.target_arch == "wasm64"
+        {
             // We don't need custom section flags, create LLVM globals.
             let llconst = common::bytes_in_context(llcx, bitcode);
             let llglobal = llvm::LLVMAddGlobal(
@@ -1052,9 +1041,9 @@ unsafe fn embed_bitcode(
                 c"rustc.embedded.cmdline".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
-            let section = if is_apple {
+            let section = if cgcx.target_is_like_osx {
                 c"__LLVM,__cmdline"
-            } else if is_aix {
+            } else if cgcx.target_is_like_aix {
                 c".info"
             } else {
                 c".llvmcmd"

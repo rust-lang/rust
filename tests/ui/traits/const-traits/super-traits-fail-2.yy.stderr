@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: ~const Foo` is not satisfied
-  --> $DIR/super-traits-fail-2.rs:21:5
+  --> $DIR/super-traits-fail-2.rs:20:5
    |
 LL |     x.a();
    |     ^^^^^

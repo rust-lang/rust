@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'derive_const'
+error[E0658]: use of unstable library feature `derive_const`
   --> $DIR/derive-const-gate.rs:1:3
    |
 LL | #[derive_const(Default)]

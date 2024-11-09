@@ -1,17 +1,8 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specializing-constness.rs:1:30
-   |
-LL | #![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: cannot specialize on const impl with non-const impl
   --> $DIR/specializing-constness.rs:23:1
    |
 LL | impl<T: Spec + Sup> A for T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 

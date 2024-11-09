@@ -422,6 +422,9 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         .into_iter()
         .filter(|pass| {
             let lints = (**pass).get_lints();
+            // Lintless passes are always in
+            lints.is_empty() ||
+            // If the pass doesn't have a single needed lint, omit it
             !lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
         })
         .collect();

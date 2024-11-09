@@ -4,6 +4,7 @@
 use core::ops::ControlFlow;
 
 use hir::{ExprKind, Param};
+use rustc_abi::FieldIdx;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
@@ -16,7 +17,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
 use rustc_span::symbol::{Symbol, kw};
 use rustc_span::{BytePos, DesugaringKind, Span, sym};
-use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
@@ -793,7 +793,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
-                // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
+                // We have an origin for this closure kind starting at this root variable so it's
+                // safe to unwrap here.
                 let captured_places =
                     tables.closure_min_captures[&closure_local_def_id].get(&root_hir_id).unwrap();
 
@@ -816,7 +817,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     ) {
                         match captured_place.info.capture_kind {
                             ty::UpvarCapture::ByRef(
-                                ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                                ty::BorrowKind::Mutable | ty::BorrowKind::UniqueImmutable,
                             ) => {
                                 capture_reason = format!("mutable borrow of `{upvar}`");
                             }
@@ -966,8 +967,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         };
 
-        // If we can detect the expression to be an function or method call where the closure was an argument,
-        // we point at the function or method definition argument...
+        // If we can detect the expression to be an function or method call where the closure was
+        // an argument, we point at the function or method definition argument...
         if let Some((callee_def_id, call_span, call_args)) = get_call_details() {
             let arg_pos = call_args
                 .iter()

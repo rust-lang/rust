@@ -1,3 +1,4 @@
+//@compile-flags: --diagnostic-width=300
 // Check that closures do not implement `Clone` if their environment is not `Clone`.
 
 struct S(i32);

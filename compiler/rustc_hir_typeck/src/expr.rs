@@ -5,6 +5,7 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -34,7 +35,6 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -103,9 +103,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
+        self.check_expr_coercible_to_type_or_error(expr, expected, expected_ty_expr, |_, _| {})
+    }
+
+    pub(crate) fn check_expr_coercible_to_type_or_error(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        extend_err: impl FnOnce(&mut Diag<'_>, Ty<'tcx>),
+    ) -> Ty<'tcx> {
         let ty = self.check_expr_with_hint(expr, expected);
         // checks don't need two phase
-        self.demand_coerce(expr, ty, expected, expected_ty_expr, AllowTwoPhase::No)
+        match self.demand_coerce_diag(expr, ty, expected, expected_ty_expr, AllowTwoPhase::No) {
+            Ok(ty) => ty,
+            Err(mut err) => {
+                extend_err(&mut err, ty);
+                err.emit();
+                // Return the original type instead of an error type here, otherwise the type of `x` in
+                // `let x: u32 = ();` will be a type error, causing all subsequent usages of `x` to not
+                // report errors, even though `x` is definitely `u32`.
+                expected
+            }
+        }
     }
 
     pub(super) fn check_expr_with_hint(

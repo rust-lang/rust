@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -10,7 +11,6 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument};
 
@@ -194,24 +194,24 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(tcx, &[ty::GenericArg::from(
         ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
             var: ty::BoundVar::from_u32(1),
-            kind: ty::BrAnon,
+            kind: ty::BoundRegionKind::Anon,
         }),
     )]);
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
         ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
             var: ty::BoundVar::ZERO,
-            kind: ty::BrAnon,
+            kind: ty::BoundRegionKind::Anon,
         }),
         panic_info_ty,
     );
 
     let bounds = tcx.mk_bound_variable_kinds(&[
-        ty::BoundVariableKind::Region(ty::BrAnon),
-        ty::BoundVariableKind::Region(ty::BrAnon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
+        ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, Abi::Rust),
+        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, ExternAbi::Rust),
         bounds,
     );
 
@@ -234,7 +234,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
     let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
     let main_fn_ty = Ty::new_fn_ptr(
         tcx,
-        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Safety::Safe, Abi::Rust)),
+        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Safety::Safe, ExternAbi::Rust)),
     );
 
     let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -247,7 +247,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
         tcx.types.isize,
         false,
         fn_sig.safety,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
 
     let _ = check_function_signature(

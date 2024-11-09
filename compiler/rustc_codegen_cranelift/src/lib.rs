@@ -302,8 +302,11 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
         OptLevel::No => {
             flags_builder.set("opt_level", "none").unwrap();
         }
-        OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
+        OptLevel::Less
+        | OptLevel::Default
+        | OptLevel::Size
+        | OptLevel::SizeMin
+        | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
     }

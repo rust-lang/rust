@@ -419,7 +419,10 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
                 if bti {
                     to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
                 }
-                if let Some(PacRet { leaf, key }) = pac_ret {
+                if let Some(PacRet { leaf, pc, key }) = pac_ret {
+                    if pc {
+                        to_add.push(llvm::CreateAttrString(cx.llcx, "branch-protection-pauth-lr"));
+                    }
                     to_add.push(llvm::CreateAttrStringValue(
                         cx.llcx,
                         "sign-return-address",

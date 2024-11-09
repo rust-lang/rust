@@ -2,7 +2,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::config::Lto;
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 use tracing::{debug, instrument};
 
 use crate::traits::*;

@@ -158,7 +158,7 @@ fn hover_offset(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res = hover_for_definition(sema, file_id, def, &node, None, config, edition);
+            let res = hover_for_definition(sema, file_id, def, &node, None, false, config, edition);
             Some(RangeInfo::new(range, res))
         });
     }
@@ -172,6 +172,7 @@ fn hover_offset(
             Definition::from(resolution?),
             &original_token.parent()?,
             None,
+            false,
             config,
             edition,
         );
@@ -218,6 +219,7 @@ fn hover_offset(
                                     break 'a vec![(
                                         Definition::Macro(macro_),
                                         sema.resolve_macro_call_arm(&macro_call),
+                                        false,
                                         node,
                                     )];
                                 }
@@ -234,19 +236,34 @@ fn hover_offset(
                             decl,
                             ..
                         }) => {
-                            vec![(Definition::ExternCrateDecl(decl), None, node)]
+                            vec![(Definition::ExternCrateDecl(decl), None, false, node)]
                         }
 
                         class => {
-                            multizip((class.definitions(), iter::repeat(None), iter::repeat(node)))
-                                .collect::<Vec<_>>()
+                            let is_def = matches!(class, IdentClass::NameClass(_));
+                            multizip((
+                                class.definitions(),
+                                iter::repeat(None),
+                                iter::repeat(is_def),
+                                iter::repeat(node),
+                            ))
+                            .collect::<Vec<_>>()
                         }
                     }
                 }
                 .into_iter()
-                .unique_by(|&(def, _, _)| def)
-                .map(|(def, macro_arm, node)| {
-                    hover_for_definition(sema, file_id, def, &node, macro_arm, config, edition)
+                .unique_by(|&(def, _, _, _)| def)
+                .map(|(def, macro_arm, hovered_definition, node)| {
+                    hover_for_definition(
+                        sema,
+                        file_id,
+                        def,
+                        &node,
+                        macro_arm,
+                        hovered_definition,
+                        config,
+                        edition,
+                    )
                 })
                 .collect::<Vec<_>>(),
             )
@@ -366,6 +383,7 @@ pub(crate) fn hover_for_definition(
     def: Definition,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
+    hovered_definition: bool,
     config: &HoverConfig,
     edition: Edition,
 ) -> HoverResult {
@@ -397,6 +415,7 @@ pub(crate) fn hover_for_definition(
         famous_defs.as_ref(),
         &notable_traits,
         macro_arm,
+        hovered_definition,
         config,
         edition,
     );

@@ -1028,6 +1028,15 @@ pub(crate) struct TargetFeatureSafeTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_forbidden_target_feature_attr)]
+pub struct ForbiddenTargetFeatureAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: &'a str,
+    pub reason: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_failed_to_get_layout)]
 pub struct FailedToGetLayout<'tcx> {
     #[primary_span]
@@ -1101,3 +1110,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_aix_strip_not_used)]
+pub(crate) struct AixStripNotUsed;

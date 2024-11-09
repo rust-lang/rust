@@ -8,6 +8,7 @@ use std::iter;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -16,8 +17,6 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
@@ -1365,7 +1364,7 @@ impl<'tcx> Ty<'tcx> {
                     inputs_and_output: ty::List::empty(),
                     c_variadic: false,
                     safety: hir::Safety::Safe,
-                    abi: abi::Abi::Rust,
+                    abi: ExternAbi::Rust,
                 })
             }
             Closure(..) => bug!(
