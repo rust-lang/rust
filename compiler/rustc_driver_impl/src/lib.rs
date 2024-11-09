@@ -937,7 +937,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     let groups = if verbose { config::rustc_optgroups() } else { config::rustc_short_optgroups() };
     let mut options = getopts::Options::new();
     for option in groups.iter().filter(|x| include_unstable_options || x.is_stable()) {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     let message = "Usage: rustc [OPTIONS] INPUT";
     let nightly_help = if nightly_build {
@@ -1219,7 +1219,7 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     let mut options = getopts::Options::new();
     let optgroups = config::rustc_optgroups();
     for option in &optgroups {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     let matches = options.parse(args).unwrap_or_else(|e| {
         let msg: Option<String> = match e {
@@ -1233,7 +1233,7 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
                 optgroups.iter().find(|option| option.name == opt).map(|option| {
                     // Print the help just for the option in question.
                     let mut options = getopts::Options::new();
-                    (option.apply)(&mut options);
+                    option.apply(&mut options);
                     // getopt requires us to pass a function for joining an iterator of
                     // strings, even though in this case we expect exactly one string.
                     options.usage_with_format(|it| {

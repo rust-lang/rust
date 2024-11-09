@@ -2019,6 +2019,14 @@ pub(crate) struct CannotBeRawIdent {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_cannot_be_raw_lifetime)]
+pub(crate) struct CannotBeRawLifetime {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_keyword_lifetime)]
 pub(crate) struct KeywordLifetime {
     #[primary_span]
