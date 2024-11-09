@@ -300,7 +300,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let id = this.read_scalar(id)?.to_u64()?;
                 let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
                 if let Some(id) = std::num::NonZero::new(id).map(AllocId)
-                    && this.get_alloc_info(id).2 == AllocKind::LiveData
+                    && this.get_alloc_info(id).kind == AllocKind::LiveData
                 {
                     this.print_borrow_state(id, show_unnamed)?;
                 } else {
@@ -409,7 +409,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     );
                 }
                 if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr, 0) {
-                    let (_size, alloc_align, _kind, _mutbl) = this.get_alloc_info(alloc_id);
+                    let alloc_align = this.get_alloc_info(alloc_id).align;
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align
