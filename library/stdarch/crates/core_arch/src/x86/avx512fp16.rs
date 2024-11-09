@@ -2308,7 +2308,6 @@ pub unsafe fn _mm512_maskz_div_ph(k: __mmask32, a: __m512h, b: __m512h) -> __m51
 /// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_div_round_ph)
-
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vdivph, ROUNDING = 8))]

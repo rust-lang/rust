@@ -2771,8 +2771,6 @@ pub unsafe fn _mm_maskz_min_ps(k: __mmask8, a: __m128, b: __m128) -> __m128 {
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst.
-
-/// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_min_pd&expand=3759)
 #[inline]
