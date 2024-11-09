@@ -818,10 +818,12 @@ impl Error {
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
-    /// return [`Some`], otherwise it will return [`None`].
+    /// If this [`Error`] was constructed via [`new`] or [`other`],
+    /// then this function will return [`Some`],
+    /// otherwise it will return [`None`].
     ///
     /// [`new`]: Error::new
+    /// [`other`]: Error::other
     ///
     /// # Examples
     ///
