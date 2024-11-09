@@ -1,8 +1,8 @@
 error[E0491]: in type `&'b &'a ()`, reference has a longer lifetime than the data it references
-  --> $DIR/underconstrained_lifetime.rs:15:26
+  --> $DIR/underconstrained_lifetime.rs:19:5
    |
-LL | type Converter<'a, 'b> = impl ProofForConversion<'a, 'b>;
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     x
+   |     ^
    |
 note: the pointer is valid for the lifetime `'b` as defined here
   --> $DIR/underconstrained_lifetime.rs:15:20

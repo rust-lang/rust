@@ -193,6 +193,11 @@ pub enum ObligationCauseCode<'tcx> {
     /// The span corresponds to the clause.
     WhereClause(DefId, Span),
 
+    /// Represents a bound for an opaque we are checking the well-formedness of.
+    /// The def-id corresponds to a specific definition site that we found the
+    /// hidden type from, if any.
+    OpaqueTypeBound(Span, Option<LocalDefId>),
+
     /// Like `WhereClause`, but also identifies the expression
     /// which requires the `where` clause to be proven, and also
     /// identifies the index of the predicate in the `predicates_of`
