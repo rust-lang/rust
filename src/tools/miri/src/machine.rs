@@ -1125,10 +1125,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let Provenance::Concrete { alloc_id, .. } = ptr.provenance else {
                 panic!("extern_statics cannot contain wildcards")
             };
-            let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
+            let info = ecx.get_alloc_info(alloc_id);
             let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
             let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
-            if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
+            if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
                 throw_unsup_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
@@ -1138,8 +1138,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                     krate = ecx.tcx.crate_name(def_id.krate),
                     decl_size = extern_decl_layout.size.bytes(),
                     decl_align = extern_decl_layout.align.abi.bytes(),
-                    shim_size = shim_size.bytes(),
-                    shim_align = shim_align.bytes(),
+                    shim_size = info.size.bytes(),
+                    shim_align = info.align.bytes(),
                 )
             }
             interp_ok(ptr)

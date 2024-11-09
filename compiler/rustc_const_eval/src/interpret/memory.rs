@@ -14,10 +14,9 @@ use std::{fmt, mem, ptr};
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{
@@ -70,6 +69,21 @@ pub enum AllocKind {
     VTable,
     /// A dead allocation.
     Dead,
+}
+
+/// Metadata about an `AllocId`.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct AllocInfo {
+    pub size: Size,
+    pub align: Align,
+    pub kind: AllocKind,
+    pub mutbl: Mutability,
+}
+
+impl AllocInfo {
+    fn new(size: Size, align: Align, kind: AllocKind, mutbl: Mutability) -> Self {
+        Self { size, align, kind, mutbl }
+    }
 }
 
 /// The value of a function pointer.
@@ -524,17 +538,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match self.ptr_try_get_alloc_id(ptr, 0) {
             Err(addr) => is_offset_misaligned(addr, align),
             Ok((alloc_id, offset, _prov)) => {
-                let (_size, alloc_align, kind) = self.get_alloc_info(alloc_id);
-                if let Some(misalign) =
-                    M::alignment_check(self, alloc_id, alloc_align, kind, offset, align)
-                {
+                let alloc_info = self.get_alloc_info(alloc_id);
+                if let Some(misalign) = M::alignment_check(
+                    self,
+                    alloc_id,
+                    alloc_info.align,
+                    alloc_info.kind,
+                    offset,
+                    align,
+                ) {
                     Some(misalign)
                 } else if M::Provenance::OFFSET_IS_ADDR {
                     is_offset_misaligned(ptr.addr().bytes(), align)
                 } else {
                     // Check allocation alignment and offset alignment.
-                    if alloc_align.bytes() < align.bytes() {
-                        Some(Misalignment { has: alloc_align, required: align })
+                    if alloc_info.align.bytes() < align.bytes() {
+                        Some(Misalignment { has: alloc_info.align, required: align })
                     } else {
                         is_offset_misaligned(offset.bytes(), align)
                     }
@@ -818,82 +837,45 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
-    pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind) {
+    pub fn get_alloc_info(&self, id: AllocId) -> AllocInfo {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a global's allocation in miri
         if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
-            return (alloc.size(), alloc.align, AllocKind::LiveData);
+            return AllocInfo::new(
+                alloc.size(),
+                alloc.align,
+                AllocKind::LiveData,
+                alloc.mutability,
+            );
         }
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if self.get_fn_alloc(id).is_some() {
-            return (Size::ZERO, Align::ONE, AllocKind::Function);
+            return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::Function, Mutability::Not);
         }
 
-        // # Statics
-        // Can't do this in the match argument, we may get cycle errors since the lock would
-        // be held throughout the match.
-        match self.tcx.try_get_global_alloc(id) {
-            Some(GlobalAlloc::Static(def_id)) => {
-                // Thread-local statics do not have a constant address. They *must* be accessed via
-                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
-                assert!(!self.tcx.is_thread_local_static(def_id));
-
-                let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else {
-                    bug!("GlobalAlloc::Static is not a static")
-                };
-
-                let (size, align) = if nested {
-                    // Nested anonymous statics are untyped, so let's get their
-                    // size and alignment from the allocation itself. This always
-                    // succeeds, as the query is fed at DefId creation time, so no
-                    // evaluation actually occurs.
-                    let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
-                    (alloc.0.size(), alloc.0.align)
-                } else {
-                    // Use size and align of the type for everything else. We need
-                    // to do that to
-                    // * avoid cycle errors in case of self-referential statics,
-                    // * be able to get information on extern statics.
-                    let ty = self
-                        .tcx
-                        .type_of(def_id)
-                        .no_bound_vars()
-                        .expect("statics should not have generic parameters");
-                    let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                    assert!(layout.is_sized());
-                    (layout.size, layout.align.abi)
-                };
-                (size, align, AllocKind::LiveData)
-            }
-            Some(GlobalAlloc::Memory(alloc)) => {
-                // Need to duplicate the logic here, because the global allocations have
-                // different associated types than the interpreter-local ones.
-                let alloc = alloc.inner();
-                (alloc.size(), alloc.align, AllocKind::LiveData)
-            }
-            Some(GlobalAlloc::Function { .. }) => {
-                bug!("We already checked function pointers above")
-            }
-            Some(GlobalAlloc::VTable(..)) => {
-                // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
-            }
-            // The rest must be dead.
-            None => {
-                // Deallocated pointers are allowed, we should be able to find
-                // them in the map.
-                let (size, align) = *self
-                    .memory
-                    .dead_alloc_map
-                    .get(&id)
-                    .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
-                (size, align, AllocKind::Dead)
-            }
+        // # Global allocations
+        if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
+            let (size, align) = global_alloc.size_and_align(*self.tcx, self.param_env);
+            let mutbl = global_alloc.mutability(*self.tcx, self.param_env);
+            let kind = match global_alloc {
+                GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
+                GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
+                GlobalAlloc::VTable { .. } => AllocKind::VTable,
+            };
+            return AllocInfo::new(size, align, kind, mutbl);
         }
+
+        // # Dead pointers
+        let (size, align) = *self
+            .memory
+            .dead_alloc_map
+            .get(&id)
+            .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
+        AllocInfo::new(size, align, AllocKind::Dead, Mutability::Not)
     }
 
     /// Obtain the size and alignment of a *live* allocation.
@@ -902,11 +884,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         id: AllocId,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let (size, align, kind) = self.get_alloc_info(id);
-        if matches!(kind, AllocKind::Dead) {
+        let info = self.get_alloc_info(id);
+        if matches!(info.kind, AllocKind::Dead) {
             throw_ub!(PointerUseAfterFree(id, msg))
         }
-        interp_ok((size, align))
+        interp_ok((info.size, info.align))
     }
 
     fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
@@ -1458,7 +1440,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
-                        let (size, _align, _kind) = self.get_alloc_info(alloc_id);
+                        let size = self.get_alloc_info(alloc_id).size;
                         // If the pointer is out-of-bounds, it may be null.
                         // Note that one-past-the-end (offset == size) is still inbounds, and never null.
                         offset > size
