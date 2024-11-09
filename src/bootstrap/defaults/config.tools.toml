@@ -3,11 +3,6 @@
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
-# Download rustc from CI instead of building it from source.
-# For stage > 1 builds, this cuts compile times significantly when there are no changes on "compiler" tree.
-# Using these defaults will download the stage2 compiler (see `download-rustc`
-# setting) and the stage2 toolchain should therefore be used for these defaults.
-download-rustc = "if-unchanged"
 
 [build]
 # Document with the in-tree rustdoc by default, since `download-rustc` makes it quick to compile.
