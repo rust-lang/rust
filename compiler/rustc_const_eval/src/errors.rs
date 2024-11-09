@@ -177,6 +177,16 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_conditionally_const_call)]
+pub(crate) struct ConditionallyConstCall {
+    #[primary_span]
+    pub span: Span,
+    pub def_path_str: String,
+    pub def_descr: &'static str,
+    pub kind: ConstContext,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_non_const_fn_call, code = E0015)]
 pub(crate) struct NonConstFnCall {
     #[primary_span]

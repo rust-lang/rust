@@ -70,6 +70,34 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     }
 }
 
+/// A call to a function that is in a trait, or has trait bounds that make it conditionally-const.
+#[derive(Debug)]
+pub(crate) struct ConditionallyConstCall<'tcx> {
+    pub callee: DefId,
+    pub args: GenericArgsRef<'tcx>,
+}
+
+impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        // We use the `const_trait_impl` gate for all conditionally-const calls.
+        Status::Unstable {
+            gate: sym::const_trait_impl,
+            safe_to_expose_on_stable: false,
+            // We don't want the "mark the callee as `#[rustc_const_stable_indirect]`" hint
+            is_function_call: false,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.dcx().create_err(errors::ConditionallyConstCall {
+            span,
+            def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
+            def_descr: ccx.tcx.def_descr(self.callee),
+            kind: ccx.const_kind(),
+        })
+    }
+}
+
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FnCallNonConst<'tcx> {
@@ -77,7 +105,6 @@ pub(crate) struct FnCallNonConst<'tcx> {
     pub args: GenericArgsRef<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
-    pub feature: Option<Symbol>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
@@ -85,7 +112,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
-        let FnCallNonConst { callee, args, span, call_source, feature } = *self;
+        let FnCallNonConst { callee, args, span, call_source } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
         let caller = ccx.def_id();
 
@@ -284,14 +311,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
-
-        if let Some(feature) = feature {
-            ccx.tcx.disabled_nightly_features(
-                &mut err,
-                Some(ccx.tcx.local_def_id_to_hir_id(caller)),
-                [(String::new(), feature)],
-            );
-        }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note(fluent_generated::const_eval_lazy_lock);
