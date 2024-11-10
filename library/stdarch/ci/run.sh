@@ -86,10 +86,6 @@ cargo_test() {
         powerpc64*)
             cmd="$cmd --skip test_vec_lde_u16 --skip test_vec_lde_u32 --skip test_vec_expte"
             ;;
-        # Miscompilation: https://github.com/rust-lang/rust/issues/112460
-        arm*)
-            cmd="$cmd --skip vld2q_dup_f32"
-            ;;
     esac
 
     if [ "$SKIP_TESTS" != "" ]; then
