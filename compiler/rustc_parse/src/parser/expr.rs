@@ -26,6 +26,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, Spanned};
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -2605,7 +2606,7 @@ impl<'a> Parser<'a> {
     /// Parses an `if` expression (`if` token already eaten).
     fn parse_expr_if(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let cond = self.parse_expr_cond()?;
+        let cond = self.parse_expr_cond(lo.edition())?;
         self.parse_if_after_cond(lo, cond)
     }
 
@@ -2714,8 +2715,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the condition of a `if` or `while` expression.
+    ///
+    /// The specified `edition` should be that of the whole `if` or `while` construct: the same
+    /// span that we later decide the drop behaviour on (editions ..=2021 vs 2024..)
     // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
-    pub fn parse_expr_cond(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_expr_cond(&mut self, edition: Edition) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;
@@ -2725,6 +2729,27 @@ impl<'a> Parser<'a> {
         if let ExprKind::Let(_, _, _, Recovered::No) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
             self.psess.gated_spans.ungate_last(sym::let_chains, cond.span);
+        } else {
+            fn ungate_let_exprs(this: &mut Parser<'_>, expr: &Expr) {
+                if !expr.span.at_least_rust_2024() {
+                    return;
+                }
+                match &expr.kind {
+                    ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                        ungate_let_exprs(this, rhs);
+                        ungate_let_exprs(this, lhs);
+                    }
+                    ExprKind::Let(..) => {
+                        this.psess.gated_spans.ungate_last(sym::let_chains, expr.span)
+                    }
+                    _ => (),
+                }
+            }
+            if edition.at_least_rust_2024() {
+                // Scoping code checks the top level edition of the `if`: let's match it here.
+                // Also check all editions in between, just to make sure.
+                ungate_let_exprs(self, &cond);
+            }
         }
 
         Ok(cond)
@@ -3020,7 +3045,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        let cond = self.parse_expr_cond().map_err(|mut err| {
+        let cond = self.parse_expr_cond(lo.edition()).map_err(|mut err| {
             err.span_label(lo, "while parsing the condition of this `while` expression");
             err
         })?;
