@@ -247,7 +247,7 @@ properly-configured variables in LLVM IR, according to very specific
 details of the [_LLVM Coverage Mapping Format_][coverage-mapping-format]
 (Version 6).[^llvm-and-covmap-versions]
 
-[^llvm-and-covmap-versions]: The Rust compiler (as of <!-- date-check: --> Jul 2023) supports _LLVM Coverage Mapping Format_ 6.
+[^llvm-and-covmap-versions]: The Rust compiler (as of <!-- date-check: --> Nov 2024) supports _LLVM Coverage Mapping Format_ 6.
     The Rust compiler will automatically use the most up-to-date coverage mapping format
     version that is compatible with the compiler's built-in version of LLVM.
 
