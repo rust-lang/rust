@@ -11,7 +11,7 @@
    LL|      1|    if is_true {
    LL|      1|        countdown = 0;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|       |    for
    LL|       |        _

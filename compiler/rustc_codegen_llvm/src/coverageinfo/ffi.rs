@@ -1,5 +1,7 @@
 use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId, SourceRegion};
 
+use crate::coverageinfo::mapgen::LocalFileId;
+
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -137,8 +139,12 @@ pub(crate) struct CoverageSpan {
 }
 
 impl CoverageSpan {
-    pub(crate) fn from_source_region(file_id: u32, code_region: &SourceRegion) -> Self {
-        let &SourceRegion { file_name: _, start_line, start_col, end_line, end_col } = code_region;
+    pub(crate) fn from_source_region(
+        local_file_id: LocalFileId,
+        code_region: &SourceRegion,
+    ) -> Self {
+        let file_id = local_file_id.as_u32();
+        let &SourceRegion { start_line, start_col, end_line, end_col } = code_region;
         // Internally, LLVM uses the high bit of `end_col` to distinguish between
         // code regions and gap regions, so it can't be used by the column number.
         assert!(end_col & (1u32 << 31) == 0, "high bit of `end_col` must be unset: {end_col:#X}");

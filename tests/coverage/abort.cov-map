@@ -1,5 +1,5 @@
 Function name: abort::main
-Raw bytes (89): 0x[01, 01, 0a, 01, 27, 05, 09, 03, 0d, 22, 11, 03, 0d, 03, 0d, 22, 15, 03, 0d, 03, 0d, 05, 09, 0d, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 22, 01, 0c, 00, 19, 11, 00, 1a, 02, 0a, 0e, 02, 0a, 00, 0b, 22, 02, 0c, 00, 19, 15, 00, 1a, 00, 31, 1a, 00, 31, 00, 32, 22, 04, 0c, 00, 19, 05, 00, 1a, 00, 31, 09, 00, 31, 00, 32, 27, 01, 09, 00, 17, 0d, 02, 05, 01, 02]
+Raw bytes (89): 0x[01, 01, 0a, 01, 27, 05, 09, 03, 0d, 22, 11, 03, 0d, 03, 0d, 22, 15, 03, 0d, 03, 0d, 05, 09, 0d, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 22, 01, 0c, 00, 19, 11, 00, 1a, 02, 0a, 0e, 02, 09, 00, 0a, 22, 02, 0c, 00, 19, 15, 00, 1a, 00, 31, 1a, 00, 30, 00, 31, 22, 04, 0c, 00, 19, 05, 00, 1a, 00, 31, 09, 00, 30, 00, 31, 27, 01, 09, 00, 17, 0d, 02, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 10
@@ -20,17 +20,17 @@ Number of file 0 mappings: 13
 - Code(Expression(8, Sub)) at (prev + 1, 12) to (start + 0, 25)
     = ((c0 + (c1 + c2)) - c3)
 - Code(Counter(4)) at (prev + 0, 26) to (start + 2, 10)
-- Code(Expression(3, Sub)) at (prev + 2, 10) to (start + 0, 11)
+- Code(Expression(3, Sub)) at (prev + 2, 9) to (start + 0, 10)
     = (((c0 + (c1 + c2)) - c3) - c4)
 - Code(Expression(8, Sub)) at (prev + 2, 12) to (start + 0, 25)
     = ((c0 + (c1 + c2)) - c3)
 - Code(Counter(5)) at (prev + 0, 26) to (start + 0, 49)
-- Code(Expression(6, Sub)) at (prev + 0, 49) to (start + 0, 50)
+- Code(Expression(6, Sub)) at (prev + 0, 48) to (start + 0, 49)
     = (((c0 + (c1 + c2)) - c3) - c5)
 - Code(Expression(8, Sub)) at (prev + 4, 12) to (start + 0, 25)
     = ((c0 + (c1 + c2)) - c3)
 - Code(Counter(1)) at (prev + 0, 26) to (start + 0, 49)
-- Code(Counter(2)) at (prev + 0, 49) to (start + 0, 50)
+- Code(Counter(2)) at (prev + 0, 48) to (start + 0, 49)
 - Code(Expression(9, Add)) at (prev + 1, 9) to (start + 0, 23)
     = (c1 + c2)
 - Code(Counter(3)) at (prev + 2, 5) to (start + 1, 2)
