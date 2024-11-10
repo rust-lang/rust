@@ -39,42 +39,11 @@ use crate::utils::helpers::{self, exe, output, t};
 /// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
 /// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+#[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
-    ":!.clang-format",
-    ":!.editorconfig",
-    ":!.git-blame-ignore-revs",
-    ":!.gitattributes",
-    ":!.gitignore",
-    ":!.gitmodules",
-    ":!.ignore",
-    ":!.mailmap",
-    ":!CODE_OF_CONDUCT.md",
-    ":!CONTRIBUTING.md",
-    ":!COPYRIGHT",
-    ":!INSTALL.md",
-    ":!LICENSE-APACHE",
-    ":!LICENSE-MIT",
-    ":!LICENSES",
-    ":!README.md",
-    ":!RELEASES.md",
-    ":!REUSE.toml",
-    ":!config.example.toml",
-    ":!configure",
-    ":!rust-bors.toml",
-    ":!rustfmt.toml",
+    ":!src/tools",
     ":!tests",
     ":!triagebot.toml",
-    ":!x",
-    ":!x.ps1",
-    ":!x.py",
-    ":!src/ci/cpu-usage-over-time.py",
-    ":!src/ci/publish_toolstate.sh",
-    ":!src/doc",
-    ":!src/etc",
-    ":!src/librustdoc",
-    ":!src/rustdoc-json-types",
-    ":!src/tools",
-    ":!src/README.md",
 ];
 
 macro_rules! check_ci_llvm {
