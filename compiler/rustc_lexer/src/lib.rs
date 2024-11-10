@@ -687,7 +687,7 @@ impl Cursor<'_> {
                                 suffix_start = self.pos_within_token();
                             }
                         }
-                        ('e' | 'E', '0'..'9' | '+' | '-') => {
+                        ('e' | 'E', '0'..='9' | '+' | '-') => {
                             // definitely an exponent
                             self.bump();
                             empty_exponent = !self.eat_float_exponent();
