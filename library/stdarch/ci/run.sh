@@ -75,10 +75,10 @@ cargo_test() {
     cmd="$cmd ${subcmd} --target=$TARGET $1"
     cmd="$cmd -- $2"
 
-    # wasm targets can't catch panics so if a test failures make sure the test
-    # harness isn't trying to capture output, otherwise we won't get any useful
-    # output.
     case ${TARGET} in
+        # wasm targets can't catch panics so if a test failures make sure the test
+        # harness isn't trying to capture output, otherwise we won't get any useful
+        # output.
         wasm32*)
             cmd="$cmd --nocapture"
             ;;
