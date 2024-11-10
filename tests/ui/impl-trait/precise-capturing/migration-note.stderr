@@ -30,7 +30,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len(&x);
    |             ^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
    |                                               ++++++++
@@ -55,7 +55,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len(&x);
    |             ^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
    |                                               ++++++++
@@ -80,7 +80,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len(&x);
    |             ^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
    |                                               ++++++++
@@ -106,7 +106,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len_mut(&mut x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
    |                                                       ++++++++
@@ -131,7 +131,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len_mut(&mut x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
    |                                                       ++++++++
@@ -156,7 +156,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_len_mut(&mut x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len_mut<T>(x: &mut Vec<T>) -> impl Display + use<T> {
    |                                                       ++++++++
@@ -182,7 +182,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_field(&s.f);
    |             ^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
    |                                                            ++++++++
@@ -204,7 +204,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_field(&mut s.f);
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
    |                                                            ++++++++
@@ -226,7 +226,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let a = display_field(&mut s.f);
    |             ^^^^^^^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_field<T: Copy + Display>(t: &T) -> impl Display + use<T> {
    |                                                            ++++++++
@@ -252,7 +252,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |         x = display_len(&z.f);
    |             ^^^^^^^^^^^^^^^^^
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
    |                                               ++++++++
@@ -273,12 +273,46 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
 LL |     let x = { let x = display_len(&mut vec![0]); x };
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: add a precise capturing bound to avoid overcapturing
+help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn display_len<T>(x: &Vec<T>) -> impl Display + use<T> {
    |                                               ++++++++
 
-error: aborting due to 12 previous errors
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/migration-note.rs:199:10
+   |
+LL |     let x = String::new();
+   |         - binding `x` declared here
+LL |
+LL |     let y = capture_apit(&x);
+   |                          -- borrow of `x` occurs here
+...
+LL |     drop(x);
+   |          ^ move out of `x` occurs here
+...
+LL | }
+   | - borrow might be used here, when `y` is dropped and runs the destructor for type `impl Sized`
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/migration-note.rs:196:13
+   |
+LL |     let y = capture_apit(&x);
+   |             ^^^^^^^^^^^^^^^^
+note: you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+  --> $DIR/migration-note.rs:190:21
+   |
+LL | fn capture_apit(x: &impl Sized) -> impl Sized {}
+   |                     ^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn capture_apit<T: Sized>(x: &T) -> impl Sized + use<T> {}
+   |                ++++++++++     ~                ++++++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let y = capture_apit(&x.clone());
+   |                            ++++++++
+
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0499, E0502, E0503, E0505, E0506, E0597, E0716.
 For more information about an error, try `rustc --explain E0499`.
