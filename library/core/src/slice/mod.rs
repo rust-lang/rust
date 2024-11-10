@@ -4578,8 +4578,8 @@ impl<T> [T] {
             panic!("elements are zero-sized");
         }
 
-        let self_start = self.as_ptr() as usize;
-        let elem_start = element as *const T as usize;
+        let self_start = self.as_ptr().addr();
+        let elem_start = ptr::from_ref(element).addr();
 
         let byte_offset = elem_start.wrapping_sub(self_start);
 
@@ -4631,8 +4631,8 @@ impl<T> [T] {
             panic!("elements are zero-sized");
         }
 
-        let self_start = self.as_ptr() as usize;
-        let subslice_start = subslice.as_ptr() as usize;
+        let self_start = self.as_ptr().addr();
+        let subslice_start = subslice.as_ptr().addr();
 
         let byte_start = subslice_start.wrapping_sub(self_start);
 
