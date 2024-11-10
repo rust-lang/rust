@@ -866,7 +866,7 @@ fn ty_is_known_nonnull<'tcx>(
     match ty.kind() {
         ty::FnPtr(..) => true,
         ty::Ref(..) => true,
-        ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
+        ty::Adt(def, _) if def.is_box() => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
             let marked_non_null = nonnull_optimization_guaranteed(tcx, *def);
 

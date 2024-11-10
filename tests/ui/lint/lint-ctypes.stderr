@@ -61,26 +61,8 @@ LL |     pub fn str_type(p: &str);
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `Box<u32>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:53:24
-   |
-LL |     pub fn box_type(p: Box<u32>);
-   |                        ^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-
-error: `extern` block uses type `Option<Box<u32>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:67:28
-   |
-LL |     pub fn opt_box_type(p: Option<Box<u32>>);
-   |                            ^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
-   = note: enum has no representation hint
-
 error: `extern` block uses type `char`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:69:25
+  --> $DIR/lint-ctypes.rs:68:25
    |
 LL |     pub fn char_type(p: char);
    |                         ^^^^ not FFI-safe
@@ -89,7 +71,7 @@ LL |     pub fn char_type(p: char);
    = note: the `char` type has no C equivalent
 
 error: `extern` block uses type `i128`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:70:25
+  --> $DIR/lint-ctypes.rs:69:25
    |
 LL |     pub fn i128_type(p: i128);
    |                         ^^^^ not FFI-safe
@@ -97,7 +79,7 @@ LL |     pub fn i128_type(p: i128);
    = note: 128-bit integers don't currently have a known stable ABI
 
 error: `extern` block uses type `u128`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:71:25
+  --> $DIR/lint-ctypes.rs:70:25
    |
 LL |     pub fn u128_type(p: u128);
    |                         ^^^^ not FFI-safe
@@ -105,7 +87,7 @@ LL |     pub fn u128_type(p: u128);
    = note: 128-bit integers don't currently have a known stable ABI
 
 error: `extern` block uses type `&dyn Bar`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:72:26
+  --> $DIR/lint-ctypes.rs:71:26
    |
 LL |     pub fn trait_type(p: &dyn Bar);
    |                          ^^^^^^^^ not FFI-safe
@@ -113,7 +95,7 @@ LL |     pub fn trait_type(p: &dyn Bar);
    = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:73:26
+  --> $DIR/lint-ctypes.rs:72:26
    |
 LL |     pub fn tuple_type(p: (i32, i32));
    |                          ^^^^^^^^^^ not FFI-safe
@@ -122,7 +104,7 @@ LL |     pub fn tuple_type(p: (i32, i32));
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:74:27
+  --> $DIR/lint-ctypes.rs:73:27
    |
 LL |     pub fn tuple_type2(p: I32Pair);
    |                           ^^^^^^^ not FFI-safe
@@ -131,7 +113,7 @@ LL |     pub fn tuple_type2(p: I32Pair);
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `ZeroSize`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:75:25
+  --> $DIR/lint-ctypes.rs:74:25
    |
 LL |     pub fn zero_size(p: ZeroSize);
    |                         ^^^^^^^^ not FFI-safe
@@ -145,7 +127,7 @@ LL | pub struct ZeroSize;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:76:33
+  --> $DIR/lint-ctypes.rs:75:33
    |
 LL |     pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -158,7 +140,7 @@ LL | pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:79:12
+  --> $DIR/lint-ctypes.rs:78:12
    |
 LL |         -> ::std::marker::PhantomData<bool>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -166,7 +148,7 @@ LL |         -> ::std::marker::PhantomData<bool>;
    = note: composed only of `PhantomData`
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:80:23
+  --> $DIR/lint-ctypes.rs:79:23
    |
 LL |     pub fn fn_type(p: RustFn);
    |                       ^^^^^^ not FFI-safe
@@ -175,7 +157,7 @@ LL |     pub fn fn_type(p: RustFn);
    = note: this function pointer has Rust-specific calling convention
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:81:24
+  --> $DIR/lint-ctypes.rs:80:24
    |
 LL |     pub fn fn_type2(p: fn());
    |                        ^^^^ not FFI-safe
@@ -183,17 +165,8 @@ LL |     pub fn fn_type2(p: fn());
    = help: consider using an `extern fn(...) -> ...` function pointer instead
    = note: this function pointer has Rust-specific calling convention
 
-error: `extern` block uses type `Box<u32>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:69:28
-   |
-LL |     pub fn fn_contained(p: RustBadRet);
-   |                            ^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-
 error: `extern` block uses type `i128`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:83:32
+  --> $DIR/lint-ctypes.rs:82:32
    |
 LL |     pub fn transparent_i128(p: TransparentI128);
    |                                ^^^^^^^^^^^^^^^ not FFI-safe
@@ -201,7 +174,7 @@ LL |     pub fn transparent_i128(p: TransparentI128);
    = note: 128-bit integers don't currently have a known stable ABI
 
 error: `extern` block uses type `&str`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:84:31
+  --> $DIR/lint-ctypes.rs:83:31
    |
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
@@ -209,17 +182,8 @@ LL |     pub fn transparent_str(p: TransparentStr);
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `Box<u32>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:72:30
-   |
-LL |     pub fn transparent_fn(p: TransparentBadFn);
-   |                              ^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-
 error: `extern` block uses type `[u8; 8]`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:86:27
+  --> $DIR/lint-ctypes.rs:85:27
    |
 LL |     pub fn raw_array(arr: [u8; 8]);
    |                           ^^^^^^^ not FFI-safe
@@ -228,7 +192,7 @@ LL |     pub fn raw_array(arr: [u8; 8]);
    = note: passing raw arrays by value is not FFI-safe
 
 error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:89:47
+  --> $DIR/lint-ctypes.rs:88:47
    |
 LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -236,7 +200,7 @@ LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:91:26
+  --> $DIR/lint-ctypes.rs:90:26
    |
 LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -245,7 +209,7 @@ LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `Option<UnsafeCell<&i32>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:93:26
+  --> $DIR/lint-ctypes.rs:92:26
    |
 LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -254,7 +218,7 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `u128`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:96:34
+  --> $DIR/lint-ctypes.rs:95:34
    |
 LL |     pub static static_u128_type: u128;
    |                                  ^^^^ not FFI-safe
@@ -262,11 +226,12 @@ LL |     pub static static_u128_type: u128;
    = note: 128-bit integers don't currently have a known stable ABI
 
 error: `extern` block uses type `u128`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:40
+  --> $DIR/lint-ctypes.rs:96:40
    |
 LL |     pub static static_u128_array_type: [u128; 16];
    |                                        ^^^^^^^^^^ not FFI-safe
    |
    = note: 128-bit integers don't currently have a known stable ABI
 
-error: aborting due to 29 previous errors
+error: aborting due to 24 previous errors
+
