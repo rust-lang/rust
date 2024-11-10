@@ -324,6 +324,23 @@ fn order_of_clippy_rules() {
 }
 
 #[test]
+fn clippy_rule_separate_prefix() {
+    let args =
+        vec!["clippy".to_string(), "-A clippy:all".to_string(), "-W clippy::style".to_string()];
+    let config = Config::parse(Flags::parse(&args));
+
+    let actual = match &config.cmd {
+        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+            get_clippy_rules_in_order(&args, &allow, &deny, &warn, &forbid)
+        }
+        _ => panic!("invalid subcommand"),
+    };
+
+    let expected = vec!["-A clippy:all".to_string(), "-W clippy::style".to_string()];
+    assert_eq!(expected, actual);
+}
+
+#[test]
 fn verbose_tests_default_value() {
     let config = Config::parse(Flags::parse(&["build".into(), "compiler".into()]));
     assert_eq!(config.verbose_tests, false);
