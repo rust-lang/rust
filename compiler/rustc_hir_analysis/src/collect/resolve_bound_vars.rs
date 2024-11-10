@@ -177,6 +177,7 @@ enum Scope<'a> {
     LateBoundary {
         s: ScopeRef<'a>,
         what: &'static str,
+        deny_late_regions: bool,
     },
 
     Root {
@@ -234,9 +235,11 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("s", &"..")
                 .finish(),
             Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Scope::LateBoundary { s: _, what } => {
-                f.debug_struct("LateBoundary").field("what", what).finish()
-            }
+            Scope::LateBoundary { s: _, what, deny_late_regions } => f
+                .debug_struct("LateBoundary")
+                .field("what", what)
+                .field("deny_late_regions", deny_late_regions)
+                .finish(),
             Scope::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
             }
@@ -630,7 +633,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         let scope = Scope::Opaque { captures: &captures, def_id: opaque.def_id, s: self.scope };
         self.with(scope, |this| {
             let scope = Scope::TraitRefBoundary { s: this.scope };
-            this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
+            this.with(scope, |this| {
+                let scope = Scope::LateBoundary {
+                    s: this.scope,
+                    what: "nested `impl Trait`",
+                    // We can capture late-bound regions; we just don't duplicate
+                    // lifetime or const params, so we can't allow those.
+                    deny_late_regions: false,
+                };
+                this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
+            })
         });
 
         let captures = captures.into_inner().into_iter().collect();
@@ -987,9 +999,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-        self.with(Scope::LateBoundary { s: self.scope, what: "constant" }, |this| {
-            intravisit::walk_anon_const(this, c);
-        });
+        self.with(
+            Scope::LateBoundary { s: self.scope, what: "constant", deny_late_regions: true },
+            |this| {
+                intravisit::walk_anon_const(this, c);
+            },
+        );
     }
 
     fn visit_generic_param(&mut self, p: &'tcx GenericParam<'tcx>) {
@@ -1281,8 +1296,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what } => {
-                    crossed_late_boundary = Some(what);
+                Scope::LateBoundary { s, what, deny_late_regions } => {
+                    if deny_late_regions {
+                        crossed_late_boundary = Some(what);
+                    }
                     scope = s;
                 }
             }
@@ -1498,7 +1515,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what } => {
+                Scope::LateBoundary { s, what, deny_late_regions: _ } => {
                     crossed_late_boundary = Some(what);
                     scope = s;
                 }
