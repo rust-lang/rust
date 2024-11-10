@@ -3,11 +3,16 @@ use std::time::Duration;
 use rustc_abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
+use crate::concurrency::sync::FutexRef;
 use crate::*;
 
 #[derive(Copy, Clone)]
 struct WindowsInitOnce {
     id: InitOnceId,
+}
+
+struct WindowsFutex {
+    futex: FutexRef,
 }
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -168,8 +173,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let size = this.read_target_usize(size_op)?;
         let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
 
-        let addr = ptr.addr().bytes();
-
         if size > 8 || !size.is_power_of_two() {
             let invalid_param = this.eval_windows("c", "ERROR_INVALID_PARAMETER");
             this.set_last_error(invalid_param)?;
@@ -190,19 +193,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let layout = this.machine.layouts.uint(size).unwrap();
         let futex_val =
-            this.read_scalar_atomic(&this.ptr_to_mplace(ptr, layout), AtomicReadOrd::Relaxed)?;
+            this.read_scalar_atomic(&this.ptr_to_mplace(ptr, layout), AtomicReadOrd::Acquire)?;
         let compare_val = this.read_scalar(&this.ptr_to_mplace(compare, layout))?;
 
         if futex_val == compare_val {
             // If the values are the same, we have to block.
+
+            // This cannot fail since we already did an atomic acquire read on that pointer.
+            let futex_ref = this
+                .get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
+                .unwrap()
+                .futex
+                .clone();
+
             this.futex_wait(
-                addr,
+                futex_ref,
                 u32::MAX, // bitset
                 timeout,
                 Scalar::from_i32(1), // retval_succ
                 Scalar::from_i32(0), // retval_timeout
                 dest.clone(),
-                this.eval_windows("c", "ERROR_TIMEOUT"), // errno_timeout
+                IoError::WindowsError("ERROR_TIMEOUT"), // errno_timeout
             );
         }
 
@@ -219,8 +230,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // See the Linux futex implementation for why this fence exists.
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let addr = ptr.addr().bytes();
-        this.futex_wake(addr, u32::MAX)?;
+        let Some(futex_ref) =
+            this.get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
+        else {
+            // Seems like this cannot return an error, so we just wake nobody.
+            return interp_ok(());
+        };
+        let futex_ref = futex_ref.futex.clone();
+
+        this.futex_wake(&futex_ref, u32::MAX)?;
 
         interp_ok(())
     }
@@ -232,8 +250,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // See the Linux futex implementation for why this fence exists.
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let addr = ptr.addr().bytes();
-        while this.futex_wake(addr, u32::MAX)? {}
+        let Some(futex_ref) =
+            this.get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
+        else {
+            // Seems like this cannot return an error, so we just wake nobody.
+            return interp_ok(());
+        };
+        let futex_ref = futex_ref.futex.clone();
+
+        while this.futex_wake(&futex_ref, u32::MAX)? {}
 
         interp_ok(())
     }

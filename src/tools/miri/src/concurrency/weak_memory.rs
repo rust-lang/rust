@@ -300,7 +300,6 @@ impl<'tcx> StoreBuffer {
         interp_ok(())
     }
 
-    #[allow(clippy::if_same_then_else, clippy::needless_bool)]
     /// Selects a valid store element in the buffer.
     fn fetch_store<R: rand::Rng + ?Sized>(
         &self,

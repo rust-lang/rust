@@ -1,7 +1,6 @@
 //! Implements threads.
 
 use std::mem;
-use std::num::TryFromIntError;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
@@ -127,26 +126,6 @@ impl Idx for ThreadId {
     }
 }
 
-impl TryFrom<u64> for ThreadId {
-    type Error = TryFromIntError;
-    fn try_from(id: u64) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(Self)
-    }
-}
-
-impl TryFrom<i128> for ThreadId {
-    type Error = TryFromIntError;
-    fn try_from(id: i128) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(Self)
-    }
-}
-
-impl From<u32> for ThreadId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
-
 impl From<ThreadId> for u64 {
     fn from(t: ThreadId) -> Self {
         t.0.into()
@@ -168,7 +147,7 @@ pub enum BlockReason {
     /// Blocked on a reader-writer lock.
     RwLock(RwLockId),
     /// Blocked on a Futex variable.
-    Futex { addr: u64 },
+    Futex,
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),
     /// Blocked on epoll.
@@ -448,6 +427,10 @@ pub enum TimeoutAnchor {
     Absolute,
 }
 
+/// An error signaling that the requested thread doesn't exist.
+#[derive(Debug, Copy, Clone)]
+pub struct ThreadNotFound;
+
 /// A set of threads.
 #[derive(Debug)]
 pub struct ThreadManager<'tcx> {
@@ -509,6 +492,16 @@ impl<'tcx> ThreadManager<'tcx> {
         }
     }
 
+    pub fn thread_id_try_from(&self, id: impl TryInto<u32>) -> Result<ThreadId, ThreadNotFound> {
+        if let Ok(id) = id.try_into()
+            && usize::try_from(id).is_ok_and(|id| id < self.threads.len())
+        {
+            Ok(ThreadId(id))
+        } else {
+            Err(ThreadNotFound)
+        }
+    }
+
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
     fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<StrictPointer> {
@@ -534,6 +527,7 @@ impl<'tcx> ThreadManager<'tcx> {
     ) -> &mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
+
     pub fn all_stacks(
         &self,
     ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> {
@@ -868,6 +862,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 // Public interface to thread management.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    #[inline]
+    fn thread_id_try_from(&self, id: impl TryInto<u32>) -> Result<ThreadId, ThreadNotFound> {
+        self.eval_context_ref().machine.threads.thread_id_try_from(id)
+    }
+
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     fn get_or_create_thread_local_alloc(
@@ -1160,8 +1159,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Set the name of the current thread. The buffer must not include the null terminator.
     #[inline]
     fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
-        let this = self.eval_context_mut();
-        this.machine.threads.set_thread_name(thread, new_thread_name);
+        self.eval_context_mut().machine.threads.set_thread_name(thread, new_thread_name);
     }
 
     #[inline]

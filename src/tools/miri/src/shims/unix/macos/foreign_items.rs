@@ -181,18 +181,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // are met, then the name is set and 0 is returned. Otherwise, if
                 // the specified name is lomnger than MAXTHREADNAMESIZE, then
                 // ENAMETOOLONG is returned.
-                //
-                // FIXME: the real implementation maybe returns ESRCH if the thread ID is invalid.
                 let thread = this.pthread_self()?;
-                let res = if this.pthread_setname_np(
+                let res = match this.pthread_setname_np(
                     thread,
                     this.read_scalar(name)?,
                     this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?.try_into().unwrap(),
                     /* truncate */ false,
                 )? {
-                    Scalar::from_u32(0)
-                } else {
-                    this.eval_libc("ENAMETOOLONG")
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => this.eval_libc("ENAMETOOLONG"),
+                    ThreadNameResult::ThreadNotFound => unreachable!(),
                 };
                 // Contrary to the manpage, `pthread_setname_np` on macOS still
                 // returns an integer indicating success.
@@ -210,15 +208,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // https://github.com/apple-oss-distributions/libpthread/blob/c032e0b076700a0a47db75528a282b8d3a06531a/src/pthread.c#L1160-L1175.
                 // The key part is the strlcpy, which truncates the resulting value,
                 // but always null terminates (except for zero sized buffers).
-                //
-                // FIXME: the real implementation returns ESRCH if the thread ID is invalid.
-                let res = Scalar::from_u32(0);
-                this.pthread_getname_np(
+                let res = match this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
                     /* truncate */ true,
-                )?;
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    // `NameTooLong` is possible when the buffer is zero sized,
+                    ThreadNameResult::NameTooLong => Scalar::from_u32(0),
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                };
                 this.write_scalar(res, dest)?;
             }
 

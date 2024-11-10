@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 use std::ops::Not;
+use std::rc::Rc;
 use std::time::Duration;
 
 use rustc_abi::Size;
@@ -121,6 +123,15 @@ struct Futex {
     clock: VClock,
 }
 
+#[derive(Default, Clone)]
+pub struct FutexRef(Rc<RefCell<Futex>>);
+
+impl VisitProvenance for FutexRef {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // No provenance in `Futex`.
+    }
+}
+
 /// A thread waiting on a futex.
 #[derive(Debug)]
 struct FutexWaiter {
@@ -137,9 +148,6 @@ pub struct SynchronizationObjects {
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
     pub(super) init_onces: IndexVec<InitOnceId, InitOnce>,
-
-    /// Futex info for the futex at the given address.
-    futexes: FxHashMap<u64, Futex>,
 }
 
 // Private extension trait for local helper methods
@@ -184,7 +192,7 @@ impl SynchronizationObjects {
 }
 
 impl<'tcx> AllocExtra<'tcx> {
-    pub fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
+    fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
         self.sync.get(&offset).and_then(|s| s.downcast_ref::<T>())
     }
 }
@@ -273,27 +281,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Get the synchronization primitive associated with the given pointer,
     /// or initialize a new one.
+    ///
+    /// Return `None` if this pointer does not point to at least 1 byte of mutable memory.
     fn get_sync_or_init<'a, T: 'static>(
         &'a mut self,
         ptr: Pointer,
-        new: impl FnOnce(&'a mut MiriMachine<'tcx>) -> InterpResult<'tcx, T>,
-    ) -> InterpResult<'tcx, &'a T>
+        new: impl FnOnce(&'a mut MiriMachine<'tcx>) -> T,
+    ) -> Option<&'a T>
     where
         'tcx: 'a,
     {
         let this = self.eval_context_mut();
-        // Ensure there is memory behind this pointer, so that this allocation
-        // is truly the only place where the data could be stored.
-        this.check_ptr_access(ptr, Size::from_bytes(1), CheckInAllocMsg::InboundsTest)?;
-
-        let (alloc, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
-        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc)?;
+        if !this.ptr_try_get_alloc_id(ptr, 0).ok().is_some_and(|(alloc_id, offset, ..)| {
+            let info = this.get_alloc_info(alloc_id);
+            info.kind == AllocKind::LiveData && info.mutbl.is_mut() && offset < info.size
+        }) {
+            return None;
+        }
+        // This cannot fail now.
+        let (alloc, offset, _) = this.ptr_get_alloc_id(ptr, 0).unwrap();
+        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc).unwrap();
         // Due to borrow checker reasons, we have to do the lookup twice.
         if alloc_extra.get_sync::<T>(offset).is_none() {
-            let new = new(machine)?;
+            let new = new(machine);
             alloc_extra.sync.insert(offset, Box::new(new));
         }
-        interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
+        Some(alloc_extra.get_sync::<T>(offset).unwrap())
     }
 
     #[inline]
@@ -690,33 +703,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// On a timeout, `retval_timeout` is written to `dest` and `errno_timeout` is set as the last error.
     fn futex_wait(
         &mut self,
-        addr: u64,
+        futex_ref: FutexRef,
         bitset: u32,
         timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
-        errno_timeout: Scalar,
+        errno_timeout: IoError,
     ) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
-        let futex = &mut this.machine.sync.futexes.entry(addr).or_default();
+        let mut futex = futex_ref.0.borrow_mut();
         let waiters = &mut futex.waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
         waiters.push_back(FutexWaiter { thread, bitset });
+        drop(futex);
+
         this.block_thread(
-            BlockReason::Futex { addr },
+            BlockReason::Futex,
             timeout,
             callback!(
                 @capture<'tcx> {
-                    addr: u64,
+                    futex_ref: FutexRef,
                     retval_succ: Scalar,
                     retval_timeout: Scalar,
                     dest: MPlaceTy<'tcx>,
-                    errno_timeout: Scalar,
+                    errno_timeout: IoError,
                 }
                 @unblock = |this| {
-                    let futex = this.machine.sync.futexes.get(&addr).unwrap();
+                    let futex = futex_ref.0.borrow();
                     // Acquire the clock of the futex.
                     if let Some(data_race) = &this.machine.data_race {
                         data_race.acquire_clock(&futex.clock, &this.machine.threads);
@@ -728,7 +743,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @timeout = |this| {
                     // Remove the waiter from the futex.
                     let thread = this.active_thread();
-                    let futex = this.machine.sync.futexes.get_mut(&addr).unwrap();
+                    let mut futex = futex_ref.0.borrow_mut();
                     futex.waiters.retain(|waiter| waiter.thread != thread);
                     // Set errno and write return value.
                     this.set_last_error(errno_timeout)?;
@@ -739,12 +754,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
     }
 
+    /// Wake up the first thread in the queue that matches any of the bits in the bitset.
     /// Returns whether anything was woken.
-    fn futex_wake(&mut self, addr: u64, bitset: u32) -> InterpResult<'tcx, bool> {
+    fn futex_wake(&mut self, futex_ref: &FutexRef, bitset: u32) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let Some(futex) = this.machine.sync.futexes.get_mut(&addr) else {
-            return interp_ok(false);
-        };
+        let mut futex = futex_ref.0.borrow_mut();
         let data_race = &this.machine.data_race;
 
         // Each futex-wake happens-before the end of the futex wait
@@ -757,7 +771,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(false);
         };
         let waiter = futex.waiters.remove(i).unwrap();
-        this.unblock_thread(waiter.thread, BlockReason::Futex { addr })?;
+        drop(futex);
+        this.unblock_thread(waiter.thread, BlockReason::Futex)?;
         interp_ok(true)
     }
 }

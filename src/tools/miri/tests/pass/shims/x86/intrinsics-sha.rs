@@ -181,7 +181,7 @@ unsafe fn schedule(v0: __m128i, v1: __m128i, v2: __m128i, v3: __m128i) -> __m128
 }
 
 // we use unaligned loads with `__m128i` pointers
-#[allow(clippy::cast_ptr_alignment)]
+#[expect(clippy::cast_ptr_alignment)]
 #[target_feature(enable = "sha,sse2,ssse3,sse4.1")]
 unsafe fn digest_blocks(state: &mut [u32; 8], blocks: &[[u8; 64]]) {
     #[allow(non_snake_case)]

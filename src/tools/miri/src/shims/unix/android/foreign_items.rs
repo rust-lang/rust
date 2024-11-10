@@ -2,6 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
 use crate::shims::unix::android::thread::prctl;
+use crate::shims::unix::linux::syscall::syscall;
 use crate::*;
 
 pub fn is_dyn_sym(_name: &str) -> bool {
@@ -25,6 +26,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
+
+            // Dynamically invoked syscalls
+            "syscall" => syscall(this, link_name, abi, args, dest)?,
 
             // Threading
             "prctl" => prctl(this, link_name, abi, args, dest)?,
