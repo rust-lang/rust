@@ -21,7 +21,7 @@ parallelized.
   still executed in serial mode.
 
 <div class="warning">
-The follow sections are kept for now but are quite outdated.
+The following sections are kept for now but are quite outdated.
 </div>
 
 ---
