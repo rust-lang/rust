@@ -1,9 +1,7 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
 use rustc_hir::CRATE_HIR_ID;
-use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::query::Providers;
+use rustc_middle::mir::{self, traversal};
 use rustc_middle::ty::inherent::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
@@ -120,43 +118,31 @@ fn check_call_site_abi<'tcx>(
     });
 }
 
-struct MirCallesAbiCheck<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    body: &'a mir::Body<'tcx>,
-    instance: Instance<'tcx>,
-}
-
-impl<'a, 'tcx> MirVisitor<'tcx> for MirCallesAbiCheck<'a, 'tcx> {
-    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, _: Location) {
+fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
+    // Check all function call terminators.
+    for (bb, _data) in traversal::mono_reachable(body, tcx, instance) {
+        let terminator = body.basic_blocks[bb].terminator();
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {
-                let callee_ty = func.ty(self.body, self.tcx);
-                let callee_ty = self.instance.instantiate_mir_and_normalize_erasing_regions(
-                    self.tcx,
+                let callee_ty = func.ty(body, tcx);
+                let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
                     ty::ParamEnv::reveal_all(),
                     ty::EarlyBinder::bind(callee_ty),
                 );
-                check_call_site_abi(self.tcx, callee_ty, *fn_span, self.body.source.instance);
+                check_call_site_abi(tcx, callee_ty, *fn_span, body.source.instance);
             }
             _ => {}
         }
     }
 }
 
-fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let body = tcx.instance_mir(instance.def);
-    let mut visitor = MirCallesAbiCheck { tcx, body, instance };
-    for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
-        visitor.visit_basic_block_data(bb, data)
-    }
-}
-
-fn check_feature_dependent_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
+pub(crate) fn check_feature_dependent_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
+) {
     check_instance_abi(tcx, instance);
-    check_callees_abi(tcx, instance);
-}
-
-pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_feature_dependent_abi, ..*providers }
+    check_callees_abi(tcx, instance, body);
 }
