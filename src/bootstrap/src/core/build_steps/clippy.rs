@@ -82,7 +82,7 @@ pub(crate) fn get_clippy_rules_in_order(
     {
         item.iter().for_each(|v| {
             let rule = format!("{prefix}{v}");
-            let position = all_args.iter().position(|t| t == &rule).unwrap();
+            let position = all_args.iter().position(|t| t == &rule || t == v).unwrap();
             result.push((position, rule));
         });
     }
