@@ -254,7 +254,8 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
 #[diag(lint_builtin_unreachable_pub)]
 pub(crate) struct BuiltinUnreachablePub<'a> {
     pub what: &'a str,
-    #[suggestion(code = "pub(crate)")]
+    pub new_vis: &'a str,
+    #[suggestion(code = "{new_vis}")]
     pub suggestion: (Span, Applicability),
     #[help]
     pub help: bool,
