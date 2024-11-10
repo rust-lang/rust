@@ -3,9 +3,6 @@
 // test ensures it will not be broken again.
 // See https://github.com/rust-lang/rust/issues/107094
 
-// FIXME(#132845): temporarily disabled to get revert through
-//@ ignore-test
-
 //@ needs-git-hash
 
 use run_make_support::{bare_rustc, bare_rustdoc, regex};
