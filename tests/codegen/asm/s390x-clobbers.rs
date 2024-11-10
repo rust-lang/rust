@@ -3,7 +3,7 @@
 //@[s390x] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, rustc_attrs, lang_items)]
 #![no_core]
 
 #[lang = "sized"]
