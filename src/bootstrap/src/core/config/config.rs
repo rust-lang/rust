@@ -1665,25 +1665,9 @@ impl Config {
         let mut debuginfo_level_tools = None;
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
+        let mut omit_git_hash = None;
         let mut lld_enabled = None;
         let mut std_features = None;
-
-        let default = config.channel == "dev";
-        config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
-
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
-        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
-        config.rust_analyzer_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
-        config.clippy_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
-        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
-        config.rustfmt_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
-        config.enzyme_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
-        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
-        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
 
         let mut is_user_configured_rust_channel = false;
 
@@ -1715,7 +1699,7 @@ impl Config {
                 verbose_tests,
                 optimize_tests,
                 codegen_tests,
-                omit_git_hash: _, // already handled above
+                omit_git_hash: omit_git_hash_toml,
                 dist_src,
                 save_toolstates,
                 codegen_backends,
@@ -1766,6 +1750,7 @@ impl Config {
             std_features = std_features_toml;
 
             optimize = optimize_toml;
+            omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;
             set(&mut config.rust_optimize_tests, optimize_tests);
             set(&mut config.codegen_tests, codegen_tests);
@@ -1840,6 +1825,24 @@ impl Config {
         }
 
         config.reproducible_artifacts = flags.reproducible_artifact;
+
+        // rust_info must be set before is_ci_llvm_available() is called.
+        let default = config.channel == "dev";
+        config.omit_git_hash = omit_git_hash.unwrap_or(default);
+        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
+
+        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_analyzer_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+        config.clippy_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
+        config.rustfmt_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+        config.enzyme_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in config.toml,
@@ -2757,19 +2760,9 @@ impl Config {
 
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
-            None => self.rust_info.is_managed_git_subrepository(),
-            Some(StringOrBool::Bool(false)) => return None,
+            None | Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-                if !self.rust_info.is_managed_git_subrepository() {
-                    println!(
-                        "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
-                    );
-                    crate::exit!(1);
-                }
-
-                true
-            }
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-rustc: {other}")
             }
@@ -2796,7 +2789,7 @@ impl Config {
                     }
                     println!("ERROR: could not find commit hash for downloading rustc");
                     println!("HELP: maybe your repository history is too shallow?");
-                    println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                    println!("HELP: consider disabling `download-rustc`");
                     println!("HELP: or fetch enough history to include one upstream commit");
                     crate::exit!(1);
                 }
