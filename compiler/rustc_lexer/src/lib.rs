@@ -604,6 +604,8 @@ impl Cursor<'_> {
         }
     }
 
+    /// Parses a number and in `.1` returns the offset of the literal suffix
+    /// (this will be at the end of the token if there is no suffix)
     fn number(&mut self, first_digit: char) -> (LiteralKind, u32) {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
