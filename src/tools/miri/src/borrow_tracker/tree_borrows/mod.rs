@@ -274,7 +274,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .insert(new_tag, protect);
         }
 
-        let alloc_kind = this.get_alloc_info(alloc_id).2;
+        let alloc_kind = this.get_alloc_info(alloc_id).kind;
         if !matches!(alloc_kind, AllocKind::LiveData) {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
@@ -538,7 +538,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        let (_size, _align, kind) = this.get_alloc_info(alloc_id);
+        let kind = this.get_alloc_info(alloc_id).kind;
         match kind {
             AllocKind::LiveData => {
                 // This should have alloc_extra data, but `get_alloc_extra` can still fail

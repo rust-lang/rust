@@ -31,8 +31,8 @@ use tracing::trace;
 
 use super::machine::AllocMap;
 use super::{
-    AllocId, AllocKind, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
+    AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
+    Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
     format_interp_error,
 };
 
@@ -557,9 +557,20 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if let Ok((alloc_id, _offset, _prov)) =
                     self.ecx.ptr_try_get_alloc_id(place.ptr(), 0)
                 {
-                    if let Some(GlobalAlloc::Static(did)) =
-                        self.ecx.tcx.try_get_global_alloc(alloc_id)
-                    {
+                    // Everything should be already interned.
+                    let Some(global_alloc) = self.ecx.tcx.try_get_global_alloc(alloc_id) else {
+                        assert!(self.ecx.memory.alloc_map.get(alloc_id).is_none());
+                        // We can't have *any* references to non-existing allocations in const-eval
+                        // as the rest of rustc isn't happy with them... so we throw an error, even
+                        // though for zero-sized references this isn't really UB.
+                        // A potential future alternative would be to resurrect this as a zero-sized allocation
+                        // (which codegen will then compile to an aligned dummy pointer anyway).
+                        throw_validation_failure!(self.path, DanglingPtrUseAfterFree { ptr_kind });
+                    };
+                    let (size, _align) =
+                        global_alloc.size_and_align(*self.ecx.tcx, self.ecx.param_env);
+
+                    if let GlobalAlloc::Static(did) = global_alloc {
                         let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
                             bug!()
                         };
@@ -593,17 +604,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         }
                     }
 
-                    // Dangling and Mutability check.
-                    let (size, _align, alloc_kind) = self.ecx.get_alloc_info(alloc_id);
-                    if alloc_kind == AllocKind::Dead {
-                        // This can happen for zero-sized references. We can't have *any* references to
-                        // non-existing allocations in const-eval though, interning rejects them all as
-                        // the rest of rustc isn't happy with them... so we throw an error, even though
-                        // this isn't really UB.
-                        // A potential future alternative would be to resurrect this as a zero-sized allocation
-                        // (which codegen will then compile to an aligned dummy pointer anyway).
-                        throw_validation_failure!(self.path, DanglingPtrUseAfterFree { ptr_kind });
-                    }
                     // If this allocation has size zero, there is no actual mutability here.
                     if size != Size::ZERO {
                         // Determine whether this pointer expects to be pointing to something mutable.
@@ -618,7 +618,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             }
                         };
                         // Determine what it actually points to.
-                        let alloc_actual_mutbl = mutability(self.ecx, alloc_id);
+                        let alloc_actual_mutbl =
+                            global_alloc.mutability(*self.ecx.tcx, self.ecx.param_env);
                         // Mutable pointer to immutable memory is no good.
                         if ptr_expected_mutbl == Mutability::Mut
                             && alloc_actual_mutbl == Mutability::Not
@@ -842,9 +843,16 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     }
 
     fn in_mutable_memory(&self, val: &PlaceTy<'tcx, M::Provenance>) -> bool {
+        debug_assert!(self.ctfe_mode.is_some());
         if let Some(mplace) = val.as_mplace_or_local().left() {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
-                mutability(self.ecx, alloc_id).is_mut()
+                let tcx = *self.ecx.tcx;
+                // Everything must be already interned.
+                let mutbl = tcx.global_alloc(alloc_id).mutability(tcx, self.ecx.param_env);
+                if let Some((_, alloc)) = self.ecx.memory.alloc_map.get(alloc_id) {
+                    assert_eq!(alloc.mutability, mutbl);
+                }
+                mutbl.is_mut()
             } else {
                 // No memory at all.
                 false
@@ -1012,53 +1020,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     }
                 }
             }
-        }
-    }
-}
-
-/// Returns whether the allocation is mutable, and whether it's actually a static.
-/// For "root" statics we look at the type to account for interior
-/// mutability; for nested statics we have no type and directly use the annotated mutability.
-fn mutability<'tcx>(ecx: &InterpCx<'tcx, impl Machine<'tcx>>, alloc_id: AllocId) -> Mutability {
-    // Let's see what kind of memory this points to.
-    // We're not using `try_global_alloc` since dangling pointers have already been handled.
-    match ecx.tcx.global_alloc(alloc_id) {
-        GlobalAlloc::Static(did) => {
-            let DefKind::Static { safety: _, mutability, nested } = ecx.tcx.def_kind(did) else {
-                bug!()
-            };
-            if nested {
-                assert!(
-                    ecx.memory.alloc_map.get(alloc_id).is_none(),
-                    "allocations of nested statics are already interned: {alloc_id:?}, {did:?}"
-                );
-                // Nested statics in a `static` are never interior mutable,
-                // so just use the declared mutability.
-                mutability
-            } else {
-                let mutability = match mutability {
-                    Mutability::Not
-                        if !ecx
-                            .tcx
-                            .type_of(did)
-                            .no_bound_vars()
-                            .expect("statics should not have generic parameters")
-                            .is_freeze(*ecx.tcx, ty::ParamEnv::reveal_all()) =>
-                    {
-                        Mutability::Mut
-                    }
-                    _ => mutability,
-                };
-                if let Some((_, alloc)) = ecx.memory.alloc_map.get(alloc_id) {
-                    assert_eq!(alloc.mutability, mutability);
-                }
-                mutability
-            }
-        }
-        GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-        GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
-            // These are immutable, we better don't allow mutable pointers here.
-            Mutability::Not
         }
     }
 }

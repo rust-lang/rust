@@ -1076,11 +1076,6 @@ impl<'tcx> ParamEnv<'tcx> {
         ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
     }
 
-    pub fn with_user_facing(mut self) -> Self {
-        self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
-        self
-    }
-
     /// Returns a new parameter environment with the same clauses, but
     /// which "reveals" the true results of projections in all cases
     /// (even for associated types that are specializable). This is
@@ -1093,6 +1088,12 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
         if self.packed.tag().reveal == traits::Reveal::All {
             return self;
+        }
+
+        // No need to reveal opaques with the new solver enabled,
+        // since we have lazy norm.
+        if tcx.next_trait_solver_globally() {
+            return ParamEnv::new(self.caller_bounds(), Reveal::All);
         }
 
         ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds()), Reveal::All)

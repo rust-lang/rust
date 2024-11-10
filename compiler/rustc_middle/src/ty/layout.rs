@@ -1011,25 +1011,41 @@ where
             }
 
             _ => {
-                let mut data_variant = match this.variants {
+                let mut data_variant = match &this.variants {
                     // Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
                     //
-                    // If the niche is a pointer, it's either valid (according
-                    // to its type), or null (which the niche field's scalar
-                    // validity range encodes). This allows using
-                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
-                    // this will continue to work as long as we don't start
-                    // using more niches than just null (e.g., the first page of
-                    // the address space, or unaligned pointers).
+                    // Our goal here is to check whether this represents a
+                    // "dereferenceable or null" pointer, so we need to ensure
+                    // that there is only one other variant, and it must be null.
+                    // Below, we will then check whether the pointer is indeed
+                    // dereferenceable.
                     Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                        tag_encoding:
+                            TagEncoding::Niche { untagged_variant, niche_variants, niche_start },
                         tag_field,
+                        variants,
                         ..
-                    } if this.fields.offset(tag_field) == offset => {
-                        Some(this.for_variant(cx, untagged_variant))
+                    } if variants.len() == 2 && this.fields.offset(*tag_field) == offset => {
+                        let tagged_variant = if untagged_variant.as_u32() == 0 {
+                            VariantIdx::from_u32(1)
+                        } else {
+                            VariantIdx::from_u32(0)
+                        };
+                        assert_eq!(tagged_variant, *niche_variants.start());
+                        if *niche_start == 0 {
+                            // The other variant is encoded as "null", so we can recurse searching for
+                            // a pointer here. This relies on the fact that the codegen backend
+                            // only adds "dereferenceable" if there's also a "nonnull" proof,
+                            // and that null is aligned for all alignments so it's okay to forward
+                            // the pointer's alignment.
+                            Some(this.for_variant(cx, *untagged_variant))
+                        } else {
+                            None
+                        }
                     }
+                    Variants::Multiple { .. } => None,
                     _ => Some(this),
                 };
 

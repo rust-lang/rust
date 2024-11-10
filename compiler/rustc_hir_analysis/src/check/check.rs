@@ -5,13 +5,14 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
-use rustc_hir::Node;
 use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
     REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS, UNSUPPORTED_FN_PTR_CALLING_CONVENTIONS,
 };
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
@@ -190,7 +191,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
 fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let hir::OpaqueTy { origin, .. } = tcx.hir().expect_opaque_ty(def_id);
+    let hir::OpaqueTy { origin, .. } = *tcx.hir().expect_opaque_ty(def_id);
 
     // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
     // `async-std` (and `pub async fn` in general).
@@ -200,23 +201,20 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let span = tcx.def_span(def_id);
-
     if tcx.type_of(def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, def_id, span).is_err() {
+    if check_opaque_for_cycles(tcx, def_id).is_err() {
         return;
     }
 
-    let _ = check_opaque_meets_bounds(tcx, def_id, span, origin);
+    let _ = check_opaque_meets_bounds(tcx, def_id, origin);
 }
 
 /// Checks that an opaque type does not contain cycles.
 pub(super) fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let args = GenericArgs::identity_for_item(tcx, def_id);
 
@@ -233,7 +231,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
             .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::No)
             .is_err()
         {
-            let reported = opaque_type_cycle_error(tcx, def_id, span);
+            let reported = opaque_type_cycle_error(tcx, def_id);
             return Err(reported);
         }
 
@@ -267,10 +265,16 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    span: Span,
-    origin: &hir::OpaqueTyOrigin<LocalDefId>,
+    origin: hir::OpaqueTyOrigin<LocalDefId>,
 ) -> Result<(), ErrorGuaranteed> {
-    let defining_use_anchor = match *origin {
+    let (span, definition_def_id) =
+        if let Some((span, def_id)) = best_definition_site_of_opaque(tcx, def_id, origin) {
+            (span, Some(def_id))
+        } else {
+            (tcx.def_span(def_id), None)
+        };
+
+    let defining_use_anchor = match origin {
         hir::OpaqueTyOrigin::FnReturn { parent, .. }
         | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
@@ -281,7 +285,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, defining_use_anchor));
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    let args = match *origin {
+    let args = match origin {
         hir::OpaqueTyOrigin::FnReturn { parent, .. }
         | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
@@ -306,8 +310,33 @@ fn check_opaque_meets_bounds<'tcx>(
         _ => re,
     });
 
-    let misc_cause = traits::ObligationCause::misc(span, def_id);
+    // HACK: We eagerly instantiate some bounds to report better errors for them...
+    // This isn't necessary for correctness, since we register these bounds when
+    // equating the opaque below, but we should clean this up in the new solver.
+    for (predicate, pred_span) in
+        tcx.explicit_item_bounds(def_id).iter_instantiated_copied(tcx, args)
+    {
+        let predicate = predicate.fold_with(&mut BottomUpFolder {
+            tcx,
+            ty_op: |ty| if ty == opaque_ty { hidden_ty } else { ty },
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+        });
 
+        ocx.register_obligation(Obligation::new(
+            tcx,
+            ObligationCause::new(
+                span,
+                def_id,
+                ObligationCauseCode::OpaqueTypeBound(pred_span, definition_def_id),
+            ),
+            param_env,
+            predicate,
+        ));
+    }
+
+    let misc_cause = ObligationCause::misc(span, def_id);
+    // FIXME: We should just register the item bounds here, rather than equating.
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {
@@ -361,6 +390,97 @@ fn check_opaque_meets_bounds<'tcx>(
             sanity_check_found_hidden_type(tcx, key, ty.hidden_type)?;
         }
         Ok(())
+    }
+}
+
+fn best_definition_site_of_opaque<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: LocalDefId,
+    origin: hir::OpaqueTyOrigin<LocalDefId>,
+) -> Option<(Span, LocalDefId)> {
+    struct TaitConstraintLocator<'tcx> {
+        opaque_def_id: LocalDefId,
+        tcx: TyCtxt<'tcx>,
+    }
+    impl<'tcx> TaitConstraintLocator<'tcx> {
+        fn check(&self, item_def_id: LocalDefId) -> ControlFlow<(Span, LocalDefId)> {
+            if !self.tcx.has_typeck_results(item_def_id) {
+                return ControlFlow::Continue(());
+            }
+
+            if let Some(hidden_ty) =
+                self.tcx.mir_borrowck(item_def_id).concrete_opaque_types.get(&self.opaque_def_id)
+            {
+                ControlFlow::Break((hidden_ty.span, item_def_id))
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
+    }
+    impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
+        type NestedFilter = nested_filter::All;
+        type Result = ControlFlow<(Span, LocalDefId)>;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.tcx.hir()
+        }
+        fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
+            if let hir::ExprKind::Closure(closure) = ex.kind {
+                self.check(closure.def_id)?;
+            }
+            intravisit::walk_expr(self, ex)
+        }
+        fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> Self::Result {
+            self.check(it.owner_id.def_id)?;
+            intravisit::walk_item(self, it)
+        }
+        fn visit_impl_item(&mut self, it: &'tcx hir::ImplItem<'tcx>) -> Self::Result {
+            self.check(it.owner_id.def_id)?;
+            intravisit::walk_impl_item(self, it)
+        }
+        fn visit_trait_item(&mut self, it: &'tcx hir::TraitItem<'tcx>) -> Self::Result {
+            self.check(it.owner_id.def_id)?;
+            intravisit::walk_trait_item(self, it)
+        }
+        fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) -> Self::Result {
+            intravisit::walk_foreign_item(self, it)
+        }
+    }
+
+    let mut locator = TaitConstraintLocator { tcx, opaque_def_id };
+    match origin {
+        hir::OpaqueTyOrigin::FnReturn { parent, .. }
+        | hir::OpaqueTyOrigin::AsyncFn { parent, .. } => locator.check(parent).break_value(),
+        hir::OpaqueTyOrigin::TyAlias { parent, in_assoc_ty: true } => {
+            let impl_def_id = tcx.local_parent(parent);
+            for assoc in tcx.associated_items(impl_def_id).in_definition_order() {
+                match assoc.kind {
+                    ty::AssocKind::Const | ty::AssocKind::Fn => {
+                        if let ControlFlow::Break(span) = locator.check(assoc.def_id.expect_local())
+                        {
+                            return Some(span);
+                        }
+                    }
+                    ty::AssocKind::Type => {}
+                }
+            }
+
+            None
+        }
+        hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
+            let scope = tcx.hir().get_defining_scope(tcx.local_def_id_to_hir_id(opaque_def_id));
+            let found = if scope == hir::CRATE_HIR_ID {
+                tcx.hir().walk_toplevel_module(&mut locator)
+            } else {
+                match tcx.hir_node(scope) {
+                    Node::Item(it) => locator.visit_item(it),
+                    Node::ImplItem(it) => locator.visit_impl_item(it),
+                    Node::TraitItem(it) => locator.visit_trait_item(it),
+                    Node::ForeignItem(it) => locator.visit_foreign_item(it),
+                    other => bug!("{:?} is not a valid scope for an opaque type item", other),
+                }
+            };
+            found.break_value()
+        }
     }
 }
 
@@ -1535,11 +1655,8 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
 ///
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
-fn opaque_type_cycle_error(
-    tcx: TyCtxt<'_>,
-    opaque_def_id: LocalDefId,
-    span: Span,
-) -> ErrorGuaranteed {
+fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorGuaranteed {
+    let span = tcx.def_span(opaque_def_id);
     let mut err = struct_span_code_err!(tcx.dcx(), span, E0720, "cannot resolve opaque type");
 
     let mut label = false;

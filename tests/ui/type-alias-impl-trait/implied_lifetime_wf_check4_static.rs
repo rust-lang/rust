@@ -2,9 +2,9 @@
 
 mod test_type_param_static {
     pub type Ty<A> = impl Sized + 'static;
-    //~^ ERROR: the parameter type `A` may not live long enough
     fn defining<A: 'static>(s: A) -> Ty<A> {
         s
+        //~^ ERROR: the parameter type `A` may not live long enough
     }
     pub fn assert_static<A: 'static>() {}
 }

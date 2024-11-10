@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::ops::Deref;
 use std::ptr;
@@ -301,15 +300,11 @@ pub fn set_value_name(value: &Value, name: &[u8]) {
 }
 
 pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error> {
-    let sr = RustString { bytes: RefCell::new(Vec::new()) };
-    f(&sr);
-    String::from_utf8(sr.bytes.into_inner())
+    String::from_utf8(RustString::build_byte_buffer(f))
 }
 
 pub fn build_byte_buffer(f: impl FnOnce(&RustString)) -> Vec<u8> {
-    let sr = RustString { bytes: RefCell::new(Vec::new()) };
-    f(&sr);
-    sr.bytes.into_inner()
+    RustString::build_byte_buffer(f)
 }
 
 pub fn twine_to_string(tr: &Twine) -> String {

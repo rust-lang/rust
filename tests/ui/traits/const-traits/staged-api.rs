@@ -1,10 +1,11 @@
-//@ revisions: stable unstable
+//! Checks whether we are properly enforcing recursive const stability for trait calls.
 //@ compile-flags: -Znext-solver
 
-#![cfg_attr(unstable, feature(unstable))] // The feature from the ./auxiliary/staged-api.rs file.
-#![cfg_attr(unstable, feature(local_feature))]
+#![feature(unstable)] // The feature from the ./auxiliary/staged-api.rs file.
+#![feature(local_feature)]
 #![feature(const_trait_impl)]
 #![feature(staged_api)]
+#![feature(rustc_allow_const_fn_unstable)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //@ aux-build: staged-api.rs
@@ -16,11 +17,14 @@ use staged_api::*;
 pub struct Foo;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(unstable, rustc_const_unstable(feature = "local_feature", issue = "none"))]
-#[cfg_attr(stable, rustc_const_stable(feature = "local_feature", since = "1.0.0"))]
+#[rustc_const_unstable(feature = "local_feature", issue = "none")]
 impl const MyTrait for Foo {
-    //[stable]~^ ERROR trait implementations cannot be const stable yet
     fn func() {}
+}
+
+#[rustc_allow_const_fn_unstable(const_trait_impl)]
+const fn conditionally_const<T: ~const MyTrait>() {
+    T::func();
 }
 
 // Const stability has no impact on usage in non-const contexts.
@@ -32,43 +36,35 @@ fn non_const_context() {
 #[unstable(feature = "none", issue = "none")]
 const fn const_context() {
     Unstable::func();
-    //[unstable]~^ ERROR cannot use `#[feature(unstable)]`
-    //[stable]~^^ ERROR not yet stable as a const fn
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
     Foo::func();
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
-    //[stable]~^^ cannot be (indirectly) exposed to stable
-    // We get the error on `stable` since this is a trait function.
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
     Unstable2::func();
-    //~^ ERROR not yet stable as a const fn
-    // ^ fails, because the `unstable2` feature is not active
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    conditionally_const::<Foo>();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(unstable, rustc_const_unstable(feature = "local_feature", issue = "none"))]
+#[rustc_const_unstable(feature = "local_feature", issue = "none")]
 pub const fn const_context_not_const_stable() {
-    //[stable]~^ ERROR function has missing const stability attribute
     Unstable::func();
-    //[stable]~^ ERROR not yet stable as a const fn
     Foo::func();
-    //[stable]~^ cannot be (indirectly) exposed to stable
-    // We get the error on `stable` since this is a trait function.
     Unstable2::func();
-    //~^ ERROR not yet stable as a const fn
-    // ^ fails, because the `unstable2` feature is not active
+    conditionally_const::<Foo>();
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
-    //[unstable]~^ ERROR cannot use `#[feature(unstable)]`
-    //[stable]~^^ ERROR not yet stable as a const fn
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
     Foo::func();
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
-    //[stable]~^^ cannot be (indirectly) exposed to stable
-    // We get the error on `stable` since this is a trait function.
-    const_context_not_const_stable()
-    //[unstable]~^ ERROR cannot use `#[feature(local_feature)]`
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    const_context_not_const_stable();
+    //~^ ERROR cannot use `#[feature(local_feature)]`
+    conditionally_const::<Foo>();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
 }
 
 fn main() {}
