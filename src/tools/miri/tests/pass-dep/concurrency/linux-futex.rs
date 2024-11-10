@@ -1,5 +1,4 @@
-//@only-target: linux
-//@only-target: android
+//@only-target: linux android
 //@compile-flags: -Zmiri-disable-isolation
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
@@ -8,8 +7,8 @@
 use std::mem::MaybeUninit;
 use std::ptr::{self, addr_of};
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::thread;
 use std::time::{Duration, Instant};
+use std::{io, thread};
 
 fn wake_nobody() {
     let futex = 0;
