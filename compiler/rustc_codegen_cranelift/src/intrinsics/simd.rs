@@ -1,7 +1,7 @@
 //! Codegen SIMD intrinsics.
 
 use cranelift_codegen::ir::immediates::Offset32;
-use rustc_target::abi::Endian;
+use rustc_abi::Endian;
 
 use super::*;
 use crate::prelude::*;

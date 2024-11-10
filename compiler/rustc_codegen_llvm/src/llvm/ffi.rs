@@ -204,7 +204,7 @@ pub enum DLLStorageClass {
     DllExport = 2, // Function to be accessible from DLL.
 }
 
-/// Matches LLVMRustAttribute in LLVMWrapper.h
+/// Must match the layout of `LLVMRustAttributeKind`.
 /// Semantically a subset of the C++ enum llvm::Attribute::AttrKind,
 /// though it is not ABI compatible (since it's a C++ enum)
 #[repr(C)]
@@ -1766,11 +1766,9 @@ unsafe extern "C" {
     pub fn LLVMRustGetLastError() -> *const c_char;
 
     /// Prints the timing information collected by `-Ztime-llvm-passes`.
-    #[expect(improper_ctypes)]
     pub(crate) fn LLVMRustPrintPassTimings(OutStr: &RustString);
 
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
-    #[expect(improper_ctypes)]
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
     /// Prepares inline assembly.
@@ -1791,7 +1789,6 @@ unsafe extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustCoverageWriteFilenamesToBuffer(
         Filenames: *const *const c_char,
         FilenamesLen: size_t,
@@ -1800,7 +1797,6 @@ unsafe extern "C" {
         BufferOut: &RustString,
     );
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustCoverageWriteFunctionMappingsToBuffer(
         VirtualFileMappingIDs: *const c_uint,
         NumVirtualFileMappingIDs: size_t,
@@ -1824,13 +1820,10 @@ unsafe extern "C" {
     ) -> &Value;
     pub(crate) fn LLVMRustCoverageHashBytes(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustCoverageWriteCovmapSectionNameToString(M: &Module, OutStr: &RustString);
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustCoverageWriteCovfunSectionNameToString(M: &Module, OutStr: &RustString);
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
 
     pub(crate) fn LLVMRustCoverageMappingVersion() -> u32;
@@ -2181,18 +2174,19 @@ unsafe extern "C" {
         Scope: &'a DIScope,
         InlinedAt: Option<&'a DILocation>,
     ) -> &'a DILocation;
+    pub fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
+        Location: &'a DILocation,
+        BD: c_uint,
+    ) -> Option<&'a DILocation>;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
     pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
-    #[allow(improper_ctypes)]
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
     pub fn LLVMRustGetTargetFeature(
@@ -2297,10 +2291,8 @@ unsafe extern "C" {
     pub fn LLVMRustArchiveIteratorFree<'a>(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackOptimizationDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
         pass_name_out: &RustString,
@@ -2318,7 +2310,6 @@ unsafe extern "C" {
         message_out: &mut Option<&'a Twine>,
     );
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
 
@@ -2327,7 +2318,6 @@ unsafe extern "C" {
         cookie_out: &mut c_uint,
     ) -> &'a SMDiagnostic;
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackSMDiagnostic(
         d: &SMDiagnostic,
         message_out: &RustString,
@@ -2374,7 +2364,6 @@ unsafe extern "C" {
     pub fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;
     pub fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub fn LLVMRustModuleCost(M: &Module) -> u64;
-    #[allow(improper_ctypes)]
     pub fn LLVMRustModuleInstructionStats(M: &Module, Str: &RustString);
 
     pub fn LLVMRustThinLTOBufferCreate(
@@ -2427,7 +2416,6 @@ unsafe extern "C" {
         bytecode_len: usize,
     ) -> bool;
     pub fn LLVMRustLinkerFree<'a>(linker: &'a mut Linker<'a>);
-    #[allow(improper_ctypes)]
     pub fn LLVMRustComputeLTOCacheKey(
         key_out: &RustString,
         mod_id: *const c_char,
@@ -2450,7 +2438,6 @@ unsafe extern "C" {
         pgo_available: bool,
     );
 
-    #[allow(improper_ctypes)]
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;

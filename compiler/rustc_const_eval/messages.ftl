@@ -25,6 +25,10 @@ const_eval_closure_fndef_not_const =
     function defined here, but it is not `const`
 const_eval_closure_non_const =
     cannot call non-const closure in {const_eval_const_context}s
+
+const_eval_conditionally_const_call =
+    cannot call conditionally-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
+
 const_eval_consider_dereferencing =
     consider dereferencing here
 

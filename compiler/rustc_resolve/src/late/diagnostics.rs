@@ -1472,7 +1472,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
 
             if lhs_span.eq_ctxt(rhs_span) {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     lhs_span.between(rhs_span),
                     MESSAGE,
                     "::",

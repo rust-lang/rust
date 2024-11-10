@@ -294,15 +294,21 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, ident_start);
 
                     if prefix_span.at_least_rust_2021() {
-                        let lifetime_name_without_tick = self.str_from(ident_start);
+                        let span = self.mk_sp(start, self.pos);
+
+                        let lifetime_name_without_tick = Symbol::intern(&self.str_from(ident_start));
+                        if !lifetime_name_without_tick.can_be_raw() {
+                            self.dcx().emit_err(errors::CannotBeRawLifetime { span, ident: lifetime_name_without_tick });
+                        }
+
                         // Put the `'` back onto the lifetime name.
-                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.len() + 1);
+                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
                         lifetime_name.push('\'');
-                        lifetime_name += lifetime_name_without_tick;
+                        lifetime_name += lifetime_name_without_tick.as_str();
                         let sym = Symbol::intern(&lifetime_name);
 
                         // Make sure we mark this as a raw identifier.
-                        self.psess.raw_identifier_spans.push(self.mk_sp(start, self.pos));
+                        self.psess.raw_identifier_spans.push(span);
 
                         token::Lifetime(sym, IdentIsRaw::Yes)
                     } else {
