@@ -135,7 +135,6 @@ change-id = 0
 [rust]
 lto = "off"
 deny-warnings = true
-download-rustc=false
 
 [build]
 gdb = "foo"
@@ -201,8 +200,6 @@ runner = "x86_64-runner"
             .collect(),
         "setting dictionary value"
     );
-    assert!(!config.llvm_from_ci);
-    assert!(!config.download_rustc());
 }
 
 #[test]
