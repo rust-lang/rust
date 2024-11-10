@@ -4,8 +4,7 @@ use rustc_span::Symbol;
 use self::shims::unix::linux::epoll::EvalContextExt as _;
 use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
-use self::shims::unix::linux::sync::futex;
-use crate::helpers::check_min_arg_count;
+use self::shims::unix::linux::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
 use crate::shims::unix::*;
 use crate::*;
@@ -82,13 +81,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_setname_np" => {
                 let [thread, name] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let res = this.pthread_setname_np(
+                let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     TASK_COMM_LEN,
                     /* truncate */ false,
-                )?;
-                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
+                    // Act like we faild to open `/proc/self/task/$tid/comm`.
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ENOENT"),
+                };
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
@@ -98,14 +101,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // In case of glibc, the length of the output buffer must
                 // be not shorter than TASK_COMM_LEN.
                 let len = this.read_scalar(len)?;
-                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN as u64
-                    && this.pthread_getname_np(
+                let res = if len.to_target_usize(this)? >= TASK_COMM_LEN as u64 {
+                    match this.pthread_getname_np(
                         this.read_scalar(thread)?,
                         this.read_scalar(name)?,
                         len,
                         /* truncate*/ false,
                     )? {
-                    Scalar::from_u32(0)
+                        ThreadNameResult::Ok => Scalar::from_u32(0),
+                        ThreadNameResult::NameTooLong => unreachable!(),
+                        // Act like we faild to open `/proc/self/task/$tid/comm`.
+                        ThreadNameResult::ThreadNotFound => this.eval_libc("ENOENT"),
+                    }
                 } else {
                     this.eval_libc("ERANGE")
                 };
@@ -119,57 +126,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Dynamically invoked syscalls
             "syscall" => {
-                // We do not use `check_shim` here because `syscall` is variadic. The argument
-                // count is checked bellow.
-                this.check_abi_and_shim_symbol_clash(
-                    abi,
-                    ExternAbi::C { unwind: false },
-                    link_name,
-                )?;
-                // The syscall variadic function is legal to call with more arguments than needed,
-                // extra arguments are simply ignored. The important check is that when we use an
-                // argument, we have to also check all arguments *before* it to ensure that they
-                // have the right type.
-
-                let sys_getrandom = this.eval_libc("SYS_getrandom").to_target_usize(this)?;
-                let sys_futex = this.eval_libc("SYS_futex").to_target_usize(this)?;
-                let sys_eventfd2 = this.eval_libc("SYS_eventfd2").to_target_usize(this)?;
-
-                let [op] = check_min_arg_count("syscall", args)?;
-                match this.read_target_usize(op)? {
-                    // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                    // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
-                    num if num == sys_getrandom => {
-                        // Used by getrandom 0.1
-                        // The first argument is the syscall id, so skip over it.
-                        let [_, ptr, len, flags] =
-                            check_min_arg_count("syscall(SYS_getrandom, ...)", args)?;
-
-                        let ptr = this.read_pointer(ptr)?;
-                        let len = this.read_target_usize(len)?;
-                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-                        // neither of which have any effect on our current PRNG.
-                        // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-                        let _flags = this.read_scalar(flags)?.to_i32()?;
-
-                        this.gen_random(ptr, len)?;
-                        this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
-                    }
-                    // `futex` is used by some synchronization primitives.
-                    num if num == sys_futex => {
-                        futex(this, args, dest)?;
-                    }
-                    num if num == sys_eventfd2 => {
-                        let [_, initval, flags] =
-                            check_min_arg_count("syscall(SYS_evetfd2, ...)", args)?;
-
-                        let result = this.eventfd(initval, flags)?;
-                        this.write_int(result.to_i32()?, dest)?;
-                    }
-                    num => {
-                        throw_unsup_format!("syscall: unsupported syscall number {num}");
-                    }
-                }
+                syscall(this, link_name, abi, args, dest)?;
             }
 
             // Miscellaneous

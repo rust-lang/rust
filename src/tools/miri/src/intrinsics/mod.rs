@@ -292,7 +292,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
                 let fuse: bool = this.machine.rng.get_mut().gen();
-                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
@@ -308,7 +307,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
                 let fuse: bool = this.machine.rng.get_mut().gen();
-                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()

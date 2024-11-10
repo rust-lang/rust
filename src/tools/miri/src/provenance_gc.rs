@@ -89,6 +89,18 @@ impl VisitProvenance for Scalar {
     }
 }
 
+impl VisitProvenance for IoError {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        use crate::shims::io_error::IoError::*;
+        match self {
+            LibcError(_name) => (),
+            WindowsError(_name) => (),
+            HostError(_io_error) => (),
+            Raw(scalar) => scalar.visit_provenance(visit),
+        }
+    }
+}
+
 impl VisitProvenance for Immediate<Provenance> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         match self {

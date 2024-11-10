@@ -1,5 +1,5 @@
 Function name: if_not::if_not
-Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 09, 01, 0d, 0a, 01, 05, 01, 03, 0d, 02, 04, 05, 02, 06, 05, 02, 06, 00, 07, 01, 03, 09, 01, 0d, 06, 02, 05, 02, 06, 09, 02, 06, 00, 07, 01, 03, 09, 01, 0d, 0a, 02, 05, 02, 06, 0d, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
+Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 09, 01, 0d, 0a, 01, 05, 01, 03, 0d, 02, 04, 05, 02, 06, 05, 02, 05, 00, 06, 01, 03, 09, 01, 0d, 06, 02, 05, 02, 06, 09, 02, 05, 00, 06, 01, 03, 09, 01, 0d, 0a, 02, 05, 02, 06, 0d, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 3
@@ -10,11 +10,11 @@ Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 5, 1) to (start + 3, 13)
 - Code(Expression(0, Sub)) at (prev + 4, 5) to (start + 2, 6)
     = (c0 - c1)
-- Code(Counter(1)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Counter(1)) at (prev + 2, 5) to (start + 0, 6)
 - Code(Counter(0)) at (prev + 3, 9) to (start + 1, 13)
 - Code(Expression(1, Sub)) at (prev + 2, 5) to (start + 2, 6)
     = (c0 - c2)
-- Code(Counter(2)) at (prev + 2, 6) to (start + 0, 7)
+- Code(Counter(2)) at (prev + 2, 5) to (start + 0, 6)
 - Code(Counter(0)) at (prev + 3, 9) to (start + 1, 13)
 - Code(Expression(2, Sub)) at (prev + 2, 5) to (start + 2, 6)
     = (c0 - c3)

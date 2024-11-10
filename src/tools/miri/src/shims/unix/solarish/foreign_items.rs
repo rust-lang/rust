@@ -26,26 +26,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // THREAD_NAME_MAX allows a thread name of 31+1 length
                 // https://github.com/illumos/illumos-gate/blob/7671517e13b8123748eda4ef1ee165c6d9dba7fe/usr/src/uts/common/sys/thread.h#L613
                 let max_len = 32;
-                let res = this.pthread_setname_np(
+                // See https://illumos.org/man/3C/pthread_setname_np for the error codes.
+                let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     max_len,
                     /* truncate */ false,
-                )?;
-                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                };
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
                 let [thread, name, len] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                // https://github.com/illumos/illumos-gate/blob/c56822be04b6c157c8b6f2281e47214c3b86f657/usr/src/lib/libc/port/threads/thr.c#L2449-L2480
-                let res = this.pthread_getname_np(
+                // See https://illumos.org/man/3C/pthread_getname_np for the error codes.
+                let res = match this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
                     /* truncate */ false,
-                )?;
-                let res = if res { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") };
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => this.eval_libc("ERANGE"),
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                };
                 this.write_scalar(res, dest)?;
             }
 

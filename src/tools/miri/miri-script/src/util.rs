@@ -41,6 +41,8 @@ pub struct MiriEnv {
     pub sysroot: PathBuf,
     /// The shell we use.
     pub sh: Shell,
+    /// The library dir in the sysroot.
+    pub libdir: PathBuf,
 }
 
 impl MiriEnv {
@@ -96,7 +98,8 @@ impl MiriEnv {
         // so that Windows can find the DLLs.
         if cfg!(windows) {
             let old_path = sh.var("PATH")?;
-            let new_path = env::join_paths(iter::once(libdir).chain(env::split_paths(&old_path)))?;
+            let new_path =
+                env::join_paths(iter::once(libdir.clone()).chain(env::split_paths(&old_path)))?;
             sh.set_var("PATH", new_path);
         }
 
@@ -111,7 +114,7 @@ impl MiriEnv {
             std::process::exit(1);
         }
 
-        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags })
+        Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags, libdir })
     }
 
     pub fn cargo_cmd(&self, crate_dir: impl AsRef<OsStr>, cmd: &str) -> Cmd<'_> {
