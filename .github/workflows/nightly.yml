@@ -26,6 +26,9 @@ jobs:
           sudo apt-get install llvm
       - name: Install ninja
         run: sudo apt-get install ninja-build
+      - name: Install cargo binutils
+        run: |
+          rustup component add llvm-tools-preview
       - name: Rebase
         run: src/ci/scripts/sync.sh
       - name: Build
