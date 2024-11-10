@@ -179,7 +179,9 @@ else
   fi
 
   if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+    # disabled for now, see https://github.com/rust-lang/rust/issues/131658
+    #RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
+    true
   fi
 fi
 
