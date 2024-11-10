@@ -1684,6 +1684,14 @@ impl Config {
         let mut lld_enabled = None;
         let mut std_features = None;
 
+        let is_user_configured_rust_channel =
+            if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
+                config.channel = channel;
+                true
+            } else {
+                false
+            };
+
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
 
@@ -1700,8 +1708,6 @@ impl Config {
             GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
         config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
         config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
-
-        let mut is_user_configured_rust_channel = false;
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -1724,7 +1730,7 @@ impl Config {
                 parallel_compiler,
                 randomize_layout,
                 default_linker,
-                channel,
+                channel: _, // already handled above
                 description,
                 musl_root,
                 rpath,
@@ -1760,9 +1766,6 @@ impl Config {
                 lld_mode,
                 std_features: std_features_toml,
             } = rust;
-
-            is_user_configured_rust_channel = channel.is_some();
-            set(&mut config.channel, channel.clone());
 
             config.download_rustc_commit =
                 config.download_ci_rustc_commit(download_rustc, config.llvm_assertions);
