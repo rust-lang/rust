@@ -320,11 +320,11 @@ fn default_body_is_unstable(
     let inject_span = item_did
         .as_local()
         .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
-    rustc_session::parse::add_feature_diagnostics_for_issue(
+    rustc_session::parse::add_feature_diagnostics_for_issues(
         &mut err,
         &tcx.sess,
-        feature,
-        rustc_feature::GateIssue::Library(issue),
+        &[feature],
+        rustc_feature::GateIssues::Library(Vec::from_iter(issue)),
         false,
         inject_span,
     );

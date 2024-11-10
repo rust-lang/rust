@@ -12,7 +12,7 @@ use rustc_errors::{
     ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, EmissionGuarantee, MultiSpan,
     StashKey, fallback_fluent_bundle,
 };
-use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
+use rustc_feature::{GateIssues, UnstableFeatures, find_feature_issues};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -87,7 +87,7 @@ pub fn feature_err(
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagMessage>,
 ) -> Diag<'_> {
-    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
+    feature_err_issues(sess, &[feature], span, GateIssues::Language, explain)
 }
 
 /// Construct a diagnostic for a feature gate error.
@@ -95,13 +95,13 @@ pub fn feature_err(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
 #[track_caller]
-pub fn feature_err_issue(
-    sess: &Session,
-    feature: Symbol,
+pub fn feature_err_issues<'a>(
+    sess: &'a Session,
+    features: &[Symbol],
     span: impl Into<MultiSpan>,
-    issue: GateIssue,
+    issues: GateIssues,
     explain: impl Into<DiagMessage>,
-) -> Diag<'_> {
+) -> Diag<'a> {
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
@@ -112,7 +112,7 @@ pub fn feature_err_issue(
     }
 
     let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+    add_feature_diagnostics_for_issues(&mut err, sess, features, issues, false, None);
     err
 }
 
@@ -121,7 +121,7 @@ pub fn feature_err_issue(
 /// This diagnostic is only a warning and *does not cause compilation to fail*.
 #[track_caller]
 pub fn feature_warn(sess: &Session, feature: Symbol, span: Span, explain: &'static str) {
-    feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
+    feature_warn_issues(sess, &[feature], span, GateIssues::Language, explain);
 }
 
 /// Construct a future incompatibility diagnostic for a feature gate.
@@ -133,15 +133,15 @@ pub fn feature_warn(sess: &Session, feature: Symbol, span: Span, explain: &'stat
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
 #[track_caller]
-pub fn feature_warn_issue(
+pub fn feature_warn_issues(
     sess: &Session,
-    feature: Symbol,
+    features: &[Symbol],
     span: Span,
-    issue: GateIssue,
+    issues: GateIssues,
     explain: &'static str,
 ) {
     let mut err = sess.dcx().struct_span_warn(span, explain);
-    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+    add_feature_diagnostics_for_issues(&mut err, sess, features, issues, false, None);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
@@ -161,7 +161,7 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
     sess: &Session,
     feature: Symbol,
 ) {
-    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
+    add_feature_diagnostics_for_issues(err, sess, &[feature], GateIssues::Language, false, None);
 }
 
 /// Adds the diagnostics for a feature to an existing error.
@@ -170,20 +170,21 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
 #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
-pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
+pub fn add_feature_diagnostics_for_issues<G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     sess: &Session,
-    feature: Symbol,
-    issue: GateIssue,
+    features: &[Symbol],
+    issues: GateIssues,
     feature_from_cli: bool,
     inject_span: Option<Span>,
 ) {
-    if let Some(n) = find_feature_issue(feature, issue) {
+    for n in find_feature_issues(features, issues) {
         err.subdiagnostic(FeatureDiagnosticForIssue { n });
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.psess.unstable_features.is_nightly_build() {
+        let feature: String = features.iter().map(|s| s.as_str()).intersperse(", ").collect();
         if feature_from_cli {
             err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
         } else if let Some(span) = inject_span {

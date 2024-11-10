@@ -1,9 +1,9 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{NodeId, PatKind, attr, token};
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_session::Session;
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_session::parse::{feature_err, feature_warn};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -81,7 +81,7 @@ impl<'a> PostExpansionVisitor<'a> {
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
             Err(abi::AbiDisabled::Unstable { feature, explain }) => {
-                feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
+                feature_err(&self.sess, feature, span, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {

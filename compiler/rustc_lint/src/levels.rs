@@ -1,7 +1,7 @@
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
-use rustc_feature::{Features, GateIssue};
+use rustc_feature::{Features, GateIssues};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_index::IndexVec;
@@ -985,11 +985,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 lint.primary_message(fluent::lint_unknown_gated_lint);
                 lint.arg("name", lint_id.lint.name_lower());
                 lint.note(fluent::lint_note);
-                rustc_session::parse::add_feature_diagnostics_for_issue(
+                rustc_session::parse::add_feature_diagnostics_for_issues(
                     lint,
                     &self.sess,
-                    feature,
-                    GateIssue::Language,
+                    &[feature],
+                    GateIssues::Language,
                     lint_from_cli,
                     None,
                 );

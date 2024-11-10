@@ -22,7 +22,7 @@ use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_errors::{Applicability, LintDiagnostic};
-use rustc_feature::{AttributeGate, BuiltinAttribute, GateIssue, Stability, deprecated_attributes};
+use rustc_feature::{AttributeGate, BuiltinAttribute, Stability, deprecated_attributes};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
@@ -2313,7 +2313,7 @@ impl EarlyLintPass for IncompleteInternalFeatures {
             .filter(|(name, _)| features.incomplete(*name) || features.internal(*name))
             .for_each(|(name, span)| {
                 if features.incomplete(name) {
-                    let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
+                    let note = rustc_feature::find_lang_feature_issue(name)
                         .map(|n| BuiltinFeatureIssueNote { n });
                     let help =
                         HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);

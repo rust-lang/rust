@@ -9,7 +9,7 @@ use rustc_attr::{
 };
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
-use rustc_feature::GateIssue;
+use rustc_feature::GateIssues;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
@@ -17,7 +17,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
-use rustc_session::parse::feature_err_issue;
+use rustc_session::parse::feature_err_issues;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use tracing::debug;
@@ -118,7 +118,8 @@ pub fn report_unstable(
     if is_soft {
         soft_handler(SOFT_UNSTABLE, span, msg)
     } else {
-        let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
+        let issues = Vec::from_iter(issue);
+        let mut err = feature_err_issues(sess, &[feature], span, GateIssues::Library(issues), msg);
         if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }
