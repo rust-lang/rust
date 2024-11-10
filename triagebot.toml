@@ -212,6 +212,10 @@ trigger_files = [
     "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
+
+    # Docs
+    "src/doc/rustdoc.md",
+    "src/doc/rustdoc/",
 ]
 exclude_labels = [
     "T-*",
