@@ -22,7 +22,7 @@ use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span, char_width};
+use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
@@ -113,8 +113,12 @@ impl Margin {
     fn was_cut_right(&self, line_len: usize) -> bool {
         let right =
             if self.computed_right == self.span_right || self.computed_right == self.label_right {
+                // FIXME: This comment refers to the only callsite of this method.
+                //        Rephrase it or refactor it, so it can stand on its own.
                 // Account for the "..." padding given above. Otherwise we end up with code lines
                 // that do fit but end in "..." as if they were trimmed.
+                // FIXME: Don't hard-code this offset. Is this meant to represent
+                //        `2 * str_width(self.margin())`?
                 self.computed_right - 6
             } else {
                 self.computed_right
@@ -673,6 +677,7 @@ impl HumanEmitter {
         // Create the source line we will highlight.
         let left = margin.left(line_len);
         let right = margin.right(line_len);
+        // FIXME: The following code looks fishy. See #132860.
         // On long lines, we strip the source line, accounting for unicode.
         let mut taken = 0;
         let code: String = source_string
@@ -695,7 +700,7 @@ impl HumanEmitter {
             buffer.puts(line_offset, code_offset, placeholder, Style::LineNumber);
         }
         if margin.was_cut_right(line_len) {
-            let padding: usize = placeholder.chars().map(|ch| char_width(ch)).sum();
+            let padding = str_width(placeholder);
             // We have stripped some code after the rightmost span end, make it clear we did so.
             buffer.puts(line_offset, code_offset + taken - padding, placeholder, Style::LineNumber);
         }
@@ -744,6 +749,7 @@ impl HumanEmitter {
         // Left trim
         let left = margin.left(source_string.len());
 
+        // FIXME: This looks fishy. See #132860.
         // Account for unicode characters of width !=0 that were removed.
         let left = source_string.chars().take(left).map(|ch| char_width(ch)).sum();
 
@@ -1068,21 +1074,15 @@ impl HumanEmitter {
 
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..=line_offset + pos {
-                    if let AnnotationType::MultilineLine(_) = annotation.annotation_type {
-                        buffer.putc(
-                            p,
-                            (code_offset + annotation.start_col.display).saturating_sub(left),
-                            underline.multiline_vertical,
-                            underline.style,
-                        );
-                    } else {
-                        buffer.putc(
-                            p,
-                            (code_offset + annotation.start_col.display).saturating_sub(left),
-                            underline.vertical_text_line,
-                            underline.style,
-                        );
-                    }
+                    buffer.putc(
+                        p,
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        match annotation.annotation_type {
+                            AnnotationType::MultilineLine(_) => underline.multiline_vertical,
+                            _ => underline.vertical_text_line,
+                        },
+                        underline.style,
+                    );
                 }
                 if let AnnotationType::MultilineStart(_) = annotation.annotation_type {
                     buffer.putc(
@@ -2134,7 +2134,7 @@ impl HumanEmitter {
                         }
 
                         let placeholder = self.margin();
-                        let padding: usize = placeholder.chars().map(|ch| char_width(ch)).sum();
+                        let padding = str_width(placeholder);
                         buffer.puts(
                             row_num,
                             max_line_num_len.saturating_sub(padding),
@@ -2224,11 +2224,11 @@ impl HumanEmitter {
                     };
                     // ...or trailing spaces. Account for substitutions containing unicode
                     // characters.
-                    let sub_len: usize =
-                        if is_whitespace_addition { &part.snippet } else { part.snippet.trim() }
-                            .chars()
-                            .map(|ch| char_width(ch))
-                            .sum();
+                    let sub_len: usize = str_width(if is_whitespace_addition {
+                        &part.snippet
+                    } else {
+                        part.snippet.trim()
+                    });
 
                     let offset: isize = offsets
                         .iter()
@@ -2266,8 +2266,7 @@ impl HumanEmitter {
                     }
 
                     // length of the code after substitution
-                    let full_sub_len =
-                        part.snippet.chars().map(|ch| char_width(ch)).sum::<usize>() as isize;
+                    let full_sub_len = str_width(&part.snippet) as isize;
 
                     // length of the code to be substituted
                     let snippet_len = span_end_pos as isize - span_start_pos as isize;
@@ -2282,7 +2281,7 @@ impl HumanEmitter {
             // if we elided some lines, add an ellipsis
             if lines.next().is_some() {
                 let placeholder = self.margin();
-                let padding: usize = placeholder.chars().map(|ch| char_width(ch)).sum();
+                let padding = str_width(placeholder);
                 buffer.puts(
                     row_num,
                     max_line_num_len.saturating_sub(padding),
