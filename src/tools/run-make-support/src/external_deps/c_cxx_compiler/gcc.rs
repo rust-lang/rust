@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use crate::command::Command;
-use crate::env_var;
 
 /// Construct a gcc invocation.
 ///
@@ -23,15 +22,11 @@ crate::macros::impl_common_helpers!(Gcc);
 impl Gcc {
     /// Construct a `gcc` invocation. This assumes that *a* suitable `gcc` is available in the
     /// environment.
+    ///
+    /// Note that this does **not** prepopulate the `gcc` invocation with `CC_DEFAULT_FLAGS`.
     #[track_caller]
     pub fn new() -> Self {
-        let mut cmd = Command::new("gcc");
-
-        let default_cflags = env_var("CC_DEFAULT_FLAGS");
-        for flag in default_cflags.split(char::is_whitespace) {
-            cmd.arg(flag);
-        }
-
+        let cmd = Command::new("gcc");
         Self { cmd }
     }
 
