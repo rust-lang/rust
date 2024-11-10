@@ -290,7 +290,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 }
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation.
+///
+/// The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an <code>[Option]<[Arc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not

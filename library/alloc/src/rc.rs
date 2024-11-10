@@ -2931,7 +2931,9 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation.
+///
+/// The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an <code>[Option]<[Rc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
