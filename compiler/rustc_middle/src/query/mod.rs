@@ -2325,6 +2325,14 @@ rustc_queries! {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
     }
+
+    /// Check the signature of this function as well as all the call expressions inside of it
+    /// to ensure that any target features required by the ABI are enabled.
+    /// Should be called on a fully monomorphized instance.
+    query check_feature_dependent_abi(key: ty::Instance<'tcx>) {
+        desc { "check for feature-dependent ABI" }
+        cache_on_disk_if { true }
+    }
 }
 
 rustc_query_append! { define_callbacks! }

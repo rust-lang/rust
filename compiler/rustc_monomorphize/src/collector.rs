@@ -205,6 +205,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+mod abi_check;
 mod move_check;
 
 use std::path::PathBuf;
@@ -1207,6 +1208,8 @@ fn collect_items_of_instance<'tcx>(
     mentioned_items: &mut MonoItems<'tcx>,
     mode: CollectionMode,
 ) {
+    tcx.ensure().check_feature_dependent_abi(instance);
+
     let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
     // `mentioned_items`. Mentioned items processing will then notice that they have already been
@@ -1623,4 +1626,5 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
+    abi_check::provide(providers);
 }
