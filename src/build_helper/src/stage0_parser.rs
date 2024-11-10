@@ -25,7 +25,7 @@ pub struct Stage0Config {
 }
 
 pub fn parse_stage0_file() -> Stage0 {
-    let stage0_content = include_str!("../../../stage0");
+    let stage0_content = include_str!("../../stage0");
 
     let mut stage0 = Stage0::default();
     for line in stage0_content.lines() {
