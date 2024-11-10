@@ -92,6 +92,11 @@ impl Stability {
 //
 // Stabilizing a target feature requires t-lang approval.
 
+// If feature A "implies" feature B, then:
+// - when A gets enabled (via `-Ctarget-feature` or `#[target_feature]`), we also enable B
+// - when B gets disabled (via `-Ctarget-feature`), we also disable A
+//
+// Both of these are also applied transitively.
 type ImpliedFeatures = &'static [&'static str];
 
 const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[

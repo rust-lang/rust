@@ -344,15 +344,23 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         })
     {
         if enabled {
+            // Also add all transitively implied features.
             features.extend(sess.target.implied_target_features(std::iter::once(feature)));
         } else {
+            // Remove transitively reverse-implied features.
+
             // We don't care about the order in `features` since the only thing we use it for is the
             // `features.contains` below.
             #[allow(rustc::potential_query_instability)]
             features.retain(|f| {
-                // Keep a feature if it does not imply `feature`. Or, equivalently,
-                // remove the reverse-dependencies of `feature`.
-                !sess.target.implied_target_features(std::iter::once(*f)).contains(&feature)
+                if sess.target.implied_target_features(std::iter::once(*f)).contains(&feature) {
+                    // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
+                    // remove `f`. (This is the standard logical contraposition principle.)
+                    false
+                } else {
+                    // We can keep `f`.
+                    true
+                }
             });
         }
     }
