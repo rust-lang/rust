@@ -210,7 +210,7 @@ rustc_index::newtype_index! {
     /// An index into a function's list of global file IDs. That underlying list
     /// of local-to-global mappings will be embedded in the function's record in
     /// the `__llvm_covfun` linker section.
-    struct LocalFileId {}
+    pub(crate) struct LocalFileId {}
 }
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
@@ -280,7 +280,7 @@ fn encode_mappings_for_function(
     // form suitable for FFI.
     for (mapping_kind, region) in counter_regions {
         debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-        let span = ffi::CoverageSpan::from_source_region(local_file_id.as_u32(), region);
+        let span = ffi::CoverageSpan::from_source_region(local_file_id, region);
         match mapping_kind {
             MappingKind::Code(term) => {
                 code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
