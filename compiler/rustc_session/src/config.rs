@@ -1398,9 +1398,25 @@ pub enum OptionKind {
 }
 
 pub struct RustcOptGroup {
-    apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    /// The "primary" name for this option. Normally equal to `long_name`,
+    /// except for options that don't have a long name, in which case
+    /// `short_name` is used.
+    ///
+    /// This is needed when interacting with `getopts` in some situations,
+    /// because if an option has both forms, that library treats the long name
+    /// as primary and the short name as an alias.
     pub name: &'static str,
     stability: OptionStability,
+    kind: OptionKind,
+
+    short_name: &'static str,
+    long_name: &'static str,
+    desc: &'static str,
+    value_hint: &'static str,
+
+    /// If true, this option should not be printed by `rustc --help`, but
+    /// should still be printed by `rustc --help -v`.
+    pub is_verbose_help_only: bool,
 }
 
 impl RustcOptGroup {
@@ -1409,7 +1425,13 @@ impl RustcOptGroup {
     }
 
     pub fn apply(&self, options: &mut getopts::Options) {
-        (self.apply)(options);
+        let &Self { short_name, long_name, desc, value_hint, .. } = self;
+        match self.kind {
+            OptionKind::Opt => options.optopt(short_name, long_name, desc, value_hint),
+            OptionKind::Multi => options.optmulti(short_name, long_name, desc, value_hint),
+            OptionKind::Flag => options.optflag(short_name, long_name, desc),
+            OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, desc),
+        };
     }
 }
 
@@ -1419,31 +1441,22 @@ pub fn make_opt(
     short_name: &'static str,
     long_name: &'static str,
     desc: &'static str,
-    hint: &'static str,
+    value_hint: &'static str,
 ) -> RustcOptGroup {
+    // "Flag" options don't have a value, and therefore don't have a value hint.
+    match kind {
+        OptionKind::Opt | OptionKind::Multi => {}
+        OptionKind::Flag | OptionKind::FlagMulti => assert_eq!(value_hint, ""),
+    }
     RustcOptGroup {
         name: cmp::max_by_key(short_name, long_name, |s| s.len()),
         stability,
-        apply: match kind {
-            OptionKind::Opt => Box::new(move |opts: &mut getopts::Options| {
-                opts.optopt(short_name, long_name, desc, hint)
-            }),
-            OptionKind::Multi => Box::new(move |opts: &mut getopts::Options| {
-                opts.optmulti(short_name, long_name, desc, hint)
-            }),
-            OptionKind::Flag => {
-                assert_eq!(hint, "");
-                Box::new(move |opts: &mut getopts::Options| {
-                    opts.optflag(short_name, long_name, desc)
-                })
-            }
-            OptionKind::FlagMulti => {
-                assert_eq!(hint, "");
-                Box::new(move |opts: &mut getopts::Options| {
-                    opts.optflagmulti(short_name, long_name, desc)
-                })
-            }
-        },
+        kind,
+        short_name,
+        long_name,
+        desc,
+        value_hint,
+        is_verbose_help_only: false,
     }
 }
 
@@ -1454,16 +1467,15 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
     )
 });
 
-/// Returns the "short" subset of the rustc command line options,
-/// including metadata for each option, such as whether the option is
-/// part of the stable long-term interface for rustc.
-pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+/// Returns all rustc command line options, including metadata for
+/// each option, such as whether the option is stable.
+pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     use OptionKind::{Flag, FlagMulti, Multi, Opt};
-    use OptionStability::Stable;
+    use OptionStability::{Stable, Unstable};
 
     use self::make_opt as opt;
 
-    vec![
+    let mut options = vec![
         opt(Stable, Flag, "h", "help", "Display this message", ""),
         opt(
             Stable,
@@ -1550,21 +1562,11 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt(Stable, Multi, "C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
         opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
-    ]
-}
+    ];
 
-/// Returns all rustc command line options, including metadata for
-/// each option, such as whether the option is part of the stable
-/// long-term interface for rustc.
-pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
-    use OptionKind::{Multi, Opt};
-    use OptionStability::{Stable, Unstable};
-
-    use self::make_opt as opt;
-
-    let mut opts = rustc_short_optgroups();
-    // FIXME: none of these descriptions are actually used
-    opts.extend(vec![
+    // Options in this list are hidden from `rustc --help` by default, but are
+    // shown by `rustc --help -v`.
+    let verbose_only = [
         opt(
             Stable,
             Multi,
@@ -1590,9 +1592,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "color",
             "Configure coloring of output:
-                                 auto   = colorize, if output goes to a tty (default);
-                                 always = always colorize output;
-                                 never  = never colorize output",
+                auto   = colorize, if output goes to a tty (default);
+                always = always colorize output;
+                never  = never colorize output",
             "auto|always|never",
         ),
         opt(
@@ -1612,8 +1614,13 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "FROM=TO",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "VAR=VALUE"),
-    ]);
-    opts
+    ];
+    options.extend(verbose_only.into_iter().map(|mut opt| {
+        opt.is_verbose_help_only = true;
+        opt
+    }));
+
+    options
 }
 
 pub fn get_cmd_lint_options(
