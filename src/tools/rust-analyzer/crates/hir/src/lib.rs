@@ -68,7 +68,7 @@ use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     diagnostics::BodyValidationDiagnostic,
-    error_lifetime, known_const_to_ast,
+    direct_super_traits, error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{interpret_mir, MutBorrowKind},
@@ -2704,13 +2704,22 @@ impl Trait {
         db.trait_data(self.id).name.clone()
     }
 
+    pub fn direct_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        let traits = direct_super_traits(db.upcast(), self.into());
+        traits.iter().map(|tr| Trait::from(*tr)).collect()
+    }
+
+    pub fn all_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        let traits = all_super_traits(db.upcast(), self.into());
+        traits.iter().map(|tr| Trait::from(*tr)).collect()
+    }
+
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
     pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        let traits = all_super_traits(db.upcast(), self.into());
-        traits.iter().flat_map(|tr| Trait::from(*tr).items(db)).collect()
+        self.all_supertraits(db).into_iter().flat_map(|tr| tr.items(db)).collect()
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
