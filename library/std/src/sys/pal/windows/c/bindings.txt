@@ -2351,6 +2351,9 @@ Windows.Win32.Storage.FileSystem.GetFinalPathNameByHandleW
 Windows.Win32.Storage.FileSystem.GetFullPathNameW
 Windows.Win32.Storage.FileSystem.GetTempPathW
 Windows.Win32.Storage.FileSystem.INVALID_FILE_ATTRIBUTES
+Windows.Win32.Storage.FileSystem.LOCKFILE_EXCLUSIVE_LOCK
+Windows.Win32.Storage.FileSystem.LOCKFILE_FAIL_IMMEDIATELY
+Windows.Win32.Storage.FileSystem.LockFileEx
 Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE
 Windows.Win32.Storage.FileSystem.LPPROGRESS_ROUTINE_CALLBACK_REASON
 Windows.Win32.Storage.FileSystem.MAXIMUM_REPARSE_DATA_BUFFER_SIZE
@@ -2396,6 +2399,7 @@ Windows.Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAG_DIRECTORY
 Windows.Win32.Storage.FileSystem.SYMBOLIC_LINK_FLAGS
 Windows.Win32.Storage.FileSystem.SYNCHRONIZE
 Windows.Win32.Storage.FileSystem.TRUNCATE_EXISTING
+Windows.Win32.Storage.FileSystem.UnlockFile
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_DOS
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_GUID
 Windows.Win32.Storage.FileSystem.VOLUME_NAME_NONE
