@@ -1413,6 +1413,10 @@ pub struct RustcOptGroup {
     long_name: &'static str,
     desc: &'static str,
     value_hint: &'static str,
+
+    /// If true, this option should not be printed by `rustc --help`, but
+    /// should still be printed by `rustc --help -v`.
+    pub is_verbose_help_only: bool,
 }
 
 impl RustcOptGroup {
@@ -1452,6 +1456,7 @@ pub fn make_opt(
         long_name,
         desc,
         value_hint,
+        is_verbose_help_only: false,
     }
 }
 
@@ -1462,16 +1467,15 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
     )
 });
 
-/// Returns the "short" subset of the rustc command line options,
-/// including metadata for each option, such as whether the option is
-/// part of the stable long-term interface for rustc.
-pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+/// Returns all rustc command line options, including metadata for
+/// each option, such as whether the option is stable.
+pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     use OptionKind::{Flag, FlagMulti, Multi, Opt};
-    use OptionStability::Stable;
+    use OptionStability::{Stable, Unstable};
 
     use self::make_opt as opt;
 
-    vec![
+    let mut options = vec![
         opt(Stable, Flag, "h", "help", "Display this message", ""),
         opt(
             Stable,
@@ -1558,21 +1562,11 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt(Stable, Multi, "C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
         opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
-    ]
-}
+    ];
 
-/// Returns all rustc command line options, including metadata for
-/// each option, such as whether the option is part of the stable
-/// long-term interface for rustc.
-pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
-    use OptionKind::{Multi, Opt};
-    use OptionStability::{Stable, Unstable};
-
-    use self::make_opt as opt;
-
-    let mut opts = rustc_short_optgroups();
-    // FIXME: none of these descriptions are actually used
-    opts.extend(vec![
+    // Options in this list are hidden from `rustc --help` by default, but are
+    // shown by `rustc --help -v`.
+    let verbose_only = [
         opt(
             Stable,
             Multi,
@@ -1598,9 +1592,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "color",
             "Configure coloring of output:
-                                 auto   = colorize, if output goes to a tty (default);
-                                 always = always colorize output;
-                                 never  = never colorize output",
+                auto   = colorize, if output goes to a tty (default);
+                always = always colorize output;
+                never  = never colorize output",
             "auto|always|never",
         ),
         opt(
@@ -1620,8 +1614,13 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "FROM=TO",
         ),
         opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "VAR=VALUE"),
-    ]);
-    opts
+    ];
+    options.extend(verbose_only.into_iter().map(|mut opt| {
+        opt.is_verbose_help_only = true;
+        opt
+    }));
+
+    options
 }
 
 pub fn get_cmd_lint_options(
