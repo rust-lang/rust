@@ -1,0 +1,22 @@
+error[E0207]: the type parameter `K` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/impl-for-assoc-with-ty-var.rs:17:6
+   |
+LL | impl<K> Remote for <Pair<K, K> as MyTrait>::Item {}
+   |      ^ unconstrained type parameter
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/impl-for-assoc-with-ty-var.rs:17:1
+   |
+LL | impl<K> Remote for <Pair<K, K> as MyTrait>::Item {}
+   | ^^^^^^^^^^^^^^^^^^^-----------------------------
+   |                    |
+   |                    `Pair` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0117, E0207.
+For more information about an error, try `rustc --explain E0117`.
