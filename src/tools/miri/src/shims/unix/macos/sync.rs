@@ -22,10 +22,13 @@ enum MacOsUnfairLock {
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn os_unfair_lock_get_data(
-        &mut self,
+    fn os_unfair_lock_get_data<'a>(
+        &'a mut self,
         lock_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, MacOsUnfairLock> {
+    ) -> InterpResult<'tcx, &'a MacOsUnfairLock>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
         let lock = this.deref_pointer(lock_ptr)?;
         this.lazy_sync_get_data(
@@ -68,6 +71,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
             return interp_ok(());
         };
+        let mutex_ref = mutex_ref.clone();
 
         if this.mutex_is_locked(&mutex_ref) {
             if this.mutex_get_owner(&mutex_ref) == this.active_thread() {
@@ -97,6 +101,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_scalar(Scalar::from_bool(false), dest)?;
             return interp_ok(());
         };
+        let mutex_ref = mutex_ref.clone();
 
         if this.mutex_is_locked(&mutex_ref) {
             // Contrary to the blocking lock function, this does not check for
@@ -119,6 +124,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
             ));
         };
+        let mutex_ref = mutex_ref.clone();
 
         // Now, unlock.
         if this.mutex_unlock(&mutex_ref)?.is_none() {
@@ -147,6 +153,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
         };
+        let mutex_ref = mutex_ref.clone();
+
         if !this.mutex_is_locked(&mutex_ref)
             || this.mutex_get_owner(&mutex_ref) != this.active_thread()
         {
@@ -167,6 +175,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
             return interp_ok(());
         };
+        let mutex_ref = mutex_ref.clone();
+
         if this.mutex_is_locked(&mutex_ref)
             && this.mutex_get_owner(&mutex_ref) == this.active_thread()
         {
