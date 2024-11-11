@@ -22,11 +22,6 @@ const EXPECTED = [
             },
             {
                 'path': 'std::simd::prelude::Simd',
-                'name': 'simd_clamp',
-                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci16,+N%3E/method.simd_clamp'
-            },
-            {
-                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_add',
                 'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci16,+N%3E/method.saturating_add'
             },
@@ -34,6 +29,11 @@ const EXPECTED = [
                 'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_sub',
                 'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci16,+N%3E/method.saturating_sub'
+            },
+            {
+                'path': 'std::simd::prelude::Simd',
+                'name': 'simd_clamp',
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci16,+N%3E/method.simd_clamp'
             },
         ],
     },
@@ -52,11 +52,6 @@ const EXPECTED = [
             },
             {
                 'path': 'std::simd::prelude::Simd',
-                'name': 'simd_clamp',
-                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci8,+N%3E/method.simd_clamp'
-            },
-            {
-                'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_add',
                 'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci8,+N%3E/method.saturating_add'
             },
@@ -64,6 +59,11 @@ const EXPECTED = [
                 'path': 'std::simd::prelude::Simd',
                 'name': 'saturating_sub',
                 'href': '../std/simd/prelude/struct.Simd.html#impl-SimdInt-for-Simd%3Ci8,+N%3E/method.saturating_sub'
+            },
+            {
+                'path': 'std::simd::prelude::Simd',
+                'name': 'simd_clamp',
+                'href': '../std/simd/prelude/struct.Simd.html#impl-SimdOrd-for-Simd%3Ci8,+N%3E/method.simd_clamp'
             },
         ],
     },

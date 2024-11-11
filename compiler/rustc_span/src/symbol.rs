@@ -1761,6 +1761,7 @@ symbols! {
         saturating_add,
         saturating_div,
         saturating_sub,
+        search_unbox,
         select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,

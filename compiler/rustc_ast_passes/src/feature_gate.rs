@@ -204,6 +204,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "meant for internal use only" {
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
+                        search_unbox => rustdoc_internals
                     }
                 );
             }

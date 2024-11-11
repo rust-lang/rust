@@ -1,14 +1,11 @@
-#![feature(rustdoc_internals)]
+#![crate_name = "generics_match_ambiguity"]
 
-#[doc(search_unbox)]
 pub struct Wrap<T, U = ()>(pub T, pub U);
 
 pub fn foo(a: Wrap<i32>, b: Wrap<i32, u32>) {}
 pub fn bar(a: Wrap<i32, u32>, b: Wrap<i32>) {}
 
-#[doc(search_unbox)]
 pub struct W2<T>(pub T);
-#[doc(search_unbox)]
 pub struct W3<T, U = ()>(pub T, pub U);
 
 pub fn baaa(a: W3<i32>, b: W3<i32, u32>) {}
