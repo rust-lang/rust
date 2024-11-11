@@ -294,14 +294,98 @@ unsafe impl<T: ?Sized> DerefPure for &T {}
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
+/// Indicates that a struct can be used as a method receiver.
+/// That is, a type can use this type as a type of `self`, like this:
+/// ```compile_fail
+/// # // This is currently compile_fail because the compiler-side parts
+/// # // of arbitrary_self_types are not implemented
+/// use std::ops::Receiver;
+///
+/// struct SmartPointer<T>(T);
+///
+/// impl<T> Receiver for SmartPointer<T> {
+///    type Target = T;
+/// }
+///
+/// struct MyContainedType;
+///
+/// impl MyContainedType {
+///   fn method(self: SmartPointer<Self>) {
+///     // ...
+///   }
+/// }
+///
+/// fn main() {
+///   let ptr = SmartPointer(MyContainedType);
+///   ptr.method();
+/// }
+/// ```
+/// This trait is blanket implemented for any type which implements
+/// [`Deref`], which includes stdlib pointer types like `Box<T>`,`Rc<T>`, `&T`,
+/// and `Pin<P>`. For that reason, it's relatively rare to need to
+/// implement this directly. You'll typically do this only if you need
+/// to implement a smart pointer type which can't implement [`Deref`]; perhaps
+/// because you're interfacing with another programming language and can't
+/// guarantee that references comply with Rust's aliasing rules.
+///
+/// When looking for method candidates, Rust will explore a chain of possible
+/// `Receiver`s, so for example each of the following methods work:
+/// ```
+/// use std::boxed::Box;
+/// use std::rc::Rc;
+///
+/// // Both `Box` and `Rc` (indirectly) implement Receiver
+///
+/// struct MyContainedType;
+///
+/// fn main() {
+///   let t = Rc::new(Box::new(MyContainedType));
+///   t.method_a();
+///   t.method_b();
+///   t.method_c();
+/// }
+///
+/// impl MyContainedType {
+///   fn method_a(&self) {
+///
+///   }
+///   fn method_b(self: &Box<Self>) {
+///
+///   }
+///   fn method_c(self: &Rc<Box<Self>>) {
+///
+///   }
+/// }
+/// ```
+#[lang = "receiver"]
+#[cfg(not(bootstrap))]
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+pub trait Receiver {
+    /// The target type on which the method may be called.
+    #[cfg(not(bootstrap))]
+    #[rustc_diagnostic_item = "receiver_target"]
+    #[lang = "receiver_target"]
+    #[unstable(feature = "arbitrary_self_types", issue = "44874")]
+    type Target: ?Sized;
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<P: ?Sized, T: ?Sized> Receiver for P
+where
+    P: Deref<Target = T>,
+{
+    type Target = T;
+}
+
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
 ///
 /// This trait will shortly be removed and replaced with a more generic
 /// facility based around the current "arbitrary self types" unstable feature.
-/// That new facility will use a replacement trait called `Receiver` which is
-/// why this is now named `LegacyReceiver`.
+/// That new facility will use the replacement trait above called `Receiver`
+/// which is why this is now named `LegacyReceiver`.
 #[cfg_attr(bootstrap, lang = "receiver")]
 #[cfg_attr(not(bootstrap), lang = "legacy_receiver")]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
