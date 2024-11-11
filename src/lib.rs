@@ -278,7 +278,8 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
 
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
-    let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
+    let enable_verifier =
+        if sess.verify_llvm_ir() || backend_config.enable_verifier { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 

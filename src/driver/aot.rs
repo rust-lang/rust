@@ -516,6 +516,7 @@ fn module_codegen(
                     MonoItem::Fn(inst) => {
                         if let Some(codegened_function) = crate::base::codegen_fn(
                             tcx,
+                            &backend_config,
                             &mut cx,
                             &mut type_dbg,
                             Function::new(),

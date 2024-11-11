@@ -14,6 +14,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
+use crate::BackendConfig;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::inline_asm::codegen_naked_asm;
@@ -30,6 +31,7 @@ pub(crate) struct CodegenedFunction {
 
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
+    backend_config: &BackendConfig,
     cx: &mut crate::CodegenCx,
     type_dbg: &mut TypeDebugContext<'tcx>,
     cached_func: Function,
@@ -162,7 +164,7 @@ pub(crate) fn codegen_fn<'tcx>(
     }
 
     // Verify function
-    verify_func(tcx, &clif_comments, &func);
+    verify_func(tcx, backend_config, &clif_comments, &func);
 
     Some(CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx })
 }
@@ -264,11 +266,16 @@ pub(crate) fn compile_fn(
     });
 }
 
-pub(crate) fn verify_func(
+fn verify_func(
     tcx: TyCtxt<'_>,
+    backend_config: &BackendConfig,
     writer: &crate::pretty_clif::CommentWriter,
     func: &Function,
 ) {
+    if !tcx.sess.verify_llvm_ir() && !backend_config.enable_verifier {
+        return;
+    }
+
     tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
         match cranelift_codegen::verify_function(&func, &flags) {
