@@ -90,20 +90,20 @@ macro_rules! declare_passes {
             )+
         )*
 
-        static PASS_NAMES: LazyLock<Vec<String>> = LazyLock::new(|| vec![
+        static PASS_NAMES: LazyLock<FxIndexSet<&str>> = LazyLock::new(|| [
             // Fake marker pass
-            "PreCodegen".to_string(),
+            "PreCodegen",
             $(
                 $(
-                    stringify!($pass_name).to_string(),
+                    stringify!($pass_name),
                     $(
                         $(
-                            $mod_name::$pass_name::$ident.name().to_string(),
+                            $mod_name::$pass_name::$ident.name(),
                         )*
                     )?
                 )+
             )*
-        ]);
+        ].into_iter().collect());
     };
 }
 

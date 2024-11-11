@@ -200,9 +200,8 @@ fn run_passes_inner<'tcx>(
 
     let named_passes: FxIndexSet<_> =
         overridden_passes.iter().map(|(name, _)| name.as_str()).collect();
-    let known_passes: FxIndexSet<_> = crate::PASS_NAMES.iter().map(|p| p.as_str()).collect();
 
-    for &name in named_passes.difference(&known_passes) {
+    for &name in named_passes.difference(&*crate::PASS_NAMES) {
         tcx.dcx().emit_warn(errors::UnknownPassName { name });
     }
 
@@ -213,7 +212,7 @@ fn run_passes_inner<'tcx>(
     {
         let used_passes: FxIndexSet<_> = passes.iter().map(|p| p.name()).collect();
 
-        let undeclared = used_passes.difference(&known_passes).collect::<Vec<_>>();
+        let undeclared = used_passes.difference(&*crate::PASS_NAMES).collect::<Vec<_>>();
         if let Some((name, rest)) = undeclared.split_first() {
             let mut err =
                 tcx.dcx().struct_bug(format!("pass `{name}` is not declared in `PASS_NAMES`"));
