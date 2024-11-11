@@ -1721,6 +1721,9 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
+                "diagnostic-unicode" => {
+                    json_rendered = HumanReadableErrorType::Unicode;
+                }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
                 "unused-externs" => json_unused_externs = JsonUnusedExterns::Loud,
@@ -1767,14 +1770,17 @@ pub fn parse_error_format(
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
             Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short, color),
+            Some("human-unicode") => {
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode, color)
+            }
             Some(arg) => {
                 early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::HumanReadable(
                     HumanReadableErrorType::Default,
                     color,
                 ));
                 early_dcx.early_fatal(format!(
-                    "argument for `--error-format` must be `human`, `json` or \
-                     `short` (instead was `{arg}`)"
+                    "argument for `--error-format` must be `human`, `human-annotate-rs`, \
+                    `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
                 ))
             }
         }
@@ -1827,18 +1833,21 @@ pub fn parse_crate_edition(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches
 fn check_error_format_stability(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    error_format: ErrorOutputType,
+    format: ErrorOutputType,
 ) {
-    if !unstable_opts.unstable_options {
-        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
-            early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
-        }
-        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, _) =
-            error_format
-        {
-            early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
-        }
+    if unstable_opts.unstable_options {
+        return;
     }
+    let format = match format {
+        ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
+        ErrorOutputType::HumanReadable(format, _) => match format {
+            HumanReadableErrorType::AnnotateSnippet => "human-annotate-rs",
+            HumanReadableErrorType::Unicode => "human-unicode",
+            _ => return,
+        },
+        _ => return,
+    };
+    early_dcx.early_fatal(format!("`--error-format={format}` is unstable"))
 }
 
 fn parse_output_types(

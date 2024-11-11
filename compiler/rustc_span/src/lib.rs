@@ -2223,6 +2223,10 @@ pub fn char_width(ch: char) -> usize {
     }
 }
 
+pub fn str_width(s: &str) -> usize {
+    s.chars().map(char_width).sum()
+}
+
 /// Normalizes the source code and records the normalizations.
 fn normalize_src(src: &mut String) -> Vec<NormalizedPos> {
     let mut normalized_pos = vec![];

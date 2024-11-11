@@ -1,4 +1,6 @@
-//@ compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@ revisions: ascii unicode
+//@[ascii] compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@[unicode] compile-flags: -Zunstable-options=yes --json=diagnostic-unicode --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
 //@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 mod a {
