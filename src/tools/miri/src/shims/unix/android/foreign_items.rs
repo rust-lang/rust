@@ -1,10 +1,10 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
-use self::shims::unix::linux::epoll::EvalContextExt as _;
-use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use crate::shims::unix::android::thread::prctl;
-use crate::shims::unix::linux::syscall::syscall;
+use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
+use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
+use crate::shims::unix::linux_like::syscall::syscall;
 use crate::*;
 
 pub fn is_dyn_sym(_name: &str) -> bool {

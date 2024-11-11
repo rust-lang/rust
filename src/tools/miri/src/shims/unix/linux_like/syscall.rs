@@ -1,9 +1,9 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
-use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use crate::helpers::check_min_arg_count;
-use crate::shims::unix::linux::sync::futex;
+use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
+use crate::shims::unix::linux_like::sync::futex;
 use crate::*;
 
 pub fn syscall<'tcx>(

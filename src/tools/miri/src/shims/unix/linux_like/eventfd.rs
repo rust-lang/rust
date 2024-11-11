@@ -5,7 +5,7 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
+use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::*;
 
