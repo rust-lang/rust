@@ -33,7 +33,6 @@ use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -41,6 +40,10 @@ use crate::vec::Vec;
 
 #[cfg(test)]
 mod tests;
+
+fn is_dangling<T: ?Sized>(ptr: *const T) -> bool {
+    (ptr.cast::<()>()).addr() == usize::MAX
+}
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///

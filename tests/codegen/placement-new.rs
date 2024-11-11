@@ -21,10 +21,15 @@ pub fn box_default_inplace() -> Box<(String, String)> {
 // CHECK-LABEL: @rc_default_inplace
 #[no_mangle]
 pub fn rc_default_inplace() -> Rc<(String, String)> {
+    // The pointer in the Rc is to the value (after the counts), not the allocation,
+    // so this test needs to check for the offsetting too.
+
     // CHECK-NOT: alloca
     // CHECK: [[RC:%.*]] = {{.*}}call {{.*}}__rust_alloc(
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: ret ptr [[RC]]
+    // CHECK: [[RC_VAL:%.*]] = getelementptr inbounds i8, ptr [[RC]], {{i64 16|i32 8|i16 4}}
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: ret ptr [[RC_VAL]]
     Rc::default()
 }
 
