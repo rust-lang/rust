@@ -221,12 +221,16 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper for lazily initialized `alloc_extra.sync` data:
     /// this forces an immediate init.
-    fn lazy_sync_init<T: 'static>(
-        &mut self,
+    /// Return a reference to the data in the machine state.
+    fn lazy_sync_init<'a, T: 'static>(
+        &'a mut self,
         primitive: &MPlaceTy<'tcx>,
         init_offset: Size,
         data: T,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, &'a T>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
 
         let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
@@ -239,7 +243,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &init_field,
             AtomicWriteOrd::Relaxed,
         )?;
-        interp_ok(())
+        interp_ok(this.get_alloc_extra(alloc)?.get_sync::<T>(offset).unwrap())
     }
 
     /// Helper for lazily initialized `alloc_extra.sync` data:
@@ -248,15 +252,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///   and stores that in `alloc_extra.sync`.
     /// - Otherwise, calls `new_data` to initialize the primitive.
     ///
-    /// The return value is a *clone* of the stored data, so if you intend to mutate it
-    /// better wrap everything into an `Rc`.
-    fn lazy_sync_get_data<T: 'static + Clone>(
-        &mut self,
+    /// Return a reference to the data in the machine state.
+    fn lazy_sync_get_data<'a, T: 'static>(
+        &'a mut self,
         primitive: &MPlaceTy<'tcx>,
         init_offset: Size,
         missing_data: impl FnOnce() -> InterpResult<'tcx, T>,
         new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
-    ) -> InterpResult<'tcx, T> {
+    ) -> InterpResult<'tcx, &'a T>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
 
         // Check if this is already initialized. Needs to be atomic because we can race with another
@@ -280,17 +286,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // or else it has been moved illegally.
             let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
             let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
-            if let Some(data) = alloc_extra.get_sync::<T>(offset) {
-                interp_ok(data.clone())
-            } else {
+            // Due to borrow checker reasons, we have to do the lookup twice.
+            if alloc_extra.get_sync::<T>(offset).is_none() {
                 let data = missing_data()?;
-                alloc_extra.sync.insert(offset, Box::new(data.clone()));
-                interp_ok(data)
+                alloc_extra.sync.insert(offset, Box::new(data));
             }
+            interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
         } else {
             let data = new_data(this)?;
-            this.lazy_sync_init(primitive, init_offset, data.clone())?;
-            interp_ok(data)
+            this.lazy_sync_init(primitive, init_offset, data)
         }
     }
 
@@ -326,7 +330,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     #[inline]
     /// Get the id of the thread that currently owns this lock.
-    fn mutex_get_owner(&mut self, mutex_ref: &MutexRef) -> ThreadId {
+    fn mutex_get_owner(&self, mutex_ref: &MutexRef) -> ThreadId {
         mutex_ref.0.borrow().owner.unwrap()
     }
 
