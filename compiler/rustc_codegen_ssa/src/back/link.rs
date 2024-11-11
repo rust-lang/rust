@@ -1647,7 +1647,7 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
             return file_path;
         }
     }
-    for search_path in sess.target_filesearch(PathKind::Native).search_paths() {
+    for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
             return file_path;

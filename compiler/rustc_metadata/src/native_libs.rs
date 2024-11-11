@@ -28,10 +28,10 @@ pub fn walk_native_lib_search_dirs<R>(
     mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
 ) -> ControlFlow<R> {
     // Library search paths explicitly supplied by user (`-L` on the command line).
-    for search_path in sess.target_filesearch(PathKind::Native).cli_search_paths() {
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Native) {
         f(&search_path.dir, false)?;
     }
-    for search_path in sess.target_filesearch(PathKind::Framework).cli_search_paths() {
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Framework) {
         // Frameworks are looked up strictly in framework-specific paths.
         if search_path.kind != PathKind::All {
             f(&search_path.dir, true)?;

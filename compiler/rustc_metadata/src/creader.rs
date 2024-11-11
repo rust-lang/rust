@@ -507,7 +507,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         locator.is_proc_macro = true;
         locator.target = &self.sess.host;
         locator.tuple = TargetTuple::from_tuple(config::host_tuple());
-        locator.filesearch = self.sess.host_filesearch(path_kind);
+        locator.filesearch = self.sess.host_filesearch();
+        locator.path_kind = path_kind;
 
         let Some(host_result) = self.load(locator)? else {
             return Ok(None);
