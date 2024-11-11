@@ -598,7 +598,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
-        // since we make the field unint below.
+        // since we make the field uninit below.
         let mutex = mutex_get_data(this, mutex_op)?.clone();
 
         if this.mutex_is_locked(&mutex.mutex_ref) {
@@ -706,7 +706,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
-        // since we make the field unint below.
+        // since we make the field uninit below.
         let id = rwlock_get_data(this, rwlock_op)?.id;
 
         if this.rwlock_is_locked(id) {
@@ -893,7 +893,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
-        // since we make the field unint below.
+        // since we make the field uninit below.
         let id = cond_get_data(this, cond_op)?.id;
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroying an awaited conditional variable");
