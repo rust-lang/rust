@@ -79,12 +79,6 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     /// used for error reporting
     static_candidates: RefCell<Vec<CandidateSource>>,
 
-    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
-    /// for error reporting
-    unsatisfied_predicates: RefCell<
-        Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
-    >,
-
     scope_expr_id: HirId,
 
     /// Is this probe being done for a diagnostic? This will skip some error reporting
@@ -160,6 +154,21 @@ impl AutorefOrPtrAdjustment {
             AutorefOrPtrAdjustment::ReborrowPin(_) => false,
         }
     }
+}
+
+/// Extra information required only for error reporting.
+#[derive(Debug)]
+struct PickDiagHints<'a, 'tcx> {
+    /// Unstable candidates alongside the stable ones.
+    unstable_candidates: Option<Vec<(Candidate<'tcx>, Symbol)>>,
+
+    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
+    /// for error reporting
+    unsatisfied_predicates: &'a mut Vec<(
+        ty::Predicate<'tcx>,
+        Option<ty::Predicate<'tcx>>,
+        Option<ObligationCause<'tcx>>,
+    )>,
 }
 
 #[derive(Debug, Clone)]
@@ -647,7 +656,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             private_candidates: Vec::new(),
             private_candidate: Cell::new(None),
             static_candidates: RefCell::new(Vec::new()),
-            unsatisfied_predicates: RefCell::new(Vec::new()),
             scope_expr_id,
             is_suggestion,
         }
@@ -660,7 +668,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.private_candidates.clear();
         self.private_candidate.set(None);
         self.static_candidates.borrow_mut().clear();
-        self.unsatisfied_predicates.borrow_mut().clear();
     }
 
     /// When we're looking up a method by path (UFCS), we relate the receiver
@@ -1036,7 +1043,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick(mut self) -> PickResult<'tcx> {
         assert!(self.method_name.is_some());
 
-        if let Some(r) = self.pick_core() {
+        let mut unsatisfied_predicates = Vec::new();
+
+        if let Some(r) = self.pick_core(&mut unsatisfied_predicates) {
             return r;
         }
 
@@ -1056,7 +1065,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let static_candidates = std::mem::take(self.static_candidates.get_mut());
         let private_candidate = self.private_candidate.take();
-        let unsatisfied_predicates = std::mem::take(self.unsatisfied_predicates.get_mut());
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -1066,7 +1074,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         self.assemble_extension_candidates_for_all_traits();
 
-        let out_of_scope_traits = match self.pick_core() {
+        let out_of_scope_traits = match self.pick_core(&mut Vec::new()) {
             Some(Ok(p)) => vec![p.item.container_id(self.tcx)],
             Some(Err(MethodError::Ambiguity(v))) => v
                 .into_iter()
@@ -1101,14 +1109,40 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }))
     }
 
-    fn pick_core(&self) -> Option<PickResult<'tcx>> {
+    fn pick_core(
+        &self,
+        unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )>,
+    ) -> Option<PickResult<'tcx>> {
         // Pick stable methods only first, and consider unstable candidates if not found.
-        self.pick_all_method(Some(&mut vec![])).or_else(|| self.pick_all_method(None))
+        self.pick_all_method(&mut PickDiagHints {
+            // This first cycle, maintain a list of unstable candidates which
+            // we encounter. This will end up in the Pick for diagnostics.
+            unstable_candidates: Some(Vec::new()),
+            // Contribute to the list of unsatisfied predicates which may
+            // also be used for diagnostics.
+            unsatisfied_predicates,
+        })
+        .or_else(|| {
+            self.pick_all_method(&mut PickDiagHints {
+                // On the second search, don't provide a special list of unstable
+                // candidates. This indicates to the picking code that it should
+                // in fact include such unstable candidates in the actual
+                // search.
+                unstable_candidates: None,
+                // And there's no need to duplicate ourselves in the
+                // unsatisifed predicates list. Provide a throwaway list.
+                unsatisfied_predicates: &mut Vec::new(),
+            })
+        })
     }
 
-    fn pick_all_method(
+    fn pick_all_method<'b>(
         &self,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'b, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         self.steps
             .iter()
@@ -1133,37 +1167,19 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .unwrap_or_else(|_| {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
-                self.pick_by_value_method(step, self_ty, unstable_candidates.as_deref_mut())
-                    .or_else(|| {
-                        self.pick_autorefd_method(
-                            step,
-                            self_ty,
-                            hir::Mutability::Not,
-                            unstable_candidates.as_deref_mut(),
-                        )
+                self.pick_by_value_method(step, self_ty, pick_diag_hints).or_else(|| {
+                    self.pick_autorefd_method(step, self_ty, hir::Mutability::Not, pick_diag_hints)
                         .or_else(|| {
                             self.pick_autorefd_method(
                                 step,
                                 self_ty,
                                 hir::Mutability::Mut,
-                                unstable_candidates.as_deref_mut(),
+                                pick_diag_hints,
                             )
                         })
-                        .or_else(|| {
-                            self.pick_const_ptr_method(
-                                step,
-                                self_ty,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                        .or_else(|| {
-                            self.pick_reborrow_pin_method(
-                                step,
-                                self_ty,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                    })
+                        .or_else(|| self.pick_const_ptr_method(step, self_ty, pick_diag_hints))
+                        .or_else(|| self.pick_reborrow_pin_method(step, self_ty, pick_diag_hints))
+                })
             })
     }
 
@@ -1177,13 +1193,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         if step.unsize {
             return None;
         }
 
-        self.pick_method(self_ty, unstable_candidates).map(|r| {
+        self.pick_method(self_ty, pick_diag_hints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
@@ -1221,7 +1237,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
@@ -1229,7 +1245,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = Ty::new_ref(tcx, region, self_ty, mutbl);
-        self.pick_method(autoref_ty, unstable_candidates).map(|r| {
+        self.pick_method(autoref_ty, pick_diag_hints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
@@ -1240,12 +1256,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Looks for applicable methods if we reborrow a `Pin<&mut T>` as a `Pin<&T>`.
-    #[instrument(level = "debug", skip(self, step, unstable_candidates))]
+    #[instrument(level = "debug", skip(self, step, pick_diag_hints))]
     fn pick_reborrow_pin_method(
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         if !self.tcx.features().pin_ergonomics() {
             return None;
@@ -1266,7 +1282,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let region = self.tcx.lifetimes.re_erased;
         let autopin_ty = Ty::new_pinned_ref(self.tcx, region, inner_ty, hir::Mutability::Not);
-        self.pick_method(autopin_ty, unstable_candidates).map(|r| {
+        self.pick_method(autopin_ty, pick_diag_hints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
@@ -1283,7 +1299,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         // Don't convert an unsized reference to ptr
         if step.unsize {
@@ -1295,7 +1311,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
 
         let const_ptr_ty = Ty::new_imm_ptr(self.tcx, ty);
-        self.pick_method(const_ptr_ty, unstable_candidates).map(|r| {
+        self.pick_method(const_ptr_ty, pick_diag_hints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::ToConstPtr);
@@ -1307,22 +1323,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_method(
         &self,
         self_ty: Ty<'tcx>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
-
-        let mut possibly_unsatisfied_predicates = Vec::new();
 
         for (kind, candidates) in
             [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
         {
             debug!("searching {} candidates", kind);
-            let res = self.consider_candidates(
-                self_ty,
-                candidates,
-                &mut possibly_unsatisfied_predicates,
-                unstable_candidates.as_deref_mut(),
-            );
+            let res = self.consider_candidates(self_ty, candidates, pick_diag_hints);
             if let Some(pick) = res {
                 return Some(pick);
             }
@@ -1330,16 +1339,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.private_candidate.get().is_none() {
             if let Some(Ok(pick)) =
-                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], None)
+                self.consider_candidates(self_ty, &self.private_candidates, pick_diag_hints)
             {
                 self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
             }
-        }
-
-        // `pick_method` may be called twice for the same self_ty if no stable methods
-        // match. Only extend once.
-        if unstable_candidates.is_some() {
-            self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
         }
         None
     }
@@ -1348,17 +1351,19 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         candidates: &[Candidate<'tcx>],
-        possibly_unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
             .map(|probe| {
-                (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
+                (
+                    probe,
+                    self.consider_probe(
+                        self_ty,
+                        probe,
+                        &mut pick_diag_hints.unsatisfied_predicates,
+                    ),
+                )
             })
             .filter(|&(_, status)| status != ProbeResult::NoMatch)
             .collect();
@@ -1373,7 +1378,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        if let Some(uc) = &mut unstable_candidates {
+        if let Some(uc) = &mut pick_diag_hints.unstable_candidates {
             applicable_candidates.retain(|&(candidate, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
                     self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
@@ -1391,10 +1396,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         applicable_candidates.pop().map(|(probe, status)| match status {
-            ProbeResult::Match => {
-                Ok(probe
-                    .to_unadjusted_pick(self_ty, unstable_candidates.cloned().unwrap_or_default()))
-            }
+            ProbeResult::Match => Ok(probe.to_unadjusted_pick(
+                self_ty,
+                pick_diag_hints.unstable_candidates.clone().unwrap_or_default(),
+            )),
             ProbeResult::NoMatch | ProbeResult::BadReturnType => Err(MethodError::BadReturnType),
         })
     }
@@ -1859,7 +1864,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
-                    pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
+                    pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
 
