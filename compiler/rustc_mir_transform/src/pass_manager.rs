@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -197,6 +197,16 @@ fn run_passes_inner<'tcx>(
 ) {
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
+
+    #[cfg(debug_assertions)]
+    {
+        let used_passes: FxIndexSet<_> = passes.iter().map(|p| p.name()).collect();
+        let known_passes: FxIndexSet<_> = crate::PASS_NAMES.iter().map(|p| p.as_str()).collect();
+
+        for &name in used_passes.difference(&known_passes) {
+            tcx.dcx().bug(format!("pass `{name}` is not declared in `PASS_NAMES`"));
+        }
+    }
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
 
