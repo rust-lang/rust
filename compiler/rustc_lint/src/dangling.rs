@@ -211,13 +211,14 @@ fn owns_allocation(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
             || inner.ty_adt_def().is_some_and(|def| tcx.is_lang_item(def.did(), LangItem::CStr))
             || owns_allocation(tcx, inner)
     } else if let Some(def) = ty.ty_adt_def() {
-        for lang_item in [LangItem::String, LangItem::MaybeUninit] {
+        for lang_item in [LangItem::String, LangItem::MaybeUninit, LangItem::UnsafeCell] {
             if tcx.is_lang_item(def.did(), lang_item) {
                 return true;
             }
         }
-        tcx.get_diagnostic_name(def.did())
-            .is_some_and(|name| matches!(name, sym::cstring_type | sym::Vec | sym::Cell))
+        tcx.get_diagnostic_name(def.did()).is_some_and(|name| {
+            matches!(name, sym::cstring_type | sym::Vec | sym::Cell | sym::sync_unsafe_cell)
+        })
     } else {
         false
     }

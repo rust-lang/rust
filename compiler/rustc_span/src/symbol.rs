@@ -1930,6 +1930,7 @@ symbols! {
         surface_async_drop_in_place,
         sym,
         sync,
+        sync_unsafe_cell,
         synthetic,
         t32,
         target,
