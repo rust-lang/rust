@@ -4448,7 +4448,6 @@ function updateSearchHistory(url) {
 async function search(forced) {
     const query = DocSearch.parseQuery(searchState.input.value.trim());
     let filterCrates = getFilterCrates();
-
     if (!forced && query.userQuery === currentResults) {
         if (query.userQuery.length > 0) {
             putBackSearch();
@@ -4648,8 +4647,19 @@ function registerSearchEvents() {
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.
-        const query = searchState.input.value.trim();
+        const query = searchState.input.value.trim()
+            .replace(/crate:[a-zA-Z_0-9]+/, "");
         updateSearchHistory(buildUrl(query, null));
+        searchState.input.value = query;
+    } else {
+        const crate = ev.target.value;
+        // add/update the `crate:` syntax in the search bar
+        let newquery = searchState.input.value
+            .replace(/crate:[a-zA-Z_0-9]+/, "crate:" + crate);
+        if (!newquery.includes("crate:")) {
+            newquery = "crate:" + crate + " " + searchState.input.value;
+        }
+        searchState.input.value = newquery;
     }
     // In case you "cut" the entry from the search input, then change the crate filter
     // before paste back the previous search, you get the old search results without
