@@ -1427,16 +1427,6 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let predicates = tcx.predicates_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
-    let is_our_default = |def: &ty::GenericParamDef| match def.kind {
-        GenericParamDefKind::Type { has_default, .. }
-        | GenericParamDefKind::Const { has_default, .. } => {
-            has_default && def.index >= generics.parent_count as u32
-        }
-        GenericParamDefKind::Lifetime => {
-            span_bug!(tcx.def_span(def.def_id), "lifetime params can have no default")
-        }
-    };
-
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
     // For example, this forbids the declaration:
     //
@@ -1444,40 +1434,21 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     //
     // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.own_params {
-        match param.kind {
-            GenericParamDefKind::Type { .. } => {
-                if is_our_default(param) {
-                    let ty = tcx.type_of(param.def_id).instantiate_identity();
-                    // Ignore dependent defaults -- that is, where the default of one type
-                    // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
-                    // be sure if it will error or not as user might always specify the other.
-                    if !ty.has_param() {
-                        wfcx.register_wf_obligation(
-                            tcx.def_span(param.def_id),
-                            Some(WellFormedLoc::Ty(param.def_id.expect_local())),
-                            ty.into(),
-                        );
-                    }
-                }
+        if let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity) {
+            // Ignore dependent defaults -- that is, where the default of one type
+            // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
+            // be sure if it will error or not as user might always specify the other.
+            // FIXME(generic_const_exprs): This is incorrect when dealing with unused const params.
+            // E.g: `struct Foo<const N: usize, const M: usize = { 1 - 2 }>;`. Here, we should
+            // eagerly error but we don't as we have `ConstKind::Unevaluated(.., [N, M])`.
+            if !default.has_param() {
+                wfcx.register_wf_obligation(
+                    tcx.def_span(param.def_id),
+                    matches!(param.kind, GenericParamDefKind::Type { .. })
+                        .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
+                    default,
+                );
             }
-            GenericParamDefKind::Const { .. } => {
-                if is_our_default(param) {
-                    // FIXME(const_generics_defaults): This
-                    // is incorrect when dealing with unused args, for example
-                    // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
-                    // we should eagerly error.
-                    let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
-                    if !default_ct.has_param() {
-                        wfcx.register_wf_obligation(
-                            tcx.def_span(param.def_id),
-                            None,
-                            default_ct.into(),
-                        );
-                    }
-                }
-            }
-            // Doesn't have defaults.
-            GenericParamDefKind::Lifetime => {}
         }
     }
 
@@ -1490,39 +1461,16 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     //
     // First we build the defaulted generic parameters.
     let args = GenericArgs::for_item(tcx, def_id.to_def_id(), |param, _| {
-        match param.kind {
-            GenericParamDefKind::Lifetime => {
-                // All regions are identity.
-                tcx.mk_param_from_def(param)
-            }
-
-            GenericParamDefKind::Type { .. } => {
-                // If the param has a default, ...
-                if is_our_default(param) {
-                    let default_ty = tcx.type_of(param.def_id).instantiate_identity();
-                    // ... and it's not a dependent default, ...
-                    if !default_ty.has_param() {
-                        // ... then instantiate it with the default.
-                        return default_ty.into();
-                    }
-                }
-
-                tcx.mk_param_from_def(param)
-            }
-            GenericParamDefKind::Const { .. } => {
-                // If the param has a default, ...
-                if is_our_default(param) {
-                    let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
-                    // ... and it's not a dependent default, ...
-                    if !default_ct.has_param() {
-                        // ... then instantiate it with the default.
-                        return default_ct.into();
-                    }
-                }
-
-                tcx.mk_param_from_def(param)
-            }
+        if param.index >= generics.parent_count as u32
+            // If the param has a default, ...
+            && let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity)
+            // ... and it's not a dependent default, ...
+            && !default.has_param()
+        {
+            // ... then instantiate it with the default.
+            return default;
         }
+        tcx.mk_param_from_def(param)
     });
 
     // Now we build the instantiated predicates.
