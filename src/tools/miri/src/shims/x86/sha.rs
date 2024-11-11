@@ -23,27 +23,27 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sha").unwrap();
 
-        fn read<'c>(this: &mut MiriInterpCx<'c>, reg: &OpTy<'c>) -> InterpResult<'c, [u32; 4]> {
+        fn read<'c>(ecx: &mut MiriInterpCx<'c>, reg: &OpTy<'c>) -> InterpResult<'c, [u32; 4]> {
             let mut res = [0; 4];
             // We reverse the order because x86 is little endian but the copied implementation uses
             // big endian.
             for (i, dst) in res.iter_mut().rev().enumerate() {
-                let projected = &this.project_index(reg, i.try_into().unwrap())?;
-                *dst = this.read_scalar(projected)?.to_u32()?
+                let projected = &ecx.project_index(reg, i.try_into().unwrap())?;
+                *dst = ecx.read_scalar(projected)?.to_u32()?
             }
             interp_ok(res)
         }
 
         fn write<'c>(
-            this: &mut MiriInterpCx<'c>,
+            ecx: &mut MiriInterpCx<'c>,
             dest: &MPlaceTy<'c>,
             val: [u32; 4],
         ) -> InterpResult<'c, ()> {
             // We reverse the order because x86 is little endian but the copied implementation uses
             // big endian.
             for (i, part) in val.into_iter().rev().enumerate() {
-                let projected = &this.project_index(dest, i.try_into().unwrap())?;
-                this.write_scalar(Scalar::from_u32(part), projected)?;
+                let projected = &ecx.project_index(dest, i.try_into().unwrap())?;
+                ecx.write_scalar(Scalar::from_u32(part), projected)?;
             }
             interp_ok(())
         }

@@ -70,7 +70,7 @@ const USE_SIGNED: u8 = 2;
 /// For more information, see the Intel Software Developer's Manual, Vol. 2b, Chapter 4.1.
 #[expect(clippy::arithmetic_side_effects)]
 fn compare_strings<'tcx>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     str1: &OpTy<'tcx>,
     str2: &OpTy<'tcx>,
     len: Option<(u64, u64)>,
@@ -80,8 +80,8 @@ fn compare_strings<'tcx>(
     let (len1, len2) = if let Some(t) = len {
         t
     } else {
-        let len1 = implicit_len(this, str1, imm)?.unwrap_or(default_len);
-        let len2 = implicit_len(this, str2, imm)?.unwrap_or(default_len);
+        let len1 = implicit_len(ecx, str1, imm)?.unwrap_or(default_len);
+        let len2 = implicit_len(ecx, str2, imm)?.unwrap_or(default_len);
         (len1, len2)
     };
 
@@ -90,12 +90,12 @@ fn compare_strings<'tcx>(
         0 => {
             // Equal any: Checks which characters of `str2` are inside `str1`.
             for i in 0..len2 {
-                let ch2 = this.read_immediate(&this.project_index(str2, i)?)?;
+                let ch2 = ecx.read_immediate(&ecx.project_index(str2, i)?)?;
 
                 for j in 0..len1 {
-                    let ch1 = this.read_immediate(&this.project_index(str1, j)?)?;
+                    let ch1 = ecx.read_immediate(&ecx.project_index(str1, j)?)?;
 
-                    let eq = this.binary_op(mir::BinOp::Eq, &ch1, &ch2)?;
+                    let eq = ecx.binary_op(mir::BinOp::Eq, &ch1, &ch2)?;
                     if eq.to_scalar().to_bool()? {
                         result |= 1 << i;
                         break;
@@ -119,9 +119,9 @@ fn compare_strings<'tcx>(
 
             for i in 0..len2 {
                 for j in (0..len1).step_by(2) {
-                    let ch2 = get_ch(this.read_scalar(&this.project_index(str2, i)?)?)?;
-                    let ch1_1 = get_ch(this.read_scalar(&this.project_index(str1, j)?)?)?;
-                    let ch1_2 = get_ch(this.read_scalar(&this.project_index(str1, j + 1)?)?)?;
+                    let ch2 = get_ch(ecx.read_scalar(&ecx.project_index(str2, i)?)?)?;
+                    let ch1_1 = get_ch(ecx.read_scalar(&ecx.project_index(str1, j)?)?)?;
+                    let ch1_2 = get_ch(ecx.read_scalar(&ecx.project_index(str1, j + 1)?)?)?;
 
                     if ch1_1 <= ch2 && ch2 <= ch1_2 {
                         result |= 1 << i;
@@ -135,9 +135,9 @@ fn compare_strings<'tcx>(
             result ^= (1 << len1.max(len2)) - 1;
 
             for i in 0..len1.min(len2) {
-                let ch1 = this.read_immediate(&this.project_index(str1, i)?)?;
-                let ch2 = this.read_immediate(&this.project_index(str2, i)?)?;
-                let eq = this.binary_op(mir::BinOp::Eq, &ch1, &ch2)?;
+                let ch1 = ecx.read_immediate(&ecx.project_index(str1, i)?)?;
+                let ch2 = ecx.read_immediate(&ecx.project_index(str2, i)?)?;
+                let eq = ecx.binary_op(mir::BinOp::Eq, &ch1, &ch2)?;
                 result |= i32::from(eq.to_scalar().to_bool()?) << i;
             }
         }
@@ -159,9 +159,9 @@ fn compare_strings<'tcx>(
                         if k >= default_len {
                             break;
                         } else {
-                            let ch1 = this.read_immediate(&this.project_index(str1, j)?)?;
-                            let ch2 = this.read_immediate(&this.project_index(str2, k)?)?;
-                            let ne = this.binary_op(mir::BinOp::Ne, &ch1, &ch2)?;
+                            let ch1 = ecx.read_immediate(&ecx.project_index(str1, j)?)?;
+                            let ch2 = ecx.read_immediate(&ecx.project_index(str2, k)?)?;
+                            let ne = ecx.binary_op(mir::BinOp::Ne, &ch1, &ch2)?;
 
                             if ne.to_scalar().to_bool()? {
                                 result &= !(1 << i);
@@ -198,16 +198,16 @@ fn compare_strings<'tcx>(
 /// corresponding to the x86 128-bit integer SIMD type.
 fn deconstruct_args<'tcx>(
     unprefixed_name: &str,
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     link_name: Symbol,
     abi: ExternAbi,
     args: &[OpTy<'tcx>],
 ) -> InterpResult<'tcx, (OpTy<'tcx>, OpTy<'tcx>, Option<(u64, u64)>, u8)> {
-    let array_layout_fn = |this: &mut MiriInterpCx<'tcx>, imm: u8| {
+    let array_layout_fn = |ecx: &mut MiriInterpCx<'tcx>, imm: u8| {
         if imm & USE_WORDS != 0 {
-            this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u16, 8))
+            ecx.layout_of(Ty::new_array(ecx.tcx.tcx, ecx.tcx.types.u16, 8))
         } else {
-            this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u8, 16))
+            ecx.layout_of(Ty::new_array(ecx.tcx.tcx, ecx.tcx.types.u8, 16))
         }
     };
 
@@ -223,26 +223,26 @@ fn deconstruct_args<'tcx>(
 
     if is_explicit {
         let [str1, len1, str2, len2, imm] =
-            this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-        let imm = this.read_scalar(imm)?.to_u8()?;
+            ecx.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+        let imm = ecx.read_scalar(imm)?.to_u8()?;
 
         let default_len = default_len::<u32>(imm);
-        let len1 = u64::from(this.read_scalar(len1)?.to_u32()?.min(default_len));
-        let len2 = u64::from(this.read_scalar(len2)?.to_u32()?.min(default_len));
+        let len1 = u64::from(ecx.read_scalar(len1)?.to_u32()?.min(default_len));
+        let len2 = u64::from(ecx.read_scalar(len2)?.to_u32()?.min(default_len));
 
-        let array_layout = array_layout_fn(this, imm)?;
-        let str1 = str1.transmute(array_layout, this)?;
-        let str2 = str2.transmute(array_layout, this)?;
+        let array_layout = array_layout_fn(ecx, imm)?;
+        let str1 = str1.transmute(array_layout, ecx)?;
+        let str2 = str2.transmute(array_layout, ecx)?;
 
         interp_ok((str1, str2, Some((len1, len2)), imm))
     } else {
         let [str1, str2, imm] =
-            this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-        let imm = this.read_scalar(imm)?.to_u8()?;
+            ecx.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+        let imm = ecx.read_scalar(imm)?.to_u8()?;
 
-        let array_layout = array_layout_fn(this, imm)?;
-        let str1 = str1.transmute(array_layout, this)?;
-        let str2 = str2.transmute(array_layout, this)?;
+        let array_layout = array_layout_fn(ecx, imm)?;
+        let str1 = str1.transmute(array_layout, ecx)?;
+        let str2 = str2.transmute(array_layout, ecx)?;
 
         interp_ok((str1, str2, None, imm))
     }
@@ -251,16 +251,16 @@ fn deconstruct_args<'tcx>(
 /// Calculate the c-style string length for a given string `str`.
 /// The string is either a length 16 array of bytes a length 8 array of two-byte words.
 fn implicit_len<'tcx>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     str: &OpTy<'tcx>,
     imm: u8,
 ) -> InterpResult<'tcx, Option<u64>> {
     let mut result = None;
-    let zero = ImmTy::from_int(0, str.layout.field(this, 0));
+    let zero = ImmTy::from_int(0, str.layout.field(ecx, 0));
 
     for i in 0..default_len::<u64>(imm) {
-        let ch = this.read_immediate(&this.project_index(str, i)?)?;
-        let is_zero = this.binary_op(mir::BinOp::Eq, &ch, &zero)?;
+        let ch = ecx.read_immediate(&ecx.project_index(str, i)?)?;
+        let is_zero = ecx.binary_op(mir::BinOp::Eq, &ch, &zero)?;
         if is_zero.to_scalar().to_bool()? {
             result = Some(i);
             break;

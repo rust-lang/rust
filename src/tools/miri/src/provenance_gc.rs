@@ -195,10 +195,10 @@ impl LiveAllocs<'_, '_> {
     }
 }
 
-fn remove_unreachable_tags<'tcx>(this: &mut MiriInterpCx<'tcx>, tags: FxHashSet<BorTag>) {
+fn remove_unreachable_tags<'tcx>(ecx: &mut MiriInterpCx<'tcx>, tags: FxHashSet<BorTag>) {
     // Avoid iterating all allocations if there's no borrow tracker anyway.
-    if this.machine.borrow_tracker.is_some() {
-        this.memory.alloc_map().iter(|it| {
+    if ecx.machine.borrow_tracker.is_some() {
+        ecx.memory.alloc_map().iter(|it| {
             for (_id, (_kind, alloc)) in it {
                 alloc.extra.borrow_tracker.as_ref().unwrap().remove_unreachable_tags(&tags);
             }
@@ -206,16 +206,16 @@ fn remove_unreachable_tags<'tcx>(this: &mut MiriInterpCx<'tcx>, tags: FxHashSet<
     }
 }
 
-fn remove_unreachable_allocs<'tcx>(this: &mut MiriInterpCx<'tcx>, allocs: FxHashSet<AllocId>) {
-    let allocs = LiveAllocs { ecx: this, collected: allocs };
-    this.machine.allocation_spans.borrow_mut().retain(|id, _| allocs.is_live(*id));
-    this.machine.symbolic_alignment.borrow_mut().retain(|id, _| allocs.is_live(*id));
-    this.machine.alloc_addresses.borrow_mut().remove_unreachable_allocs(&allocs);
-    if let Some(borrow_tracker) = &this.machine.borrow_tracker {
+fn remove_unreachable_allocs<'tcx>(ecx: &mut MiriInterpCx<'tcx>, allocs: FxHashSet<AllocId>) {
+    let allocs = LiveAllocs { ecx, collected: allocs };
+    ecx.machine.allocation_spans.borrow_mut().retain(|id, _| allocs.is_live(*id));
+    ecx.machine.symbolic_alignment.borrow_mut().retain(|id, _| allocs.is_live(*id));
+    ecx.machine.alloc_addresses.borrow_mut().remove_unreachable_allocs(&allocs);
+    if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
         borrow_tracker.borrow_mut().remove_unreachable_allocs(&allocs);
     }
     // Clean up core (non-Miri-specific) state.
-    this.remove_unreachable_allocs(&allocs.collected);
+    ecx.remove_unreachable_allocs(&allocs.collected);
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
