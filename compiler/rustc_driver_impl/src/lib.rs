@@ -934,9 +934,12 @@ pub fn version_at_macro_invocation(
 }
 
 fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
-    let groups = if verbose { config::rustc_optgroups() } else { config::rustc_short_optgroups() };
     let mut options = getopts::Options::new();
-    for option in groups.iter().filter(|x| include_unstable_options || x.is_stable()) {
+    for option in config::rustc_optgroups()
+        .iter()
+        .filter(|x| verbose || !x.is_verbose_help_only)
+        .filter(|x| include_unstable_options || x.is_stable())
+    {
         option.apply(&mut options);
     }
     let message = "Usage: rustc [OPTIONS] INPUT";

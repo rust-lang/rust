@@ -364,6 +364,26 @@ impl File {
         self.fsync()
     }
 
+    pub fn lock(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        unsupported()
+    }
+
     pub fn truncate(&self, _size: u64) -> io::Result<()> {
         Err(Error::from_raw_os_error(22))
     }
