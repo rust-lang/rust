@@ -1,3 +1,6 @@
+// FIXME: this miscompiles with optimizations, see <https://github.com/rust-lang/rust/issues/132898>.
+//@compile-flags: -Zmir-opt-level=0
+
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
@@ -75,6 +78,25 @@ fn with_interior_mutability() {
     });
 }
 
+// This one really shouldn't be accepted, but since we treat 2phase as raw, we do accept it.
+// Tree Borrows rejects it.
+fn aliasing_violation() {
+    struct Foo(u64);
+    impl Foo {
+        fn add(&mut self, n: u64) -> u64 {
+            self.0 + n
+        }
+    }
+
+    let mut f = Foo(0);
+    let alias = &mut f.0 as *mut u64;
+    let res = f.add(unsafe {
+        *alias = 42;
+        0
+    });
+    assert_eq!(res, 42);
+}
+
 fn main() {
     two_phase1();
     two_phase2();
@@ -84,4 +106,5 @@ fn main() {
     with_interior_mutability();
     two_phase_overlapping1();
     two_phase_overlapping2();
+    aliasing_violation();
 }
