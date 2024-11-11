@@ -112,7 +112,6 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             return None;
         }
 
-        // Elide internal host effect args.
         let param = generics.param_at(index, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
@@ -201,35 +200,30 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    constraints: ThinVec<AssocItemConstraint>,
-    ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    mut constraints: ThinVec<AssocItemConstraint>,
+    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
-
-    if cx.tcx.is_trait(did) && cx.tcx.trait_def(did).paren_sugar {
-        let ty = ty_args
+    if cx.tcx.is_trait(did)
+        && cx.tcx.trait_def(did).paren_sugar
+        && let ty::Tuple(tys) = args.skip_binder().type_at(has_self as usize).kind()
+    {
+        let inputs = tys
             .iter()
-            .nth(if has_self { 1 } else { 0 })
-            .unwrap()
-            .map_bound(|arg| arg.expect_ty());
-        let inputs =
-            // The trait's first substitution is the one after self, if there is one.
-            match ty.skip_binder().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None, None)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), constraints },
-            };
-        let output = constraints.into_iter().next().and_then(|binding| match binding.kind {
-            AssocItemConstraintKind::Equality { term: Term::Type(ty) }
-                if ty != Type::Tuple(Vec::new()) =>
-            {
+            .map(|ty| clean_middle_ty(args.rebind(ty), cx, None, None))
+            .collect::<Vec<_>>()
+            .into();
+        let output = constraints.pop().and_then(|constraint| match constraint.kind {
+            AssocItemConstraintKind::Equality { term: Term::Type(ty) } if !ty.is_unit() => {
                 Some(Box::new(ty))
             }
             _ => None,
         });
-        GenericArgs::Parenthesized { inputs, output }
-    } else {
-        GenericArgs::AngleBracketed { args: args.into(), constraints }
+        return GenericArgs::Parenthesized { inputs, output };
     }
+
+    let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
+
+    GenericArgs::AngleBracketed { args: args.into(), constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
