@@ -8,7 +8,7 @@ use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
-use crate::validate;
+use crate::{errors, validate};
 
 thread_local! {
     static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
@@ -198,13 +198,29 @@ fn run_passes_inner<'tcx>(
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
+    let named_passes: FxIndexSet<_> =
+        overridden_passes.iter().map(|(name, _)| name.as_str()).collect();
+    let known_passes: FxIndexSet<_> = crate::PASS_NAMES.iter().map(|p| p.as_str()).collect();
+
+    for &name in named_passes.difference(&known_passes) {
+        tcx.dcx().emit_warn(errors::UnknownPassName { name });
+    }
+
+    // Verify that no passes are missing from the `declare_passes` invocation
     #[cfg(debug_assertions)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
     {
         let used_passes: FxIndexSet<_> = passes.iter().map(|p| p.name()).collect();
-        let known_passes: FxIndexSet<_> = crate::PASS_NAMES.iter().map(|p| p.as_str()).collect();
 
-        for &name in used_passes.difference(&known_passes) {
-            tcx.dcx().bug(format!("pass `{name}` is not declared in `PASS_NAMES`"));
+        let undeclared = used_passes.difference(&known_passes).collect::<Vec<_>>();
+        if let Some((name, rest)) = undeclared.split_first() {
+            let mut err =
+                tcx.dcx().struct_bug(format!("pass `{name}` is not declared in `PASS_NAMES`"));
+            for name in rest {
+                err.note(format!("pass `{name}` is also not declared in `PASS_NAMES`"));
+            }
+            err.emit();
         }
     }
 

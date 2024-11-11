@@ -90,7 +90,6 @@ macro_rules! declare_passes {
             )+
         )*
 
-        #[cfg(debug_assertions)]
         static PASS_NAMES: LazyLock<Vec<String>> = LazyLock::new(|| vec![
             // Fake marker pass
             "PreCodegen".to_string(),
