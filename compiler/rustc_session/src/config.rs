@@ -1398,9 +1398,21 @@ pub enum OptionKind {
 }
 
 pub struct RustcOptGroup {
-    apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    /// The "primary" name for this option. Normally equal to `long_name`,
+    /// except for options that don't have a long name, in which case
+    /// `short_name` is used.
+    ///
+    /// This is needed when interacting with `getopts` in some situations,
+    /// because if an option has both forms, that library treats the long name
+    /// as primary and the short name as an alias.
     pub name: &'static str,
     stability: OptionStability,
+    kind: OptionKind,
+
+    short_name: &'static str,
+    long_name: &'static str,
+    desc: &'static str,
+    value_hint: &'static str,
 }
 
 impl RustcOptGroup {
@@ -1409,7 +1421,13 @@ impl RustcOptGroup {
     }
 
     pub fn apply(&self, options: &mut getopts::Options) {
-        (self.apply)(options);
+        let &Self { short_name, long_name, desc, value_hint, .. } = self;
+        match self.kind {
+            OptionKind::Opt => options.optopt(short_name, long_name, desc, value_hint),
+            OptionKind::Multi => options.optmulti(short_name, long_name, desc, value_hint),
+            OptionKind::Flag => options.optflag(short_name, long_name, desc),
+            OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, desc),
+        };
     }
 }
 
@@ -1419,31 +1437,21 @@ pub fn make_opt(
     short_name: &'static str,
     long_name: &'static str,
     desc: &'static str,
-    hint: &'static str,
+    value_hint: &'static str,
 ) -> RustcOptGroup {
+    // "Flag" options don't have a value, and therefore don't have a value hint.
+    match kind {
+        OptionKind::Opt | OptionKind::Multi => {}
+        OptionKind::Flag | OptionKind::FlagMulti => assert_eq!(value_hint, ""),
+    }
     RustcOptGroup {
         name: cmp::max_by_key(short_name, long_name, |s| s.len()),
         stability,
-        apply: match kind {
-            OptionKind::Opt => Box::new(move |opts: &mut getopts::Options| {
-                opts.optopt(short_name, long_name, desc, hint)
-            }),
-            OptionKind::Multi => Box::new(move |opts: &mut getopts::Options| {
-                opts.optmulti(short_name, long_name, desc, hint)
-            }),
-            OptionKind::Flag => {
-                assert_eq!(hint, "");
-                Box::new(move |opts: &mut getopts::Options| {
-                    opts.optflag(short_name, long_name, desc)
-                })
-            }
-            OptionKind::FlagMulti => {
-                assert_eq!(hint, "");
-                Box::new(move |opts: &mut getopts::Options| {
-                    opts.optflagmulti(short_name, long_name, desc)
-                })
-            }
-        },
+        kind,
+        short_name,
+        long_name,
+        desc,
+        value_hint,
     }
 }
 
