@@ -55,6 +55,9 @@ use crate::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Check an expr with an expectation type, and also demand that the expr's
+    /// evaluated type is a subtype of the expectation at the end. This is a
+    /// *hard* requirement.
     pub(crate) fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -97,6 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// Check an expr with an expectation type, and also demand that the expr's
+    /// evaluated type is a coercible to the expectation at the end. This is a
+    /// *hard* requirement.
     pub(super) fn check_expr_coercible_to_type(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -128,6 +134,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Check an expr with an expectation type. Don't actually enforce that expectation
+    /// is related to the expr's evaluated type via subtyping or coercion. This is
+    /// usually called because we want to do that subtype/coerce call manually for better
+    /// diagnostics.
     pub(super) fn check_expr_with_hint(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -136,6 +146,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation(expr, ExpectHasType(expected))
     }
 
+    /// Check an expr with an expectation type, and also [`Needs`] which will
+    /// prompt typeck to convert any implicit immutable derefs to mutable derefs.
     fn check_expr_with_expectation_and_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -153,10 +165,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// Check an expr with no expectations.
     pub(super) fn check_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
         self.check_expr_with_expectation(expr, NoExpectation)
     }
 
+    /// Check an expr with no expectations, but with [`Needs`] which will
+    /// prompt typeck to convert any implicit immutable derefs to mutable derefs.
     pub(super) fn check_expr_with_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -165,33 +180,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
-    /// Invariant:
-    /// If an expression has any sub-expressions that result in a type error,
-    /// inspecting that expression's type with `ty.references_error()` will return
-    /// true. Likewise, if an expression is known to diverge, inspecting its
-    /// type with `ty::type_is_bot` will return true (n.b.: since Rust is
-    /// strict, _|_ can appear in the type of an expression that does not,
-    /// itself, diverge: for example, fn() -> _|_.)
-    /// Note that inspecting a type's structure *directly* may expose the fact
-    /// that there are actually multiple representations for `Error`, so avoid
-    /// that when err needs to be handled differently.
+    /// Check an expr with an expectation type which may be used to eagerly
+    /// guide inference when evaluating that expr.
     #[instrument(skip(self, expr), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_args(expr, expected, &[], None)
+        self.check_expr_with_expectation_and_args(expr, expected, None)
     }
 
-    /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
-    /// `ExprKind::Call` when evaluating its callee when it is an `ExprKind::Path`.
+    /// Same as [`Self::check_expr_with_expectation`], but allows us to pass in
+    /// the arguments of a [`ExprKind::Call`] when evaluating its callee that
+    /// is an [`ExprKind::Path`]. We use this to refine the spans for certain
+    /// well-formedness guarantees for the path expr.
     pub(super) fn check_expr_with_expectation_and_args(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        args: &'tcx [hir::Expr<'tcx>],
-        call: Option<&'tcx hir::Expr<'tcx>>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         if self.tcx().sess.verbose_internals() {
             // make this code only run with -Zverbose-internals because it is probably slow
@@ -236,9 +244,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
+            // Intercept the callee path expr and give it better spans.
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
-            ) => self.check_expr_path(qpath, expr, Some(args), call),
+            ) => self.check_expr_path(qpath, expr, call_expr_and_args),
             _ => self.check_expr_kind(expr, expected),
         });
         let ty = self.resolve_vars_if_possible(ty);
@@ -472,28 +481,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Lit(ref lit) => self.check_lit(lit, expected),
-            ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs, expected),
+            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
+            ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
             ExprKind::AssignOp(op, lhs, rhs) => {
-                self.check_binop_assign(expr, op, lhs, rhs, expected)
+                self.check_expr_binop_assign(expr, op, lhs, rhs, expected)
             }
-            ExprKind::Unary(unop, oprnd) => self.check_expr_unary(unop, oprnd, expected, expr),
+            ExprKind::Unary(unop, oprnd) => self.check_expr_unop(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(QPath::LangItem(lang_item, _)) => {
                 self.check_lang_item_path(lang_item, expr)
             }
-            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, None, None),
+            ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, None),
             ExprKind::InlineAsm(asm) => {
                 // We defer some asm checks as we may not have resolved the input and output types yet (they may still be infer vars).
                 self.deferred_asm_checks.borrow_mut().push((asm, expr.hir_id));
                 self.check_expr_asm(asm)
             }
-            ExprKind::OffsetOf(container, fields) => self.check_offset_of(container, fields, expr),
+            ExprKind::OffsetOf(container, fields) => {
+                self.check_expr_offset_of(container, fields, expr)
+            }
             ExprKind::Break(destination, ref expr_opt) => {
                 self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
@@ -512,13 +523,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_loop(body, source, expected, expr)
             }
             ExprKind::Match(discrim, arms, match_src) => {
-                self.check_match(expr, discrim, arms, expected, match_src)
+                self.check_expr_match(expr, discrim, arms, expected, match_src)
             }
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
-            ExprKind::Block(body, _) => self.check_block_with_expected(body, expected),
-            ExprKind::Call(callee, args) => self.check_call(expr, callee, args, expected),
+            ExprKind::Block(body, _) => self.check_expr_block(body, expected),
+            ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
             ExprKind::MethodCall(segment, receiver, args, _) => {
-                self.check_method_call(expr, segment, receiver, args, expected)
+                self.check_expr_method_call(expr, segment, receiver, args, expected)
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
@@ -528,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ascribed_ty
             }
             ExprKind::If(cond, then_expr, opt_else_expr) => {
-                self.check_then_else(cond, then_expr, opt_else_expr, expr.span, expected)
+                self.check_expr_if(cond, then_expr, opt_else_expr, expr.span, expected)
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
@@ -540,7 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Struct(qpath, fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            ExprKind::Field(base, field) => self.check_field(expr, base, field, expected),
+            ExprKind::Field(base, field) => self.check_expr_field(expr, base, field, expected),
             ExprKind::Index(base, idx, brackets_span) => {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
@@ -549,7 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_unary(
+    fn check_expr_unop(
         &self,
         unop: hir::UnOp,
         oprnd: &'tcx hir::Expr<'tcx>,
@@ -699,8 +710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &'tcx hir::QPath<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
-        call: Option<&'tcx hir::Expr<'tcx>>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
@@ -730,7 +740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     segs,
                     opt_ty,
                     res,
-                    call.map_or(expr.span, |e| e.span),
+                    call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
                 )
@@ -769,7 +779,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
-                    let span = args.and_then(|args| args.get(i)).map_or(expr.span, |arg| arg.span);
+                    let span = call_expr_and_args
+                        .and_then(|(_, args)| args.get(i))
+                        .map_or(expr.span, |arg| arg.span);
                     let input = self.instantiate_binder_with_fresh_vars(
                         span,
                         infer::BoundRegionConversionTime::FnCall,
@@ -795,7 +807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             self.require_type_is_sized_deferred(
                 output,
-                call.map_or(expr.span, |e| e.span),
+                call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                 ObligationCauseCode::SizedCallReturnType,
             );
         }
@@ -972,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.ret_coercion_span.get().is_none() {
                 self.ret_coercion_span.set(Some(e.span));
             }
-            self.check_return_expr(e, true);
+            self.check_return_or_body_tail(e, true);
         } else {
             let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
             if self.ret_coercion_span.get().is_none() {
@@ -1035,7 +1047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// `explicit_return` is `true` if we're checking an explicit `return expr`,
     /// and `false` if we're checking a trailing expression.
-    pub(super) fn check_return_expr(
+    pub(super) fn check_return_or_body_tail(
         &self,
         return_expr: &'tcx hir::Expr<'tcx>,
         explicit_return: bool,
@@ -1259,7 +1271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // A generic function for checking the 'then' and 'else' clauses in an 'if'
     // or 'if-else' expression.
-    fn check_then_else(
+    fn check_expr_if(
         &self,
         cond_expr: &'tcx hir::Expr<'tcx>,
         then_expr: &'tcx hir::Expr<'tcx>,
@@ -1542,7 +1554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Checks a method call.
-    fn check_method_call(
+    fn check_expr_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
@@ -2594,7 +2606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Check field access expressions
-    fn check_field(
+    fn check_expr_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         base: &'tcx hir::Expr<'tcx>,
@@ -3535,8 +3547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let previous_diverges = self.diverges.get();
 
                     // The label blocks should have unit return value or diverge.
-                    let ty =
-                        self.check_block_with_expected(block, ExpectHasType(self.tcx.types.unit));
+                    let ty = self.check_expr_block(block, ExpectHasType(self.tcx.types.unit));
                     if !ty.is_never() {
                         self.demand_suptype(block.span, self.tcx.types.unit, ty);
                         diverge = false;
@@ -3551,7 +3562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if diverge { self.tcx.types.never } else { self.tcx.types.unit }
     }
 
-    fn check_offset_of(
+    fn check_expr_offset_of(
         &self,
         container: &'tcx hir::Ty<'tcx>,
         fields: &[Ident],
