@@ -16,6 +16,8 @@ use rustc_span::symbol::Symbol;
 
 use super::CodegenObject;
 use super::write::WriteBackendMethods;
+use crate::back::archive::ArArchiveBuilderBuilder;
+use crate::back::link::link_binary;
 use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
@@ -87,7 +89,9 @@ pub trait CodegenBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed>;
+    ) -> Result<(), ErrorGuaranteed> {
+        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs)
+    }
 
     /// Returns `true` if this backend can be safely called from multiple threads.
     ///
