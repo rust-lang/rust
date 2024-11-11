@@ -782,21 +782,11 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
 impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).own_params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {}
-                GenericParamDefKind::Type { has_default, .. } => {
-                    if has_default {
-                        self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
-                    }
-                }
-                GenericParamDefKind::Const { has_default, .. } => {
-                    self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
-                    if has_default {
-                        self.visit(
-                            self.ev.tcx.const_param_default(param.def_id).instantiate_identity(),
-                        );
-                    }
-                }
+            if let GenericParamDefKind::Const { .. } = param.kind {
+                self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
+            }
+            if let Some(default) = param.default_value(self.ev.tcx) {
+                self.visit(default.instantiate_identity());
             }
         }
         self
