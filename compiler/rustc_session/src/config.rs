@@ -31,7 +31,7 @@ use rustc_target::spec::{
 use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
-use crate::config::native_libs::parse_libs;
+use crate::config::native_libs::parse_native_libs;
 use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
@@ -2508,7 +2508,10 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debuginfo = select_debuginfo(matches, &cg);
     let debuginfo_compression = unstable_opts.debuginfo_compression;
 
-    let libs = parse_libs(early_dcx, matches);
+    let crate_name = matches.opt_str("crate-name");
+    let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
+    // Parse any `-l` flags, which link to native libraries.
+    let libs = parse_native_libs(early_dcx, &unstable_opts, unstable_features, matches);
 
     let test = matches.opt_present("test");
 
@@ -2522,8 +2525,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
-
-    let crate_name = matches.opt_str("crate-name");
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches, &unstable_opts);
 
@@ -2598,7 +2599,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         error_format,
         diagnostic_width,
         externs,
-        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
+        unstable_features,
         crate_name,
         libs,
         debug_assertions,
