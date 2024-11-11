@@ -11,14 +11,15 @@ use crate::lint::lint_body;
 use crate::{errors, validate};
 
 thread_local! {
-    static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
+    /// Maps MIR pass names to a snake case form to match profiling naming style
+    static PASS_TO_PROFILER_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
         RefCell::new(FxHashMap::default())
     };
 }
 
 /// Converts a MIR pass name into a snake case form to match the profiling naming style.
 fn to_profiler_name(type_name: &'static str) -> &'static str {
-    PASS_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
+    PASS_TO_PROFILER_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
         Entry::Occupied(e) => *e.get(),
         Entry::Vacant(e) => {
             let snake_case: String = type_name
