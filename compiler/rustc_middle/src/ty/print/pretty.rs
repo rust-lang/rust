@@ -993,10 +993,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
             match bound_predicate.skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
-                    let trait_ref = bound_predicate.rebind(pred.trait_ref);
-
                     // Don't print `+ Sized`, but rather `+ ?Sized` if absent.
-                    if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+                    if tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
                         match pred.polarity {
                             ty::PredicatePolarity::Positive => {
                                 has_sized_bound = true;
@@ -1040,12 +1038,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
-        for (bound_args, entry) in fn_traits {
+        for ((bound_args, is_async), entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
             write!(self, "{}", if paren_needed { "(" } else { "" })?;
 
-            let trait_def_id =
-                tcx.fn_trait_kind_to_def_id(entry.kind).expect("expected Fn lang items");
+            let trait_def_id = if is_async {
+                tcx.async_fn_trait_kind_to_def_id(entry.kind).expect("expected AsyncFn lang items")
+            } else {
+                tcx.fn_trait_kind_to_def_id(entry.kind).expect("expected Fn lang items")
+            };
 
             if let Some(return_ty) = entry.return_ty {
                 self.wrap_binder(&bound_args, |args, cx| {
@@ -1209,17 +1210,28 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::PolyTraitPredicate<'tcx>,
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut FxIndexMap<ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut FxIndexMap<
+            (ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>, bool),
+            OpaqueFnEntry<'tcx>,
+        >,
     ) {
         let tcx = self.tcx();
         let trait_def_id = trait_pred.def_id();
 
+        let fn_trait_and_async = if let Some(kind) = tcx.fn_trait_kind_from_def_id(trait_def_id) {
+            Some((kind, false))
+        } else if let Some(kind) = tcx.async_fn_trait_kind_from_def_id(trait_def_id) {
+            Some((kind, true))
+        } else {
+            None
+        };
+
         if trait_pred.polarity() == ty::PredicatePolarity::Positive
-            && let Some(kind) = tcx.fn_trait_kind_from_def_id(trait_def_id)
+            && let Some((kind, is_async)) = fn_trait_and_async
             && let ty::Tuple(types) = *trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
         {
             let entry = fn_traits
-                .entry(trait_pred.rebind(types))
+                .entry((trait_pred.rebind(types), is_async))
                 .or_insert_with(|| OpaqueFnEntry { kind, return_ty: None });
             if kind.extends(entry.kind) {
                 entry.kind = kind;
@@ -3148,10 +3160,10 @@ define_print_and_forward_display! {
 
     TraitRefPrintSugared<'tcx> {
         if !with_reduced_queries()
-            && let Some(kind) = cx.tcx().fn_trait_kind_from_def_id(self.0.def_id)
+            && cx.tcx().trait_def(self.0.def_id).paren_sugar
             && let ty::Tuple(args) = self.0.args.type_at(1).kind()
         {
-            p!(write("{}", kind.as_str()), "(");
+            p!(write("{}", cx.tcx().item_name(self.0.def_id)), "(");
             for (i, arg) in args.iter().enumerate() {
                 if i > 0 {
                     p!(", ");
