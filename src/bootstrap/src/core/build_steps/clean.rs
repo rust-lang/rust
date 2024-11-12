@@ -226,6 +226,8 @@ where
         Err(ref e) if e.kind() == ErrorKind::PermissionDenied => {
             let m = t!(path.symlink_metadata());
             let mut p = m.permissions();
+            // this os not unix, so clippy gives FP
+            #[expect(clippy::permissions_set_readonly_false)]
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
