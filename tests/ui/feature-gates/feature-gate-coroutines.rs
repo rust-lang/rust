@@ -4,17 +4,17 @@
 fn main() {
     yield true; //~ ERROR yield syntax is experimental
                 //~^ ERROR yield expression outside of coroutine literal
-                //[none]~^^ ERROR yield syntax is experimental
+                //~^^ ERROR yield syntax is experimental
                 //~^^^ ERROR `yield` can only be used
 
     let _ = || yield true; //~ ERROR yield syntax is experimental
-    //[none]~^ ERROR yield syntax is experimental
+    //~^ ERROR yield syntax is experimental
     //~^^ ERROR `yield` can only be used
 }
 
 #[cfg(FALSE)]
 fn foo() {
     // Ok in 2024 edition
-    yield; //[none]~ ERROR yield syntax is experimental
-    yield 0; //[none]~ ERROR yield syntax is experimental
+    yield; //~ ERROR yield syntax is experimental
+    yield 0; //~ ERROR yield syntax is experimental
 }
