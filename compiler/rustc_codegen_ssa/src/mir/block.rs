@@ -362,15 +362,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
     ) {
-        let discr = self.codegen_operand(bx, discr);
-        let discr_value = discr.immediate();
-        let switch_ty = discr.layout.ty;
         // If our discriminant is a constant we can branch directly
-        if let Some(const_discr) = bx.const_to_opt_u128(discr_value, false) {
+        if let Some(const_op) = discr.constant() {
+            let const_value = self.eval_mir_constant(const_op);
+            let Some(const_discr) = const_value.try_to_bits_for_ty(
+                self.cx.tcx(),
+                ty::ParamEnv::reveal_all(),
+                const_op.ty(),
+            ) else {
+                bug!("Failed to evaluate constant {discr:?} for SwitchInt terminator")
+            };
             let target = targets.target_for_value(const_discr);
             bx.br(helper.llbb_with_cleanup(self, target));
             return;
-        };
+        }
+
+        let discr = self.codegen_operand(bx, discr);
+        let discr_value = discr.immediate();
+        let switch_ty = discr.layout.ty;
 
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {

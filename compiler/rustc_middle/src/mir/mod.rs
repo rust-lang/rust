@@ -641,6 +641,7 @@ impl<'tcx> Body<'tcx> {
         };
 
         // If this is a SwitchInt(const _), then we can just evaluate the constant and return.
+        // (The `SwitchConst` transform pass tries to ensure this.)
         let discr = match discr {
             Operand::Constant(constant) => {
                 let bits = eval_mono_const(constant)?;
@@ -649,24 +650,18 @@ impl<'tcx> Body<'tcx> {
             Operand::Move(place) | Operand::Copy(place) => place,
         };
 
-        // MIR for `if false` actually looks like this:
-        // _1 = const _
-        // SwitchInt(_1)
-        //
         // And MIR for if intrinsics::ub_checks() looks like this:
         // _1 = UbChecks()
         // SwitchInt(_1)
         //
         // So we're going to try to recognize this pattern.
         //
-        // If we have a SwitchInt on a non-const place, we find the most recent statement that
-        // isn't a storage marker. If that statement is an assignment of a const to our
-        // discriminant place, we evaluate and return the const, as if we've const-propagated it
-        // into the SwitchInt.
+        // If we have a SwitchInt on a non-const place, we look at the last statement
+        // in the block. If that statement is an assignment of UbChecks to our
+        // discriminant place, we evaluate its value, as if we've
+        // const-propagated it into the SwitchInt.
 
-        let last_stmt = block.statements.iter().rev().find(|stmt| {
-            !matches!(stmt.kind, StatementKind::StorageDead(_) | StatementKind::StorageLive(_))
-        })?;
+        let last_stmt = block.statements.last()?;
 
         let (place, rvalue) = last_stmt.kind.as_assign()?;
 
@@ -676,10 +671,6 @@ impl<'tcx> Body<'tcx> {
 
         match rvalue {
             Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
-            Rvalue::Use(Operand::Constant(constant)) => {
-                let bits = eval_mono_const(constant)?;
-                Some((bits, targets))
-            }
             _ => None,
         }
     }
