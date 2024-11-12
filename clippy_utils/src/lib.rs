@@ -2641,7 +2641,9 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
 
 static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalModDefId, Vec<Symbol>>>> = OnceLock::new();
 
-fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
+/// Apply `f()` to the set of test item names.
+/// The names are sorted using the default `Symbol` ordering.
+fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl FnOnce(&[Symbol]) -> bool) -> bool {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
     let mut map: MutexGuard<'_, FxHashMap<LocalModDefId, Vec<Symbol>>> = cache.lock().unwrap();
     let value = map.entry(module);
@@ -2693,6 +2695,25 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
                 false
             })
     })
+}
+
+/// Checks if `fn_def_id` has a `#[test]` attribute applied
+///
+/// This only checks directly applied attributes. To see if a node has a parent function marked with
+/// `#[test]` use [`is_in_test_function`].
+///
+/// Note: Add `//@compile-flags: --test` to UI tests with a `#[test]` function
+pub fn is_test_function(tcx: TyCtxt<'_>, fn_def_id: LocalDefId) -> bool {
+    let id = tcx.local_def_id_to_hir_id(fn_def_id);
+    if let Node::Item(item) = tcx.hir_node(id)
+        && let ItemKind::Fn { ident, .. } = item.kind
+    {
+        with_test_item_names(tcx, tcx.parent_module(id), |names| {
+            names.binary_search(&ident.name).is_ok()
+        })
+    } else {
+        false
+    }
 }
 
 /// Checks if `id` has a `#[cfg(test)]` attribute applied
