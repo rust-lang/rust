@@ -514,22 +514,23 @@ decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s beta-nomination has been removed."
-message_on_close = "PR #{number} has been closed. Thanks for participating!"
-message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+message_on_remove = "PR #${number}'s stable-nomination has been removed."
+message_on_close = "PR #${number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #${number} has been reopened. Pinging @*T-rustdoc*."
 
-# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
-#        At the moment, the beta-accepted+T-rustdoc action fully occupies the beta-accepted slot
-#        preventing others from adding more beta-accepted actions.
-[notify-zulip."beta-accepted"]
+# FIXME: Patch triagebot to support `notify-zulip.<label>` mapped to an array of actions.
+#        Currently, the stable-accepted+T-rustdoc action fully occupies the stable-accepted slot,
+#        preventing the addition of multiple stable-accepted actions.
+[notify-zulip."stable-accepted"]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
-# Put it in the same thread as beta-nominated.
-topic = "beta-nominated: #{number}"
-message_on_add = "PR #{number} has been **accepted** for beta backport."
-message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
-message_on_close = "PR #{number} has been closed. Thanks for participating!"
-message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
+# Use the same topic as stable-nominated.
+topic = "stable-nominated: #${number}"
+message_on_add = "PR #${number} has been **accepted** for stable backport."
+message_on_remove = "PR #${number}'s stable-acceptance has been **removed**."
+message_on_close = "PR #${number} has been closed. Thanks for participating!"
+message_on_reopen = "PR #${number} has been reopened. Pinging @*T-rustdoc*."
+
 
 # FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
 #        At the moment, the stable-nominated+T-rustdoc action fully occupies the stable-nominated slot
