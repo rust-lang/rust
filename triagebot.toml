@@ -1038,6 +1038,11 @@ docs = [
     "@ehuss",
     "@GuillaumeGomez",
 ]
+
+codegen = [
+    "@saethlin",
+    "@workingjubilee",
+]
 query-system = [
     "@cjgillot",
 ]
@@ -1133,6 +1138,7 @@ project-exploit-mitigations = [
 "/Cargo.lock" =                                          ["@Mark-Simulacrum"]
 "/Cargo.toml" =                                          ["@Mark-Simulacrum"]
 "/compiler" =                                            ["compiler"]
+"/compiler/rustc_abi" =                                  ["compiler", "codegen"]
 "/compiler/rustc_arena" =                                ["compiler", "arena"]
 "/compiler/rustc_ast" =                                  ["compiler", "parser"]
 "/compiler/rustc_ast_lowering" =                         ["compiler", "ast_lowering"]
@@ -1143,7 +1149,7 @@ project-exploit-mitigations = [
 "/compiler/rustc_lexer" =                                ["compiler", "lexer"]
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
-"/compiler/rustc_codegen_ssa" =                          ["compiler", "@saethlin"]
+"/compiler/rustc_codegen_ssa" =                          ["compiler", "codegen"]
 "/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
