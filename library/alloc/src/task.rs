@@ -176,9 +176,11 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
     )
 }
 
-/// An analogous trait to `Wake` but used to construct a `LocalWaker`. This API
-/// works in exactly the same way as `Wake`, except that it uses an `Rc` instead
-/// of an `Arc`, and the result is a `LocalWaker` instead of a `Waker`.
+/// An analogous trait to `Wake` but used to construct a `LocalWaker`.
+///
+/// This API works in exactly the same way as `Wake`,
+/// except that it uses an `Rc` instead of an `Arc`,
+/// and the result is a `LocalWaker` instead of a `Waker`.
 ///
 /// The benefits of using `LocalWaker` over `Waker` are that it allows the local waker
 /// to hold data that does not implement `Send` and `Sync`. Additionally, it saves calls

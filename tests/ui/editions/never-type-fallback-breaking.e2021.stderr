@@ -1,5 +1,5 @@
 warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:15:1
+  --> $DIR/never-type-fallback-breaking.rs:17:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -8,7 +8,7 @@ LL | fn m() {
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:19:17
+  --> $DIR/never-type-fallback-breaking.rs:21:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let x: () = match true {
    |          ++++
 
 warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:27:1
+  --> $DIR/never-type-fallback-breaking.rs:29:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | fn q() -> Option<()> {
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:34:5
+  --> $DIR/never-type-fallback-breaking.rs:36:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -37,5 +37,24 @@ help: use `()` annotations to avoid fallback changes
 LL |     deserialize::<()>()?;
    |                ++++++
 
-warning: 2 warnings emitted
+warning: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:46:1
+   |
+LL | fn meow() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `(): From<!>` will fail
+  --> $DIR/never-type-fallback-breaking.rs:49:5
+   |
+LL |     help(1)?;
+   |     ^^^^^^^
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     help::<(), _>(1)?;
+   |         +++++++++
+
+warning: 3 warnings emitted
 

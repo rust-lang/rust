@@ -621,7 +621,11 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
                 .iter()
                 .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
                 .count();
-            for (idx, arg) in args.iter().enumerate() {
+            for (idx, arg) in args
+                .iter()
+                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+                .enumerate()
+            {
                 if let Some(ty) = arg.as_type()
                     && let Some(vid) = self.fcx.root_vid(ty)
                     && self.reachable_vids.contains(&vid)

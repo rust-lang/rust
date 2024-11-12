@@ -17,7 +17,7 @@ fn main() {
 fn m() {
     //[e2021]~^ this function depends on never type fallback being `()`
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    let x = match true {
+    let x: () = match true {
         true => Default::default(),
         //[e2024]~^ error: the trait bound `!: Default` is not satisfied
         false => panic!("..."),
@@ -33,7 +33,7 @@ fn q() -> Option<()> {
         Some(T::default())
     }
 
-    deserialize()?;
+    deserialize::<()>()?;
     //[e2024]~^ error: the trait bound `!: Default` is not satisfied
 
     None
@@ -46,7 +46,7 @@ fn help<'a: 'a, T: Into<()>, U>(_: U) -> Result<T, ()> {
 fn meow() -> Result<(), ()> {
     //[e2021]~^ this function depends on never type fallback being `()`
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    help(1)?;
+    help::<(), _>(1)?;
     //[e2024]~^ error: the trait bound `(): From<!>` is not satisfied
     Ok(())
 }

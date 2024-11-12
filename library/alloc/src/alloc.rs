@@ -155,11 +155,14 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+/// use std::alloc::{alloc_zeroed, dealloc, handle_alloc_error, Layout};
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();
 ///     let ptr = alloc_zeroed(layout);
+///     if ptr.is_null() {
+///         handle_alloc_error(layout);
+///     }
 ///
 ///     assert_eq!(*(ptr as *mut u16), 0);
 ///
