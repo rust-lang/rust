@@ -9371,7 +9371,7 @@ trait Compat$0 {}
 
             ---
 
-            Is Dyn compatible
+            Is dyn-compatible
         "#]],
     );
     check(
@@ -9393,7 +9393,7 @@ trait UnCompat$0 {
 
             ---
 
-            Is not Dyn compatible due to having a method `f` that is not dispatchable due to missing a receiver
+            Is not dyn-compatible due to having a method `f` that is not dispatchable due to missing a receiver
         "#]],
     );
     check(

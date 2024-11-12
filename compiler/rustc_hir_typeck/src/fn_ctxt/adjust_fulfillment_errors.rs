@@ -316,12 +316,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .tcx
             .generics_of(def_id)
             .own_args(ty::GenericArgs::identity_for_item(self.tcx, def_id));
-        let Some((index, _)) =
-            own_args.iter().enumerate().find(|(_, arg)| **arg == param_to_point_at)
-        else {
+        let Some(mut index) = own_args.iter().position(|arg| *arg == param_to_point_at) else {
             return false;
         };
-        let Some(arg) = segment.args().args.get(index) else {
+        // SUBTLE: We may or may not turbofish lifetime arguments, which will
+        // otherwise be elided. if our "own args" starts with a lifetime, but
+        // the args list does not, then we should chop off all of the lifetimes,
+        // since they're all elided.
+        let segment_args = segment.args().args;
+        if matches!(own_args[0].unpack(), ty::GenericArgKind::Lifetime(_))
+            && segment_args.first().is_some_and(|arg| arg.is_ty_or_const())
+            && let Some(offset) = own_args.iter().position(|arg| {
+                matches!(arg.unpack(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_))
+            })
+            && let Some(new_index) = index.checked_sub(offset)
+        {
+            index = new_index;
+        }
+        let Some(arg) = segment_args.get(index) else {
             return false;
         };
         error.obligation.cause.span = arg

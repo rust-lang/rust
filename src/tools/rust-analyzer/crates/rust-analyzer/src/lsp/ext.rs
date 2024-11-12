@@ -826,6 +826,7 @@ pub struct CompletionResolveData {
     pub imports: Vec<CompletionImport>,
     pub version: Option<i32>,
     pub trigger_character: Option<char>,
+    pub completion_item_index: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

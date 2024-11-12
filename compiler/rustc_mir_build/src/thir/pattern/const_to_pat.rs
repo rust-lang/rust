@@ -1,14 +1,13 @@
-use either::Either;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, ValTree};
+use rustc_middle::{mir, span_bug};
 use rustc_span::Span;
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -40,7 +39,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // of opaques defined in this function here.
         let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let mut convert = ConstToPat::new(self, id, span, infcx);
-        convert.to_pat(c, ty)
+
+        match c.kind() {
+            ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
+            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
+            _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
+        }
     }
 }
 
@@ -81,27 +85,42 @@ impl<'tcx> ConstToPat<'tcx> {
         ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
-    fn to_pat(&mut self, c: ty::Const<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn unevaluated_to_pat(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
         let pat_from_kind = |kind| Box::new(Pat { span: self.span, ty, kind });
 
-        // Get a valtree. If that fails, this const is definitely not valid for use as a pattern.
-        let valtree = match c.eval_valtree(self.tcx(), self.param_env, self.span) {
-            Ok((_, valtree)) => valtree,
-            Err(Either::Right(e)) => {
-                let err = match e {
-                    ErrorHandled::Reported(..) => {
-                        // Let's tell the use where this failing const occurs.
-                        self.tcx().dcx().emit_err(CouldNotEvalConstPattern { span: self.span })
-                    }
-                    ErrorHandled::TooGeneric(_) => self
-                        .tcx()
-                        .dcx()
-                        .emit_err(ConstPatternDependsOnGenericParameter { span: self.span }),
-                };
-                return pat_from_kind(PatKind::Error(err));
+        // It's not *technically* correct to be revealing opaque types here as borrowcheck has
+        // not run yet. However, CTFE itself uses `Reveal::All` unconditionally even during
+        // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821). As a
+        // result we always use a revealed env when resolving the instance to evaluate.
+        //
+        // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
+        // instead of having this logic here
+        let param_env =
+            self.tcx().erase_regions(self.param_env).with_reveal_all_normalized(self.tcx());
+        let uv = self.tcx().erase_regions(uv);
+
+        // try to resolve e.g. associated constants to their definition on an impl, and then
+        // evaluate the const.
+        let valtree = match self.infcx.tcx.const_eval_resolve_for_typeck(param_env, uv, self.span) {
+            Ok(Ok(c)) => c,
+            Err(ErrorHandled::Reported(_, _)) => {
+                // Let's tell the use where this failing const occurs.
+                let e = self.tcx().dcx().emit_err(CouldNotEvalConstPattern { span: self.span });
+                return pat_from_kind(PatKind::Error(e));
             }
-            Err(Either::Left(bad_ty)) => {
+            Err(ErrorHandled::TooGeneric(_)) => {
+                let e = self
+                    .tcx()
+                    .dcx()
+                    .emit_err(ConstPatternDependsOnGenericParameter { span: self.span });
+                return pat_from_kind(PatKind::Error(e));
+            }
+            Ok(Err(bad_ty)) => {
                 // The pattern cannot be turned into a valtree.
                 let e = match bad_ty.kind() {
                     ty::Adt(def, ..) => {
@@ -128,8 +147,7 @@ impl<'tcx> ConstToPat<'tcx> {
             if !self.type_has_partial_eq_impl(ty) {
                 let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
                 let e = self.tcx().dcx().emit_err(err);
-                let kind = PatKind::Error(e);
-                return Box::new(Pat { span: self.span, ty, kind });
+                return pat_from_kind(PatKind::Error(e));
             }
         }
 

@@ -19,6 +19,7 @@ pub struct StructureNode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum StructureNodeKind {
     SymbolKind(SymbolKind),
+    ExternBlock,
     Region,
 }
 
@@ -158,6 +159,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Trait(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Trait)),
             ast::TraitAlias(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::TraitAlias)),
             ast::Module(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Module)),
+            ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::TypeAlias)),
             ast::RecordField(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Field)),
             ast::Const(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Const)),
@@ -205,7 +207,23 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
                 Some(node)
             },
-            ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
+            ast::ExternBlock(it) => {
+                let mut label = "extern".to_owned();
+                let abi = it.abi()?;
+                if let Some(abi) = abi.string_token() {
+                    label.push(' ');
+                    label.push_str(abi.text());
+                }
+                Some(StructureNode {
+                    parent: None,
+                    label,
+                    navigation_range: abi.syntax().text_range(),
+                    node_range: it.syntax().text_range(),
+                    kind: StructureNodeKind::ExternBlock,
+                    detail: None,
+                    deprecated: false,
+                })
+            },
             _ => None,
         }
     }
@@ -326,6 +344,8 @@ fn f() {}
 // endregion
 fn g() {}
 }
+
+extern "C" {}
 
 fn let_statements() {
     let x = 42;
@@ -664,9 +684,18 @@ fn let_statements() {
                     },
                     StructureNode {
                         parent: None,
+                        label: "extern \"C\"",
+                        navigation_range: 638..648,
+                        node_range: 638..651,
+                        kind: ExternBlock,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
                         label: "let_statements",
-                        navigation_range: 641..655,
-                        node_range: 638..798,
+                        navigation_range: 656..670,
+                        node_range: 653..813,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -677,11 +706,11 @@ fn let_statements() {
                     },
                     StructureNode {
                         parent: Some(
-                            26,
+                            27,
                         ),
                         label: "x",
-                        navigation_range: 668..669,
-                        node_range: 664..675,
+                        navigation_range: 683..684,
+                        node_range: 679..690,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -690,11 +719,11 @@ fn let_statements() {
                     },
                     StructureNode {
                         parent: Some(
-                            26,
+                            27,
                         ),
                         label: "mut y",
-                        navigation_range: 684..689,
-                        node_range: 680..694,
+                        navigation_range: 699..704,
+                        node_range: 695..709,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -703,11 +732,11 @@ fn let_statements() {
                     },
                     StructureNode {
                         parent: Some(
-                            26,
+                            27,
                         ),
                         label: "Foo { .. }",
-                        navigation_range: 703..725,
-                        node_range: 699..738,
+                        navigation_range: 718..740,
+                        node_range: 714..753,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -716,11 +745,11 @@ fn let_statements() {
                     },
                     StructureNode {
                         parent: Some(
-                            26,
+                            27,
                         ),
                         label: "_",
-                        navigation_range: 788..789,
-                        node_range: 784..796,
+                        navigation_range: 803..804,
+                        node_range: 799..811,
                         kind: SymbolKind(
                             Local,
                         ),

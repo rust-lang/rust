@@ -25,10 +25,10 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -40,7 +40,6 @@ use rustc_middle::ty::{
     self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
     GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid, TypingMode,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_type_ir::solve::Reveal;
@@ -1279,84 +1278,6 @@ impl<'tcx> InferCtxt<'tcx> {
         u
     }
 
-    pub fn try_const_eval_resolve(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
-        match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Ok(val)) => Ok(ty::Const::new_value(
-                self.tcx,
-                val,
-                self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
-            )),
-            Ok(Err(bad_ty)) => {
-                let tcx = self.tcx;
-                let def_id = unevaluated.def;
-                span_bug!(
-                    tcx.def_span(def_id),
-                    "unable to construct a valtree for the unevaluated constant {:?}: type {bad_ty} is not valtree-compatible",
-                    unevaluated
-                );
-            }
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Resolves and evaluates a constant.
-    ///
-    /// The constant can be located on a trait like `<A as B>::C`, in which case the given
-    /// generic parameters and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the instantiations are used to evaluate the value
-    /// of the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is
-    /// still too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
-    /// returned.
-    ///
-    /// This handles inferences variables within both `param_env` and `args` by
-    /// performing the operation on their respective canonical forms.
-    #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_resolve(
-        &self,
-        mut param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> EvalToValTreeResult<'tcx> {
-        let mut args = self.resolve_vars_if_possible(unevaluated.args);
-        debug!(?args);
-
-        // Postpone the evaluation of constants whose args depend on inference
-        // variables
-        let tcx = self.tcx;
-        if args.has_non_region_infer() {
-            if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
-                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, args));
-                if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(e.into(), span));
-                } else if ct.has_non_region_infer() || ct.has_non_region_param() {
-                    return Err(ErrorHandled::TooGeneric(span));
-                } else {
-                    args = replace_param_and_infer_args_with_placeholder(tcx, args);
-                }
-            } else {
-                args = GenericArgs::identity_for_item(tcx, unevaluated.def);
-                param_env = tcx.param_env(unevaluated.def);
-            }
-        }
-
-        let param_env_erased = tcx.erase_regions(param_env);
-        let args_erased = tcx.erase_regions(args);
-        debug!(?param_env_erased);
-        debug!(?args_erased);
-
-        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args: args_erased };
-
-        // The return value is the evaluated value which doesn't contain any reference to inference
-        // variables, thus we don't need to instantiate back the original values.
-        tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
-    }
-
     /// The returned function is used in a fast path. If it returns `true` the variable is
     /// unchanged, `false` indicates that the status is unknown.
     #[inline]
@@ -1620,61 +1541,6 @@ impl RegionVariableOrigin {
             Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
-}
-
-/// Replaces args that reference param or infer variables with suitable
-/// placeholders. This function is meant to remove these param and infer
-/// args when they're not actually needed to evaluate a constant.
-fn replace_param_and_infer_args_with_placeholder<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
-    struct ReplaceParamAndInferWithPlaceholder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        idx: u32,
-    }
-
-    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn cx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            if let ty::Infer(_) = t.kind() {
-                let idx = {
-                    let idx = self.idx;
-                    self.idx += 1;
-                    idx
-                };
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundTy {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon,
-                    },
-                })
-            } else {
-                t.super_fold_with(self)
-            }
-        }
-
-        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-            if let ty::ConstKind::Infer(_) = c.kind() {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundVar::from_u32({
-                        let idx = self.idx;
-                        self.idx += 1;
-                        idx
-                    }),
-                })
-            } else {
-                c.super_fold_with(self)
-            }
-        }
-    }
-
-    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }
 
 impl<'tcx> InferCtxt<'tcx> {
