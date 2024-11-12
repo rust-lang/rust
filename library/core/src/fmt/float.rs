@@ -13,7 +13,7 @@ macro_rules! impl_general_format {
     ($($t:ident)*) => {
         $(impl GeneralFormat for $t {
             fn already_rounded_value_should_use_exponential(&self) -> bool {
-                let abs = $t::abs_private(*self);
+                let abs = $t::abs(*self);
                 (abs != 0.0 && abs < 1e-4) || abs >= 1e+16
             }
         })*

@@ -523,15 +523,6 @@ impl f64 {
         self != self
     }
 
-    // FIXME(#50145): `abs` is publicly unavailable in core due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    pub(crate) const fn abs_private(self) -> f64 {
-        // SAFETY: This transmutation is fine just like in `to_bits`/`from_bits`.
-        unsafe { mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & !Self::SIGN_MASK) }
-    }
-
     /// Returns `true` if this value is positive infinity or negative infinity, and
     /// `false` otherwise.
     ///
@@ -576,10 +567,11 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[rustc_allow_const_fn_unstable(const_float_methods)] // for `abs`
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < Self::INFINITY
+        self.abs() < Self::INFINITY
     }
 
     /// Returns `true` if the number is [subnormal].
@@ -1023,8 +1015,8 @@ impl f64 {
         const HI: f64 = f64::MAX / 2.;
 
         let (a, b) = (self, other);
-        let abs_a = a.abs_private();
-        let abs_b = b.abs_private();
+        let abs_a = a.abs();
+        let abs_b = b.abs();
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
