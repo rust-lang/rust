@@ -3,11 +3,12 @@ error: malformed `crate_type` attribute input
    |
 LL | #![crate_type]
    | ^^^^^^^^^^^^^^ malformed input
-help: must be of the form:
+help: `crate_type` must specify a value like one of the following:
    |
 LL | #![crate_type = "bin"]
    |
 LL | #![crate_type = "lib"]
-   |
+   | 
 LL | #![crate_type = "..."]
 
+error: aborting due to 1 previous error
