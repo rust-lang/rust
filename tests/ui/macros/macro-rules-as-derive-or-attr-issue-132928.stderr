@@ -1,0 +1,52 @@
+error: cannot find derive macro `sample` in this scope
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:6:10
+   |
+LL | #[derive(sample)]
+   |          ^^^^^^ consider moving the definition of `sample` before this call
+   |
+note: a macro with the same name exists, but it appears later at here
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:3:14
+   |
+LL | macro_rules! sample { () => {} }
+   |              ^^^^^^
+
+error: cannot find attribute `sample` in this scope
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:5:3
+   |
+LL | #[sample]
+   |   ^^^^^^ consider moving the definition of `sample` before this call
+   |
+note: a macro with the same name exists, but it appears later at here
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:3:14
+   |
+LL | macro_rules! sample { () => {} }
+   |              ^^^^^^
+
+error: cannot find derive macro `sample` in this scope
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:6:10
+   |
+LL | #[derive(sample)]
+   |          ^^^^^^ consider moving the definition of `sample` before this call
+   |
+note: a macro with the same name exists, but it appears later at here
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:3:14
+   |
+LL | macro_rules! sample { () => {} }
+   |              ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: cannot find derive macro `sample` in this scope
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:6:10
+   |
+LL | #[derive(sample)]
+   |          ^^^^^^ consider moving the definition of `sample` before this call
+   |
+note: a macro with the same name exists, but it appears later at here
+  --> $DIR/macro-rules-as-derive-or-attr-issue-132928.rs:3:14
+   |
+LL | macro_rules! sample { () => {} }
+   |              ^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
