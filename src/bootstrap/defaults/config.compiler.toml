@@ -19,6 +19,7 @@ lto = "off"
 # Forces frame pointers to be used with `-Cforce-frame-pointers`.
 # This can be helpful for profiling at a small performance cost.
 frame-pointers = true
+download-rustc = false
 
 [llvm]
 # Having this set to true disrupts compiler development workflows for people who use `llvm.download-ci-llvm = true`
