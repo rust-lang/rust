@@ -119,4 +119,18 @@ fn ice_8748() {
     }];
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/10780
+fn shadow_closure() {
+    // These are not shadow_unrelated; but they are correctly shadow_reuse
+    let x = Some(1);
+    #[allow(clippy::shadow_reuse)]
+    let y = x.map(|x| x + 1);
+    let z = x.map(|x| x + 1);
+    let a: Vec<Option<u8>> = [100u8, 120, 140]
+        .iter()
+        .map(|i| i.checked_mul(2))
+        .map(|i| i.map(|i| i - 10))
+        .collect();
+}
+
 fn main() {}
