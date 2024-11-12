@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && !item.span.from_expansion()
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && let ty::Array(element_type, cst) = ty.kind()
-            && let Ok((_, ty::ValTree::Leaf(element_count))) = cst.eval_valtree(cx.tcx, ParamEnv::empty(), item.span)
+            && let Some((ty::ValTree::Leaf(element_count), _)) = cx.tcx.try_normalize_erasing_regions(ParamEnv::empty(), *cst).unwrap_or(*cst).try_to_valtree()
             && let element_count = element_count.to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
             && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)

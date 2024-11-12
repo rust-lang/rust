@@ -342,7 +342,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             self.infcx,
             &mut self.universes,
             constant,
-            |constant| constant.normalize_internal(self.infcx.tcx, self.param_env),
+            |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
         );
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)

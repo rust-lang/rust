@@ -1491,7 +1491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else if self.tcx.features().generic_const_exprs() {
-            ct.normalize_internal(self.tcx, self.param_env)
+            rustc_trait_selection::traits::evaluate_const(&self.infcx, ct, self.param_env)
         } else {
             ct
         }
