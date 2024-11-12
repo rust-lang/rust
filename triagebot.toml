@@ -981,30 +981,24 @@ users_on_vacation = [
 ]
 
 [assign.adhoc_groups]
-compiler-team = [
-    "@cjgillot",
-    "@compiler-errors",
-    "@petrochenkov",
-    "@davidtwco",
-    "@estebank",
-    "@lcnr",
-    "@oli-obk",
-    "@pnkfelix",
-    "@wesleywiser",
-]
-compiler-team-contributors = [
-    "@TaKO8Ki",
-    "@Nadrieril",
-    "@nnethercote",
-    "@fmease",
-    "@fee1-dead",
-    "@jieyouxu",
+compiler = [
     "@BoxyUwU",
     "@chenyukang",
-]
-compiler = [
-    "compiler-team",
-    "compiler-team-contributors",
+    "@cjgillot",
+    "@compiler-errors",
+    "@davidtwco",
+    "@estebank",
+    "@fee1-dead",
+    "@fmease",
+    "@jieyouxu",
+    "@lcnr",
+    "@Nadrieril",
+    "@nnethercote",
+    "@oli-obk",
+    "@petrochenkov",
+    "@pnkfelix",
+    "@TaKO8Ki",
+    "@wesleywiser",
 ]
 libs = [
     "@cuviper",

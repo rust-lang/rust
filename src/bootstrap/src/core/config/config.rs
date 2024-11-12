@@ -28,6 +28,24 @@ use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// This means they can be modified and changes to these paths should never trigger a compiler build
+/// when "if-unchanged" is set.
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+/// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
+/// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+#[rustfmt::skip] // We don't want rustfmt to oneline this list
+pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!src/tools",
+    ":!tests",
+    ":!triagebot.toml",
+];
+
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -2772,32 +2790,33 @@ impl Config {
             }
         };
 
-        let mut files_to_track = vec!["compiler", "src/version", "src/stage0", "src/ci/channel"];
+        // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
+        let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
 
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, ignore
+        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
         // these changes to speed up the build process for library developers. This provides consistent
         // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
         // options.
-        if CiEnv::is_ci() {
-            files_to_track.push("library");
+        if !CiEnv::is_ci() {
+            allowed_paths.push(":!library");
         }
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit =
-            match self.last_modified_commit(&files_to_track, "download-rustc", if_unchanged) {
-                Some(commit) => commit,
-                None => {
-                    if if_unchanged {
-                        return None;
-                    }
-                    println!("ERROR: could not find commit hash for downloading rustc");
-                    println!("HELP: maybe your repository history is too shallow?");
-                    println!("HELP: consider disabling `download-rustc`");
-                    println!("HELP: or fetch enough history to include one upstream commit");
-                    crate::exit!(1);
+        let commit = match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged)
+        {
+            Some(commit) => commit,
+            None => {
+                if if_unchanged {
+                    return None;
                 }
-            };
+                println!("ERROR: could not find commit hash for downloading rustc");
+                println!("HELP: maybe your repository history is too shallow?");
+                println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                println!("HELP: or fetch enough history to include one upstream commit");
+                crate::exit!(1);
+            }
+        };
 
         if CiEnv::is_ci() && {
             let head_sha =

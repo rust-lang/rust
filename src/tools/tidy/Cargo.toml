@@ -5,7 +5,7 @@ edition = "2021"
 autobins = false
 
 [dependencies]
-build_helper = { path = "../build_helper" }
+build_helper = { path = "../../build_helper" }
 cargo_metadata = "0.18"
 regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
