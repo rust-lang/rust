@@ -295,7 +295,7 @@ macro_rules! lint_any {
 
 lint_any!(
     Bootstrap, "src/bootstrap", "bootstrap";
-    BuildHelper, "src/tools/build_helper", "build_helper";
+    BuildHelper, "src/build_helper", "build_helper";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
     Clippy, "src/tools/clippy", "clippy";
