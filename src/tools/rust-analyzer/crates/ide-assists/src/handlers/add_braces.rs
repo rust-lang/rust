@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, edit::AstNodeEdit, edit_in_place, make, syntax_factory::SyntaxFactory}, syntax_editor::SyntaxEditor,
+    ast::{self, edit_in_place::Indent, make, syntax_factory::SyntaxFactory}, syntax_editor::SyntaxEditor,
     AstNode,
 };
 
