@@ -206,6 +206,10 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         }
     }
 
+    fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+    }
+
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
