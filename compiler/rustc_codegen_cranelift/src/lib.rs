@@ -43,7 +43,6 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -56,7 +55,6 @@ use crate::prelude::*;
 mod abi;
 mod allocator;
 mod analyze;
-mod archive;
 mod base;
 mod cast;
 mod codegen_i128;
@@ -248,17 +246,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             outputs,
             self.config.borrow().as_ref().unwrap(),
         )
-    }
-
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        use rustc_codegen_ssa::back::link::link_binary;
-
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
     }
 }
 

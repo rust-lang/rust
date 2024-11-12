@@ -15,7 +15,7 @@ use crate::{Diverges, Expectation, FnCtxt, Needs};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn check_match(
+    pub(crate) fn check_expr_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         scrut: &'tcx hir::Expr<'tcx>,

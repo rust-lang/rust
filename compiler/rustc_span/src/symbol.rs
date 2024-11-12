@@ -1568,6 +1568,8 @@ symbols! {
         readonly,
         realloc,
         reason,
+        receiver,
+        receiver_target,
         recursion_limit,
         reexport_test_harness_main,
         ref_pat_eat_one_layer_2024,

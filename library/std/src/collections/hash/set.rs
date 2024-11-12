@@ -757,6 +757,47 @@ where
         self.base.get_or_insert_with(value, f)
     }
 
+    /// Gets the given value's corresponding entry in the set for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    /// use std::collections::hash_set::Entry::*;
+    ///
+    /// let mut singles = HashSet::new();
+    /// let mut dupes = HashSet::new();
+    ///
+    /// for ch in "a short treatise on fungi".chars() {
+    ///     if let Vacant(dupe_entry) = dupes.entry(ch) {
+    ///         // We haven't already seen a duplicate, so
+    ///         // check if we've at least seen it once.
+    ///         match singles.entry(ch) {
+    ///             Vacant(single_entry) => {
+    ///                 // We found a new character for the first time.
+    ///                 single_entry.insert()
+    ///             }
+    ///             Occupied(single_entry) => {
+    ///                 // We've already seen this once, "move" it to dupes.
+    ///                 single_entry.remove();
+    ///                 dupe_entry.insert();
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert!(!singles.contains(&'t') && dupes.contains(&'t'));
+    /// assert!(singles.contains(&'u') && !dupes.contains(&'u'));
+    /// assert!(!singles.contains(&'v') && !dupes.contains(&'v'));
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn entry(&mut self, value: T) -> Entry<'_, T, S> {
+        map_entry(self.base.entry(value))
+    }
+
     /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
@@ -932,6 +973,14 @@ where
         Q: Hash + Eq,
     {
         self.base.take(value)
+    }
+}
+
+#[inline]
+fn map_entry<'a, K: 'a, V: 'a>(raw: base::Entry<'a, K, V>) -> Entry<'a, K, V> {
+    match raw {
+        base::Entry::Occupied(base) => Entry::Occupied(OccupiedEntry { base }),
+        base::Entry::Vacant(base) => Entry::Vacant(VacantEntry { base }),
     }
 }
 
@@ -1862,6 +1911,406 @@ where
         F: FnMut(B, Self::Item) -> B,
     {
         self.iter.fold(init, f)
+    }
+}
+
+/// A view into a single entry in a set, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry`] method on [`HashSet`].
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`entry`]: struct.HashSet.html#method.entry
+///
+/// # Examples
+///
+/// ```
+/// #![feature(hash_set_entry)]
+///
+/// use std::collections::hash_set::HashSet;
+///
+/// let mut set = HashSet::new();
+/// set.extend(["a", "b", "c"]);
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing value (insert)
+/// let entry = set.entry("a");
+/// let _raw_o = entry.insert();
+/// assert_eq!(set.len(), 3);
+/// // Nonexistent value (insert)
+/// set.entry("d").insert();
+///
+/// // Existing value (or_insert)
+/// set.entry("b").or_insert();
+/// // Nonexistent value (or_insert)
+/// set.entry("e").or_insert();
+///
+/// println!("Our HashSet: {:?}", set);
+///
+/// let mut vec: Vec<_> = set.iter().copied().collect();
+/// // The `Iter` iterator produces items in arbitrary order, so the
+/// // items must be sorted to test them against a sorted array.
+/// vec.sort_unstable();
+/// assert_eq!(vec, ["a", "b", "c", "d", "e"]);
+/// ```
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+pub enum Entry<'a, T, S> {
+    /// An occupied entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set = HashSet::from(["a", "b"]);
+    ///
+    /// match set.entry("a") {
+    ///     Entry::Vacant(_) => unreachable!(),
+    ///     Entry::Occupied(_) => { }
+    /// }
+    /// ```
+    Occupied(OccupiedEntry<'a, T, S>),
+
+    /// A vacant entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// match set.entry("a") {
+    ///     Entry::Occupied(_) => unreachable!(),
+    ///     Entry::Vacant(_) => { }
+    /// }
+    /// ```
+    Vacant(VacantEntry<'a, T, S>),
+}
+
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+impl<T: fmt::Debug, S> fmt::Debug for Entry<'_, T, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
+            Entry::Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
+        }
+    }
+}
+
+/// A view into an occupied entry in a `HashSet`.
+/// It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(hash_set_entry)]
+///
+/// use std::collections::hash_set::{Entry, HashSet};
+///
+/// let mut set = HashSet::new();
+/// set.extend(["a", "b", "c"]);
+///
+/// let _entry_o = set.entry("a").insert();
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing key
+/// match set.entry("a") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.get(), &"a");
+///     }
+/// }
+///
+/// assert_eq!(set.len(), 3);
+///
+/// // Existing key (take)
+/// match set.entry("c") {
+///     Entry::Vacant(_) => unreachable!(),
+///     Entry::Occupied(view) => {
+///         assert_eq!(view.remove(), "c");
+///     }
+/// }
+/// assert_eq!(set.get(&"c"), None);
+/// assert_eq!(set.len(), 2);
+/// ```
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+pub struct OccupiedEntry<'a, T, S> {
+    base: base::OccupiedEntry<'a, T, S>,
+}
+
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+impl<T: fmt::Debug, S> fmt::Debug for OccupiedEntry<'_, T, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedEntry").field("value", self.get()).finish()
+    }
+}
+
+/// A view into a vacant entry in a `HashSet`.
+/// It is part of the [`Entry`] enum.
+///
+/// [`Entry`]: enum.Entry.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(hash_set_entry)]
+///
+/// use std::collections::hash_set::{Entry, HashSet};
+///
+/// let mut set = HashSet::<&str>::new();
+///
+/// let entry_v = match set.entry("a") {
+///     Entry::Vacant(view) => view,
+///     Entry::Occupied(_) => unreachable!(),
+/// };
+/// entry_v.insert();
+/// assert!(set.contains("a") && set.len() == 1);
+///
+/// // Nonexistent key (insert)
+/// match set.entry("b") {
+///     Entry::Vacant(view) => view.insert(),
+///     Entry::Occupied(_) => unreachable!(),
+/// }
+/// assert!(set.contains("b") && set.len() == 2);
+/// ```
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+pub struct VacantEntry<'a, T, S> {
+    base: base::VacantEntry<'a, T, S>,
+}
+
+#[unstable(feature = "hash_set_entry", issue = "60896")]
+impl<T: fmt::Debug, S> fmt::Debug for VacantEntry<'_, T, S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("VacantEntry").field(self.get()).finish()
+    }
+}
+
+impl<'a, T, S> Entry<'a, T, S> {
+    /// Sets the value of the entry, and returns an OccupiedEntry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    /// let entry = set.entry("horseyland").insert();
+    ///
+    /// assert_eq!(entry.get(), &"horseyland");
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn insert(self) -> OccupiedEntry<'a, T, S>
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        match self {
+            Entry::Occupied(entry) => entry,
+            Entry::Vacant(entry) => entry.insert_entry(),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting if it was vacant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// // nonexistent key
+    /// set.entry("poneyland").or_insert();
+    /// assert!(set.contains("poneyland"));
+    ///
+    /// // existing key
+    /// set.entry("poneyland").or_insert();
+    /// assert!(set.contains("poneyland"));
+    /// assert_eq!(set.len(), 1);
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn or_insert(self)
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        if let Entry::Vacant(entry) = self {
+            entry.insert();
+        }
+    }
+
+    /// Returns a reference to this entry's value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    /// set.entry("poneyland").or_insert();
+    ///
+    /// // existing key
+    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
+    /// // nonexistent key
+    /// assert_eq!(set.entry("horseland").get(), &"horseland");
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn get(&self) -> &T {
+        match *self {
+            Entry::Occupied(ref entry) => entry.get(),
+            Entry::Vacant(ref entry) => entry.get(),
+        }
+    }
+}
+
+impl<T, S> OccupiedEntry<'_, T, S> {
+    /// Gets a reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set = HashSet::new();
+    /// set.entry("poneyland").or_insert();
+    ///
+    /// match set.entry("poneyland") {
+    ///     Entry::Vacant(_) => panic!(),
+    ///     Entry::Occupied(entry) => assert_eq!(entry.get(), &"poneyland"),
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn get(&self) -> &T {
+        self.base.get()
+    }
+
+    /// Takes the value out of the entry, and returns it.
+    /// Keeps the allocated memory for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    /// use std::collections::hash_set::Entry;
+    ///
+    /// let mut set = HashSet::new();
+    /// // The set is empty
+    /// assert!(set.is_empty() && set.capacity() == 0);
+    ///
+    /// set.entry("poneyland").or_insert();
+    /// let capacity_before_remove = set.capacity();
+    ///
+    /// if let Entry::Occupied(o) = set.entry("poneyland") {
+    ///     assert_eq!(o.remove(), "poneyland");
+    /// }
+    ///
+    /// assert_eq!(set.contains("poneyland"), false);
+    /// // Now set hold none elements but capacity is equal to the old one
+    /// assert!(set.len() == 0 && set.capacity() == capacity_before_remove);
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn remove(self) -> T {
+        self.base.remove()
+    }
+}
+
+impl<'a, T, S> VacantEntry<'a, T, S> {
+    /// Gets a reference to the value that would be used when inserting
+    /// through the `VacantEntry`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set = HashSet::new();
+    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn get(&self) -> &T {
+        self.base.get()
+    }
+
+    /// Take ownership of the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::hash_set::{Entry, HashSet};
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// match set.entry("poneyland") {
+    ///     Entry::Occupied(_) => panic!(),
+    ///     Entry::Vacant(v) => assert_eq!(v.into_value(), "poneyland"),
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn into_value(self) -> T {
+        self.base.into_value()
+    }
+
+    /// Sets the value of the entry with the VacantEntry's value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hash_set_entry)]
+    ///
+    /// use std::collections::HashSet;
+    /// use std::collections::hash_set::Entry;
+    ///
+    /// let mut set = HashSet::new();
+    ///
+    /// if let Entry::Vacant(o) = set.entry("poneyland") {
+    ///     o.insert();
+    /// }
+    /// assert!(set.contains("poneyland"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
+    pub fn insert(self)
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        self.base.insert();
+    }
+
+    #[inline]
+    fn insert_entry(self) -> OccupiedEntry<'a, T, S>
+    where
+        T: Hash,
+        S: BuildHasher,
+    {
+        OccupiedEntry { base: self.base.insert() }
     }
 }
 
