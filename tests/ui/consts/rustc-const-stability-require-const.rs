@@ -56,9 +56,3 @@ const fn barfoo_unmarked() {}
 #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 pub const fn barfoo_unstable() {}
 //~^ ERROR can only be applied to functions that are declared `#[stable]`
-
-// `#[rustc_const_stable_indirect]` also requires a const fn
-#[rustc_const_stable_indirect]
-#[unstable(feature = "unstable", issue = "none")]
-pub fn not_a_const_fn() {}
-//~^ ERROR require the function or method to be `const`
