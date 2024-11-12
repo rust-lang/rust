@@ -20,6 +20,7 @@ use crate::{BackendConfig, CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
+    backend_config: BackendConfig,
 }
 
 thread_local! {
@@ -115,6 +116,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                     CodegenMode::Jit => {
                         codegen_and_compile_fn(
                             tcx,
+                            &backend_config,
                             &mut cx,
                             &mut cached_context,
                             &mut jit_module,
@@ -169,7 +171,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     LAZY_JIT_STATE.with(|lazy_jit_state| {
         let mut lazy_jit_state = lazy_jit_state.borrow_mut();
         assert!(lazy_jit_state.is_none());
-        *lazy_jit_state = Some(JitState { jit_module });
+        *lazy_jit_state = Some(JitState { jit_module, backend_config });
     });
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
@@ -205,6 +207,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
+    backend_config: &BackendConfig,
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
@@ -221,6 +224,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
         let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
         if let Some(codegened_func) = crate::base::codegen_fn(
             tcx,
+            &backend_config,
             cx,
             &mut TypeDebugContext::default(),
             cached_func,
@@ -282,7 +286,14 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
                 false,
                 Symbol::intern("dummy_cgu_name"),
             );
-            codegen_and_compile_fn(tcx, &mut cx, &mut Context::new(), jit_module, instance);
+            codegen_and_compile_fn(
+                tcx,
+                &lazy_jit_state.backend_config,
+                &mut cx,
+                &mut Context::new(),
+                jit_module,
+                instance,
+            );
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions();
