@@ -1,38 +1,74 @@
+use rustc_abi::Size;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def_id::DefId;
+use rustc_middle::mir::visit::Visitor as MirVisitor;
+use rustc_middle::mir::{self, Location, traversal};
+use rustc_middle::ty::{self, AssocKind, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use tracing::debug;
+use rustc_span::Span;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::{Ident, sym};
+use tracing::{debug, trace};
 
-use super::*;
 use crate::errors::LargeAssignmentsLint;
 
-pub(super) struct MoveCheckState {
+struct MoveCheckVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
-    /// Set of functions for which it is OK to move large data into.
-    skip_move_check_fns: Option<Vec<DefId>>,
 }
 
-impl MoveCheckState {
-    pub(super) fn new() -> Self {
-        MoveCheckState { move_size_spans: vec![], skip_move_check_fns: None }
+pub(crate) fn check_moves<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: &'tcx mir::Body<'tcx>,
+) {
+    let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
+    for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+        visitor.visit_basic_block_data(bb, data)
     }
 }
 
-impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
-    pub(super) fn check_operand_move_size(
-        &mut self,
-        operand: &mir::Operand<'tcx>,
-        location: Location,
-    ) {
-        let limit = self.tcx.move_size_limit();
-        if limit.0 == 0 {
-            return;
+impl<'tcx> MirVisitor<'tcx> for MoveCheckVisitor<'tcx> {
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+        match terminator.kind {
+            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
+            | mir::TerminatorKind::TailCall { ref func, ref args, ref fn_span } => {
+                let callee_ty = func.ty(self.body, self.tcx);
+                let callee_ty = self.monomorphize(callee_ty);
+                self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+            }
+            _ => {}
         }
 
-        // This function is called by visit_operand() which visits _all_
-        // operands, including TerminatorKind::Call operands. But if
-        // check_fn_args_move_size() has been called, the operands have already
-        // been visited. Do not visit them again.
-        if self.visiting_call_terminator {
+        // We deliberately do *not* visit the nested operands here, to avoid
+        // hitting `visit_operand` for function arguments.
+    }
+
+    fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
+        self.check_operand_move_size(operand, location);
+    }
+}
+
+impl<'tcx> MoveCheckVisitor<'tcx> {
+    fn monomorphize<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        trace!("monomorphize: self.instance={:?}", self.instance);
+        self.instance.instantiate_mir_and_normalize_erasing_regions(
+            self.tcx,
+            ty::ParamEnv::reveal_all(),
+            ty::EarlyBinder::bind(value),
+        )
+    }
+
+    fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
+        let limit = self.tcx.move_size_limit();
+        if limit.0 == 0 {
             return;
         }
 
@@ -64,12 +100,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         let ty::FnDef(def_id, _) = *callee_ty.kind() else {
             return;
         };
-        if self
-            .move_check
-            .skip_move_check_fns
-            .get_or_insert_with(|| build_skip_move_check_fns(self.tcx))
-            .contains(&def_id)
-        {
+        if self.tcx.skip_move_check_fns(()).contains(&def_id) {
             return;
         }
 
@@ -116,14 +147,12 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         span: Span,
     ) {
         let source_info = self.body.source_info(location);
-        debug!(?source_info);
-        for reported_span in &self.move_check.move_size_spans {
+        for reported_span in &self.move_size_spans {
             if reported_span.overlaps(span) {
                 return;
             }
         }
         let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
-        debug!(?lint_root);
         let Some(lint_root) = lint_root else {
             // This happens when the issue is in a function from a foreign crate that
             // we monomorphized in the current crate. We can't get a `HirId` for things
@@ -137,11 +166,25 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
             size: too_large_size.bytes(),
             limit: limit as u64,
         });
-        self.move_check.move_size_spans.push(span);
+        self.move_size_spans.push(span);
     }
 }
 
-fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
+fn assoc_fn_of_type<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, fn_ident: Ident) -> Option<DefId> {
+    for impl_def_id in tcx.inherent_impls(def_id) {
+        if let Some(new) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+            tcx,
+            fn_ident,
+            AssocKind::Fn,
+            def_id,
+        ) {
+            return Some(new.def_id);
+        }
+    }
+    None
+}
+
+pub(crate) fn skip_move_check_fns(tcx: TyCtxt<'_>, _: ()) -> FxIndexSet<DefId> {
     let fns = [
         (tcx.lang_items().owned_box(), "new"),
         (tcx.get_diagnostic_item(sym::Rc), "new"),
@@ -151,5 +194,5 @@ fn build_skip_move_check_fns(tcx: TyCtxt<'_>) -> Vec<DefId> {
         .filter_map(|(def_id, fn_name)| {
             def_id.and_then(|def_id| assoc_fn_of_type(tcx, def_id, Ident::from_str(fn_name)))
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
