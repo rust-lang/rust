@@ -120,7 +120,6 @@
 #![feature(const_float_methods)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
-#![feature(const_option_ext)]
 #![feature(const_pin_2)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]
