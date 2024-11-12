@@ -307,6 +307,8 @@ pub unsafe fn atomic_cxchgweak_relaxed_acquire<T: Copy>(
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
 /// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
 /// For example, [`AtomicBool::compare_exchange_weak`].
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_relaxed_seqcst<T: Copy>(
     _dst: *mut T,
