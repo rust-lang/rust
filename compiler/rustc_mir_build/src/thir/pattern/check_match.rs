@@ -696,10 +696,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 misc_suggestion = Some(MiscPatternSuggestion::AttemptedIntegerLiteral {
                     start_span: pat.span.shrink_to_lo(),
                 });
-            } else if snippet.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                interpreted_as_const = Some(pat.span);
-                interpreted_as_const_sugg =
-                    Some(InterpretedAsConst { span: pat.span, variable: snippet });
             }
         }
 

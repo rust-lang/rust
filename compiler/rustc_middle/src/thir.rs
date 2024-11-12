@@ -789,11 +789,14 @@ pub enum PatKind<'tcx> {
     },
 
     /// Inline or named constant found while lowering a pattern.
+    ///
+    /// We only mark patterns referencing constants when they are bare names that could have been
+    /// new bindings if the `const` didn't exist.
     ExpandedConstant {
         /// [DefId] of the constant, we need this so that we have a
         /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants. If the `DefId` doesn't correspond to a local
-        /// crate, it points at the `const` item.
+        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
+        /// correspond to a local crate, it points at the `const` item.
         def_id: DefId,
         /// If `false`, then `def_id` points at a `const` item, otherwise it
         /// corresponds to a local inline const.
