@@ -1063,6 +1063,8 @@ impl UnusedDelimLint for UnusedParens {
                                 _,
                                 _,
                             ) if node.is_lazy()))
+                    && !(ctx == UnusedDelimsCtx::ReturnValue
+                        && matches!(inner.kind, ast::ExprKind::Assign(_, _, _)))
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
