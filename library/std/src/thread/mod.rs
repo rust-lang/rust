@@ -190,7 +190,7 @@ pub(crate) use current::{current_id, drop_current, set_current, try_current};
 
 mod spawnhook;
 
-#[unstable(feature = "thread_spawn_hook", issue = "none")]
+#[unstable(feature = "thread_spawn_hook", issue = "132951")]
 pub use spawnhook::add_spawn_hook;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,7 +349,7 @@ impl Builder {
     ///
     /// Use this if the parent thread is in no way relevant for the child thread.
     /// For example, when lazily spawning threads for a thread pool.
-    #[unstable(feature = "thread_spawn_hook", issue = "none")]
+    #[unstable(feature = "thread_spawn_hook", issue = "132951")]
     pub fn no_hooks(mut self) -> Builder {
         self.no_hooks = true;
         self
