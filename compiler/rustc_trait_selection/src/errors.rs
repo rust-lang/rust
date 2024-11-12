@@ -1907,10 +1907,18 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        let applicability = if self.apit_spans.is_empty() {
+            Applicability::MachineApplicable
+        } else {
+            // If there are APIT that are converted to regular parameters,
+            // then this may make the API turbofishable in ways that were
+            // not intended.
+            Applicability::MaybeIncorrect
+        };
         diag.multipart_suggestion_verbose(
             fluent::trait_selection_precise_capturing_overcaptures,
             self.suggs,
-            Applicability::MaybeIncorrect,
+            applicability,
         );
         if !self.apit_spans.is_empty() {
             diag.span_note(
