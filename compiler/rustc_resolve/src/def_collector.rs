@@ -130,18 +130,16 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         &self,
         anon_const: &'a AnonConst,
     ) -> Option<(PendingAnonConstInfo, NodeId)> {
-        let (block_was_stripped, expr) = anon_const.value.maybe_unwrap_block();
-        match expr {
-            Expr { kind: ExprKind::MacCall(..), id, .. } => Some((
+        anon_const.value.optionally_braced_mac_call(false).map(|(block_was_stripped, id)| {
+            (
                 PendingAnonConstInfo {
                     id: anon_const.id,
                     span: anon_const.value.span,
                     block_was_stripped,
                 },
-                *id,
-            )),
-            _ => None,
-        }
+                id,
+            )
+        })
     }
 
     /// Determines whether the expression `const_arg_sub_expr` is a simple macro call, sometimes
@@ -161,18 +159,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             panic!("Checking expr is trivial macro call without having entered anon const: `{const_arg_sub_expr:?}`"),
         );
 
-        let (block_was_stripped, expr) = if pending_anon.block_was_stripped {
-            (true, const_arg_sub_expr)
-        } else {
-            const_arg_sub_expr.maybe_unwrap_block()
-        };
-
-        match expr {
-            Expr { kind: ExprKind::MacCall(..), id, .. } => {
-                Some((PendingAnonConstInfo { block_was_stripped, ..pending_anon }, *id))
-            }
-            _ => None,
-        }
+        const_arg_sub_expr.optionally_braced_mac_call(pending_anon.block_was_stripped).map(
+            |(block_was_stripped, id)| {
+                (PendingAnonConstInfo { block_was_stripped, ..pending_anon }, id)
+            },
+        )
     }
 }
 
