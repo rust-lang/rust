@@ -201,7 +201,7 @@ impl<'a> DeclValidator<'a> {
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
-            let no_mangle = data.attrs.by_key(&sym::no_mangle).exists();
+            let no_mangle = self.db.attrs(func.into()).by_key(&sym::no_mangle).exists();
             if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {

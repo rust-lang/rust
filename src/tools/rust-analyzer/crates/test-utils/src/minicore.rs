@@ -370,15 +370,13 @@ pub mod mem {
     // endregion:drop
 
     // region:transmute
-    extern "rust-intrinsic" {
-        pub fn transmute<Src, Dst>(src: Src) -> Dst;
-    }
+    #[rustc_intrinsic]
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
     // endregion:transmute
 
     // region:size_of
-    extern "rust-intrinsic" {
-        pub fn size_of<T>() -> usize;
-    }
+    #[rustc_intrinsic]
+    pub fn size_of<T>() -> usize;
     // endregion:size_of
 
     // region:discriminant

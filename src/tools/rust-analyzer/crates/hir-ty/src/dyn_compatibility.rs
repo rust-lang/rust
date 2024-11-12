@@ -472,7 +472,7 @@ fn receiver_is_dispatchable(
         return false;
     };
 
-    // `self: Self` can't be dispatched on, but this is already considered dyn compatible
+    // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
     // See rustc's comment on https://github.com/rust-lang/rust/blob/3f121b9461cce02a703a0e7e450568849dfaa074/compiler/rustc_trait_selection/src/traits/object_safety.rs#L433-L437
     if sig
         .skip_binders()

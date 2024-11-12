@@ -350,6 +350,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
         _documentSelector: lc.DocumentSelector | undefined,
     ): void {}
     dispose(): void {}
+    clear(): void {}
 }
 
 class OverrideFeatures implements lc.StaticFeature {
@@ -369,6 +370,7 @@ class OverrideFeatures implements lc.StaticFeature {
         _documentSelector: lc.DocumentSelector | undefined,
     ): void {}
     dispose(): void {}
+    clear(): void {}
 }
 
 function isCodeActionWithoutEditsAndCommands(value: any): boolean {

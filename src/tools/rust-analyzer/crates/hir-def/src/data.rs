@@ -13,7 +13,6 @@ use syntax::{ast, Parse};
 use triomphe::Arc;
 
 use crate::{
-    attr::Attrs,
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
@@ -37,8 +36,6 @@ pub struct FunctionData {
     pub name: Name,
     pub params: Box<[TypeRefId]>,
     pub ret_type: TypeRefId,
-    // FIXME: why are these stored here? They should be accessed via the query
-    pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Symbol>,
     pub legacy_const_generics_indices: Option<Box<Box<[u32]>>>,
@@ -115,7 +112,6 @@ impl FunctionData {
                 .filter_map(|(_, param)| param.type_ref)
                 .collect(),
             ret_type: func.ret_type,
-            attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             visibility,
             abi: func.abi.clone(),
             legacy_const_generics_indices,

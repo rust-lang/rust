@@ -88,6 +88,7 @@ pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolK
     match kind {
         StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
         StructureNodeKind::Region => lsp_types::SymbolKind::NAMESPACE,
+        StructureNodeKind::ExternBlock => lsp_types::SymbolKind::NAMESPACE,
     }
 }
 
@@ -391,18 +392,36 @@ fn completion_item(
         } else {
             Vec::new()
         };
-    if something_to_resolve || !imports.is_empty() {
-        let data = lsp_ext::CompletionResolveData {
+    let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
+        let mut item_index = acc.len();
+        let ref_resolve_data = if ref_match.is_some() {
+            let ref_resolve_data = lsp_ext::CompletionResolveData {
+                position: tdpp.clone(),
+                imports: Vec::new(),
+                version,
+                trigger_character: completion_trigger_character,
+                completion_item_index: item_index,
+            };
+            item_index += 1;
+            Some(to_value(ref_resolve_data).unwrap())
+        } else {
+            None
+        };
+        let resolve_data = lsp_ext::CompletionResolveData {
             position: tdpp.clone(),
             imports,
             version,
             trigger_character: completion_trigger_character,
+            completion_item_index: item_index,
         };
-        lsp_item.data = Some(to_value(data).unwrap());
-    }
+        (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
+    } else {
+        (None, None)
+    };
 
     if let Some((label, indel, relevance)) = ref_match {
-        let mut lsp_item_with_ref = lsp_types::CompletionItem { label, ..lsp_item.clone() };
+        let mut lsp_item_with_ref =
+            lsp_types::CompletionItem { label, data: ref_resolve_data, ..lsp_item.clone() };
         lsp_item_with_ref
             .additional_text_edits
             .get_or_insert_with(Default::default)
@@ -411,6 +430,7 @@ fn completion_item(
         acc.push(lsp_item_with_ref);
     };
 
+    lsp_item.data = resolve_data;
     acc.push(lsp_item);
 
     fn set_score(

@@ -66,7 +66,7 @@ fn check_dyn_compatibility<'a>(
             });
             ControlFlow::Continue(())
         });
-        assert_eq!(osvs, expected, "Dyn Compatibility violations for `{name}` do not match;");
+        assert_eq!(osvs, expected, "dyn-compatibility violations for `{name}` do not match;");
     }
 
     let remains: Vec<_> = expected.keys().collect();
