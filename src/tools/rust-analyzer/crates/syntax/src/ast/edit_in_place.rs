@@ -55,6 +55,29 @@ impl GenericParamsOwnerEdit for ast::Fn {
     }
 }
 
+impl ast::Fn {
+    pub fn syntax_editor_get_or_create_generic_param_list(
+        &self,
+        editor: &mut SyntaxEditor,
+    ) -> ast::GenericParamList {
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    crate::syntax_editor::Position::after(name.syntax)
+                } else if let Some(fn_token) = self.fn_token() {
+                    crate::syntax_editor::Position::after(fn_token)
+                } else if let Some(param_list) = self.param_list() {
+                    crate::syntax_editor::Position::before(param_list.syntax)
+                } else {
+                    crate::syntax_editor::Position::last_child_of(self.syntax())
+                };
+                syntax_editor_create_generic_param_list(editor, position)
+            }
+        }
+    }
+}
+
 impl GenericParamsOwnerEdit for ast::Impl {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
         match self.generic_param_list() {
@@ -188,6 +211,15 @@ fn create_where_clause(position: Position) {
 fn create_generic_param_list(position: Position) -> ast::GenericParamList {
     let gpl = make::generic_param_list(empty()).clone_for_update();
     ted::insert_raw(position, gpl.syntax());
+    gpl
+}
+
+fn syntax_editor_create_generic_param_list(
+    editor: &mut SyntaxEditor,
+    position: crate::syntax_editor::Position,
+) -> ast::GenericParamList {
+    let gpl = make::generic_param_list(empty()).clone_for_update();
+    editor.insert(position, gpl.syntax());
     gpl
 }
 

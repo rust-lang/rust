@@ -1,10 +1,7 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
 use syntax::{
-    ast::{
-        self, edit_in_place::GenericParamsOwnerEdit, syntax_factory::SyntaxFactory, AstNode,
-        HasGenericParams, HasName,
-    },
+    ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName},
     SyntaxElement,
 };
 
@@ -42,7 +39,8 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
         target,
         |edit| {
             let mut editor = edit.make_editor(&parent_node);
-            let fn_generic_param_list = fn_.get_or_create_generic_param_list();
+            let fn_generic_param_list =
+                fn_.syntax_editor_get_or_create_generic_param_list(&mut editor);
 
             let existing_names = fn_generic_param_list
                 .generic_params()
