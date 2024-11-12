@@ -1,6 +1,13 @@
 use super::*;
 
 #[test]
+fn test_rpaths_to_args() {
+    let mut cmd = Command::new("foo");
+    convert_link_args_to_cc_args(&mut cmd, &["-rpath", "path1", "-rpath", "path2"]);
+    assert_eq!(cmd.get_args(), [OsStr::new("-Wl,-rpath,path1,-rpath,path2")]);
+}
+
+#[test]
 fn test_xlinker() {
     let mut cmd = Command::new("foo");
     convert_link_args_to_cc_args(&mut cmd, &[
