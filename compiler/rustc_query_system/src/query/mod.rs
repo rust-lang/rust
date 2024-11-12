@@ -2,10 +2,9 @@ mod plumbing;
 pub use self::plumbing::*;
 
 mod job;
-#[cfg(parallel_compiler)]
-pub use self::job::break_query_cycles;
 pub use self::job::{
-    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, print_query_stack, report_cycle,
+    QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap, break_query_cycles, print_query_stack,
+    report_cycle,
 };
 
 mod caches;
@@ -38,7 +37,6 @@ pub struct QueryStackFrame {
     pub dep_kind: DepKind,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
-    #[cfg(parallel_compiler)]
     hash: Hash64,
 }
 
@@ -51,18 +49,9 @@ impl QueryStackFrame {
         def_kind: Option<DefKind>,
         dep_kind: DepKind,
         ty_def_id: Option<DefId>,
-        _hash: impl FnOnce() -> Hash64,
+        hash: impl FnOnce() -> Hash64,
     ) -> Self {
-        Self {
-            description,
-            span,
-            def_id,
-            def_kind,
-            ty_def_id,
-            dep_kind,
-            #[cfg(parallel_compiler)]
-            hash: _hash(),
-        }
+        Self { description, span, def_id, def_kind, ty_def_id, dep_kind, hash: hash() }
     }
 
     // FIXME(eddyb) Get more valid `Span`s on queries.

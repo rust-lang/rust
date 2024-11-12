@@ -1300,7 +1300,6 @@ pub fn register_expn_id(
     let expn_id = ExpnId { krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
-        debug_assert!(_old_data.is_none() || cfg!(parallel_compiler));
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none() || _old_hash == Some(hash));
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
@@ -1423,18 +1422,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             ctxt_data = old.clone();
         }
 
-        let dummy = std::mem::replace(
-            &mut hygiene_data.syntax_context_data[ctxt.as_u32() as usize],
-            ctxt_data,
-        );
-        if cfg!(not(parallel_compiler)) {
-            // Make sure nothing weird happened while `decode_data` was running.
-            // We used `kw::Empty` for the dummy value and we expect nothing to be
-            // modifying the dummy entry.
-            // This does not hold for the parallel compiler as another thread may
-            // have inserted the fully decoded data.
-            assert_eq!(dummy.dollar_crate_name, kw::Empty);
-        }
+        hygiene_data.syntax_context_data[ctxt.as_u32() as usize] = ctxt_data;
     });
 
     // Mark the context as completed

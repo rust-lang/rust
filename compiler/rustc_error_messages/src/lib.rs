@@ -8,12 +8,9 @@
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
-#[cfg(not(parallel_compiler))]
-use std::cell::LazyCell as Lazy;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-#[cfg(parallel_compiler)]
-use std::sync::LazyLock as Lazy;
+use std::sync::LazyLock;
 use std::{fmt, fs, io};
 
 use fluent_bundle::FluentResource;
@@ -21,9 +18,6 @@ pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
-#[cfg(not(parallel_compiler))]
-use intl_memoizer::IntlLangMemoizer;
-#[cfg(parallel_compiler)]
 use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_macros::{Decodable, Encodable};
@@ -34,12 +28,6 @@ pub use unic_langid::{LanguageIdentifier, langid};
 pub type FluentBundle =
     IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;
 
-#[cfg(not(parallel_compiler))]
-fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
-    IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new(locales))
-}
-
-#[cfg(parallel_compiler)]
 fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
     IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new_concurrent(locales))
 }
@@ -217,7 +205,7 @@ fn register_functions(bundle: &mut FluentBundle) {
 
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
-pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBundle>>;
+pub type LazyFallbackBundle = Lrc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
@@ -225,7 +213,7 @@ pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
-    Lrc::new(Lazy::new(move || {
+    Lrc::new(LazyLock::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
 
         register_functions(&mut fallback_bundle);
@@ -548,15 +536,6 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
             Cow::Owned(result)
         }
 
-        #[cfg(not(parallel_compiler))]
-        fn as_string_threadsafe(
-            &self,
-            _intls: &intl_memoizer::concurrent::IntlLangMemoizer,
-        ) -> Cow<'static, str> {
-            unreachable!("`as_string_threadsafe` is not used in non-parallel rustc")
-        }
-
-        #[cfg(parallel_compiler)]
         fn as_string_threadsafe(
             &self,
             intls: &intl_memoizer::concurrent::IntlLangMemoizer,

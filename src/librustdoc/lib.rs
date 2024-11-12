@@ -206,7 +206,7 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
         .with_verbose_exit(true)
         .with_verbose_entry(true)
         .with_indent_amount(2);
-    #[cfg(all(parallel_compiler, debug_assertions))]
+    #[cfg(debug_assertions)]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     use tracing_subscriber::layer::SubscriberExt;

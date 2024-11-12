@@ -291,6 +291,11 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
     },
     ChangeInfo {
+        change_id: 132282,
+        severity: ChangeSeverity::Warning,
+        summary: "Deprecated `rust.parallel_compiler` as the compiler now always defaults to being parallel (with 1 thread)",
+    },
+    ChangeInfo {
         change_id: 132494,
         severity: ChangeSeverity::Info,
         summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
