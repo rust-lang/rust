@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -6,13 +7,20 @@ use std::{env, thread};
 
 use rustc_ast as ast;
 use rustc_attr_parsing::{ShouldEmit, validate_attr};
+use rustc_codegen_ssa::back::archive::ArArchiveBuilderBuilder;
+use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_errors::LintBuffer;
-use rustc_metadata::{DylibError, load_symbol_from_dylib};
-use rustc_middle::ty::CurrentGcx;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple};
+use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::ty::{CurrentGcx, TyCtxt};
+use rustc_session::config::{
+    Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
 use rustc_session::{EarlyDiagCtxt, Session, filesearch, lint};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -316,12 +324,13 @@ pub fn get_codegen_backend(
         let backend = backend_name
             .or(target.default_codegen_backend.as_deref())
             .or(option_env!("CFG_DEFAULT_CODEGEN_BACKEND"))
-            .unwrap_or("llvm");
+            .unwrap_or("dummy");
 
         match backend {
             filename if filename.contains('.') => {
                 load_backend_from_dylib(early_dcx, filename.as_ref())
             }
+            "dummy" => || Box::new(DummyCodegenBackend),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(early_dcx, sysroot, backend_name),
@@ -332,6 +341,63 @@ pub fn get_codegen_backend(
     // backend we hope that the backend links against the same rustc_driver version. If this is not
     // the case, we get UB.
     unsafe { load() }
+}
+
+struct DummyCodegenBackend;
+
+impl CodegenBackend for DummyCodegenBackend {
+    fn locale_resource(&self) -> &'static str {
+        ""
+    }
+
+    fn name(&self) -> &'static str {
+        "dummy"
+    }
+
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
+        Box::new(CodegenResults {
+            modules: vec![],
+            allocator_module: None,
+            crate_info: CrateInfo::new(tcx, String::new()),
+        })
+    }
+
+    fn join_codegen(
+        &self,
+        ongoing_codegen: Box<dyn Any>,
+        _sess: &Session,
+        _outputs: &OutputFilenames,
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: CodegenResults,
+        metadata: EncodedMetadata,
+        outputs: &OutputFilenames,
+    ) {
+        // JUSTIFICATION: TyCtxt no longer available here
+        #[allow(rustc::bad_opt_access)]
+        if sess.opts.crate_types.iter().any(|&crate_type| crate_type != CrateType::Rlib) {
+            #[allow(rustc::untranslatable_diagnostic)]
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            sess.dcx().fatal(format!(
+                "crate type {} not supported by the dummy codegen backend",
+                sess.opts.crate_types[0],
+            ));
+        }
+
+        link_binary(
+            sess,
+            &ArArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
+    }
 }
 
 // This is used for rustdoc, but it uses similar machinery to codegen backend
