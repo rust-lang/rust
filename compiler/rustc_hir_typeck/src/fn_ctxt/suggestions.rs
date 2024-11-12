@@ -2648,15 +2648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let make_sugg = |expr: &Expr<'_>, span: Span, sugg: &str| {
-                        let needs_parens = match expr.kind {
-                            // parenthesize if needed (Issue #46756)
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                            // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(expr) => true,
-                            _ => false,
-                        };
-
-                        if needs_parens {
+                        if self.needs_parentheses(expr) {
                             (
                                 vec![
                                     (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
@@ -2869,6 +2861,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         }
 
+                        if self.needs_parentheses(expr) {
+                            return Some((
+                                vec![
+                                    (span, format!("{suggestion}(")),
+                                    (expr.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                message,
+                                Applicability::MachineApplicable,
+                                true,
+                                false,
+                            ));
+                        }
+
                         return Some((
                             vec![(span, suggestion)],
                             message,
@@ -2895,6 +2900,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         false
+    }
+
+    fn needs_parentheses(&self, expr: &hir::Expr<'_>) -> bool {
+        match expr.kind {
+            // parenthesize if needed (Issue #46756)
+            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
+            // parenthesize borrows of range literals (Issue #54505)
+            _ if is_range_literal(expr) => true,
+            _ => false,
+        }
     }
 
     pub(crate) fn suggest_cast(
