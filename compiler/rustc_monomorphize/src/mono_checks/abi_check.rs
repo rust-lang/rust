@@ -10,7 +10,10 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::abi::call::{FnAbi, PassMode};
 use rustc_target::abi::{BackendRepr, RegKind};
 
-use crate::errors::{AbiErrorDisabledVectorTypeCall, AbiErrorDisabledVectorTypeDef};
+use crate::errors::{
+    AbiErrorDisabledVectorTypeCall, AbiErrorDisabledVectorTypeDef,
+    AbiErrorUnsupportedVectorTypeCall, AbiErrorUnsupportedVectorTypeDef,
+};
 
 fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
     match mode {
@@ -23,11 +26,15 @@ fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
     }
 }
 
+/// Checks whether a certain function ABI is compatible with the target features currently enabled
+/// for a certain function.
+/// If not, `emit_err` is called, with `Some(feature)` if a certain feature should be enabled and
+/// with `None` if no feature is known that would make the ABI compatible.
 fn do_check_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
     target_feature_def: DefId,
-    mut emit_err: impl FnMut(&'static str),
+    mut emit_err: impl FnMut(Option<&'static str>),
 ) {
     let Some(feature_def) = tcx.sess.target.features_for_correct_vector_abi() else {
         return;
@@ -40,7 +47,7 @@ fn do_check_abi<'tcx>(
             let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
                 Some((_, feature)) => feature,
                 None => {
-                    emit_err("<no available feature for this size>");
+                    emit_err(None);
                     continue;
                 }
             };
@@ -48,7 +55,7 @@ fn do_check_abi<'tcx>(
             if !tcx.sess.unstable_target_features.contains(&feature_sym)
                 && !codegen_attrs.target_features.iter().any(|x| x.name == feature_sym)
             {
-                emit_err(feature);
+                emit_err(Some(&feature));
             }
         }
     }
@@ -65,12 +72,21 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     };
     do_check_abi(tcx, abi, instance.def_id(), |required_feature| {
         let span = tcx.def_span(instance.def_id());
-        tcx.emit_node_span_lint(
-            ABI_UNSUPPORTED_VECTOR_TYPES,
-            CRATE_HIR_ID,
-            span,
-            AbiErrorDisabledVectorTypeDef { span, required_feature },
-        );
+        if let Some(required_feature) = required_feature {
+            tcx.emit_node_span_lint(
+                ABI_UNSUPPORTED_VECTOR_TYPES,
+                CRATE_HIR_ID,
+                span,
+                AbiErrorDisabledVectorTypeDef { span, required_feature },
+            );
+        } else {
+            tcx.emit_node_span_lint(
+                ABI_UNSUPPORTED_VECTOR_TYPES,
+                CRATE_HIR_ID,
+                span,
+                AbiErrorUnsupportedVectorTypeDef { span },
+            );
+        }
     })
 }
 
@@ -109,12 +125,21 @@ fn check_call_site_abi<'tcx>(
         return;
     };
     do_check_abi(tcx, callee_abi, caller.def_id(), |required_feature| {
-        tcx.emit_node_span_lint(
-            ABI_UNSUPPORTED_VECTOR_TYPES,
-            CRATE_HIR_ID,
-            span,
-            AbiErrorDisabledVectorTypeCall { span, required_feature },
-        );
+        if let Some(required_feature) = required_feature {
+            tcx.emit_node_span_lint(
+                ABI_UNSUPPORTED_VECTOR_TYPES,
+                CRATE_HIR_ID,
+                span,
+                AbiErrorDisabledVectorTypeCall { span, required_feature },
+            );
+        } else {
+            tcx.emit_node_span_lint(
+                ABI_UNSUPPORTED_VECTOR_TYPES,
+                CRATE_HIR_ID,
+                span,
+                AbiErrorUnsupportedVectorTypeCall { span },
+            );
+        }
     });
 }
 
