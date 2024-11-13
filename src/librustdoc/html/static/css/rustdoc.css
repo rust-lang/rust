@@ -36,7 +36,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--button-border-radius: 2px;
 	--toolbar-button-border-radius: 6px;
 	--code-block-border-radius: 6px;
-	--impl-items-indent: 0.5em;
+	--impl-items-indent: 0.3em;
 	--docblock-indent: 24px;
 }
 

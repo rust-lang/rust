@@ -62,9 +62,9 @@ define-function: (
 // We start with a wide screen.
 set-window-size: (1100, 600)
 call-function: ("check-notable-tooltip-position-complete", {
-    "x": 685,
-    "i_x": 963,
-    "popover_x": 471,
+    "x": 682,
+    "i_x": 960,
+    "popover_x": 468,
 })
 
 // Now only the `i` should be on the next line.
@@ -78,8 +78,8 @@ compare-elements-position-false: (
 // Now both the `i` and the struct name should be on the next line.
 set-window-size: (980, 600)
 call-function: ("check-notable-tooltip-position", {
-    "x": 253,
-    "i_x": 531,
+    "x": 250,
+    "i_x": 528,
 })
 
 // Checking on mobile now.
