@@ -38,6 +38,12 @@ impl From<UsePrelude> for bool {
     }
 }
 
+#[derive(Debug, PartialEq)]
+enum Shadowing {
+    Restricted,
+    Unrestricted,
+}
+
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
@@ -349,7 +355,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 ns,
                 parent_scope,
-                false,
+                Shadowing::Unrestricted,
                 finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                 ignore_binding,
                 None,
@@ -521,7 +527,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ident,
                             ns,
                             adjusted_parent_scope,
-                            !matches!(scope_set, ScopeSet::Late(..)),
+                            if matches!(scope_set, ScopeSet::Late(..)) {
+                                Shadowing::Unrestricted
+                            } else {
+                                Shadowing::Restricted
+                            },
                             finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                             ignore_binding,
                             ignore_import,
@@ -590,7 +600,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 ident,
                                 ns,
                                 parent_scope,
-                                false,
+                                Shadowing::Unrestricted,
                                 None,
                                 ignore_binding,
                                 ignore_import,
@@ -786,7 +796,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             ns,
             adjusted_parent_scope,
-            false,
+            Shadowing::Unrestricted,
             finalize,
             ignore_binding,
             ignore_import,
@@ -802,7 +812,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
-        restricted_shadowing: bool,
+        shadowing: Shadowing,
         finalize: Option<Finalize>,
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
@@ -812,7 +822,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::CrateRootAndExternPrelude => {
-                assert!(!restricted_shadowing);
+                assert_eq!(shadowing, Shadowing::Unrestricted);
                 let binding = self.early_resolve_ident_in_lexical_scope(
                     ident,
                     ScopeSet::AbsolutePath(ns),
@@ -825,7 +835,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                assert!(!restricted_shadowing);
+                assert_eq!(shadowing, Shadowing::Unrestricted);
                 return if ns != TypeNS {
                     Err((Determined, Weak::No))
                 } else if let Some(binding) = self.extern_prelude_get(ident, finalize.is_some()) {
@@ -838,7 +848,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
             }
             ModuleOrUniformRoot::CurrentScope => {
-                assert!(!restricted_shadowing);
+                assert_eq!(shadowing, Shadowing::Unrestricted);
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
@@ -897,7 +907,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             // Forbid expanded shadowing to avoid time travel.
             if let Some(shadowed_glob) = resolution.shadowed_glob
-                && restricted_shadowing
+                && shadowing == Shadowing::Restricted
                 && binding.expansion != LocalExpnId::ROOT
                 && binding.res() != shadowed_glob.res()
             {
@@ -912,7 +922,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 });
             }
 
-            if !restricted_shadowing
+            if shadowing == Shadowing::Unrestricted
                 && binding.expansion != LocalExpnId::ROOT
                 && let NameBindingKind::Import { import, .. } = binding.kind
                 && matches!(import.kind, ImportKind::MacroExport)
@@ -1024,7 +1034,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
-            if binding.determined() || ns == MacroNS || restricted_shadowing {
+            if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
                 return check_usable(self, binding);
             } else {
                 return Err((Undetermined, Weak::No));
@@ -1076,7 +1086,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 ns,
                 adjusted_parent_scope,
-                false,
+                Shadowing::Unrestricted,
                 None,
                 ignore_binding,
                 ignore_import,
