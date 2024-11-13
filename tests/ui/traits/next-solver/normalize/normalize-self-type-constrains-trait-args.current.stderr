@@ -1,5 +1,5 @@
 warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/normalize-self-type-constrains-trait-args.rs:5:12
+  --> $DIR/normalize-self-type-constrains-trait-args.rs:8:12
    |
 LL | #![feature(lazy_type_alias)]
    |            ^^^^^^^^^^^^^^^
