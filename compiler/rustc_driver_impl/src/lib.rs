@@ -1337,9 +1337,6 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
     }
 
     ICE_PATH.get_or_init(|| {
-        if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
-            return None;
-        }
         let mut path = match std::env::var_os("RUSTC_ICE") {
             Some(s) => {
                 if s == "0" {
