@@ -91,59 +91,30 @@ pub type c_ssize_t = isize;
 
 mod c_char_definition {
     cfg_if! {
-        // These are the targets on which c_char is unsigned.
-        if #[cfg(any(
-            all(
-                target_os = "linux",
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "hexagon",
-                    target_arch = "powerpc",
-                    target_arch = "powerpc64",
-                    target_arch = "s390x",
-                    target_arch = "riscv64",
-                    target_arch = "riscv32",
-                    target_arch = "csky"
-                )
-            ),
-            all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
-            all(target_os = "l4re", target_arch = "x86_64"),
-            all(
-                any(target_os = "freebsd", target_os = "openbsd", target_os = "rtems"),
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "powerpc",
-                    target_arch = "powerpc64",
-                    target_arch = "riscv64"
-                )
-            ),
-            all(
-                target_os = "netbsd",
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "powerpc",
-                    target_arch = "riscv64"
-                )
-            ),
-            all(
-                target_os = "vxworks",
-                any(
-                    target_arch = "aarch64",
-                    target_arch = "arm",
-                    target_arch = "powerpc64",
-                    target_arch = "powerpc"
-                )
-            ),
-            all(
-                target_os = "fuchsia",
-                any(target_arch = "aarch64", target_arch = "riscv64")
-            ),
-            all(target_os = "nto", target_arch = "aarch64"),
-            target_os = "horizon",
-            target_os = "aix",
+        // These are the targets on which c_char is unsigned. Usually the
+        // signedness is the same for all target_os values on a given
+        // architecture but there are some exceptions (see isSignedCharDefault()
+        // in clang/lib/Driver/ToolChains/Clang.cpp):
+        // - PowerPC uses unsigned char for all targets except Darwin
+        // - Arm/AArch64 uses unsigned char except for Darwin and Windows
+        // - L4RE builds with -funsigned-char on all targets
+        if #[cfg(all(
+            not(windows),
+            not(target_vendor = "apple"),
+            any(
+                target_arch = "aarch64",
+                target_arch = "arm",
+                target_arch = "csky",
+                target_arch = "hexagon",
+                target_arch = "msp430",
+                target_arch = "powerpc",
+                target_arch = "powerpc64",
+                target_arch = "riscv64",
+                target_arch = "riscv32",
+                target_arch = "s390x",
+                target_arch = "xtensa",
+                target_os = "l4re",
+            )
         ))] {
             pub type c_char = u8;
         } else {
