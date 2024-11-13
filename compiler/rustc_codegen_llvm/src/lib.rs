@@ -72,9 +72,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
-// this isn't pub, then make it not pub.
-pub mod llvm;
+pub(crate) mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;
