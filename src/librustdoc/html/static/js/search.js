@@ -1160,9 +1160,6 @@ class NameTrie {
                 for (const entry of tailTable.get(tail)) {
                     entry.searchSubstringPrefix(name, 3, results);
                 }
-            } else {
-                console.log(tailTable);
-                console.log(tail);
             }
         }
         return [...results];
