@@ -2989,14 +2989,35 @@ pub(crate) macro const_eval_select {
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
             $(#[$runtime_attr:meta])* $runtime:block
+    ) => {
+        // Use the `noinline` arm, after adding explicit `inline` attributes
+        $crate::intrinsics::const_eval_select!(
+            @capture { $($arg : $ty = $val),* } $(-> $ret)? :
+            #[noinline]
+            if const
+                #[inline] // prevent codegen on this function
+                $(#[$compiletime_attr])*
+                $compiletime
+            else
+                #[inline] // avoid the overhead of an extra fn call
+                $(#[$runtime_attr])*
+                $runtime
+        )
+    },
+    // With a leading #[noinline], we don't add inline attributes
+    (
+        @capture { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
+        #[noinline]
+        if const
+            $(#[$compiletime_attr:meta])* $compiletime:block
+        else
+            $(#[$runtime_attr:meta])* $runtime:block
     ) => {{
-        #[inline] // avoid the overhead of an extra fn call
         $(#[$runtime_attr])*
         fn runtime($($arg: $ty),*) $( -> $ret )? {
             $runtime
         }
 
-        #[inline] // prevent codegen on this function
         $(#[$compiletime_attr])*
         const fn compiletime($($arg: $ty),*) $( -> $ret )? {
             // Don't warn if one of the arguments is unused.
