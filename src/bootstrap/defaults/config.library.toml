@@ -8,11 +8,9 @@ bench-stage = 0
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
-# Download rustc from CI instead of building it from source.
-# For stage > 1 builds, this cuts compile times significantly when there are no changes on "compiler" tree.
-download-rustc = "if-unchanged"
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
+download-rustc = false
 
 [llvm]
 # Will download LLVM from CI if available on your platform.
