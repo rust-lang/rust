@@ -1,0 +1,3 @@
+disallowed-types = [
+    { path = "std::string::String", replacement = "wrapper::String" },
+]

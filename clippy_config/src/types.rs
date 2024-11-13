@@ -47,7 +47,7 @@ impl DisallowedPath {
         }
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    fn reason(&self) -> Option<&str> {
         match &self {
             Self::WithReason { reason, .. } => reason.as_deref(),
             Self::Simple(_) => None,
