@@ -13,6 +13,11 @@
 //!     - When `RUSTC_ICE=RUSTC_ICE_PATH` and `-Zmetrics-dir=METRICS_PATH` are both provided, check
 //!       that `RUSTC_ICE_PATH` takes precedence and no ICE dump is emitted under `METRICS_PATH`.
 //!
+//! In addition, previously in <https://github.com/rust-lang/rust/pull/108714> we only enabled ICE
+//! file dumps in nightly to be conservative in case the ICE dumping infra had issues. After a
+//! sufficient amount of time (#108714 was merged on Jul 2023, it is Nov 2024 as of the time of
+//! writing this paragraph), we enable ICE dumps also on stable.
+//!
 //! See <https://github.com/rust-lang/rust/pull/108714>.
 //!
 //! # Test history
@@ -103,6 +108,8 @@ fn main() {
     test_ice_dump_disabled();
 
     test_metrics_dir(default_ice_dump);
+
+    test_ice_dump_enabled_on_stable();
 }
 
 #[track_caller]
@@ -199,5 +206,27 @@ fn test_flag_and_env(baseline: &IceDump) {
 
         let dump = extract_exactly_one_ice_file("RUSTC_ICE overrides -Zmetrics-dir", real_dir);
         assert_ice_len_equals(baseline, &dump);
+    });
+}
+
+// See <https://github.com/rust-lang/rust/issues/132245>.
+#[track_caller]
+fn test_ice_dump_enabled_on_stable() {
+    run_in_tmpdir(|| {
+        rustc()
+            .env("RUSTC_ICE", cwd())
+            // We are very stable! (Pretend that we are stable compiler, cannot use `-Z
+            // treat-err-as-bug=1`).
+            .env("RUSTC_BOOTSTRAP", "-1")
+            // Realize Hyrum's law and make this a load-bearing easter egg. We need something to
+            // make a stable compiler ICE.
+            .stdin_buf("fn main() { break rust; }")
+            .arg("-")
+            .run_fail();
+        let dump = extract_exactly_one_ice_file("stable_baseline", cwd());
+
+        // Basic sanity check.
+        assert!(dump.message.contains("thread 'rustc' panicked at"));
+        assert!(dump.message.contains("stack backtrace:"));
     });
 }
