@@ -683,7 +683,9 @@ impl<'a> Parser<'a> {
             })
         {
             self.bump();
-            self.dcx().emit_err(RemoveLet { span: lo });
+            // Trim extra space after the `let`
+            let span = lo.with_hi(self.token.span.lo());
+            self.dcx().emit_err(RemoveLet { span });
             lo = self.token.span;
         }
 
