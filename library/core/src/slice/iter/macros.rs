@@ -445,6 +445,23 @@ macro_rules! iterator {
             }
         }
 
+        #[unstable(feature = "peekable_iterator", issue = "132973")]
+        impl<'a, T> PeekableIterator for $name<'a, T> {
+            type PeekedItem<'b> = Self::Item where Self: 'b;
+
+            #[inline]
+            fn peek(&self) -> Option<Self::Item> {
+                if len!(self) == 0 {
+                    None
+                } else {
+                    // SAFETY: `len!(self) > 0`
+                    unsafe {
+                        Some(& $( $mut_ )? *self.ptr.as_ptr())
+                    }
+                }
+            }
+        }
+
         #[stable(feature = "default_iters", since = "1.70.0")]
         impl<T> Default for $name<'_, T> {
             /// Creates an empty slice iterator.

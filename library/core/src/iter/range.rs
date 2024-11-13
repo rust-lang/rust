@@ -1,5 +1,6 @@
 use super::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
+    FusedIterator, PeekableIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    TrustedStep,
 };
 use crate::ascii::Char as AsciiChar;
 use crate::mem;
@@ -908,6 +909,18 @@ impl<A: Step> Iterator for ops::Range<A> {
         // Additionally Self: TrustedRandomAccess is only implemented for Copy types
         // which means even repeated reads of the same index would be safe.
         unsafe { Step::forward_unchecked(self.start.clone(), idx) }
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+impl<A: Step> PeekableIterator for ops::Range<A> {
+    type PeekedItem<'b>
+        = &'b A
+    where
+        Self: 'b;
+
+    fn peek(&self) -> Option<Self::PeekedItem<'_>> {
+        if self.start < self.end { Some(&self.start) } else { None }
     }
 }
 
