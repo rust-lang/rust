@@ -110,3 +110,17 @@ pub(crate) struct AbiErrorDisabledVectorTypeCall<'a> {
     pub span: Span,
     pub required_feature: &'a str,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(monomorphize_abi_error_unsupported_vector_type_def)]
+pub(crate) struct AbiErrorUnsupportedVectorTypeDef {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(monomorphize_abi_error_unsupported_vector_type_call)]
+pub(crate) struct AbiErrorUnsupportedVectorTypeCall {
+    #[label]
+    pub span: Span,
+}

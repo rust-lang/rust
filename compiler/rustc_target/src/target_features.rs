@@ -586,8 +586,19 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
 // certain size to have their "proper" ABI on each architecture.
 // Note that they must be kept sorted by vector size.
 const X86_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "sse"), (256, "avx"), (512, "avx512f")];
+    &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
 const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
+
+// We might want to add "helium" too.
+const ARM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
+
+const POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "altivec")];
+const WASM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "simd128")];
+const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vector")];
+const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[/*(64, "zvl64b"), */ (128, "v")];
+// Always warn on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
+const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(128, "vis")*/];
 
 impl super::spec::Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
@@ -613,8 +624,15 @@ impl super::spec::Target {
     pub fn features_for_correct_vector_abi(&self) -> Option<&'static [(u64, &'static str)]> {
         match &*self.arch {
             "x86" | "x86_64" => Some(X86_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "aarch64" => Some(AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            // FIXME: add support for non-tier1 architectures
+            "aarch64" | "arm64ec" => Some(AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "arm" => Some(ARM_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "powerpc" | "powerpc64" => Some(POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "loongarch64" => Some(&[]), // on-stack ABI, so we complain about all by-val vectors
+            "riscv32" | "riscv64" => Some(RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "wasm32" | "wasm64" => Some(WASM_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "s390x" => Some(S390X_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            "sparc" | "sparc64" => Some(SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI),
+            // FIXME: add support for non-tier2 architectures
             _ => None,
         }
     }
