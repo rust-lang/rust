@@ -204,6 +204,13 @@ fn file_test_io_seek_and_write() {
 }
 
 #[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
 fn file_lock_multiple_shared() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_multiple_shared_test.txt");
@@ -220,6 +227,13 @@ fn file_lock_multiple_shared() {
 }
 
 #[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
 fn file_lock_blocking() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_blocking_test.txt");
@@ -237,6 +251,13 @@ fn file_lock_blocking() {
 }
 
 #[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
 fn file_lock_drop() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_dup_test.txt");
@@ -251,6 +272,13 @@ fn file_lock_drop() {
 }
 
 #[test]
+#[cfg(any(
+    windows,
+    target_os = "freebsd",
+    target_os = "linux",
+    target_os = "netbsd",
+    target_vendor = "apple",
+))]
 fn file_lock_dup() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_lock_dup_test.txt");
