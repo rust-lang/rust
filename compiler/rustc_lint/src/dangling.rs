@@ -43,13 +43,10 @@ declare_lint! {
 }
 
 /// FIXME: false negatives (i.e. the lint is not emitted when it should be)
-/// 1. Method calls that are not checked for:
-///    - [`temporary_unsafe_cell.get()`][`core::cell::UnsafeCell::get()`]
-///    - [`temporary_sync_unsafe_cell.get()`][`core::cell::SyncUnsafeCell::get()`]
-/// 2. Ways to get a temporary that are not recognized:
+/// 1. Ways to get a temporary that are not recognized:
 ///    - `owning_temporary.field`
 ///    - `owning_temporary[index]`
-/// 3. No checks for ref-to-ptr conversions:
+/// 2. No checks for ref-to-ptr conversions:
 ///    - `&raw [mut] temporary`
 ///    - `&temporary as *(const|mut) _`
 ///    - `ptr::from_ref(&temporary)` and friends
@@ -200,8 +197,8 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     }
 }
 
-// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>,
-// or any of the above in arbitrary many nested Box'es.
+// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>, UnsafeCell,
+// SyncUnsafeCell, or any of the above in arbitrary many nested Box'es.
 fn owns_allocation(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
     if ty.is_array() {
         true
@@ -217,7 +214,7 @@ fn owns_allocation(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
             }
         }
         tcx.get_diagnostic_name(def.did()).is_some_and(|name| {
-            matches!(name, sym::cstring_type | sym::Vec | sym::Cell | sym::sync_unsafe_cell)
+            matches!(name, sym::cstring_type | sym::Vec | sym::Cell | sym::SyncUnsafeCell)
         })
     } else {
         false
