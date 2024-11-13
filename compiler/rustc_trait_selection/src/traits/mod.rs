@@ -578,16 +578,28 @@ pub fn try_evaluate_const<'tcx>(
                         (args, param_env)
                     }
                 }
-            } else {
-                // FIXME: We don't check anything on stable as the only way we can wind up with
-                // an unevaluated constant containing generic parameters is through array repeat
-                // expression counts which have a future compat lint for usage of generic parameters
-                // instead of a hard error.
+            } else if tcx.def_kind(uv.def) == DefKind::AnonConst && uv.has_non_region_infer() {
+                // FIXME: remove this when `const_evaluatable_unchecked` is a hard error.
                 //
-                // This codepath is however also reachable by `generic_const_exprs` and some other
-                // feature gates which allow constants in the type system to use generic parameters.
-                // In theory we should be checking for generic parameters here and returning an error
-                // in such cases.
+                // Diagnostics will sometimes replace the identity args of anon consts in
+                // array repeat expr counts with inference variables so we have to handle this
+                // even though it is not something we should ever actually encounter.
+                //
+                // Array repeat expr counts are allowed to syntactically use generic parameters
+                // but must not actually depend on them in order to evalaute succesfully. This means
+                // that it is actually fine to evalaute them in their own environment rather than with
+                // the actually provided generic arguments.
+                tcx.dcx().delayed_bug(
+                    "Encountered anon const with inference variable args but no error reported",
+                );
+
+                let args = GenericArgs::identity_for_item(tcx, uv.def);
+                let param_env = tcx.param_env(uv.def);
+                (args, param_env)
+            } else {
+                // FIXME: This codepath is reachable under `associated_const_equality` and in the
+                // future will be reachable by `min_generic_const_args`. We should handle inference
+                // variables and generic parameters properly instead of doing nothing.
                 (uv.args, param_env)
             };
             let uv = ty::UnevaluatedConst::new(uv.def, args);
