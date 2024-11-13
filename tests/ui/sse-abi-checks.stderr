@@ -1,4 +1,4 @@
-warning: ABI error: this function definition uses a vector type that requires the `sse` target feature, which is not enabled
+warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `sse` target feature, which is not enabled
   --> $DIR/sse-abi-checks.rs:21:1
    |
 LL | pub unsafe extern "C" fn f(_: SseVector) {
