@@ -5,17 +5,17 @@ use std::{slice, str};
 
 use rustc_fs_util::path_to_c_string;
 
-pub struct ArchiveRO {
+pub(crate) struct ArchiveRO {
     pub raw: &'static mut super::Archive,
 }
 
 unsafe impl Send for ArchiveRO {}
 
-pub struct Iter<'a> {
+pub(crate) struct Iter<'a> {
     raw: &'a mut super::ArchiveIterator<'a>,
 }
 
-pub struct Child<'a> {
+pub(crate) struct Child<'a> {
     pub raw: &'a mut super::ArchiveChild<'a>,
 }
 
