@@ -1,4 +1,5 @@
 #[inline(always)]
+#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0"))]
 const fn bitset_search<
     const N: usize,
     const CHUNK_SIZE: usize,
