@@ -196,7 +196,7 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
             {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if path_to_local(callee).map_or(false, |l| {
+                        if path_to_local(callee).is_some_and(|l| {
                             // FIXME: Do we really need this `local_used_in` check?
                             // Isn't it checking something like... `callee(callee)`?
                             // If somehow this check is needed, add some test for it,

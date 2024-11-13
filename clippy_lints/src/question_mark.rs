@@ -129,7 +129,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         cx.tcx
             .lang_items()
             .try_trait()
-            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+            .is_some_and(|did| implements_trait(cx, init_ty, did, &[]))
     }
 
     if let StmtKind::Let(LetStmt {

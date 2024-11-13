@@ -447,7 +447,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
             .tcx
             .lang_items()
             .get(expected_lang_item)
-            .map_or(false, |expected_id| cx.tcx.parent(id) == expected_id),
+            .is_some_and(|expected_id| cx.tcx.parent(id) == expected_id),
         Item::Diag(expected_ty, expected_variant) => {
             let ty = cx.typeck_results().pat_ty(pat);
 
