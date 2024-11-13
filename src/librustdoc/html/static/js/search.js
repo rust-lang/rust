@@ -1106,6 +1106,137 @@ class RoaringBitmapBits {
     }
 }
 
+/**
+ * @typedef {{
+ *     children: [NameTrie],
+ *     matches: [number],
+ * }}
+ */
+class NameTrie {
+    constructor() {
+        this.children = [];
+        this.matches = [];
+    }
+    insert(name, id, tailTable) {
+        this.insertSubstring(name, 0, id, tailTable);
+    }
+    insertSubstring(name, substart, id, tailTable) {
+        const l = name.length;
+        if (substart === l) {
+            this.matches.push(id);
+        } else {
+            const sb = name.charCodeAt(substart);
+            let child;
+            if (this.children[sb] !== undefined) {
+                child = this.children[sb];
+            } else {
+                child = new NameTrie();
+                this.children[sb] = child;
+                let sste;
+                if (substart >= 2) {
+                    const tail = name.substring(substart - 2, substart + 1);
+                    if (tailTable.has(tail)) {
+                        sste = tailTable.get(tail);
+                    } else {
+                        sste = [];
+                        tailTable.set(tail, sste);
+                    }
+                    sste.push(child);
+                }
+            }
+            child.insertSubstring(name, substart + 1, id, tailTable);
+        }
+    }
+    search(name, tailTable) {
+        const results = new Set();
+        this.searchSubstringPrefix(name, 0, results);
+        if (results.size < MAX_RESULTS && name.length >= 3) {
+            const levParams = name.length >= 6 ?
+                new Lev2TParametricDescription(name.length) :
+                new Lev1TParametricDescription(name.length);
+            this.searchLev(name, 0, levParams, results);
+            const tail = name.substring(0, 3);
+            if (tailTable.has(tail)) {
+                for (const entry of tailTable.get(tail)) {
+                    entry.searchSubstringPrefix(name, 3, results);
+                }
+            } else {
+                console.log(tailTable);
+                console.log(tail);
+            }
+        }
+        return [...results];
+    }
+    searchSubstringPrefix(name, substart, results) {
+        const l = name.length;
+        if (substart === l) {
+            for (const match of this.matches) {
+                results.add(match);
+            }
+            // breadth-first traversal orders prefix matches by length
+            let unprocessedChildren = [];
+            for (const child of this.children) {
+                if (child) {
+                    unprocessedChildren.push(child);
+                }
+            }
+            let nextSet = [];
+            while (unprocessedChildren.length !== 0) {
+                const next = unprocessedChildren.pop();
+                for (const child of next.children) {
+                    if (child) {
+                        nextSet.push(child);
+                    }
+                }
+                for (const match of next.matches) {
+                    results.add(match);
+                }
+                if (unprocessedChildren.length === 0) {
+                    const tmp = unprocessedChildren;
+                    unprocessedChildren = nextSet;
+                    nextSet = tmp;
+                }
+            }
+        } else {
+            const sb = name.charCodeAt(substart);
+            if (this.children[sb] !== undefined) {
+                this.children[sb].searchSubstringPrefix(name, substart + 1, results);
+            }
+        }
+    }
+    searchLev(name, substart, levParams, results) {
+        const stack = [[this, 0]];
+        const n = levParams.n;
+        while (stack.length !== 0) {
+            const [trie, levState] = stack.pop();
+            for (const [charCode, child] of trie.children.entries()) {
+                if (!child) {
+                    continue;
+                }
+                const levPos = levParams.getPosition(levState);
+                const vector = levParams.getVector(
+                    name,
+                    charCode,
+                    levPos,
+                    Math.min(name.length, levPos + (2 * n) + 1),
+                );
+                const newLevState = levParams.transition(
+                    levState,
+                    levPos,
+                    vector,
+                );
+                if (newLevState >= 0) {
+                    stack.push([child, newLevState]);
+                    if (levParams.isAccept(newLevState)) {
+                        for (const match of child.matches) {
+                            results.add(match);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 class DocSearch {
     constructor(rawSearchIndex, rootPath, searchState) {
@@ -1209,6 +1340,20 @@ class DocSearch {
          * @type {Map<number|null, FunctionType>}
          */
         this.TYPES_POOL = new Map();
+
+        /**
+         * A trie for finding items by name.
+         * This is used for edit distance and prefix finding.
+         *
+         * @type {NameTrie}
+         */
+        this.nameTrie = new NameTrie();
+
+        /**
+         * Find items by 3-substring. This is a map from three-char
+         * prefixes into lists of subtries.
+         */
+        this.tailTable = new Map();
 
         /**
          *  @type {Array<Row>}
@@ -1613,6 +1758,7 @@ class DocSearch {
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
+            let normalizedName = crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, "");
             const crateRow = {
                 crate,
                 ty: 3, // == ExternCrate
@@ -1627,10 +1773,11 @@ class DocSearch {
                 paramNames: lastParamNames,
                 id,
                 word: crate,
-                normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
+                normalizedName,
                 bitIndex: 0,
                 implDisambiguator: null,
             };
+            this.nameTrie.insert(normalizedName, id, this.tailTable);
             id += 1;
             searchIndex.push(crateRow);
             currentIndex += 1;
@@ -1749,6 +1896,7 @@ class DocSearch {
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
                 const itemParentIdx = itemParentIdxDecoder.next();
+                normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
                 const row = {
                     crate,
                     ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
@@ -1763,11 +1911,12 @@ class DocSearch {
                     paramNames,
                     id,
                     word,
-                    normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
+                    normalizedName,
                     bitIndex,
                     implDisambiguator: implDisambiguator.has(i) ?
                         implDisambiguator.get(i) : null,
                 };
+                this.nameTrie.insert(normalizedName, id, this.tailTable);
                 id += 1;
                 searchIndex.push(row);
                 lastPath = row.path;
@@ -2060,6 +2209,7 @@ class DocSearch {
                     "/index.html#reexport." + name;
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
+                exactPath = "";
                 href = this.rootPath + path.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
@@ -2075,6 +2225,7 @@ class DocSearch {
 
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
+                    exactPath = myparent.name;
                 } else if (type === "structfield" && parentType === "variant") {
                     // Structfields belonging to variants are special: the
                     // final path element is the enum name.
@@ -3589,96 +3740,6 @@ class DocSearch {
         }
 
         /**
-         * This function is called in case the query is only one element (with or without generics).
-         * This element will be compared to arguments' and returned values' items and also to items.
-         *
-         * Other important thing to note: since there is only one element, we use edit
-         * distance for name comparisons.
-         *
-         * @param {Row} row
-         * @param {integer} pos              - Position in the `searchIndex`.
-         * @param {QueryElement} elem        - The element from the parsed query.
-         * @param {Results} results_others   - Unqualified results (not in arguments nor in
-         *                                     returned values).
-         * @param {Results} results_in_args  - Matching arguments results.
-         * @param {Results} results_returned - Matching returned arguments results.
-         */
-        function handleSingleArg(
-            row,
-            pos,
-            elem,
-            results_others,
-            results_in_args,
-            results_returned,
-            maxEditDistance,
-        ) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
-                return;
-            }
-            let path_dist = 0;
-            const fullId = row.id;
-
-            // fpDist is a minimum possible type distance, where "type distance" is the number of
-            // atoms in the function not present in the query
-            const tfpDist = compareTypeFingerprints(
-                fullId,
-                parsedQuery.typeFingerprint,
-            );
-            if (tfpDist !== null) {
-                const in_args = row.type && row.type.inputs
-                    && checkIfInList(row.type.inputs, elem, row.type.where_clause, null, 0);
-                const returned = row.type && row.type.output
-                    && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
-                if (in_args) {
-                    results_in_args.max_dist = Math.max(results_in_args.max_dist || 0, tfpDist);
-                    const maxDist = results_in_args.size < MAX_RESULTS ?
-                        (tfpDist + 1) :
-                        results_in_args.max_dist;
-                    addIntoResults(results_in_args, fullId, pos, -1, tfpDist, 0, maxDist);
-                }
-                if (returned) {
-                    results_returned.max_dist = Math.max(results_returned.max_dist || 0, tfpDist);
-                    const maxDist = results_returned.size < MAX_RESULTS ?
-                        (tfpDist + 1) :
-                        results_returned.max_dist;
-                    addIntoResults(results_returned, fullId, pos, -1, tfpDist, 0, maxDist);
-                }
-            }
-
-            if (!typePassesFilter(elem.typeFilter, row.ty)) {
-                return;
-            }
-
-            let index = row.word.indexOf(elem.pathLast);
-            const normalizedIndex = row.normalizedName.indexOf(elem.pathLast);
-            if (index === -1 || (index > normalizedIndex && normalizedIndex !== -1)) {
-                index = normalizedIndex;
-            }
-
-            if (elem.fullPath.length > 1) {
-                path_dist = checkPath(elem.pathWithoutLast, row);
-                if (path_dist === null) {
-                    return;
-                }
-            }
-
-            if (parsedQuery.literalSearch) {
-                if (row.word === elem.pathLast) {
-                    addIntoResults(results_others, fullId, pos, index, 0, path_dist);
-                }
-                return;
-            }
-
-            const dist = editDistance(row.normalizedName, elem.normalizedPathLast, maxEditDistance);
-
-            if (index === -1 && dist > maxEditDistance) {
-                return;
-            }
-
-            addIntoResults(results_others, fullId, pos, index, dist, path_dist, maxEditDistance);
-        }
-
-        /**
          * This function is called in case the query has more than one element. In this case, it'll
          * try to match the items which validates all the elements. For `aa -> bb` will look for
          * functions which have a parameter `aa` and has `bb` in its returned values.
@@ -3893,21 +3954,77 @@ class DocSearch {
             }
 
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
-                if (parsedQuery.elems.length === 1) {
-                    const elem = parsedQuery.elems[0];
-                    const length = this.searchIndex.length;
-                    for (let i = 0, nSearchIndex = length; i < nSearchIndex; ++i) {
-                        // It means we want to check for this element everywhere (in names, args and
-                        // returned).
-                        handleSingleArg(
-                            this.searchIndex[i],
-                            i,
-                            elem,
+                const elem = parsedQuery.elems[0];
+                for (const id of this.nameTrie.search(elem.normalizedPathLast, this.tailTable)) {
+                    const row = this.searchIndex[id];
+                    if (!typePassesFilter(elem.typeFilter, row.ty) ||
+                        (filterCrates !== null && row.crate !== filterCrates)) {
+                        continue;
+                    }
+
+                    let pathDist = 0;
+                    if (elem.fullPath.length > 1) {
+                        pathDist = checkPath(elem.pathWithoutLast, row);
+                        if (pathDist === null) {
+                            continue;
+                        }
+                    }
+
+                    if (parsedQuery.literalSearch) {
+                        if (row.word === elem.pathLast) {
+                            addIntoResults(results_others, row.id, id, 0, 0, pathDist);
+                        }
+                    } else {
+                        addIntoResults(
                             results_others,
-                            results_in_args,
-                            results_returned,
+                            row.id,
+                            id,
+                            row.normalizedName.indexOf(elem.normalizedPathLast),
+                            editDistance(
+                                row.normalizedName,
+                                elem.normalizedPathLast,
+                                maxEditDistance,
+                            ),
+                            pathDist,
                             maxEditDistance,
                         );
+                    }
+                }
+                const length = this.searchIndex.length;
+                for (let i = 0, nSearchIndex = length; i < nSearchIndex; ++i) {
+                    const row = this.searchIndex[i];
+                    if (filterCrates !== null && row.crate !== filterCrates) {
+                        continue;
+                    }
+                    const tfpDist = compareTypeFingerprints(
+                        row.id,
+                        parsedQuery.typeFingerprint,
+                    );
+                    if (tfpDist !== null) {
+                        const in_args = row.type && row.type.inputs
+                            && checkIfInList(row.type.inputs, elem, row.type.where_clause, null, 0);
+                        const returned = row.type && row.type.output
+                            && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
+                        if (in_args) {
+                            results_in_args.max_dist = Math.max(
+                                results_in_args.max_dist || 0,
+                                tfpDist,
+                            );
+                            const maxDist = results_in_args.size < MAX_RESULTS ?
+                                (tfpDist + 1) :
+                                results_in_args.max_dist;
+                            addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
+                        }
+                        if (returned) {
+                            results_returned.max_dist = Math.max(
+                                results_returned.max_dist || 0,
+                                tfpDist,
+                            );
+                            const maxDist = results_returned.size < MAX_RESULTS ?
+                                (tfpDist + 1) :
+                                results_returned.max_dist;
+                            addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
+                        }
                     }
                 }
             } else if (parsedQuery.foundElems > 0) {
@@ -4653,3 +4770,477 @@ if (typeof window !== "undefined") {
     // exports.
     initSearch(new Map());
 }
+
+// Parts of this code are based on Lucene, which is licensed under the
+// Apache/2.0 license.
+// More information found here:
+// https://fossies.org/linux/lucene/lucene/core/src/java/org/apache/lucene/util/automaton/
+//   LevenshteinAutomata.java
+class ParametricDescription {
+    constructor(w, n, minErrors) {
+        this.w = w;
+        this.n = n;
+        this.minErrors = minErrors;
+    }
+    isAccept(absState) {
+        const state = Math.floor(absState / (this.w + 1));
+        const offset = absState % (this.w + 1);
+        return this.w - offset + this.minErrors[state] <= this.n;
+    }
+    getPosition(absState) {
+        return absState % (this.w + 1);
+    }
+    getVector(name, charCode, pos, end) {
+        let vector = 0;
+        for (let i = pos; i < end; i += 1) {
+            vector = vector << 1;
+            if (name.charCodeAt(i) === charCode) {
+                vector |= 1;
+            }
+        }
+        return vector;
+    }
+    unpack(data, index, bitsPerValue) {
+        const bitLoc = (bitsPerValue * index);
+        const dataLoc = bitLoc >> 5;
+        const bitStart = bitLoc & 31;
+        if (bitStart + bitsPerValue <= 32) {
+            // not split
+            return ((data[dataLoc] >> bitStart) & this.MASKS[bitsPerValue - 1]);
+        } else {
+            // split
+            const part = 32 - bitStart;
+            return ~~(((data[dataLoc] >> bitStart) & this.MASKS[part - 1]) +
+                ((data[1 + dataLoc] & this.MASKS[bitsPerValue - part - 1]) << part));
+        }
+    }
+}
+ParametricDescription.prototype.MASKS = new Int32Array([
+    0x1, 0x3, 0x7, 0xF,
+    0x1F, 0x3F, 0x7F, 0xFF,
+    0x1FF, 0x3F, 0x7FF, 0xFFF,
+    0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
+    0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF,
+    0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF,
+    0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF, 0xFFFFFFF,
+    0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
+]);
+
+// The following code was generated with the moman/finenight pkg
+// This package is available under the MIT License, see NOTICE.txt
+// for more details.
+// This class is auto-generated, Please do not modify it directly.
+// You should modify the https://gitlab.com/notriddle/createAutomata.py instead.
+// The following code was generated with the moman/finenight pkg
+// This package is available under the MIT License, see NOTICE.txt
+// for more details.
+// This class is auto-generated, Please do not modify it directly.
+// You should modify https://gitlab.com/notriddle/moman-rustdoc instead.
+
+class Lev2TParametricDescription extends ParametricDescription {
+    /**
+     * @param {number} absState
+     * @param {number} position
+     * @param {number} vector
+     * @returns {number}
+    */
+    transition(absState, position, vector) {
+        let state = Math.floor(absState / (this.w + 1));
+        let offset = absState % (this.w + 1);
+
+        if (position === this.w) {
+            if (state < 3) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 3) + state;
+                offset += this.unpack(this.offsetIncrs0, loc, 1);
+                state = this.unpack(this.toStates0, loc, 2) - 1;
+            }
+        } else if (position === this.w - 1) {
+            if (state < 5) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 5) + state;
+                offset += this.unpack(this.offsetIncrs1, loc, 1);
+                state = this.unpack(this.toStates1, loc, 3) - 1;
+            }
+        } else if (position === this.w - 2) {
+            if (state < 13) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 13) + state;
+                offset += this.unpack(this.offsetIncrs2, loc, 2);
+                state = this.unpack(this.toStates2, loc, 4) - 1;
+            }
+        } else if (position === this.w - 3) {
+            if (state < 28) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 28) + state;
+                offset += this.unpack(this.offsetIncrs3, loc, 2);
+                state = this.unpack(this.toStates3, loc, 5) - 1;
+            }
+        } else if (position === this.w - 4) {
+            if (state < 45) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 45) + state;
+                offset += this.unpack(this.offsetIncrs4, loc, 3);
+                state = this.unpack(this.toStates4, loc, 6) - 1;
+            }
+        } else {
+            if (state < 45) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 45) + state;
+                offset += this.unpack(this.offsetIncrs5, loc, 3);
+                state = this.unpack(this.toStates5, loc, 6) - 1;
+            }
+        }
+
+        if (state === -1) {
+            // null state
+            return -1;
+        } else {
+            // translate back to abs
+            return Math.imul(state, this.w + 1) + offset;
+        }
+    }
+
+    // state map
+    //   0 -> [(0, 0)]
+    //   1 -> [(0, 1)]
+    //   2 -> [(0, 2)]
+    //   3 -> [(0, 1), (1, 1)]
+    //   4 -> [(0, 2), (1, 2)]
+    //   5 -> [(0, 1), (1, 1), (2, 1)]
+    //   6 -> [(0, 2), (1, 2), (2, 2)]
+    //   7 -> [(0, 1), (2, 1)]
+    //   8 -> [(0, 1), (2, 2)]
+    //   9 -> [(0, 2), (2, 1)]
+    //   10 -> [(0, 2), (2, 2)]
+    //   11 -> [t(0, 1), (0, 1), (1, 1), (2, 1)]
+    //   12 -> [t(0, 2), (0, 2), (1, 2), (2, 2)]
+    //   13 -> [(0, 2), (1, 2), (2, 2), (3, 2)]
+    //   14 -> [(0, 1), (1, 1), (3, 2)]
+    //   15 -> [(0, 1), (2, 2), (3, 2)]
+    //   16 -> [(0, 1), (3, 2)]
+    //   17 -> [(0, 1), t(1, 2), (2, 2), (3, 2)]
+    //   18 -> [(0, 2), (1, 2), (3, 1)]
+    //   19 -> [(0, 2), (1, 2), (3, 2)]
+    //   20 -> [(0, 2), (1, 2), t(1, 2), (2, 2), (3, 2)]
+    //   21 -> [(0, 2), (2, 1), (3, 1)]
+    //   22 -> [(0, 2), (2, 2), (3, 2)]
+    //   23 -> [(0, 2), (3, 1)]
+    //   24 -> [(0, 2), (3, 2)]
+    //   25 -> [(0, 2), t(1, 2), (1, 2), (2, 2), (3, 2)]
+    //   26 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (3, 2)]
+    //   27 -> [t(0, 2), (0, 2), (1, 2), (3, 1)]
+    //   28 -> [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
+    //   29 -> [(0, 2), (1, 2), (2, 2), (4, 2)]
+    //   30 -> [(0, 2), (1, 2), (2, 2), t(2, 2), (3, 2), (4, 2)]
+    //   31 -> [(0, 2), (1, 2), (3, 2), (4, 2)]
+    //   32 -> [(0, 2), (1, 2), (4, 2)]
+    //   33 -> [(0, 2), (1, 2), t(1, 2), (2, 2), (3, 2), (4, 2)]
+    //   34 -> [(0, 2), (1, 2), t(2, 2), (2, 2), (3, 2), (4, 2)]
+    //   35 -> [(0, 2), (2, 1), (4, 2)]
+    //   36 -> [(0, 2), (2, 2), (3, 2), (4, 2)]
+    //   37 -> [(0, 2), (2, 2), (4, 2)]
+    //   38 -> [(0, 2), (3, 2), (4, 2)]
+    //   39 -> [(0, 2), (4, 2)]
+    //   40 -> [(0, 2), t(1, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
+    //   41 -> [(0, 2), t(2, 2), (2, 2), (3, 2), (4, 2)]
+    //   42 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
+    //   43 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (4, 2)]
+    //   44 -> [t(0, 2), (0, 2), (1, 2), (2, 2), t(2, 2), (3, 2), (4, 2)]
+
+
+    /** @param {number} w - length of word being checked */
+    constructor(w) {
+        super(w, 2, new Int32Array([
+            0,1,2,0,1,-1,0,-1,0,-1,0,-1,0,-1,-1,-1,-1,-1,-2,-1,-1,-2,-1,-2,
+            -1,-1,-1,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
+        ]));
+    }
+}
+
+Lev2TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
+    0xe,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
+    0x0,
+]);
+
+Lev2TParametricDescription.prototype.toStates1 = /*3 bits per value */ new Int32Array([
+    0x1a688a2c,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
+    0x3e0,
+]);
+
+Lev2TParametricDescription.prototype.toStates2 = /*4 bits per value */ new Int32Array([
+    0x70707054,0xdc07035,0x3dd3a3a,0x2323213a,
+    0x15435223,0x22545432,0x5435,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
+    0x80000,0x55582088,0x55555555,0x55,
+]);
+
+Lev2TParametricDescription.prototype.toStates3 = /*5 bits per value */ new Int32Array([
+    0x1c0380a4,0x700a570,0xca529c0,0x180a00,
+    0xa80af180,0xc5498e60,0x5a546398,0x8c4300e8,
+    0xac18c601,0xd8d43501,0x863500ad,0x51976d6a,
+    0x8ca0180a,0xc3501ac2,0xb0c5be16,0x76dda8a5,
+    0x18c4519,0xc41294a,0xe248d231,0x1086520c,
+    0xce31ac42,0x13946358,0x2d0348c4,0x6732d494,
+    0x1ad224a5,0xd635ad4b,0x520c4139,0xce24948,
+    0x22110a52,0x58ce729d,0xc41394e3,0x941cc520,
+    0x90e732d4,0x4729d224,0x39ce35ad,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
+    0x80000,0xc0c830,0x300f3c30,0x2200fcff,
+    0xcaa00a08,0x3c2200a8,0xa8fea00a,0x55555555,
+    0x55555555,0x55555555,0x55555555,0x55555555,
+    0x55555555,0x55555555,
+]);
+
+Lev2TParametricDescription.prototype.toStates4 = /*6 bits per value */ new Int32Array([
+    0x801c0144,0x1453803,0x14700038,0xc0005145,
+    0x1401,0x14,0x140000,0x0,
+    0x510000,0x6301f007,0x301f00d1,0xa186178,
+    0xc20ca0c3,0xc20c30,0xc30030c,0xc00c00cd,
+    0xf0c00c30,0x4c054014,0xc30944c3,0x55150c34,
+    0x8300550,0x430c0143,0x50c31,0xc30850c,
+    0xc3143000,0x50053c50,0x5130d301,0x850d30c2,
+    0x30a08608,0xc214414,0x43142145,0x21450031,
+    0x1400c314,0x4c143145,0x32832803,0x28014d6c,
+    0xcd34a0c3,0x1c50c76,0x1c314014,0x430c30c3,
+    0x1431,0xc300500,0xca00d303,0xd36d0e40,
+    0x90b0e400,0xcb2abb2c,0x70c20ca1,0x2c32ca2c,
+    0xcd2c70cb,0x31c00c00,0x34c2c32c,0x5583280,
+    0x558309b7,0x6cd6ca14,0x430850c7,0x51c51401,
+    0x1430c714,0xc3087,0x71451450,0xca00d30,
+    0xc26dc156,0xb9071560,0x1cb2abb2,0xc70c2144,
+    0xb1c51ca1,0x1421c70c,0xc51c00c3,0x30811c51,
+    0x24324308,0xc51031c2,0x70820820,0x5c33830d,
+    0xc33850c3,0x30c30c30,0xc30c31c,0x451450c3,
+    0x20c20c20,0xda0920d,0x5145914f,0x36596114,
+    0x51965865,0xd9643653,0x365a6590,0x51964364,
+    0x43081505,0x920b2032,0x2c718b28,0xd7242249,
+    0x35cb28b0,0x2cb3872c,0x972c30d7,0xb0c32cb2,
+    0x4e1c75c,0xc80c90c2,0x62ca2482,0x4504171c,
+    0xd65d9610,0x33976585,0xd95cb5d,0x4b5ca5d7,
+    0x73975c36,0x10308138,0xc2245105,0x41451031,
+    0x14e24208,0xc35c3387,0x51453851,0x1c51c514,
+    0xc70c30c3,0x20451450,0x14f1440c,0x4f0da092,
+    0x4513d41,0x6533944d,0x1350e658,0xe1545055,
+    0x64365a50,0x5519383,0x51030815,0x28920718,
+    0x441c718b,0x714e2422,0x1c35cb28,0x4e1c7387,
+    0xb28e1c51,0x5c70c32c,0xc204e1c7,0x81c61440,
+    0x1c62ca24,0xd04503ce,0x85d63944,0x39338e65,
+    0x8e154387,0x364b5ca3,0x38739738,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs4 = /*3 bits per value */ new Int32Array([
+    0x10000000,0xc00000,0x60061,0x400,
+    0x0,0x80010008,0x249248a4,0x8229048,
+    0x2092,0x6c3603,0xb61b6c30,0x6db6036d,
+    0xdb6c0,0x361b0180,0x91b72000,0xdb11b71b,
+    0x6db6236,0x1008200,0x12480012,0x24924906,
+    0x48200049,0x80410002,0x24000900,0x4924a489,
+    0x10822492,0x20800125,0x48360,0x9241b692,
+    0x6da4924,0x40009268,0x241b010,0x291b4900,
+    0x6d249249,0x49493423,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x2492,
+]);
+
+Lev2TParametricDescription.prototype.toStates5 = /*6 bits per value */ new Int32Array([
+    0x801c0144,0x1453803,0x14700038,0xc0005145,
+    0x1401,0x14,0x140000,0x0,
+    0x510000,0x4e00e007,0xe0051,0x3451451c,
+    0xd015000,0x30cd0000,0xc30c30c,0xc30c30d4,
+    0x40c30c30,0x7c01c014,0xc03458c0,0x185e0c07,
+    0x2830c286,0x830c3083,0xc30030,0x33430c,
+    0x30c3003,0x70051030,0x16301f00,0x8301f00d,
+    0x30a18617,0xc20ca0c,0x431420c3,0xb1450c51,
+    0x14314315,0x4f143145,0x34c05401,0x4c30944c,
+    0x55150c3,0x30830055,0x1430c014,0xc00050c3,
+    0xc30850,0xc314300,0x150053c5,0x25130d30,
+    0x5430d30c,0xc0354154,0x300d0c90,0x1cb2cd0c,
+    0xc91cb0c3,0x72c30cb2,0x14f1cb2c,0xc34c0540,
+    0x34c30944,0x82182214,0x851050c2,0x50851430,
+    0x1400c50c,0x30c5085,0x50c51450,0x150053c,
+    0xc25130d3,0x8850d30,0x1430a086,0x450c2144,
+    0x51cb1c21,0x1c91c70c,0xc71c314b,0x34c1cb1,
+    0x6c328328,0xc328014d,0x76cd34a0,0x1401c50c,
+    0xc31c3140,0x31430c30,0x14,0x30c3005,
+    0xa0ca00d3,0x535b0c,0x4d2830ca,0x514369b3,
+    0xc500d01,0x5965965a,0x30d46546,0x6435030c,
+    0x8034c659,0xdb439032,0x2c390034,0xcaaecb24,
+    0x30832872,0xcb28b1c,0x4b1c32cb,0x70030033,
+    0x30b0cb0c,0xe40ca00d,0x400d36d0,0xb2c90b0e,
+    0xca1cb2ab,0xa2c70c20,0x6575d95c,0x4315b5ce,
+    0x95c53831,0x28034c5d,0x9b705583,0xa1455830,
+    0xc76cd6c,0x40143085,0x71451c51,0x871430c,
+    0x450000c3,0xd3071451,0x1560ca00,0x560c26dc,
+    0xb35b2851,0xc914369,0x1a14500d,0x46593945,
+    0xcb2c939,0x94507503,0x328034c3,0x9b70558,
+    0xe41c5583,0x72caaeca,0x1c308510,0xc7147287,
+    0x50871c32,0x1470030c,0xd307147,0xc1560ca0,
+    0x1560c26d,0xabb2b907,0x21441cb2,0x38a1c70c,
+    0x8e657394,0x314b1c93,0x39438738,0x43083081,
+    0x31c22432,0x820c510,0x830d7082,0x50c35c33,
+    0xc30c338,0xc31c30c3,0x50c30c30,0xc204514,
+    0x890c90c2,0x31440c70,0xa8208208,0xea0df0c3,
+    0x8a231430,0xa28a28a2,0x28a28a1e,0x1861868a,
+    0x48308308,0xc3682483,0x14516453,0x4d965845,
+    0xd4659619,0x36590d94,0xd969964,0x546590d9,
+    0x20c20541,0x920d20c,0x5914f0da,0x96114514,
+    0x65865365,0xe89d3519,0x99e7a279,0x9e89e89e,
+    0x81821827,0xb2032430,0x18b28920,0x422492c7,
+    0xb28b0d72,0x3872c35c,0xc30d72cb,0x32cb2972,
+    0x1c75cb0c,0xc90c204e,0xa2482c80,0x24b1c62c,
+    0xc3a89089,0xb0ea2e42,0x9669a31c,0xa4966a28,
+    0x59a8a269,0x8175e7a,0xb203243,0x718b2892,
+    0x4114105c,0x17597658,0x74ce5d96,0x5c36572d,
+    0xd92d7297,0xe1ce5d70,0xc90c204,0xca2482c8,
+    0x4171c62,0x5d961045,0x976585d6,0x79669533,
+    0x964965a2,0x659689e6,0x308175e7,0x24510510,
+    0x451031c2,0xe2420841,0x5c338714,0x453851c3,
+    0x51c51451,0xc30c31c,0x451450c7,0x41440c20,
+    0xc708914,0x82105144,0xf1c58c90,0x1470ea0d,
+    0x61861863,0x8a1e85e8,0x8687a8a2,0x3081861,
+    0x24853c51,0x5053c368,0x1341144f,0x96194ce5,
+    0x1544d439,0x94385514,0xe0d90d96,0x5415464,
+    0x4f1440c2,0xf0da0921,0x4513d414,0x533944d0,
+    0x350e6586,0x86082181,0xe89e981d,0x18277689,
+    0x10308182,0x89207185,0x41c718b2,0x14e24224,
+    0xc35cb287,0xe1c73871,0x28e1c514,0xc70c32cb,
+    0x204e1c75,0x1c61440c,0xc62ca248,0x90891071,
+    0x2e41c58c,0xa31c70ea,0xe86175e7,0xa269a475,
+    0x5e7a57a8,0x51030817,0x28920718,0xf38718b,
+    0xe5134114,0x39961758,0xe1ce4ce,0x728e3855,
+    0x5ce0d92d,0xc204e1ce,0x81c61440,0x1c62ca24,
+    0xd04503ce,0x85d63944,0x75338e65,0x5d86075e,
+    0x89e69647,0x75e76576,
+]);
+Lev2TParametricDescription.prototype.offsetIncrs5 = /*3 bits per value */ new Int32Array([
+    0x10000000,0xc00000,0x60061,0x400,
+    0x0,0x60000008,0x6b003080,0xdb6ab6db,
+    0x2db6,0x800400,0x49245240,0x11482412,
+    0x104904,0x40020000,0x92292000,0xa4b25924,
+    0x9649658,0xd80c000,0xdb0c001b,0x80db6d86,
+    0x6db01b6d,0xc0600003,0x86000d86,0x6db6c36d,
+    0xddadb6ed,0x300001b6,0x6c360,0xe37236e4,
+    0x46db6236,0xdb6c,0x361b018,0xb91b7200,
+    0x6dbb1b71,0x6db763,0x20100820,0x61248001,
+    0x92492490,0x24820004,0x8041000,0x92400090,
+    0x24924830,0x555b6a49,0x2080012,0x20004804,
+    0x49252449,0x84112492,0x4000928,0x240201,
+    0x92922490,0x58924924,0x49456,0x120d8082,
+    0x6da4800,0x69249249,0x249a01b,0x6c04100,
+    0x6d240009,0x92492483,0x24d5adb4,0x60208001,
+    0x92000483,0x24925236,0x6846da49,0x10400092,
+    0x241b0,0x49291b49,0x636d2492,0x92494935,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,0x49249249,
+    0x92492492,0x24924924,0x49249249,0x92492492,
+    0x24924924,0x49249249,0x92492492,0x24924924,
+    0x49249249,0x92492492,0x24924924,
+]);
+
+class Lev1TParametricDescription extends ParametricDescription {
+    /**
+     * @param {number} absState
+     * @param {number} position
+     * @param {number} vector
+     * @returns {number}
+    */
+    transition(absState, position, vector) {
+        let state = Math.floor(absState / (this.w + 1));
+        let offset = absState % (this.w + 1);
+
+        if (position === this.w) {
+            if (state < 2) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 2) + state;
+                offset += this.unpack(this.offsetIncrs0, loc, 1);
+                state = this.unpack(this.toStates0, loc, 2) - 1;
+            }
+        } else if (position === this.w - 1) {
+            if (state < 3) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 3) + state;
+                offset += this.unpack(this.offsetIncrs1, loc, 1);
+                state = this.unpack(this.toStates1, loc, 2) - 1;
+            }
+        } else if (position === this.w - 2) {
+            if (state < 6) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 6) + state;
+                offset += this.unpack(this.offsetIncrs2, loc, 2);
+                state = this.unpack(this.toStates2, loc, 3) - 1;
+            }
+        } else {
+            if (state < 6) { // eslint-disable-line no-lonely-if
+                const loc = Math.imul(vector, 6) + state;
+                offset += this.unpack(this.offsetIncrs3, loc, 2);
+                state = this.unpack(this.toStates3, loc, 3) - 1;
+            }
+        }
+
+        if (state === -1) {
+            // null state
+            return -1;
+        } else {
+            // translate back to abs
+            return Math.imul(state, this.w + 1) + offset;
+        }
+    }
+
+    // state map
+    //   0 -> [(0, 0)]
+    //   1 -> [(0, 1)]
+    //   2 -> [(0, 1), (1, 1)]
+    //   3 -> [(0, 1), (1, 1), (2, 1)]
+    //   4 -> [(0, 1), (2, 1)]
+    //   5 -> [t(0, 1), (0, 1), (1, 1), (2, 1)]
+
+
+    /** @param {number} w - length of word being checked */
+    constructor(w) {
+        super(w, 1, new Int32Array([0,1,0,-1,-1,-1]));
+    }
+}
+
+Lev1TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
+    0x2,
+]);
+Lev1TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
+    0x0,
+]);
+
+Lev1TParametricDescription.prototype.toStates1 = /*2 bits per value */ new Int32Array([
+    0xa43,
+]);
+Lev1TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
+    0x38,
+]);
+
+Lev1TParametricDescription.prototype.toStates2 = /*3 bits per value */ new Int32Array([
+    0x12180003,0xb45a4914,0x69,
+]);
+Lev1TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
+    0x558a0000,0x5555,
+]);
+
+Lev1TParametricDescription.prototype.toStates3 = /*3 bits per value */ new Int32Array([
+    0x900c0003,0xa1904864,0x45a49169,0x5a6d196a,
+    0x9634,
+]);
+Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
+    0xa0fc0000,0x5555ba08,0x55555555,
+]);

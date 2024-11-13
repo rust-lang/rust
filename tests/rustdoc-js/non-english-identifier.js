@@ -133,22 +133,34 @@ const EXPECTED = [
                 path: "non_english_identifier",
                 href: "../non_english_identifier/trait.加法.html",
                 desc: "Add"
-            },
-            {
-                name: "中文名称的加法宏",
-                path: "non_english_identifier",
-                href: "../non_english_identifier/macro.中文名称的加法宏.html",
-            },
-            {
-                name: "中文名称的加法API",
-                path: "non_english_identifier",
-                href: "../non_english_identifier/fn.中文名称的加法API.html",
             }],
         in_args: [{
             name: "加上",
             path: "non_english_identifier::加法",
             href: "../non_english_identifier/trait.加法.html#tymethod.加上",
         }],
+        returned: [],
+    },
+    { // levensthein and substring checking only kick in at three characters
+        query: '加法宏',
+        others: [
+            {
+                name: "中文名称的加法宏",
+                path: "non_english_identifier",
+                href: "../non_english_identifier/macro.中文名称的加法宏.html",
+            }],
+        in_args: [],
+        returned: [],
+    },
+    { // levensthein and substring checking only kick in at three characters
+        query: '加法A',
+        others: [
+            {
+                name: "中文名称的加法API",
+                path: "non_english_identifier",
+                href: "../non_english_identifier/fn.中文名称的加法API.html",
+            }],
+        in_args: [],
         returned: [],
     },
     { // Extensive type-based search is still buggy, experimental & work-in-progress.
