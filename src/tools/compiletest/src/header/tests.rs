@@ -293,6 +293,12 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("10.6.2").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
 }
 
 #[test]
