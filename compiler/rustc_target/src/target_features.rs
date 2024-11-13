@@ -598,7 +598,12 @@ const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
 const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[/*(64, "zvl64b"), */ (128, "v")];
 // Always warn on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
-const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(128, "vis")*/];
+const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(64, "vis")*/];
+
+const HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[/*(512, "hvx-length64b"),*/ (1024, "hvx-length128b")];
+const MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "msa")];
+const CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vdspv1")];
 
 impl super::spec::Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
@@ -620,20 +625,24 @@ impl super::spec::Target {
         }
     }
 
-    // Returns None if we do not support ABI checks on the given target yet.
-    pub fn features_for_correct_vector_abi(&self) -> Option<&'static [(u64, &'static str)]> {
+    pub fn features_for_correct_vector_abi(&self) -> &'static [(u64, &'static str)] {
         match &*self.arch {
-            "x86" | "x86_64" => Some(X86_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "aarch64" | "arm64ec" => Some(AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "arm" => Some(ARM_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "powerpc" | "powerpc64" => Some(POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "loongarch64" => Some(&[]), // on-stack ABI, so we complain about all by-val vectors
-            "riscv32" | "riscv64" => Some(RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "wasm32" | "wasm64" => Some(WASM_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "s390x" => Some(S390X_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            "sparc" | "sparc64" => Some(SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI),
-            // FIXME: add support for non-tier2 architectures
-            _ => None,
+            "x86" | "x86_64" => X86_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "aarch64" | "arm64ec" => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "arm" => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "powerpc" | "powerpc64" => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "loongarch64" => &[], // on-stack ABI, so we complain about all by-val vectors
+            "riscv32" | "riscv64" => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "wasm32" | "wasm64" => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "s390x" => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "bpf" => &[], // no vector ABI
+            "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            // FIXME: for some tier3 targets, we are overly cautious and always give warnings
+            // when passing args in vector registers.
+            _ => &[],
         }
     }
 
