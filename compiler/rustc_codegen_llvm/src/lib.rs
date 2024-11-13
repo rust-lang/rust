@@ -29,7 +29,7 @@ use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
-pub(crate) use llvm_util::target_features_cfg;
+use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -71,9 +71,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
-// this isn't pub, then make it not pub.
-pub mod llvm;
+mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;

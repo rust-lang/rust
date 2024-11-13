@@ -728,7 +728,7 @@ impl ThinBuffer {
         }
     }
 
-    pub unsafe fn from_raw_ptr(ptr: *mut llvm::ThinLTOBuffer) -> ThinBuffer {
+    pub(crate) unsafe fn from_raw_ptr(ptr: *mut llvm::ThinLTOBuffer) -> ThinBuffer {
         let mut ptr = NonNull::new(ptr).unwrap();
         ThinBuffer(unsafe { ptr.as_mut() })
     }

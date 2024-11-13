@@ -32,10 +32,10 @@ use crate::llvm;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
-pub type Bool = c_int;
+pub(crate) type Bool = c_int;
 
-pub const True: Bool = 1 as Bool;
-pub const False: Bool = 0 as Bool;
+pub(crate) const True: Bool = 1 as Bool;
+pub(crate) const False: Bool = 0 as Bool;
 
 /// Wrapper for a raw enum value returned from LLVM's C APIs.
 ///
@@ -44,7 +44,7 @@ pub const False: Bool = 0 as Bool;
 /// value and returns it. Instead, return this raw wrapper, then convert to the
 /// Rust-side enum explicitly.
 #[repr(transparent)]
-pub struct RawEnum<T> {
+pub(crate) struct RawEnum<T> {
     value: u32,
     /// We don't own or consume a `T`, but we can produce one.
     _rust_side_type: PhantomData<fn() -> T>,
@@ -64,7 +64,7 @@ impl<T: TryFrom<u32>> RawEnum<T> {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 #[allow(dead_code)] // Variants constructed by C++.
-pub enum LLVMRustResult {
+pub(crate) enum LLVMRustResult {
     Success,
     Failure,
 }
@@ -83,7 +83,7 @@ pub enum LLVMRustResult {
 /// C++ API.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum ModuleFlagMergeBehavior {
+pub(crate) enum ModuleFlagMergeBehavior {
     Error = 1,
     Warning = 2,
     Require = 3,
@@ -101,7 +101,7 @@ pub enum ModuleFlagMergeBehavior {
 /// See <https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/CallingConv.h>
 #[derive(Copy, Clone, PartialEq, Debug, TryFromU32)]
 #[repr(C)]
-pub enum CallConv {
+pub(crate) enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
     ColdCallConv = 9,
@@ -126,7 +126,7 @@ pub enum CallConv {
 /// Must match the layout of `LLVMLinkage`.
 #[derive(Copy, Clone, PartialEq, TryFromU32)]
 #[repr(C)]
-pub enum Linkage {
+pub(crate) enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
@@ -153,7 +153,7 @@ pub enum Linkage {
 /// Must match the layout of `LLVMVisibility`.
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, TryFromU32)]
-pub enum Visibility {
+pub(crate) enum Visibility {
     Default = 0,
     Hidden = 1,
     Protected = 2,
@@ -171,8 +171,9 @@ impl Visibility {
 
 /// LLVMUnnamedAddr
 #[repr(C)]
-pub enum UnnamedAddr {
+pub(crate) enum UnnamedAddr {
     No,
+    #[expect(dead_code)]
     Local,
     Global,
 }
@@ -180,7 +181,7 @@ pub enum UnnamedAddr {
 /// LLVMDLLStorageClass
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum DLLStorageClass {
+pub(crate) enum DLLStorageClass {
     #[allow(dead_code)]
     Default = 0,
     DllImport = 1, // Function to be imported from DLL.
@@ -193,7 +194,8 @@ pub enum DLLStorageClass {
 /// though it is not ABI compatible (since it's a C++ enum)
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub enum AttributeKind {
+#[expect(dead_code, reason = "Some variants are unused, but are kept to match the C++")]
+pub(crate) enum AttributeKind {
     AlwaysInline = 0,
     ByVal = 1,
     Cold = 2,
@@ -241,7 +243,7 @@ pub enum AttributeKind {
 /// LLVMIntPredicate
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum IntPredicate {
+pub(crate) enum IntPredicate {
     IntEQ = 32,
     IntNE = 33,
     IntUGT = 34,
@@ -275,7 +277,7 @@ impl IntPredicate {
 /// LLVMRealPredicate
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum RealPredicate {
+pub(crate) enum RealPredicate {
     RealPredicateFalse = 0,
     RealOEQ = 1,
     RealOGT = 2,
@@ -321,7 +323,8 @@ impl RealPredicate {
 /// LLVMTypeKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
-pub enum TypeKind {
+#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
+pub(crate) enum TypeKind {
     Void = 0,
     Half = 1,
     Float = 2,
@@ -373,7 +376,7 @@ impl TypeKind {
 /// LLVMAtomicRmwBinOp
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum AtomicRmwBinOp {
+pub(crate) enum AtomicRmwBinOp {
     AtomicXchg = 0,
     AtomicAdd = 1,
     AtomicSub = 2,
@@ -409,7 +412,7 @@ impl AtomicRmwBinOp {
 /// LLVMAtomicOrdering
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum AtomicOrdering {
+pub(crate) enum AtomicOrdering {
     #[allow(dead_code)]
     NotAtomic = 0,
     Unordered = 1,
@@ -438,7 +441,7 @@ impl AtomicOrdering {
 /// LLVMRustFileType
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum FileType {
+pub(crate) enum FileType {
     AssemblyFile,
     ObjectFile,
 }
@@ -446,7 +449,8 @@ pub enum FileType {
 /// LLVMMetadataType
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum MetadataType {
+#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
+pub(crate) enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
     MD_prof = 2,
@@ -470,7 +474,7 @@ pub enum MetadataType {
 /// LLVMRustAsmDialect
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum AsmDialect {
+pub(crate) enum AsmDialect {
     Att,
     Intel,
 }
@@ -478,7 +482,7 @@ pub enum AsmDialect {
 /// LLVMRustCodeGenOptLevel
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum CodeGenOptLevel {
+pub(crate) enum CodeGenOptLevel {
     None,
     Less,
     Default,
@@ -487,7 +491,7 @@ pub enum CodeGenOptLevel {
 
 /// LLVMRustPassBuilderOptLevel
 #[repr(C)]
-pub enum PassBuilderOptLevel {
+pub(crate) enum PassBuilderOptLevel {
     O0,
     O1,
     O2,
@@ -499,7 +503,7 @@ pub enum PassBuilderOptLevel {
 /// LLVMRustOptStage
 #[derive(PartialEq)]
 #[repr(C)]
-pub enum OptStage {
+pub(crate) enum OptStage {
     PreLinkNoLTO,
     PreLinkThinLTO,
     PreLinkFatLTO,
@@ -509,7 +513,7 @@ pub enum OptStage {
 
 /// LLVMRustSanitizerOptions
 #[repr(C)]
-pub struct SanitizerOptions {
+pub(crate) struct SanitizerOptions {
     pub sanitize_address: bool,
     pub sanitize_address_recover: bool,
     pub sanitize_cfi: bool,
@@ -530,7 +534,7 @@ pub struct SanitizerOptions {
 /// LLVMRustRelocModel
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum RelocModel {
+pub(crate) enum RelocModel {
     Static,
     PIC,
     DynamicNoPic,
@@ -542,7 +546,7 @@ pub enum RelocModel {
 /// LLVMRustFloatABI
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum FloatAbi {
+pub(crate) enum FloatAbi {
     Default,
     Soft,
     Hard,
@@ -551,7 +555,7 @@ pub enum FloatAbi {
 /// LLVMRustCodeModel
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum CodeModel {
+pub(crate) enum CodeModel {
     Tiny,
     Small,
     Kernel,
@@ -564,7 +568,7 @@ pub enum CodeModel {
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[allow(dead_code)] // Variants constructed by C++.
-pub enum DiagnosticKind {
+pub(crate) enum DiagnosticKind {
     Other,
     InlineAsm,
     StackSize,
@@ -587,7 +591,7 @@ pub enum DiagnosticKind {
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[allow(dead_code)] // Variants constructed by C++.
-pub enum DiagnosticLevel {
+pub(crate) enum DiagnosticLevel {
     Error,
     Warning,
     Note,
@@ -597,7 +601,7 @@ pub enum DiagnosticLevel {
 /// LLVMRustArchiveKind
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum ArchiveKind {
+pub(crate) enum ArchiveKind {
     K_GNU,
     K_BSD,
     K_DARWIN,
@@ -607,15 +611,15 @@ pub enum ArchiveKind {
 
 unsafe extern "C" {
     // LLVMRustThinLTOData
-    pub type ThinLTOData;
+    pub(crate) type ThinLTOData;
 
     // LLVMRustThinLTOBuffer
-    pub type ThinLTOBuffer;
+    pub(crate) type ThinLTOBuffer;
 }
 
 /// LLVMRustThinLTOModule
 #[repr(C)]
-pub struct ThinLTOModule {
+pub(crate) struct ThinLTOModule {
     pub identifier: *const c_char,
     pub data: *const u8,
     pub len: usize,
@@ -624,7 +628,8 @@ pub struct ThinLTOModule {
 /// LLVMThreadLocalMode
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum ThreadLocalMode {
+pub(crate) enum ThreadLocalMode {
+    #[expect(dead_code)]
     NotThreadLocal,
     GeneralDynamic,
     LocalDynamic,
@@ -635,7 +640,7 @@ pub enum ThreadLocalMode {
 /// LLVMRustChecksumKind
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum ChecksumKind {
+pub(crate) enum ChecksumKind {
     None,
     MD5,
     SHA1,
@@ -645,7 +650,7 @@ pub enum ChecksumKind {
 /// LLVMRustMemoryEffects
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum MemoryEffects {
+pub(crate) enum MemoryEffects {
     None,
     ReadOnly,
     InaccessibleMemOnly,
@@ -654,7 +659,8 @@ pub enum MemoryEffects {
 /// LLVMOpcode
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(C)]
-pub enum Opcode {
+#[expect(dead_code, reason = "Some variants are unused, but are kept to match LLVM-C")]
+pub(crate) enum Opcode {
     Ret = 1,
     Br = 2,
     Switch = 3,
@@ -735,48 +741,48 @@ struct InvariantOpaque<'a> {
 
 // Opaque pointer types
 unsafe extern "C" {
-    pub type Module;
-    pub type Context;
-    pub type Type;
-    pub type Value;
-    pub type ConstantInt;
-    pub type Attribute;
-    pub type Metadata;
-    pub type BasicBlock;
-    pub type Comdat;
+    pub(crate) type Module;
+    pub(crate) type Context;
+    pub(crate) type Type;
+    pub(crate) type Value;
+    pub(crate) type ConstantInt;
+    pub(crate) type Attribute;
+    pub(crate) type Metadata;
+    pub(crate) type BasicBlock;
+    pub(crate) type Comdat;
 }
 #[repr(C)]
-pub struct Builder<'a>(InvariantOpaque<'a>);
+pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
-pub struct PassManager<'a>(InvariantOpaque<'a>);
+pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
-    pub type Archive;
+    pub(crate) type Archive;
 }
 #[repr(C)]
-pub struct ArchiveIterator<'a>(InvariantOpaque<'a>);
+pub(crate) struct ArchiveIterator<'a>(InvariantOpaque<'a>);
 #[repr(C)]
-pub struct ArchiveChild<'a>(InvariantOpaque<'a>);
+pub(crate) struct ArchiveChild<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
-    pub type Twine;
-    pub type DiagnosticInfo;
-    pub type SMDiagnostic;
+    pub(crate) type Twine;
+    pub(crate) type DiagnosticInfo;
+    pub(crate) type SMDiagnostic;
 }
 #[repr(C)]
-pub struct RustArchiveMember<'a>(InvariantOpaque<'a>);
+pub(crate) struct RustArchiveMember<'a>(InvariantOpaque<'a>);
 /// Opaque pointee of `LLVMOperandBundleRef`.
 #[repr(C)]
 pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
 #[repr(C)]
-pub struct Linker<'a>(InvariantOpaque<'a>);
+pub(crate) struct Linker<'a>(InvariantOpaque<'a>);
 
 unsafe extern "C" {
-    pub type DiagnosticHandler;
+    pub(crate) type DiagnosticHandler;
 }
 
-pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+pub(crate) type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 
-pub mod debuginfo {
+pub(crate) mod debuginfo {
     use std::ptr;
 
     use bitflags::bitflags;
@@ -793,7 +799,7 @@ pub mod debuginfo {
     /// builder reference typically has a shorter lifetime than the LLVM
     /// session (`'ll`) that it participates in.
     #[repr(C)]
-    pub struct DIBuilder<'ll>(InvariantOpaque<'ll>);
+    pub(crate) struct DIBuilder<'ll>(InvariantOpaque<'ll>);
 
     /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
     /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
@@ -822,22 +828,22 @@ pub mod debuginfo {
         }
     }
 
-    pub type DIDescriptor = Metadata;
-    pub type DILocation = Metadata;
-    pub type DIScope = DIDescriptor;
-    pub type DIFile = DIScope;
-    pub type DILexicalBlock = DIScope;
-    pub type DISubprogram = DIScope;
-    pub type DIType = DIDescriptor;
-    pub type DIBasicType = DIType;
-    pub type DIDerivedType = DIType;
-    pub type DICompositeType = DIDerivedType;
-    pub type DIVariable = DIDescriptor;
-    pub type DIGlobalVariableExpression = DIDescriptor;
-    pub type DIArray = DIDescriptor;
-    pub type DISubrange = DIDescriptor;
-    pub type DIEnumerator = DIDescriptor;
-    pub type DITemplateTypeParameter = DIDescriptor;
+    pub(crate) type DIDescriptor = Metadata;
+    pub(crate) type DILocation = Metadata;
+    pub(crate) type DIScope = DIDescriptor;
+    pub(crate) type DIFile = DIScope;
+    pub(crate) type DILexicalBlock = DIScope;
+    pub(crate) type DISubprogram = DIScope;
+    pub(crate) type DIType = DIDescriptor;
+    pub(crate) type DIBasicType = DIType;
+    pub(crate) type DIDerivedType = DIType;
+    pub(crate) type DICompositeType = DIDerivedType;
+    pub(crate) type DIVariable = DIDescriptor;
+    pub(crate) type DIGlobalVariableExpression = DIDescriptor;
+    pub(crate) type DIArray = DIDescriptor;
+    pub(crate) type DISubrange = DIDescriptor;
+    pub(crate) type DIEnumerator = DIDescriptor;
+    pub(crate) type DITemplateTypeParameter = DIDescriptor;
 
     bitflags! {
         /// Must match the layout of `LLVMDIFlags` in the LLVM-C API.
@@ -846,7 +852,7 @@ pub mod debuginfo {
         /// assertions in `RustWrapper.cpp` used by `fromRust(LLVMDIFlags)`.
         #[repr(transparent)]
         #[derive(Clone, Copy, Default)]
-        pub struct DIFlags: u32 {
+        pub(crate) struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
             const FlagProtected           = 2;
@@ -886,7 +892,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(transparent)]
         #[derive(Clone, Copy, Default)]
-        pub struct DISPFlags: u32 {
+        pub(crate) struct DISPFlags: u32 {
             const SPFlagZero              = 0;
             const SPFlagVirtual           = 1;
             const SPFlagPureVirtual       = 2;
@@ -900,7 +906,7 @@ pub mod debuginfo {
     /// LLVMRustDebugEmissionKind
     #[derive(Copy, Clone)]
     #[repr(C)]
-    pub enum DebugEmissionKind {
+    pub(crate) enum DebugEmissionKind {
         NoDebug,
         FullDebug,
         LineTablesOnly,
@@ -932,8 +938,9 @@ pub mod debuginfo {
     /// LLVMRustDebugNameTableKind
     #[derive(Clone, Copy)]
     #[repr(C)]
-    pub enum DebugNameTableKind {
+    pub(crate) enum DebugNameTableKind {
         Default,
+        #[expect(dead_code)]
         Gnu,
         None,
     }
@@ -943,7 +950,7 @@ pub mod debuginfo {
 bitflags! {
     #[repr(transparent)]
     #[derive(Default)]
-    pub struct AllocKindFlags : u64 {
+    pub(crate) struct AllocKindFlags : u64 {
         const Unknown = 0;
         const Alloc = 1;
         const Realloc = 1 << 1;
@@ -966,19 +973,20 @@ bitflags! {
 }
 
 unsafe extern "C" {
-    pub type ModuleBuffer;
+    pub(crate) type ModuleBuffer;
 }
 
-pub type SelfProfileBeforePassCallback =
+pub(crate) type SelfProfileBeforePassCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
-pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
+pub(crate) type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
-pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
-pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
+pub(crate) type GetSymbolsCallback =
+    unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
+pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-pub struct MetadataKindId(c_uint);
+pub(crate) struct MetadataKindId(c_uint);
 
 impl From<MetadataType> for MetadataKindId {
     fn from(value: MetadataType) -> Self {
