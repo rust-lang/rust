@@ -57,6 +57,8 @@ To avoid these problems:
 - Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
   your editor's rust-analyzer configuration.
   (Feel free to choose a different directory name if desired.)
+- Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
+  to the copy of `rustfmt` in that other build directory.
 - Modify the `rust-analyzer.procMacro.server` setting so that it points to the
   copy of `rust-analyzer-proc-macro-srv` in that other build directory.
 
