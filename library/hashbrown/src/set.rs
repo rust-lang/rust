@@ -465,6 +465,7 @@ impl<T, S> HashSet<T, S, Global> {
     /// set.insert(2);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher(hasher: S) -> Self {
         Self {
             map: HashMap::with_hasher(hasher),
@@ -552,6 +553,7 @@ where
     /// set.insert(2);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
+    #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher_in(hasher: S, alloc: A) -> Self {
         Self {
             map: HashMap::with_hasher_in(hasher, alloc),

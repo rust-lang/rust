@@ -24,6 +24,7 @@
         strict_provenance_lints
     )
 )]
+#![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
 #![allow(
     clippy::doc_markdown,
     clippy::module_name_repetitions,
@@ -52,6 +53,7 @@ pub enum DefaultHashBuilder {}
 extern crate std;
 
 #[cfg_attr(test, macro_use)]
+#[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
 extern crate alloc;
 
 #[cfg(feature = "nightly")]
