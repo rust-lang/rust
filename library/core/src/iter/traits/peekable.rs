@@ -16,11 +16,6 @@ pub trait PeekableIterator: Iterator {
     ///
     /// [`next`]: Iterator::next
     ///
-    /// Because `peek()` returns a reference, and many iterators iterate over
-    /// references, there can be a possibly confusing situation where the
-    /// return value is a double reference. You can see this effect in the
-    /// examples below.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -51,7 +46,7 @@ pub trait PeekableIterator: Iterator {
     /// ```
     fn peek(&self) -> Option<Self::PeekedItem<'_>>;
 
-    /// Consume and return the next value of this iterator if a condition is true.
+    /// Consumes and return the next value of this iterator if a condition is true.
     ///
     /// If `func` returns `true` for the next value of this iterator, consume and return it.
     /// Otherwise, return `None`.
@@ -90,7 +85,7 @@ pub trait PeekableIterator: Iterator {
         self.next()
     }
 
-    /// Consume and return the next item if it is equal to `expected`.
+    /// Consumes and return the next item if it is equal to `expected`.
     ///
     /// # Example
     /// Consume a number if it's equal to 0.
