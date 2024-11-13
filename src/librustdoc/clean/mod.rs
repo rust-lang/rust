@@ -2119,7 +2119,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 })
                 .collect::<Vec<_>>();
 
-            let bindings = obj
+            let constraints = obj
                 .projection_bounds()
                 .map(|pb| AssocItemConstraint {
                     assoc: projection_to_path_segment(
@@ -2155,7 +2155,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .collect();
             let late_bound_regions = late_bound_regions.into_iter().collect();
 
-            let path = clean_middle_path(cx, did, false, bindings, args);
+            let path = clean_middle_path(cx, did, false, constraints, args);
             bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
