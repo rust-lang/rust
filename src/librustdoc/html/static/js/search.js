@@ -1107,6 +1107,25 @@ class RoaringBitmapBits {
 }
 
 /**
+ * A prefix tree, used for name-based search.
+ *
+ * This data structure is used to drive prefix matches,
+ * such as matching the query "link" to `LinkedList`,
+ * and Lev-distance matches, such as matching the
+ * query "hahsmap" to `HashMap`. Substring matches,
+ * such as "list" to `LinkedList`, are done with a
+ * tailTable that deep-links into this trie.
+ *
+ * children
+ * : A [sparse array] of subtrees. The array index
+ *   is a charCode.
+ *
+ *   [sparse array]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/
+ *     Indexed_collections#sparse_arrays
+ *
+ * matches
+ * : A list of search index IDs for this node.
+ *
  * @typedef {{
  *     children: [NameTrie],
  *     matches: [number],
