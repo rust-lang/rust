@@ -493,7 +493,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
             .expect("non-UTF8 diagnostic");
             dcx.emit_err(FromLlvmDiag { message });
         }
-        llvm::diagnostic::UnknownDiagnostic(..) => {}
+        llvm::diagnostic::UnknownDiagnostic => {}
     }
 }
 

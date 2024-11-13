@@ -29,7 +29,7 @@ use std::mem::ManuallyDrop;
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
-pub use llvm_util::target_features_cfg;
+pub(crate) use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -75,8 +75,8 @@ mod intrinsic;
 // The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
 mod llvm_;
-pub mod llvm {
-    pub use super::llvm_::*;
+pub(crate) mod llvm {
+    pub(crate) use super::llvm_::*;
 }
 
 mod llvm_util;

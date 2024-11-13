@@ -303,7 +303,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let mut features: FxHashSet<Symbol> = Default::default();
 
     // Add base features for the target.
