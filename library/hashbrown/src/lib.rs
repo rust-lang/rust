@@ -24,6 +24,7 @@
         strict_provenance_lints
     )
 )]
+#![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
 #![allow(
     clippy::doc_markdown,
     clippy::module_name_repetitions,
