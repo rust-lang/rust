@@ -1585,6 +1585,19 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
                     };
                 }
             }
+        } else if let Some(version_string) =
+            config.parse_name_value_directive(line, "exact-llvm-major-version")
+        {
+            // Syntax is "only-llvm-major-version: <version>"
+            let version = extract_llvm_version(&version_string);
+            if actual_version.major > version.major || actual_version.major < version.major {
+                return IgnoreDecision::Ignore {
+                    reason: format!(
+                        "ignored when the LLVM major version is {}, but it should be {}",
+                        actual_version.major, version.major
+                    ),
+                };
+            }
         }
     }
     IgnoreDecision::Continue

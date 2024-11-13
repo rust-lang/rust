@@ -25,6 +25,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "dont-check-failure-status",
     "edition",
     "error-pattern",
+    "exact-llvm-major-version",
     "exec-env",
     "failure-status",
     "filecheck-flags",

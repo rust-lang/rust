@@ -2,8 +2,7 @@
 //@ only-x86_64
 // FIXME: Remove the `min-llvm-version`.
 //@ revisions: NINETEEN TWENTY
-//@[NINETEEN] min-llvm-version: 19
-//@[NINETEEN] ignore-llvm-version: 20-99
+//@[NINETEEN] exact-llvm-major-version: 19
 //@[TWENTY] min-llvm-version: 20
 //@ min-llvm-version: 19
 

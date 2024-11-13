@@ -284,6 +284,15 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("9.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
 }
 
 #[test]
