@@ -820,10 +820,7 @@ pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FnRetTy) 
     V::Result::output()
 }
 
-pub fn walk_fn_header<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    fn_header: &'a FnHeader
-) -> V::Result {
+pub fn walk_fn_header<'a, V: Visitor<'a>>(visitor: &mut V, fn_header: &'a FnHeader) -> V::Result {
     let FnHeader { safety: _, coroutine_kind, constness: _, ext: _ } = fn_header;
     visit_opt!(visitor, visit_coroutine_kind, coroutine_kind.as_ref());
     V::Result::output()
