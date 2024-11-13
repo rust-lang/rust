@@ -1,5 +1,4 @@
-use super::bitmask::BitMask;
-use super::Tag;
+use super::super::{BitMask, Tag};
 use core::arch::aarch64 as neon;
 use core::mem;
 use core::num::NonZeroU64;
@@ -52,8 +51,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         Group(neon::vld1_u8(ptr.cast()))
     }
 
@@ -62,8 +60,7 @@ impl Group {
     #[inline]
     #[allow(clippy::cast_ptr_alignment)]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
-        // FIXME: use align_offset once it stabilizes
-        debug_assert_eq!(ptr as usize & (mem::align_of::<Self>() - 1), 0);
+        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
         neon::vst1_u8(ptr.cast(), self.0);
     }
 
