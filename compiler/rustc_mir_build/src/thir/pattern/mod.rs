@@ -160,13 +160,19 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                     kind => (kind, None, None),
                 };
-                let value = if let PatKind::Constant { value } = kind {
-                    value
-                } else {
-                    let msg = format!(
-                        "found bad range pattern endpoint `{expr:?}` outside of error recovery"
-                    );
-                    return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+                let value = match kind {
+                    PatKind::Constant { value } => value,
+                    PatKind::ExpandedConstant { subpattern, .. }
+                        if let PatKind::Constant { value } = subpattern.kind =>
+                    {
+                        value
+                    }
+                    _ => {
+                        let msg = format!(
+                            "found bad range pattern endpoint `{expr:?}` outside of error recovery"
+                        );
+                        return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+                    }
                 };
                 Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
             }
@@ -570,19 +576,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let subpattern = self.const_to_pat(c, ty, id, span);
-        let pattern = if let hir::QPath::Resolved(None, path) = qpath
-            && path.segments.len() == 1
-        {
-            // We only want to mark constants when referenced as bare names that could have been
-            // new bindings if the `const` didn't exist.
-            Box::new(Pat {
-                span,
-                ty,
-                kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
-            })
-        } else {
-            subpattern
-        };
+        let pattern = Box::new(Pat {
+            span,
+            ty,
+            kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
+        });
 
         if !is_associated_const {
             return pattern;

@@ -677,6 +677,9 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             ..
         } = pat.kind
             && let DefKind::Const = self.tcx.def_kind(def_id)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
+            // We filter out paths with multiple path::segments.
+            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
         {
             let span = self.tcx.def_span(def_id);
             let variable = self.tcx.item_name(def_id).to_string();
@@ -1143,7 +1146,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind {
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind
+            && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
+            // We filter out paths with multiple path::segments.
+            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        {
             let const_name = cx.tcx.item_name(def_id);
             err.span_label(
                 arm.pattern.span,
