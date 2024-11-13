@@ -174,7 +174,7 @@ declare_clippy_lint! {
 impl_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF, AWAIT_HOLDING_INVALID_TYPE]);
 
 pub struct AwaitHolding {
-    def_ids: DefIdMap<(&'static str, &'static DisallowedPath)>,
+    def_ids: DefIdMap<(&'static str, &'static DisallowedPath<false>)>,
 }
 
 impl AwaitHolding {
@@ -255,7 +255,12 @@ impl AwaitHolding {
     }
 }
 
-fn emit_invalid_type(cx: &LateContext<'_>, span: Span, path: &'static str, disallowed_path: &'static DisallowedPath) {
+fn emit_invalid_type(
+    cx: &LateContext<'_>,
+    span: Span,
+    path: &'static str,
+    disallowed_path: &'static DisallowedPath<false>,
+) {
     span_lint_and_then(
         cx,
         AWAIT_HOLDING_INVALID_TYPE,

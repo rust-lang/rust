@@ -445,7 +445,7 @@ define_Conf! {
     avoid_breaking_exported_api: bool = true,
     /// The list of types which may not be held across an await point.
     #[lints(await_holding_invalid_type)]
-    await_holding_invalid_types: Vec<DisallowedPath> = Vec::new(),
+    await_holding_invalid_types: Vec<DisallowedPath<false>> = Vec::new(),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead

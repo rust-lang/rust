@@ -14,9 +14,33 @@ pub struct Rename {
     pub rename: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize)]
+pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
+    path: String,
+    reason: Option<String>,
+    replacement: Option<String>,
+}
+
+impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
+        if !REPLACEMENT_ALLOWED && enum_.replacement().is_some() {
+            return Err(de::Error::custom("replacement not allowed for this configuration"));
+        }
+        Ok(Self {
+            path: enum_.path().to_owned(),
+            reason: enum_.reason().map(ToOwned::to_owned),
+            replacement: enum_.replacement().map(ToOwned::to_owned),
+        })
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum DisallowedPath {
+pub enum DisallowedPathEnum {
     Simple(String),
     WithReason {
         path: String,
@@ -25,26 +49,32 @@ pub enum DisallowedPath {
     },
 }
 
-impl DisallowedPath {
+impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+        move |diag| {
+            if let Some(replacement) = &self.replacement {
+                diag.span_suggestion(
+                    span,
+                    self.reason.as_ref().map_or_else(|| String::from("use"), Clone::clone),
+                    replacement,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(reason) = &self.reason {
+                diag.note(reason.clone());
+            }
+        }
+    }
+}
+
+impl DisallowedPathEnum {
     pub fn path(&self) -> &str {
         let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
 
         path
-    }
-
-    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_> {
-        move |diag| {
-            if let Some(replacement) = self.replacement() {
-                diag.span_suggestion(
-                    span,
-                    self.reason().map_or_else(|| String::from("use"), ToOwned::to_owned),
-                    replacement,
-                    Applicability::MachineApplicable,
-                );
-            } else if let Some(reason) = self.reason() {
-                diag.note(reason.to_owned());
-            }
-        }
     }
 
     fn reason(&self) -> Option<&str> {
@@ -63,10 +93,10 @@ impl DisallowedPath {
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map(
+pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, &'static DisallowedPath)> {
+    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
     disallowed
         .iter()
         .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
@@ -466,7 +496,6 @@ macro_rules! unimplemented_serialize {
 }
 
 unimplemented_serialize! {
-    DisallowedPath,
     Rename,
     MacroMatcher,
 }
