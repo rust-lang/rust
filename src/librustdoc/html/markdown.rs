@@ -1333,12 +1333,14 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, ids, heading_offset);
-        let p = footnotes::Footnotes::new(p);
-        let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
-        let p = TableWrapper::new(p);
-        let p = CodeBlocks::new(p, codes, edition, playground);
-        html::push_html(&mut s, p);
+        ids.handle_footnotes(|ids, existing_footnotes| {
+            let p = HeadingLinks::new(p, None, ids, heading_offset);
+            let p = footnotes::Footnotes::new(p, existing_footnotes);
+            let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
+            let p = TableWrapper::new(p);
+            let p = CodeBlocks::new(p, codes, edition, playground);
+            html::push_html(&mut s, p);
+        });
 
         s
     }
@@ -1367,13 +1369,13 @@ impl MarkdownWithToc<'_> {
 
         let mut toc = TocBuilder::new();
 
-        {
+        ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
-            let p = footnotes::Footnotes::new(p);
+            let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
             html::push_html(&mut s, p);
-        }
+        });
 
         (toc.into_toc(), s)
     }
@@ -1401,13 +1403,15 @@ impl MarkdownItemInfo<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
-        let p = footnotes::Footnotes::new(p);
-        let p = TableWrapper::new(p.map(|(ev, _)| ev));
-        let p = p.filter(|event| {
-            !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
+        ids.handle_footnotes(|ids, existing_footnotes| {
+            let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
+            let p = footnotes::Footnotes::new(p, existing_footnotes);
+            let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = p.filter(|event| {
+                !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
+            });
+            html::push_html(&mut s, p);
         });
-        html::push_html(&mut s, p);
 
         s
     }
@@ -1882,6 +1886,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<Cow<'static, str>, usize>,
+    existing_footnotes: usize,
 }
 
 // The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
@@ -1943,7 +1948,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: DEFAULT_ID_MAP.get_or_init(init_id_map).clone() }
+        IdMap { map: DEFAULT_ID_MAP.get_or_init(init_id_map).clone(), existing_footnotes: 0 }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
@@ -1958,5 +1963,14 @@ impl IdMap {
 
         self.map.insert(id.clone().into(), 1);
         id
+    }
+
+    /// Method to handle `existing_footnotes` increment automatically (to prevent forgetting
+    /// about it).
+    pub(crate) fn handle_footnotes<F: FnOnce(&mut Self, &mut usize)>(&mut self, closure: F) {
+        let mut existing_footnotes = self.existing_footnotes;
+
+        closure(self, &mut existing_footnotes);
+        self.existing_footnotes = existing_footnotes;
     }
 }
