@@ -3405,7 +3405,6 @@ impl Step for CodegenCranelift {
             // FIXME remove once vendoring is handled
             .arg("--skip-test")
             .arg("testsuite.extended_sysroot");
-        cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
     }
