@@ -173,6 +173,8 @@ pub enum BlockReason {
     InitOnce(InitOnceId),
     /// Blocked on epoll.
     Epoll,
+    /// Blocked on eventfd.
+    Eventfd,
 }
 
 /// The state of a thread.
