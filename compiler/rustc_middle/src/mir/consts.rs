@@ -325,6 +325,9 @@ impl<'tcx> Const<'tcx> {
 
                 match c.kind() {
                     ConstKind::Value(ty, val) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    ConstKind::Expr(_) => {
+                        bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
+                    }
                     _ => Err(tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body").into()),
                 }
             }
