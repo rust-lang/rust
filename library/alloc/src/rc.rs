@@ -1876,7 +1876,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
             // Initialize with clone of this.
             let initialized_clone = unsafe {
                 // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
                 // Cast type of pointer, now that it is initialized.
                 in_progress.into_rc()
             };

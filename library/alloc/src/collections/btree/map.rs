@@ -289,40 +289,12 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
     }
 }
 
-impl<K, Q: ?Sized, A: Allocator + Clone> super::Recover<Q> for BTreeMap<K, SetValZST, A>
-where
-    K: Borrow<Q> + Ord,
-    Q: Ord,
-{
-    type Key = K;
-
-    fn get(&self, key: &Q) -> Option<&K> {
-        let root_node = self.root.as_ref()?.reborrow();
-        match root_node.search_tree(key) {
-            Found(handle) => Some(handle.into_kv().0),
-            GoDown(_) => None,
-        }
-    }
-
-    fn take(&mut self, key: &Q) -> Option<K> {
-        let (map, dormant_map) = DormantMutRef::new(self);
-        let root_node = map.root.as_mut()?.borrow_mut();
-        match root_node.search_tree(key) {
-            Found(handle) => Some(
-                OccupiedEntry {
-                    handle,
-                    dormant_map,
-                    alloc: (*map.alloc).clone(),
-                    _marker: PhantomData,
-                }
-                .remove_kv()
-                .0,
-            ),
-            GoDown(_) => None,
-        }
-    }
-
-    fn replace(&mut self, key: K) -> Option<K> {
+/// Internal functionality for `BTreeSet`.
+impl<K, A: Allocator + Clone> BTreeMap<K, SetValZST, A> {
+    pub(super) fn replace(&mut self, key: K) -> Option<K>
+    where
+        K: Ord,
+    {
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node =
             map.root.get_or_insert_with(|| Root::new((*map.alloc).clone())).borrow_mut();
