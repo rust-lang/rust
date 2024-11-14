@@ -432,6 +432,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (mut fragment_with_placeholders, mut invocations) =
             self.collect_invocations(input_fragment, &[]);
 
+        if matches!(fragment_with_placeholders, AstFragment::Crate(_))
+            && self.cx.sess.opts.unstable_opts.input_stats
+        {
+            let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
+            fragment_with_placeholders.visit_with(&mut counter);
+            eprintln!("Pre-expansion node count:  {}", counter.count);
+        }
+
         // Optimization: if we resolve all imports now,
         // we'll be able to immediately resolve most of imported macros.
         self.resolve_imports();

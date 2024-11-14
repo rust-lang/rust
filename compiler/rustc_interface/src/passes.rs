@@ -54,11 +54,6 @@ pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
         })
         .map_err(|parse_error| parse_error.emit())?;
 
-    if sess.opts.unstable_opts.input_stats {
-        eprintln!("Lines of code:             {}", sess.source_map().count_lines());
-        eprintln!("Pre-expansion node count:  {}", count_nodes(&krate));
-    }
-
     if let Some(ref s) = sess.opts.unstable_opts.show_span {
         rustc_ast_passes::show_span::run(sess.dcx(), s, &krate);
     }
