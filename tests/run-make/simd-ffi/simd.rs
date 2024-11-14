@@ -38,15 +38,13 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.maxs.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
-    // just some substitute foreign symbol, not an LLVM intrinsic; so
-    // we still get type checking, but not as detailed as (ab)using
-    // LLVM.
+    // Use a generic LLVM intrinsic to do type checking on other platforms
     #[cfg(not(any(
-        all(target_arch = "x86", target_feature = "sse2"),
-        target_arch = "x86-64",
+        all(any(target_arch = "x86", target_arch = "x86-64"), target_feature = "sse2"),
         target_arch = "arm",
         target_arch = "aarch64"
     )))]
+    #[link_name = "llvm.smax.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 }
 
