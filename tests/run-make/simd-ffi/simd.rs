@@ -25,7 +25,7 @@ pub struct i32x4([i32; 4]);
 
 extern "C" {
     // _mm_sll_epi32
-    #[cfg(any(target_arch = "x86", target_arch = "x86-64"))]
+    #[cfg(all(any(target_arch = "x86", target_arch = "x86-64"), target_feature = "sse2"))]
     #[link_name = "llvm.x86.sse2.psll.d"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
@@ -42,7 +42,7 @@ extern "C" {
     // we still get type checking, but not as detailed as (ab)using
     // LLVM.
     #[cfg(not(any(
-        target_arch = "x86",
+        all(target_arch = "x86", target_feature = "sse2"),
         target_arch = "x86-64",
         target_arch = "arm",
         target_arch = "aarch64"
