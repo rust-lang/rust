@@ -13,7 +13,7 @@ use serde_json::from_value;
 use span::Edition;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, ManifestPath, Sysroot};
+use crate::{utf8_stdout, ManifestPath, Sysroot, SysrootQueryMetadata};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -85,6 +85,8 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
+    /// How to query metadata for the sysroot crate.
+    pub sysroot_query_metadata: SysrootQueryMetadata,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,

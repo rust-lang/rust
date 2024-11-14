@@ -135,6 +135,12 @@ Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
 --
+[[rust-analyzer.cargo.sysrootQueryMetadata]]rust-analyzer.cargo.sysrootQueryMetadata (default: `"cargo_metadata"`)::
++
+--
+How to query metadata for the sysroot crate. Using cargo metadata allows rust-analyzer
+to analyze third-party dependencies of the standard libraries.
+--
 [[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
 +
 --
