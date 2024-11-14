@@ -18,6 +18,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use tracing::debug;
 
+use crate::lexer::diagnostics::TokenTreeDiagInfo;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::{errors, make_unclosed_delims_error};
 
@@ -56,7 +57,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     }
 
     let cursor = Cursor::new(src);
-    let string_reader = StringReader {
+    let mut lexer = Lexer {
         psess,
         start_pos,
         pos: start_pos,
@@ -65,9 +66,12 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         override_span,
         nbsp_is_whitespace: false,
         last_lifetime: None,
+        token: Token::dummy(),
+        diag_info: TokenTreeDiagInfo::default(),
     };
-    let (stream, res, unmatched_delims) =
-        tokentrees::TokenTreesReader::lex_all_token_trees(string_reader);
+    let (_open_spacing, stream, res) = lexer.lex_token_trees(/* is_delimited */ false);
+    let unmatched_delims = lexer.diag_info.unmatched_delims;
+
     match res {
         Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
@@ -92,7 +96,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     }
 }
 
-struct StringReader<'psess, 'src> {
+struct Lexer<'psess, 'src> {
     psess: &'psess ParseSess,
     /// Initial position, read-only.
     start_pos: BytePos,
@@ -111,9 +115,14 @@ struct StringReader<'psess, 'src> {
     /// Track the `Span` for the leading `'` of the last lifetime. Used for
     /// diagnostics to detect possible typo where `"` was meant.
     last_lifetime: Option<Span>,
+
+    /// The current token.
+    token: Token,
+
+    diag_info: TokenTreeDiagInfo,
 }
 
-impl<'psess, 'src> StringReader<'psess, 'src> {
+impl<'psess, 'src> Lexer<'psess, 'src> {
     fn dcx(&self) -> DiagCtxtHandle<'psess> {
         self.psess.dcx()
     }
@@ -124,7 +133,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
     /// Returns the next token, paired with a bool indicating if the token was
     /// preceded by whitespace.
-    fn next_token(&mut self) -> (Token, bool) {
+    fn next_token_from_cursor(&mut self) -> (Token, bool) {
         let mut preceded_by_whitespace = false;
         let mut swallow_next_invalid = 0;
         // Skip trivial (whitespace & comments) tokens
