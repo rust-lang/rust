@@ -1662,6 +1662,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query should_codegen_locally_slow(key: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether `{}` should be linked to or lowered", key }
+        cache_on_disk_if { true }
+    }
+
     /// Returns the upstream crate that exports drop-glue for the given
     /// type (`args` is expected to be a single-item list containing the
     /// type one wants drop-glue for).

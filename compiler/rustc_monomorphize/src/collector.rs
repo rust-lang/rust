@@ -965,24 +965,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(*tcx).is_some() {
-        // We can link to the item in question, no instance needed in this crate.
-        return false;
-    }
-
-    if let DefKind::Static { .. } = tcx.def_kind(def_id) {
-        // We cannot monomorphize statics from upstream crates.
-        return false;
-    }
-
-    if !tcx.is_mir_available(def_id) {
-        tcx.dcx().emit_fatal(NoOptimizedMir {
-            span: tcx.def_span(def_id),
-            crate_name: tcx.crate_name(def_id.krate),
-        });
-    }
-
-    true
+    tcx.should_codegen_locally_slow(instance)
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
@@ -1643,4 +1626,26 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
     providers.items_of_instance = items_of_instance;
+    providers.should_codegen_locally_slow = |tcx, instance| {
+        let def_id = instance.def_id();
+        if let DefKind::Static { .. } = tcx.def_kind(def_id) {
+            // We cannot monomorphize statics from upstream crates.
+            return false;
+        }
+
+        if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some()
+        {
+            // We can link to the item in question, no instance needed in this crate.
+            return false;
+        }
+
+        if !tcx.is_mir_available(def_id) {
+            tcx.dcx().emit_fatal(NoOptimizedMir {
+                span: tcx.def_span(def_id),
+                crate_name: tcx.crate_name(def_id.krate),
+            });
+        }
+
+        true
+    };
 }
