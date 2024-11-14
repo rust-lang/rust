@@ -1735,7 +1735,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
         // Pre-allocate memory to allow writing the cloned value directly.
         let mut boxed = Self::new_uninit_in(self.1.clone());
         unsafe {
-            (**self).clone_to_uninit(boxed.as_mut_ptr());
+            (**self).clone_to_uninit(boxed.as_mut_ptr().cast());
             boxed.assume_init()
         }
     }
