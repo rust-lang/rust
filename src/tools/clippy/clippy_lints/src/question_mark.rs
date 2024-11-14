@@ -8,18 +8,18 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, is_else_clause, is_in_const_context, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
-    pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
-    span_contains_comment,
+    pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    span_contains_cfg, span_contains_comment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::Res;
 use rustc_hir::{
-    BindingMode, Block, Body, ByRef, Expr, ExprKind, LetStmt, Mutability, Node, PatKind, PathSegment, QPath, Stmt,
-    StmtKind,
+    Arm, BindingMode, Block, Body, ByRef, Expr, ExprKind, FnRetTy, HirId, LetStmt, MatchSource, Mutability, Node, Pat,
+    PatKind, PathSegment, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
@@ -58,6 +58,9 @@ pub struct QuestionMark {
     /// if it is greater than zero.
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
     try_block_depth_stack: Vec<u32>,
+    /// Keeps track of the number of inferred return type closures we are inside, to avoid problems
+    /// with the `Err(x.into())` expansion being ambiguious.
+    inferred_ret_closure_stack: u16,
 }
 
 impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
@@ -68,6 +71,7 @@ impl QuestionMark {
             msrv: conf.msrv.clone(),
             matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
+            inferred_ret_closure_stack: 0,
         }
     }
 }
@@ -125,7 +129,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         cx.tcx
             .lang_items()
             .try_trait()
-            .map_or(false, |did| implements_trait(cx, init_ty, did, &[]))
+            .is_some_and(|did| implements_trait(cx, init_ty, did, &[]))
     }
 
     if let StmtKind::Let(LetStmt {
@@ -271,6 +275,135 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum TryMode {
+    Result,
+    Option,
+}
+
+fn find_try_mode<'tcx>(cx: &LateContext<'tcx>, scrutinee: &Expr<'tcx>) -> Option<TryMode> {
+    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee);
+    let ty::Adt(scrutinee_adt_def, _) = scrutinee_ty.kind() else {
+        return None;
+    };
+
+    match cx.tcx.get_diagnostic_name(scrutinee_adt_def.did())? {
+        sym::Result => Some(TryMode::Result),
+        sym::Option => Some(TryMode::Option),
+        _ => None,
+    }
+}
+
+// Check that `pat` is `{ctor_lang_item}(val)`, returning `val`.
+fn extract_ctor_call<'a, 'tcx>(
+    cx: &LateContext<'tcx>,
+    expected_ctor: LangItem,
+    pat: &'a Pat<'tcx>,
+) -> Option<&'a Pat<'tcx>> {
+    if let PatKind::TupleStruct(variant_path, [val_binding], _) = &pat.kind
+        && is_res_lang_ctor(cx, cx.qpath_res(variant_path, pat.hir_id), expected_ctor)
+    {
+        Some(val_binding)
+    } else {
+        None
+    }
+}
+
+// Extracts the local ID of a plain `val` pattern.
+fn extract_binding_pat(pat: &Pat<'_>) -> Option<HirId> {
+    if let PatKind::Binding(BindingMode::NONE, binding, _, None) = pat.kind {
+        Some(binding)
+    } else {
+        None
+    }
+}
+
+fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
+    let happy_ctor = match mode {
+        TryMode::Result => ResultOk,
+        TryMode::Option => OptionSome,
+    };
+
+    // Check for `Ok(val)` or `Some(val)`
+    if arm.guard.is_none()
+        && let Some(val_binding) = extract_ctor_call(cx, happy_ctor, arm.pat)
+        // Extract out `val`
+        && let Some(binding) = extract_binding_pat(val_binding)
+        // Check body is just `=> val`
+        && path_to_local_id(peel_blocks(arm.body), binding)
+    {
+        true
+    } else {
+        false
+    }
+}
+
+fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
+    if arm.guard.is_some() {
+        return false;
+    }
+
+    let arm_body = peel_blocks(arm.body);
+    match mode {
+        TryMode::Result => {
+            // Check that pat is Err(val)
+            if let Some(ok_pat) = extract_ctor_call(cx, ResultErr, arm.pat)
+                && let Some(ok_val) = extract_binding_pat(ok_pat)
+                // check `=> return Err(...)`
+                && let ExprKind::Ret(Some(wrapped_ret_expr)) = arm_body.kind
+                && let ExprKind::Call(ok_ctor, [ret_expr]) = wrapped_ret_expr.kind
+                && is_res_lang_ctor(cx, path_res(cx, ok_ctor), ResultErr)
+                // check `...` is `val` from binding
+                && path_to_local_id(ret_expr, ok_val)
+            {
+                true
+            } else {
+                false
+            }
+        },
+        TryMode::Option => {
+            // Check the pat is `None`
+            if is_res_lang_ctor(cx, path_res(cx, arm.pat), OptionNone)
+                // Check `=> return None`
+                && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
+                && is_res_lang_ctor(cx, path_res(cx, ret_expr), OptionNone)
+                && !ret_expr.span.from_expansion()
+            {
+                true
+            } else {
+                false
+            }
+        },
+    }
+}
+
+fn check_arms_are_try<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm1: &Arm<'tcx>, arm2: &Arm<'tcx>) -> bool {
+    (check_arm_is_some_or_ok(cx, mode, arm1) && check_arm_is_none_or_err(cx, mode, arm2))
+        || (check_arm_is_some_or_ok(cx, mode, arm2) && check_arm_is_none_or_err(cx, mode, arm1))
+}
+
+fn check_if_try_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if let ExprKind::Match(scrutinee, [arm1, arm2], MatchSource::Normal | MatchSource::Postfix) = expr.kind
+        && !expr.span.from_expansion()
+        && let Some(mode) = find_try_mode(cx, scrutinee)
+        && !span_contains_cfg(cx, expr.span)
+        && check_arms_are_try(cx, mode, arm1, arm2)
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let snippet = snippet_with_applicability(cx, scrutinee.span.source_callsite(), "..", &mut applicability);
+
+        span_lint_and_sugg(
+            cx,
+            QUESTION_MARK,
+            expr.span,
+            "this `match` expression can be replaced with `?`",
+            "try instead",
+            snippet.into_owned() + "?",
+            applicability,
+        );
+    }
+}
+
 fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let Some(higher::IfLet {
         let_pat,
@@ -339,6 +472,17 @@ fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     }
 }
 
+fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
+    let ExprKind::Closure(closure) = expr.kind else {
+        return false;
+    };
+
+    match closure.fn_decl.output {
+        FnRetTy::Return(ret_ty) => ret_ty.is_suggestable_infer_ty(),
+        FnRetTy::DefaultReturn(_) => true,
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) {
@@ -350,11 +494,27 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
         self.check_manual_let_else(cx, stmt);
     }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if is_inferred_ret_closure(expr) {
+            self.inferred_ret_closure_stack += 1;
+            return;
+        }
+
         if !self.inside_try_block() && !is_in_const_context(cx) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
         {
             check_is_none_or_err_and_early_return(cx, expr);
             check_if_let_some_or_err_and_early_return(cx, expr);
+
+            if self.inferred_ret_closure_stack == 0 {
+                check_if_try_match(cx, expr);
+            }
+        }
+    }
+
+    fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if is_inferred_ret_closure(expr) {
+            self.inferred_ret_closure_stack -= 1;
         }
     }
 

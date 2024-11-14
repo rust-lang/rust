@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .lang_items()
             .copy_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
         {
             snippet.push_str(
                 &format!(
