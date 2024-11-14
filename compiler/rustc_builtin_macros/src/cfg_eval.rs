@@ -39,46 +39,44 @@ pub(crate) fn cfg_eval(
     let features = Some(features);
     CfgEval(StripUnconfigured { sess, features, config_tokens: true, lint_node_id })
         .configure_annotatable(annotatable)
-        // Since the item itself has already been configured by the `InvocationCollector`,
-        // we know that fold result vector will contain exactly one element.
-        .unwrap()
 }
 
 struct CfgEval<'a>(StripUnconfigured<'a>);
 
-fn flat_map_annotatable(
-    vis: &mut impl MutVisitor,
-    annotatable: Annotatable,
-) -> Option<Annotatable> {
+fn flat_map_annotatable(vis: &mut impl MutVisitor, annotatable: Annotatable) -> Annotatable {
     match annotatable {
-        Annotatable::Item(item) => vis.flat_map_item(item).pop().map(Annotatable::Item),
+        Annotatable::Item(item) => Annotatable::Item(vis.flat_map_item(item).pop().unwrap()),
         Annotatable::AssocItem(item, ctxt) => {
-            Some(Annotatable::AssocItem(vis.flat_map_assoc_item(item, ctxt).pop()?, ctxt))
+            Annotatable::AssocItem(vis.flat_map_assoc_item(item, ctxt).pop().unwrap(), ctxt)
         }
         Annotatable::ForeignItem(item) => {
-            vis.flat_map_foreign_item(item).pop().map(Annotatable::ForeignItem)
+            Annotatable::ForeignItem(vis.flat_map_foreign_item(item).pop().unwrap())
         }
         Annotatable::Stmt(stmt) => {
-            vis.flat_map_stmt(stmt.into_inner()).pop().map(P).map(Annotatable::Stmt)
+            Annotatable::Stmt(P(vis.flat_map_stmt(stmt.into_inner()).pop().unwrap()))
         }
         Annotatable::Expr(mut expr) => {
             vis.visit_expr(&mut expr);
-            Some(Annotatable::Expr(expr))
+            Annotatable::Expr(expr)
         }
-        Annotatable::Arm(arm) => vis.flat_map_arm(arm).pop().map(Annotatable::Arm),
+        Annotatable::Arm(arm) => Annotatable::Arm(vis.flat_map_arm(arm).pop().unwrap()),
         Annotatable::ExprField(field) => {
-            vis.flat_map_expr_field(field).pop().map(Annotatable::ExprField)
+            Annotatable::ExprField(vis.flat_map_expr_field(field).pop().unwrap())
         }
-        Annotatable::PatField(fp) => vis.flat_map_pat_field(fp).pop().map(Annotatable::PatField),
+        Annotatable::PatField(fp) => {
+            Annotatable::PatField(vis.flat_map_pat_field(fp).pop().unwrap())
+        }
         Annotatable::GenericParam(param) => {
-            vis.flat_map_generic_param(param).pop().map(Annotatable::GenericParam)
+            Annotatable::GenericParam(vis.flat_map_generic_param(param).pop().unwrap())
         }
-        Annotatable::Param(param) => vis.flat_map_param(param).pop().map(Annotatable::Param),
-        Annotatable::FieldDef(sf) => vis.flat_map_field_def(sf).pop().map(Annotatable::FieldDef),
-        Annotatable::Variant(v) => vis.flat_map_variant(v).pop().map(Annotatable::Variant),
+        Annotatable::Param(param) => Annotatable::Param(vis.flat_map_param(param).pop().unwrap()),
+        Annotatable::FieldDef(sf) => {
+            Annotatable::FieldDef(vis.flat_map_field_def(sf).pop().unwrap())
+        }
+        Annotatable::Variant(v) => Annotatable::Variant(vis.flat_map_variant(v).pop().unwrap()),
         Annotatable::Crate(mut krate) => {
             vis.visit_crate(&mut krate);
-            Some(Annotatable::Crate(krate))
+            Annotatable::Crate(krate)
         }
     }
 }
@@ -123,11 +121,11 @@ impl CfgEval<'_> {
         self.0.configure(node)
     }
 
-    fn configure_annotatable(&mut self, mut annotatable: Annotatable) -> Option<Annotatable> {
+    fn configure_annotatable(mut self, mut annotatable: Annotatable) -> Annotatable {
         // Tokenizing and re-parsing the `Annotatable` can have a significant
         // performance impact, so try to avoid it if possible
         if !has_cfg_or_cfg_attr(&annotatable) {
-            return Some(annotatable);
+            return annotatable;
         }
 
         // The majority of parsed attribute targets will never need to have early cfg-expansion
@@ -197,13 +195,13 @@ impl CfgEval<'_> {
             Ok(a) => annotatable = a,
             Err(err) => {
                 err.emit();
-                return Some(annotatable);
+                return annotatable;
             }
         }
 
         // Now that we have our re-parsed `AttrTokenStream`, recursively configuring
         // our attribute target will correctly configure the tokens as well.
-        flat_map_annotatable(self, annotatable)
+        flat_map_annotatable(&mut self, annotatable)
     }
 }
 
