@@ -1490,7 +1490,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -1613,7 +1613,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -2312,7 +2312,7 @@ macro_rules! uint_impl {
             (res, overflowed ^ (rhs < 0))
         }
 
-        /// Calculates `self` - `rhs`
+        /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
