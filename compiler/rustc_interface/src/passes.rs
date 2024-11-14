@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
-use rustc_ast::{self as ast, visit};
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
@@ -24,7 +24,7 @@ use rustc_middle::util::Providers;
 use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
 };
-use rustc_passes::{abi_test, hir_stats, layout_test};
+use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
@@ -54,26 +54,15 @@ pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
         })
         .map_err(|parse_error| parse_error.emit())?;
 
-    if sess.opts.unstable_opts.input_stats {
-        eprintln!("Lines of code:             {}", sess.source_map().count_lines());
-        eprintln!("Pre-expansion node count:  {}", count_nodes(&krate));
-    }
-
     if let Some(ref s) = sess.opts.unstable_opts.show_span {
         rustc_ast_passes::show_span::run(sess.dcx(), s, &krate);
     }
 
-    if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
+    if sess.opts.unstable_opts.input_stats {
+        input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
     Ok(krate)
-}
-
-fn count_nodes(krate: &ast::Crate) -> usize {
-    let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
-    visit::walk_crate(&mut counter, krate);
-    counter.count
 }
 
 fn pre_expansion_lint<'a>(
@@ -290,11 +279,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
-        eprintln!("Post-expansion node count: {}", count_nodes(krate));
-    }
-
-    if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
+        input_stats::print_ast_stats(krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
@@ -820,8 +805,8 @@ pub(crate) fn create_global_ctxt<'tcx>(
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
-    if tcx.sess.opts.unstable_opts.hir_stats {
-        rustc_passes::hir_stats::print_hir_stats(tcx);
+    if tcx.sess.opts.unstable_opts.input_stats {
+        rustc_passes::input_stats::print_hir_stats(tcx);
     }
     #[cfg(debug_assertions)]
     rustc_passes::hir_id_validator::check_crate(tcx);

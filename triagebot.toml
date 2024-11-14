@@ -886,7 +886,7 @@ message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, 
 message = "Changes to the code generated for builtin derived traits."
 cc = ["@nnethercote"]
 
-[mentions."tests/ui/stats/hir-stats.stderr"]
+[mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 

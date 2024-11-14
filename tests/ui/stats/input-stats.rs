@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Zhir-stats
+//@ compile-flags: -Zinput-stats
 //@ only-64bit
 // layout randomization affects the hir stat output
 //@ needs-deterministic-layouts
@@ -11,7 +11,7 @@
 
 
 // The aim here is to include at least one of every different type of top-level
-// AST/HIR node reported by `-Zhir-stats`.
+// AST/HIR node reported by `-Zinput-stats`.
 
 #![allow(dead_code)]
 
