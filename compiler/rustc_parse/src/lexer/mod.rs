@@ -240,7 +240,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         .push(span);
                     token::Ident(sym, IdentIsRaw::No)
                 }
-                // split up (raw) c string literals to an ident and a string literal when edition < 2021.
+                // split up (raw) c string literals to an ident and a string literal when edition <
+                // 2021.
                 rustc_lexer::TokenKind::Literal {
                     kind: kind @ (LiteralKind::CStr { .. } | LiteralKind::RawCStr { .. }),
                     suffix_start: _,
@@ -261,7 +262,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
                 }
-                rustc_lexer::TokenKind::GuardedStrPrefix => self.maybe_report_guarded_str(start, str_before),
+                rustc_lexer::TokenKind::GuardedStrPrefix => {
+                    self.maybe_report_guarded_str(start, str_before)
+                }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
                     let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -305,13 +308,20 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     if prefix_span.at_least_rust_2021() {
                         let span = self.mk_sp(start, self.pos);
 
-                        let lifetime_name_without_tick = Symbol::intern(&self.str_from(ident_start));
+                        let lifetime_name_without_tick =
+                            Symbol::intern(&self.str_from(ident_start));
                         if !lifetime_name_without_tick.can_be_raw() {
-                            self.dcx().emit_err(errors::CannotBeRawLifetime { span, ident: lifetime_name_without_tick });
+                            self.dcx().emit_err(
+                                errors::CannotBeRawLifetime {
+                                    span,
+                                    ident: lifetime_name_without_tick
+                                }
+                            );
                         }
 
                         // Put the `'` back onto the lifetime name.
-                        let mut lifetime_name = String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
+                        let mut lifetime_name =
+                            String::with_capacity(lifetime_name_without_tick.as_str().len() + 1);
                         lifetime_name.push('\'');
                         lifetime_name += lifetime_name_without_tick.as_str();
                         let sym = Symbol::intern(&lifetime_name);
