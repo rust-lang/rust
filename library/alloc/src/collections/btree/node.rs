@@ -739,7 +739,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
-    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
+    pub unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         debug_assert!(self.height == 0);
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
