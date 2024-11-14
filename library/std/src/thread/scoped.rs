@@ -318,12 +318,18 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// Its [output] value is identical to that of [`ScopedJoinHandle::join()`];
     /// this is the `async` equivalent of that blocking function.
     ///
-    /// Note that while this function allows waiting for a scoped thread from `async`
-    /// functions, the original [`scope()`] is still a blocking function which should
-    /// not be used in `async` functions.
+    /// # Behavior details
+    ///
+    /// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
+    ///   In particular, it may still be executing destructors for thread-local values.
+    ///
+    /// * While this function allows waiting for a scoped thread from `async`
+    ///   functions, the original [`scope()`] is still a blocking function which should
+    ///   not be used in `async` functions.
     ///
     /// [`Future`]: crate::future::Future
     /// [output]: crate::future::Future::Output
+    /// [`JoinHandle::join()`]: super::JoinHandle::join()
     #[unstable(feature = "thread_join_future", issue = "none")]
     pub fn into_join_future(self) -> super::JoinFuture<'scope, T> {
         // There is no `ScopedJoinFuture` because the only difference between `JoinHandle`

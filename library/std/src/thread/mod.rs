@@ -1885,11 +1885,16 @@ impl<T> JoinHandle<T> {
     /// Returns a [`Future`] that resolves when the thread has finished.
     ///
     /// Its [output](Future::Output) value is identical to that of [`JoinHandle::join()`];
-    /// this is the `async` equivalent of that blocking function.
+    /// this is the approximate `async` equivalent of that blocking function.
     ///
-    /// If the returned future is dropped (cancelled), the thread will become *detached*;
-    /// there will be no way to observe or wait for the thread’s termination.
-    /// This is identical to the behavior of `JoinHandle` itself.
+    /// # Details
+    ///
+    /// * If the returned future is dropped (cancelled), the thread will become *detached*;
+    ///   there will be no way to observe or wait for the thread’s termination.
+    ///   This is identical to the behavior of `JoinHandle` itself.
+    ///
+    /// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
+    ///   In particular, it may still be executing destructors for thread-local values.
     ///
     /// # Example
     ///
@@ -1970,9 +1975,15 @@ fn _assert_sync_and_send() {
 /// Obtain it by calling [`JoinHandle::into_join_future()`] or
 /// [`ScopedJoinHandle::into_join_future()`].
 ///
-/// If a `JoinFuture` is dropped (cancelled), and the thread does not belong to a [scope],
-/// the associated thread will become *detached*;
-/// there will be no way to observe or wait for the thread’s termination.
+/// # Behavior details
+///
+/// * If a `JoinFuture` is dropped (cancelled), and the thread does not belong to a [scope],
+///   the associated thread will become *detached*;
+///   there will be no way to observe or wait for the thread’s termination.
+///
+/// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
+///   In particular, it may still be executing destructors for thread-local values.
+///
 #[unstable(feature = "thread_join_future", issue = "none")]
 pub struct JoinFuture<'scope, T>(Option<JoinInner<'scope, T>>);
 
