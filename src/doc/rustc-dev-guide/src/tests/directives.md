@@ -183,6 +183,8 @@ settings:
 The following directives will check LLVM support:
 
 - `no-system-llvm` — ignores if the system llvm is used
+- `exact-llvm-major-version: 19` — ignores if the llvm major version does not
+  match the specified llvm major version.
 - `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given
   value
 - `min-system-llvm-version: 12.0` — ignored if using a system LLVM and its
