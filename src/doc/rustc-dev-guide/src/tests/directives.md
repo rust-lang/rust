@@ -189,6 +189,8 @@ The following directives will check LLVM support:
   value
 - `min-system-llvm-version: 12.0` — ignored if using a system LLVM and its
   version is less than the given value
+- `max-llvm-major-version: 19` — ignored if the LLVM major version is higher
+  than the given major version
 - `ignore-llvm-version: 9.0` — ignores a specific LLVM version
 - `ignore-llvm-version: 7.0 - 9.9.9` — ignores LLVM versions in a range
   (inclusive)
