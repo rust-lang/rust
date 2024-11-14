@@ -432,6 +432,17 @@ pub enum FutureIncompatibilityReason {
     /// [`EditionError`]: FutureIncompatibilityReason::EditionError
     /// [`FutureReleaseErrorDontReportInDeps`]: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
     EditionAndFutureReleaseError(Edition),
+    /// This will change meaning in the provided edition *and* in a future
+    /// release.
+    ///
+    /// This variant a combination of [`FutureReleaseSemanticsChange`]
+    /// and [`EditionSemanticsChange`]. This is useful in rare cases when we
+    /// want to have "preview" of a breaking change in an edition, but do a
+    /// breaking change later on all editions anyway.
+    ///
+    /// [`EditionSemanticsChange`]: FutureIncompatibilityReason::EditionSemanticsChange
+    /// [`FutureReleaseSemanticsChange`]: FutureIncompatibilityReason::FutureReleaseSemanticsChange
+    EditionAndFutureReleaseSemanticsChange(Edition),
     /// A custom reason.
     ///
     /// Choose this variant if the built-in text of the diagnostic of the
@@ -446,7 +457,8 @@ impl FutureIncompatibilityReason {
         match self {
             Self::EditionError(e)
             | Self::EditionSemanticsChange(e)
-            | Self::EditionAndFutureReleaseError(e) => Some(e),
+            | Self::EditionAndFutureReleaseError(e)
+            | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e),
 
             FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
             | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps

@@ -4185,7 +4185,7 @@ declare_lint! {
     Warn,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
+        reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
         reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
     };
     @edition Edition2024 => Deny;

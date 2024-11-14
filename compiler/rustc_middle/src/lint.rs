@@ -388,6 +388,11 @@ pub fn lint_level(
                          it will become a hard error in Rust {edition} and in a future release in all editions!"
                     )
                 }
+                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(edition) => {
+                    format!(
+                        "this changes meaning in Rust {edition} and in a future release in all editions!"
+                    )
+                }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };
 
