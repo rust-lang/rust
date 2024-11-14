@@ -75,11 +75,6 @@ error: expected `{`, found `falsy`
    |
 LL |     } else falsy! {} {
    |            ^^^^^ expected `{`
-   |
-help: try placing this code inside a block
-   |
-LL |     } else { falsy! {} } {
-   |            +           +
 
 error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:54:12
