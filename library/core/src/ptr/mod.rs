@@ -1407,9 +1407,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead you must use the [`ptr::addr_of!`](addr_of) macro to
-/// create the pointer. You may use that returned pointer together with this
-/// function.
+/// Instead you must use the `&raw const` syntax to create the pointer.
+/// You may use that constructed pointer together with this function.
 ///
 /// An example of what not to do and how this relates to `read_unaligned` is:
 ///
@@ -1427,7 +1426,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *const _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of!(packed.unaligned);
+/// let unaligned = &raw const packed.unaligned;
 ///
 /// let v = unsafe { std::ptr::read_unaligned(unaligned) };
 /// assert_eq!(v, 0x01020304);
@@ -1615,9 +1614,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead, you must use the [`ptr::addr_of_mut!`](addr_of_mut)
-/// macro to create the pointer. You may use that returned pointer together with
-/// this function.
+/// Instead, you must use the `&raw mut` syntax to create the pointer.
+/// You may use that constructed pointer together with this function.
 ///
 /// An example of how to do it and how this relates to `write_unaligned` is:
 ///
@@ -1632,7 +1630,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *mut _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of_mut!(packed.unaligned);
+/// let unaligned = &raw mut packed.unaligned;
 ///
 /// unsafe { std::ptr::write_unaligned(unaligned, 42) };
 ///
