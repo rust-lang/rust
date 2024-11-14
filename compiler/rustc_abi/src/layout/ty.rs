@@ -209,6 +209,24 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         }
     }
 
+    pub fn is_single_vector_element<C>(self, cx: &C, expected_size: Size) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+        C: HasDataLayout,
+    {
+        match self.backend_repr {
+            BackendRepr::Vector { .. } => self.size == expected_size,
+            BackendRepr::Memory { .. } => {
+                if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
+                    self.field(cx, 0).is_single_vector_element(cx, expected_size)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     pub fn is_adt<C>(self) -> bool
     where
         Ty: TyAbiInterface<'a, C>,
