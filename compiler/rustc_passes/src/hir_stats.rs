@@ -126,6 +126,7 @@ impl<'k> StatCollector<'k> {
         });
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
+        let total_count = nodes.iter().map(|(_, node)| node.stats.count).sum();
 
         eprintln!("{prefix} {title}");
         eprintln!(
@@ -167,7 +168,13 @@ impl<'k> StatCollector<'k> {
             }
         }
         eprintln!("{prefix} ----------------------------------------------------------------");
-        eprintln!("{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size));
+        eprintln!(
+            "{} {:<18}{:>10}        {:>14}",
+            prefix,
+            "Total",
+            to_readable_str(total_size),
+            to_readable_str(total_count),
+        );
         eprintln!("{prefix}");
     }
 }

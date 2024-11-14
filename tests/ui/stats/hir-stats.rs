@@ -1,6 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Zhir-stats
-//@ only-x86_64
+//@ only-64bit
 // layout randomization affects the hir stat output
 //@ needs-deterministic-layouts
 
