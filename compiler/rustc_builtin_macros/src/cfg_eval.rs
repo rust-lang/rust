@@ -66,14 +66,7 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
         Annotatable::ForeignItem(item) => CfgFinder.visit_foreign_item(item),
         Annotatable::Stmt(stmt) => CfgFinder.visit_stmt(stmt),
         Annotatable::Expr(expr) => CfgFinder.visit_expr(expr),
-        Annotatable::Arm(arm) => CfgFinder.visit_arm(arm),
-        Annotatable::ExprField(field) => CfgFinder.visit_expr_field(field),
-        Annotatable::PatField(field) => CfgFinder.visit_pat_field(field),
-        Annotatable::GenericParam(param) => CfgFinder.visit_generic_param(param),
-        Annotatable::Param(param) => CfgFinder.visit_param(param),
-        Annotatable::FieldDef(field) => CfgFinder.visit_field_def(field),
-        Annotatable::Variant(variant) => CfgFinder.visit_variant(variant),
-        Annotatable::Crate(krate) => CfgFinder.visit_crate(krate),
+        _ => unreachable!(),
     };
     res.is_break()
 }
