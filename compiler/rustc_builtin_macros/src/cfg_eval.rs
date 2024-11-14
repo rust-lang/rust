@@ -83,7 +83,7 @@ impl CfgEval<'_> {
         self.0.configure(node)
     }
 
-    fn configure_annotatable(mut self, mut annotatable: Annotatable) -> Annotatable {
+    fn configure_annotatable(mut self, annotatable: Annotatable) -> Annotatable {
         // Tokenizing and re-parsing the `Annotatable` can have a significant
         // performance impact, so try to avoid it if possible
         if !has_cfg_or_cfg_attr(&annotatable) {
@@ -99,39 +99,6 @@ impl CfgEval<'_> {
         // and re-parse the attribute target, this time capturing information about
         // the location of `#[cfg]` and `#[cfg_attr]` in the token stream. The tokenization
         // process is lossless, so this process is invisible to proc-macros.
-
-        let parse_annotatable_with: for<'a> fn(&mut Parser<'a>) -> PResult<'a, _> =
-            match annotatable {
-                Annotatable::Item(_) => {
-                    |parser| Ok(Annotatable::Item(parser.parse_item(ForceCollect::Yes)?.unwrap()))
-                }
-                Annotatable::AssocItem(_, AssocCtxt::Trait) => |parser| {
-                    Ok(Annotatable::AssocItem(
-                        parser.parse_trait_item(ForceCollect::Yes)?.unwrap().unwrap(),
-                        AssocCtxt::Trait,
-                    ))
-                },
-                Annotatable::AssocItem(_, AssocCtxt::Impl) => |parser| {
-                    Ok(Annotatable::AssocItem(
-                        parser.parse_impl_item(ForceCollect::Yes)?.unwrap().unwrap(),
-                        AssocCtxt::Impl,
-                    ))
-                },
-                Annotatable::ForeignItem(_) => |parser| {
-                    Ok(Annotatable::ForeignItem(
-                        parser.parse_foreign_item(ForceCollect::Yes)?.unwrap().unwrap(),
-                    ))
-                },
-                Annotatable::Stmt(_) => |parser| {
-                    Ok(Annotatable::Stmt(P(parser
-                        .parse_stmt_without_recovery(false, ForceCollect::Yes)?
-                        .unwrap())))
-                },
-                Annotatable::Expr(_) => {
-                    |parser| Ok(Annotatable::Expr(parser.parse_expr_force_collect()?))
-                }
-                _ => unreachable!(),
-            };
 
         // 'Flatten' all nonterminals (i.e. `TokenKind::Interpolated`)
         // to `None`-delimited groups containing the corresponding tokens. This
@@ -151,34 +118,55 @@ impl CfgEval<'_> {
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrTokenStream` (specifically, we capture
         // `AttrTokenTree::AttrsTarget` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
+        //
+        // After that we have our re-parsed `AttrTokenStream`, recursively configuring
+        // our attribute target will correctly configure the tokens as well.
         let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
         parser.capture_cfg = true;
-        match parse_annotatable_with(&mut parser) {
-            Ok(a) => annotatable = a,
+        let res: PResult<'_, Annotatable> = try {
+            match annotatable {
+                Annotatable::Item(_) => {
+                    let item = parser.parse_item(ForceCollect::Yes)?.unwrap();
+                    Annotatable::Item(self.flat_map_item(item).pop().unwrap())
+                }
+                Annotatable::AssocItem(_, AssocCtxt::Trait) => {
+                    let item = parser.parse_trait_item(ForceCollect::Yes)?.unwrap().unwrap();
+                    Annotatable::AssocItem(
+                        self.flat_map_assoc_item(item, AssocCtxt::Trait).pop().unwrap(),
+                        AssocCtxt::Trait,
+                    )
+                }
+                Annotatable::AssocItem(_, AssocCtxt::Impl) => {
+                    let item = parser.parse_impl_item(ForceCollect::Yes)?.unwrap().unwrap();
+                    Annotatable::AssocItem(
+                        self.flat_map_assoc_item(item, AssocCtxt::Impl).pop().unwrap(),
+                        AssocCtxt::Impl,
+                    )
+                }
+                Annotatable::ForeignItem(_) => {
+                    let item = parser.parse_foreign_item(ForceCollect::Yes)?.unwrap().unwrap();
+                    Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
+                }
+                Annotatable::Stmt(_) => {
+                    let stmt =
+                        parser.parse_stmt_without_recovery(false, ForceCollect::Yes)?.unwrap();
+                    Annotatable::Stmt(P(self.flat_map_stmt(stmt).pop().unwrap()))
+                }
+                Annotatable::Expr(_) => {
+                    let mut expr = parser.parse_expr_force_collect()?;
+                    self.visit_expr(&mut expr);
+                    Annotatable::Expr(expr)
+                }
+                _ => unreachable!(),
+            }
+        };
+
+        match res {
+            Ok(ann) => ann,
             Err(err) => {
                 err.emit();
-                return annotatable;
+                annotatable
             }
-        }
-
-        // Now that we have our re-parsed `AttrTokenStream`, recursively configuring
-        // our attribute target will correctly configure the tokens as well.
-        match annotatable {
-            Annotatable::Item(item) => Annotatable::Item(self.flat_map_item(item).pop().unwrap()),
-            Annotatable::AssocItem(item, ctxt) => {
-                Annotatable::AssocItem(self.flat_map_assoc_item(item, ctxt).pop().unwrap(), ctxt)
-            }
-            Annotatable::ForeignItem(item) => {
-                Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
-            }
-            Annotatable::Stmt(stmt) => {
-                Annotatable::Stmt(P(self.flat_map_stmt(stmt.into_inner()).pop().unwrap()))
-            }
-            Annotatable::Expr(mut expr) => {
-                self.visit_expr(&mut expr);
-                Annotatable::Expr(expr)
-            }
-            _ => unreachable!(),
         }
     }
 }
