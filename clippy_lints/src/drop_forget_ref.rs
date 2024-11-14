@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                             MEM_FORGET,
                             Cow::Owned(format!(
                                 "usage of `mem::forget` on {}",
-                                if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
+                                if arg_ty.ty_adt_def().is_some_and(|def| def.has_dtor(cx.tcx)) {
                                     "`Drop` type"
                                 } else {
                                     "type with `Drop` fields"

@@ -412,9 +412,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 }
                 Self::is_used_slice_indexed(lhs, idx_ident) || Self::is_used_slice_indexed(rhs, idx_ident)
             },
-            ExprKind::Path(QPath::Resolved(_, path)) => {
-                path.segments.first().map_or(false, |idx| idx.ident == idx_ident)
-            },
+            ExprKind::Path(QPath::Resolved(_, path)) => path.segments.first().is_some_and(|idx| idx.ident == idx_ident),
             _ => false,
         }
     }

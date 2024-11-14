@@ -5,7 +5,8 @@ use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty;
+use rustc_middle::ty::GenericArgKind;
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::iter;
@@ -166,9 +167,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             },
         )) = &left_expr.kind
             && left_name == left_ident
-            && cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
-                implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
-            })
+            && cx
+                .tcx
+                .get_diagnostic_item(sym::Ord)
+                .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[]))
         {
             return Some(LintTrigger::Sort(SortDetection { vec_name }));
         }

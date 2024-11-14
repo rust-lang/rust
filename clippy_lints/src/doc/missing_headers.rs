@@ -47,7 +47,7 @@ pub fn check(
         ),
         _ => (),
     }
-    if !headers.panics && panic_info.map_or(false, |el| !el.1) {
+    if !headers.panics && panic_info.is_some_and(|el| !el.1) {
         span_lint_and_note(
             cx,
             MISSING_PANICS_DOC,
