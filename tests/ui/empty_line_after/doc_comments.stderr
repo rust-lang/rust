@@ -3,7 +3,7 @@ error: empty line after doc comment
    |
 LL | / /// for the crate
 LL | |
-   | |_
+   | |_^
 LL |   fn first_in_crate() {}
    |   ------------------- the comment documents this function
    |
@@ -22,7 +22,7 @@ error: empty line after doc comment
    |
 LL | /     /// for the module
 LL | |
-   | |_
+   | |_^
 LL |       fn first_in_module() {}
    |       -------------------- the comment documents this function
    |
@@ -39,7 +39,7 @@ error: empty line after doc comment
    |
 LL | /     /// # Indented
 LL | |
-   | |_
+   | |_^
 LL |       /// Blank line
 LL |       fn indented() {}
    |       ------------- the comment documents this function
@@ -55,7 +55,7 @@ error: empty line after doc comment
    |
 LL | / /// This should produce a warning
 LL | |
-   | |_
+   | |_^
 LL |   fn with_doc_and_newline() {}
    |   ------------------------- the comment documents this function
    |
@@ -69,7 +69,7 @@ LL | |
 LL | | /** This is also a doc comment and is part of the warning
 LL | |  */
 LL | |
-   | |_
+   | |_^
 ...
 LL |   fn three_attributes() {}
    |   --------------------- the comment documents this function
@@ -82,7 +82,7 @@ error: empty line after doc comment
 LL | /     /// docs for `old_code`
 LL | |     // fn old_code() {}
 LL | |
-   | |_
+   | |_^
 LL |       fn new_code() {}
    |       ------------- the comment documents this function
    |
@@ -102,7 +102,7 @@ LL | |     /// Docs
 LL | |     /// for OldB
 LL | |     // struct OldB;
 LL | |
-   | |_
+   | |_^
 ...
 LL |       struct Multiple;
    |       --------------- the comment documents this struct
@@ -125,7 +125,7 @@ LL | /     /**
 LL | |      * Meant to be inner doc comment
 LL | |      */
 LL | |
-   | |_
+   | |_^
 LL |       fn first_in_module() {}
    |       -------------------- the comment documents this function
    |
@@ -143,7 +143,7 @@ LL | |      * Docs for `old_code`
 LL | |      */
 LL | |     /* fn old_code() {} */
 LL | |
-   | |_
+   | |_^
 ...
 LL |       fn new_code() {}
    |       ------------- the comment documents this function
@@ -161,7 +161,7 @@ error: empty line after doc comment
 LL | /     /// Docs for `old_code2`
 LL | |     /* fn old_code2() {} */
 LL | |
-   | |_
+   | |_^
 LL |       /// Docs for `new_code2`
 LL |       fn new_code2() {}
    |       -------------- the comment documents this function
