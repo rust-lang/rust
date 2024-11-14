@@ -120,6 +120,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "incremental",
     "known-bug",
     "llvm-cov-flags",
+    "max-llvm-major-version",
     "min-cdb-version",
     "min-gdb-version",
     "min-lldb-version",
