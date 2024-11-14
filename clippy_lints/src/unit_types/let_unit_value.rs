@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
             return;
         }
 
-        if (local.ty.map_or(false, |ty| !matches!(ty.kind, TyKind::Infer))
+        if (local.ty.is_some_and(|ty| !matches!(ty.kind, TyKind::Infer))
             || matches!(local.pat.kind, PatKind::Tuple([], ddpos) if ddpos.as_opt_usize().is_none()))
             && expr_needs_inferred_result(cx, init)
         {

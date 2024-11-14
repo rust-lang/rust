@@ -51,7 +51,7 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         return false;
     };
     let end = span.hi() - pos.sf.start_pos;
-    src.get(pos.pos.0 as usize..end.0 as usize).map_or(false, |s| {
+    src.get(pos.pos.0 as usize..end.0 as usize).is_some_and(|s| {
         // Spans can be wrapped in a mixture or parenthesis, whitespace, and trailing commas.
         let start_str = s.trim_start_matches(|c: char| c.is_whitespace() || c == '(');
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
@@ -60,13 +60,13 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
-            Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
+            Pat::Num => start_str.as_bytes().first().is_some_and(u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
             Pat::MultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| end_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
-            Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
+            Pat::Num => end_str.as_bytes().last().is_some_and(u8::is_ascii_hexdigit),
         })
     })
 }
