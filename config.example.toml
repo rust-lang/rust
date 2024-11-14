@@ -503,8 +503,8 @@
 # Set this to "if-unchanged" if you are working on `src/tools`, `tests` or `library` (on CI, `library`
 # changes triggers in-tree compiler build) to speed up the build process.
 #
-# Set this to `true` to download unconditionally.
-#download-rustc = false
+# Set this to `true` to always download or `false` to always use the in-tree compiler.
+#download-rustc = "if-unchanged"
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the

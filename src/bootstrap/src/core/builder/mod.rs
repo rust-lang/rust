@@ -839,6 +839,7 @@ impl<'a> Builder<'a> {
                 clippy::RustInstaller,
                 clippy::TestFloatParse,
                 clippy::Tidy,
+                clippy::CI,
             ),
             Kind::Check | Kind::Fix => describe!(
                 check::Std,
