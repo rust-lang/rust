@@ -985,7 +985,7 @@ impl DirBuilderExt for fs::DirBuilder {
 /// Changing the owner typically requires privileges, such as root or a specific capability.
 /// Changing the group typically requires either being the owner and a member of the group, or
 /// having privileges.
-/// 
+///
 /// Be aware that changing owner clears the `suid` and `sgid` permission bits in most cases
 /// according to POSIX, usually even if the user is root. The sgid is not cleared when
 /// the file is non-group-executable. See: <https://www.man7.org/linux/man-pages/man2/chown.2.html>
