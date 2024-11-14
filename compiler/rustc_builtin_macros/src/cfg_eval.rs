@@ -43,44 +43,6 @@ pub(crate) fn cfg_eval(
 
 struct CfgEval<'a>(StripUnconfigured<'a>);
 
-fn flat_map_annotatable(vis: &mut impl MutVisitor, annotatable: Annotatable) -> Annotatable {
-    match annotatable {
-        Annotatable::Item(item) => Annotatable::Item(vis.flat_map_item(item).pop().unwrap()),
-        Annotatable::AssocItem(item, ctxt) => {
-            Annotatable::AssocItem(vis.flat_map_assoc_item(item, ctxt).pop().unwrap(), ctxt)
-        }
-        Annotatable::ForeignItem(item) => {
-            Annotatable::ForeignItem(vis.flat_map_foreign_item(item).pop().unwrap())
-        }
-        Annotatable::Stmt(stmt) => {
-            Annotatable::Stmt(P(vis.flat_map_stmt(stmt.into_inner()).pop().unwrap()))
-        }
-        Annotatable::Expr(mut expr) => {
-            vis.visit_expr(&mut expr);
-            Annotatable::Expr(expr)
-        }
-        Annotatable::Arm(arm) => Annotatable::Arm(vis.flat_map_arm(arm).pop().unwrap()),
-        Annotatable::ExprField(field) => {
-            Annotatable::ExprField(vis.flat_map_expr_field(field).pop().unwrap())
-        }
-        Annotatable::PatField(fp) => {
-            Annotatable::PatField(vis.flat_map_pat_field(fp).pop().unwrap())
-        }
-        Annotatable::GenericParam(param) => {
-            Annotatable::GenericParam(vis.flat_map_generic_param(param).pop().unwrap())
-        }
-        Annotatable::Param(param) => Annotatable::Param(vis.flat_map_param(param).pop().unwrap()),
-        Annotatable::FieldDef(sf) => {
-            Annotatable::FieldDef(vis.flat_map_field_def(sf).pop().unwrap())
-        }
-        Annotatable::Variant(v) => Annotatable::Variant(vis.flat_map_variant(v).pop().unwrap()),
-        Annotatable::Crate(mut krate) => {
-            vis.visit_crate(&mut krate);
-            Annotatable::Crate(krate)
-        }
-    }
-}
-
 fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
     struct CfgFinder;
 
@@ -201,7 +163,23 @@ impl CfgEval<'_> {
 
         // Now that we have our re-parsed `AttrTokenStream`, recursively configuring
         // our attribute target will correctly configure the tokens as well.
-        flat_map_annotatable(&mut self, annotatable)
+        match annotatable {
+            Annotatable::Item(item) => Annotatable::Item(self.flat_map_item(item).pop().unwrap()),
+            Annotatable::AssocItem(item, ctxt) => {
+                Annotatable::AssocItem(self.flat_map_assoc_item(item, ctxt).pop().unwrap(), ctxt)
+            }
+            Annotatable::ForeignItem(item) => {
+                Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
+            }
+            Annotatable::Stmt(stmt) => {
+                Annotatable::Stmt(P(self.flat_map_stmt(stmt.into_inner()).pop().unwrap()))
+            }
+            Annotatable::Expr(mut expr) => {
+                self.visit_expr(&mut expr);
+                Annotatable::Expr(expr)
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
