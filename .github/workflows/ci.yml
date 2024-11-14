@@ -96,6 +96,10 @@ jobs:
           install: >
             make
 
+      - name: turn off windows 8dot3 names for speed(?)
+        if: contains(matrix.os, 'windows')
+        run: fsutil behavior set disable8dot3 1
+
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
