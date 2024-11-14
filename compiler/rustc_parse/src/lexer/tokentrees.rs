@@ -16,7 +16,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         is_delimited: bool,
     ) -> (Spacing, TokenStream, Result<(), Vec<PErr<'psess>>>) {
         // Move past the opening delimiter.
-        let open_spacing = self.bump(false).1;
+        let open_spacing = self.bump_minimal();
 
         let mut buf = Vec::new();
         loop {
@@ -49,7 +49,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
                 _ => {
                     // Get the next normal token.
-                    let (this_tok, this_spacing) = self.bump(true);
+                    let (this_tok, this_spacing) = self.bump();
                     buf.push(TokenTree::Token(this_tok, this_spacing));
                 }
             }
@@ -138,7 +138,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
 
                 // Move past the closing delimiter.
-                self.bump(false).1
+                self.bump_minimal()
             }
             // Incorrect delimiter.
             token::CloseDelim(close_delim) => {
@@ -181,7 +181,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 //     bar(baz(
                 // }  // Incorrect delimiter but matches the earlier `{`
                 if !self.diag_info.open_braces.iter().any(|&(b, _)| b == close_delim) {
-                    self.bump(false).1
+                    self.bump_minimal()
                 } else {
                     // The choice of value here doesn't matter.
                     Spacing::Alone
@@ -203,14 +203,14 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     }
 
     // Move on to the next token, returning the current token and its spacing.
-    // Will glue adjacent single-char tokens together if `glue` is set.
-    fn bump(&mut self, glue: bool) -> (Token, Spacing) {
+    // Will glue adjacent single-char tokens together.
+    fn bump(&mut self) -> (Token, Spacing) {
         let (this_spacing, next_tok) = loop {
             let (next_tok, is_next_tok_preceded_by_whitespace) = self.next_token_from_cursor();
 
             if is_next_tok_preceded_by_whitespace {
                 break (Spacing::Alone, next_tok);
-            } else if glue && let Some(glued) = self.token.glue(&next_tok) {
+            } else if let Some(glued) = self.token.glue(&next_tok) {
                 self.token = glued;
             } else {
                 let this_spacing = if next_tok.is_punct() {
@@ -225,6 +225,26 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         };
         let this_tok = std::mem::replace(&mut self.token, next_tok);
         (this_tok, this_spacing)
+    }
+
+    // Cut-down version of `bump` used when the token kind is known in advance.
+    fn bump_minimal(&mut self) -> Spacing {
+        let (next_tok, is_next_tok_preceded_by_whitespace) = self.next_token_from_cursor();
+
+        let this_spacing = if is_next_tok_preceded_by_whitespace {
+            Spacing::Alone
+        } else {
+            if next_tok.is_punct() {
+                Spacing::Joint
+            } else if next_tok == token::Eof {
+                Spacing::Alone
+            } else {
+                Spacing::JointHidden
+            }
+        };
+
+        self.token = next_tok;
+        this_spacing
     }
 
     fn unclosed_delim_err(
