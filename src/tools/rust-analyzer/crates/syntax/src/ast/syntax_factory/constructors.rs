@@ -58,21 +58,30 @@ impl SyntaxFactory {
         tail_expr: Option<ast::Expr>,
     ) -> ast::BlockExpr {
         let stmts = stmts.into_iter().collect_vec();
-        let input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
+        let mut input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
 
         let ast = make::block_expr(stmts, tail_expr.clone()).clone_for_update();
 
-        if let Some((mut mapping, stmt_list)) = self.mappings().zip(ast.stmt_list()) {
+        if let Some(mut mapping) = self.mappings() {
+            let stmt_list = ast.stmt_list().unwrap();
             let mut builder = SyntaxMappingBuilder::new(stmt_list.syntax().clone());
+
+            if let Some(input) = tail_expr {
+                builder.map_node(
+                    input.syntax().clone(),
+                    stmt_list.tail_expr().unwrap().syntax().clone(),
+                );
+            } else if let Some(ast_tail) = stmt_list.tail_expr() {
+                // The parser interpreted the last statement (probably a statement with a block) as an Expr
+                let last_stmt = input.pop().unwrap();
+
+                builder.map_node(last_stmt, ast_tail.syntax().clone());
+            }
 
             builder.map_children(
                 input.into_iter(),
                 stmt_list.statements().map(|it| it.syntax().clone()),
             );
-
-            if let Some((input, output)) = tail_expr.zip(stmt_list.tail_expr()) {
-                builder.map_node(input.syntax().clone(), output.syntax().clone());
-            }
 
             builder.finish(&mut mapping);
         }
