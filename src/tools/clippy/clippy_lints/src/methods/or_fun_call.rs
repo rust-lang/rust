@@ -59,9 +59,7 @@ pub(super) fn check<'tcx>(
                 let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
                 cx.tcx
                     .get_diagnostic_item(sym::Default)
-                    .map_or(false, |default_trait_id| {
-                        implements_trait(cx, output_ty, default_trait_id, &[])
-                    })
+                    .is_some_and(|default_trait_id| implements_trait(cx, output_ty, default_trait_id, &[]))
             } else {
                 false
             }

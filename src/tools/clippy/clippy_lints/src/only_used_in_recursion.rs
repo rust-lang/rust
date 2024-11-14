@@ -290,7 +290,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     Some((Node::Expr(parent), child_id)) => match parent.kind {
                         // Recursive call. Track which index the parameter is used in.
                         ExprKind::Call(callee, args)
-                            if path_def_id(cx, callee).map_or(false, |id| {
+                            if path_def_id(cx, callee).is_some_and(|id| {
                                 id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(callee.hir_id))
                             }) =>
                         {
@@ -300,7 +300,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             return;
                         },
                         ExprKind::MethodCall(_, receiver, args, _)
-                            if typeck.type_dependent_def_id(parent.hir_id).map_or(false, |id| {
+                            if typeck.type_dependent_def_id(parent.hir_id).is_some_and(|id| {
                                 id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(parent.hir_id))
                             }) =>
                         {

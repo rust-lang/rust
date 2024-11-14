@@ -14,7 +14,7 @@ pub struct Context {
 }
 impl Context {
     fn skip_expr(&mut self, e: &hir::Expr<'_>) -> bool {
-        self.expr_id.is_some() || self.const_span.map_or(false, |span| span.contains(e.span))
+        self.expr_id.is_some() || self.const_span.is_some_and(|span| span.contains(e.span))
     }
 
     pub fn check_binary<'tcx>(

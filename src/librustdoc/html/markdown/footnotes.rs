@@ -1,7 +1,7 @@
 //! Markdown footnote handling.
 use std::fmt::Write as _;
 
-use pulldown_cmark::{Event, Tag, TagEnd, html};
+use pulldown_cmark::{CowStr, Event, Tag, TagEnd, html};
 use rustc_data_structures::fx::FxIndexMap;
 
 use super::SpannedEvent;
@@ -21,7 +21,7 @@ struct FootnoteDef<'a> {
     id: usize,
 }
 
-impl<'a, 'b, I> Footnotes<'a, 'b, I> {
+impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, 'b, I> {
     pub(super) fn new(iter: I, existing_footnotes: &'b mut usize) -> Self {
         Footnotes { inner: iter, footnotes: FxIndexMap::default(), existing_footnotes }
     }
@@ -34,6 +34,34 @@ impl<'a, 'b, I> Footnotes<'a, 'b, I> {
         // Don't allow changing the ID of existing entrys, but allow changing the contents.
         (content, *id)
     }
+
+    fn handle_footnote_reference(&mut self, reference: &CowStr<'a>) -> Event<'a> {
+        // When we see a reference (to a footnote we may not know) the definition of,
+        // reserve a number for it, and emit a link to that number.
+        let (_, id) = self.get_entry(reference);
+        let reference = format!(
+            "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{1}</a></sup>",
+            id,
+            // Although the ID count is for the whole page, the footnote reference
+            // are local to the item so we make this ID "local" when displayed.
+            id - *self.existing_footnotes
+        );
+        Event::Html(reference.into())
+    }
+
+    fn collect_footnote_def(&mut self) -> Vec<Event<'a>> {
+        let mut content = Vec::new();
+        while let Some((event, _)) = self.inner.next() {
+            match event {
+                Event::End(TagEnd::FootnoteDefinition) => break,
+                Event::FootnoteReference(ref reference) => {
+                    content.push(self.handle_footnote_reference(reference));
+                }
+                event => content.push(event),
+            }
+        }
+        content
+    }
 }
 
 impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, 'b, I> {
@@ -41,24 +69,15 @@ impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, 'b
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            match self.inner.next() {
+            let next = self.inner.next();
+            match next {
                 Some((Event::FootnoteReference(ref reference), range)) => {
-                    // When we see a reference (to a footnote we may not know) the definition of,
-                    // reserve a number for it, and emit a link to that number.
-                    let (_, id) = self.get_entry(reference);
-                    let reference = format!(
-                        "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{1}</a></sup>",
-                        id,
-                        // Although the ID count is for the whole page, the footnote reference
-                        // are local to the item so we make this ID "local" when displayed.
-                        id - *self.existing_footnotes
-                    );
-                    return Some((Event::Html(reference.into()), range));
+                    return Some((self.handle_footnote_reference(reference), range));
                 }
                 Some((Event::Start(Tag::FootnoteDefinition(def)), _)) => {
                     // When we see a footnote definition, collect the assocated content, and store
                     // that for rendering later.
-                    let content = collect_footnote_def(&mut self.inner);
+                    let content = self.collect_footnote_def();
                     let (entry_content, _) = self.get_entry(&def);
                     *entry_content = content;
                 }
@@ -78,17 +97,6 @@ impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, 'b
             }
         }
     }
-}
-
-fn collect_footnote_def<'a>(events: impl Iterator<Item = SpannedEvent<'a>>) -> Vec<Event<'a>> {
-    let mut content = Vec::new();
-    for (event, _) in events {
-        if let Event::End(TagEnd::FootnoteDefinition) = event {
-            break;
-        }
-        content.push(event);
-    }
-    content
 }
 
 fn render_footnotes_defs(mut footnotes: Vec<FootnoteDef<'_>>) -> String {

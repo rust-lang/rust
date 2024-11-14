@@ -94,6 +94,8 @@ impl LateLintPass<'_> for LargeIncludeFile {
             // Currently, rustc limits the usage of macro at the top-level of attributes,
             // so we don't need to recurse into each level.
             && let AttrKind::Normal(ref normal) = attr.kind
+            && let Some(doc) = attr.doc_str()
+            && doc.as_str().len() as u64 > self.max_file_size
             && let AttrArgs::Eq(_, AttrArgsEq::Hir(ref meta)) = normal.item.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the

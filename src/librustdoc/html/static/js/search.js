@@ -2667,6 +2667,7 @@ class DocSearch {
         const sortResults = async(results, typeInfo, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
             const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
+            const isMixedCase = normalizedUserQuery !== userQuery;
             const result_list = [];
             for (const result of results.values()) {
                 result.item = this.searchIndex[result.id];
@@ -2678,10 +2679,12 @@ class DocSearch {
                 let a, b;
 
                 // sort by exact case-sensitive match
-                a = (aaa.item.name !== userQuery);
-                b = (bbb.item.name !== userQuery);
-                if (a !== b) {
-                    return a - b;
+                if (isMixedCase) {
+                    a = (aaa.item.name !== userQuery);
+                    b = (bbb.item.name !== userQuery);
+                    if (a !== b) {
+                        return a - b;
+                    }
                 }
 
                 // sort by exact match with regard to the last word (mismatch goes later)

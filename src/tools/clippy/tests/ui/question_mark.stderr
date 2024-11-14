@@ -94,29 +94,76 @@ LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:131:5
+  --> tests/ui/question_mark.rs:137:5
    |
 LL | /     if f().is_none() {
 LL | |         return None;
 LL | |     }
    | |_____^ help: replace it with: `f()?;`
 
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:141:16
+   |
+LL |       let _val = match f() {
+   |  ________________^
+LL | |         Some(val) => val,
+LL | |         None => return None,
+LL | |     };
+   | |_____^ help: try instead: `f()?`
+
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:151:5
+   |
+LL | /     match f() {
+LL | |         Some(val) => val,
+LL | |         None => return None,
+LL | |     };
+   | |_____^ help: try instead: `f()?`
+
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:156:5
+   |
+LL | /     match opt_none!() {
+LL | |         Some(x) => x,
+LL | |         None => return None,
+LL | |     };
+   | |_____^ help: try instead: `opt_none!()?`
+
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:143:13
+  --> tests/ui/question_mark.rs:182:13
    |
 LL |     let _ = if let Ok(x) = x { x } else { return x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x?`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:145:5
+  --> tests/ui/question_mark.rs:184:5
    |
 LL | /     if x.is_err() {
 LL | |         return x;
 LL | |     }
    | |_____^ help: replace it with: `x?;`
 
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:188:16
+   |
+LL |       let _val = match func_returning_result() {
+   |  ________________^
+LL | |         Ok(val) => val,
+LL | |         Err(err) => return Err(err),
+LL | |     };
+   | |_____^ help: try instead: `func_returning_result()?`
+
+error: this `match` expression can be replaced with `?`
+  --> tests/ui/question_mark.rs:193:5
+   |
+LL | /     match func_returning_result() {
+LL | |         Ok(val) => val,
+LL | |         Err(err) => return Err(err),
+LL | |     };
+   | |_____^ help: try instead: `func_returning_result()?`
+
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:213:5
+  --> tests/ui/question_mark.rs:284:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -124,7 +171,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:220:5
+  --> tests/ui/question_mark.rs:291:5
    |
 LL | /     if let Err(err) = func_returning_result() {
 LL | |         return Err(err);
@@ -132,7 +179,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:297:13
+  --> tests/ui/question_mark.rs:368:13
    |
 LL | /             if a.is_none() {
 LL | |                 return None;
@@ -142,12 +189,12 @@ LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:357:5
+  --> tests/ui/question_mark.rs:428:5
    |
 LL | /     let Some(v) = bar.foo.owned.clone() else {
 LL | |         return None;
 LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
-error: aborting due to 17 previous errors
+error: aborting due to 22 previous errors
 
