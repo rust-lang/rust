@@ -258,7 +258,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
-        macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+        macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 &self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
                 Some(sym::todo_macro | sym::unimplemented_macro)
@@ -322,7 +322,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Block(l, _), &ExprKind::Block(r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ll, lr), &ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
+                    || swap_binop(l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -444,7 +444,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
-            || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
+            || self.inner.expr_fallback.as_mut().is_some_and(|f| f(left, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
@@ -724,7 +724,7 @@ fn swap_binop<'a>(
 /// `eq_fn`.
 pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
-        .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
+        .map_or_else(|| r.is_none(), |x| r.as_ref().is_some_and(|y| eq_fn(x, y)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.

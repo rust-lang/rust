@@ -175,7 +175,7 @@ impl<'tcx> Visitor<'tcx> for PatVisitor<'tcx> {
         if matches!(pat.kind, PatKind::Binding(..)) {
             ControlFlow::Break(())
         } else {
-            self.has_enum |= self.typeck.pat_ty(pat).ty_adt_def().map_or(false, AdtDef::is_enum);
+            self.has_enum |= self.typeck.pat_ty(pat).ty_adt_def().is_some_and(AdtDef::is_enum);
             walk_pat(self, pat)
         }
     }

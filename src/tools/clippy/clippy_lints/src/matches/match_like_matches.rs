@@ -74,7 +74,7 @@ where
         && b0 != b1
         && (first_guard.is_none() || iter.len() == 0)
         && first_attrs.is_empty()
-        && iter.all(|arm| find_bool_lit(&arm.2.kind).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty())
+        && iter.all(|arm| find_bool_lit(&arm.2.kind).is_some_and(|b| b == b0) && arm.3.is_none() && arm.0.is_empty())
     {
         if let Some(last_pat) = last_pat_opt {
             if !is_wild(last_pat) {

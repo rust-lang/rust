@@ -193,7 +193,7 @@ fn check_collect_into_intoiterator<'tcx>(
 
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
-    cx.typeck_results().type_dependent_def_id(call_id).map_or(false, |id| {
+    cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
         let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
