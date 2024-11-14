@@ -1235,9 +1235,8 @@ impl f16 {
             min <= max,
             "min > max, or either was NaN",
             "min > max, or either was NaN. min = {min:?}, max = {max:?}",
-            // FIXME(f16_f128): Passed by-ref to avoid codegen crashes
-            min: &f16 = &min,
-            max: &f16 = &max,
+            min: f16,
+            max: f16,
         );
 
         if self < min {

@@ -206,16 +206,15 @@ pub macro const_panic {
         // add the `rustc_allow_const_fn_unstable`. This is okay to do
         // because both variants will panic, just with different messages.
         #[rustc_allow_const_fn_unstable(const_eval_select)]
-        #[inline(always)] // inline the wrapper
+        #[inline(always)]
         #[track_caller]
         #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "CURRENT_RUSTC_VERSION"))]
         const fn do_panic($($arg: $ty),*) -> ! {
             $crate::intrinsics::const_eval_select!(
-                @capture { $($arg: $ty = $arg),* } -> !:
-                #[noinline]
-                if const #[track_caller] #[inline] { // Inline this, to prevent codegen
+                @capture { $($arg: $ty),* } -> !:
+                if const #[track_caller] {
                     $crate::panic!($const_msg)
-                } else #[track_caller] { // Do not inline this, it makes perf worse
+                } else #[track_caller] {
                     $crate::panic!($runtime_msg)
                 }
             )
