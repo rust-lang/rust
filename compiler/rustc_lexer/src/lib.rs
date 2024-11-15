@@ -566,19 +566,19 @@ impl Cursor<'_> {
 
     fn c_or_byte_string(
         &mut self,
-        mk_kind: impl FnOnce(bool) -> LiteralKind,
-        mk_kind_raw: impl FnOnce(Option<u8>) -> LiteralKind,
+        mk_kind: fn(bool) -> LiteralKind,
+        mk_kind_raw: fn(Option<u8>) -> LiteralKind,
         single_quoted: Option<fn(bool) -> LiteralKind>,
     ) -> TokenKind {
         match (self.first(), self.second(), single_quoted) {
-            ('\'', _, Some(mk_kind)) => {
+            ('\'', _, Some(single_quoted)) => {
                 self.bump();
                 let terminated = self.single_quoted_string();
                 let suffix_start = self.pos_within_token();
                 if terminated {
                     self.eat_literal_suffix();
                 }
-                let kind = mk_kind(terminated);
+                let kind = single_quoted(terminated);
                 Literal { kind, suffix_start }
             }
             ('"', _, _) => {
