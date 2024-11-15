@@ -6,7 +6,7 @@ set -ex
 
 case "$(uname -m)" in
     x86_64)
-        url="https://ci-mirrors.rust-lang.org/rustc/2021-08-24-sccache-v0.2.15-x86_64-unknown-linux-musl"
+        url="https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz"
         ;;
     aarch64)
         url="https://ci-mirrors.rust-lang.org/rustc/2021-08-25-sccache-v0.2.15-aarch64-unknown-linux-musl"
@@ -16,5 +16,7 @@ case "$(uname -m)" in
         exit 1
 esac
 
-curl -fo /usr/local/bin/sccache "${url}"
+curl -fLo sccache.tar.gz "${url}"
+tar zxvf sccache.tar.gz --wildcards --no-anchored 'sccache' --strip-components=1
+cp sccache /usr/local/bin/sccache
 chmod +x /usr/local/bin/sccache

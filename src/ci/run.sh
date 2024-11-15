@@ -279,5 +279,6 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
 fi
 
 echo "::group::sccache stats"
+sccache --version || true
 sccache --show-stats || true
 echo "::endgroup::"
