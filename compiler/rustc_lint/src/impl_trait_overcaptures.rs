@@ -262,7 +262,11 @@ where
             // If it's owned by this function
             && let opaque =
                 self.tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty()
-            && let hir::OpaqueTyOrigin::FnReturn { parent, .. } = opaque.origin
+            // We want to recurse into RPITs and async fns, even though the latter
+            // doesn't overcapture on its own, it may mention additional RPITs
+            // in its bounds.
+            && let hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = opaque.origin
             && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
