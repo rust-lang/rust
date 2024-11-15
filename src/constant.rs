@@ -78,7 +78,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
-        .eval(fx.tcx, ty::ParamEnv::reveal_all(), constant.span)
+        .eval(fx.tcx, ty::TypingEnv::fully_monomorphized(), constant.span)
         .expect("erroneous constant missed by mono item collection");
     (val, cv.ty())
 }
@@ -265,8 +265,13 @@ fn data_id_for_static(
         assert!(!definition);
         assert!(!tcx.is_mutable_static(def_id));
 
-        let ty = instance.ty(tcx, ParamEnv::reveal_all());
-        let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
+        let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+        let align = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .unwrap()
+            .align
+            .pref
+            .bytes();
 
         let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
             || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
