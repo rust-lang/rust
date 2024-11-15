@@ -50,6 +50,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
+extern crate smallvec;
 
 #[macro_use]
 pub mod sym_helper;
@@ -65,6 +66,7 @@ pub mod higher;
 mod hir_utils;
 pub mod macros;
 pub mod mir;
+pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;

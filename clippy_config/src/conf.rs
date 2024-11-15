@@ -1,10 +1,10 @@
 use crate::ClippyConfiguration;
-use crate::msrvs::Msrv;
 use crate::types::{
     DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering,
     SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
     SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
 };
+use clippy_utils::msrvs::Msrv;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;

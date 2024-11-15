@@ -3,7 +3,7 @@
 // of terminologies might not be relevant in the context of Clippy. Note that its behavior might
 // differ from the time of `rustc` even if the name stays the same.
 
-use clippy_config::msrvs::{self, Msrv};
+use crate::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_attr::StableSince;
 use rustc_const_eval::check_consts::ConstCx;
