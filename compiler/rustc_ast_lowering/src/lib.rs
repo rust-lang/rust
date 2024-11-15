@@ -738,7 +738,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
-            span.mark_with_reason(allow_internal_unstable, reason, self.tcx.sess.edition(), hcx)
+            span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
         })
     }
 
