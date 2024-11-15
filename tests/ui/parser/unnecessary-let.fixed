@@ -1,12 +1,12 @@
 //@ run-rustfix
 
 fn main() {
-    for let _x of [1, 2, 3] {}
+    for _x in [1, 2, 3] {}
     //~^ ERROR expected pattern, found `let`
     //~| ERROR missing `in` in `for` loop
 
     match 1 {
-        let 1 => {}
+        1 => {}
         //~^ ERROR expected pattern, found `let`
         _ => {}
     }
