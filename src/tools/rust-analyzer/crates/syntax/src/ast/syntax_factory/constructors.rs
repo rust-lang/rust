@@ -89,6 +89,10 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn expr_empty_block(&self) -> ast::BlockExpr {
+        ast::BlockExpr { syntax: make::expr_empty_block().syntax().clone_for_update() }
+    }
+
     pub fn expr_bin(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::BinExpr {
         let ast::Expr::BinExpr(ast) =
             make::expr_bin_op(lhs.clone(), op, rhs.clone()).clone_for_update()
@@ -133,6 +137,22 @@ impl SyntaxFactory {
         }
 
         ast.into()
+    }
+
+    pub fn expr_return(&self, expr: Option<ast::Expr>) -> ast::ReturnExpr {
+        let ast::Expr::ReturnExpr(ast) = make::expr_return(expr.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(input) = expr {
+                builder.map_node(input.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn let_stmt(
