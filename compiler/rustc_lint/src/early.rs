@@ -68,6 +68,10 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
 }
 
 impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
+    fn visit_coroutine_kind(&mut self, coroutine_kind: &'a ast::CoroutineKind) -> Self::Result {
+        self.check_id(coroutine_kind.closure_id());
+    }
+
     fn visit_param(&mut self, param: &'a ast::Param) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
             lint_callback!(cx, check_param, param);
@@ -111,17 +115,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
-            // Explicitly check for lints associated with 'closure_id', since
-            // it does not have a corresponding AST node
-            match e.kind {
-                ast::ExprKind::Closure(box ast::Closure {
-                    coroutine_kind: Some(coroutine_kind),
-                    ..
-                }) => {
-                    cx.check_id(coroutine_kind.closure_id());
-                }
-                _ => {}
-            }
             lint_callback!(cx, check_expr_post, e);
         })
     }
@@ -156,14 +149,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         lint_callback!(self, check_fn, fk, span, id);
         self.check_id(id);
         ast_visit::walk_fn(self, fk);
-
-        // Explicitly check for lints associated with 'closure_id', since
-        // it does not have a corresponding AST node
-        if let ast_visit::FnKind::Fn(_, _, sig, _, _, _) = fk {
-            if let Some(coroutine_kind) = sig.header.coroutine_kind {
-                self.check_id(coroutine_kind.closure_id());
-            }
-        }
     }
 
     fn visit_variant_data(&mut self, s: &'a ast::VariantData) {

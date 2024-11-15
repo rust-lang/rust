@@ -4,7 +4,7 @@ warning: this function depends on never type fallback being `()`
 LL | fn assignment() {
    | ^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: UnitDefault` will fail
@@ -24,7 +24,7 @@ warning: this function depends on never type fallback being `()`
 LL | fn assignment_rev() {
    | ^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: UnitDefault` will fail
