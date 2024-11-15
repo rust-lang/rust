@@ -1,6 +1,6 @@
 use super::EXPLICIT_ITER_LOOP;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env, is_copy, is_type_lang_item, make_normalized_projection,

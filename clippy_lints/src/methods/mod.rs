@@ -137,10 +137,10 @@ mod wrong_self_convention;
 mod zst_offset;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;

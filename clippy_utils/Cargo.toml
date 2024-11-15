@@ -2,14 +2,13 @@
 name = "clippy_utils"
 version = "0.1.84"
 edition = "2021"
-publish = false
 
 [dependencies]
-clippy_config = { path = "../clippy_config" }
 arrayvec = { version = "0.7", default-features = false }
 itertools = "0.12"
 # FIXME(f16_f128): remove when no longer needed for parsing
 rustc_apfloat = "0.2.0"
+serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

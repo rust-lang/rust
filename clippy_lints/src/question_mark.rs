@@ -1,9 +1,9 @@
 use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
-use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
