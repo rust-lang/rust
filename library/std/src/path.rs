@@ -2128,7 +2128,7 @@ impl AsRef<OsStr> for PathBuf {
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Path")]
 #[stable(feature = "rust1", since = "1.0.0")]
-// `Path::new` current implementation relies
+// `Path::new` and `impl CloneToUninit for Path` current implementation relies
 // on `Path` being layout-compatible with `OsStr`.
 // However, `Path` layout is considered an implementation detail and must not be relied upon.
 #[repr(transparent)]
@@ -3170,9 +3170,9 @@ impl Path {
 unsafe impl CloneToUninit for Path {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
-    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
-        // SAFETY: Path is just a wrapper around OsStr
-        unsafe { self.inner.clone_to_uninit(&raw mut (*dst).inner) }
+    unsafe fn clone_to_uninit(&self, dst: *mut u8) {
+        // SAFETY: Path is just a transparent wrapper around OsStr
+        unsafe { self.inner.clone_to_uninit(dst) }
     }
 }
 

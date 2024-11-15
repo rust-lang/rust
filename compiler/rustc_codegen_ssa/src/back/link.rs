@@ -69,7 +69,7 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
 pub fn link_binary(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    codegen_results: CodegenResults,
     outputs: &OutputFilenames,
 ) -> Result<(), ErrorGuaranteed> {
     let _timer = sess.timer("link_binary");
@@ -116,7 +116,7 @@ pub fn link_binary(
                     link_rlib(
                         sess,
                         archive_builder_builder,
-                        codegen_results,
+                        &codegen_results,
                         RlibFlavor::Normal,
                         &path,
                     )?
@@ -126,7 +126,7 @@ pub fn link_binary(
                     link_staticlib(
                         sess,
                         archive_builder_builder,
-                        codegen_results,
+                        &codegen_results,
                         &out_filename,
                         &path,
                     )?;
@@ -137,7 +137,7 @@ pub fn link_binary(
                         archive_builder_builder,
                         crate_type,
                         &out_filename,
-                        codegen_results,
+                        &codegen_results,
                         path.as_ref(),
                     )?;
                 }
@@ -1647,7 +1647,7 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
             return file_path;
         }
     }
-    for search_path in sess.target_filesearch(PathKind::Native).search_paths() {
+    for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
             return file_path;

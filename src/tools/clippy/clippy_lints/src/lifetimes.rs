@@ -737,7 +737,7 @@ fn elision_suggestions(
     suggestions.extend(
         usages
             .iter()
-            .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
+            .filter(|usage| named_lifetime(usage).is_some_and(|id| elidable_lts.contains(&id)))
             .map(|usage| {
                 match cx.tcx.parent_hir_node(usage.hir_id) {
                     Node::Ty(Ty {

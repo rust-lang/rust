@@ -2119,7 +2119,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 })
                 .collect::<Vec<_>>();
 
-            let bindings = obj
+            let constraints = obj
                 .projection_bounds()
                 .map(|pb| AssocItemConstraint {
                     assoc: projection_to_path_segment(
@@ -2155,7 +2155,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .collect();
             let late_bound_regions = late_bound_regions.into_iter().collect();
 
-            let path = clean_middle_path(cx, did, false, bindings, args);
+            let path = clean_middle_path(cx, did, false, constraints, args);
             bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
@@ -2787,13 +2787,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            ItemKind::Macro(macro_def, MacroKind::Bang) => {
-                let ty_vis = cx.tcx.visibility(def_id);
-                MacroItem(Macro {
-                    // FIXME this shouldn't be false
-                    source: display_macro_source(cx, name, macro_def, def_id, ty_vis, false),
-                })
-            }
+            ItemKind::Macro(macro_def, MacroKind::Bang) => MacroItem(Macro {
+                source: display_macro_source(cx, name, macro_def),
+                macro_rules: macro_def.macro_rules,
+            }),
             ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn(ref sig, generics, body_id) => {

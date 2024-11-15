@@ -10,6 +10,7 @@ bench-stage = 0
 incremental = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
+download-rustc = false
 
 [llvm]
 # Will download LLVM from CI if available on your platform.

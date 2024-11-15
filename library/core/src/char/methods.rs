@@ -301,7 +301,7 @@ impl char {
     ///
     /// # Panics
     ///
-    /// Panics if given a radix larger than 36.
+    /// Panics if given a radix smaller than 2 or larger than 36.
     ///
     /// # Examples
     ///
@@ -318,6 +318,13 @@ impl char {
     /// ```should_panic
     /// // this panics
     /// '1'.is_digit(37);
+    /// ```
+    ///
+    /// Passing a small radix, causing a panic:
+    ///
+    /// ```should_panic
+    /// // this panics
+    /// '1'.is_digit(1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_char_classify", issue = "132241")]
@@ -345,7 +352,7 @@ impl char {
     ///
     /// # Panics
     ///
-    /// Panics if given a radix larger than 36.
+    /// Panics if given a radix smaller than 2 or larger than 36.
     ///
     /// # Examples
     ///
@@ -369,24 +376,35 @@ impl char {
     /// // this panics
     /// let _ = '1'.to_digit(37);
     /// ```
+    /// Passing a small radix, causing a panic:
+    ///
+    /// ```should_panic
+    /// // this panics
+    /// let _ = '1'.to_digit(1);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
     pub const fn to_digit(self, radix: u32) -> Option<u32> {
-        // If not a digit, a number greater than radix will be created.
-        let mut digit = (self as u32).wrapping_sub('0' as u32);
-        if radix > 10 {
-            assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-            if digit < 10 {
-                return Some(digit);
-            }
-            // Force the 6th bit to be set to ensure ascii is lower case.
-            digit = (self as u32 | 0b10_0000).wrapping_sub('a' as u32).saturating_add(10);
-        }
+        assert!(
+            radix >= 2 && radix <= 36,
+            "to_digit: invalid radix -- radix must be in the range 2 to 36 inclusive"
+        );
+        // check radix to remove letter handling code when radix is a known constant
+        let value = if self > '9' && radix > 10 {
+            // convert ASCII letters to lowercase
+            let lower = self as u32 | 0x20;
+            // convert an ASCII letter to the corresponding value,
+            // non-letters convert to values > 36
+            lower.wrapping_sub('a' as u32) as u64 + 10
+        } else {
+            // convert digit to value, non-digits wrap to values > 36
+            (self as u32).wrapping_sub('0' as u32) as u64
+        };
         // FIXME(const-hack): once then_some is const fn, use it here
-        if digit < radix { Some(digit) } else { None }
+        if value < radix as u64 { Some(value as u32) } else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -775,13 +793,12 @@ impl char {
     /// In a const context:
     ///
     /// ```
-    /// #![feature(const_unicode_case_lookup)]
     /// const CAPITAL_DELTA_IS_LOWERCASE: bool = 'Δ'.is_lowercase();
     /// assert!(!CAPITAL_DELTA_IS_LOWERCASE);
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
+    #[rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
     #[inline]
     pub const fn is_lowercase(self) -> bool {
         match self {
@@ -817,13 +834,12 @@ impl char {
     /// In a const context:
     ///
     /// ```
-    /// #![feature(const_unicode_case_lookup)]
     /// const CAPITAL_DELTA_IS_UPPERCASE: bool = 'Δ'.is_uppercase();
     /// assert!(CAPITAL_DELTA_IS_UPPERCASE);
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
+    #[rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0")]
     #[inline]
     pub const fn is_uppercase(self) -> bool {
         match self {

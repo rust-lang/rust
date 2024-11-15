@@ -403,7 +403,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut assume = predicate.trait_ref.args.const_at(2);
         // FIXME(min_generic_const_exprs): We should shallowly normalize this.
         if self.tcx().features().generic_const_exprs() {
-            assume = assume.normalize_internal(self.tcx(), obligation.param_env);
+            assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
         }
         let Some(assume) =
             rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)

@@ -38,7 +38,6 @@ pub enum TokenTree {
 }
 
 // Ensure all fields of `TokenTree` are `DynSend` and `DynSync`.
-#[cfg(parallel_compiler)]
 fn _dummy()
 where
     Token: sync::DynSend + sync::DynSync,

@@ -3,6 +3,7 @@
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::mem;
+use std::num::NonZero;
 use std::ops::Deref;
 
 use rustc_attr::{ConstStability, StabilityLevel};
@@ -271,9 +272,18 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// context.
     pub fn check_op_spanned<O: NonConstOp<'tcx>>(&mut self, op: O, span: Span) {
         let gate = match op.status_in_item(self.ccx) {
-            Status::Unstable { gate, safe_to_expose_on_stable, is_function_call }
-                if self.tcx.features().enabled(gate) =>
-            {
+            Status::Unstable {
+                gate,
+                safe_to_expose_on_stable,
+                is_function_call,
+                gate_already_checked,
+            } if gate_already_checked || self.tcx.features().enabled(gate) => {
+                if gate_already_checked {
+                    assert!(
+                        !safe_to_expose_on_stable,
+                        "setting `gate_already_checked` without `safe_to_expose_on_stable` makes no sense"
+                    );
+                }
                 // Generally this is allowed since the feature gate is enabled -- except
                 // if this function wants to be safe-to-expose-on-stable.
                 if !safe_to_expose_on_stable
@@ -709,6 +719,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Intrinsics are language primitives, not regular calls, so treat them separately.
                 if let Some(intrinsic) = tcx.intrinsic(callee) {
+                    if !tcx.is_const_fn(callee) {
+                        // Non-const intrinsic.
+                        self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
+                        // If we allowed this, we're in miri-unleashed mode, so we might
+                        // as well skip the remaining checks.
+                        return;
+                    }
                     // We use `intrinsic.const_stable` to determine if this can be safely exposed to
                     // stable code, rather than `const_stable_indirect`. This is to make
                     // `#[rustc_const_stable_indirect]` an attribute that is always safe to add.
@@ -716,17 +733,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // fallback body is safe to expose on stable.
                     let is_const_stable = intrinsic.const_stable
                         || (!intrinsic.must_be_overridden
-                            && tcx.is_const_fn(callee)
                             && is_safe_to_expose_on_stable_const_fn(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
                         None => {
-                            // Non-const intrinsic.
-                            self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
-                        }
-                        Some(ConstStability { feature: None, .. }) => {
-                            // Intrinsic does not need a separate feature gate (we rely on the
-                            // regular stability checker). However, we have to worry about recursive
-                            // const stability.
+                            // This doesn't need a separate const-stability check -- const-stability equals
+                            // regular stability, and regular stability is checked separately.
+                            // However, we *do* have to worry about *recursive* const stability.
                             if !is_const_stable && self.enforce_recursive_const_stability() {
                                 self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
                                     span: self.span,
@@ -735,14 +747,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         Some(ConstStability {
-                            feature: Some(feature),
                             level: StabilityLevel::Unstable { .. },
+                            feature,
                             ..
                         }) => {
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
-                                const_stable: is_const_stable,
+                                const_stable_indirect: is_const_stable,
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
@@ -773,7 +785,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                         // All good.
                     }
-                    None | Some(ConstStability { feature: None, .. }) => {
+                    None => {
                         // This doesn't need a separate const-stability check -- const-stability equals
                         // regular stability, and regular stability is checked separately.
                         // However, we *do* have to worry about *recursive* const stability.
@@ -787,8 +799,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                     }
                     Some(ConstStability {
-                        feature: Some(feature),
-                        level: StabilityLevel::Unstable { implied_by: implied_feature, .. },
+                        level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+                        feature,
                         ..
                     }) => {
                         // An unstable const fn with a feature gate.
@@ -797,6 +809,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                         // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]` if
                         // the callee is safe to expose, to avoid bypassing recursive stability.
+                        // This is not ideal since it means the user sees an error, not the macro
+                        // author, but that's also the case if one forgets to set
+                        // `#[allow_internal_unstable]` in the first place. Note that this cannot be
+                        // integrated in the check below since we want to enforce
+                        // `callee_safe_to_expose_on_stable` even if
+                        // `!self.enforce_recursive_const_stability()`.
                         if (self.span.allows_unstable(feature)
                             || implied_feature.is_some_and(|f| self.span.allows_unstable(f)))
                             && callee_safe_to_expose_on_stable
@@ -810,16 +828,30 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // to allow this.
                         let feature_enabled = callee.is_local()
                             || tcx.features().enabled(feature)
-                            || implied_feature.is_some_and(|f| tcx.features().enabled(f));
-                        // We do *not* honor this if we are in the "danger zone": we have to enforce
-                        // recursive const-stability and the callee is not safe-to-expose. In that
-                        // case we need `check_op` to do the check.
-                        let danger_zone = !callee_safe_to_expose_on_stable
-                            && self.enforce_recursive_const_stability();
-                        if danger_zone || !feature_enabled {
+                            || implied_feature.is_some_and(|f| tcx.features().enabled(f))
+                            || {
+                                // When we're compiling the compiler itself we may pull in
+                                // crates from crates.io, but those crates may depend on other
+                                // crates also pulled in from crates.io. We want to ideally be
+                                // able to compile everything without requiring upstream
+                                // modifications, so in the case that this looks like a
+                                // `rustc_private` crate (e.g., a compiler crate) and we also have
+                                // the `-Z force-unstable-if-unmarked` flag present (we're
+                                // compiling a compiler crate), then let this missing feature
+                                // annotation slide.
+                                // This matches what we do in `eval_stability_allow_unstable` for
+                                // regular stability.
+                                feature == sym::rustc_private
+                                    && issue == NonZero::new(27812)
+                                    && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                            };
+                        // Even if the feature is enabled, we still need check_op to double-check
+                        // this if the callee is not safe to expose on stable.
+                        if !feature_enabled || !callee_safe_to_expose_on_stable {
                             self.check_op(ops::FnCallUnstable {
                                 def_id: callee,
                                 feature,
+                                feature_enabled,
                                 safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
                             });
                         }

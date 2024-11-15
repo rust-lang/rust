@@ -153,7 +153,7 @@ fn needless_continue_in_else(else_expr: &ast::Expr, label: Option<&ast::Label>) 
 }
 
 fn is_first_block_stmt_continue(block: &ast::Block, label: Option<&ast::Label>) -> bool {
-    block.stmts.first().map_or(false, |stmt| match stmt.kind {
+    block.stmts.first().is_some_and(|stmt| match stmt.kind {
         ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => {
             if let ast::ExprKind::Continue(ref l) = e.kind {
                 compare_labels(label, l.as_ref())
@@ -390,7 +390,7 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 #[must_use]
 fn erode_from_back(s: &str) -> String {
     let mut ret = s.to_string();
-    while ret.pop().map_or(false, |c| c != '}') {}
+    while ret.pop().is_some_and(|c| c != '}') {}
     while let Some(c) = ret.pop() {
         if !c.is_whitespace() {
             ret.push(c);

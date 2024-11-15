@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
                 let is_ord = cx
                     .tcx
                     .get_diagnostic_item(sym::Ord)
-                    .map_or(false, |id| implements_trait(cx, ty, id, &[]));
+                    .is_some_and(|id| implements_trait(cx, ty, id, &[]));
 
                 if !is_ord {
                     return;

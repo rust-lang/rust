@@ -204,6 +204,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "meant for internal use only" {
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
+                        search_unbox => rustdoc_internals
                     }
                 );
             }
@@ -522,9 +523,18 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "consider removing `for<...>`"
     );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
-    for &span in spans.get(&sym::yield_expr).iter().copied().flatten() {
-        if !span.at_least_rust_2024() {
-            gate!(&visitor, coroutines, span, "yield syntax is experimental");
+    // yield can be enabled either by `coroutines` or `gen_blocks`
+    if let Some(spans) = spans.get(&sym::yield_expr) {
+        for span in spans {
+            if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
+                && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
+            {
+                #[allow(rustc::untranslatable_diagnostic)]
+                // Don't know which of the two features to include in the
+                // error message, so I am arbitrarily picking one.
+                feature_err(&visitor.sess, sym::coroutines, *span, "yield syntax is experimental")
+                    .emit();
+            }
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");

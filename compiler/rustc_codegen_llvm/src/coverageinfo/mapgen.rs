@@ -12,8 +12,10 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::MappingKind;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::Symbol;
+use rustc_session::RemapFileNameExt;
+use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
@@ -70,8 +72,10 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
         .collect::<Vec<_>>();
 
-    let all_file_names =
-        function_coverage_entries.iter().flat_map(|(_, fn_cov)| fn_cov.all_file_names());
+    let all_file_names = function_coverage_entries
+        .iter()
+        .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
+        .map(|span| span_file_name(tcx, span));
     let global_file_table = GlobalFileTable::new(all_file_names);
 
     // Encode all filenames referenced by coverage mappings in this CGU.
@@ -96,7 +100,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         let is_used = function_coverage.is_used();
 
         let coverage_mapping_buffer =
-            encode_mappings_for_function(&global_file_table, &function_coverage);
+            encode_mappings_for_function(tcx, &global_file_table, &function_coverage);
 
         if coverage_mapping_buffer.is_empty() {
             if function_coverage.is_used() {
@@ -164,13 +168,13 @@ impl GlobalFileTable {
         Self { raw_file_table }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> u32 {
+    fn global_file_id_for_file_name(&self, file_name: Symbol) -> GlobalFileId {
         let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
             bug!("file name not found in prepared global file table: {file_name}");
         });
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
-        (raw_id + 1) as u32
+        GlobalFileId::from_usize(raw_id + 1)
     }
 
     fn make_filenames_buffer(&self, tcx: TyCtxt<'_>) -> Vec<u8> {
@@ -196,19 +200,27 @@ impl GlobalFileTable {
 }
 
 rustc_index::newtype_index! {
-    struct LocalFileId {}
+    /// An index into the CGU's overall list of file paths. The underlying paths
+    /// will be embedded in the `__llvm_covmap` linker section.
+    struct GlobalFileId {}
+}
+rustc_index::newtype_index! {
+    /// An index into a function's list of global file IDs. That underlying list
+    /// of local-to-global mappings will be embedded in the function's record in
+    /// the `__llvm_covfun` linker section.
+    pub(crate) struct LocalFileId {}
 }
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
 /// file IDs.
 #[derive(Default)]
 struct VirtualFileMapping {
-    local_to_global: IndexVec<LocalFileId, u32>,
-    global_to_local: FxIndexMap<u32, LocalFileId>,
+    local_to_global: IndexVec<LocalFileId, GlobalFileId>,
+    global_to_local: FxIndexMap<GlobalFileId, LocalFileId>,
 }
 
 impl VirtualFileMapping {
-    fn local_id_for_global(&mut self, global_file_id: u32) -> LocalFileId {
+    fn local_id_for_global(&mut self, global_file_id: GlobalFileId) -> LocalFileId {
         *self
             .global_to_local
             .entry(global_file_id)
@@ -216,8 +228,17 @@ impl VirtualFileMapping {
     }
 
     fn into_vec(self) -> Vec<u32> {
-        self.local_to_global.raw
+        // This conversion should be optimized away to ~zero overhead.
+        // In any case, it's probably not hot enough to worry about.
+        self.local_to_global.into_iter().map(|global| global.as_u32()).collect()
     }
+}
+
+fn span_file_name(tcx: TyCtxt<'_>, span: Span) -> Symbol {
+    let source_file = tcx.sess.source_map().lookup_source_file(span.lo());
+    let name =
+        source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy();
+    Symbol::intern(&name)
 }
 
 /// Using the expressions and counter regions collected for a single function,
@@ -226,6 +247,7 @@ impl VirtualFileMapping {
 ///
 /// Newly-encountered filenames will be added to the global file table.
 fn encode_mappings_for_function(
+    tcx: TyCtxt<'_>,
     global_file_table: &GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
@@ -242,53 +264,45 @@ fn encode_mappings_for_function(
     let mut mcdc_branch_regions = vec![];
     let mut mcdc_decision_regions = vec![];
 
-    // Group mappings into runs with the same filename, preserving the order
-    // yielded by `FunctionCoverage`.
-    // Prepare file IDs for each filename, and prepare the mapping data so that
-    // we can pass it through FFI to LLVM.
-    for (file_name, counter_regions_for_file) in
-        &counter_regions.group_by(|(_, region)| region.file_name)
-    {
-        // Look up the global file ID for this filename.
-        let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Currently a function's mappings must all be in the same file as its body span.
+    let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
 
-        // Associate that global file ID with a local file ID for this function.
-        let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
-        debug!("  file id: {local_file_id:?} => global {global_file_id} = '{file_name:?}'");
+    // Look up the global file ID for that filename.
+    let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
 
-        // For each counter/region pair in this function+file, convert it to a
-        // form suitable for FFI.
-        for (mapping_kind, region) in counter_regions_for_file {
-            debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-            let span = ffi::CoverageSpan::from_source_region(local_file_id.as_u32(), region);
-            match mapping_kind {
-                MappingKind::Code(term) => {
-                    code_regions
-                        .push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
-                }
-                MappingKind::Branch { true_term, false_term } => {
-                    branch_regions.push(ffi::BranchRegion {
-                        span,
-                        true_counter: ffi::Counter::from_term(true_term),
-                        false_counter: ffi::Counter::from_term(false_term),
-                    });
-                }
-                MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
-                    mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                        span,
-                        true_counter: ffi::Counter::from_term(true_term),
-                        false_counter: ffi::Counter::from_term(false_term),
-                        mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
-                    });
-                }
-                MappingKind::MCDCDecision(mcdc_decision_params) => {
-                    mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                        span,
-                        mcdc_decision_params: ffi::mcdc::DecisionParameters::from(
-                            mcdc_decision_params,
-                        ),
-                    });
-                }
+    // Associate that global file ID with a local file ID for this function.
+    let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
+    debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
+
+    // For each counter/region pair in this function+file, convert it to a
+    // form suitable for FFI.
+    for (mapping_kind, region) in counter_regions {
+        debug!("Adding counter {mapping_kind:?} to map for {region:?}");
+        let span = ffi::CoverageSpan::from_source_region(local_file_id, region);
+        match mapping_kind {
+            MappingKind::Code(term) => {
+                code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
+            }
+            MappingKind::Branch { true_term, false_term } => {
+                branch_regions.push(ffi::BranchRegion {
+                    span,
+                    true_counter: ffi::Counter::from_term(true_term),
+                    false_counter: ffi::Counter::from_term(false_term),
+                });
+            }
+            MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
+                mcdc_branch_regions.push(ffi::MCDCBranchRegion {
+                    span,
+                    true_counter: ffi::Counter::from_term(true_term),
+                    false_counter: ffi::Counter::from_term(false_term),
+                    mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
+                });
+            }
+            MappingKind::MCDCDecision(mcdc_decision_params) => {
+                mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
+                    span,
+                    mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
+                });
             }
         }
     }

@@ -680,6 +680,12 @@ impl<'a> TraitDef<'a> {
                     param_clone
                 }
             })
+            .map(|mut param| {
+                // Remove all attributes, because there might be helper attributes
+                // from other macros that will not be valid in the expanded implementation.
+                param.attrs.clear();
+                param
+            })
             .collect();
 
         // and similarly for where clauses

@@ -1,6 +1,7 @@
 //@aux-build:paths.rs
 #![deny(clippy::internal)]
 #![feature(rustc_private)]
+#![allow(clippy::unnecessary_map_or)]
 
 extern crate clippy_utils;
 extern crate paths;

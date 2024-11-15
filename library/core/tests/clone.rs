@@ -28,7 +28,7 @@ fn test_clone_to_uninit_slice_success() {
 
     let mut storage: MaybeUninit<[String; 3]> = MaybeUninit::uninit();
     let b: [String; 3] = unsafe {
-        a[..].clone_to_uninit(storage.as_mut_ptr() as *mut [String]);
+        a[..].clone_to_uninit(storage.as_mut_ptr().cast());
         storage.assume_init()
     };
 
@@ -70,7 +70,7 @@ fn test_clone_to_uninit_slice_drops_on_panic() {
         let mut storage: MaybeUninit<[CountsDropsAndPanics; 3]> = MaybeUninit::uninit();
         // This should panic halfway through
         unsafe {
-            a[..].clone_to_uninit(storage.as_mut_ptr() as *mut [CountsDropsAndPanics]);
+            a[..].clone_to_uninit(storage.as_mut_ptr().cast());
         }
     })
     .unwrap_err();
@@ -89,13 +89,13 @@ fn test_clone_to_uninit_str() {
     let a = "hello";
 
     let mut storage: MaybeUninit<[u8; 5]> = MaybeUninit::uninit();
-    unsafe { a.clone_to_uninit(storage.as_mut_ptr() as *mut [u8] as *mut str) };
+    unsafe { a.clone_to_uninit(storage.as_mut_ptr().cast()) };
     assert_eq!(a.as_bytes(), unsafe { storage.assume_init() }.as_slice());
 
     let mut b: Box<str> = "world".into();
     assert_eq!(a.len(), b.len());
     assert_ne!(a, &*b);
-    unsafe { a.clone_to_uninit(ptr::from_mut::<str>(&mut b)) };
+    unsafe { a.clone_to_uninit(ptr::from_mut::<str>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }
 
@@ -104,13 +104,13 @@ fn test_clone_to_uninit_cstr() {
     let a = c"hello";
 
     let mut storage: MaybeUninit<[u8; 6]> = MaybeUninit::uninit();
-    unsafe { a.clone_to_uninit(storage.as_mut_ptr() as *mut [u8] as *mut CStr) };
+    unsafe { a.clone_to_uninit(storage.as_mut_ptr().cast()) };
     assert_eq!(a.to_bytes_with_nul(), unsafe { storage.assume_init() }.as_slice());
 
     let mut b: Box<CStr> = c"world".into();
     assert_eq!(a.count_bytes(), b.count_bytes());
     assert_ne!(a, &*b);
-    unsafe { a.clone_to_uninit(ptr::from_mut::<CStr>(&mut b)) };
+    unsafe { a.clone_to_uninit(ptr::from_mut::<CStr>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }
 

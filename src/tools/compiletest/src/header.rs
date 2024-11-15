@@ -1547,6 +1547,20 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
                 };
             }
         } else if let Some(version_string) =
+            config.parse_name_value_directive(line, "max-llvm-major-version")
+        {
+            let max_version = extract_llvm_version(&version_string);
+            // Ignore if actual major version is larger than the maximum required major version.
+            if actual_version.major > max_version.major {
+                return IgnoreDecision::Ignore {
+                    reason: format!(
+                        "ignored when the LLVM version ({actual_version}) is newer than major\
+                        version {}",
+                        max_version.major
+                    ),
+                };
+            }
+        } else if let Some(version_string) =
             config.parse_name_value_directive(line, "min-system-llvm-version")
         {
             let min_version = extract_llvm_version(&version_string);
@@ -1584,6 +1598,19 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
                         ),
                     };
                 }
+            }
+        } else if let Some(version_string) =
+            config.parse_name_value_directive(line, "exact-llvm-major-version")
+        {
+            // Syntax is "exact-llvm-major-version: <version>"
+            let version = extract_llvm_version(&version_string);
+            if actual_version.major != version.major {
+                return IgnoreDecision::Ignore {
+                    reason: format!(
+                        "ignored when the actual LLVM major version is {}, but the test only targets major version {}",
+                        actual_version.major, version.major
+                    ),
+                };
             }
         }
     }

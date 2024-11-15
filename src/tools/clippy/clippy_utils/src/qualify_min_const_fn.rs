@@ -393,12 +393,8 @@ fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
 
                 msrv.meets(const_stab_rust_version)
             } else {
-                // Unstable const fn, check if the feature is enabled. We need both the regular stability
-                // feature and (if set) the const stability feature to const-call this function.
-                let stab = tcx.lookup_stability(def_id);
-                let is_enabled = stab.is_some_and(|s| s.is_stable() || tcx.features().enabled(s.feature))
-                    && const_stab.feature.is_none_or(|f| tcx.features().enabled(f));
-                is_enabled && msrv.current().is_none()
+                // Unstable const fn, check if the feature is enabled.
+                tcx.features().enabled(const_stab.feature) && msrv.current().is_none()
             }
         })
 }

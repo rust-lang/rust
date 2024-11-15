@@ -1233,7 +1233,7 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
             #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
             /// assert_eq!(three.div_ceil(two), two);
             /// ```
-            #[unstable(feature = "unsigned_nonzero_div_ceil", issue = "none")]
+            #[unstable(feature = "unsigned_nonzero_div_ceil", issue = "132968")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]

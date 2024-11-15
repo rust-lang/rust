@@ -4,15 +4,16 @@
 use std::ops::ControlFlow;
 
 use either::Either;
+use itertools::Itertools as _;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Diag, Subdiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, ConstraintCategory, Location};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::Symbol;
+use rustc_trait_selection::errors::impl_trait_overcapture_suggestion;
 
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
@@ -61,6 +62,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // *does* mention. We'll use that for the `+ use<'a>` suggestion below.
             let mut visitor = CheckExplicitRegionMentionAndCollectGenerics {
                 tcx,
+                generics: tcx.generics_of(opaque_def_id),
                 offending_region_idx,
                 seen_opaques: [opaque_def_id].into_iter().collect(),
                 seen_lifetimes: Default::default(),
@@ -83,34 +85,50 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         "this call may capture more lifetimes than intended, \
                         because Rust 2024 has adjusted the `impl Trait` lifetime capture rules",
                     );
-                    let mut seen_generics: Vec<_> =
-                        visitor.seen_lifetimes.iter().map(ToString::to_string).collect();
-                    // Capture all in-scope ty/const params.
-                    seen_generics.extend(
-                        ty::GenericArgs::identity_for_item(tcx, opaque_def_id)
-                            .iter()
-                            .filter(|arg| {
-                                matches!(
-                                    arg.unpack(),
-                                    ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_)
-                                )
-                            })
-                            .map(|arg| arg.to_string()),
-                    );
-                    if opaque_def_id.is_local() {
-                        diag.span_suggestion_verbose(
-                            tcx.def_span(opaque_def_id).shrink_to_hi(),
-                            "add a precise capturing bound to avoid overcapturing",
-                            format!(" + use<{}>", seen_generics.join(", ")),
-                            Applicability::MaybeIncorrect,
-                        );
+                    let mut captured_args = visitor.seen_lifetimes;
+                    // Add in all of the type and const params, too.
+                    // Ordering here is kinda strange b/c we're walking backwards,
+                    // but we're trying to provide *a* suggestion, not a nice one.
+                    let mut next_generics = Some(visitor.generics);
+                    let mut any_synthetic = false;
+                    while let Some(generics) = next_generics {
+                        for param in &generics.own_params {
+                            if param.kind.is_ty_or_const() {
+                                captured_args.insert(param.def_id);
+                            }
+                            if param.kind.is_synthetic() {
+                                any_synthetic = true;
+                            }
+                        }
+                        next_generics = generics.parent.map(|def_id| tcx.generics_of(def_id));
+                    }
+
+                    if let Some(opaque_def_id) = opaque_def_id.as_local()
+                        && let hir::OpaqueTyOrigin::FnReturn { parent, .. } =
+                            tcx.hir().expect_opaque_ty(opaque_def_id).origin
+                    {
+                        if let Some(sugg) = impl_trait_overcapture_suggestion(
+                            tcx,
+                            opaque_def_id,
+                            parent,
+                            captured_args,
+                        ) {
+                            sugg.add_to_diag(diag);
+                        }
                     } else {
                         diag.span_help(
                             tcx.def_span(opaque_def_id),
                             format!(
                                 "if you can modify this crate, add a precise \
                                 capturing bound to avoid overcapturing: `+ use<{}>`",
-                                seen_generics.join(", ")
+                                if any_synthetic {
+                                    "/* Args */".to_string()
+                                } else {
+                                    captured_args
+                                        .into_iter()
+                                        .map(|def_id| tcx.item_name(def_id))
+                                        .join(", ")
+                                }
                             ),
                         );
                     }
@@ -182,9 +200,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
 
 struct CheckExplicitRegionMentionAndCollectGenerics<'tcx> {
     tcx: TyCtxt<'tcx>,
+    generics: &'tcx ty::Generics,
     offending_region_idx: usize,
     seen_opaques: FxIndexSet<DefId>,
-    seen_lifetimes: FxIndexSet<Symbol>,
+    seen_lifetimes: FxIndexSet<DefId>,
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGenerics<'tcx> {
@@ -214,7 +233,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
                 if param.index as usize == self.offending_region_idx {
                     ControlFlow::Break(())
                 } else {
-                    self.seen_lifetimes.insert(param.name);
+                    self.seen_lifetimes.insert(self.generics.region_param(param, self.tcx).def_id);
                     ControlFlow::Continue(())
                 }
             }

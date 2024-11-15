@@ -1615,47 +1615,6 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
     })
 }
 
-/// This function is the same as print_with_space, except that it renders no links.
-/// It's used for macros' rendered source view, which is syntax highlighted and cannot have
-/// any HTML in it.
-pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
-    visibility: Option<ty::Visibility<DefId>>,
-    tcx: TyCtxt<'tcx>,
-    item_did: DefId,
-    is_doc_hidden: bool,
-) -> impl Display + 'a + Captures<'tcx> {
-    let vis: Cow<'static, str> = match visibility {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(tcx, item_did);
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                format!("pub(in {}) ", tcx.def_path_str(vis_did)).into()
-            }
-        }
-    };
-    display_fn(move |f| {
-        if is_doc_hidden {
-            f.write_str("#[doc(hidden)] ")?;
-        }
-        f.write_str(&vis)
-    })
-}
-
 pub(crate) trait PrintWithSpace {
     fn print_with_space(&self) -> &str;
 }

@@ -75,7 +75,7 @@ fn check_sig(cx: &LateContext<'_>, name: Symbol, sig: &FnSig<'_>, fn_id: LocalDe
         if cx
             .tcx
             .get_diagnostic_item(sym::Iterator)
-            .map_or(false, |iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
+            .is_some_and(|iter_id| !implements_trait(cx, ret_ty, iter_id, &[]))
         {
             span_lint(
                 cx,

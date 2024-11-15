@@ -58,13 +58,6 @@ pub(crate) fn render_example_with_highlighting(
     write_footer(out, playground_button);
 }
 
-/// Highlights `src` as an item-decl, returning the HTML output.
-pub(crate) fn render_item_decl_with_highlighting(src: &str, out: &mut Buffer) {
-    write!(out, "<pre class=\"rust item-decl\">");
-    write_code(out, src, None, None);
-    write!(out, "</pre>");
-}
-
 fn write_header(
     out: &mut Buffer,
     class: &str,

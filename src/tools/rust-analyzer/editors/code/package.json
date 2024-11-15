@@ -27,7 +27,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.78.0"
+        "vscode": "^1.83.0"
     },
     "enabledApiProposals": [],
     "scripts": {
@@ -49,12 +49,12 @@
         "anser": "^2.1.1",
         "d3": "^7.8.5",
         "d3-graphviz": "^5.0.2",
-        "vscode-languageclient": "^8.1.0"
+        "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
         "@tsconfig/strictest": "^2.0.1",
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.78.1",
+        "@types/vscode": "~1.83",
         "@typescript-eslint/eslint-plugin": "^6.0.0",
         "@typescript-eslint/parser": "^6.0.0",
         "@vscode/test-electron": "^2.3.8",
@@ -490,15 +490,19 @@
                         "type": "string",
                         "enum": [
                             "auto",
+                            "llvm-vs-code-extensions.lldb-dap",
                             "vadimcn.vscode-lldb",
-                            "ms-vscode.cpptools"
+                            "ms-vscode.cpptools",
+                            "webfreak.debug"
                         ],
                         "default": "auto",
                         "description": "Preferred debug engine.",
                         "markdownEnumDescriptions": [
-                            "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
+                            "Use the first available extension out of [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap), [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools), and [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug).",
+                            "Use [LLDB DAP](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.lldb-dap)",
                             "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
-                            "Use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)"
+                            "Use [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)",
+                            "Use [Native Debug](https://marketplace.visualstudio.com/items?itemName=webfreak.debug)"
                         ]
                     },
                     "rust-analyzer.debug.sourceFileMap": {

@@ -225,6 +225,7 @@ pub use thin::ThinBox;
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
 pub struct Box<
@@ -1734,7 +1735,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
         // Pre-allocate memory to allow writing the cloned value directly.
         let mut boxed = Self::new_uninit_in(self.1.clone());
         unsafe {
-            (**self).clone_to_uninit(boxed.as_mut_ptr());
+            (**self).clone_to_uninit(boxed.as_mut_ptr().cast());
             boxed.assume_init()
         }
     }

@@ -159,8 +159,7 @@ pub(super) fn check<'tcx>(
         // The same is true if the expression encompassing the cast expression is a unary
         // expression or an addressof expression.
         let needs_block = matches!(cast_expr.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..))
-            || get_parent_expr(cx, expr)
-                .map_or(false, |e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
+            || get_parent_expr(cx, expr).is_some_and(|e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
 
         span_lint_and_sugg(
             cx,

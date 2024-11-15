@@ -96,11 +96,41 @@ impl MoveStruct {
 }
 
 fn func() -> Option<i32> {
+    macro_rules! opt_none {
+        () => {
+            None
+        };
+    }
+
     fn f() -> Option<String> {
         Some(String::new())
     }
 
     f()?;
+
+    let _val = f()?;
+
+    let s: &str = match &Some(String::new()) {
+        Some(v) => v,
+        None => return None,
+    };
+
+    f()?;
+
+    opt_none!()?;
+
+    match f() {
+        Some(x) => x,
+        None => return opt_none!(),
+    };
+
+    match f() {
+        Some(val) => {
+            println!("{val}");
+            val
+        },
+        None => return None,
+    };
 
     Some(0)
 }
@@ -113,6 +143,10 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = x?;
 
     x?;
+
+    let _val = func_returning_result()?;
+
+    func_returning_result()?;
 
     // No warning
     let y = if let Ok(x) = x {
@@ -155,6 +189,28 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     }
 
     Ok(y)
+}
+
+fn infer_check() {
+    let closure = |x: Result<u8, ()>| {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
+
+    let closure = |x: Result<u8, ()>| -> Result<(), _> {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
 }
 
 // see issue #8019

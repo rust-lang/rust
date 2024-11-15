@@ -22,7 +22,6 @@ use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{PredicateObligations, TraitObligation};
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
-use rustc_middle::mir::interpret::ErrorHandled;
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
@@ -50,7 +49,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{ProjectionCacheKey, Unimplemented, effects};
+use crate::traits::{EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects};
 
 mod _match;
 mod candidate_assembly;
@@ -931,11 +930,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match self.infcx.try_const_eval_resolve(
+                        if let ty::ConstKind::Unevaluated(_) = c.kind() {
+                            match crate::traits::try_evaluate_const(
+                                self.infcx,
+                                c,
                                 obligation.param_env,
-                                unevaluated,
-                                obligation.cause.span,
                             ) {
                                 Ok(val) => Ok(val),
                                 Err(e) => Err(e),
@@ -961,10 +960,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(..)), _)
-                        | (_, Err(ErrorHandled::Reported(..))) => Ok(EvaluatedToErr),
-                        (Err(ErrorHandled::TooGeneric(..)), _)
-                        | (_, Err(ErrorHandled::TooGeneric(..))) => {
+                        (Err(EvaluateConstErr::InvalidConstParamTy(..)), _)
+                        | (_, Err(EvaluateConstErr::InvalidConstParamTy(..))) => Ok(EvaluatedToErr),
+                        (Err(EvaluateConstErr::EvaluationFailure(..)), _)
+                        | (_, Err(EvaluateConstErr::EvaluationFailure(..))) => Ok(EvaluatedToErr),
+                        (Err(EvaluateConstErr::HasGenericsOrInfers), _)
+                        | (_, Err(EvaluateConstErr::HasGenericsOrInfers)) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
                             } else {

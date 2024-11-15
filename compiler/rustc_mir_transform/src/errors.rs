@@ -38,6 +38,12 @@ pub(crate) struct UnalignedPackedRef {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(mir_transform_unknown_pass_name)]
+pub(crate) struct UnknownPassName<'a> {
+    pub(crate) name: &'a str,
+}
+
 pub(crate) struct AssertLint<P> {
     pub span: Span,
     pub assert_kind: AssertKind<P>,

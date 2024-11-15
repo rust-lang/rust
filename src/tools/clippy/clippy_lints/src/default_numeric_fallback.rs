@@ -253,6 +253,6 @@ impl<'tcx> From<Ty<'tcx>> for ExplicitTyBound {
 
 impl<'tcx> From<Option<Ty<'tcx>>> for ExplicitTyBound {
     fn from(v: Option<Ty<'tcx>>) -> Self {
-        Self(v.map_or(false, Ty::is_numeric))
+        Self(v.is_some_and(Ty::is_numeric))
     }
 }

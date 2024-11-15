@@ -882,10 +882,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         SanitizerOptions->SanitizeKernelAddress) {
       OptimizerLastEPCallbacks.push_back(
 #if LLVM_VERSION_GE(20, 0)
-          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level,
-                             ThinOrFullLTOPhase phase) {
+          [SanitizerOptions, TM](ModulePassManager &MPM,
+                                 OptimizationLevel Level,
+                                 ThinOrFullLTOPhase phase) {
 #else
-          [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+          [SanitizerOptions, TM](ModulePassManager &MPM,
+                                 OptimizationLevel Level) {
 #endif
             auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
             AddressSanitizerOptions opts = AddressSanitizerOptions{
@@ -895,7 +897,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                 /*UseAfterScope=*/true,
                 AsanDetectStackUseAfterReturnMode::Runtime,
             };
-            MPM.addPass(AddressSanitizerPass(opts));
+            MPM.addPass(AddressSanitizerPass(
+                opts,
+                /*UseGlobalGC*/ true,
+                // UseOdrIndicator should be false on windows machines
+                // https://reviews.llvm.org/D137227
+                !TM->getTargetTriple().isOSWindows()));
           });
     }
     if (SanitizerOptions->SanitizeHWAddress) {

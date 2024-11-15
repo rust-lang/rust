@@ -624,6 +624,223 @@ impl File {
         self.inner.datasync()
     }
 
+    /// Acquire an exclusive advisory lock on the file. Blocks until the lock can be acquired.
+    ///
+    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
+    /// another lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
+    ///
+    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock_shared`], [`try_lock`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_EX` flag,
+    /// and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK` flag. Note that,
+    /// this [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock`]: File::try_lock
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn lock(&self) -> io::Result<()> {
+        self.inner.lock()
+    }
+
+    /// Acquire a shared advisory lock on the file. Blocks until the lock can be acquired.
+    ///
+    /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
+    /// none may hold an exclusive lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_SH` flag,
+    /// and the `LockFileEx` function on Windows. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`try_lock`]: File::try_lock
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock_shared()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        self.inner.lock_shared()
+    }
+
+    /// Acquire an exclusive advisory lock on the file. Returns `Ok(false)` if the file is locked.
+    ///
+    /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
+    /// another lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then an exclusive lock is held.
+    ///
+    /// If the file not open for writing, it is unspecified whether this function returns an error.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`lock_shared`],
+    /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_EX` and
+    /// `LOCK_NB` flags, and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK`
+    /// and `LOCKFILE_FAIL_IMMEDIATELY` flags. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock_shared`]: File::try_lock_shared
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.try_lock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn try_lock(&self) -> io::Result<bool> {
+        self.inner.try_lock()
+    }
+
+    /// Acquire a shared advisory lock on the file.
+    /// Returns `Ok(false)` if the file is exclusively locked.
+    ///
+    /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
+    /// none may hold an exclusive lock.
+    ///
+    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
+    ///
+    /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
+    /// [`try_lock`], and [`unlock`]. Its interactions with other methods, such as [`read`]
+    /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_SH` and
+    /// `LOCK_NB` flags, and the `LockFileEx` function on Windows with the
+    /// `LOCKFILE_FAIL_IMMEDIATELY` flag. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// [`lock`]: File::lock
+    /// [`lock_shared`]: File::lock_shared
+    /// [`try_lock`]: File::try_lock
+    /// [`unlock`]: File::unlock
+    /// [`read`]: Read::read
+    /// [`write`]: Write::write
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.try_lock_shared()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        self.inner.try_lock_shared()
+    }
+
+    /// Release all locks on the file.
+    ///
+    /// All remaining locks are released when the file handle, and all clones of it, are dropped.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `flock` function on Unix with the `LOCK_UN` flag,
+    /// and the `UnlockFile` function on Windows. Note that, this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_lock)]
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("foo.txt")?;
+    ///     f.lock()?;
+    ///     f.unlock()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_lock", issue = "130994")]
+    pub fn unlock(&self) -> io::Result<()> {
+        self.inner.unlock()
+    }
+
     /// Truncates or extends the underlying file, updating the size of
     /// this file to become `size`.
     ///

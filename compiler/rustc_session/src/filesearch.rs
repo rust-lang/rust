@@ -4,37 +4,44 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
+use rustc_target::spec::Target;
 use smallvec::{SmallVec, smallvec};
 
 use crate::search_paths::{PathKind, SearchPath};
 
 #[derive(Clone)]
-pub struct FileSearch<'a> {
-    cli_search_paths: &'a [SearchPath],
-    tlib_path: &'a SearchPath,
-    kind: PathKind,
+pub struct FileSearch {
+    cli_search_paths: Vec<SearchPath>,
+    tlib_path: SearchPath,
 }
 
-impl<'a> FileSearch<'a> {
-    pub fn cli_search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
-        let kind = self.kind;
+impl FileSearch {
+    pub fn cli_search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
         self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
     }
 
-    pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
-        let kind = self.kind;
+    pub fn search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
         self.cli_search_paths
             .iter()
             .filter(move |sp| sp.kind.matches(kind))
-            .chain(std::iter::once(self.tlib_path))
+            .chain(std::iter::once(&self.tlib_path))
     }
 
-    pub fn new(
-        cli_search_paths: &'a [SearchPath],
-        tlib_path: &'a SearchPath,
-        kind: PathKind,
-    ) -> FileSearch<'a> {
-        FileSearch { cli_search_paths, tlib_path, kind }
+    pub fn new(cli_search_paths: &[SearchPath], tlib_path: &SearchPath, target: &Target) -> Self {
+        let this = FileSearch {
+            cli_search_paths: cli_search_paths.to_owned(),
+            tlib_path: tlib_path.clone(),
+        };
+        this.refine(&["lib", &target.staticlib_prefix, &target.dll_prefix])
+    }
+    // Produce a new file search from this search that has a smaller set of candidates.
+    fn refine(mut self, allowed_prefixes: &[&str]) -> FileSearch {
+        self.cli_search_paths
+            .iter_mut()
+            .for_each(|search_paths| search_paths.files.retain(allowed_prefixes));
+        self.tlib_path.files.retain(allowed_prefixes);
+
+        self
     }
 }
 

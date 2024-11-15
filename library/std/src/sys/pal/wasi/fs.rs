@@ -420,6 +420,26 @@ impl File {
         self.fd.datasync()
     }
 
+    pub fn lock(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn lock_shared(&self) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn try_lock(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
+    pub fn unlock(&self) -> io::Result<()> {
+        unsupported()
+    }
+
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         self.fd.filestat_set_size(size)
     }

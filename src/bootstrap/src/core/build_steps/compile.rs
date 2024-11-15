@@ -1976,9 +1976,13 @@ impl Step for Assemble {
             }
         }
 
-        {
-            // `llvm-strip` is used by rustc, which is actually just a symlink to `llvm-objcopy`,
-            // so copy and rename `llvm-objcopy`.
+        if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {
+            // `llvm-strip` is used by rustc, which is actually just a symlink to `llvm-objcopy`, so
+            // copy and rename `llvm-objcopy`.
+            //
+            // But only do so if llvm-tools are enabled, as bootstrap compiler might not contain any
+            // LLVM tools, e.g. for cg_clif.
+            // See <https://github.com/rust-lang/rust/issues/132719>.
             let src_exe = exe("llvm-objcopy", target_compiler.host);
             let dst_exe = exe("rust-objcopy", target_compiler.host);
             builder.copy_link(&libdir_bin.join(src_exe), &libdir_bin.join(dst_exe));
