@@ -268,8 +268,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) -> Self::Result {
         walk_fn_ret_ty(self, ret_ty)
     }
-    fn visit_fn_header(&mut self, _header: &'ast FnHeader) -> Self::Result {
-        Self::Result::output()
+    fn visit_fn_header(&mut self, header: &'ast FnHeader) -> Self::Result {
+        walk_fn_header(self, header)
     }
     fn visit_expr_field(&mut self, f: &'ast ExprField) -> Self::Result {
         walk_expr_field(self, f)
@@ -290,6 +290,9 @@ pub trait Visitor<'ast>: Sized {
         walk_inline_asm_sym(self, sym)
     }
     fn visit_capture_by(&mut self, _capture_by: &'ast CaptureBy) -> Self::Result {
+        Self::Result::output()
+    }
+    fn visit_coroutine_kind(&mut self, _coroutine_kind: &'ast CoroutineKind) -> Self::Result {
         Self::Result::output()
     }
 }
@@ -817,6 +820,12 @@ pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FnRetTy) 
     V::Result::output()
 }
 
+pub fn walk_fn_header<'a, V: Visitor<'a>>(visitor: &mut V, fn_header: &'a FnHeader) -> V::Result {
+    let FnHeader { safety: _, coroutine_kind, constness: _, ext: _ } = fn_header;
+    visit_opt!(visitor, visit_coroutine_kind, coroutine_kind.as_ref());
+    V::Result::output()
+}
+
 pub fn walk_fn_decl<'a, V: Visitor<'a>>(
     visitor: &mut V,
     FnDecl { inputs, output }: &'a FnDecl,
@@ -834,8 +843,9 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             try_visit!(walk_fn_decl(visitor, decl));
             visit_opt!(visitor, visit_block, body);
         }
-        FnKind::Closure(binder, _coroutine_kind, decl, body) => {
+        FnKind::Closure(binder, coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
+            visit_opt!(visitor, visit_coroutine_kind, coroutine_kind.as_ref());
             try_visit!(walk_fn_decl(visitor, decl));
             try_visit!(visitor.visit_expr(body));
         }
