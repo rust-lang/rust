@@ -2,6 +2,7 @@ use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use tracing::instrument;
 
+use super::operand::OperandValue;
 use super::{FunctionCx, LocalRef};
 use crate::traits::*;
 
@@ -88,7 +89,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
             }
 
-            mir::StatementKind::Retag { .. } => if self.cx.sess().emit_retags() {},
+            mir::StatementKind::Retag(kind, box ref place) => {
+                if self.cx.sess().emit_retags() {
+                    let place_value = if let Some(index) = place.as_local() {
+                        match self.locals[index] {
+                            LocalRef::Place(cg_dest) => cg_dest.val,
+                            LocalRef::UnsizedPlace(cg_indirect_dest) => {
+                                cg_indirect_dest.val
+                            }
+                            LocalRef::PendingOperand => {
+                                span_bug!(
+                                    statement.source_info.span,
+                                    "retagging an operand {:?} that has not created yet",
+                                    place
+                                );
+                            }
+                            LocalRef::Operand(op) => {
+                                if let OperandValue::Ref(r) = op.val {
+                                    r
+                                }else{
+                                    op.deref(bx.cx()).val
+                                }
+                            }
+                        }
+                    }else{
+                        self.codegen_place(bx, place.as_ref()).val
+                    };
+                    bx.retag(place_value, kind);
+                }
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter

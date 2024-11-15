@@ -3,6 +3,7 @@ use rustc_abi::{Align, FieldsShape, Size, TagEncoding, VariantIdx, Variants};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
+
 use rustc_middle::{bug, mir};
 use tracing::{debug, instrument};
 

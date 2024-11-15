@@ -4,6 +4,7 @@ change-id = 132494
 
 [llvm]
 download-ci-llvm = false
+clang = true
 
 [build]
 sanitizers = true

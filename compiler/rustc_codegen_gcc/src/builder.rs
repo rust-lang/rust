@@ -1664,6 +1664,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
+    fn retag(&mut self, _place: _PlaceValue<&'ll Value>, _kind: RetagKind) {
+        unimplemented!();
+    }
+
     fn call(
         &mut self,
         typ: Type<'gcc>,

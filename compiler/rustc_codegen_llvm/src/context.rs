@@ -1088,13 +1088,15 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);
         ifn!("llvm.type.checked.load", fn(ptr, t_i32, t_metadata) -> mk_struct! {ptr, i1});
-
+        
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata) -> void);
             ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
 
         ifn!("llvm.ptrmask", fn(ptr, t_isize) -> ptr);
+
+        ifn!("llvm.bsan.retag", fn(ptr, t_i8) -> void);
 
         None
     }
