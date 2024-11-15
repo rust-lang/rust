@@ -682,8 +682,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // Normalize before comparing to see through type aliases and projections.
                 let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
                 let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
-                if let Ok(old_ty) = tcx.try_normalize_erasing_regions(self.param_env, old_ty)
-                    && let Ok(new_ty) = tcx.try_normalize_erasing_regions(self.param_env, new_ty)
+                if let Ok(old_ty) =
+                    tcx.try_normalize_erasing_regions(self.infcx.typing_env(self.param_env), old_ty)
+                    && let Ok(new_ty) = tcx.try_normalize_erasing_regions(
+                        self.infcx.typing_env(self.param_env),
+                        new_ty,
+                    )
                 {
                     old_ty == new_ty
                 } else {
@@ -3831,11 +3835,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if tcx.is_diagnostic_item(sym::deref_method, method_did) {
                 let deref_target =
                     tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::try_resolve(tcx, self.param_env, deref_target, method_args)
-                            .transpose()
+                        Instance::try_resolve(
+                            tcx,
+                            self.infcx.typing_env(self.param_env),
+                            deref_target,
+                            method_args,
+                        )
+                        .transpose()
                     });
                 if let Some(Ok(instance)) = deref_target {
-                    let deref_target_ty = instance.ty(tcx, self.param_env);
+                    let deref_target_ty = instance.ty(tcx, self.infcx.typing_env(self.param_env));
                     err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));
                     err.span_note(tcx.def_span(instance.def_id()), "deref defined here");
                 }

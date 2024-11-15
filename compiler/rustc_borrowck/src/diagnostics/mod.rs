@@ -864,7 +864,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let kind = call_kind(
                 self.infcx.tcx,
-                self.param_env,
+                self.infcx.typing_env(self.param_env),
                 method_did,
                 method_args,
                 *fn_span,

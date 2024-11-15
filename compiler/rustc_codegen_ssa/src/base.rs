@@ -21,7 +21,7 @@ use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypingMode};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
@@ -165,7 +165,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.param_env());
+        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.typing_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
@@ -466,10 +466,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
-            main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty = cx
+            .tcx()
+            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -495,7 +494,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,

@@ -215,7 +215,7 @@ impl {self_ty_without_ref} {{
             && implements_trait(cx, ret_ty, iterator_did, &[])
             && let Some(iter_ty) = make_normalized_projection(
                 cx.tcx,
-                cx.param_env,
+                cx.typing_env(),
                 iterator_did,
                 sym::Item,
                 [ret_ty],

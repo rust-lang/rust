@@ -230,6 +230,10 @@ struct Capture<'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.infcx.typing_env(self.param_env)
+    }
+
     fn is_bound_var_in_guard(&self, id: LocalVarId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }

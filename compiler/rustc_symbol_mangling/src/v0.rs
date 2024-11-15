@@ -26,7 +26,7 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let args = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.args);
+    let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
     let prefix = "_R";
     let mut cx: SymbolMangler<'_> = SymbolMangler {
@@ -237,15 +237,16 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         if !args.is_empty() {
             param_env = EarlyBinder::bind(param_env).instantiate(self.tcx, args);
         }
+        let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env };
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
                 assert_eq!(impl_trait_ref.self_ty(), self_ty);
-                *impl_trait_ref = self.tcx.normalize_erasing_regions(param_env, *impl_trait_ref);
+                *impl_trait_ref = self.tcx.normalize_erasing_regions(typing_env, *impl_trait_ref);
                 self_ty = impl_trait_ref.self_ty();
             }
             None => {
-                self_ty = self.tcx.normalize_erasing_regions(param_env, self_ty);
+                self_ty = self.tcx.normalize_erasing_regions(typing_env, self_ty);
             }
         }
 
@@ -591,7 +592,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ct_ty.print(self)?;
 
                 let mut bits = ct
-                    .try_to_bits(self.tcx, ty::ParamEnv::reveal_all())
+                    .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
                     .expect("expected const to be monomorphic");
 
                 // Negative integer values are mangled using `n` as a "sign prefix".

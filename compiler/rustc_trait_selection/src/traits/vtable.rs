@@ -276,8 +276,10 @@ fn vtable_entries<'tcx>(
                     // The trait type may have higher-ranked lifetimes in it;
                     // erase them if they appear, so that we get the type
                     // at some particular call site.
-                    let args =
-                        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), args);
+                    let args = tcx.normalize_erasing_late_bound_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        args,
+                    );
 
                     // It's possible that the method relies on where-clauses that
                     // do not hold for this particular set of type parameters.
@@ -294,7 +296,7 @@ fn vtable_entries<'tcx>(
 
                     let instance = ty::Instance::expect_resolve_for_vtable(
                         tcx,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         def_id,
                         args,
                         DUMMY_SP,

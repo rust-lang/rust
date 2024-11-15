@@ -9,7 +9,7 @@ use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::{LitToConstInput, Scalar};
-use crate::ty::{self, GenericArgs, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, GenericArgs, Ty, TyCtxt, TypeVisitableExt};
 
 mod int;
 mod kind;
@@ -330,17 +330,22 @@ impl<'tcx> Const<'tcx> {
         None
     }
 
-    #[inline]
     /// Creates a constant with the given integer value and interns it.
-    pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Self {
+    #[inline]
+    pub fn from_bits(
+        tcx: TyCtxt<'tcx>,
+        bits: u128,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
         let size = tcx
-            .layout_of(ty)
+            .layout_of(typing_env.as_query_input(ty))
             .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
             .size;
         ty::Const::new_value(
             tcx,
             ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
-            ty.value,
+            ty,
         )
     }
 
@@ -353,13 +358,13 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned bool constant.
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
-        Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
+        Self::from_bits(tcx, v as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.bool)
     }
 
     #[inline]
     /// Creates an interned usize constant.
     pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
-        Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
+        Self::from_bits(tcx, n as u128, ty::TypingEnv::fully_monomorphized(), tcx.types.usize)
     }
 
     /// Panics if self.kind != ty::ConstKind::Value
@@ -393,15 +398,15 @@ impl<'tcx> Const<'tcx> {
         self.try_to_valtree()?.0.try_to_target_usize(tcx)
     }
 
-    #[inline]
     /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
     /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
     /// contains const generic parameters or pointers).
-    pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u128> {
+    #[inline]
+    pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
         let (scalar, ty) = self.try_to_scalar()?;
         let scalar = scalar.try_to_scalar_int().ok()?;
-        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
-        // if `ty` does not depend on generic parameters, use an empty param_env
+        let input = typing_env.with_reveal_all_normalized(tcx).as_query_input(ty);
+        let size = tcx.layout_of(input).ok()?.size;
         Some(scalar.to_bits(size))
     }
 

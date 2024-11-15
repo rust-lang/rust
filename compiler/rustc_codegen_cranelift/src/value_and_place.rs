@@ -4,6 +4,7 @@ use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 use cranelift_frontend::Variable;
 use rustc_middle::ty::FnSig;
+use rustc_middle::ty::layout::HasTypingEnv;
 
 use crate::prelude::*;
 
@@ -884,19 +885,17 @@ pub(crate) fn assert_assignable<'tcx>(
             assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::FnPtr(..), ty::FnPtr(..)) => {
-            let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                ParamEnv::reveal_all(),
-                from_ty.fn_sig(fx.tcx),
-            );
+            let from_sig = fx
+                .tcx
+                .normalize_erasing_late_bound_regions(fx.typing_env(), from_ty.fn_sig(fx.tcx));
             let FnSig {
                 inputs_and_output: types_from,
                 c_variadic: c_variadic_from,
                 safety: unsafety_from,
                 abi: abi_from,
             } = from_sig;
-            let to_sig = fx
-                .tcx
-                .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_ty.fn_sig(fx.tcx));
+            let to_sig =
+                fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to_ty.fn_sig(fx.tcx));
             let FnSig {
                 inputs_and_output: types_to,
                 c_variadic: c_variadic_to,
@@ -932,9 +931,8 @@ pub(crate) fn assert_assignable<'tcx>(
         (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
             // FIXME(dyn-star): Do the right thing with DynKinds
             for (from, to) in from_traits.iter().zip(to_traits) {
-                let from =
-                    fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
-                let to = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to);
+                let from = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), from);
+                let to = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to);
                 assert_eq!(
                     from, to,
                     "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",

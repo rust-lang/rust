@@ -881,6 +881,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        self.tcx.try_normalize_erasing_regions(self.param_env, ct).unwrap_or(ct)
+        self.tcx
+            .try_normalize_erasing_regions(ty::TypingEnv::from_param_env(self.param_env), ct)
+            .unwrap_or(ct)
     }
 }

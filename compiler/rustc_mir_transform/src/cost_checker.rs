@@ -1,7 +1,7 @@
 use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
@@ -14,7 +14,7 @@ const CONST_SWITCH_BONUS: usize = 10;
 #[derive(Clone)]
 pub(super) struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     penalty: usize,
     bonus: usize,
     callee_body: &'b Body<'tcx>,
@@ -24,11 +24,11 @@ pub(super) struct CostChecker<'b, 'tcx> {
 impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     pub(super) fn new(
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         instance: Option<ty::Instance<'tcx>>,
         callee_body: &'b Body<'tcx>,
     ) -> CostChecker<'b, 'tcx> {
-        CostChecker { tcx, param_env, callee_body, instance, penalty: 0, bonus: 0 }
+        CostChecker { tcx, typing_env, callee_body, instance, penalty: 0, bonus: 0 }
     }
 
     /// Add function-level costs not well-represented by the block-level costs.
@@ -119,7 +119,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Drop { place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instantiate_ty(place.ty(self.callee_body, self.tcx).ty);
-                if ty.needs_drop(self.tcx, self.param_env) {
+                if ty.needs_drop(self.tcx, self.typing_env) {
                     self.penalty += CALL_PENALTY;
                     if let UnwindAction::Cleanup(_) = unwind {
                         self.penalty += LANDINGPAD_PENALTY;

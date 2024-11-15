@@ -31,7 +31,7 @@ where
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_middle::ty::layout::LayoutCx;
-    use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+    use rustc_middle::ty::{Ty, TyCtxt, TypingEnv};
 
     use super::*;
     use crate::layout::tree::rustc::Err;
@@ -43,7 +43,7 @@ mod rustc {
         pub(crate) fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let Self { src, dst, assume, context } = self;
 
-            let layout_cx = LayoutCx::new(context, ParamEnv::reveal_all());
+            let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized());
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
             // representations.

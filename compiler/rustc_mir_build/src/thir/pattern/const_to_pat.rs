@@ -50,10 +50,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
 struct ConstToPat<'tcx> {
     span: Span,
-    param_env: ty::ParamEnv<'tcx>,
 
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 
     treat_byte_string_as_slice: bool,
 }
@@ -81,6 +81,10 @@ impl<'tcx> ConstToPat<'tcx> {
         self.infcx.tcx
     }
 
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.infcx.typing_env(self.param_env)
+    }
+
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
         ty.is_structural_eq_shallow(self.infcx.tcx)
     }
@@ -100,13 +104,14 @@ impl<'tcx> ConstToPat<'tcx> {
         //
         // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
         // instead of having this logic here
-        let param_env =
-            self.tcx().erase_regions(self.param_env).with_reveal_all_normalized(self.tcx());
+        let typing_env =
+            self.tcx().erase_regions(self.typing_env()).with_reveal_all_normalized(self.tcx());
         let uv = self.tcx().erase_regions(uv);
 
         // try to resolve e.g. associated constants to their definition on an impl, and then
         // evaluate the const.
-        let valtree = match self.infcx.tcx.const_eval_resolve_for_typeck(param_env, uv, self.span) {
+        let valtree = match self.infcx.tcx.const_eval_resolve_for_typeck(typing_env, uv, self.span)
+        {
             Ok(Ok(c)) => c,
             Err(ErrorHandled::Reported(_, _)) => {
                 // Let's tell the use where this failing const occurs.
@@ -187,7 +192,7 @@ impl<'tcx> ConstToPat<'tcx> {
             .map(|(idx, (val, ty))| {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
-                let ty = self.tcx().normalize_erasing_regions(self.param_env, ty);
+                let ty = self.tcx().normalize_erasing_regions(self.typing_env(), ty);
                 FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
             })
             .collect()

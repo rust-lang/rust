@@ -123,7 +123,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match category {
             Category::Constant
                 if matches!(needs_temporary, NeedsTemporary::No)
-                    || !expr.ty.needs_drop(this.tcx, this.param_env) =>
+                    || !expr.ty.needs_drop(this.tcx, this.typing_env()) =>
             {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))

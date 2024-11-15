@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) {
     let typeck_results = cx.typeck_results();
-    let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck_results);
+    let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), typeck_results);
     if let Some(id) = typeck_results.type_dependent_def_id(expr.hir_id)
         && (cx.tcx.is_diagnostic_item(sym::cmp_ord_min, id) || cx.tcx.is_diagnostic_item(sym::cmp_ord_max, id))
     {

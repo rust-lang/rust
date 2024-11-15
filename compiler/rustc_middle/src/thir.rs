@@ -905,7 +905,7 @@ impl<'tcx> PatRange<'tcx> {
         &self,
         value: mir::Const<'tcx>,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<bool> {
         use Ordering::*;
         debug_assert_eq!(self.ty, value.ty());
@@ -913,10 +913,10 @@ impl<'tcx> PatRange<'tcx> {
         let value = PatRangeBoundary::Finite(value);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match self.lo.compare_with(value, ty, tcx, param_env)? {
+            match self.lo.compare_with(value, ty, tcx, typing_env)? {
                 Less | Equal => true,
                 Greater => false,
-            } && match value.compare_with(self.hi, ty, tcx, param_env)? {
+            } && match value.compare_with(self.hi, ty, tcx, typing_env)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
@@ -929,17 +929,17 @@ impl<'tcx> PatRange<'tcx> {
         &self,
         other: &Self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<bool> {
         use Ordering::*;
         debug_assert_eq!(self.ty, other.ty);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match other.lo.compare_with(self.hi, self.ty, tcx, param_env)? {
+            match other.lo.compare_with(self.hi, self.ty, tcx, typing_env)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
-            } && match self.lo.compare_with(other.hi, self.ty, tcx, param_env)? {
+            } && match self.lo.compare_with(other.hi, self.ty, tcx, typing_env)? {
                 Less => true,
                 Equal => other.end == RangeEnd::Included,
                 Greater => false,
@@ -985,9 +985,14 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
+    pub fn eval_bits(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> u128 {
         match self {
-            Self::Finite(value) => value.eval_bits(tcx, param_env),
+            Self::Finite(value) => value.eval_bits(tcx, typing_env),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -999,13 +1004,13 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         }
     }
 
-    #[instrument(skip(tcx, param_env), level = "debug", ret)]
+    #[instrument(skip(tcx, typing_env), level = "debug", ret)]
     pub fn compare_with(
         self,
         other: Self,
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Ordering> {
         use PatRangeBoundary::*;
         match (self, other) {
@@ -1034,8 +1039,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             _ => {}
         }
 
-        let a = self.eval_bits(ty, tcx, param_env);
-        let b = other.eval_bits(ty, tcx, param_env);
+        let a = self.eval_bits(ty, tcx, typing_env);
+        let b = other.eval_bits(ty, tcx, typing_env);
 
         match ty.kind() {
             ty::Float(ty::FloatTy::F16) => {

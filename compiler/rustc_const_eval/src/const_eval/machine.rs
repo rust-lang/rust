@@ -249,9 +249,10 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
+            // FIXME(@lcnr): why does this use an empty env if we've got a `param_env` right here.
             let new_instance = ty::Instance::expect_resolve(
                 *self.tcx,
-                ty::ParamEnv::reveal_all(),
+                ty::TypingEnv::fully_monomorphized(),
                 const_def_id,
                 instance.args,
                 self.cur_span(),

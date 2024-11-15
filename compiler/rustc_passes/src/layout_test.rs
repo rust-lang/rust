@@ -2,10 +2,9 @@ use rustc_abi::{HasDataLayout, TargetDataLayout};
 use rustc_ast::Attribute;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::infer::canonical::ir::TypingMode;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -39,11 +38,13 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
 
 pub fn ensure_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     def_id: LocalDefId,
     span: Span,
 ) -> bool {
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+    let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
     let pred = ty::ClauseKind::WellFormed(ty.into());
     let obligation = traits::Obligation::new(
         tcx,
@@ -55,8 +56,6 @@ pub fn ensure_wf<'tcx>(
         param_env,
         pred,
     );
-    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
-    let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
@@ -69,13 +68,13 @@ pub fn ensure_wf<'tcx>(
 }
 
 fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
-    let param_env = tcx.param_env(item_def_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
     let span = tcx.def_span(item_def_id.to_def_id());
-    if !ensure_wf(tcx, param_env, ty, item_def_id, span) {
+    if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
         return;
     }
-    match tcx.layout_of(param_env.and(ty)) {
+    match tcx.layout_of(typing_env.as_query_input(ty)) {
         Ok(ty_layout) => {
             // Check out the `#[rustc_layout(..)]` attribute to tell what to dump.
             // The `..` are the names of fields to dump.
@@ -107,19 +106,15 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                             span,
                             homogeneous_aggregate: format!(
                                 "{:?}",
-                                ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, param_env })
+                                ty_layout
+                                    .homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env })
                             ),
                         });
                     }
 
                     sym::debug => {
-                        let normalized_ty = format!(
-                            "{}",
-                            tcx.normalize_erasing_regions(
-                                param_env.with_reveal_all_normalized(tcx),
-                                ty,
-                            )
-                        );
+                        let normalized_ty =
+                            format!("{}", tcx.normalize_erasing_regions(typing_env, ty));
                         // FIXME: using the `Debug` impl here isn't ideal.
                         let ty_layout = format!("{:#?}", *ty_layout);
                         tcx.dcx().emit_err(LayoutOf { span, normalized_ty, ty_layout });
@@ -140,7 +135,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
 
 struct UnwrapLayoutCx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
@@ -155,9 +150,9 @@ impl<'tcx> HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
     }
 }
 
-impl<'tcx> HasParamEnv<'tcx> for UnwrapLayoutCx<'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        self.param_env
+impl<'tcx> HasTypingEnv<'tcx> for UnwrapLayoutCx<'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 }
 

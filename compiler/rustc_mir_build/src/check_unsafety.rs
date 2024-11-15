@@ -566,7 +566,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     && adt_def.is_union()
                 {
                     if let Some(assigned_ty) = self.assignment_info {
-                        if assigned_ty.needs_drop(self.tcx, self.param_env) {
+                        if assigned_ty
+                            .needs_drop(self.tcx, ty::TypingEnv::from_param_env(self.param_env))
+                        {
                             // This would be unsafe, but should be outright impossible since we
                             // reject such unions.
                             assert!(

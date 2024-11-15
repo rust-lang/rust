@@ -12,7 +12,7 @@ use std::{cmp, mem};
 use rustc_abi::{BackendRepr, Size};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 
 use self::diagnostics::{RetagCause, RetagInfo};

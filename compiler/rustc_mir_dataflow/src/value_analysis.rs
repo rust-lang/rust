@@ -462,7 +462,7 @@ impl<'tcx> Map<'tcx> {
         drop(assignments);
 
         // Create values for places whose type have scalar layout.
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         for place_info in self.places.iter_mut() {
             // The user requires a bound on the number of created values.
             if let Some(value_limit) = value_limit
@@ -471,13 +471,13 @@ impl<'tcx> Map<'tcx> {
                 break;
             }
 
-            if let Ok(ty) = tcx.try_normalize_erasing_regions(param_env, place_info.ty) {
+            if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, place_info.ty) {
                 place_info.ty = ty;
             }
 
             // Allocate a value slot if it doesn't have one, and the user requested one.
             assert!(place_info.value_index.is_none());
-            if let Ok(layout) = tcx.layout_of(param_env.and(place_info.ty))
+            if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(place_info.ty))
                 && layout.backend_repr.is_scalar()
             {
                 place_info.value_index = Some(self.value_count.into());
@@ -874,7 +874,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 pub fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     mut f: impl FnMut(Option<VariantIdx>, FieldIdx, Ty<'tcx>),
 ) {
     match ty.kind() {
@@ -892,20 +892,20 @@ pub fn iter_fields<'tcx>(
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
                     let field_ty = f_def.ty(tcx, args);
                     let field_ty = tcx
-                        .try_normalize_erasing_regions(param_env, field_ty)
+                        .try_normalize_erasing_regions(typing_env, field_ty)
                         .unwrap_or_else(|_| tcx.erase_regions(field_ty));
                     f(variant, f_index.into(), field_ty);
                 }
             }
         }
         ty::Closure(_, args) => {
-            iter_fields(args.as_closure().tupled_upvars_ty(), tcx, param_env, f);
+            iter_fields(args.as_closure().tupled_upvars_ty(), tcx, typing_env, f);
         }
         ty::Coroutine(_, args) => {
-            iter_fields(args.as_coroutine().tupled_upvars_ty(), tcx, param_env, f);
+            iter_fields(args.as_coroutine().tupled_upvars_ty(), tcx, typing_env, f);
         }
         ty::CoroutineClosure(_, args) => {
-            iter_fields(args.as_coroutine_closure().tupled_upvars_ty(), tcx, param_env, f);
+            iter_fields(args.as_coroutine_closure().tupled_upvars_ty(), tcx, typing_env, f);
         }
         _ => (),
     }

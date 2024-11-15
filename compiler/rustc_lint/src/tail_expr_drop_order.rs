@@ -103,7 +103,7 @@ impl TailExprDropOrder {
         if matches!(fn_kind, hir::intravisit::FnKind::Closure) {
             for &capture in cx.tcx.closure_captures(def_id) {
                 if matches!(capture.info.capture_kind, ty::UpvarCapture::ByValue)
-                    && capture.place.ty().has_significant_drop(cx.tcx, cx.param_env)
+                    && capture.place.ty().has_significant_drop(cx.tcx, cx.typing_env())
                 {
                     locals.push(capture.var_ident.span);
                 }
@@ -113,7 +113,7 @@ impl TailExprDropOrder {
             if cx
                 .typeck_results()
                 .node_type(param.hir_id)
-                .has_significant_drop(cx.tcx, cx.param_env)
+                .has_significant_drop(cx.tcx, cx.typing_env())
             {
                 locals.push(param.span);
             }
@@ -158,7 +158,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LocalCollector<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         if let PatKind::Binding(_binding_mode, id, ident, pat) = pat.kind {
             let ty = self.cx.typeck_results().node_type(id);
-            if ty.has_significant_drop(self.cx.tcx, self.cx.param_env) {
+            if ty.has_significant_drop(self.cx.tcx, self.cx.typing_env()) {
                 self.locals.push(ident.span);
             }
             if let Some(pat) = pat {
@@ -234,7 +234,10 @@ impl<'a, 'tcx> LintTailExpr<'a, 'tcx> {
         if Self::expr_eventually_point_into_local(expr) {
             return false;
         }
-        self.cx.typeck_results().expr_ty(expr).has_significant_drop(self.cx.tcx, self.cx.param_env)
+        self.cx
+            .typeck_results()
+            .expr_ty(expr)
+            .has_significant_drop(self.cx.tcx, self.cx.typing_env())
     }
 }
 

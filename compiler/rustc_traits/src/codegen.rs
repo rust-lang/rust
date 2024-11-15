@@ -6,7 +6,7 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
@@ -23,14 +23,15 @@ use tracing::debug;
 /// This also expects that `trait_ref` is fully normalized.
 pub(crate) fn codegen_select_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>),
+    key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
+    let PseudoCanonicalInput { typing_env, value: trait_ref } = key;
     // We expect the input to be fully normalized.
-    debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
+    debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(typing_env, trait_ref));
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::from_param_env(param_env));
+    let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();

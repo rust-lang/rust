@@ -17,8 +17,7 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
-        let typeck = cx.typeck_results();
-        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck);
+        let ecx = ConstEvalCtxt::new(cx);
         let left_is_local = match ecx.eval_with_source(left) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,

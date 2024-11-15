@@ -421,7 +421,7 @@ fn replace_types<'tcx>(
                         .expect_ty(cx.tcx)
                         .to_ty(cx.tcx);
 
-                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
+                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), projection)
                         && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));
