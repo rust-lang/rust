@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Args, Parser, Subcommand};
-use clippy_dev::{dogfood, fmt, lint, new_lint, serve, setup, sync, update_lints, utils};
+use clippy_dev::{dogfood, fmt, lint, new_lint, release, serve, setup, sync, update_lints, utils};
 use std::convert::Infallible;
 
 fn main() {
@@ -77,6 +77,9 @@ fn main() {
         DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, &reason),
         DevCommand::Sync(SyncCommand { subcommand }) => match subcommand {
             SyncSubcommand::UpdateNightly => sync::update_nightly(),
+        },
+        DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
+            ReleaseSubcommand::BumpVersion => release::bump_version(),
         },
     }
 }
@@ -230,6 +233,8 @@ enum DevCommand {
     },
     /// Sync between the rust repo and the Clippy repo
     Sync(SyncCommand),
+    /// Manage Clippy releases
+    Release(ReleaseCommand),
 }
 
 #[derive(Args)]
@@ -308,4 +313,17 @@ enum SyncSubcommand {
     #[command(name = "update_nightly")]
     /// Update nightly version in rust-toolchain and `clippy_utils`
     UpdateNightly,
+}
+
+#[derive(Args)]
+struct ReleaseCommand {
+    #[command(subcommand)]
+    subcommand: ReleaseSubcommand,
+}
+
+#[derive(Subcommand)]
+enum ReleaseSubcommand {
+    #[command(name = "bump_version")]
+    /// Bump the version in the Cargo.toml files
+    BumpVersion,
 }
