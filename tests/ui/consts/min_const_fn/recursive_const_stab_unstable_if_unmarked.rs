@@ -1,6 +1,6 @@
 //@ compile-flags: -Zforce-unstable-if-unmarked
 //@ edition: 2021
-#![feature(const_async_blocks, rustc_attrs, rustc_private)]
+#![feature(const_async_blocks, rustc_attrs)]
 
 pub const fn not_stably_const() {
     // We need to do something const-unstable here.
