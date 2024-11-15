@@ -6,12 +6,11 @@
 //@ aux-crate: no_use_macro=no-use-macro.rs
 //@ edition: 2024
 //@ compile-flags:-Z unstable-options
+//@ check-pass
 
 no_use_pm::pm_rpit!{}
-//~^ ERROR: cannot borrow `x` as mutable
 
 no_use_macro::macro_rpit!{}
-//~^ ERROR: cannot borrow `x` as mutable
 
 fn main() {
     let mut x = vec![];
@@ -19,11 +18,9 @@ fn main() {
 
     let element = test_pm(&x);
     x.push(2);
-    //~^ ERROR: cannot borrow `x` as mutable
     println!("{element}");
 
     let element = test_mbe(&x);
     x.push(2);
-    //~^ ERROR: cannot borrow `x` as mutable
     println!("{element}");
 }
