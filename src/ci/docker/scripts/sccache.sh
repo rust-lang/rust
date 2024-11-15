@@ -9,7 +9,8 @@ case "$(uname -m)" in
         url="https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-unknown-linux-musl.tar.gz"
         ;;
     aarch64)
-        url="https://ci-mirrors.rust-lang.org/rustc/2021-08-25-sccache-v0.2.15-aarch64-unknown-linux-musl"
+        # no aarch64 release for 0.3.3, so use this
+        url="https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-v0.3.1-aarch64-unknown-linux-musl.tar.gz"
         ;;
     *)
         echo "unsupported architecture: $(uname -m)"
