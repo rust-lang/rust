@@ -1,5 +1,5 @@
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/uninit_local.rs:4:15
+  --> $DIR/uninit-local.rs:4:15
    |
 LL |         let x: bool;
    |             - binding declared here but left uninitialized
