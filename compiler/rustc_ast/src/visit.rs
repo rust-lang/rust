@@ -200,8 +200,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound, _ctxt: BoundKind) -> Self::Result {
         walk_param_bound(self, bounds)
     }
-    fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) {
-        walk_precise_capturing_arg(self, arg);
+    fn visit_precise_capturing_arg(&mut self, arg: &'ast PreciseCapturingArg) -> Self::Result {
+        walk_precise_capturing_arg(self, arg)
     }
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) -> Self::Result {
         walk_poly_trait_ref(self, t)
@@ -730,14 +730,10 @@ pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericB
 pub fn walk_precise_capturing_arg<'a, V: Visitor<'a>>(
     visitor: &mut V,
     arg: &'a PreciseCapturingArg,
-) {
+) -> V::Result {
     match arg {
-        PreciseCapturingArg::Lifetime(lt) => {
-            visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg);
-        }
-        PreciseCapturingArg::Arg(path, id) => {
-            visitor.visit_path(path, *id);
-        }
+        PreciseCapturingArg::Lifetime(lt) => visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg),
+        PreciseCapturingArg::Arg(path, id) => visitor.visit_path(path, *id),
     }
 }
 
