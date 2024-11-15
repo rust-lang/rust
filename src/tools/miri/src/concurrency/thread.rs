@@ -113,6 +113,11 @@ impl ThreadId {
         self.0
     }
 
+    /// Create a new thread id from a `u32` without checking if this thread exists.
+    pub fn new_unchecked(id: u32) -> Self {
+        Self(id)
+    }
+
     pub const MAIN_THREAD: ThreadId = ThreadId(0);
 }
 
