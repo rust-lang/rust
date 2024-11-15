@@ -1,7 +1,7 @@
 use either::Either;
 use ide_db::FxHashMap;
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr, ToSmolStr};
+use syntax::{ast, syntax_editor::SyntaxEditor, AstNode, SmolStr, SyntaxElement, ToSmolStr};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -23,6 +23,11 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let path = ctx.find_node_at_offset::<ast::Path>()?;
     let record =
         path.syntax().parent().and_then(<Either<ast::RecordExpr, ast::RecordPat>>::cast)?;
+
+    let parent_node = match ctx.covering_element() {
+        SyntaxElement::Node(n) => n,
+        SyntaxElement::Token(t) => t.parent()?,
+    };
 
     let ranks = compute_fields_ranks(&path, ctx)?;
     let get_rank_of_field = |of: Option<SmolStr>| {
@@ -65,23 +70,31 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         AssistId("reorder_fields", AssistKind::RefactorRewrite),
         "Reorder record fields",
         target,
-        |builder| match fields {
-            Either::Left((sorted, field_list)) => {
-                replace(builder.make_mut(field_list).fields(), sorted)
+        |builder| {
+            let mut editor = builder.make_editor(&parent_node);
+
+            match fields {
+                Either::Left((sorted, field_list)) => {
+                    replace(&mut editor, field_list.fields(), sorted)
+                }
+                Either::Right((sorted, field_list)) => {
+                    replace(&mut editor, field_list.fields(), sorted)
+                }
             }
-            Either::Right((sorted, field_list)) => {
-                replace(builder.make_mut(field_list).fields(), sorted)
-            }
+
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
 
 fn replace<T: AstNode + PartialEq>(
+    editor: &mut SyntaxEditor,
     fields: impl Iterator<Item = T>,
     sorted_fields: impl IntoIterator<Item = T>,
 ) {
     fields.zip(sorted_fields).for_each(|(field, sorted_field)| {
-        ted::replace(field.syntax(), sorted_field.syntax().clone_for_update())
+        // FIXME: remove `clone_for_update` when `SyntaxEditor` handles it for us
+        editor.replace(field.syntax(), sorted_field.syntax().clone_for_update())
     });
 }
 
