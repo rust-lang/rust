@@ -1517,7 +1517,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -1640,7 +1640,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -2299,7 +2299,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
@@ -2389,7 +2389,7 @@ macro_rules! uint_impl {
             (res, overflowed ^ (rhs < 0))
         }
 
-        /// Calculates `self` - `rhs`
+        /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2397,7 +2397,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
@@ -2550,7 +2550,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));")]
@@ -2581,7 +2581,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));")]
@@ -2609,7 +2609,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));")]
@@ -2640,7 +2640,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));")]
@@ -2664,7 +2664,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));")]
@@ -2689,7 +2689,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));")]
@@ -2715,7 +2715,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));")]
