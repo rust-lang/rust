@@ -1254,16 +1254,54 @@ impl File {
         }
     }
 
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
     pub fn lock(&self) -> io::Result<()> {
         cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
         return Ok(());
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn lock(&self) -> io::Result<()> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "lock() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
     pub fn lock_shared(&self) -> io::Result<()> {
         cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
         return Ok(());
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
     pub fn try_lock(&self) -> io::Result<bool> {
         let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
         if let Err(ref err) = result {
@@ -1275,6 +1313,22 @@ impl File {
         return Ok(true);
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn try_lock(&self) -> io::Result<bool> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "try_lock() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
     pub fn try_lock_shared(&self) -> io::Result<bool> {
         let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
         if let Err(ref err) = result {
@@ -1286,9 +1340,35 @@ impl File {
         return Ok(true);
     }
 
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "try_lock_shared() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
     pub fn unlock(&self) -> io::Result<()> {
         cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
         return Ok(());
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn unlock(&self) -> io::Result<()> {
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
