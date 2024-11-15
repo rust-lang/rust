@@ -12,7 +12,9 @@ if isMacOS; then
     chmod +x /usr/local/bin/sccache
 elif isWindows; then
     mkdir -p sccache
-    curl -fo sccache/sccache.exe "${MIRRORS_BASE}/2018-04-26-sccache-x86_64-pc-windows-msvc"
+    curl -fLo sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v0.3.3/sccache-v0.3.3-x86_64-pc-windows-msvc.tar.gz"
+    tar zxvf sccache.tar.gz --wildcards --no-anchored 'sccache.exe' --strip-components=1
+    mv sccache.exe sccache
     ciCommandAddPath "$(pwd)/sccache"
 fi
 
