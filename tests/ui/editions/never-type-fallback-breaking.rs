@@ -16,7 +16,7 @@ fn main() {
 
 fn m() {
     //[e2021]~^ this function depends on never type fallback being `()`
-    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     let x = match true {
         true => Default::default(),
         //[e2024]~^ error: the trait bound `!: Default` is not satisfied
@@ -28,7 +28,7 @@ fn m() {
 
 fn q() -> Option<()> {
     //[e2021]~^ this function depends on never type fallback being `()`
-    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     fn deserialize<T: Default>() -> Option<T> {
         Some(T::default())
     }
@@ -45,7 +45,7 @@ fn help<'a: 'a, T: Into<()>, U>(_: U) -> Result<T, ()> {
 }
 fn meow() -> Result<(), ()> {
     //[e2021]~^ this function depends on never type fallback being `()`
-    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     help(1)?;
     //[e2024]~^ error: the trait bound `(): From<!>` is not satisfied
     Ok(())
