@@ -39,7 +39,6 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         },
         expr.syntax().text_range(),
         |builder| {
-
             let make = SyntaxFactory::new();
             let mut editor = builder.make_editor(&expr.syntax());
 
