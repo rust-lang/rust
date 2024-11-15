@@ -82,7 +82,7 @@ const DIRECTION: [[i32; 5]; 4] = [ [1, 2, 3, 4, 5],
 
 /// A table to encode each location to a value in bit 31-0 in the bitboard for 4 direction
 #[rustfmt::skip]
-const MAPMOVEVALUE: [[i32; 239]; 4] = [ [// Direction 0 
+const MAPMOVEVALUE: [[i32; 239]; 4] = [ [// Direction 0
                                          1<<31, 1<<30, 1<<29, 1<<28, 1<<27, 1<<26, 1<<25, 1<<24, 1<<23, 1<<22, 1<<21, 1<<20, 1<<19, 1<<18, 1<<17, 0,
                                          1<<31, 1<<30, 1<<29, 1<<28, 1<<27, 1<<26, 1<<25, 1<<24, 1<<23, 1<<22, 1<<21, 1<<20, 1<<19, 1<<18, 1<<17, 0,
                                          1<<31, 1<<30, 1<<29, 1<<28, 1<<27, 1<<26, 1<<25, 1<<24, 1<<23, 1<<22, 1<<21, 1<<20, 1<<19, 1<<18, 1<<17, 0,
@@ -114,7 +114,7 @@ const MAPMOVEVALUE: [[i32; 239]; 4] = [ [// Direction 0
                                          1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 1<<19, 0,
                                          1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 1<<18, 0,
                                          1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17, 1<<17],
-                                        [// Direction 2 
+                                        [// Direction 2
                                          1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 1<<15, 0,     0,     0,     0,     0,
                                          1<<15, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 1<<14, 0,     0,     0,     0,
                                          1<<15, 1<<14, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 1<<13, 0,     0,     0,
@@ -148,9 +148,9 @@ const MAPMOVEVALUE: [[i32; 239]; 4] = [ [// Direction 0
                                          1<<1,  1<<2,  1<<3,  1<<4,  1<<5,  1<<6,  1<<1,  1<<1,  1<<1,  1<<1,  1<<1,  0,     0,     0,     0]
                                         ];
 
-/// A table to encode each location to an index in the bitboard for 4 direction 
+/// A table to encode each location to an index in the bitboard for 4 direction
 #[rustfmt::skip]
-const MAPMOVEIDX: [[i32; 239]; 4] = [ [// Direction 0 
+const MAPMOVEIDX: [[i32; 239]; 4] = [ [// Direction 0
                                        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
                                        1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,
                                        2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  0,
@@ -166,7 +166,7 @@ const MAPMOVEIDX: [[i32; 239]; 4] = [ [// Direction 0
                                        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0,
                                        13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0,
                                        14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14],
-                                      [// Direction 1 
+                                      [// Direction 1
                                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0,
                                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0,
                                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 0,
@@ -373,18 +373,9 @@ impl List {
 
     pub fn shuffle(&mut self) {
         let mut rng = thread_rng();
-        let num = self.p_size;
-        let mut new_move: Vec<Move> = vec![];
+        let num = self.p_size as usize;
 
-        for x in 0..(num as usize) {
-            new_move.push(self.p_move[x]);
-        }
-
-        new_move.shuffle(&mut rng);
-
-        for x in 0..(self.p_size as usize) {
-            self.p_move[x] = new_move[x];
-        }
+        self.p_move[..num].shuffle(&mut rng);
     }
 }
 
@@ -424,12 +415,7 @@ fn pos_is_draw(pos: &Pos) -> bool {
         }
     }
 
-    let mut out = false;
-    if found && !pos_is_winner(pos) {
-        out = true;
-    }
-
-    out
+    found && !pos_is_winner(pos)
 }
 
 #[target_feature(enable = "avx512f,avx512bw")]
