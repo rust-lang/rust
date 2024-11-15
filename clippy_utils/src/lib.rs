@@ -91,7 +91,6 @@ use std::hash::BuildHasherDefault;
 use std::iter::{once, repeat};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use clippy_config::types::DisallowedPath;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
@@ -99,7 +98,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
@@ -748,18 +747,6 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
 pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> + use<> {
     def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
-}
-
-/// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map(
-    tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, Option<&'static str>)> {
-    disallowed
-        .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
-        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
-        .collect()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
