@@ -65,8 +65,6 @@ jobs:
     defaults:
       run:
         shell: ${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}
-        # linux not exist
-        working-directory: d:/a/rust/rust
     timeout-minutes: 240
     env:
       CI_JOB_NAME: ${{ matrix.image }}
@@ -82,13 +80,6 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - name: create working dir for windows runner
-        if: contains(matrix.os, 'windows')
-        shell: bash
-        run: |
-          echo ${{ github.workspace }}
-          mkdir -p d:/a/rust/rust
-
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
         with:
