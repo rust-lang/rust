@@ -50,6 +50,16 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         _ => {}
     }
 
+    let sig = tcx.fn_sig(def_id).instantiate_identity();
+    for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
+    {
+        // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip
+        // codegen if the function is not used.
+        if ty == &tcx.types.f16 || ty == &tcx.types.f128 {
+            return true;
+        }
+    }
+
     // Don't do any inference when incremental compilation is enabled; the additional inlining that
     // inference permits also creates more work for small edits.
     if tcx.sess.opts.incremental.is_some() {

@@ -1258,9 +1258,8 @@ impl f128 {
             min <= max,
             "min > max, or either was NaN",
             "min > max, or either was NaN. min = {min:?}, max = {max:?}",
-            // FIXME(f16_f128): Passed by-ref to avoid codegen crashes
-            min: &f128 = &min,
-            max: &f128 = &max,
+            min: f128,
+            max: f128,
         );
 
         if self < min {
