@@ -68,7 +68,7 @@ use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
     diagnostics::BodyValidationDiagnostic,
-    error_lifetime, known_const_to_ast,
+    direct_super_traits, error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{interpret_mir, MutBorrowKind},
@@ -2246,35 +2246,33 @@ impl Function {
 
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_test()
+        db.attrs(self.id.into()).is_test()
     }
 
     /// is this a `fn main` or a function with an `export_name` of `main`?
     pub fn is_main(self, db: &dyn HirDatabase) -> bool {
-        let data = db.function_data(self.id);
-        data.attrs.export_name() == Some(&sym::main)
-            || self.module(db).is_crate_root() && data.name == sym::main
+        db.attrs(self.id.into()).export_name() == Some(&sym::main)
+            || self.module(db).is_crate_root() && db.function_data(self.id).name == sym::main
     }
 
     /// Is this a function with an `export_name` of `main`?
     pub fn exported_main(self, db: &dyn HirDatabase) -> bool {
-        let data = db.function_data(self.id);
-        data.attrs.export_name() == Some(&sym::main)
+        db.attrs(self.id.into()).export_name() == Some(&sym::main)
     }
 
     /// Does this function have the ignore attribute?
     pub fn is_ignore(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_ignore()
+        db.attrs(self.id.into()).is_ignore()
     }
 
     /// Does this function have `#[bench]` attribute?
     pub fn is_bench(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_bench()
+        db.attrs(self.id.into()).is_bench()
     }
 
     /// Is this function marked as unstable with `#[feature]` attribute?
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).attrs.is_unstable()
+        db.attrs(self.id.into()).is_unstable()
     }
 
     pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
@@ -2289,8 +2287,7 @@ impl Function {
     }
 
     pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
-        let function_data = db.function_data(self.id);
-        let attrs = &function_data.attrs;
+        let attrs = db.attrs(self.id.into());
         // FIXME: Store this in FunctionData flags?
         if !(attrs.is_proc_macro()
             || attrs.is_proc_macro_attribute()
@@ -2707,13 +2704,22 @@ impl Trait {
         db.trait_data(self.id).name.clone()
     }
 
+    pub fn direct_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        let traits = direct_super_traits(db.upcast(), self.into());
+        traits.iter().map(|tr| Trait::from(*tr)).collect()
+    }
+
+    pub fn all_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        let traits = all_super_traits(db.upcast(), self.into());
+        traits.iter().map(|tr| Trait::from(*tr)).collect()
+    }
+
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
     pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        let traits = all_super_traits(db.upcast(), self.into());
-        traits.iter().flat_map(|tr| Trait::from(*tr).items(db)).collect()
+        self.all_supertraits(db).into_iter().flat_map(|tr| tr.items(db)).collect()
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {

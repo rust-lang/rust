@@ -1,5 +1,5 @@
 Function name: closure_bug::main
-Raw bytes (97): 0x[01, 01, 04, 01, 05, 01, 09, 01, 0d, 01, 11, 11, 01, 07, 01, 03, 0a, 01, 09, 05, 01, 0e, 05, 01, 0f, 00, 17, 02, 00, 17, 00, 18, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 09, 01, 0f, 00, 17, 06, 00, 17, 00, 18, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 0d, 01, 0f, 00, 17, 0a, 00, 17, 00, 18, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 11, 01, 0f, 00, 17, 0e, 00, 17, 00, 18, 01, 01, 01, 00, 02]
+Raw bytes (97): 0x[01, 01, 04, 01, 05, 01, 09, 01, 0d, 01, 11, 11, 01, 07, 01, 03, 0a, 01, 09, 05, 01, 0e, 05, 01, 0f, 00, 17, 02, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 09, 01, 0f, 00, 17, 06, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 0d, 01, 0f, 00, 17, 0a, 00, 16, 00, 17, 01, 02, 09, 00, 0a, 01, 06, 05, 01, 0e, 11, 01, 0f, 00, 17, 0e, 00, 16, 00, 17, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
@@ -11,22 +11,22 @@ Number of file 0 mappings: 17
 - Code(Counter(0)) at (prev + 7, 1) to (start + 3, 10)
 - Code(Counter(0)) at (prev + 9, 5) to (start + 1, 14)
 - Code(Counter(1)) at (prev + 1, 15) to (start + 0, 23)
-- Code(Expression(0, Sub)) at (prev + 0, 23) to (start + 0, 24)
+- Code(Expression(0, Sub)) at (prev + 0, 22) to (start + 0, 23)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
 - Code(Counter(0)) at (prev + 6, 5) to (start + 1, 14)
 - Code(Counter(2)) at (prev + 1, 15) to (start + 0, 23)
-- Code(Expression(1, Sub)) at (prev + 0, 23) to (start + 0, 24)
+- Code(Expression(1, Sub)) at (prev + 0, 22) to (start + 0, 23)
     = (c0 - c2)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
 - Code(Counter(0)) at (prev + 6, 5) to (start + 1, 14)
 - Code(Counter(3)) at (prev + 1, 15) to (start + 0, 23)
-- Code(Expression(2, Sub)) at (prev + 0, 23) to (start + 0, 24)
+- Code(Expression(2, Sub)) at (prev + 0, 22) to (start + 0, 23)
     = (c0 - c3)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
 - Code(Counter(0)) at (prev + 6, 5) to (start + 1, 14)
 - Code(Counter(4)) at (prev + 1, 15) to (start + 0, 23)
-- Code(Expression(3, Sub)) at (prev + 0, 23) to (start + 0, 24)
+- Code(Expression(3, Sub)) at (prev + 0, 22) to (start + 0, 23)
     = (c0 - c4)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
 Highest counter ID seen: c4

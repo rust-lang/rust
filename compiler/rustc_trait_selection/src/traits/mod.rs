@@ -27,6 +27,7 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
@@ -34,11 +35,11 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperVisitable, TypingMode,
-    Upcast,
+    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypingMode, Upcast,
 };
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 pub use self::coherence::{
@@ -366,11 +367,23 @@ pub fn normalize_param_env_or_error<'tcx>(
                     if c.has_escaping_bound_vars() {
                         return ty::Const::new_misc_error(self.0);
                     }
+
                     // While it is pretty sus to be evaluating things with an empty param env, it
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
                     // do not appear in the type system though.
-                    c.normalize_internal(self.0, ty::ParamEnv::empty())
+                    if let ty::ConstKind::Unevaluated(uv) = c.kind()
+                        && self.0.def_kind(uv.def) == DefKind::AnonConst
+                    {
+                        let infcx = self.0.infer_ctxt().build(TypingMode::non_body_analysis());
+                        let c = evaluate_const(&infcx, c, ty::ParamEnv::empty());
+                        // We should never wind up with any `infcx` local state when normalizing anon consts
+                        // under min const generics.
+                        assert!(!c.has_infer() && !c.has_placeholders());
+                        return c;
+                    }
+
+                    c
                 }
             }
 
@@ -472,6 +485,210 @@ pub fn normalize_param_env_or_error<'tcx>(
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
+}
+
+#[derive(Debug)]
+pub enum EvaluateConstErr {
+    /// The constant being evaluated was either a generic parameter or inference variable, *or*,
+    /// some unevaluated constant with either generic parameters or inference variables in its
+    /// generic arguments.
+    HasGenericsOrInfers,
+    /// The type this constant evalauted to is not valid for use in const generics. This should
+    /// always result in an error when checking the constant is correctly typed for the parameter
+    /// it is an argument to, so a bug is delayed when encountering this.
+    InvalidConstParamTy(ErrorGuaranteed),
+    /// CTFE failed to evaluate the constant in some unrecoverable way (e.g. encountered a `panic!`).
+    /// This is also used when the constant was already tainted by error.
+    EvaluationFailure(ErrorGuaranteed),
+}
+
+// FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
+// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// normalization scheme
+/// Evaluates a type system constant returning a `ConstKind::Error` in cases where CTFE failed and
+/// returning the passed in constant if it was not fully concrete (i.e. depended on generic parameters
+/// or inference variables)
+///
+/// You should not call this function unless you are implementing normalization itself. Prefer to use
+/// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
+pub fn evaluate_const<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> ty::Const<'tcx> {
+    match try_evaluate_const(infcx, ct, param_env) {
+        Ok(ct) => ct,
+        Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
+            ty::Const::new_error(infcx.tcx, e)
+        }
+        Err(EvaluateConstErr::HasGenericsOrInfers) => ct,
+    }
+}
+
+// FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
+// FIXME(generic_const_exprs): Consider accepting a `ty::UnevaluatedConst` when we are not rolling our own
+// normalization scheme
+/// Evaluates a type system constant making sure to not allow constants that depend on generic parameters
+/// or inference variables to succeed in evaluating.
+///
+/// You should not call this function unless you are implementing normalization itself. Prefer to use
+/// `normalize_erasing_regions` or the `normalize` functions on `ObligationCtxt`/`FnCtxt`/`InferCtxt`.
+#[instrument(level = "debug", skip(infcx), ret)]
+pub fn try_evaluate_const<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<ty::Const<'tcx>, EvaluateConstErr> {
+    let tcx = infcx.tcx;
+    let ct = infcx.resolve_vars_if_possible(ct);
+    debug!(?ct);
+
+    match ct.kind() {
+        ty::ConstKind::Value(..) => Ok(ct),
+        ty::ConstKind::Error(e) => Err(EvaluateConstErr::EvaluationFailure(e)),
+        ty::ConstKind::Param(_)
+        | ty::ConstKind::Infer(_)
+        | ty::ConstKind::Bound(_, _)
+        | ty::ConstKind::Placeholder(_)
+        | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
+        ty::ConstKind::Unevaluated(uv) => {
+            // Postpone evaluation of constants that depend on generic parameters or inference variables.
+            let (args, param_env) = if tcx.features().generic_const_exprs()
+                && uv.has_non_region_infer()
+            {
+                // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
+                // inference variables and generic parameters to show up in `ty::Const` even though the anon const
+                // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
+                match tcx.thir_abstract_const(uv.def) {
+                    Ok(Some(ct)) => {
+                        let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, uv.args));
+                        if let Err(e) = ct.error_reported() {
+                            return Err(EvaluateConstErr::EvaluationFailure(e));
+                        } else if ct.has_non_region_infer() || ct.has_non_region_param() {
+                            // If the anon const *does* actually use generic parameters or inference variables from
+                            // the generic arguments provided for it, then we should *not* attempt to evaluate it.
+                            return Err(EvaluateConstErr::HasGenericsOrInfers);
+                        } else {
+                            (replace_param_and_infer_args_with_placeholder(tcx, uv.args), param_env)
+                        }
+                    }
+                    Err(_) | Ok(None) => {
+                        let args = GenericArgs::identity_for_item(tcx, uv.def);
+                        let param_env = tcx.param_env(uv.def);
+                        (args, param_env)
+                    }
+                }
+            } else if tcx.def_kind(uv.def) == DefKind::AnonConst && uv.has_non_region_infer() {
+                // FIXME: remove this when `const_evaluatable_unchecked` is a hard error.
+                //
+                // Diagnostics will sometimes replace the identity args of anon consts in
+                // array repeat expr counts with inference variables so we have to handle this
+                // even though it is not something we should ever actually encounter.
+                //
+                // Array repeat expr counts are allowed to syntactically use generic parameters
+                // but must not actually depend on them in order to evalaute succesfully. This means
+                // that it is actually fine to evalaute them in their own environment rather than with
+                // the actually provided generic arguments.
+                tcx.dcx().delayed_bug(
+                    "Encountered anon const with inference variable args but no error reported",
+                );
+
+                let args = GenericArgs::identity_for_item(tcx, uv.def);
+                let param_env = tcx.param_env(uv.def);
+                (args, param_env)
+            } else {
+                // FIXME: This codepath is reachable under `associated_const_equality` and in the
+                // future will be reachable by `min_generic_const_args`. We should handle inference
+                // variables and generic parameters properly instead of doing nothing.
+                (uv.args, param_env)
+            };
+            let uv = ty::UnevaluatedConst::new(uv.def, args);
+
+            // It's not *technically* correct to be revealing opaque types here as we could still be
+            // before borrowchecking. However, CTFE itself uses `Reveal::All` unconditionally even during
+            // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821). As a result we
+            // always use a revealed env when resolving the instance to evaluate.
+            //
+            // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
+            // instead of having this logic here
+            let env = tcx.erase_regions(param_env).with_reveal_all_normalized(tcx);
+            let erased_uv = tcx.erase_regions(uv);
+
+            use rustc_middle::mir::interpret::ErrorHandled;
+            match tcx.const_eval_resolve_for_typeck(env, erased_uv, DUMMY_SP) {
+                Ok(Ok(val)) => Ok(ty::Const::new_value(
+                    tcx,
+                    val,
+                    tcx.type_of(uv.def).instantiate(tcx, uv.args),
+                )),
+                Ok(Err(_)) => {
+                    let e = tcx.dcx().delayed_bug(
+                        "Type system constant with non valtree'able type evaluated but no error emitted",
+                    );
+                    Err(EvaluateConstErr::InvalidConstParamTy(e))
+                }
+                Err(ErrorHandled::Reported(info, _)) => {
+                    Err(EvaluateConstErr::EvaluationFailure(info.into()))
+                }
+                Err(ErrorHandled::TooGeneric(_)) => Err(EvaluateConstErr::HasGenericsOrInfers),
+            }
+        }
+    }
+}
+
+/// Replaces args that reference param or infer variables with suitable
+/// placeholders. This function is meant to remove these param and infer
+/// args when they're not actually needed to evaluate a constant.
+fn replace_param_and_infer_args_with_placeholder<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: GenericArgsRef<'tcx>,
+) -> GenericArgsRef<'tcx> {
+    struct ReplaceParamAndInferWithPlaceholder<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        idx: u32,
+    }
+
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
+        fn cx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            if let ty::Infer(_) = t.kind() {
+                let idx = {
+                    let idx = self.idx;
+                    self.idx += 1;
+                    idx
+                };
+                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
+                    universe: ty::UniverseIndex::ROOT,
+                    bound: ty::BoundTy {
+                        var: ty::BoundVar::from_u32(idx),
+                        kind: ty::BoundTyKind::Anon,
+                    },
+                })
+            } else {
+                t.super_fold_with(self)
+            }
+        }
+
+        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+            if let ty::ConstKind::Infer(_) = c.kind() {
+                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
+                    universe: ty::UniverseIndex::ROOT,
+                    bound: ty::BoundVar::from_u32({
+                        let idx = self.idx;
+                        self.idx += 1;
+                        idx
+                    }),
+                })
+            } else {
+                c.super_fold_with(self)
+            }
+        }
+    }
+
+    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this

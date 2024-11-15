@@ -1,17 +1,17 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
-use either::Either;
 use rustc_abi::{HasDataLayout, Size};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span};
+use rustc_type_ir::visit::TypeVisitableExt;
 
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::{self, GenericArgsRef, ScalarInt, Ty, TyCtxt};
+use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -319,15 +319,16 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
-                // We want to consistently have a "clean" value for type system constants (i.e., no
-                // data hidden in the padding), so we always go through a valtree here.
-                match c.eval_valtree(tcx, param_env, span) {
-                    Ok((ty, val)) => Ok(tcx.valtree_to_const_val((ty, val))),
-                    Err(Either::Left(_bad_ty)) => Err(tcx
-                        .dcx()
-                        .delayed_bug("`mir::Const::eval` called on a non-valtree-compatible type")
-                        .into()),
-                    Err(Either::Right(e)) => Err(e),
+                if c.has_non_region_param() {
+                    return Err(ErrorHandled::TooGeneric(span));
+                }
+
+                match c.kind() {
+                    ConstKind::Value(ty, val) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    ConstKind::Expr(_) => {
+                        bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
+                    }
+                    _ => Err(tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body").into()),
                 }
             }
             Const::Unevaluated(uneval, _) => {

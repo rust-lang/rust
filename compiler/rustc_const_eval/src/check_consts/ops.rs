@@ -28,6 +28,9 @@ pub enum Status {
     Unstable {
         /// The feature that must be enabled to use this operation.
         gate: Symbol,
+        /// Whether the feature gate was already checked (because the logic is a bit more
+        /// complicated than just checking a single gate).
+        gate_already_checked: bool,
         /// Whether it is allowed to use this operation from stable `const fn`.
         /// This will usually be `false`.
         safe_to_expose_on_stable: bool,
@@ -82,6 +85,7 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
         // We use the `const_trait_impl` gate for all conditionally-const calls.
         Status::Unstable {
             gate: sym::const_trait_impl,
+            gate_already_checked: false,
             safe_to_expose_on_stable: false,
             // We don't want the "mark the callee as `#[rustc_const_stable_indirect]`" hint
             is_function_call: false,
@@ -330,6 +334,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 pub(crate) struct FnCallUnstable {
     pub def_id: DefId,
     pub feature: Symbol,
+    /// If this is true, then the feature is enabled, but we need to still check if it is safe to
+    /// expose on stable.
+    pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
 }
 
@@ -337,12 +344,14 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
+            gate_already_checked: self.feature_enabled,
             safe_to_expose_on_stable: self.safe_to_expose_on_stable,
             is_function_call: true,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        assert!(!self.feature_enabled);
         let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
             span,
             def_path: ccx.tcx.def_path_str(self.def_id),
@@ -376,14 +385,15 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
 pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
-    pub const_stable: bool,
+    pub const_stable_indirect: bool,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
-            safe_to_expose_on_stable: self.const_stable,
+            gate_already_checked: false,
+            safe_to_expose_on_stable: self.const_stable_indirect,
             // We do *not* want to suggest to mark the intrinsic as `const_stable_indirect`,
             // that's not a trivial change!
             is_function_call: false,
@@ -410,6 +420,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
         {
             Status::Unstable {
                 gate: sym::const_async_blocks,
+                gate_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
             }

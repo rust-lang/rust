@@ -274,8 +274,12 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Control Flow Guard is currently only supported by the MSVC linker on Windows.
-    if sess.target.is_like_msvc {
+    // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
+    if sess.target.is_like_msvc
+        || (sess.target.options.os == "windows"
+            && sess.target.options.env == "gnu"
+            && sess.target.options.abi == "llvm")
+    {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {

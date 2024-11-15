@@ -5,7 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
-use crate::{is_darwin, is_msvc, is_windows, uname};
+use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -346,7 +346,7 @@ impl Rustc {
         //     endif
         // endif
         // ```
-        let flag = if is_windows() {
+        if is_windows() {
             // So this is a bit hacky: we can't use the DLL version of libstdc++ because
             // it pulls in the DLL version of libgcc, which means that we end up with 2
             // instances of the DW2 unwinding implementation. This is a problem on
@@ -362,18 +362,19 @@ impl Rustc {
             // So we end up with the following hack: we link use static:-bundle to only
             // link the parts of libstdc++ that we actually use, which doesn't include
             // the dependency on the pthreads DLL.
-            if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
+            if !is_msvc() {
+                self.cmd.arg("-lstatic:-bundle=stdc++");
+            };
         } else if is_darwin() {
-            Some("-lc++")
+            self.cmd.arg("-lc++");
+        } else if is_aix() {
+            self.cmd.arg("-lc++");
+            self.cmd.arg("-lc++abi");
         } else {
-            match &uname()[..] {
-                "FreeBSD" | "SunOS" | "OpenBSD" => None,
-                _ => Some("-lstdc++"),
-            }
+            if !matches!(&uname()[..], "FreeBSD" | "SunOS" | "OpenBSD") {
+                self.cmd.arg("-lstdc++");
+            };
         };
-        if let Some(flag) = flag {
-            self.cmd.arg(flag);
-        }
         self
     }
 }

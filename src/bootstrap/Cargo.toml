@@ -40,7 +40,7 @@ test = false
 cc = "=1.1.22"
 cmake = "=0.1.48"
 
-build_helper = { path = "../tools/build_helper" }
+build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 clap_complete = "4.4"
 fd-lock = "4.0"

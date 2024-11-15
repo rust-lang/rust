@@ -346,7 +346,6 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
         *[other] these lifetimes are
      } in scope but not mentioned in the type's bounds
     .note2 = all lifetimes in scope will be captured by `impl Trait`s in edition 2024
-    .suggestion = use the precise capturing `use<...>` syntax to make the captures explicit
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax

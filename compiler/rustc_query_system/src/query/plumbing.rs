@@ -13,7 +13,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
 use rustc_span::{DUMMY_SP, Span};
@@ -25,9 +24,7 @@ use crate::HandleCycleError;
 use crate::dep_graph::{DepContext, DepGraphData, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-#[cfg(parallel_compiler)]
-use crate::query::job::QueryLatch;
-use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, report_cycle};
+use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryLatch, report_cycle};
 use crate::query::{
     QueryContext, QueryMap, QuerySideEffects, QueryStackFrame, SerializedDepNodeIndex,
 };
@@ -263,7 +260,6 @@ where
 }
 
 #[inline(always)]
-#[cfg(parallel_compiler)]
 fn wait_for_query<Q, Qcx>(
     query: Q,
     qcx: Qcx,
@@ -334,7 +330,7 @@ where
     // re-executing the query since `try_start` only checks that the query is not currently
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
-    if cfg!(parallel_compiler) && qcx.dep_context().sess().threads() > 1 {
+    if qcx.dep_context().sess().threads() > 1 {
         if let Some((value, index)) = query.query_cache(qcx).lookup(&key) {
             qcx.dep_context().profiler().query_cache_hit(index.into());
             return (value, Some(index));
@@ -359,7 +355,6 @@ where
         Entry::Occupied(mut entry) => {
             match entry.get_mut() {
                 QueryResult::Started(job) => {
-                    #[cfg(parallel_compiler)]
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
                         let latch = job.latch();

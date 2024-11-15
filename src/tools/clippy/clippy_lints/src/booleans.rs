@@ -667,5 +667,5 @@ fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     cx.tcx
         .get_diagnostic_item(sym::Ord)
-        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        .is_some_and(|id| implements_trait(cx, ty, id, &[]))
 }

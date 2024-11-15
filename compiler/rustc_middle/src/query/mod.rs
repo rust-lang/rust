@@ -463,7 +463,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
+    /// Fetch the THIR for a given body.
     query thir_body(key: LocalDefId) -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed> {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
@@ -2326,12 +2326,18 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Check the signature of this function as well as all the call expressions inside of it
-    /// to ensure that any target features required by the ABI are enabled.
-    /// Should be called on a fully monomorphized instance.
-    query check_feature_dependent_abi(key: ty::Instance<'tcx>) {
-        desc { "check for feature-dependent ABI" }
+    /// Perform monomorphization-time checking on this item.
+    /// This is used for lints/errors that can only be checked once the instance is fully
+    /// monomorphized.
+    query check_mono_item(key: ty::Instance<'tcx>) {
+        desc { "monomorphization-time checking" }
         cache_on_disk_if { true }
+    }
+
+    /// Builds the set of functions that should be skipped for the move-size check.
+    query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
+        arena_cache
+        desc { "functions to skip for move-size check" }
     }
 }
 

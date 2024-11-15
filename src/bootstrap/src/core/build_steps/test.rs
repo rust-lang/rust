@@ -1354,7 +1354,7 @@ impl Step for CrateBuildHelper {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/build_helper")
+        run.path("src/build_helper")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1372,7 +1372,7 @@ impl Step for CrateBuildHelper {
             Mode::ToolBootstrap,
             host,
             Kind::Test,
-            "src/tools/build_helper",
+            "src/build_helper",
             SourceType::InTree,
             &[],
         );

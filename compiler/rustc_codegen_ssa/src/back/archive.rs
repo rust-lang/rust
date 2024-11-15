@@ -304,6 +304,14 @@ pub trait ArchiveBuilder {
     fn build(self: Box<Self>, output: &Path) -> bool;
 }
 
+pub struct ArArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
+        Box::new(ArArchiveBuilder::new(sess, &DEFAULT_OBJECT_READER))
+    }
+}
+
 #[must_use = "must call build() to finish building the archive"]
 pub struct ArArchiveBuilder<'a> {
     sess: &'a Session,

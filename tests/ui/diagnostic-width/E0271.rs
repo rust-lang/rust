@@ -1,4 +1,6 @@
-//@ compile-flags: --diagnostic-width=40
+//@ revisions: ascii unicode
+//@[ascii] compile-flags: --diagnostic-width=40
+//@[unicode] compile-flags: -Zunstable-options=yes --error-format=human-unicode --diagnostic-width=40
 //@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 trait Future {
     type Error;
@@ -15,7 +17,7 @@ impl<T> Future for Option<T> {
 struct Foo;
 
 fn foo() -> Box<dyn Future<Error=Foo>> {
-    Box::new( //~ ERROR E0271
+    Box::new( //[ascii]~ ERROR E0271
         Ok::<_, ()>(
             Err::<(), _>(
                 Ok::<_, ()>(

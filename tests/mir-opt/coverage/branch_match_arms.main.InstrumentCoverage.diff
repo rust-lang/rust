@@ -26,18 +26,19 @@
           debug a => _9;
       }
   
++     coverage body span: $DIR/branch_match_arms.rs:14:11: 21:2 (#0)
 +     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Add, rhs: Counter(3) };
 +     coverage ExpressionId(2) => Expression { lhs: Counter(0), op: Subtract, rhs: Expression(1) };
 +     coverage ExpressionId(3) => Expression { lhs: Counter(3), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(4) => Expression { lhs: Expression(3), op: Add, rhs: Counter(1) };
 +     coverage ExpressionId(5) => Expression { lhs: Expression(4), op: Add, rhs: Expression(2) };
-+     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:14:1 - 15:21;
-+     coverage Code(Counter(3)) => $DIR/branch_match_arms.rs:16:17 - 16:33;
-+     coverage Code(Counter(2)) => $DIR/branch_match_arms.rs:17:17 - 17:33;
-+     coverage Code(Counter(1)) => $DIR/branch_match_arms.rs:18:17 - 18:33;
-+     coverage Code(Expression(2)) => $DIR/branch_match_arms.rs:19:17 - 19:33;
-+     coverage Code(Expression(5)) => $DIR/branch_match_arms.rs:21:1 - 21:2;
++     coverage Code(Counter(0)) => 14:1 - 15:21;
++     coverage Code(Counter(3)) => 16:17 - 16:33;
++     coverage Code(Counter(2)) => 17:17 - 17:33;
++     coverage Code(Counter(1)) => 18:17 - 18:33;
++     coverage Code(Expression(2)) => 19:17 - 19:33;
++     coverage Code(Expression(5)) => 21:1 - 21:2;
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);

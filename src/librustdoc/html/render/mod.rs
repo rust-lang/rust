@@ -204,6 +204,7 @@ pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
     where_clause: Vec<Vec<RenderType>>,
+    param_names: Vec<Symbol>,
 }
 
 impl IndexItemFunctionType {
@@ -1010,9 +1011,7 @@ fn render_stability_since_raw_with_extra(
                 // don't display const unstable if entirely unstable
                 None
             } else {
-                let unstable = if let Some(n) = issue
-                    && let Some(feature) = feature
-                {
+                let unstable = if let Some(n) = issue {
                     format!(
                         "<a \
                         href=\"https://github.com/rust-lang/rust/issues/{n}\" \

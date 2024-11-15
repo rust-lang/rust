@@ -195,7 +195,7 @@ pub fn prune_stacktrace<'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |frame| !machine.is_local(frame))
+                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame))
                 {
                     stacktrace.pop();
                 }

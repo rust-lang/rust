@@ -149,3 +149,17 @@ fn write_u64_min(bh: &mut Bencher) {
         test::black_box(format!("{}", 0u64));
     });
 }
+
+#[bench]
+fn write_u8_max(bh: &mut Bencher) {
+    bh.iter(|| {
+        test::black_box(format!("{}", u8::MAX));
+    });
+}
+
+#[bench]
+fn write_u8_min(bh: &mut Bencher) {
+    bh.iter(|| {
+        test::black_box(format!("{}", 0u8));
+    });
+}

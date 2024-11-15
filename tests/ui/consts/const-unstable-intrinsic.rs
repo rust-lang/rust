@@ -16,13 +16,13 @@ const fn const_main() {
     unsafe {
         unstable_intrinsic::size_of_val(&x);
         //~^ERROR: unstable library feature `unstable`
-        //~|ERROR: cannot be (indirectly) exposed to stable
+        //~|ERROR: not yet stable as a const intrinsic
         unstable_intrinsic::min_align_of_val(&x);
         //~^ERROR: unstable library feature `unstable`
         //~|ERROR: not yet stable as a const intrinsic
 
         size_of_val(&x);
-        //~^ERROR: cannot be (indirectly) exposed to stable
+        //~^ERROR: cannot use `#[feature(local)]`
         min_align_of_val(&x);
         //~^ERROR: cannot use `#[feature(local)]`
     }
@@ -59,6 +59,6 @@ mod fallback {
     #[rustc_intrinsic]
     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
         super::size_of_val(src);
-        //~^ ERROR cannot be (indirectly) exposed to stable
+        //~^ ERROR cannot use `#[feature(local)]`
     }
 }

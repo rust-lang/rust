@@ -77,9 +77,4 @@ rustc_randomized_layouts = [
     'rustc_index/rustc_randomized_layouts',
     'rustc_middle/rustc_randomized_layouts'
 ]
-rustc_use_parallel_compiler = [
-    'rustc_data_structures/rustc_use_parallel_compiler',
-    'rustc_interface/rustc_use_parallel_compiler',
-    'rustc_middle/rustc_use_parallel_compiler'
-]
 # tidy-alphabetical-end

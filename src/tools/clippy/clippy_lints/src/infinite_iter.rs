@@ -171,13 +171,13 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
             if let ExprKind::Path(ref qpath) = path.kind {
                 cx.qpath_res(qpath, path.hir_id)
                     .opt_def_id()
-                    .map_or(false, |id| cx.tcx.is_diagnostic_item(sym::iter_repeat, id))
+                    .is_some_and(|id| cx.tcx.is_diagnostic_item(sym::iter_repeat, id))
                     .into()
             } else {
                 Finite
             }
         },
-        ExprKind::Struct(..) => higher::Range::hir(expr).map_or(false, |r| r.end.is_none()).into(),
+        ExprKind::Struct(..) => higher::Range::hir(expr).is_some_and(|r| r.end.is_none()).into(),
         _ => Finite,
     }
 }
@@ -228,9 +228,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 let not_double_ended = cx
                     .tcx
                     .get_diagnostic_item(sym::DoubleEndedIterator)
-                    .map_or(false, |id| {
-                        !implements_trait(cx, cx.typeck_results().expr_ty(receiver), id, &[])
-                    });
+                    .is_some_and(|id| !implements_trait(cx, cx.typeck_results().expr_ty(receiver), id, &[]));
                 if not_double_ended {
                     return is_infinite(cx, receiver);
                 }

@@ -623,12 +623,25 @@ impl Drop for DiagCtxtInner {
             self.flush_delayed()
         }
 
+        // Sanity check: did we use some of the expensive `trimmed_def_paths` functions
+        // unexpectedly, that is, without producing diagnostics? If so, for debugging purposes, we
+        // suggest where this happened and how to avoid it.
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
             if let Some(backtrace) = &self.must_produce_diag {
+                let suggestion = match backtrace.status() {
+                    BacktraceStatus::Disabled => String::from(
+                        "Backtraces are currently disabled: set `RUST_BACKTRACE=1` and re-run \
+                        to see where it happened.",
+                    ),
+                    BacktraceStatus::Captured => format!(
+                        "This happened in the following `must_produce_diag` call's backtrace:\n\
+                        {backtrace}",
+                    ),
+                    _ => String::from("(impossible to capture backtrace where this happened)"),
+                };
                 panic!(
-                    "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
-                     `with_no_trimmed_paths` for debugging. \
-                     called at: {backtrace}"
+                    "`trimmed_def_paths` called, diagnostics were expected but none were emitted. \
+                    Use `with_no_trimmed_paths` for debugging. {suggestion}"
                 );
             }
         }

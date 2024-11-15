@@ -45,11 +45,11 @@ $DIR/doctest.rs:
    LL|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
    LL|      1|//!         println!("{:?}", res);
    LL|      1|//!     }
-                   ^0
+                  ^0
    LL|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
    LL|      1|//!         res = Ok(1);
    LL|      1|//!     }
-                   ^0
+                  ^0
    LL|      1|//!     res = Ok(0);
    LL|       |//! }
    LL|       |//! // need to be explicit because rustdoc cant infer the return type

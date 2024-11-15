@@ -7,12 +7,13 @@
   
       coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
   
+      coverage body span: $DIR/instrument_coverage_cleanup.rs:13:11: 15:2 (#0)
       coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Subtract, rhs: Counter(1) };
-      coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:13:1 - 14:36;
-      coverage Code(Expression(0)) => $DIR/instrument_coverage_cleanup.rs:14:37 - 14:39;
-      coverage Code(Counter(1)) => $DIR/instrument_coverage_cleanup.rs:14:39 - 14:40;
-      coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:15:1 - 15:2;
-      coverage Branch { true_term: Expression(0), false_term: Counter(1) } => $DIR/instrument_coverage_cleanup.rs:14:8 - 14:36;
+      coverage Code(Counter(0)) => 13:1 - 14:36;
+      coverage Code(Expression(0)) => 14:37 - 14:39;
+      coverage Code(Counter(1)) => 14:38 - 14:39;
+      coverage Code(Counter(0)) => 15:1 - 15:2;
+      coverage Branch { true_term: Expression(0), false_term: Counter(1) } => 14:8 - 14:36;
   
       bb0: {
           Coverage::CounterIncrement(0);

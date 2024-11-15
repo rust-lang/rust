@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-rayon = { version = "0.5.0", optional = true }
-rustc-rayon-core = { version = "0.5.0", optional = true }
+rustc-rayon = { version = "0.5.0" }
+rustc-rayon-core = { version = "0.5.0" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
@@ -54,10 +54,4 @@ tracing = "0.1"
 [features]
 # tidy-alphabetical-start
 llvm = ['dep:rustc_codegen_llvm']
-rustc_use_parallel_compiler = [
-    'dep:rustc-rayon',
-    'dep:rustc-rayon-core',
-    'rustc_query_impl/rustc_use_parallel_compiler',
-    'rustc_errors/rustc_use_parallel_compiler'
-]
 # tidy-alphabetical-end

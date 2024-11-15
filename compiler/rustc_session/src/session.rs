@@ -16,7 +16,9 @@ use rustc_data_structures::sync::{
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType, stderr_destination};
+use rustc_errors::emitter::{
+    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -42,8 +44,9 @@ use crate::config::{
     InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
     SwitchWithOptPath,
 };
+use crate::filesearch::FileSearch;
 use crate::parse::{ParseSess, add_feature_diagnostics};
-use crate::search_paths::{PathKind, SearchPath};
+use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
 
 struct OptimizationFuel {
@@ -216,6 +219,9 @@ pub struct Session {
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
     pub expanded_args: Vec<String>,
+
+    target_filesearch: FileSearch,
+    host_filesearch: FileSearch,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -441,11 +447,11 @@ impl Session {
         format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
     }
 
-    pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(&self.opts.search_paths, &self.target_tlib_path, kind)
+    pub fn target_filesearch(&self) -> &filesearch::FileSearch {
+        &self.target_filesearch
     }
-    pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(&self.opts.search_paths, &self.host_tlib_path, kind)
+    pub fn host_filesearch(&self) -> &filesearch::FileSearch {
+        &self.host_filesearch
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
@@ -966,6 +972,11 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1104,7 +1115,9 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
-
+    let target_filesearch =
+        filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
+    let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
     let sess = Session {
         target,
         host,
@@ -1131,6 +1144,8 @@ pub fn build_session(
         cfg_version,
         using_internal_features,
         expanded_args,
+        target_filesearch,
+        host_filesearch,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1470,6 +1485,11 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .short_message(short),
             )
         }

@@ -145,7 +145,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 
     #[cfg(windows)]
     fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
-        junction::create(&target, &junction)
+        junction::create(target, junction)
     }
 }
 

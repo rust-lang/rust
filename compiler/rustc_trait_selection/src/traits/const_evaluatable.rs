@@ -12,13 +12,13 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use super::EvaluateConstErr;
 use crate::traits::ObligationCtxt;
 
 /// Check if a given constant can be evaluated.
@@ -68,16 +68,18 @@ pub fn is_const_evaluatable<'tcx>(
                 // here.
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
-            ty::ConstKind::Unevaluated(uv) => {
-                let concrete = infcx.const_eval_resolve(param_env, uv, span);
-                match concrete {
-                    Err(ErrorHandled::TooGeneric(_)) => {
+            ty::ConstKind::Unevaluated(_) => {
+                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+                    Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
                             span,
                             "Missing value for constant, but no error reported?",
                         )))
                     }
-                    Err(ErrorHandled::Reported(e, _)) => Err(NotConstEvaluatable::Error(e.into())),
+                    Err(
+                        EvaluateConstErr::EvaluationFailure(e)
+                        | EvaluateConstErr::InvalidConstParamTy(e),
+                    ) => Err(NotConstEvaluatable::Error(e.into())),
                     Ok(_) => Ok(()),
                 }
             }
@@ -92,16 +94,7 @@ pub fn is_const_evaluatable<'tcx>(
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         };
 
-        // FIXME: We should only try to evaluate a given constant here if it is fully concrete
-        // as we don't want to allow things like `[u8; std::mem::size_of::<*mut T>()]`.
-        //
-        // We previously did not check this, so we only emit a future compat warning if
-        // const evaluation succeeds and the given constant is still polymorphic for now
-        // and hopefully soon change this to an error.
-        //
-        // See #74595 for more details about this.
-        let concrete = infcx.const_eval_resolve(param_env, uv, span);
-        match concrete {
+        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.
@@ -130,7 +123,7 @@ pub fn is_const_evaluatable<'tcx>(
                     .emit()
             }
 
-            Err(ErrorHandled::TooGeneric(_)) => {
+            Err(EvaluateConstErr::HasGenericsOrInfers) => {
                 let err = if uv.has_non_region_infer() {
                     NotConstEvaluatable::MentionsInfer
                 } else if uv.has_non_region_param() {
@@ -145,7 +138,9 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             }
-            Err(ErrorHandled::Reported(e, _)) => Err(NotConstEvaluatable::Error(e.into())),
+            Err(
+                EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),
+            ) => Err(NotConstEvaluatable::Error(e.into())),
             Ok(_) => Ok(()),
         }
     }

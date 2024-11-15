@@ -381,8 +381,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         TyKind::Error.intern(Interner)
     }
 
+    // object safety was renamed to dyn-compatibility but still remains here in chalk.
+    // This will be removed since we are going to migrate to next-gen trait solver.
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<Interner>) -> bool {
-        // FIXME: When cargo is updated, change to dyn_compatibility
         let trait_ = from_chalk_trait_id(trait_id);
         crate::dyn_compatibility::dyn_compatibility(self.db, trait_).is_none()
     }

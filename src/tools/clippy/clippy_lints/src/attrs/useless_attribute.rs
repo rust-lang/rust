@@ -16,7 +16,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
             return;
         }
         if let Some(lint_list) = &attr.meta_item_list() {
-            if attr.ident().map_or(false, |ident| is_lint_level(ident.name, attr.id)) {
+            if attr.ident().is_some_and(|ident| is_lint_level(ident.name, attr.id)) {
                 for lint in lint_list {
                     match item.kind {
                         ItemKind::Use(..) => {

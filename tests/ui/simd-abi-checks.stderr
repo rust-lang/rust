@@ -1,4 +1,4 @@
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:55:11
    |
 LL |         f(g());
@@ -9,7 +9,7 @@ LL |         f(g());
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
    = note: `#[warn(abi_unsupported_vector_types)]` on by default
 
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:55:9
    |
 LL |         f(g());
@@ -19,7 +19,7 @@ LL |         f(g());
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:63:14
    |
 LL |         gavx(favx());
@@ -29,7 +29,7 @@ LL |         gavx(favx());
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:63:9
    |
 LL |         gavx(favx());
@@ -39,7 +39,7 @@ LL |         gavx(favx());
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:75:19
    |
 LL |         w(Wrapper(g()));
@@ -49,7 +49,7 @@ LL |         w(Wrapper(g()));
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function call uses a vector type that requires the `avx` target feature, which is not enabled in the caller
+warning: this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
   --> $DIR/simd-abi-checks.rs:75:9
    |
 LL |         w(Wrapper(g()));
@@ -59,7 +59,7 @@ LL |         w(Wrapper(g()));
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function definition uses a vector type that requires the `avx` target feature, which is not enabled
+warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
   --> $DIR/simd-abi-checks.rs:26:1
    |
 LL | unsafe extern "C" fn g() -> __m256 {
@@ -69,7 +69,7 @@ LL | unsafe extern "C" fn g() -> __m256 {
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function definition uses a vector type that requires the `avx` target feature, which is not enabled
+warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
   --> $DIR/simd-abi-checks.rs:20:1
    |
 LL | unsafe extern "C" fn f(_: __m256) {
@@ -79,7 +79,7 @@ LL | unsafe extern "C" fn f(_: __m256) {
    = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
-warning: ABI error: this function definition uses a vector type that requires the `avx` target feature, which is not enabled
+warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
   --> $DIR/simd-abi-checks.rs:14:1
    |
 LL | unsafe extern "C" fn w(_: Wrapper) {

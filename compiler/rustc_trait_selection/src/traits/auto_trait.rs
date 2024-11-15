@@ -7,7 +7,6 @@ use std::iter;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{Region, RegionVid};
 use tracing::debug;
 use ty::TypingMode;
@@ -761,23 +760,20 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
                         if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match selcx.infcx.const_eval_resolve(
+                            let ct = super::try_evaluate_const(
+                                selcx.infcx,
+                                c,
                                 obligation.param_env,
-                                unevaluated,
-                                obligation.cause.span,
-                            ) {
-                                Ok(Ok(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
-                                Ok(Err(_)) => {
-                                    let tcx = self.tcx;
-                                    let reported =
-                                        tcx.dcx().emit_err(UnableToConstructConstantValue {
-                                            span: tcx.def_span(unevaluated.def),
-                                            unevaluated,
-                                        });
-                                    Err(ErrorHandled::Reported(reported.into(), tcx.def_span(unevaluated.def)))
-                                }
-                                Err(err) => Err(err),
+                            );
+
+                            if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
+                                self.tcx.dcx().emit_err(UnableToConstructConstantValue {
+                                    span: self.tcx.def_span(unevaluated.def),
+                                    unevaluated,
+                                });
                             }
+
+                            ct
                         } else {
                             Ok(c)
                         }

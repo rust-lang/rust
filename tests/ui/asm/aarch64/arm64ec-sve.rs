@@ -3,7 +3,7 @@
 //@ needs-llvm-components: aarch64
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, rustc_attrs, lang_items)]
 #![no_core]
 
 // SVE cannot be used for Arm64EC

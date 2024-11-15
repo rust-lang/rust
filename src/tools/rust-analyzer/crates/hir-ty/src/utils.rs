@@ -43,6 +43,17 @@ pub(crate) fn fn_traits(
         .flat_map(|it| it.as_trait())
 }
 
+/// Returns an iterator over the direct super traits (including the trait itself).
+pub fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    let mut result = smallvec![trait_];
+    direct_super_traits_cb(db, trait_, |tt| {
+        if !result.contains(&tt) {
+            result.push(tt);
+        }
+    });
+    result
+}
+
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
 pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
@@ -54,7 +65,7 @@ pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trai
     while let Some(&t) = result.get(i) {
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
-        direct_super_traits(db, t, |tt| {
+        direct_super_traits_cb(db, t, |tt| {
             if !result.contains(&tt) {
                 result.push(tt);
             }
@@ -153,7 +164,7 @@ impl Iterator for ClauseElaborator<'_> {
     }
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
+fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
     let generic_params = db.generic_params(trait_.into());
     let trait_self = generic_params.trait_self_param();
@@ -259,25 +270,25 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
         return true;
     }
 
+    let is_intrinsic = db.attrs(func.into()).by_key(&sym::rustc_intrinsic).exists()
+        || data.abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+
     let loc = func.lookup(db.upcast());
     match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when
-            // it is marked as `safe` or it has `"rust-intrinsic"` ABI there are a
-            // few exceptions.
-            let id = block.lookup(db.upcast()).id;
-
-            let is_intrinsic =
-                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-
-            if is_intrinsic {
+            if is_intrinsic || {
+                let id = block.lookup(db.upcast()).id;
+                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic)
+            } {
                 // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
+                !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
-                // Extern items without `safe` modifier are always unsafe
+                // Function in an `extern` block are always unsafe to call, except when
+                // it is marked as `safe`.
                 !data.is_safe()
             }
         }
+        _ if is_intrinsic => !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists(),
         _ => false,
     }
 }

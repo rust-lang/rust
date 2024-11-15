@@ -1306,30 +1306,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             rustc_hir_analysis::hir_ty_lowering::RegionInferReason::Param(param),
                         )
                         .into(),
-                    GenericParamDefKind::Type { has_default, .. } => {
-                        if !infer_args && has_default {
-                            // If we have a default, then it doesn't matter that we're not
-                            // inferring the type arguments: we provide the default where any
-                            // is missing.
-                            tcx.type_of(param.def_id).instantiate(tcx, preceding_args).into()
-                        } else {
-                            // If no type arguments were provided, we have to infer them.
-                            // This case also occurs as a result of some malformed input, e.g.
-                            // a lifetime argument being given instead of a type parameter.
-                            // Using inference instead of `Error` gives better error messages.
-                            self.fcx.var_for_def(self.span, param)
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                        if !infer_args && let Some(default) = param.default_value(tcx) {
+                            // If we have a default, then it doesn't matter that we're not inferring
+                            // the type/const arguments: We provide the default where any is missing.
+                            return default.instantiate(tcx, preceding_args);
                         }
-                    }
-                    GenericParamDefKind::Const { has_default, .. } => {
-                        if has_default {
-                            if !infer_args {
-                                return tcx
-                                    .const_param_default(param.def_id)
-                                    .instantiate(tcx, preceding_args)
-                                    .into();
-                            }
-                        }
-
+                        // If no type/const arguments were provided, we have to infer them.
+                        // This case also occurs as a result of some malformed input, e.g.,
+                        // a lifetime argument being given instead of a type/const parameter.
+                        // Using inference instead of `Error` gives better error messages.
                         self.fcx.var_for_def(self.span, param)
                     }
                 }
@@ -1491,7 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else if self.tcx.features().generic_const_exprs() {
-            ct.normalize_internal(self.tcx, self.param_env)
+            rustc_trait_selection::traits::evaluate_const(&self.infcx, ct, self.param_env)
         } else {
             ct
         }

@@ -763,6 +763,33 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Checked subtraction with a signed integer. Computes `self - rhs`,
+        /// returning `None` if overflow occurred.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(mixed_integer_ops_unsigned_sub)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(2), None);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".checked_sub_signed(-2), Some(3));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_sub_signed(-4), None);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_sub_signed(self, rhs: $SignedT) -> Option<Self> {
+            let (res, overflow) = self.overflowing_sub_signed(rhs);
+
+            if !overflow {
+                Some(res)
+            } else {
+                None
+            }
+        }
+
         #[doc = concat!(
             "Checked integer subtraction. Computes `self - rhs` and checks if the result fits into an [`",
             stringify!($SignedT), "`], returning `None` if overflow occurred."
@@ -1490,7 +1517,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -1613,7 +1640,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -1793,6 +1820,35 @@ macro_rules! uint_impl {
             intrinsics::saturating_sub(self, rhs)
         }
 
+        /// Saturating integer subtraction. Computes `self` - `rhs`, saturating at
+        /// the numeric bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(mixed_integer_ops_unsigned_sub)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(2), 0);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".saturating_sub_signed(-2), 3);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).saturating_sub_signed(-4), ", stringify!($SelfT), "::MAX);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn saturating_sub_signed(self, rhs: $SignedT) -> Self {
+            let (res, overflow) = self.overflowing_sub_signed(rhs);
+
+            if !overflow {
+                res
+            } else if rhs < 0 {
+                Self::MAX
+            } else {
+                0
+            }
+        }
+
         /// Saturating integer multiplication. Computes `self * rhs`,
         /// saturating at the numeric bounds instead of overflowing.
         ///
@@ -1924,6 +1980,27 @@ macro_rules! uint_impl {
         #[inline(always)]
         pub const fn wrapping_sub(self, rhs: Self) -> Self {
             intrinsics::wrapping_sub(self, rhs)
+        }
+
+        /// Wrapping (modular) subtraction with a signed integer. Computes
+        /// `self - rhs`, wrapping around at the boundary of the type.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(mixed_integer_ops_unsigned_sub)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(2), ", stringify!($SelfT), "::MAX);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".wrapping_sub_signed(-2), 3);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).wrapping_sub_signed(-4), 1);")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn wrapping_sub_signed(self, rhs: $SignedT) -> Self {
+            self.wrapping_sub(rhs as Self)
         }
 
         /// Wrapping (modular) multiplication. Computes `self *
@@ -2222,7 +2299,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
@@ -2312,7 +2389,7 @@ macro_rules! uint_impl {
             (res, overflowed ^ (rhs < 0))
         }
 
-        /// Calculates `self` - `rhs`
+        /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2320,7 +2397,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
@@ -2376,6 +2453,32 @@ macro_rules! uint_impl {
             let (a, b) = self.overflowing_sub(rhs);
             let (c, d) = a.overflowing_sub(borrow as $SelfT);
             (c, b || d)
+        }
+
+        /// Calculates `self` - `rhs` with a signed `rhs`
+        ///
+        /// Returns a tuple of the subtraction along with a boolean indicating
+        /// whether an arithmetic overflow would occur. If an overflow would
+        /// have occurred then the wrapped value is returned.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(mixed_integer_ops_unsigned_sub)]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(2), (", stringify!($SelfT), "::MAX, true));")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_signed(-2), (3, false));")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_sub_signed(-4), (1, true));")]
+        /// ```
+        #[unstable(feature = "mixed_integer_ops_unsigned_sub", issue = "126043")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn overflowing_sub_signed(self, rhs: $SignedT) -> (Self, bool) {
+            let (res, overflow) = self.overflowing_sub(rhs as Self);
+
+            (res, overflow ^ (rhs < 0))
         }
 
         /// Computes the absolute difference between `self` and `other`.
@@ -2447,7 +2550,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));")]
@@ -2478,7 +2581,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));")]
@@ -2506,7 +2609,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));")]
@@ -2537,7 +2640,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));")]
@@ -2561,7 +2664,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));")]
@@ -2586,7 +2689,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(4), (0x10, false));")]
@@ -2612,7 +2715,7 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
-        /// Basic usage
+        /// Basic usage:
         ///
         /// ```
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(4), (0x1, false));")]

@@ -905,7 +905,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
             _ => return false,
         };
 
-        ty.map_or(false, |ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+        ty.is_some_and(|ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 

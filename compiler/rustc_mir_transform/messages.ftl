@@ -34,3 +34,5 @@ mir_transform_undefined_transmute = pointers cannot be transmuted to integers du
     .note = at compile-time, pointers do not have an integer value
     .note2 = avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
     .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
+
+mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored

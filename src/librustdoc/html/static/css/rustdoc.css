@@ -264,6 +264,7 @@ a.anchor,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
+.search-results li,
 .stab,
 .result-name i {
 	color: var(--main-color);
@@ -379,7 +380,7 @@ details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, .code-header {
+code, pre, .code-header, .type-signature {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -1205,22 +1206,28 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results.active {
 	display: block;
+	margin: 0;
+	padding: 0;
 }
 
 .search-results > a {
-	display: flex;
+	display: grid;
+	grid-template-areas:
+		"search-result-name search-result-desc"
+		"search-result-type-signature search-result-type-signature";
+	grid-template-columns: .6fr .4fr;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
 	border-bottom: 1px solid var(--search-result-border-color);
-	gap: 1em;
+	column-gap: 1em;
 }
 
 .search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	flex: 2;
+	grid-area: search-result-desc;
 }
 
 .search-results a:hover,
@@ -1232,7 +1239,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	align-items: center;
 	justify-content: start;
-	flex: 3;
+	grid-area: search-result-name;
 }
 .search-results .result-name .alias {
 	color: var(--search-results-alias-color);
@@ -1252,6 +1259,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 .search-results .result-name .path > * {
 	display: inline;
+}
+.search-results .type-signature {
+	grid-area: search-result-type-signature;
+	white-space: pre-wrap;
 }
 
 .popover {

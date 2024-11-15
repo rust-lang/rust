@@ -3,7 +3,7 @@ use std::cell::LazyCell;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{Applicability, LintDiagnostic};
+use rustc_errors::{LintDiagnostic, Subdiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -22,6 +22,9 @@ use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::errors::{
+    AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
+};
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 
@@ -259,7 +262,11 @@ where
             // If it's owned by this function
             && let opaque =
                 self.tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty()
-            && let hir::OpaqueTyOrigin::FnReturn { parent, .. } = opaque.origin
+            // We want to recurse into RPITs and async fns, even though the latter
+            // doesn't overcapture on its own, it may mention additional RPITs
+            // in its bounds.
+            && let hir::OpaqueTyOrigin::FnReturn { parent, .. }
+                | hir::OpaqueTyOrigin::AsyncFn { parent, .. } = opaque.origin
             && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
@@ -334,32 +341,12 @@ where
                 // If we have uncaptured args, and if the opaque doesn't already have
                 // `use<>` syntax on it, and we're < edition 2024, then warn the user.
                 if !uncaptured_args.is_empty() {
-                    let suggestion = if let Ok(snippet) =
-                        self.tcx.sess.source_map().span_to_snippet(opaque_span)
-                        && snippet.starts_with("impl ")
-                    {
-                        let (lifetimes, others): (Vec<_>, Vec<_>) =
-                            captured.into_iter().partition(|def_id| {
-                                self.tcx.def_kind(*def_id) == DefKind::LifetimeParam
-                            });
-                        // Take all lifetime params first, then all others (ty/ct).
-                        let generics: Vec<_> = lifetimes
-                            .into_iter()
-                            .chain(others)
-                            .map(|def_id| self.tcx.item_name(def_id).to_string())
-                            .collect();
-                        // Make sure that we're not trying to name any APITs
-                        if generics.iter().all(|name| !name.starts_with("impl ")) {
-                            Some((
-                                format!(" + use<{}>", generics.join(", ")),
-                                opaque_span.shrink_to_hi(),
-                            ))
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
+                    let suggestion = impl_trait_overcapture_suggestion(
+                        self.tcx,
+                        opaque_def_id,
+                        self.parent_def_id,
+                        captured,
+                    );
 
                     let uncaptured_spans: Vec<_> = uncaptured_args
                         .into_iter()
@@ -451,7 +438,7 @@ struct ImplTraitOvercapturesLint<'tcx> {
     uncaptured_spans: Vec<Span>,
     self_ty: Ty<'tcx>,
     num_captured: usize,
-    suggestion: Option<(String, Span)>,
+    suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
 impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
@@ -461,13 +448,8 @@ impl<'a> LintDiagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
             .arg("num_captured", self.num_captured)
             .span_note(self.uncaptured_spans, fluent::lint_note)
             .note(fluent::lint_note2);
-        if let Some((suggestion, span)) = self.suggestion {
-            diag.span_suggestion(
-                span,
-                fluent::lint_suggestion,
-                suggestion,
-                Applicability::MachineApplicable,
-            );
+        if let Some(suggestion) = self.suggestion {
+            suggestion.add_to_diag(diag);
         }
     }
 }

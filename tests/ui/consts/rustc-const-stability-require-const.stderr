@@ -86,17 +86,5 @@ LL | #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
 LL | pub const fn barfoo_unstable() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
-  --> $DIR/rustc-const-stability-require-const.rs:63:1
-   |
-LL | pub fn not_a_const_fn() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: make the function or method const
-  --> $DIR/rustc-const-stability-require-const.rs:63:1
-   |
-LL | pub fn not_a_const_fn() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 

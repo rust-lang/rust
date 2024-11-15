@@ -622,7 +622,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
     match ty.kind() {
-        ty::Dynamic(tt, ..) => tt.principal().map_or(false, |principal| {
+        ty::Dynamic(tt, ..) => tt.principal().is_some_and(|principal| {
             let is_empty = sym!(is_empty);
             cx.tcx
                 .associated_items(principal.def_id())

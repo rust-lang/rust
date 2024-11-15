@@ -500,10 +500,11 @@
 # This is useful if you are working on tools, doc-comments, or library (you will be able to build
 # the standard library without needing to build the compiler).
 #
-# Set this to "if-unchanged" to only download if the compiler (and library if running on CI) have
-# not been modified.
-# Set this to `true` to download unconditionally.
-#download-rustc = false
+# Set this to "if-unchanged" if you are working on `src/tools`, `tests` or `library` (on CI, `library`
+# changes triggers in-tree compiler build) to speed up the build process.
+#
+# Set this to `true` to always download or `false` to always use the in-tree compiler.
+#download-rustc = "if-unchanged"
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
@@ -594,8 +595,7 @@
 
 # Build a multi-threaded rustc. This allows users to use parallel rustc
 # via the unstable option `-Z threads=n`.
-# Since stable/beta channels only allow using stable features,
-# `parallel-compiler = false` should be set for these channels.
+# This option is deprecated and always true.
 #parallel-compiler = true
 
 # The default linker that will be hard-coded into the generated
