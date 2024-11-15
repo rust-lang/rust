@@ -273,7 +273,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     result.push_str(&if enable_msrv {
         formatdoc!(
             r"
-            use clippy_config::msrvs::{{self, Msrv}};
+            use clippy_utils::msrvs::{{self, Msrv}};
             use clippy_config::Conf;
             {pass_import}
             use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
@@ -399,7 +399,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         let _: fmt::Result = writedoc!(
             lint_file_contents,
             r#"
-                use clippy_config::msrvs::{{self, Msrv}};
+                use clippy_utils::msrvs::{{self, Msrv}};
                 use rustc_lint::{{{context_import}, LintContext}};
 
                 use super::{name_upper};

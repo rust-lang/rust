@@ -13,7 +13,7 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
