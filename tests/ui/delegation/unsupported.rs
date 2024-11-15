@@ -10,15 +10,11 @@ mod opaque {
     mod to_reuse {
         use super::Trait;
 
-        pub fn opaque_ret() -> impl Trait { unimplemented!() }
-        //~^ warn: this function depends on never type fallback being `()`
-        //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        pub fn opaque_ret() -> impl Trait { () }
     }
 
     trait ToReuse {
-        fn opaque_ret() -> impl Trait { unimplemented!() }
-        //~^ warn: this function depends on never type fallback being `()`
-        //~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+        fn opaque_ret() -> impl Trait { () }
     }
 
     // FIXME: Inherited `impl Trait`s create query cycles when used inside trait impls.
