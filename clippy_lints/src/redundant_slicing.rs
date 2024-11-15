@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 });
             } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                 if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
-                    cx.param_env,
+                    cx.typing_env(),
                     Ty::new_projection_from_args(cx.tcx, target_id, cx.tcx.mk_args(&[GenericArg::from(indexed_ty)])),
                 ) {
                     if deref_ty == expr_ty {

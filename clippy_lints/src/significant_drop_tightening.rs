@@ -154,7 +154,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         let ty = self
             .cx
             .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, ty)
+            .try_normalize_erasing_regions(self.cx.typing_env(), ty)
             .unwrap_or(ty);
         match self.type_cache.entry(ty) {
             Entry::Occupied(e) => return *e.get(),
