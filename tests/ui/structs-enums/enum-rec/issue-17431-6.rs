@@ -1,8 +1,6 @@
-//@ ignore-apple: cycle error does not appear on apple
+use std::cell::UnsafeCell;
 
-use std::sync::Mutex;
-
-enum Foo { X(Mutex<Option<Foo>>) }
+enum Foo { X(UnsafeCell<Option<Foo>>) }
 //~^ ERROR recursive type `Foo` has infinite size
 //~| ERROR cycle detected
 
