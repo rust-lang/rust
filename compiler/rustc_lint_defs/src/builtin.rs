@@ -1647,6 +1647,26 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `mut_non_mut` lint warns when mutating a non-mut variable
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let x = 5;
+    /// x = 6;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `mut` keyword helps the reader to know that a variable may be mutated.
+    pub MUT_NON_MUT,
+    Warn,
+    "mutation of a variable which was not declared with `mut`"
+}
+
+declare_lint! {
     /// The `rust_2024_incompatible_pat` lint
     /// detects patterns whose meaning will change in the Rust 2024 edition.
     ///
