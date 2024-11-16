@@ -534,7 +534,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -623,7 +623,6 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
-    suppressed_compiler_flag_prefixes: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -757,17 +756,8 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    let mut cflags: OsString = builder
-        .extra_cflags(target, GitRepo::Llvm, CLang::C)
-        .into_iter()
-        .filter(|flag| {
-            !suppressed_compiler_flag_prefixes
-                .iter()
-                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
-        })
-        .collect::<Vec<String>>()
-        .join(" ")
-        .into();
+    let mut cflags: OsString =
+        builder.extra_cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -777,17 +767,8 @@ fn configure_cmake(
         cflags.push(format!(" --target={target}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags: OsString = builder
-        .extra_cflags(target, GitRepo::Llvm, CLang::Cxx)
-        .into_iter()
-        .filter(|flag| {
-            !suppressed_compiler_flag_prefixes
-                .iter()
-                .any(|suppressed_prefix| flag.starts_with(suppressed_prefix))
-        })
-        .collect::<Vec<String>>()
-        .join(" ")
-        .into();
+    let mut cxxflags: OsString =
+        builder.extra_cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
@@ -950,7 +931,7 @@ impl Step for Enzyme {
         // FIXME(ZuseZ4): Find a nicer way to use Enzyme Debug builds
         //cfg.profile("Debug");
         //cfg.define("CMAKE_BUILD_TYPE", "Debug");
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), &[]);
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
 
         // Re-use the same flags as llvm to control the level of debug information
         // generated for lld.
@@ -1065,7 +1046,7 @@ impl Step for Lld {
             ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
+        configure_cmake(builder, target, &mut cfg, true, ldflags);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1164,20 +1145,7 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        // Since v1.0.86, the cc crate adds -mmacosx-version-min to the default
-        // flags on MacOS. A long-standing bug in the CMake rules for compiler-rt
-        // causes architecture detection to be skipped when this flag is present,
-        // and compilation fails. https://github.com/llvm/llvm-project/issues/88780
-        let suppressed_compiler_flag_prefixes: &[&str] =
-            if self.target.contains("apple-darwin") { &["-mmacosx-version-min="] } else { &[] };
-        configure_cmake(
-            builder,
-            self.target,
-            &mut cfg,
-            use_compiler_launcher,
-            LdFlags::default(),
-            suppressed_compiler_flag_prefixes,
-        );
+        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher, LdFlags::default());
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
