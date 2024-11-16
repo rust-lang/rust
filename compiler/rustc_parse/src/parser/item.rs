@@ -86,9 +86,24 @@ impl<'a> Parser<'a> {
                         "consider using `const` or `static` instead of `let` for global variables",
                     );
                 } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
-                };
+                    let snapshot = self.create_snapshot_for_diagnostic();
+                    match self.parse_const_block(span, false) {
+                        Ok(_) => {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "to evaluate a const expression, use an anonymous const",
+                                "const _: () = ",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        Err(diag) => {
+                            diag.cancel();
+                            self.restore_snapshot(snapshot);
+                            err.span_label(span, "expected item")
+                                .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+                        }
+                    }
+                }
                 return Err(err);
             }
         }
