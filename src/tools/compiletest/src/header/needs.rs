@@ -171,9 +171,12 @@ pub(super) fn handle_needs(
         },
     ];
 
-    let (name, comment) = match ln.split_once([':', ' ']) {
-        Some((name, comment)) => (name, Some(comment)),
-        None => (ln, None),
+    // Because `needs-target-has-atomic` accepts comma separated arguments following a colon to
+    // specify data sizes, we check whether comment starts with colon.
+    let (name, comment, comment_starts_with_colon) = if let Some(index) = ln.find([':', ' ']) {
+        (&ln[..index], Some(&ln[index + 1..]), ln.as_bytes()[index] == b':')
+    } else {
+        (ln, None, false)
     };
 
     if !name.starts_with("needs-") {
@@ -183,6 +186,11 @@ pub(super) fn handle_needs(
     // Handled elsewhere.
     if name == "needs-llvm-components" {
         return IgnoreDecision::Continue;
+    }
+
+    // Check here because `needs-target-has-atomic` requires parsing comments.
+    if name == "needs-target-has-atomic" {
+        return handle_needs_target_has_atomic(comment_starts_with_colon, comment, config);
     }
 
     let mut found_valid = false;
@@ -208,6 +216,42 @@ pub(super) fn handle_needs(
     } else {
         IgnoreDecision::Error { message: format!("invalid needs directive: {name}") }
     }
+}
+
+fn handle_needs_target_has_atomic(
+    comment_starts_with_colon: bool,
+    comment: Option<&str>,
+    config: &Config,
+) -> IgnoreDecision {
+    // `needs-target-has-atomic` requires comma-separated data sizes following a collon.
+    if !comment_starts_with_colon || comment.is_none() {
+        return IgnoreDecision::Error {
+            message: "`needs-target-has-atomic` requires data sizes for atomic operations".into(),
+        };
+    }
+    let comment = comment.unwrap();
+
+    // Parse the comment to specify data sizes.
+    for size in comment.split(',').map(|size| size.trim()) {
+        if !["ptr", "128", "64", "32", "16", "8"].contains(&size) {
+            return IgnoreDecision::Error {
+                message: "expected values for `needs-target-has-atomic` are: `128`, `16`, \\
+                    `32`, `64`, `8`, and `ptr`"
+                    .into(),
+            };
+        }
+        if !config.has_atomic(size) {
+            return IgnoreDecision::Ignore {
+                reason: if size == "ptr" {
+                    "ignored on targets without ptr-size atomic operations".into()
+                } else {
+                    format!("ignored on targets without {size}-bit atomic operations")
+                },
+            };
+        }
+    }
+
+    IgnoreDecision::Continue
 }
 
 struct Need {

@@ -3,10 +3,11 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use regex::Regex;
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
@@ -475,6 +476,19 @@ impl Config {
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
         ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+
+    pub fn has_atomic(&self, size: &str) -> bool {
+        static TARGET_HAS_ATOMIC: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"target_has_atomic="(?<size>[0-9a-zA-Z]+)""#).unwrap());
+
+        TARGET_HAS_ATOMIC
+            .captures_iter(&rustc_output(
+                self,
+                &["--print=cfg", "--target", &self.target],
+                Default::default(),
+            ))
+            .any(|caps| &caps["size"] == size)
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
