@@ -1068,7 +1068,7 @@ pub(crate) fn handle_completion_resolve(
     else {
         return Ok(original_completion);
     };
-    let resolved_completions = to_proto::completion_items(
+    let mut resolved_completions = to_proto::completion_items(
         &snap.config,
         &forced_resolve_completions_config.fields_to_resolve,
         &line_index,
@@ -1077,15 +1077,13 @@ pub(crate) fn handle_completion_resolve(
         resolve_data.trigger_character,
         resolved_completions,
     );
-    let Some(mut resolved_completion) = resolved_completions.into_iter().find(|completion| {
-        completion.label == original_completion.label
-            && completion.kind == original_completion.kind
-            && completion.deprecated == original_completion.deprecated
-            && completion.preselect == original_completion.preselect
-            && completion.sort_text == original_completion.sort_text
-    }) else {
-        return Ok(original_completion);
-    };
+
+    let mut resolved_completion =
+        if resolved_completions.get(resolve_data.completion_item_index).is_some() {
+            resolved_completions.swap_remove(resolve_data.completion_item_index)
+        } else {
+            return Ok(original_completion);
+        };
 
     if !resolve_data.imports.is_empty() {
         let additional_edits = snap
