@@ -5,7 +5,7 @@ use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_session::Session;
-use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
+use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
@@ -94,13 +94,15 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                         };
                         sess.dcx().emit_warn(unknown_feature);
                     }
-                    Some((_, Stability::Stable, _)) => {}
-                    Some((_, Stability::Unstable(_), _)) => {
-                        // An unstable feature. Warn about using it.
-                        sess.dcx().emit_warn(UnstableCTargetFeature { feature });
-                    }
-                    Some((_, Stability::Forbidden { .. }, _)) => {
-                        sess.dcx().emit_err(ForbiddenCTargetFeature { feature });
+                    Some((_, stability, _)) => {
+                        if let Err(reason) = stability.compute(&sess.target).allow_toggle() {
+                            sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
+                        } else if stability.requires_nightly().is_some() {
+                            // An unstable feature. Warn about using it. (It makes little sense
+                            // to hard-error here since we just warn about fully unknown
+                            // features above).
+                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                        }
                     }
                 }
 

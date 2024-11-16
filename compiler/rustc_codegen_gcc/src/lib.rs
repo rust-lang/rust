@@ -260,8 +260,8 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess)
     }
 
-    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features(sess, allow_unstable, &self.target_info)
+    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features_cfg(sess, allow_unstable, &self.target_info)
     }
 }
 
@@ -472,7 +472,8 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
     }
 }
 
-pub fn target_features(
+/// Returns the features that should be set in `cfg(target_feature)`.
+fn target_features_cfg(
     sess: &Session,
     allow_unstable: bool,
     target_info: &LockedTargetInfo,
@@ -481,9 +482,9 @@ pub fn target_features(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.is_supported())
+        .filter(|(_, gate, _)| gate.in_cfg())
         .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
+            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
                 Some(feature)
             } else {
                 None

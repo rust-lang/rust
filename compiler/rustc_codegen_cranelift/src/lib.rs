@@ -175,7 +175,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features(&self, sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
+    fn target_features_cfg(
+        &self,
+        sess: &Session,
+        _allow_unstable: bool,
+    ) -> Vec<rustc_span::Symbol> {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         if sess.target.arch == "x86_64" && sess.target.os != "none" {
             // x86_64 mandates SSE2 support
