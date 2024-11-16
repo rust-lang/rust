@@ -395,9 +395,9 @@ impl RwLock {
             node.next.0 = AtomicPtr::new(state.mask(NODE_MASK).cast());
             node.prev = AtomicLink::new(None);
 
-            // Set the `QUEUED` bit and maintain the `LOCKED` bit.
+            // Set the `QUEUED` bit and preserve the `LOCKED` and `DOWNGRADED` bit.
             let mut next = ptr::from_ref(&node)
-                .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
+                .map_addr(|addr| addr | QUEUED | (state.addr() & (DOWNGRADED | LOCKED)))
                 as State;
 
             let mut is_queue_locked = false;

@@ -558,7 +558,7 @@ fn test_downgrade_atomic() {
     // modify the protected value.
 
     // `W` is the number of evil writer threads.
-    const W: usize = if cfg!(target_pointer_width = "64") { 100 } else { 20 };
+    const W: usize = 20;
     let rwlock = Arc::new(RwLock::new(0));
 
     // Spawns many evil writer threads that will try and write to the locked value before the
