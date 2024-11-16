@@ -141,11 +141,6 @@ impl fmt::Debug for LazyAttrTokenStream {
 
 impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
     fn encode(&self, _s: &mut S) {
-        // FIXME(pr-time): Just a reminder that this exists/was tried out,
-        // but probably not necessary anymore (see below).
-        // self.to_attr_token_stream().encode(s)
-        // We should not need to anymore, now that we `flatten`?
-        // Yep, that seems to be true! :)
         panic!("Attempted to encode LazyAttrTokenStream");
     }
 }
