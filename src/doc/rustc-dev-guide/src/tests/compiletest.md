@@ -272,6 +272,17 @@ the debugger currently being used:
 
 [`tests/debuginfo`]: https://github.com/rust-lang/rust/tree/master/tests/debuginfo
 
+> **Note on acquiring `cdb.exe` on Windows 11**
+>
+> `cdb.exe` is acquired alongside a suitable "Windows 11 SDK" which is part of
+> the "Desktop Development with C++" workload profile in a Visual Studio
+> installer (e.g. Visual Studio 2022 installer).
+>
+> **HOWEVER** this is not sufficient by default alone. If you need `cdb.exe`,
+> you must go to Installed Apps, find the newest "Windows Software Development
+> Kit" (and yes, this can still say `Windows 10.0.22161.3233` even though the OS
+> is called Windows 11). You must then click "Modify" -> "Change" and then
+> selected "Debugging Tools for Windows" in order to acquire `cdb.exe`.
 
 ### Codegen tests
 
