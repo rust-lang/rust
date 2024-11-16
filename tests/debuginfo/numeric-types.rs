@@ -3,8 +3,11 @@
 //@ ignore-windows-gnu: #128981
 
 // Note: u128 visualization was not supported in 10.0.22621.3233 but was fixed in 10.0.26100.2161.
-// FIXME(jieyouxu): triple-check if this annotation works properly in CI, because it seems to
-// ignore the test locally for me.
+
+// FIXME(#133107): this is temporarily marked as `only-64bit` because of course 32-bit msvc has
+// a different integer width and thus underlying integer type display. Only marked as such to
+// unblock the tree.
+//@ only-64bit
 //@ min-cdb-version: 10.0.26100.2161
 
 // Tests the visualizations for `NonZero<T>`, `Wrapping<T>` and
