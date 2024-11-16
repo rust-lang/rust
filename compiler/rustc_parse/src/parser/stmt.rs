@@ -763,6 +763,10 @@ impl<'a> Parser<'a> {
         } else {
             return;
         }
+        if self.token.span == self.prev_token.span {
+            // Account for syntax errors in proc-macros.
+            return;
+        }
         if self.look_ahead(1, |t| [token::Semi, token::Question, token::Dot].contains(&t.kind)) {
             err.span_suggestion_verbose(
                 self.prev_token.span.between(self.token.span),
