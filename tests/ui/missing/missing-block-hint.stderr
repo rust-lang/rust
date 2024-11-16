@@ -25,7 +25,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |         if (foo)
    |            ^^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |             { bar; }
    |             +      +

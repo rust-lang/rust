@@ -581,7 +581,7 @@ impl<'a> Parser<'a> {
                     {
                         // These are more likely to have been meant as a block body.
                         e.multipart_suggestion(
-                            "try placing this code inside a block",
+                            "you might have meant to write this as part of a block",
                             vec![
                                 (stmt_span.shrink_to_lo(), "{ ".to_string()),
                                 (stmt_span.shrink_to_hi(), " }".to_string()),
@@ -593,7 +593,7 @@ impl<'a> Parser<'a> {
                     (token::OpenDelim(Delimiter::Brace), _) => {}
                     (_, _) => {
                         e.multipart_suggestion(
-                            "try placing this code inside a block",
+                            "you might have meant to write this as part of a block",
                             vec![
                                 (stmt_span.shrink_to_lo(), "{ ".to_string()),
                                 (stmt_span.shrink_to_hi(), " }".to_string()),
