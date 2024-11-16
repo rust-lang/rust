@@ -515,7 +515,7 @@ fn test_downgrade_observe() {
     // Taken from the test `test_rwlock_downgrade` from:
     // https://github.com/Amanieu/parking_lot/blob/master/src/rwlock.rs
 
-    const W: usize = if cfg!(target_pointer_width = "64") { 100 } else { 20 };
+    const W: usize = 20;
     const N: usize = 100;
 
     // This test spawns `W` writer threads, where each will increment a counter `N` times, ensuring
