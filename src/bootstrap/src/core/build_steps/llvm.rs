@@ -758,7 +758,7 @@ fn configure_cmake(
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     let mut cflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::C)
+        .extra_cflags(target, GitRepo::Llvm, CLang::C)
         .into_iter()
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
@@ -778,7 +778,7 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::Cxx)
+        .extra_cflags(target, GitRepo::Llvm, CLang::Cxx)
         .into_iter()
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
