@@ -1870,7 +1870,7 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(&output)
                     .arg(input);
-                add_env(builder, &mut cmd, target);
+                add_env(builder, &mut cmd, target, &built_tools);
 
                 if built_tools.contains("clippy") {
                     cmd.arg("-dClippyDir=clippy");
@@ -1974,7 +1974,14 @@ impl Step for Extended {
     }
 }
 
-fn add_env(builder: &Builder<'_>, cmd: &mut BootstrapCommand, target: TargetSelection) {
+fn add_env(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+    target: TargetSelection,
+    built_tools: &HashSet<&'static str>,
+) {
+    // envs for wix should be always defined, even if not used
+    // FIXME: is they affect ccache?
     let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
         .env("CFG_RELEASE_NUM", &builder.version)
@@ -1994,6 +2001,27 @@ fn add_env(builder: &Builder<'_>, cmd: &mut BootstrapCommand, target: TargetSele
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");
     } else {
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
+    }
+
+    if built_tools.contains("rustfmt") {
+        cmd.env("CFG_RUSTFMT", "1");
+    } else {
+        cmd.env("CFG_RUSTFMT", "0");
+    }
+    if built_tools.contains("clippy") {
+        cmd.env("CFG_CLIPPY", "1");
+    } else {
+        cmd.env("CFG_CLIPPY", "0");
+    }
+    if built_tools.contains("miri") {
+        cmd.env("CFG_MIRI", "1");
+    } else {
+        cmd.env("CFG_MIRI", "0");
+    }
+    if built_tools.contains("rust-analyzer") {
+        cmd.env("CFG_RA", "1");
+    } else {
+        cmd.env("CFG_RA", "0");
     }
 }
 
