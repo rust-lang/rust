@@ -13,6 +13,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![allow(dead_code, unused_variables, unused_imports, unused_assignments)]
 // tidy-alphabetical-end
 
 use std::cell::RefCell;
@@ -349,6 +350,7 @@ fn do_mir_borrowck<'tcx>(
 
     mbcx.report_move_errors();
 
+//if false {//EMY(relevant)
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
     // Note that this set is expected to be small - only upvars from closures
@@ -396,6 +398,7 @@ fn do_mir_borrowck<'tcx>(
 
         tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }
+//}// EMY(relevant)
 
     let tainted_by_errors = mbcx.emit_errors();
 
@@ -2091,6 +2094,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             place, kind, is_local_mutation_allowed
         );
 
+        let allow_all = LocalMutationIsAllowed::Yes;//EMY(relevant)
+
         let error_access;
         let the_place_err;
 
@@ -2106,9 +2111,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         is_local_mutation_allowed
                     }
                 };
-                match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
+                match self.is_mutable(place.as_ref(), allow_all) {
                     Ok(root_place) => {
-                        self.add_used_mut(root_place, state);
+                        self.add_used_mut(RootPlace{ is_local_mutation_allowed, ..root_place }, state);
                         return false;
                     }
                     Err(place_err) => {
@@ -2118,9 +2123,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 }
             }
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
-                match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
+                match self.is_mutable(place.as_ref(), allow_all) {
                     Ok(root_place) => {
-                        self.add_used_mut(root_place, state);
+                        self.add_used_mut(RootPlace{ is_local_mutation_allowed, ..root_place }, state);
                         return false;
                     }
                     Err(place_err) => {
@@ -2144,7 +2149,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
                 | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
             ) => {
-                if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
+                if self.is_mutable(place.as_ref(), allow_all).is_err()
                     && !self.has_buffered_diags()
                 {
                     // rust-lang/rust#46908: In pure NLL mode this code path should be
@@ -2195,6 +2200,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         } else {
             false
         }
+
+/*
+        if previously_initialized.is_none() { return false; }
+        if place.as_local().is_some() { return false; } //TODO(EMY) restore error as lint?
+
+        // at this point, we have set up the error reporting state.
+        self.report_mutability_error(place, span, the_place_err, error_access, location); // EMY(relevant)
+        true
+*/
     }
 
     fn is_local_ever_initialized(
@@ -2292,7 +2306,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                             {
                                                 is_local_mutation_allowed
                                             }
-                                            _ => LocalMutationIsAllowed::Yes,
+                                            _ => LocalMutationIsAllowed::Yes, //TODO(EMY) propagate?
                                         };
 
                                         self.is_mutable(place_base, mode)
@@ -2337,7 +2351,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                  place={:?}, place_base={:?}",
                                 upvar, is_local_mutation_allowed, place, place_base
                             );
-                            match (upvar.mutability, is_local_mutation_allowed) {
+                            match (upvar.mutability, is_local_mutation_allowed) { //EMY(relevant)
                                 (
                                     Mutability::Not,
                                     LocalMutationIsAllowed::No
