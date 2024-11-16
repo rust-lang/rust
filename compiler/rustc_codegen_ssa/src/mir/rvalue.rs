@@ -2,6 +2,7 @@ use std::assert_matches::assert_matches;
 
 use arrayvec::ArrayVec;
 use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
+use rustc_hir::LangItem;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -918,9 +919,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
             mir::BinOp::Offset => {
-                let pointee_type = input_ty
-                    .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
+                let pointee_type = if let ty::Adt(adt_def, generic_args) = input_ty.kind()
+                    && bx.tcx().is_lang_item(adt_def.did(), LangItem::NonNull)
+                {
+                    generic_args.into_type_list(bx.tcx())[0]
+                } else {
+                    input_ty
+                        .builtin_deref(true)
+                        .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty))
+                };
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,

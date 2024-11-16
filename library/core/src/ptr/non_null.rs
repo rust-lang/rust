@@ -68,6 +68,8 @@ use crate::{fmt, hash, intrinsics, ptr};
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 #[rustc_diagnostic_item = "NonNull"]
+// No special behaviour, but must be transparent over a pointer to the generic parameter.
+#[cfg_attr(not(bootstrap), lang = "NonNull")]
 pub struct NonNull<T: ?Sized> {
     pointer: *const T,
 }
@@ -480,11 +482,22 @@ impl<T: ?Sized> NonNull<T> {
     where
         T: Sized,
     {
-        // SAFETY: the caller must uphold the safety contract for `offset`.
-        // Additionally safety contract of `offset` guarantees that the resulting pointer is
-        // pointing to an allocation, there can't be an allocation at null, thus it's safe to
-        // construct `NonNull`.
-        unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: the caller must uphold the safety contract for `offset`.
+            // Additionally safety contract of `offset` guarantees that the resulting pointer is
+            // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+            // construct `NonNull`.
+            unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            // SAFETY: the caller must uphold the safety contract for `offset`.
+            // Additionally safety contract of `offset` guarantees that the resulting pointer is
+            // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+            // construct `NonNull`.
+            unsafe { intrinsics::offset(self, count) }
+        }
     }
 
     /// Calculates the offset from a pointer in bytes.
@@ -556,11 +569,22 @@ impl<T: ?Sized> NonNull<T> {
     where
         T: Sized,
     {
-        // SAFETY: the caller must uphold the safety contract for `offset`.
-        // Additionally safety contract of `offset` guarantees that the resulting pointer is
-        // pointing to an allocation, there can't be an allocation at null, thus it's safe to
-        // construct `NonNull`.
-        unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: the caller must uphold the safety contract for `offset`.
+            // Additionally safety contract of `offset` guarantees that the resulting pointer is
+            // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+            // construct `NonNull`.
+            unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            // SAFETY: the caller must uphold the safety contract for `offset`.
+            // Additionally safety contract of `offset` guarantees that the resulting pointer is
+            // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+            // construct `NonNull`.
+            unsafe { intrinsics::offset(self, count) }
+        }
     }
 
     /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).

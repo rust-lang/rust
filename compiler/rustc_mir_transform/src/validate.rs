@@ -1064,7 +1064,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 match op {
                     Offset => {
-                        check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        if let ty::Adt(adt_def, _) = a.kind()
+                            && self.tcx.is_lang_item(adt_def.did(), LangItem::NonNull)
+                        {
+                            // ok
+                        } else {
+                            check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        }
                         if b != self.tcx.types.isize && b != self.tcx.types.usize {
                             self.fail(location, format!("Cannot offset by non-isize type {b:?}"));
                         }

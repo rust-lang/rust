@@ -341,6 +341,8 @@ language_item_table! {
     OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
     GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
 
+    NonNull,                 sym::NonNull,             non_null_ty,                Target::Struct,         GenericRequirement::Exact(1);
+
     // Experimental lang item for Miri
     PtrUnique,               sym::ptr_unique,          ptr_unique,                 Target::Struct,         GenericRequirement::Exact(1);
 
