@@ -1,5 +1,7 @@
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::Size;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::helpers::check_min_arg_count;
 use crate::shims::unix::thread::{EvalContextExt as _, ThreadNameResult};
@@ -10,13 +12,13 @@ const TASK_COMM_LEN: usize = 16;
 pub fn prctl<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     link_name: Symbol,
-    abi: ExternAbi,
+    abi: &FnAbi<'tcx, Ty<'tcx>>,
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     // We do not use `check_shim` here because `prctl` is variadic. The argument
     // count is checked bellow.
-    ecx.check_abi_and_shim_symbol_clash(abi, ExternAbi::C { unwind: false }, link_name)?;
+    ecx.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
 
     // FIXME: Use constants once https://github.com/rust-lang/libc/pull/3941 backported to the 0.2 branch.
     let pr_set_name = 15;
