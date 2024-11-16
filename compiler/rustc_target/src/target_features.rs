@@ -32,6 +32,8 @@ pub enum Stability<AllowToggle> {
     /// This target feature is unstable. It is only present in `#[cfg(target_feature)]` on
     /// nightly and using it in `#[target_feature]` requires enabling the given nightly feature.
     Unstable {
+        /// This must be a *language* feature, or else rustc will ICE when reporting a missing
+        /// feature gate!
         nightly_feature: Symbol,
         /// See `Stable::allow_toggle` comment above.
         allow_toggle: AllowToggle,
@@ -168,6 +170,22 @@ const ARM_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("dotprod", unstable(sym::arm_target_feature), &["neon"]),
     ("dsp", unstable(sym::arm_target_feature), &[]),
     ("fp-armv8", unstable(sym::arm_target_feature), &["vfp4"]),
+    (
+        "fpregs",
+        Stability::Unstable {
+            nightly_feature: sym::arm_target_feature,
+            allow_toggle: |target: &Target| {
+                // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
+                // `fpregs` isn't needed so changing it cannot affect the ABI.
+                if target.has_feature("soft-float") {
+                    Ok(())
+                } else {
+                    Err("unsound on hard-float targets because it changes float ABI")
+                }
+            },
+        },
+        &[],
+    ),
     ("i8mm", unstable(sym::arm_target_feature), &["neon"]),
     ("mclass", unstable(sym::arm_target_feature), &[]),
     ("neon", unstable(sym::arm_target_feature), &["vfp3"]),
@@ -191,7 +209,6 @@ const ARM_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("vfp4", unstable(sym::arm_target_feature), &["vfp3"]),
     ("virtualization", unstable(sym::arm_target_feature), &[]),
     // tidy-alphabetical-end
-    // FIXME: need to also forbid turning off `fpregs` on hardfloat targets
 ];
 
 const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
@@ -450,13 +467,28 @@ const X86_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("tbm", unstable(sym::tbm_target_feature), &[]),
     ("vaes", unstable(sym::avx512_target_feature), &["avx2", "aes"]),
     ("vpclmulqdq", unstable(sym::avx512_target_feature), &["avx", "pclmulqdq"]),
+    (
+        "x87",
+        Stability::Unstable {
+            nightly_feature: sym::x87_target_feature,
+            allow_toggle: |target: &Target| {
+                // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
+                // `fpregs` isn't needed so changing it cannot affect the ABI.
+                if target.has_feature("soft-float") {
+                    Ok(())
+                } else {
+                    Err("unsound on hard-float targets because it changes float ABI")
+                }
+            },
+        },
+        &[],
+    ),
     ("xop", unstable(sym::xop_target_feature), &[/*"fma4", */ "avx", "sse4a"]),
     ("xsave", STABLE, &[]),
     ("xsavec", STABLE, &["xsave"]),
     ("xsaveopt", STABLE, &["xsave"]),
     ("xsaves", STABLE, &["xsave"]),
     // tidy-alphabetical-end
-    // FIXME: need to also forbid turning off `x87` on hardfloat targets
 ];
 
 const HEXAGON_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
