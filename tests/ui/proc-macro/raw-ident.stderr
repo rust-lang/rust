@@ -5,6 +5,10 @@ LL |     make_bad_struct!(S);
    |     ^^^^^^^^^^^^^^^^^^^ expected one of 8 possible tokens
    |
    = note: this error originates in the macro `make_bad_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might have meant to write a field access
+   |
+LL |     .;
+   |     ~
 
 error: aborting due to 1 previous error
 

@@ -9,12 +9,22 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
    |
 LL |     r#struct Test;
    |              ^^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     r#struct.Test;
+   |             +
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `Test`
   --> $DIR/raw-literal-keywords.rs:10:13
    |
 LL |     r#union Test;
    |             ^^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     r#union.Test;
+   |            +
 
 error[E0425]: cannot find value `r#if` in this scope
   --> $DIR/raw-literal-keywords.rs:14:13
