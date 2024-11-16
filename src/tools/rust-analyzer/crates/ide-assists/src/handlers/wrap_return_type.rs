@@ -6,10 +6,9 @@ use ide_db::{
     famous_defs::FamousDefs,
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
-use itertools::Itertools;
 use syntax::{
-    ast::{self, make, Expr, HasGenericParams},
-    match_ast, ted, AstNode, ToSmolStr,
+    ast::{self, syntax_factory::SyntaxFactory, Expr, HasGenericArgs, HasGenericParams},
+    match_ast, AstNode,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -43,11 +42,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
-    let body = match_ast! {
+    let body_expr = match_ast! {
         match parent {
-            ast::Fn(func) => func.body()?,
+            ast::Fn(func) => func.body()?.into(),
             ast::ClosureExpr(closure) => match closure.body()? {
-                Expr::BlockExpr(block) => block,
+                Expr::BlockExpr(block) => block.into(),
                 // closures require a block when a return type is specified
                 _ => return None,
             },
@@ -75,56 +74,65 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             kind.assist_id(),
             kind.label(),
             type_ref.syntax().text_range(),
-            |edit| {
-                let alias = wrapper_alias(ctx, &core_wrapper, type_ref, kind.symbol());
-                let new_return_ty =
-                    alias.unwrap_or_else(|| kind.wrap_type(type_ref)).clone_for_update();
-
-                let body = edit.make_mut(ast::Expr::BlockExpr(body.clone()));
+            |builder| {
+                let mut editor = builder.make_editor(&parent);
+                let make = SyntaxFactory::new();
+                let alias = wrapper_alias(ctx, &make, &core_wrapper, type_ref, kind.symbol());
+                let new_return_ty = alias.unwrap_or_else(|| match kind {
+                    WrapperKind::Option => make.ty_option(type_ref.clone()),
+                    WrapperKind::Result => make.ty_result(type_ref.clone(), make.ty_infer().into()),
+                });
 
                 let mut exprs_to_wrap = Vec::new();
                 let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
-                walk_expr(&body, &mut |expr| {
+                walk_expr(&body_expr, &mut |expr| {
                     if let Expr::ReturnExpr(ret_expr) = expr {
                         if let Some(ret_expr_arg) = &ret_expr.expr() {
                             for_each_tail_expr(ret_expr_arg, tail_cb);
                         }
                     }
                 });
-                for_each_tail_expr(&body, tail_cb);
+                for_each_tail_expr(&body_expr, tail_cb);
 
                 for ret_expr_arg in exprs_to_wrap {
-                    let happy_wrapped = make::expr_call(
-                        make::expr_path(make::ext::ident_path(kind.happy_ident())),
-                        make::arg_list(iter::once(ret_expr_arg.clone())),
-                    )
-                    .clone_for_update();
-                    ted::replace(ret_expr_arg.syntax(), happy_wrapped.syntax());
+                    let happy_wrapped = make.expr_call(
+                        make.expr_path(make.ident_path(kind.happy_ident())),
+                        make.arg_list(iter::once(ret_expr_arg.clone())),
+                    );
+                    editor.replace(ret_expr_arg.syntax(), happy_wrapped.syntax());
                 }
 
-                let old_return_ty = edit.make_mut(type_ref.clone());
-                ted::replace(old_return_ty.syntax(), new_return_ty.syntax());
+                editor.replace(type_ref.syntax(), new_return_ty.syntax());
 
                 if let WrapperKind::Result = kind {
                     // Add a placeholder snippet at the first generic argument that doesn't equal the return type.
                     // This is normally the error type, but that may not be the case when we inserted a type alias.
-                    let args =
-                        new_return_ty.syntax().descendants().find_map(ast::GenericArgList::cast);
-                    let error_type_arg = args.and_then(|list| {
-                        list.generic_args().find(|arg| match arg {
-                            ast::GenericArg::TypeArg(_) => {
-                                arg.syntax().text() != type_ref.syntax().text()
-                            }
-                            ast::GenericArg::LifetimeArg(_) => false,
-                            _ => true,
-                        })
+                    let args = new_return_ty
+                        .path()
+                        .unwrap()
+                        .segment()
+                        .unwrap()
+                        .generic_arg_list()
+                        .unwrap();
+                    let error_type_arg = args.generic_args().find(|arg| match arg {
+                        ast::GenericArg::TypeArg(_) => {
+                            arg.syntax().text() != type_ref.syntax().text()
+                        }
+                        ast::GenericArg::LifetimeArg(_) => false,
+                        _ => true,
                     });
                     if let Some(error_type_arg) = error_type_arg {
                         if let Some(cap) = ctx.config.snippet_cap {
-                            edit.add_placeholder_snippet(cap, error_type_arg);
+                            editor.add_annotation(
+                                error_type_arg.syntax(),
+                                builder.make_placeholder_snippet(cap),
+                            );
                         }
                     }
                 }
+
+                editor.add_mappings(make.finish_with_mappings());
+                builder.add_file_edits(ctx.file_id(), editor);
             },
         );
     }
@@ -176,22 +184,16 @@ impl WrapperKind {
             WrapperKind::Result => hir::sym::Result.clone(),
         }
     }
-
-    fn wrap_type(&self, type_ref: &ast::Type) -> ast::Type {
-        match self {
-            WrapperKind::Option => make::ext::ty_option(type_ref.clone()),
-            WrapperKind::Result => make::ext::ty_result(type_ref.clone(), make::ty_placeholder()),
-        }
-    }
 }
 
 // Try to find an wrapper type alias in the current scope (shadowing the default).
 fn wrapper_alias(
     ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
     core_wrapper: &hir::Enum,
     ret_type: &ast::Type,
     wrapper: hir::Symbol,
-) -> Option<ast::Type> {
+) -> Option<ast::PathType> {
     let wrapper_path = hir::ModPath::from_segments(
         hir::PathKind::Plain,
         iter::once(hir::Name::new_symbol_root(wrapper)),
@@ -207,25 +209,28 @@ fn wrapper_alias(
         })
         .find_map(|alias| {
             let mut inserted_ret_type = false;
-            let generic_params = alias
-                .source(ctx.db())?
-                .value
-                .generic_param_list()?
-                .generic_params()
-                .map(|param| match param {
-                    // Replace the very first type parameter with the functions return type.
-                    ast::GenericParam::TypeParam(_) if !inserted_ret_type => {
-                        inserted_ret_type = true;
-                        ret_type.to_smolstr()
+            let generic_args =
+                alias.source(ctx.db())?.value.generic_param_list()?.generic_params().map(|param| {
+                    match param {
+                        // Replace the very first type parameter with the function's return type.
+                        ast::GenericParam::TypeParam(_) if !inserted_ret_type => {
+                            inserted_ret_type = true;
+                            make.type_arg(ret_type.clone()).into()
+                        }
+                        ast::GenericParam::LifetimeParam(_) => {
+                            make.lifetime_arg(make.lifetime("'_")).into()
+                        }
+                        _ => make.type_arg(make.ty_infer().into()).into(),
                     }
-                    ast::GenericParam::LifetimeParam(_) => make::lifetime("'_").to_smolstr(),
-                    _ => make::ty_placeholder().to_smolstr(),
-                })
-                .join(", ");
+                });
 
             let name = alias.name(ctx.db());
-            let name = name.as_str();
-            Some(make::ty(&format!("{name}<{generic_params}>")))
+            let generic_arg_list = make.generic_arg_list(generic_args, false);
+            let path = make.path_unqualified(
+                make.path_segment_generics(make.name_ref(name.as_str()), generic_arg_list),
+            );
+
+            Some(make.ty_path(path))
         })
     })
 }
