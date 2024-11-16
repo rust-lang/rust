@@ -1,4 +1,3 @@
-#![feature(const_ptr_is_null)]
 use std::ptr;
 
 const IS_NULL: () = {

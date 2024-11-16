@@ -65,7 +65,7 @@ macro_rules! assert_unsafe_precondition {
             #[inline]
             #[rustc_nounwind]
             #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
-            #[rustc_allow_const_fn_unstable(const_ptr_is_null, const_ub_checks)] // only for UB checks
+            #[rustc_allow_const_fn_unstable(const_ub_checks)] // only for UB checks
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(

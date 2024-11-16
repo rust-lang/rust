@@ -121,7 +121,6 @@
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
 #![feature(const_pin_2)]
-#![feature(const_ptr_is_null)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]

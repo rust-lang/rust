@@ -3292,8 +3292,8 @@ pub const unsafe fn ptr_offset_from_unsigned<T>(_ptr: *const T, _base: *const T)
 
 /// See documentation of `<*const T>::guaranteed_eq` for details.
 /// Returns `2` if the result is unknown.
-/// Returns `1` if the pointers are guaranteed equal
-/// Returns `0` if the pointers are guaranteed inequal
+/// Returns `1` if the pointers are guaranteed equal.
+/// Returns `0` if the pointers are guaranteed inequal.
 #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020"))]
 #[rustc_intrinsic]
 #[rustc_nounwind]
