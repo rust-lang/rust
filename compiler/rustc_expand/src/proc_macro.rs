@@ -136,15 +136,16 @@ impl MultiItemModifier for DeriveProcMacro {
             // FIXME(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
             let input = tcx.arena.alloc(input.flattened()) as &TokenStream;
             let invoc_id = ecx.current_expansion.id;
+            let invoc_expn_data = invoc_id.expn_data();
 
             // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
             // changed. How to *correctly* depend on exactly the macro definition?
             // I.e., depending on the crate hash is just a HACK (and leaves garbage in the
             // incremental compilation dir).
-            let macro_def_id = invoc_id.expn_data().macro_def_id.unwrap();
+            let macro_def_id = invoc_expn_data.macro_def_id.unwrap();
             let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
 
-            assert_eq!(invoc_id.expn_data().call_site, span);
+            assert_eq!(invoc_expn_data.call_site, span);
 
             let res = crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
                 let key = (invoc_id, proc_macro_crate_hash, input);
