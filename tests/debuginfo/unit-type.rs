@@ -1,5 +1,8 @@
 //@ compile-flags:-g
 
+// FIXME(jieyouxu): triple check if this works in CI
+//@ min-cdb-version: 10.0.26100.2161
+
 // === GDB TESTS ===================================================================================
 
 // gdb-command: run
@@ -26,18 +29,18 @@
 // cdb-check: Breakpoint 0 hit
 
 // cdb-command: dx _ref
-// cdb-check: _ref             : 0x[...] : () [Type: tuple$<> *]
+// cdb-check: _ref             : 0x[...] [Type: tuple$<> *]
 
 // cdb-command: dx _ptr
-// cdb-check: _ptr             : 0x[...] : () [Type: tuple$<> *]
+// cdb-check: _ptr             : 0x[...] [Type: tuple$<> *]
 
 // cdb-command: dx _local
-// cdb-check: _local           : () [Type: tuple$<>]
+// cdb-check: _local           [Type: tuple$<>]
 
 // cdb-command: dx _field,d
 // cdb-check: _field,d         [Type: unit_type::_TypeContainingUnitField]
 // cdb-check:     [+0x[...]] _a               : 123 [Type: unsigned int]
-// cdb-check:     [+0x[...]] _unit            : () [Type: tuple$<>]
+// cdb-check:     [+0x[...]] _unit            [Type: tuple$<>]
 // cdb-check:     [+0x[...]] _b               : 456 [Type: unsigned __int64]
 
 // Check that we can cast "void pointers" to their actual type in the debugger
