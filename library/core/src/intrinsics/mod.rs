@@ -2039,628 +2039,982 @@ pub fn ptr_mask<T>(_ptr: *const T, _mask: usize) -> *const T {
     unreachable!()
 }
 
-extern "rust-intrinsic" {
-    /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
-    /// a size of `count` * `size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`
-    ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out
-    /// unless size is equal to zero.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
-    /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
-    /// a size of `count * size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`
-    ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out
-    /// unless size is equal to zero.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-    /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
-    /// size of `count * size_of::<T>()` and an alignment of
-    /// `min_align_of::<T>()`.
-    ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out
-    /// unless size is equal to zero.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
+/// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
+/// a size of `count` * `size_of::<T>()` and an alignment of
+/// `min_align_of::<T>()`
+///
+/// The volatile parameter is set to `true`, so it will not be optimized out
+/// unless size is equal to zero.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn volatile_copy_nonoverlapping_memory<T>(_dst: *mut T, _src: *const T, _count: usize) {
+    unreachable!()
+}
+/// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
+/// a size of `count * size_of::<T>()` and an alignment of
+/// `min_align_of::<T>()`
+///
+/// The volatile parameter is set to `true`, so it will not be optimized out
+/// unless size is equal to zero.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn volatile_copy_memory<T>(_dst: *mut T, _src: *const T, _count: usize) {
+    unreachable!()
+}
+/// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
+/// size of `count * size_of::<T>()` and an alignment of
+/// `min_align_of::<T>()`.
+///
+/// The volatile parameter is set to `true`, so it will not be optimized out
+/// unless size is equal to zero.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn volatile_set_memory<T>(_dst: *mut T, _val: u8, _count: usize) {
+    unreachable!()
+}
 
-    /// Performs a volatile load from the `src` pointer.
-    ///
-    /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
-    #[rustc_nounwind]
-    pub fn volatile_load<T>(src: *const T) -> T;
-    /// Performs a volatile store to the `dst` pointer.
-    ///
-    /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
-    #[rustc_nounwind]
-    pub fn volatile_store<T>(dst: *mut T, val: T);
+/// Performs a volatile load from the `src` pointer.
+///
+/// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn volatile_load<T>(_src: *const T) -> T {
+    unreachable!()
+}
+/// Performs a volatile store to the `dst` pointer.
+///
+/// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn volatile_store<T>(_dst: *mut T, _val: T) {
+    unreachable!()
+}
 
-    /// Performs a volatile load from the `src` pointer
-    /// The pointer is not required to be aligned.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
-    pub fn unaligned_volatile_load<T>(src: *const T) -> T;
-    /// Performs a volatile store to the `dst` pointer.
-    /// The pointer is not required to be aligned.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    #[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
-    pub fn unaligned_volatile_store<T>(dst: *mut T, val: T);
+/// Performs a volatile load from the `src` pointer
+/// The pointer is not required to be aligned.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+#[rustc_diagnostic_item = "intrinsics_unaligned_volatile_load"]
+pub unsafe fn unaligned_volatile_load<T>(_src: *const T) -> T {
+    unreachable!()
+}
+/// Performs a volatile store to the `dst` pointer.
+/// The pointer is not required to be aligned.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+#[rustc_diagnostic_item = "intrinsics_unaligned_volatile_store"]
+pub unsafe fn unaligned_volatile_store<T>(_dst: *mut T, _val: T) {
+    unreachable!()
+}
 
-    /// Returns the square root of an `f16`
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
-    #[rustc_nounwind]
-    pub fn sqrtf16(x: f16) -> f16;
-    /// Returns the square root of an `f32`
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
-    #[rustc_nounwind]
-    pub fn sqrtf32(x: f32) -> f32;
-    /// Returns the square root of an `f64`
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
-    #[rustc_nounwind]
-    pub fn sqrtf64(x: f64) -> f64;
-    /// Returns the square root of an `f128`
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::sqrt`](../../std/primitive.f128.html#method.sqrt)
-    #[rustc_nounwind]
-    pub fn sqrtf128(x: f128) -> f128;
+/// Returns the square root of an `f16`
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sqrtf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the square root of an `f32`
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sqrtf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the square root of an `f64`
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sqrtf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the square root of an `f128`
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::sqrt`](../../std/primitive.f128.html#method.sqrt)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sqrtf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Raises an `f16` to an integer power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::powi`](../../std/primitive.f16.html#method.powi)
-    #[rustc_nounwind]
-    pub fn powif16(a: f16, x: i32) -> f16;
-    /// Raises an `f32` to an integer power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::powi`](../../std/primitive.f32.html#method.powi)
-    #[rustc_nounwind]
-    pub fn powif32(a: f32, x: i32) -> f32;
-    /// Raises an `f64` to an integer power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::powi`](../../std/primitive.f64.html#method.powi)
-    #[rustc_nounwind]
-    pub fn powif64(a: f64, x: i32) -> f64;
-    /// Raises an `f128` to an integer power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::powi`](../../std/primitive.f128.html#method.powi)
-    #[rustc_nounwind]
-    pub fn powif128(a: f128, x: i32) -> f128;
+/// Raises an `f16` to an integer power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::powi`](../../std/primitive.f16.html#method.powi)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powif16(_a: f16, _x: i32) -> f16 {
+    unreachable!()
+}
+/// Raises an `f32` to an integer power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::powi`](../../std/primitive.f32.html#method.powi)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powif32(_a: f32, _x: i32) -> f32 {
+    unreachable!()
+}
+/// Raises an `f64` to an integer power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::powi`](../../std/primitive.f64.html#method.powi)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powif64(_a: f64, _x: i32) -> f64 {
+    unreachable!()
+}
+/// Raises an `f128` to an integer power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::powi`](../../std/primitive.f128.html#method.powi)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powif128(_a: f128, _x: i32) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the sine of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::sin`](../../std/primitive.f16.html#method.sin)
-    #[rustc_nounwind]
-    pub fn sinf16(x: f16) -> f16;
-    /// Returns the sine of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::sin`](../../std/primitive.f32.html#method.sin)
-    #[rustc_nounwind]
-    pub fn sinf32(x: f32) -> f32;
-    /// Returns the sine of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::sin`](../../std/primitive.f64.html#method.sin)
-    #[rustc_nounwind]
-    pub fn sinf64(x: f64) -> f64;
-    /// Returns the sine of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::sin`](../../std/primitive.f128.html#method.sin)
-    #[rustc_nounwind]
-    pub fn sinf128(x: f128) -> f128;
+/// Returns the sine of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::sin`](../../std/primitive.f16.html#method.sin)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sinf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the sine of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::sin`](../../std/primitive.f32.html#method.sin)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sinf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the sine of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::sin`](../../std/primitive.f64.html#method.sin)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sinf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the sine of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::sin`](../../std/primitive.f128.html#method.sin)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn sinf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the cosine of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::cos`](../../std/primitive.f16.html#method.cos)
-    #[rustc_nounwind]
-    pub fn cosf16(x: f16) -> f16;
-    /// Returns the cosine of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::cos`](../../std/primitive.f32.html#method.cos)
-    #[rustc_nounwind]
-    pub fn cosf32(x: f32) -> f32;
-    /// Returns the cosine of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::cos`](../../std/primitive.f64.html#method.cos)
-    #[rustc_nounwind]
-    pub fn cosf64(x: f64) -> f64;
-    /// Returns the cosine of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::cos`](../../std/primitive.f128.html#method.cos)
-    #[rustc_nounwind]
-    pub fn cosf128(x: f128) -> f128;
+/// Returns the cosine of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::cos`](../../std/primitive.f16.html#method.cos)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn cosf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the cosine of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::cos`](../../std/primitive.f32.html#method.cos)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn cosf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the cosine of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::cos`](../../std/primitive.f64.html#method.cos)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn cosf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the cosine of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::cos`](../../std/primitive.f128.html#method.cos)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn cosf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Raises an `f16` to an `f16` power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::powf`](../../std/primitive.f16.html#method.powf)
-    #[rustc_nounwind]
-    pub fn powf16(a: f16, x: f16) -> f16;
-    /// Raises an `f32` to an `f32` power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::powf`](../../std/primitive.f32.html#method.powf)
-    #[rustc_nounwind]
-    pub fn powf32(a: f32, x: f32) -> f32;
-    /// Raises an `f64` to an `f64` power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::powf`](../../std/primitive.f64.html#method.powf)
-    #[rustc_nounwind]
-    pub fn powf64(a: f64, x: f64) -> f64;
-    /// Raises an `f128` to an `f128` power.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::powf`](../../std/primitive.f128.html#method.powf)
-    #[rustc_nounwind]
-    pub fn powf128(a: f128, x: f128) -> f128;
+/// Raises an `f16` to an `f16` power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::powf`](../../std/primitive.f16.html#method.powf)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powf16(_a: f16, _x: f16) -> f16 {
+    unreachable!()
+}
+/// Raises an `f32` to an `f32` power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::powf`](../../std/primitive.f32.html#method.powf)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powf32(_a: f32, _x: f32) -> f32 {
+    unreachable!()
+}
+/// Raises an `f64` to an `f64` power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::powf`](../../std/primitive.f64.html#method.powf)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powf64(_a: f64, _x: f64) -> f64 {
+    unreachable!()
+}
+/// Raises an `f128` to an `f128` power.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::powf`](../../std/primitive.f128.html#method.powf)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn powf128(_a: f128, _x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the exponential of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::exp`](../../std/primitive.f16.html#method.exp)
-    #[rustc_nounwind]
-    pub fn expf16(x: f16) -> f16;
-    /// Returns the exponential of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::exp`](../../std/primitive.f32.html#method.exp)
-    #[rustc_nounwind]
-    pub fn expf32(x: f32) -> f32;
-    /// Returns the exponential of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::exp`](../../std/primitive.f64.html#method.exp)
-    #[rustc_nounwind]
-    pub fn expf64(x: f64) -> f64;
-    /// Returns the exponential of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::exp`](../../std/primitive.f128.html#method.exp)
-    #[rustc_nounwind]
-    pub fn expf128(x: f128) -> f128;
+/// Returns the exponential of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::exp`](../../std/primitive.f16.html#method.exp)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn expf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the exponential of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::exp`](../../std/primitive.f32.html#method.exp)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn expf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the exponential of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::exp`](../../std/primitive.f64.html#method.exp)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn expf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the exponential of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::exp`](../../std/primitive.f128.html#method.exp)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn expf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns 2 raised to the power of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
-    #[rustc_nounwind]
-    pub fn exp2f16(x: f16) -> f16;
-    /// Returns 2 raised to the power of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
-    #[rustc_nounwind]
-    pub fn exp2f32(x: f32) -> f32;
-    /// Returns 2 raised to the power of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
-    #[rustc_nounwind]
-    pub fn exp2f64(x: f64) -> f64;
-    /// Returns 2 raised to the power of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
-    #[rustc_nounwind]
-    pub fn exp2f128(x: f128) -> f128;
+/// Returns 2 raised to the power of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn exp2f16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns 2 raised to the power of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn exp2f32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns 2 raised to the power of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn exp2f64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns 2 raised to the power of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn exp2f128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the natural logarithm of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::ln`](../../std/primitive.f16.html#method.ln)
-    #[rustc_nounwind]
-    pub fn logf16(x: f16) -> f16;
-    /// Returns the natural logarithm of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::ln`](../../std/primitive.f32.html#method.ln)
-    #[rustc_nounwind]
-    pub fn logf32(x: f32) -> f32;
-    /// Returns the natural logarithm of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::ln`](../../std/primitive.f64.html#method.ln)
-    #[rustc_nounwind]
-    pub fn logf64(x: f64) -> f64;
-    /// Returns the natural logarithm of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::ln`](../../std/primitive.f128.html#method.ln)
-    #[rustc_nounwind]
-    pub fn logf128(x: f128) -> f128;
+/// Returns the natural logarithm of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::ln`](../../std/primitive.f16.html#method.ln)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn logf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the natural logarithm of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::ln`](../../std/primitive.f32.html#method.ln)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn logf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the natural logarithm of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::ln`](../../std/primitive.f64.html#method.ln)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn logf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the natural logarithm of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::ln`](../../std/primitive.f128.html#method.ln)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn logf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the base 10 logarithm of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::log10`](../../std/primitive.f16.html#method.log10)
-    #[rustc_nounwind]
-    pub fn log10f16(x: f16) -> f16;
-    /// Returns the base 10 logarithm of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::log10`](../../std/primitive.f32.html#method.log10)
-    #[rustc_nounwind]
-    pub fn log10f32(x: f32) -> f32;
-    /// Returns the base 10 logarithm of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::log10`](../../std/primitive.f64.html#method.log10)
-    #[rustc_nounwind]
-    pub fn log10f64(x: f64) -> f64;
-    /// Returns the base 10 logarithm of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::log10`](../../std/primitive.f128.html#method.log10)
-    #[rustc_nounwind]
-    pub fn log10f128(x: f128) -> f128;
+/// Returns the base 10 logarithm of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::log10`](../../std/primitive.f16.html#method.log10)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log10f16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the base 10 logarithm of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::log10`](../../std/primitive.f32.html#method.log10)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log10f32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the base 10 logarithm of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::log10`](../../std/primitive.f64.html#method.log10)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log10f64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the base 10 logarithm of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::log10`](../../std/primitive.f128.html#method.log10)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log10f128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the base 2 logarithm of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::log2`](../../std/primitive.f16.html#method.log2)
-    #[rustc_nounwind]
-    pub fn log2f16(x: f16) -> f16;
-    /// Returns the base 2 logarithm of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::log2`](../../std/primitive.f32.html#method.log2)
-    #[rustc_nounwind]
-    pub fn log2f32(x: f32) -> f32;
-    /// Returns the base 2 logarithm of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::log2`](../../std/primitive.f64.html#method.log2)
-    #[rustc_nounwind]
-    pub fn log2f64(x: f64) -> f64;
-    /// Returns the base 2 logarithm of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::log2`](../../std/primitive.f128.html#method.log2)
-    #[rustc_nounwind]
-    pub fn log2f128(x: f128) -> f128;
+/// Returns the base 2 logarithm of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::log2`](../../std/primitive.f16.html#method.log2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log2f16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the base 2 logarithm of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::log2`](../../std/primitive.f32.html#method.log2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log2f32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the base 2 logarithm of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::log2`](../../std/primitive.f64.html#method.log2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log2f64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the base 2 logarithm of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::log2`](../../std/primitive.f128.html#method.log2)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn log2f128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns `a * b + c` for `f16` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
-    #[rustc_nounwind]
-    pub fn fmaf16(a: f16, b: f16, c: f16) -> f16;
-    /// Returns `a * b + c` for `f32` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
-    #[rustc_nounwind]
-    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-    /// Returns `a * b + c` for `f64` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
-    #[rustc_nounwind]
-    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-    /// Returns `a * b + c` for `f128` values.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
-    #[rustc_nounwind]
-    pub fn fmaf128(a: f128, b: f128, c: f128) -> f128;
+/// Returns `a * b + c` for `f16` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmaf16(_a: f16, _b: f16, _c: f16) -> f16 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f32` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmaf32(_a: f32, _b: f32, _c: f32) -> f32 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f64` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmaf64(_a: f64, _b: f64, _c: f64) -> f64 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f128` values.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmaf128(_a: f128, _b: f128, _c: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns `a * b + c` for `f16` values, non-deterministically executing
-    /// either a fused multiply-add or two operations with rounding of the
-    /// intermediate result.
-    ///
-    /// The operation is fused if the code generator determines that target
-    /// instruction set has support for a fused operation, and that the fused
-    /// operation is more efficient than the equivalent, separate pair of mul
-    /// and add instructions. It is unspecified whether or not a fused operation
-    /// is selected, and that may depend on optimization level and context, for
-    /// example.
-    #[rustc_nounwind]
-    pub fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
-    /// Returns `a * b + c` for `f32` values, non-deterministically executing
-    /// either a fused multiply-add or two operations with rounding of the
-    /// intermediate result.
-    ///
-    /// The operation is fused if the code generator determines that target
-    /// instruction set has support for a fused operation, and that the fused
-    /// operation is more efficient than the equivalent, separate pair of mul
-    /// and add instructions. It is unspecified whether or not a fused operation
-    /// is selected, and that may depend on optimization level and context, for
-    /// example.
-    #[rustc_nounwind]
-    pub fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
-    /// Returns `a * b + c` for `f64` values, non-deterministically executing
-    /// either a fused multiply-add or two operations with rounding of the
-    /// intermediate result.
-    ///
-    /// The operation is fused if the code generator determines that target
-    /// instruction set has support for a fused operation, and that the fused
-    /// operation is more efficient than the equivalent, separate pair of mul
-    /// and add instructions. It is unspecified whether or not a fused operation
-    /// is selected, and that may depend on optimization level and context, for
-    /// example.
-    #[rustc_nounwind]
-    pub fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
-    /// Returns `a * b + c` for `f128` values, non-deterministically executing
-    /// either a fused multiply-add or two operations with rounding of the
-    /// intermediate result.
-    ///
-    /// The operation is fused if the code generator determines that target
-    /// instruction set has support for a fused operation, and that the fused
-    /// operation is more efficient than the equivalent, separate pair of mul
-    /// and add instructions. It is unspecified whether or not a fused operation
-    /// is selected, and that may depend on optimization level and context, for
-    /// example.
-    #[rustc_nounwind]
-    pub fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
+/// Returns `a * b + c` for `f16` values, non-deterministically executing
+/// either a fused multiply-add or two operations with rounding of the
+/// intermediate result.
+///
+/// The operation is fused if the code generator determines that target
+/// instruction set has support for a fused operation, and that the fused
+/// operation is more efficient than the equivalent, separate pair of mul
+/// and add instructions. It is unspecified whether or not a fused operation
+/// is selected, and that may depend on optimization level and context, for
+/// example.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmuladdf16(_a: f16, _b: f16, _c: f16) -> f16 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f32` values, non-deterministically executing
+/// either a fused multiply-add or two operations with rounding of the
+/// intermediate result.
+///
+/// The operation is fused if the code generator determines that target
+/// instruction set has support for a fused operation, and that the fused
+/// operation is more efficient than the equivalent, separate pair of mul
+/// and add instructions. It is unspecified whether or not a fused operation
+/// is selected, and that may depend on optimization level and context, for
+/// example.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmuladdf32(_a: f32, _b: f32, _c: f32) -> f32 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f64` values, non-deterministically executing
+/// either a fused multiply-add or two operations with rounding of the
+/// intermediate result.
+///
+/// The operation is fused if the code generator determines that target
+/// instruction set has support for a fused operation, and that the fused
+/// operation is more efficient than the equivalent, separate pair of mul
+/// and add instructions. It is unspecified whether or not a fused operation
+/// is selected, and that may depend on optimization level and context, for
+/// example.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmuladdf64(_a: f64, _b: f64, _c: f64) -> f64 {
+    unreachable!()
+}
+/// Returns `a * b + c` for `f128` values, non-deterministically executing
+/// either a fused multiply-add or two operations with rounding of the
+/// intermediate result.
+///
+/// The operation is fused if the code generator determines that target
+/// instruction set has support for a fused operation, and that the fused
+/// operation is more efficient than the equivalent, separate pair of mul
+/// and add instructions. It is unspecified whether or not a fused operation
+/// is selected, and that may depend on optimization level and context, for
+/// example.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmuladdf128(_a: f128, _b: f128, _c: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the largest integer less than or equal to an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
-    #[rustc_nounwind]
-    pub fn floorf16(x: f16) -> f16;
-    /// Returns the largest integer less than or equal to an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
-    #[rustc_nounwind]
-    pub fn floorf32(x: f32) -> f32;
-    /// Returns the largest integer less than or equal to an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
-    #[rustc_nounwind]
-    pub fn floorf64(x: f64) -> f64;
-    /// Returns the largest integer less than or equal to an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::floor`](../../std/primitive.f128.html#method.floor)
-    #[rustc_nounwind]
-    pub fn floorf128(x: f128) -> f128;
+/// Returns the largest integer less than or equal to an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::floor`](../../std/primitive.f16.html#method.floor)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn floorf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the largest integer less than or equal to an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::floor`](../../std/primitive.f32.html#method.floor)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn floorf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the largest integer less than or equal to an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::floor`](../../std/primitive.f64.html#method.floor)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn floorf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the largest integer less than or equal to an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::floor`](../../std/primitive.f128.html#method.floor)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn floorf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the smallest integer greater than or equal to an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
-    #[rustc_nounwind]
-    pub fn ceilf16(x: f16) -> f16;
-    /// Returns the smallest integer greater than or equal to an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
-    #[rustc_nounwind]
-    pub fn ceilf32(x: f32) -> f32;
-    /// Returns the smallest integer greater than or equal to an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
-    #[rustc_nounwind]
-    pub fn ceilf64(x: f64) -> f64;
-    /// Returns the smallest integer greater than or equal to an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
-    #[rustc_nounwind]
-    pub fn ceilf128(x: f128) -> f128;
+/// Returns the smallest integer greater than or equal to an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn ceilf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the smallest integer greater than or equal to an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn ceilf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the smallest integer greater than or equal to an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn ceilf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the smallest integer greater than or equal to an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn ceilf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the integer part of an `f16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
-    #[rustc_nounwind]
-    pub fn truncf16(x: f16) -> f16;
-    /// Returns the integer part of an `f32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
-    #[rustc_nounwind]
-    pub fn truncf32(x: f32) -> f32;
-    /// Returns the integer part of an `f64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
-    #[rustc_nounwind]
-    pub fn truncf64(x: f64) -> f64;
-    /// Returns the integer part of an `f128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
-    #[rustc_nounwind]
-    pub fn truncf128(x: f128) -> f128;
+/// Returns the integer part of an `f16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn truncf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the integer part of an `f32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn truncf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the integer part of an `f64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn truncf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the integer part of an `f128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn truncf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-    /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf16` and `roundevenf16`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
-    #[rustc_nounwind]
-    pub fn rintf16(x: f16) -> f16;
-    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-    /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
-    #[rustc_nounwind]
-    pub fn rintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-    /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
-    #[rustc_nounwind]
-    pub fn rintf64(x: f64) -> f64;
-    /// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-    /// cannot actually be utilized from Rust code.
-    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf128` and `roundevenf128`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
-    #[rustc_nounwind]
-    pub fn rintf128(x: f128) -> f128;
+/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// May raise an inexact floating-point exception if the argument is not an integer.
+/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+/// cannot actually be utilized from Rust code.
+/// In other words, this intrinsic is equivalent in behavior to `nearbyintf16` and `roundevenf16`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn rintf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// May raise an inexact floating-point exception if the argument is not an integer.
+/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+/// cannot actually be utilized from Rust code.
+/// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn rintf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// May raise an inexact floating-point exception if the argument is not an integer.
+/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+/// cannot actually be utilized from Rust code.
+/// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn rintf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// May raise an inexact floating-point exception if the argument is not an integer.
+/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+/// cannot actually be utilized from Rust code.
+/// In other words, this intrinsic is equivalent in behavior to `nearbyintf128` and `roundevenf128`.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn rintf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn nearbyintf16(x: f16) -> f16;
-    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn nearbyintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn nearbyintf64(x: f64) -> f64;
-    /// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-    /// so this rounds half-way cases to the number with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn nearbyintf128(x: f128) -> f128;
+/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn nearbyintf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn nearbyintf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn nearbyintf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
+/// so this rounds half-way cases to the number with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn nearbyintf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f16::round`](../../std/primitive.f16.html#method.round)
-    #[rustc_nounwind]
-    pub fn roundf16(x: f16) -> f16;
-    /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::round`](../../std/primitive.f32.html#method.round)
-    #[rustc_nounwind]
-    pub fn roundf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::round`](../../std/primitive.f64.html#method.round)
-    #[rustc_nounwind]
-    pub fn roundf64(x: f64) -> f64;
-    /// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`f128::round`](../../std/primitive.f128.html#method.round)
-    #[rustc_nounwind]
-    pub fn roundf128(x: f128) -> f128;
+/// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::round`](../../std/primitive.f16.html#method.round)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::round`](../../std/primitive.f32.html#method.round)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::round`](../../std/primitive.f64.html#method.round)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::round`](../../std/primitive.f128.html#method.round)
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Returns the nearest integer to an `f16`. Rounds half-way cases to the number
-    /// with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn roundevenf16(x: f16) -> f16;
-    /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
-    /// with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn roundevenf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
-    /// with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn roundevenf64(x: f64) -> f64;
-    /// Returns the nearest integer to an `f128`. Rounds half-way cases to the number
-    /// with an even least significant digit.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn roundevenf128(x: f128) -> f128;
+/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number
+/// with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundevenf16(_x: f16) -> f16 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
+/// with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundevenf32(_x: f32) -> f32 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
+/// with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundevenf64(_x: f64) -> f64 {
+    unreachable!()
+}
+/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number
+/// with an even least significant digit.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn roundevenf128(_x: f128) -> f128 {
+    unreachable!()
+}
 
-    /// Float addition that allows optimizations based on algebraic rules.
-    /// May assume inputs are finite.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn fadd_fast<T: Copy>(a: T, b: T) -> T;
+/// Float addition that allows optimizations based on algebraic rules.
+/// May assume inputs are finite.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fadd_fast<T: Copy>(_a: T, _b: T) -> T {
+    unreachable!()
+}
 
-    /// Float subtraction that allows optimizations based on algebraic rules.
-    /// May assume inputs are finite.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn fsub_fast<T: Copy>(a: T, b: T) -> T;
+/// Float subtraction that allows optimizations based on algebraic rules.
+/// May assume inputs are finite.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fsub_fast<T: Copy>(_a: T, _b: T) -> T {
+    unreachable!()
+}
 
-    /// Float multiplication that allows optimizations based on algebraic rules.
-    /// May assume inputs are finite.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn fmul_fast<T: Copy>(a: T, b: T) -> T;
+/// Float multiplication that allows optimizations based on algebraic rules.
+/// May assume inputs are finite.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fmul_fast<T: Copy>(_a: T, _b: T) -> T {
+    unreachable!()
+}
 
-    /// Float division that allows optimizations based on algebraic rules.
-    /// May assume inputs are finite.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn fdiv_fast<T: Copy>(a: T, b: T) -> T;
+/// Float division that allows optimizations based on algebraic rules.
+/// May assume inputs are finite.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn fdiv_fast<T: Copy>(_a: T, _b: T) -> T {
+    unreachable!()
+}
 
-    /// Float remainder that allows optimizations based on algebraic rules.
-    /// May assume inputs are finite.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_nounwind]
-    pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
+/// Float remainder that allows optimizations based on algebraic rules.
+/// May assume inputs are finite.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn frem_fast<T: Copy>(_a: T, _b: T) -> T {
+    unreachable!()
+}
 
-    /// Converts with LLVM’s fptoui/fptosi, which may return undef for values out of range
-    /// (<https://github.com/rust-lang/rust/issues/10184>)
-    ///
-    /// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
-    #[rustc_nounwind]
-    pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+/// Converts with LLVM’s fptoui/fptosi, which may return undef for values out of range
+/// (<https://github.com/rust-lang/rust/issues/10184>)
+///
+/// Stabilized as [`f32::to_int_unchecked`] and [`f64::to_int_unchecked`].
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(_value: Float) -> Int {
+    unreachable!()
 }
 
 /// Float addition that allows optimizations based on algebraic rules.
