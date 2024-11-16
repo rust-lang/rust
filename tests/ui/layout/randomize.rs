@@ -20,10 +20,11 @@ const _: () = {
     #[cfg(randomize_layout)]
     assert!(std::mem::offset_of!(Foo::<u16>, 1) != std::mem::offset_of!(Foo::<Wrapper<u16>>, 1));
 
-    // but repr(transparent) should make them the same again.
-    // maybe not strictly guaranteed? but UCG has been leaning in that direction at least
+    // Even transparent wrapper inner types get a different layout since associated type
+    // pecialization could result in the outer type behaving differently depending on the exact
+    // inner type.
     #[cfg(randomize_layout)]
     assert!(
-        std::mem::offset_of!(Foo::<u16>, 1) == std::mem::offset_of!(Foo::<TransparentWrapper>, 1)
+        std::mem::offset_of!(Foo::<u16>, 1) != std::mem::offset_of!(Foo::<TransparentWrapper>, 1)
     );
 };
