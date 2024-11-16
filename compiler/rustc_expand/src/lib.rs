@@ -18,6 +18,7 @@
 extern crate proc_macro as pm;
 
 mod build;
+mod derive_macro_expansion;
 mod errors;
 // FIXME(Nilstrieb) Translate macro_rules diagnostics
 #[allow(rustc::untranslatable_diagnostic)]
@@ -28,7 +29,6 @@ mod proc_macro_server;
 pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;
 pub mod config;
-mod derive_macro_expansion;
 pub mod expand;
 pub mod module;
 // FIXME(Nilstrieb) Translate proc_macro diagnostics
