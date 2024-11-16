@@ -1,7 +1,7 @@
 //@ known-bug: #124020
 //@ compile-flags: -Zpolymorphize=on --edition=2018 --crate-type=lib
 
-#![feature(async_closure, noop_waker, async_trait_bounds)]
+#![feature(async_closure, async_trait_bounds)]
 
 use std::future::Future;
 use std::pin::pin;
