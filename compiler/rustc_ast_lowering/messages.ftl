@@ -103,6 +103,12 @@ ast_lowering_invalid_asm_template_modifier_reg_class =
 ast_lowering_invalid_asm_template_modifier_sym =
     asm template modifiers are not allowed for `sym` arguments
 
+ast_lowering_invalid_legacy_const_generic_arg =
+    invalid argument to a legacy const generic: cannot have const blocks, closures, async blocks or items
+
+ast_lowering_invalid_legacy_const_generic_arg_suggestion =
+    try using a const generic argument instead
+
 ast_lowering_invalid_register =
     invalid register `{$reg}`: {$error}
 
