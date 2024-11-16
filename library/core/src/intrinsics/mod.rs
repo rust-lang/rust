@@ -4013,9 +4013,9 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
             count: usize = count,
         ) => {
             let zero_size = count == 0 || size == 0;
-            ub_checks::is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::is_aligned_and_not_null(dst, align, zero_size)
-                && ub_checks::is_nonoverlapping(src, dst, size, count)
+            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
+                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
+                && ub_checks::maybe_is_nonoverlapping(src, dst, size, count)
         }
     );
 
@@ -4119,8 +4119,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
                 align: usize = align_of::<T>(),
                 zero_size: bool = T::IS_ZST || count == 0,
             ) =>
-            ub_checks::is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::is_aligned_and_not_null(dst, align, zero_size)
+            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
+                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
         );
         copy(src, dst, count)
     }
@@ -4201,7 +4201,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
                 zero_size: bool = T::IS_ZST || count == 0,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, zero_size)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, zero_size)
         );
         write_bytes(dst, val, count)
     }

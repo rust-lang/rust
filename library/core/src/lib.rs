@@ -109,6 +109,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(const_exact_div))]
 #![cfg_attr(bootstrap, feature(const_fmt_arguments_new))]
+#![cfg_attr(bootstrap, feature(const_ub_checks))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_align_of_val)]
@@ -131,7 +132,6 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_typed_swap)]
-#![feature(const_ub_checks)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
