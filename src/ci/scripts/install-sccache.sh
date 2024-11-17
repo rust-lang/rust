@@ -12,7 +12,7 @@ if isMacOS; then
     chmod +x /usr/local/bin/sccache
 elif isWindows; then
     mkdir -p sccache
-    curl -fLo sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v0.4.2/sccache-v0.4.2-x86_64-pc-windows-msvc.tar.gz"
+    curl -fLo sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v0.7.7/sccache-v0.7.7-x86_64-pc-windows-msvc.tar.gz"
     tar zxvf sccache.tar.gz --wildcards --no-anchored 'sccache.exe' --strip-components=1
     mv sccache.exe sccache
     ciCommandAddPath "$(pwd)/sccache"
