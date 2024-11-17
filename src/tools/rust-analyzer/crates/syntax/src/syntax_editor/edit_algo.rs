@@ -73,7 +73,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         })
         .all(|(l, r)| {
             get_node_depth(l.target_parent()) != get_node_depth(r.target_parent())
-                || l.target_range().intersect(r.target_range()).is_none()
+                || (l.target_range().end() <= r.target_range().start())
         });
 
     if stdx::never!(
