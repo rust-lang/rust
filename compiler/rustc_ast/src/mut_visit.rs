@@ -287,6 +287,10 @@ pub trait MutVisitor: Sized {
         walk_variant_data(self, vdata);
     }
 
+    fn visit_generic_param(&mut self, param: &mut GenericParam) {
+        walk_generic_param(self, param)
+    }
+
     fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
         walk_flat_map_generic_param(self, param)
     }
@@ -974,11 +978,8 @@ fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCaptu
     }
 }
 
-pub fn walk_flat_map_generic_param<T: MutVisitor>(
-    vis: &mut T,
-    mut param: GenericParam,
-) -> SmallVec<[GenericParam; 1]> {
-    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
+pub fn walk_generic_param<T: MutVisitor>(vis: &mut T, param: &mut GenericParam) {
+    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
@@ -996,6 +997,13 @@ pub fn walk_flat_map_generic_param<T: MutVisitor>(
     if let Some(colon_span) = colon_span {
         vis.visit_span(colon_span);
     }
+}
+
+pub fn walk_flat_map_generic_param<T: MutVisitor>(
+    vis: &mut T,
+    mut param: GenericParam,
+) -> SmallVec<[GenericParam; 1]> {
+    vis.visit_generic_param(&mut param);
     smallvec![param]
 }
 
