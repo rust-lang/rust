@@ -211,7 +211,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_empty_block(&self) -> ast::BlockExpr {
-        ast::BlockExpr { syntax: make::expr_empty_block().syntax().clone_for_update() }
+        make::expr_empty_block().clone_for_update()
     }
 
     pub fn expr_tuple(&self, fields: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {

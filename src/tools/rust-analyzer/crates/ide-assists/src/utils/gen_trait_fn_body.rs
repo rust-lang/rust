@@ -599,7 +599,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) 
         let variant_name =
             make::path_pat(make::ext::path_from_idents(["core", "cmp", "Ordering", "Equal"])?);
         let lhs = make::tuple_struct_pat(make::ext::path_from_idents(["Some"])?, [variant_name]);
-        arms.push(make::match_arm(lhs.into(), None, make::expr_empty_block()));
+        arms.push(make::match_arm(lhs.into(), None, make::expr_empty_block().into()));
 
         arms.push(make::match_arm(
             make::ident_pat(false, false, make::name("ord")).into(),
