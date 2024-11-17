@@ -92,6 +92,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             editor.replace(type_ref.syntax(), happy_type.syntax());
         }
 
+        let mut final_placeholder = None;
         for tail_expr in exprs_to_unwrap {
             match &tail_expr {
                 ast::Expr::CallExpr(call_expr) => {
@@ -145,9 +146,24 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                         continue;
                     }
 
-                    editor.replace(path_expr.syntax(), make.expr_unit().syntax());
+                    let new_tail_expr = make.expr_unit();
+                    editor.replace(path_expr.syntax(), new_tail_expr.syntax());
+                    if let Some(cap) = ctx.config.snippet_cap {
+                        editor.add_annotation(
+                            new_tail_expr.syntax(),
+                            builder.make_placeholder_snippet(cap),
+                        );
+
+                        final_placeholder = Some(new_tail_expr);
+                    }
                 }
                 _ => (),
+            }
+        }
+
+        if let Some(cap) = ctx.config.snippet_cap {
+            if let Some(final_placeholder) = final_placeholder {
+                editor.add_annotation(final_placeholder.syntax(), builder.make_tabstop_after(cap));
             }
         }
 
@@ -300,7 +316,42 @@ fn foo() -> i32 {
     if true {
         42
     } else {
-        ()
+        ${1:()}$0
+    }
+}
+"#,
+            "Unwrap Option return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_option_return_type_multi_none() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: option
+fn foo() -> Option<i3$02> {
+    if false {
+        return None;
+    }
+
+    if true {
+        Some(42)
+    } else {
+        None
+    }
+}
+"#,
+            r#"
+fn foo() -> i32 {
+    if false {
+        return ${1:()};
+    }
+
+    if true {
+        42
+    } else {
+        ${2:()}$0
     }
 }
 "#,
