@@ -411,6 +411,7 @@ impl Analysis {
         position: FilePosition,
         char_typed: char,
         autoclose: bool,
+        chars_to_exclude: Option<String>,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
@@ -418,6 +419,11 @@ impl Analysis {
         }
         if char_typed == '<' && !autoclose {
             return Ok(None);
+        }
+        if let Some(chars_to_exclude) = chars_to_exclude {
+            if chars_to_exclude.contains(char_typed) {
+                return Ok(None);
+            }
         }
 
         self.with_db(|db| typing::on_char_typed(db, position, char_typed))

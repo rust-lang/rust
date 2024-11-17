@@ -310,6 +310,8 @@ config_data! {
 
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = false,
+        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`. Setting this to a string will disable typing assists for the specified characters.
+        typing_excludeChars: Option<String> = None,
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
@@ -2158,6 +2160,10 @@ impl Config {
 
     pub fn typing_autoclose_angle(&self) -> bool {
         *self.typing_autoClosingAngleBrackets_enable()
+    }
+
+    pub fn typing_exclude_chars(&self) -> Option<String> {
+        self.typing_excludeChars().clone()
     }
 
     // VSCode is our reference implementation, so we allow ourselves to work around issues by
