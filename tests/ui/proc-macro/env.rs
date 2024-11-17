@@ -1,6 +1,6 @@
 //@ aux-build:env.rs
 //@ run-pass
-//@ rustc-env: THE_CONST=1
+//@ rustc-env:THE_CONST=1
 //@ compile-flags: -Zunstable-options --env-set THE_CONST=12 --env-set ANOTHER=4
 
 #![crate_name = "foo"]
