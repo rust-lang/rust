@@ -139,7 +139,6 @@
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
-#![feature(is_val_statically_known)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
 #![feature(non_null_from_ref)]
