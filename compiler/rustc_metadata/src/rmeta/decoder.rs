@@ -29,6 +29,7 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
+use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
@@ -72,6 +73,9 @@ impl MetadataBlob {
 /// crate may refer to types in other external crates, and each has their
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
+
+/// Target modifiers - abi or exploit mitigations flags
+pub(crate) type TargetModifiers = Vec<TargetModifier>;
 
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
@@ -960,6 +964,13 @@ impl CrateRoot {
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
         self.crate_deps.decode(metadata)
+    }
+
+    pub(crate) fn decode_target_modifiers<'a>(
+        &self,
+        metadata: &'a MetadataBlob,
+    ) -> impl ExactSizeIterator<Item = TargetModifier> + Captures<'a> {
+        self.target_modifiers.decode(metadata)
     }
 }
 
@@ -1881,6 +1892,10 @@ impl CrateMetadata {
 
     pub(crate) fn add_dependency(&mut self, cnum: CrateNum) {
         self.dependencies.push(cnum);
+    }
+
+    pub(crate) fn target_modifiers(&self) -> TargetModifiers {
+        self.root.decode_target_modifiers(&self.blob).collect()
     }
 
     pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {
