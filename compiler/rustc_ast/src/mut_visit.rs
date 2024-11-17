@@ -307,6 +307,10 @@ pub trait MutVisitor: Sized {
         walk_mt(self, mt);
     }
 
+    fn visit_expr_field(&mut self, f: &mut ExprField) {
+        walk_expr_field(self, f);
+    }
+
     fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
         walk_flat_map_expr_field(self, f)
     }
@@ -1108,16 +1112,20 @@ pub fn walk_flat_map_field_def<T: MutVisitor>(
     smallvec![fd]
 }
 
-pub fn walk_flat_map_expr_field<T: MutVisitor>(
-    vis: &mut T,
-    mut f: ExprField,
-) -> SmallVec<[ExprField; 1]> {
-    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
+pub fn walk_expr_field<T: MutVisitor>(vis: &mut T, f: &mut ExprField) {
+    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
     vis.visit_expr(expr);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_expr_field<T: MutVisitor>(
+    vis: &mut T,
+    mut f: ExprField,
+) -> SmallVec<[ExprField; 1]> {
+    vis.visit_expr_field(&mut f);
     smallvec![f]
 }
 
