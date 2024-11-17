@@ -1771,8 +1771,37 @@ impl Config {
                 std_features: std_features_toml,
             } = rust;
 
-            config.download_rustc_commit =
-                config.download_ci_rustc_commit(download_rustc, config.llvm_assertions);
+            // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
+            // enabled. We should not download a CI alt rustc if we need rustc to have debug
+            // assertions (e.g. for crashes test suite). This can be changed once something like
+            // [Enable debug assertions on alt
+            // builds](https://github.com/rust-lang/rust/pull/131077) lands.
+            //
+            // Note that `rust.debug = true` currently implies `rust.debug-assertions = true`!
+            //
+            // This relies also on the fact that the global default for `download-rustc` will be
+            // `false` if it's not explicitly set.
+            let debug_assertions_requested = matches!(rustc_debug_assertions_toml, Some(true))
+                || (matches!(debug_toml, Some(true))
+                    && !matches!(rustc_debug_assertions_toml, Some(false)));
+
+            if debug_assertions_requested {
+                if let Some(ref opt) = download_rustc {
+                    if opt.is_string_or_true() {
+                        eprintln!(
+                            "WARN: currently no CI rustc builds have rustc debug assertions \
+                            enabled. Please either set `rust.debug-assertions` to `false` if you \
+                            want to use download CI rustc or set `rust.download-rustc` to `false`."
+                        );
+                    }
+                }
+            }
+
+            config.download_rustc_commit = config.download_ci_rustc_commit(
+                download_rustc,
+                debug_assertions_requested,
+                config.llvm_assertions,
+            );
 
             debug = debug_toml;
             rustc_debug_assertions = rustc_debug_assertions_toml;
@@ -2778,6 +2807,7 @@ impl Config {
     fn download_ci_rustc_commit(
         &self,
         download_rustc: Option<StringOrBool>,
+        debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
         if !is_download_ci_available(&self.build.triple, llvm_assertions) {
@@ -2786,9 +2816,9 @@ impl Config {
 
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
-            // Globally default for `download-rustc` to `false`, because some contributors don't use
+            // Globally default `download-rustc` to `false`, because some contributors don't use
             // profiles for reasons such as:
-            // - They need to seemlessly switch between compiler/library work.
+            // - They need to seamlessly switch between compiler/library work.
             // - They don't want to use compiler profile because they need to override too many
             //   things and it's easier to not use a profile.
             None | Some(StringOrBool::Bool(false)) => return None,
@@ -2845,6 +2875,14 @@ impl Config {
             eprintln!("CI rustc commit matches with HEAD and we are in CI.");
             eprintln!(
                 "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
+        }
+
+        if debug_assertions_requested {
+            eprintln!(
+                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
+                rustc is not currently built with debug assertions."
             );
             return None;
         }
