@@ -2830,9 +2830,10 @@ pub(crate) struct DynAfterMut {
 pub(crate) struct FnPointerCannotBeConst {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     #[label]
     pub qualifier: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2840,9 +2841,10 @@ pub(crate) struct FnPointerCannotBeConst {
 pub(crate) struct FnPointerCannotBeAsync {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     #[label]
     pub qualifier: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
