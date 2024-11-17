@@ -27,7 +27,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, ClauseKind, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_middle::util::CallKind;
@@ -649,11 +649,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) -> Option<ty::Mutability> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
-        let clauses = tcx.predicates_of(callee_did).instantiate_identity(self.infcx.tcx).predicates;
+        let clauses = tcx.predicates_of(callee_did);
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
-        if !clauses.iter().any(|clause| {
+        if !clauses.instantiate_identity(tcx).predicates.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
@@ -700,23 +700,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return false;
             }
 
-            // Test the callee's predicates, substituting a reference in for the self ty
-            // in bounds on `param`.
-            clauses.iter().all(|&clause| {
-                let clause_for_ref = clause.kind().map_bound(|kind| match kind {
-                    ClauseKind::Trait(c) if c.self_ty().is_param(param.index) => {
-                        ClauseKind::Trait(c.with_self_ty(tcx, ref_ty))
-                    }
-                    ClauseKind::Projection(c) if c.self_ty().is_param(param.index) => {
-                        ClauseKind::Projection(c.with_self_ty(tcx, ref_ty))
-                    }
-                    _ => kind,
-                });
+            // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
+            clauses.instantiate(tcx, new_args).predicates.iter().all(|&(mut clause)| {
+                // Normalize before testing to see through type aliases and projections.
+                if let Ok(normalized) = tcx.try_normalize_erasing_regions(self.param_env, clause) {
+                    clause = normalized;
+                }
                 self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
                     tcx,
                     ObligationCause::dummy(),
                     self.param_env,
-                    ty::EarlyBinder::bind(clause_for_ref).instantiate(tcx, generic_args),
+                    clause,
                 ))
             })
         }) {
