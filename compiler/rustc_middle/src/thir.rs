@@ -788,10 +788,8 @@ pub enum PatKind<'tcx> {
         value: mir::Const<'tcx>,
     },
 
-    /// Inline or named constant found while lowering a pattern.
-    ///
-    /// We only mark patterns referencing constants when they are bare names that could have been
-    /// new bindings if the `const` didn't exist.
+    /// Pattern obtained by converting a constant (inline or named) to its pattern
+    /// representation using `const_to_pat`.
     ExpandedConstant {
         /// [DefId] of the constant, we need this so that we have a
         /// reference that can be used by unsafety checking to visit nested
