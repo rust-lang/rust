@@ -21,7 +21,6 @@
 #![feature(const_eval_select)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
-#![feature(const_pin_2)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
