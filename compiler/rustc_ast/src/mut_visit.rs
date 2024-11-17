@@ -207,6 +207,10 @@ pub trait MutVisitor: Sized {
         walk_foreign_mod(self, nm);
     }
 
+    fn visit_variant(&mut self, v: &mut Variant) {
+        walk_variant(self, v);
+    }
+
     fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
         walk_flat_map_variant(self, v)
     }
@@ -551,11 +555,8 @@ fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
-pub fn walk_flat_map_variant<T: MutVisitor>(
-    visitor: &mut T,
-    mut variant: Variant,
-) -> SmallVec<[Variant; 1]> {
-    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
+pub fn walk_variant<T: MutVisitor>(visitor: &mut T, variant: &mut Variant) {
+    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
@@ -563,6 +564,13 @@ pub fn walk_flat_map_variant<T: MutVisitor>(
     visitor.visit_variant_data(data);
     visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_variant<T: MutVisitor>(
+    vis: &mut T,
+    mut variant: Variant,
+) -> SmallVec<[Variant; 1]> {
+    vis.visit_variant(&mut variant);
     smallvec![variant]
 }
 
