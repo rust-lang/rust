@@ -511,12 +511,16 @@ pub(crate) fn handle_document_diagnostics(
         .into_iter()
         .filter_map(|d| {
             let file = d.range.file_id;
-            let diagnostic = convert_diagnostic(&line_index, d);
             if file == file_id {
+                let diagnostic = convert_diagnostic(&line_index, d);
                 return Some(diagnostic);
             }
             if supports_related {
-                related_documents.entry(file).or_insert_with(Vec::new).push(diagnostic);
+                let (diagnostics, line_index) = related_documents
+                    .entry(file)
+                    .or_insert_with(|| (Vec::new(), snap.file_line_index(file).ok()));
+                let diagnostic = convert_diagnostic(line_index.as_mut()?, d);
+                diagnostics.push(diagnostic);
             }
             None
         });
@@ -529,7 +533,7 @@ pub(crate) fn handle_document_diagnostics(
             related_documents: related_documents.is_empty().not().then(|| {
                 related_documents
                     .into_iter()
-                    .map(|(id, items)| {
+                    .map(|(id, (items, _))| {
                         (
                             to_proto::url(&snap, id),
                             lsp_types::DocumentDiagnosticReportKind::Full(
