@@ -5,15 +5,16 @@ impl TestCx<'_> {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
 
-        if std::env::var("COMPILETEST_VERBOSE_CRASHES").is_ok() {
-            eprintln!("{}", proc_res.status);
-            eprintln!("{}", proc_res.stdout);
-            eprintln!("{}", proc_res.stderr);
-            eprintln!("{}", proc_res.cmdline);
-        }
-
         // if a test does not crash, consider it an error
         if proc_res.status.success() || matches!(proc_res.status.code(), Some(1 | 0)) {
+            // HACK(jieyouxu): flip it so it verbose if the test *fails* to crash.
+            if std::env::var("COMPILETEST_VERBOSE_CRASHES").is_ok() {
+                eprintln!("{}", proc_res.status);
+                eprintln!("{}", proc_res.stdout);
+                eprintln!("{}", proc_res.stderr);
+                eprintln!("{}", proc_res.cmdline);
+            }
+
             self.fatal(&format!(
                 "crashtest no longer crashes/triggers ICE, horray! Please give it a meaningful \
                 name, add a doc-comment to the start of the test explaining why it exists and \
