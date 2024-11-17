@@ -263,6 +263,12 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     }
 
     /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
+    /// Returns `2` if the result is unknown.
+    /// Returns `1` if the pointers are guaranteed equal.
+    /// Returns `0` if the pointers are guaranteed inequal.
+    ///
+    /// Note that this intrinsic is exposed on stable for comparison with null. In other words, any
+    /// change to this function that affects comparison with null is insta-stable!
     fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.

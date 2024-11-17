@@ -64,8 +64,6 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_no_mir_inline]
             #[inline]
             #[rustc_nounwind]
-            #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
-            #[rustc_allow_const_fn_unstable(const_ptr_is_null, const_ub_checks)] // only for UB checks
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(
@@ -116,12 +114,16 @@ pub(crate) const fn check_language_ub() -> bool {
 /// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
 /// check is anyway not executed in `const`.
 #[inline]
-#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
-pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize, is_zst: bool) -> bool {
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(crate) const fn maybe_is_aligned_and_not_null(
+    ptr: *const (),
+    align: usize,
+    is_zst: bool,
+) -> bool {
     // This is just for safety checks so we can const_eval_select.
     const_eval_select!(
         @capture { ptr: *const (), align: usize, is_zst: bool } -> bool:
-        if const #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")] {
+        if const {
             is_zst || !ptr.is_null()
         } else {
             ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
@@ -141,8 +143,8 @@ pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 /// Note that in const-eval this function just returns `true` and therefore must
 /// only be used with `assert_unsafe_precondition!`, similar to `is_aligned_and_not_null`.
 #[inline]
-#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
-pub(crate) const fn is_nonoverlapping(
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(crate) const fn maybe_is_nonoverlapping(
     src: *const (),
     dst: *const (),
     size: usize,
