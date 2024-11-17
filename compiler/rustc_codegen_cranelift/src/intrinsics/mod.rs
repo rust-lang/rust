@@ -453,11 +453,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());
         }
-        sym::likely | sym::unlikely => {
-            intrinsic_args!(fx, args => (a); intrinsic);
-
-            ret.write_cvalue(fx, a);
-        }
         sym::breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
 
@@ -1265,6 +1260,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
             );
+        }
+
+        sym::cold_path => {
+            // This is a no-op. The intrinsic is just a hint to the optimizer.
         }
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
