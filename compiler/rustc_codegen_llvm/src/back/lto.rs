@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::path::Path;
+use std::ptr::NonNull;
 use std::sync::Arc;
 use std::{io, iter, slice};
 
@@ -655,14 +656,14 @@ pub(crate) fn run_pass_manager(
     }
 
     unsafe {
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, stage)?;
+        write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
     }
 
     if cfg!(llvm_enzyme) && enable_ad {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         unsafe {
-            write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, stage)?;
+            write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
         }
 
         // This is the final IR, so people should be able to inspect the optimized autodiff output.
@@ -728,6 +729,11 @@ impl ThinBuffer {
             let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
             ThinBuffer(buffer)
         }
+    }
+
+    pub unsafe fn from_raw_ptr(ptr: *mut llvm::ThinLTOBuffer) -> ThinBuffer {
+        let mut ptr = NonNull::new(ptr).unwrap();
+        ThinBuffer(unsafe { ptr.as_mut() })
     }
 }
 

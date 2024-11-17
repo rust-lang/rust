@@ -626,6 +626,9 @@ fn produce_final_output_artifacts(
                 // them for making an rlib.
                 copy_if_one_unit(OutputType::Bitcode, true);
             }
+            OutputType::ThinBitcode => {
+                copy_if_one_unit(OutputType::ThinBitcode, true);
+            }
             OutputType::ThinLinkBitcode => {
                 copy_if_one_unit(OutputType::ThinLinkBitcode, false);
             }
