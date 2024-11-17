@@ -263,6 +263,10 @@ pub trait MutVisitor: Sized {
         walk_attribute(self, at);
     }
 
+    fn visit_param(&mut self, param: &mut Param) {
+        walk_param(self, param);
+    }
+
     fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
         walk_flat_map_param(self, param)
     }
@@ -701,13 +705,17 @@ fn walk_meta_item<T: MutVisitor>(vis: &mut T, mi: &mut MetaItem) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
-    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
+pub fn walk_param<T: MutVisitor>(vis: &mut T, param: &mut Param) {
+    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
+    vis.visit_param(&mut param);
     smallvec![param]
 }
 
