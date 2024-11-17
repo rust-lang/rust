@@ -331,6 +331,7 @@ pub(crate) fn differentiate<'ll, 'tcx>(
                 cgcx,
                 diag_handler.handle(),
                 module,
+                None,
                 config,
                 opt_level,
                 opt_stage,
