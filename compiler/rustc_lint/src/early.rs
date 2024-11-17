@@ -230,15 +230,16 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
-        self.with_lint_attrs(item.id, &item.attrs, |cx| match ctxt {
-            ast_visit::AssocCtxt::Trait => {
-                lint_callback!(cx, check_trait_item, item);
-                ast_visit::walk_assoc_item(cx, item, ctxt);
+        self.with_lint_attrs(item.id, &item.attrs, |cx| {
+            match ctxt {
+                ast_visit::AssocCtxt::Trait => {
+                    lint_callback!(cx, check_trait_item, item);
+                }
+                ast_visit::AssocCtxt::Impl => {
+                    lint_callback!(cx, check_impl_item, item);
+                }
             }
-            ast_visit::AssocCtxt::Impl => {
-                lint_callback!(cx, check_impl_item, item);
-                ast_visit::walk_assoc_item(cx, item, ctxt);
-            }
+            ast_visit::walk_assoc_item(cx, item, ctxt);
         });
     }
 

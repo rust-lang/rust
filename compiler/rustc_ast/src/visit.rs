@@ -463,13 +463,6 @@ impl WalkItemKind for ItemKind {
     }
 }
 
-pub fn walk_item<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    item: &'a Item<impl WalkItemKind<Ctxt = ()>>,
-) -> V::Result {
-    walk_assoc_item(visitor, item, ())
-}
-
 pub fn walk_enum_def<'a, V: Visitor<'a>>(
     visitor: &mut V,
     EnumDef { variants }: &'a EnumDef,
@@ -931,7 +924,22 @@ impl WalkItemKind for AssocItemKind {
     }
 }
 
-pub fn walk_assoc_item<'a, V: Visitor<'a>, K: WalkItemKind>(
+pub fn walk_item<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    item: &'a Item<impl WalkItemKind<Ctxt = ()>>,
+) -> V::Result {
+    walk_item_ctxt(visitor, item, ())
+}
+
+pub fn walk_assoc_item<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    item: &'a AssocItem,
+    ctxt: AssocCtxt,
+) -> V::Result {
+    walk_item_ctxt(visitor, item, ctxt)
+}
+
+fn walk_item_ctxt<'a, V: Visitor<'a>, K: WalkItemKind>(
     visitor: &mut V,
     item: &'a Item<K>,
     ctxt: K::Ctxt,

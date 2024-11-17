@@ -1382,7 +1382,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self)
+        walk_flat_map_foreign_item(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
