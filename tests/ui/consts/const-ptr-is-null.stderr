@@ -8,7 +8,7 @@ note: inside `std::ptr::const_ptr::<impl *const T>::is_null::compiletime`
 note: inside `std::ptr::const_ptr::<impl *const i32>::is_null`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `MAYBE_NULL`
-  --> $DIR/const-ptr-is-null.rs:17:14
+  --> $DIR/const-ptr-is-null.rs:16:14
    |
 LL |     assert!(!ptr.wrapping_sub(512).is_null());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
