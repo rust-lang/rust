@@ -116,7 +116,7 @@ use crate::vec::Vec;
 /// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
 /// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
 /// is a variable width encoding, `String`s are typically smaller than an array of
-/// the same `chars`:
+/// the same `char`s:
 ///
 /// ```
 /// use std::mem;
