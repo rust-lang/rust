@@ -3,7 +3,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
-use crate::framework::{ResultsVisitable, ResultsVisitor, visit_results};
+use crate::framework::{Analysis, Results, ResultsVisitor, visit_results};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 pub struct DenseLocationMap {
@@ -95,14 +95,14 @@ rustc_index::newtype_index! {
 }
 
 /// Add points depending on the result of the given dataflow analysis.
-pub fn save_as_intervals<'tcx, N, R>(
+pub fn save_as_intervals<'tcx, N, A>(
     elements: &DenseLocationMap,
     body: &mir::Body<'tcx>,
-    mut results: R,
+    mut results: Results<'tcx, A>,
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
-    R: ResultsVisitable<'tcx, Domain = BitSet<N>>,
+    A: Analysis<'tcx, Domain = BitSet<N>>,
 {
     let values = SparseIntervalMatrix::new(elements.num_points());
     let mut visitor = Visitor { elements, values };
@@ -120,16 +120,15 @@ struct Visitor<'a, N: Idx> {
     values: SparseIntervalMatrix<N, PointIndex>,
 }
 
-impl<'mir, 'tcx, R, N> ResultsVisitor<'mir, 'tcx, R> for Visitor<'_, N>
+impl<'mir, 'tcx, A, N> ResultsVisitor<'mir, 'tcx, A> for Visitor<'_, N>
 where
+    A: Analysis<'tcx, Domain = BitSet<N>>,
     N: Idx,
 {
-    type Domain = BitSet<N>;
-
     fn visit_statement_after_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, A>,
+        state: &A::Domain,
         _statement: &'mir mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -142,8 +141,8 @@ where
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, A>,
+        state: &A::Domain,
         _terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) {

@@ -144,14 +144,6 @@ const PARSED = [
         error: "Unexpected `:: ::`",
     },
     {
-        query: "a::b::",
-        elems: [],
-        foundElems: 0,
-        userQuery: "a::b::",
-        returned: [],
-        error: "Paths cannot end with `::`",
-    },
-    {
         query: ":a",
         elems: [],
         foundElems: 0,

@@ -1,91 +1,169 @@
+use std::fmt;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Body, Location, Place, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
+};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir_dataflow::{Analysis, Forward, GenKill, Results, ResultsVisitable};
+use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice, SwitchIntEdgeEffects};
 use tracing::debug;
 
 use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
 
-/// The results of the dataflow analyses used by the borrow checker.
-pub(crate) struct BorrowckResults<'a, 'tcx> {
-    pub(crate) borrows: Results<'tcx, Borrows<'a, 'tcx>>,
-    pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'a, 'tcx>>,
-    pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'a, 'tcx>>,
+// This analysis is different to most others. Its results aren't computed with
+// `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
+// computed individually with `iterate_to_fixpoint`.
+pub(crate) struct Borrowck<'a, 'tcx> {
+    pub(crate) borrows: Borrows<'a, 'tcx>,
+    pub(crate) uninits: MaybeUninitializedPlaces<'a, 'tcx>,
+    pub(crate) ever_inits: EverInitializedPlaces<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
+    type Domain = BorrowckDomain<'a, 'tcx>;
+
+    const NAME: &'static str = "borrowck";
+
+    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
+        BorrowckDomain {
+            borrows: self.borrows.bottom_value(body),
+            uninits: self.uninits.bottom_value(body),
+            ever_inits: self.ever_inits.bottom_value(body),
+        }
+    }
+
+    fn initialize_start_block(&self, _body: &mir::Body<'tcx>, _state: &mut Self::Domain) {
+        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
+        unreachable!();
+    }
+
+    fn apply_before_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.apply_before_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_before_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn apply_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        stmt: &mir::Statement<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.apply_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_statement_effect(&mut state.ever_inits, stmt, loc);
+    }
+
+    fn apply_before_terminator_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        term: &mir::Terminator<'tcx>,
+        loc: Location,
+    ) {
+        self.borrows.apply_before_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_before_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
+    }
+
+    fn apply_terminator_effect<'mir>(
+        &mut self,
+        state: &mut Self::Domain,
+        term: &'mir mir::Terminator<'tcx>,
+        loc: Location,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        self.borrows.apply_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_terminator_effect(&mut state.ever_inits, term, loc);
+
+        // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
+        // analysis doesn't use.
+        TerminatorEdges::None
+    }
+
+    fn apply_call_return_effect(
+        &mut self,
+        _state: &mut Self::Domain,
+        _block: BasicBlock,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
+        unreachable!();
+    }
+
+    fn apply_switch_int_edge_effects(
+        &mut self,
+        _block: BasicBlock,
+        _discr: &mir::Operand<'tcx>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+    ) {
+        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
+        unreachable!();
+    }
+}
+
+impl JoinSemiLattice for BorrowckDomain<'_, '_> {
+    fn join(&mut self, _other: &Self) -> bool {
+        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
+        unreachable!();
+    }
+}
+
+impl<'tcx, C> DebugWithContext<C> for BorrowckDomain<'_, 'tcx>
+where
+    C: rustc_mir_dataflow::move_paths::HasMoveData<'tcx>,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("borrows: ")?;
+        self.borrows.fmt_with(ctxt, f)?;
+        f.write_str(" uninits: ")?;
+        self.uninits.fmt_with(ctxt, f)?;
+        f.write_str(" ever_inits: ")?;
+        self.ever_inits.fmt_with(ctxt, f)?;
+        Ok(())
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self == old {
+            return Ok(());
+        }
+
+        if self.borrows != old.borrows {
+            f.write_str("borrows: ")?;
+            self.borrows.fmt_diff_with(&old.borrows, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        if self.uninits != old.uninits {
+            f.write_str("uninits: ")?;
+            self.uninits.fmt_diff_with(&old.uninits, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        if self.ever_inits != old.ever_inits {
+            f.write_str("ever_inits: ")?;
+            self.ever_inits.fmt_diff_with(&old.ever_inits, ctxt, f)?;
+            f.write_str("\n")?;
+        }
+
+        Ok(())
+    }
 }
 
 /// The transient state of the dataflow analyses used by the borrow checker.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BorrowckDomain<'a, 'tcx> {
     pub(crate) borrows: <Borrows<'a, 'tcx> as Analysis<'tcx>>::Domain,
     pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
     pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
-}
-
-impl<'a, 'tcx> ResultsVisitable<'tcx> for BorrowckResults<'a, 'tcx> {
-    type Direction = Forward;
-    type Domain = BorrowckDomain<'a, 'tcx>;
-
-    fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BorrowckDomain {
-            borrows: self.borrows.analysis.bottom_value(body),
-            uninits: self.uninits.analysis.bottom_value(body),
-            ever_inits: self.ever_inits.analysis.bottom_value(body),
-        }
-    }
-
-    fn reset_to_block_entry(&self, state: &mut Self::Domain, block: BasicBlock) {
-        state.borrows.clone_from(self.borrows.entry_set_for_block(block));
-        state.uninits.clone_from(self.uninits.entry_set_for_block(block));
-        state.ever_inits.clone_from(self.ever_inits.entry_set_for_block(block));
-    }
-
-    fn reconstruct_before_statement_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        stmt: &mir::Statement<'tcx>,
-        loc: Location,
-    ) {
-        self.borrows.analysis.apply_before_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.analysis.apply_before_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.analysis.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
-    }
-
-    fn reconstruct_statement_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        stmt: &mir::Statement<'tcx>,
-        loc: Location,
-    ) {
-        self.borrows.analysis.apply_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.analysis.apply_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.analysis.apply_statement_effect(&mut state.ever_inits, stmt, loc);
-    }
-
-    fn reconstruct_before_terminator_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        term: &mir::Terminator<'tcx>,
-        loc: Location,
-    ) {
-        self.borrows.analysis.apply_before_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.analysis.apply_before_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.analysis.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
-    }
-
-    fn reconstruct_terminator_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        term: &mir::Terminator<'tcx>,
-        loc: Location,
-    ) {
-        self.borrows.analysis.apply_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.analysis.apply_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.analysis.apply_terminator_effect(&mut state.ever_inits, term, loc);
-    }
 }
 
 rustc_index::newtype_index! {
