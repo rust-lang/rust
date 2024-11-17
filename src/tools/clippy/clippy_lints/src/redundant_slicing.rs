@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
             let (expr_ty, expr_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(expr));
             let (indexed_ty, indexed_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(indexed));
             let parent_expr = get_parent_expr(cx, expr);
-            let needs_parens_for_prefix = parent_expr.is_some_and(|parent| parent.precedence().order() > PREC_PREFIX);
+            let needs_parens_for_prefix = parent_expr.is_some_and(|parent| parent.precedence() > PREC_PREFIX);
 
             if expr_ty == indexed_ty {
                 if expr_ref_count > indexed_ref_count {

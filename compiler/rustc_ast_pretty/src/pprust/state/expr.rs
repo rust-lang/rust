@@ -59,7 +59,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_maybe_paren(&mut self, expr: &ast::Expr, prec: i8, fixup: FixupContext) {
-        self.print_expr_cond_paren(expr, expr.precedence().order() < prec, fixup);
+        self.print_expr_cond_paren(expr, expr.precedence() < prec, fixup);
     }
 
     /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
@@ -615,7 +615,7 @@ impl<'a> State<'a> {
                         expr,
                         // Parenthesize if required by precedence, or in the
                         // case of `break 'inner: loop { break 'inner 1 } + 1`
-                        expr.precedence().order() < parser::PREC_JUMP
+                        expr.precedence() < parser::PREC_JUMP
                             || (opt_label.is_none() && classify::leading_labeled_expr(expr)),
                         fixup.subsequent_subexpression(),
                     );
