@@ -2,6 +2,12 @@
 name = "clippy_utils"
 version = "0.1.84"
 edition = "2021"
+description = "Helpful tools for writing lints, provided as they are used in Clippy"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["clippy", "lint", "utils"]
+categories = ["development-tools"]
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
