@@ -838,7 +838,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
     ),
     rustc_attr!(
-        rustc_const_stable_intrinsic, Normal,
+        rustc_intrinsic_const_stable_indirect, Normal,
         template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
     ),
     gated!(
