@@ -116,6 +116,10 @@ pub trait MutVisitor: Sized {
         walk_fn_header(self, header);
     }
 
+    fn visit_field_def(&mut self, fd: &mut FieldDef) {
+        walk_field_def(self, fd);
+    }
+
     fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
         walk_flat_map_field_def(self, fd)
     }
@@ -1050,17 +1054,21 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_field_def<T: MutVisitor>(
-    visitor: &mut T,
-    mut fd: FieldDef,
-) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_field_def<T: MutVisitor>(
+    vis: &mut T,
+    mut fd: FieldDef,
+) -> SmallVec<[FieldDef; 1]> {
+    vis.visit_field_def(&mut fd);
     smallvec![fd]
 }
 
