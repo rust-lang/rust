@@ -24,10 +24,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+ENV COMPILETEST_VERBOSE_CRASHES 1
 ENV RUST_CONFIGURE_ARGS \
- --build=x86_64-unknown-linux-gnu \
- --enable-sanitizers \
- --enable-profiler \
- --enable-compiler-docs \
- --set llvm.libzstd=true
-ENV SCRIPT python3 ../x.py --stage 2 test
+  --build=x86_64-unknown-linux-gnu \
+  --enable-sanitizers \
+  --enable-profiler \
+  --enable-compiler-docs \
+  --set llvm.libzstd=true \
+  # HACK(jieyouxu): do not download-rustc!
+  --set rust.download-rustc=false
+# HACK(jieyouxu): faster feedback
+ENV SCRIPT python3 ../x.py --stage 1 test tests/crashes
