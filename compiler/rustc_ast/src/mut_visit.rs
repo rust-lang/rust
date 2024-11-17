@@ -335,6 +335,10 @@ pub trait MutVisitor: Sized {
         // Do nothing.
     }
 
+    fn visit_pat_field(&mut self, fp: &mut PatField) {
+        walk_pat_field(self, fp)
+    }
+
     fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
         walk_flat_map_pat_field(self, fp)
     }
@@ -449,16 +453,20 @@ pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &
     vis.visit_span(close);
 }
 
-pub fn walk_flat_map_pat_field<T: MutVisitor>(
-    vis: &mut T,
-    mut fp: PatField,
-) -> SmallVec<[PatField; 1]> {
-    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+pub fn walk_pat_field<T: MutVisitor>(vis: &mut T, fp: &mut PatField) {
+    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
     vis.visit_pat(pat);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_pat_field<T: MutVisitor>(
+    vis: &mut T,
+    mut fp: PatField,
+) -> SmallVec<[PatField; 1]> {
+    vis.visit_pat_field(&mut fp);
     smallvec![fp]
 }
 
