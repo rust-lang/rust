@@ -157,6 +157,10 @@ pub trait MutVisitor: Sized {
         walk_flat_map_stmt(self, s)
     }
 
+    fn visit_arm(&mut self, arm: &mut Arm) {
+        walk_arm(self, arm);
+    }
+
     fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
         walk_flat_map_arm(self, arm)
     }
@@ -463,14 +467,18 @@ fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
+pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     visit_opt(body, |body| vis.visit_expr(body));
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
+    vis.visit_arm(&mut arm);
     smallvec![arm]
 }
 
