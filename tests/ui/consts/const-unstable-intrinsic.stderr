@@ -74,7 +74,7 @@ error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
 LL |     unsafe { copy(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_intrinsic]` (but this requires team approval)
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
   --> $DIR/const-unstable-intrinsic.rs:61:9

@@ -760,7 +760,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
                             // can be *directly* invoked from stable const code) does not always
-                            // have the `#[rustc_const_stable_intrinsic]` attribute (which controls
+                            // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls
                             // exposing an intrinsic indirectly); we accept this call anyway.
                         }
                     }
