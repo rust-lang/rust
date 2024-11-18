@@ -367,21 +367,22 @@ trigger_files = [
 
 [autolabel."T-bootstrap"]
 trigger_files = [
-    "x.py",
-    "x",
-    "x.ps1",
+    "Cargo.toml",
+    "configure",
+    "config.example.toml",
     "src/bootstrap",
+    "src/build_helper",
     "src/tools/rust-installer",
     "src/tools/x",
-    "configure",
-    "Cargo.toml",
-    "config.example.toml",
     "src/stage0",
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
     "src/tools/libcxx-version",
     "src/tools/rustc-perf-wrapper",
+    "x.py",
+    "x",
+    "x.ps1"
 ]
 
 [autolabel."T-infra"]
