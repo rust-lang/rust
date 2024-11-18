@@ -1053,9 +1053,17 @@ class RoaringBitmap {
     contains(keyvalue) {
         const key = keyvalue >> 16;
         const value = keyvalue & 0xFFFF;
-        for (let i = 0; i < this.keys.length; ++i) {
-            if (this.keys[i] === key) {
-                return this.containers[i].contains(value);
+        let left = 0;
+        let right = this.keys.length - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const x = this.keys[mid];
+            if (x < key) {
+                left = mid + 1;
+            } else if (x > key) {
+                right = mid - 1;
+            } else {
+                return this.containers[mid].contains(value);
             }
         }
         return false;
@@ -1068,11 +1076,18 @@ class RoaringBitmapRun {
         this.array = array;
     }
     contains(value) {
-        const l = this.runcount * 4;
-        for (let i = 0; i < l; i += 4) {
+        let left = 0;
+        let right = this.runcount - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const i = mid * 4;
             const start = this.array[i] | (this.array[i + 1] << 8);
             const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
-            if (value >= start && value <= (start + lenm1)) {
+            if ((start + lenm1) < value) {
+                left = mid + 1;
+            } else if (start > value) {
+                right = mid - 1;
+            } else {
                 return true;
             }
         }
@@ -1085,10 +1100,17 @@ class RoaringBitmapArray {
         this.array = array;
     }
     contains(value) {
-        const l = this.cardinality * 2;
-        for (let i = 0; i < l; i += 2) {
-            const start = this.array[i] | (this.array[i + 1] << 8);
-            if (value === start) {
+        let left = 0;
+        let right = this.cardinality - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const i = mid * 2;
+            const x = this.array[i] | (this.array[i + 1] << 8);
+            if (x < value) {
+                left = mid + 1;
+            } else if (x > value) {
+                right = mid - 1;
+            } else {
                 return true;
             }
         }
