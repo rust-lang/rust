@@ -36,7 +36,7 @@ pub(crate) enum LinkFromSrc {
 /// It returns the `krate`, the source code files and the `span` correspondence map.
 ///
 /// Note about the `span` correspondence map: the keys are actually `(lo, hi)` of `span`s. We don't
-/// need the `span` context later on, only their position, so instead of keep a whole `Span`, we
+/// need the `span` context later on, only their position, so instead of keeping a whole `Span`, we
 /// only keep the `lo` and `hi`.
 pub(crate) fn collect_spans_and_sources(
     tcx: TyCtxt<'_>,
@@ -45,9 +45,9 @@ pub(crate) fn collect_spans_and_sources(
     include_sources: bool,
     generate_link_to_definition: bool,
 ) -> (FxIndexMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
-    let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
-
     if include_sources {
+        let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
+
         if generate_link_to_definition {
             tcx.hir().walk_toplevel_module(&mut visitor);
         }
@@ -76,7 +76,22 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 } else {
                     LinkFromSrc::External(def_id)
                 };
-                self.matches.insert(path.span, link);
+                // In case the path ends with generics, we remove them from the span.
+                let span = path
+                    .segments
+                    .last()
+                    .map(|last| {
+                        // In `use` statements, the included item is not in the path segments.
+                        // However, it doesn't matter because you can't have generics on `use`
+                        // statements.
+                        if path.span.contains(last.ident.span) {
+                            path.span.with_hi(last.ident.span.hi())
+                        } else {
+                            path.span
+                        }
+                    })
+                    .unwrap_or(path.span);
+                self.matches.insert(span, link);
             }
             Res::Local(_) => {
                 if let Some(span) = self.tcx.hir().res_span(path.res) {
