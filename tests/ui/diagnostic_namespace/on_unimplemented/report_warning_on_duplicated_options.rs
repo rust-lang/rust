@@ -1,3 +1,4 @@
+//@ reference: attributes.diagnostic.on_unimplemented.repetition
 #[diagnostic::on_unimplemented(
     message = "first message",
     label = "first label",
