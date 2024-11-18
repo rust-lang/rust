@@ -278,22 +278,17 @@ pub trait Analysis<'tcx> {
         // every iteration.
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
-            let bb_data = &body[bb];
-
             // Set the state to the entry state of the block.
             // This is equivalent to `state = entry_sets[bb].clone()`,
             // but it saves an allocation, thus improving compile times.
             state.clone_from(&entry_sets[bb]);
 
-            // Apply the block transfer function, using the cached one if it exists.
-            let edges = Self::Direction::apply_effects_in_block(&mut self, &mut state, bb, bb_data);
-
-            Self::Direction::join_state_into_successors_of(
+            Self::Direction::apply_effects_in_block(
                 &mut self,
                 body,
                 &mut state,
                 bb,
-                edges,
+                &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
                     let set_changed = entry_sets[target].join(state);
                     if set_changed {
