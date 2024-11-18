@@ -9,9 +9,9 @@ use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
 
 pub trait Direction {
     const IS_FORWARD: bool;
-
     const IS_BACKWARD: bool = !Self::IS_FORWARD;
 
+    /// Called by `iterate_to_fixpoint` during initial analysis computation.
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &mut A,
         body: &mir::Body<'tcx>,
@@ -22,7 +22,8 @@ pub trait Direction {
     ) where
         A: Analysis<'tcx>;
 
-    /// Applies all effects between the given `EffectIndex`s.
+    /// Called by `ResultsCursor` to recompute the domain value for a location
+    /// in a basic block. Applies all effects between the given `EffectIndex`s.
     ///
     /// `effects.start()` must precede or equal `effects.end()` in this direction.
     fn apply_effects_in_range<'tcx, A>(
@@ -34,6 +35,9 @@ pub trait Direction {
     ) where
         A: Analysis<'tcx>;
 
+    /// Called by `ResultsVisitor` to recompute the analysis domain values for
+    /// all locations in a basic block (starting from the entry value stored
+    /// in `Results`) and to visit them with `vis`.
     fn visit_results_in_block<'mir, 'tcx, A>(
         state: &mut A::Domain,
         block: BasicBlock,
@@ -222,7 +226,6 @@ impl Direction for Backward {
 
         vis.visit_block_end(state);
 
-        // Terminator
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
         results.analysis.apply_before_terminator_effect(state, term, loc);

@@ -20,7 +20,9 @@ use crate::errors::{
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
 
-/// A dataflow analysis that has converged to fixpoint.
+/// A dataflow analysis that has converged to fixpoint. It only holds the domain values at the
+/// entry of each basic block. Domain values in other parts of the block are recomputed on the fly
+/// by visitors (i.e. `ResultsCursor`, or `ResultsVisitor` impls).
 #[derive(Clone)]
 pub struct Results<'tcx, A>
 where

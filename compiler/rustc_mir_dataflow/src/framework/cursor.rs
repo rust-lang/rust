@@ -8,12 +8,16 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
-/// Allows random access inspection of the results of a dataflow analysis.
+/// Allows random access inspection of the results of a dataflow analysis. Use this when you want
+/// to inspect domain values only in certain locations; use `ResultsVisitor` if you want to inspect
+/// domain values in many or all locations.
 ///
-/// This cursor only has linear performance within a basic block when its statements are visited in
-/// the same order as the `DIRECTION` of the analysis. In the worst case—when statements are
-/// visited in *reverse* order—performance will be quadratic in the number of statements in the
-/// block. The order in which basic blocks are inspected has no impact on performance.
+/// Because `Results` only has domain values for the entry of each basic block, these inspections
+/// involve some amount of domain value recomputations. This cursor only has linear performance
+/// within a basic block when its statements are visited in the same order as the `DIRECTION` of
+/// the analysis. In the worst case—when statements are visited in *reverse* order—performance will
+/// be quadratic in the number of statements in the block. The order in which basic blocks are
+/// inspected has no impact on performance.
 pub struct ResultsCursor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,

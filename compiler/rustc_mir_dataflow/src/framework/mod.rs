@@ -8,8 +8,9 @@
 //! The `impls` module contains several examples of dataflow analyses.
 //!
 //! Then call `iterate_to_fixpoint` on your type that impls `Analysis` to get a `Results`. From
-//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem,
-//! or implement the `ResultsVisitor` interface and use `visit_results`. The following example uses
+//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem
+//! (good for inspecting a small number of locations), or implement the `ResultsVisitor` interface
+//! and use `visit_results` (good for inspecting many or all locations). The following example uses
 //! the `ResultsCursor` approach.
 //!
 //! ```ignore (cross-crate-imports)
