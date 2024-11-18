@@ -299,6 +299,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_coroutine_kind(&mut self, _coroutine_kind: &'ast CoroutineKind) -> Self::Result {
         Self::Result::output()
     }
+    fn visit_fn_decl(&mut self, fn_decl: &'ast FnDecl) -> Self::Result {
+        walk_fn_decl(self, fn_decl)
+    }
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) -> V::Result {
@@ -518,7 +521,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
             let BareFnTy { safety: _, ext: _, generic_params, decl, decl_span: _ } =
                 &**function_declaration;
             walk_list!(visitor, visit_generic_param, generic_params);
-            try_visit!(walk_fn_decl(visitor, decl));
+            try_visit!(visitor.visit_fn_decl(decl));
         }
         TyKind::Path(maybe_qself, path) => {
             try_visit!(walk_qself(visitor, maybe_qself));
@@ -846,13 +849,13 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
             try_visit!(visitor.visit_generics(generics));
-            try_visit!(walk_fn_decl(visitor, decl));
+            try_visit!(visitor.visit_fn_decl(decl));
             visit_opt!(visitor, visit_block, body);
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
             visit_opt!(visitor, visit_coroutine_kind, coroutine_kind.as_ref());
-            try_visit!(walk_fn_decl(visitor, decl));
+            try_visit!(visitor.visit_fn_decl(decl));
             try_visit!(visitor.visit_expr(body));
         }
     }
