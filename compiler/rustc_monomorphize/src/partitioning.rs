@@ -1319,5 +1319,20 @@ pub(crate) fn provide(providers: &mut Providers) {
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 
+    providers.size_estimate = |tcx, instance| {
+        match instance.def {
+            // "Normal" functions size estimate: the number of
+            // statements, plus one for the terminator.
+            InstanceKind::Item(..)
+            | InstanceKind::DropGlue(..)
+            | InstanceKind::AsyncDropGlueCtorShim(..) => {
+                let mir = tcx.instance_mir(instance.def);
+                mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+            }
+            // Other compiler-generated shims size estimate: 1
+            _ => 1,
+        }
+    };
+
     collector::provide(providers);
 }

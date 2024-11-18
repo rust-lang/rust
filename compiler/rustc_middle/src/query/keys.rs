@@ -7,6 +7,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{DUMMY_SP, Span};
 
 use crate::infer::canonical::CanonicalQueryInput;
+use crate::mir::mono::CollectionMode;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
@@ -588,5 +589,13 @@ impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
             ty::Adt(adt, _) => Some(adt.did()),
             _ => None,
         }
+    }
+}
+
+impl<'tcx> Key for (ty::Instance<'tcx>, CollectionMode) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
     }
 }

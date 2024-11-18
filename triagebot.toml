@@ -997,7 +997,6 @@ compiler = [
     "@oli-obk",
     "@petrochenkov",
     "@pnkfelix",
-    "@TaKO8Ki",
     "@wesleywiser",
 ]
 libs = [
@@ -1048,7 +1047,6 @@ diagnostics = [
     "@davidtwco",
     "@estebank",
     "@oli-obk",
-    "@TaKO8Ki",
     "@chenyukang",
 ]
 parser = [

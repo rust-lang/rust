@@ -2683,6 +2683,13 @@ impl<'a> Parser<'a> {
                 //            ^^
                 //     }
                 //
+                // We account for macro calls that were meant as conditions as well.
+                //
+                //     if ... {
+                //     } else if macro! { foo bar } {
+                //            ^^
+                //     }
+                //
                 // If $cond is "statement-like" such as ExprKind::While then we
                 // want to suggest wrapping in braces.
                 //
@@ -2693,7 +2700,9 @@ impl<'a> Parser<'a> {
                 //     }
                 //     ^
                     if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
-                        && classify::expr_requires_semi_to_be_stmt(&cond) =>
+                        && (classify::expr_requires_semi_to_be_stmt(&cond)
+                            || matches!(cond.kind, ExprKind::MacCall(..)))
+                    =>
                 {
                     self.dcx().emit_err(errors::ExpectedElseBlock {
                         first_tok_span,
