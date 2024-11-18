@@ -18,6 +18,8 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
+use core::hint::unreachable_unchecked;
+
 use crate::core_arch::{simd::*, x86::*};
 use crate::intrinsics::simd::*;
 
@@ -178,6 +180,10 @@ pub unsafe fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
     let a = a.as_i8x32();
     let b = b.as_i8x32();
 
+    if IMM8 == 16 {
+        return transmute(a);
+    }
+
     let r: i8x32 = match IMM8 % 16 {
         0 => simd_shuffle!(
             b,
@@ -307,7 +313,7 @@ pub unsafe fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
                 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
             ],
         ),
-        _ => b,
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -5305,16 +5311,6 @@ mod tests {
         );
         assert_eq_m256i(r, expected);
 
-        #[rustfmt::skip]
-        let expected = _mm256_setr_epi8(
-            -1, -2, -3, -4, -5, -6, -7, -8,
-            -9, -10, -11, -12, -13, -14, -15, -16, -17,
-            -18, -19, -20, -21, -22, -23, -24, -25,
-            -26, -27, -28, -29, -30, -31, -32,
-        );
-        let r = _mm256_alignr_epi8::<16>(a, b);
-        assert_eq_m256i(r, expected);
-
         let r = _mm256_alignr_epi8::<15>(a, b);
         #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
@@ -5327,6 +5323,9 @@ mod tests {
 
         let r = _mm256_alignr_epi8::<0>(a, b);
         assert_eq_m256i(r, b);
+
+        let r = _mm256_alignr_epi8::<16>(a, b);
+        assert_eq_m256i(r, a);
     }
 
     #[simd_test(enable = "avx2")]
