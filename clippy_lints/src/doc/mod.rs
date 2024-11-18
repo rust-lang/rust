@@ -917,6 +917,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
                 let trimmed_text = text.trim();
                 headers.safety |= in_heading && trimmed_text == "Safety";
+                headers.safety |= in_heading && trimmed_text == "SAFETY";
                 headers.safety |= in_heading && trimmed_text == "Implementation safety";
                 headers.safety |= in_heading && trimmed_text == "Implementation Safety";
                 headers.errors |= in_heading && trimmed_text == "Errors";
