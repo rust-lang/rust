@@ -172,20 +172,22 @@ impl Iterator for ReadDir {
             let offset = if self.offset == self.cap {
                 let cookie = self.cookie.take()?;
                 match self.inner.dir.fd.readdir(&mut self.buf, cookie) {
-                    Ok(bytes) => self.cap = bytes,
+                    Ok(bytes) => {
+                        // No more entries if we read less than buffer size
+                        if bytes < self.buf.len() {
+                            self.cookie = None;
+                            if bytes == 0 {
+                                return None;
+                            }
+                        } else {
+                            self.cookie = Some(cookie);
+                        }
+                        self.cap = self.buf.len();
+                        self.offset = 0;
+                        0
+                    }
                     Err(e) => return Some(Err(e)),
                 }
-                self.offset = 0;
-                self.cookie = Some(cookie);
-
-                // If we didn't actually read anything, this is in theory the
-                // end of the directory.
-                if self.cap == 0 {
-                    self.cookie = None;
-                    return None;
-                }
-
-                0
             } else {
                 self.offset
             };
@@ -197,7 +199,6 @@ impl Iterator for ReadDir {
             // where we last left off.
             let dirent_size = mem::size_of::<wasi::Dirent>();
             if data.len() < dirent_size {
-                assert!(self.cookie.is_some());
                 assert!(self.buf.len() >= dirent_size);
                 self.offset = self.cap;
                 continue;
@@ -218,7 +219,9 @@ impl Iterator for ReadDir {
                 self.offset = self.cap;
                 continue;
             }
-            self.cookie = Some(dirent.d_next);
+            self.cookie.as_mut().map(|cookie| {
+                *cookie = dirent.d_next;
+            });
             self.offset = offset + dirent_size + dirent.d_namlen as usize;
 
             let name = &data[..(dirent.d_namlen as usize)];
