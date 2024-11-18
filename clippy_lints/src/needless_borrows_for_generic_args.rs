@@ -362,7 +362,7 @@ fn referent_used_exactly_once<'tcx>(
         let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
         if possible_borrowers
             .last()
-            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
+            .is_none_or(|&(local_def_id, _)| local_def_id != body_owner_local_def_id)
         {
             possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
         }

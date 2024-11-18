@@ -97,7 +97,7 @@ fn mutex_lock_call<'tcx>(
         && path.ident.as_str() == "lock"
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
         && is_type_diagnostic_item(cx, ty, sym::Mutex)
-        && op_mutex.map_or(true, |op| eq_expr_value(cx, self_arg, op))
+        && op_mutex.is_none_or(|op| eq_expr_value(cx, self_arg, op))
     {
         ControlFlow::Break(self_arg)
     } else {

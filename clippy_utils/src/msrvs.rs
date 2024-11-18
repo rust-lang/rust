@@ -121,7 +121,7 @@ impl Msrv {
     }
 
     pub fn meets(&self, required: RustcVersion) -> bool {
-        self.current().map_or(true, |msrv| msrv >= required)
+        self.current().is_none_or(|msrv| msrv >= required)
     }
 
     fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {

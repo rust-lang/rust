@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
             && parameters
                 .as_ref()
-                .map_or(true, |params| params.parenthesized == GenericArgsParentheses::No)
+                .is_none_or(|params| params.parenthesized == GenericArgsParentheses::No)
             && !item.span.from_expansion()
             && !is_from_proc_macro(cx, item)
         // expensive, should be last check

@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                 |diag| {
                     // If the target type is likely foreign mention the orphan rules as it's a common source of
                     // confusion
-                    if path_def_id(cx, target_ty.peel_refs()).map_or(true, |id| !id.is_local()) {
+                    if path_def_id(cx, target_ty.peel_refs()).is_none_or(|id| !id.is_local()) {
                         diag.help(
                             "`impl From<Local> for Foreign` is allowed by the orphan rules, for more information see\n\
                             https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence"
