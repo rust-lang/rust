@@ -155,6 +155,10 @@ chapter](ecosystem.md) for more details.
 A separate infrastructure is used for testing and tracking performance of the
 compiler. See the [Performance testing chapter](perf.md) for more details.
 
+## Miscellaneous information
+
+There are some other useful testing-related info at [Misc info](misc.md).
+
 ## Further reading
 
 The following blog posts may also be of interest:
