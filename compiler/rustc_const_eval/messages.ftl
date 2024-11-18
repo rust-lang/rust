@@ -403,7 +403,7 @@ const_eval_uninhabited_enum_variant_written =
 const_eval_unmarked_const_fn_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
     .help = either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
 const_eval_unmarked_intrinsic_exposed = intrinsic `{$def_path}` cannot be (indirectly) exposed to stable
-    .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_intrinsic]` (but this requires team approval)
+    .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =
