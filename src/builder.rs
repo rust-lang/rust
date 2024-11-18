@@ -1119,7 +1119,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             modified_destination_type = modified_destination_type.make_volatile();
         }
 
-        // FIXME: The type checking in `add_assignment` removes only one
+        // FIXME(antoyo): The type checking in `add_assignment` removes only one
         // qualifier from each side. So the writes `int → volatile int` and
         // `int → int __attribute__((aligned(1)))` are considered legal but
         // `int → volatile int __attribute__((aligned(1)))` is not. This seems
@@ -1131,7 +1131,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.cx.context.new_bitcast(None, ptr, modified_destination_type.make_pointer());
         let modified_destination = modified_ptr.dereference(None);
         self.llbb().add_assignment(None, modified_destination, val);
-        // TODO: handle `MemFlags::NONTEMPORAL`.
+        // TODO(antoyo): handle `MemFlags::NONTEMPORAL`.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
