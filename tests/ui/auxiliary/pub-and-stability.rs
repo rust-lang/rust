@@ -5,8 +5,8 @@
 // The basic stability pattern in this file has four cases:
 // 1. no stability attribute at all
 // 2. a stable attribute (feature "unit_test")
-// 3. an unstable attribute that unit test declares (feature "unstable_declared")
-// 4. an unstable attribute that unit test fails to declare (feature "unstable_undeclared")
+// 3. an unstable attribute that unit test enables (feature "unstable_declared")
+// 4. an unstable attribute that unit test fails to enable (feature "unstable_undeclared")
 //
 // This file also covers four kinds of visibility: private,
 // pub(module), pub(crate), and pub.
