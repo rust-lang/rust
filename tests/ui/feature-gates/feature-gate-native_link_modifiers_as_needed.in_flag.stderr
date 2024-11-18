@@ -1,0 +1,2 @@
+error: linking modifier `as-needed` is unstable and only accepted on the nightly compiler
+

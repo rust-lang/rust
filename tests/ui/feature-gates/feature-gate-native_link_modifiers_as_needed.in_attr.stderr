@@ -1,5 +1,5 @@
 error[E0658]: linking modifier `as-needed` is unstable
-  --> $DIR/feature-gate-native_link_modifiers_as_needed.rs:1:50
+  --> $DIR/feature-gate-native_link_modifiers_as_needed.rs:5:50
    |
 LL | #[link(name = "foo", kind = "dylib", modifiers = "+as-needed")]
    |                                                  ^^^^^^^^^^^^
