@@ -1,9 +1,9 @@
 //@ aux-build:pub-and-stability.rs
 
-// A big point of this test is that we *declare* `unstable_declared`,
-// but do *not* declare `unstable_undeclared`. This way we can check
-// that the compiler is letting in uses of declared feature-gated
-// stuff but still rejecting uses of undeclared feature-gated stuff.
+// A big point of this test is that we *enable* `unstable_declared`,
+// but do *not* enable `unstable_undeclared`. This way we can check
+// that the compiler is letting in uses of enabled feature-gated
+// stuff but still rejecting uses of disabled feature-gated stuff.
 #![feature(unstable_declared)]
 
 extern crate pub_and_stability;
