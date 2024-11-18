@@ -39,13 +39,12 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         return None;
     }
 
-    // FIXME: remove `clone_for_update` when `SyntaxEditor` handles it for us
     let prev = match prev {
-        SyntaxElement::Node(node) => node.clone_for_update().syntax_element(),
+        SyntaxElement::Node(node) => node.syntax_element(),
         _ => prev,
     };
     let next = match next {
-        SyntaxElement::Node(node) => node.clone_for_update().syntax_element(),
+        SyntaxElement::Node(node) => node.syntax_element(),
         _ => next,
     };
 

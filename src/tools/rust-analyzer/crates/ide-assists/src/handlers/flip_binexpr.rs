@@ -52,9 +52,8 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             if let FlipAction::FlipAndReplaceOp(binary_op) = action {
                 editor.replace(op_token, make.token(binary_op))
             };
-            // FIXME: remove `clone_for_update` when `SyntaxEditor` handles it for us
-            editor.replace(lhs.syntax(), rhs.syntax().clone_for_update());
-            editor.replace(rhs.syntax(), lhs.syntax().clone_for_update());
+            editor.replace(lhs.syntax(), rhs.syntax());
+            editor.replace(rhs.syntax(), lhs.syntax());
             editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.file_id(), editor);
         },
