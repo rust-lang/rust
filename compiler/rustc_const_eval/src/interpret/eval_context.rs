@@ -596,6 +596,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 // const-eval will return "tainted" errors if e.g. the layout cannot
                                 // be computed as the type references non-existing names.
                                 // See <https://github.com/rust-lang/rust/issues/124348>.
+                            } else if reported.can_be_spurious() {
+                                // These errors can just sometimes happen, even when the expression
+                                // is nominally "infallible", e.g. when running out of memory.
                             } else {
                                 // Looks like the const is not captured by `required_consts`, that's bad.
                                 span_bug!(span, "interpret const eval failure of {val:?} which is not in required_consts");
