@@ -650,8 +650,9 @@ pub(crate) struct LeftArrowOperator {
 #[diag(parse_remove_let)]
 pub(crate) struct RemoveLet {
     #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "", style = "verbose")]
     pub span: Span,
+    #[suggestion(applicability = "machine-applicable", code = "", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]

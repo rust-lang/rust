@@ -382,6 +382,17 @@ pub fn lint_level(
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
                     format!("this changes meaning in Rust {edition}")
                 }
+                FutureIncompatibilityReason::EditionAndFutureReleaseError(edition) => {
+                    format!(
+                        "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in Rust {edition} and in a future release in all editions!"
+                    )
+                }
+                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(edition) => {
+                    format!(
+                        "this changes meaning in Rust {edition} and in a future release in all editions!"
+                    )
+                }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };
 

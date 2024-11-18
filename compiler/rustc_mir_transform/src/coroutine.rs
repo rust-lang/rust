@@ -68,11 +68,11 @@ use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
@@ -817,9 +817,9 @@ impl ops::Deref for CoroutineSavedLocals {
 /// computation; see `CoroutineLayout` for more.
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
-    saved_locals: &CoroutineSavedLocals,
+    saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: BitSet<Local>,
-    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    mut requires_storage: Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -877,15 +877,13 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: BitSet<Local>,
 }
 
-impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
+impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     for StorageConflictVisitor<'a, 'tcx>
 {
-    type Domain = BitSet<Local>;
-
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        state: &BitSet<Local>,
         _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
@@ -894,8 +892,8 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        state: &BitSet<Local>,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {

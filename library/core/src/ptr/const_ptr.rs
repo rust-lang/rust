@@ -29,16 +29,18 @@ impl<T: ?Sized> *const T {
     /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_diagnostic_item = "ptr_const_is_null"]
     #[inline]
+    #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
         let ptr = self as *const u8;
         const_eval_select!(
             @capture { ptr: *const u8 } -> bool:
-            if const #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")] {
+            // This use of `const_raw_ptr_comparison` has been explicitly blessed by t-lang.
+            if const #[rustc_allow_const_fn_unstable(const_raw_ptr_comparison)] {
                 match (ptr).guaranteed_eq(null_mut()) {
                     Some(res) => res,
                     // To remain maximally convervative, we stop execution when we don't
@@ -280,7 +282,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid

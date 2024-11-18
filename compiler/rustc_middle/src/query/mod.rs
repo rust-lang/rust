@@ -40,6 +40,7 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::PanicStrategy;
@@ -59,7 +60,7 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
 };
-use crate::mir::mono::CodegenUnit;
+use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem};
 use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::{
     CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
@@ -2338,6 +2339,16 @@ rustc_queries! {
     query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
         arena_cache
         desc { "functions to skip for move-size check" }
+    }
+
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
+        desc { "collecting items used by `{}`", key.0 }
+        cache_on_disk_if { true }
+    }
+
+    query size_estimate(key: ty::Instance<'tcx>) -> usize {
+        desc { "estimating codegen size of `{}`", key }
+        cache_on_disk_if { true }
     }
 }
 

@@ -132,7 +132,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align, false)
+            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &*ptr::slice_from_raw_parts(data, len)
@@ -186,7 +186,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
                 align: usize = align_of::<T>(),
                 len: usize = len,
             ) =>
-            ub_checks::is_aligned_and_not_null(data, align, false)
+            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
                 && ub_checks::is_valid_allocation_size(size, len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)

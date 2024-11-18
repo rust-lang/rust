@@ -13,7 +13,9 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
                 scope 6 (inlined core::num::<impl u16>::checked_add) {
                     let mut _5: (u16, bool);
                     let mut _6: bool;
-                    let mut _7: bool;
+                    scope 7 (inlined unlikely) {
+                        let _7: ();
+                    }
                 }
             }
             scope 5 (inlined convert::num::ptr_try_from_impls::<impl TryFrom<usize> for u16>::try_from) {
@@ -21,11 +23,11 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
                 let mut _4: u16;
             }
         }
-        scope 7 (inlined Option::<u16>::is_none) {
-            scope 8 (inlined Option::<u16>::is_some) {
+        scope 8 (inlined Option::<u16>::is_none) {
+            scope 9 (inlined Option::<u16>::is_some) {
             }
         }
-        scope 9 (inlined core::num::<impl u16>::wrapping_add) {
+        scope 10 (inlined core::num::<impl u16>::wrapping_add) {
         }
     }
 
@@ -39,29 +41,26 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb1: {
         _4 = copy _2 as u16 (IntToInt);
         StorageDead(_3);
-        StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);
         _5 = AddWithOverflow(copy _1, copy _4);
         _6 = copy (_5.1: bool);
-        _7 = unlikely(move _6) -> [return: bb2, unwind unreachable];
+        switchInt(copy _6) -> [0: bb2, otherwise: bb3];
     }
 
     bb2: {
-        switchInt(move _7) -> [0: bb3, otherwise: bb4];
+        StorageDead(_5);
+        StorageDead(_6);
+        goto -> bb7;
     }
 
     bb3: {
-        StorageDead(_5);
-        StorageDead(_6);
-        StorageDead(_7);
-        goto -> bb7;
+        _7 = cold_path() -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
         StorageDead(_5);
         StorageDead(_6);
-        StorageDead(_7);
         goto -> bb6;
     }
 

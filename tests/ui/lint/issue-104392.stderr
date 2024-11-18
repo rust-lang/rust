@@ -6,7 +6,7 @@ LL |     { unsafe 92 }
    |       |
    |       while parsing this `unsafe` expression
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     { unsafe { 92 } }
    |              +    +
