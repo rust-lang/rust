@@ -707,7 +707,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
             clauses.instantiate(tcx, new_args).predicates.iter().all(|&(mut clause)| {
                 // Normalize before testing to see through type aliases and projections.
-                if let Ok(normalized) = tcx.try_normalize_erasing_regions(self.param_env, clause) {
+                if let Ok(normalized) =
+                    tcx.try_normalize_erasing_regions(self.infcx.typing_env(self.param_env), clause)
+                {
                     clause = normalized;
                 }
                 self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(

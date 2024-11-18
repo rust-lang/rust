@@ -1126,7 +1126,7 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     assert!(!ty.has_infer());
-                    ty.needs_drop(tcx, ty::TypingEnv::non_body_analysis(tcx, item.owner_id.def_id))
+                    ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }
             };
             // All fields (except for possibly the last) should be sized.

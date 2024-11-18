@@ -1286,7 +1286,7 @@ impl<'tcx> InferCtxt<'tcx> {
         u
     }
 
-    /// Extract [ty::TypingMode] of this inference context to get a `TypingEnv`
+    /// Extract [`ty::TypingMode`] of this inference context to get a `TypingEnv`
     /// which contains the necessary information to use the trait system without
     /// using canonicalization or carrying this inference context around.
     pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
@@ -1304,8 +1304,8 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::TypingEnv { typing_mode, param_env }
     }
 
-    /// Similar to [Self::canonicalize_query], except that it returns
-    /// a [PseudoCanonicalInput] and requires both the `value` and the
+    /// Similar to [`Self::canonicalize_query`], except that it returns
+    /// a [`PseudoCanonicalInput`] and requires both the `value` and the
     /// `param_env` to not contain any inference variables or placeholders.
     pub fn pseudo_canonicalize_query<V>(
         &self,

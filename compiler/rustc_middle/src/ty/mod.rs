@@ -1197,7 +1197,8 @@ impl<'tcx> TypingEnv<'tcx> {
         // as these placeholders are also local to the current inference context. However, we
         // currently use pseudo-canonical queries in the trait solver which replaces params with
         // placeholders. We should also simply not use pseudo-canonical queries in the trait
-        // solver, at which point we can readd this assert.
+        // solver, at which point we can readd this assert. As of writing this comment, this is
+        // only used by `fn layout_is_pointer_like` when calling `layout_of`.
         //
         // debug_assert!(!value.has_placeholders());
         PseudoCanonicalInput { typing_env: self, value }
