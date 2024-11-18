@@ -116,6 +116,9 @@ impl<'a> AssistContext<'a> {
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.offset())
     }
+    pub(crate) fn find_node_at_trimmed_offset<N: AstNode>(&self) -> Option<N> {
+        find_node_at_offset(self.source_file.syntax(), self.trimmed_range.start())
+    }
     pub(crate) fn find_node_at_range<N: AstNode>(&self) -> Option<N> {
         find_node_at_range(self.source_file.syntax(), self.trimmed_range)
     }
