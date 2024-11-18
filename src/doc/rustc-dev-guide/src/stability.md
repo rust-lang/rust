@@ -57,6 +57,7 @@ ipsum")]` has the same interface as the `unstable` attribute. It is used to mark
 - If a `const fn` makes use of unstable language features or intrinsics.
   (The compiler will tell you to add the attribute if you run into this.)
 - If a `const fn` is `#[stable]` but not yet intended to be const-stable.
+- To change the feature gate that is required to call a const-unstable intrinsic.
 
 Const-stability differs from regular stability in that it is *recursive*: a
 `#[rustc_const_unstable(...)]` function cannot even be indirectly called from stable code. This is
@@ -79,10 +80,10 @@ compiler features); the only reason it is not const-stable yet are API concerns.
 This should also be added to lang items for which const-calls are synthesized in the compiler, to
 ensure those calls do not bypass recursive const stability rules.
 
-## rustc_const_stable_intrinsic
+## rustc_intrinsic_const_stable_indirect
 
 On an intrinsic, this attribute marks the intrinsic as "ready to be used by public stable functions".
-The `rustc_const_unstable` can be removed when this attribute is added.
+If the intrinsic has a `rustc_const_unstable` attribute, it should be removed.
 **Adding this attribute to an intrinsic requires t-lang and wg-const-eval approval!**
 
 ## rustc_default_body_unstable
