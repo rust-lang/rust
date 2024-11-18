@@ -81,7 +81,7 @@
 # Indicates whether the LLVM plugin is enabled or not
 #plugins = false
 
-# Wheter to build Enzyme as AutoDiff backend.
+# Whether to build Enzyme as AutoDiff backend.
 #enzyme = false
 
 # Whether to build LLVM with support for it's gpu offload runtime.
