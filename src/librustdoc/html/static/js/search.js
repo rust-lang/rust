@@ -988,6 +988,12 @@ class VlqHexDecoder {
 }
 class RoaringBitmap {
     constructor(str) {
+        // https://github.com/RoaringBitmap/RoaringFormatSpec
+        //
+        // Roaring bitmaps are used for flags that can be kept in their
+        // compressed form, even when loaded into memory. This decoder
+        // turns the containers into objects, but uses byte array
+        // slices of the original format for the data payload.
         const strdecoded = atob(str);
         const u8array = new Uint8Array(strdecoded.length);
         for (let j = 0; j < strdecoded.length; ++j) {
@@ -1053,6 +1059,13 @@ class RoaringBitmap {
     contains(keyvalue) {
         const key = keyvalue >> 16;
         const value = keyvalue & 0xFFFF;
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Format is required by specification to be sorted.
+        // Because keys are 16 bits and unique, length can't be
+        // bigger than 2**16, and because we have 32 bits of safe int,
+        // left + right can't overflow.
         let left = 0;
         let right = this.keys.length - 1;
         while (left <= right) {
@@ -1076,6 +1089,11 @@ class RoaringBitmapRun {
         this.array = array;
     }
     contains(value) {
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Since runcount is stored as 16 bits, left + right
+        // can't overflow.
         let left = 0;
         let right = this.runcount - 1;
         while (left <= right) {
@@ -1100,6 +1118,11 @@ class RoaringBitmapArray {
         this.array = array;
     }
     contains(value) {
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Since cardinality can't be higher than 4096, left + right
+        // cannot overflow.
         let left = 0;
         let right = this.cardinality - 1;
         while (left <= right) {
