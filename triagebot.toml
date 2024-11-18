@@ -236,7 +236,21 @@ trigger_files = [
     "compiler",
 
     # Tests
+    "tests/assembly",
+    "tests/auxiliary",
+    "tests/codegen",
+    "tests/codegen-units",
+    "tests/COMPILER_TESTS.md",
+    "tests/coverage",
+    "tests/coverage-run-rustdoc",
+    "tests/crashes",
+    "tests/debuginfo",
+    "tests/incremental",
+    "tests/mir-opt",
+    "tests/pretty",
+    "tests/run-make",
     "tests/ui",
+    "tests/ui-fulldeps",
 ]
 exclude_labels = [
     "T-*",
