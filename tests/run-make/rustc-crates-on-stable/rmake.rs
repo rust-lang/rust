@@ -4,13 +4,18 @@
 use run_make_support::{cargo, rustc_path, source_root};
 
 fn main() {
-    // Use the stage0 beta cargo for the compilation (it shouldn't really matter which cargo we use)
+    // NOTE: in the following cargo invocation, make sure that no unstable cargo flags are used! We
+    // want to check that the listed compiler crates here can compile on the stable channel. We
+    // can't really just "ask" a stage1 cargo to pretend that it is a stable cargo, because other
+    // compiler crates are part of the same workspace, which necessarily requires that they can use
+    // unstable features and experimental editions (like edition 2024).
     cargo()
-        // Ensure `proc-macro2`'s nightly detection is disabled
+        // Ensure `proc-macro2`'s nightly detection is disabled: its build script avoids using
+        // nightly features when `RUSTC_STAGE` is set.
         .env("RUSTC_STAGE", "0")
         .env("RUSTC", rustc_path())
-        // We want to disallow all nightly features to simulate a stable build
-        .env("RUSTFLAGS", "-Zallow-features=")
+        // This forces the underlying rustc to think it is a stable rustc.
+        .env("RUSTC_BOOTSTRAP", "-1")
         .arg("build")
         .arg("--manifest-path")
         .arg(source_root().join("Cargo.toml"))
