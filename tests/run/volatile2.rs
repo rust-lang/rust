@@ -3,14 +3,6 @@
 // Run-time:
 //   status: 0
 
-#![no_std]
-#![feature(core_intrinsics, start)]
-
-#[panic_handler]
-fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    core::intrinsics::abort();
-}
-
 mod libc {
     #[link(name = "c")]
     extern "C" {
@@ -44,8 +36,7 @@ static mut COUNT: u32 = 0;
 static mut STORAGE: *mut u8 = core::ptr::null_mut();
 const PAGE_SIZE: usize = 1 << 15;
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+fn main() {
     unsafe {
         // Register a segfault handler
         libc::sigaction(
@@ -67,8 +58,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
             0,
         ).cast();
         if STORAGE == libc::MAP_FAILED {
-            libc::puts(b"error: mmap failed\0".as_ptr());
-            return 1;
+            panic!("error: mmap failed");
         }
 
         let p_count = (&mut COUNT) as *mut u32;
@@ -81,21 +71,25 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
         STORAGE.add(PAGE_SIZE).write_volatile(1);
         STORAGE.add(0).write_volatile(1);
         STORAGE.add(PAGE_SIZE).write_volatile(1);
+        STORAGE.add(0).read_volatile();
+        STORAGE.add(PAGE_SIZE).read_volatile();
+        STORAGE.add(0).read_volatile();
+        STORAGE.add(PAGE_SIZE).read_volatile();
+        STORAGE.add(0).read_volatile();
+        STORAGE.add(PAGE_SIZE).read_volatile();
+        STORAGE.add(0).write_volatile(1);
+        STORAGE.add(PAGE_SIZE).write_volatile(1);
 
-        // The segfault handler should have been called for every
-        // `write_volatile` in `STORAGE`. If the compiler ignores volatility,
-        // some of these writes will be combined, causing a different number of
-        // segfaults.
+        // The segfault handler should have been called for every `write_volatile` and
+        // `read_volatile` in `STORAGE`. If the compiler ignores volatility, some of these writes
+        // will be combined, causing a different number of segfaults.
         //
         // This `p_count` read is done by a volatile read. If the compiler
         // ignores volatility, the compiler will speculate that `*p_count` is
         // unchanged and remove this check, failing the test.
-        if p_count.read_volatile() != 6 {
-            libc::puts(b"error: segfault count mismatch\0".as_ptr());
-            return 1;
+        if p_count.read_volatile() != 14 {
+            panic!("error: segfault count mismatch: {}", p_count.read_volatile());
         }
-
-        0
     }
 }
 
