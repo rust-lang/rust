@@ -751,11 +751,11 @@ fn copy_sanitizers(
     target_deps
 }
 
-fn apple_darwin_update_library_name(builder: &Builder<'_>, library_path: &Path, new_name: &str) {
+pub fn apple_darwin_update_library_name(builder: &Builder<'_>, library_path: &Path, new_name: &str) {
     command("install_name_tool").arg("-id").arg(new_name).arg(library_path).run(builder);
 }
 
-fn apple_darwin_sign_file(builder: &Builder<'_>, file_path: &Path) {
+pub fn apple_darwin_sign_file(builder: &Builder<'_>, file_path: &Path) {
     command("codesign")
         .arg("-f") // Force to rewrite the existing signature
         .arg("-s")

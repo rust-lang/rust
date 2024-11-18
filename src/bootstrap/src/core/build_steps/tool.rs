@@ -18,6 +18,11 @@ pub enum SourceType {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ToolKind {
+    Binary,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: TargetSelection,
@@ -30,6 +35,7 @@ struct ToolBuild {
     allow_features: &'static str,
     /// Additional arguments to pass to the `cargo` invocation.
     cargo_args: Vec<String>,
+    tool_kind: ToolKind,
 }
 
 impl Builder<'_> {
@@ -125,7 +131,11 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+            match self.tool_kind {
+                ToolKind::Binary => {
+                    copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+                }
+            }
         }
     }
 }
@@ -325,7 +335,8 @@ macro_rules! bootstrap_tool {
                     },
                     extra_features: vec![],
                     allow_features: concat!($($allow_features)*),
-                    cargo_args: vec![]
+                    cargo_args: vec![],
+                    tool_kind: ToolKind::Binary
                 })
             }
         }
@@ -400,6 +411,7 @@ impl Step for OptimizedDist {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -443,6 +455,7 @@ impl Step for RustcPerf {
             // Only build the collector package, which is used for benchmarking through
             // a CLI.
             cargo_args: vec!["-p".to_string(), "collector".to_string()],
+            tool_kind: ToolKind::Binary,
         };
         let collector_bin = builder.ensure(tool.clone());
         // We also need to symlink the `rustc-fake` binary to the corresponding directory,
@@ -504,6 +517,7 @@ impl Step for ErrorIndex {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -539,6 +553,7 @@ impl Step for RemoteTestServer {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -716,6 +731,7 @@ impl Step for Cargo {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -744,6 +760,7 @@ impl Step for LldWrapper {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -786,6 +803,7 @@ impl Step for RustAnalyzer {
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         })
     }
 }
@@ -830,6 +848,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         });
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
@@ -991,7 +1010,7 @@ macro_rules! tool_extended {
        $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
        ;)+) => {
         $(
-            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
             pub target: TargetSelection,
@@ -1040,7 +1059,8 @@ macro_rules! tool_extended {
                     extra_features: $sel.extra_features,
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
-                    cargo_args: vec![]
+                    cargo_args: vec![],
+                    tool_kind: ToolKind::Binary
                 });
 
                 if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
@@ -1077,7 +1097,52 @@ tool_extended!((self, builder),
     Rls, "src/tools/rls", "rls", stable=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
+/*
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BsanLender {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+    pub extra_features: Vec<String>,
+}
 
+impl Step for BsanLender {
+    type Output = PathBuf;
+    const DEFAULT: bool = true; // Overwritten below
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/miri/bsan/lender")
+            .default_condition(builder.config.extended && builder.build.unstable_features())
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Bsan {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+            extra_features: Vec::new(),
+        });
+    }
+
+    #[allow(unused_mut)]
+    fn run(mut self, builder: &Builder<'_>) -> PathBuf {
+        let bin_name = "bsan-lender";
+        let tool = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: bin_name,
+            mode: Mode::ToolRustc,
+            path: "src/tools/miri/bsan/lender",
+            extra_features: self.extra_features,
+            source_type: SourceType::InTree,
+            allow_features: "",
+            cargo_args: vec![],
+            tool_kind: ToolKind::Library,
+        });
+        tool
+    }
+}
+*/
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {
     pub host: TargetSelection,
@@ -1106,6 +1171,7 @@ impl Step for TestFloatParse {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            tool_kind: ToolKind::Binary,
         });
     }
 }

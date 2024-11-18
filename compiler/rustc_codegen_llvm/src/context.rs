@@ -1096,7 +1096,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.ptrmask", fn(ptr, t_isize) -> ptr);
 
-        ifn!("llvm.bsan.retag", fn(ptr, t_i8) -> void);
+        ifn!("llvm.bsan.retag", fn(ptr, t_i8, t_i8) -> void);
 
         None
     }

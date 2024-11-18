@@ -52,6 +52,10 @@ pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
 }
 
+pub fn dylib(name: &str, target: TargetSelection) -> String {
+    crate::utils::shared_helpers::dylib(name, &target.triple)
+}
+
 /// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(name: &str) -> bool {
     name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll")

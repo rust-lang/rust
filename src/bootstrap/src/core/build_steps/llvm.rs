@@ -58,7 +58,7 @@ impl LlvmBuildStatus {
 
 /// Linker flags to pass to LLVM's CMake invocation.
 #[derive(Debug, Clone, Default)]
-struct LdFlags {
+pub struct LdFlags {
     /// CMAKE_EXE_LINKER_FLAGS
     exe: OsString,
     /// CMAKE_SHARED_LINKER_FLAGS
@@ -68,7 +68,7 @@ struct LdFlags {
 }
 
 impl LdFlags {
-    fn push_all(&mut self, s: impl AsRef<OsStr>) {
+    pub fn push_all(&mut self, s: impl AsRef<OsStr>) {
         let s = s.as_ref();
         self.exe.push(" ");
         self.exe.push(s);
@@ -617,7 +617,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {version}, need >=18\n\n")
 }
 
-fn configure_cmake(
+pub fn configure_cmake(
     builder: &Builder<'_>,
     target: TargetSelection,
     cfg: &mut cmake::Config,
@@ -1202,6 +1202,28 @@ pub struct SanitizerRuntime {
     pub name: String,
 }
 
+pub fn darwin_sanitizer_lib(c: &str, os: &str, channel: &str, out_dir: &Path) -> SanitizerRuntime {
+    SanitizerRuntime {
+        cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
+        path: out_dir.join(format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
+        name: format!("librustc-{}_rt.{}.dylib", channel, c),
+    }
+}
+
+pub fn common_sanitizer_lib(
+    c: &str,
+    os: &str,
+    arch: &str,
+    channel: &str,
+    out_dir: &Path,
+) -> SanitizerRuntime {
+    SanitizerRuntime {
+        cmake_target: format!("clang_rt.{}-{}", c, arch),
+        path: out_dir.join(format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
+        name: format!("librustc-{}_rt.{}.a", channel, c),
+    }
+}
+
 /// Returns sanitizers available on a given target.
 fn supported_sanitizers(
     out_dir: &Path,
@@ -1209,25 +1231,13 @@ fn supported_sanitizers(
     channel: &str,
 ) -> Vec<SanitizerRuntime> {
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
-        components
-            .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
-                path: out_dir
-                    .join(format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
-                name: format!("librustc-{}_rt.{}.dylib", channel, c),
-            })
-            .collect()
+        components.iter().map(move |c| darwin_sanitizer_lib(c, os, channel, out_dir)).collect()
     };
 
     let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
         components
             .iter()
-            .map(move |c| SanitizerRuntime {
-                cmake_target: format!("clang_rt.{}-{}", c, arch),
-                path: out_dir.join(format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
-                name: format!("librustc-{}_rt.{}.a", channel, c),
-            })
+            .map(move |c| common_sanitizer_lib(c, os, arch, channel, out_dir))
             .collect()
     };
 
@@ -1238,7 +1248,7 @@ fn supported_sanitizers(
         "aarch64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
-            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan", "bsan"])
+            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "aarch64-unknown-linux-ohos" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
@@ -1246,7 +1256,7 @@ fn supported_sanitizers(
         "loongarch64-unknown-linux-gnu" | "loongarch64-unknown-linux-musl" => {
             common_libs("linux", "loongarch64", &["asan", "lsan", "msan", "tsan"])
         }
-        "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan", "bsan"]),
+        "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-apple-ios" => darwin_libs("iossim", &["asan", "tsan"]),
         "x86_64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
@@ -1257,7 +1267,7 @@ fn supported_sanitizers(
         "x86_64-unknown-illumos" => common_libs("illumos", "x86_64", &["asan"]),
         "x86_64-pc-solaris" => common_libs("solaris", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnu" => {
-            common_libs("linux", "x86_64", &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "bsan"])
+            common_libs("linux", "x86_64", &["asan", "dfsan", "lsan", "msan", "safestack", "tsan"])
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])

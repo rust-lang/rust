@@ -30,6 +30,7 @@ members = [
   "src/tools/rustfmt",
   "src/tools/miri",
   "src/tools/miri/cargo-miri",
+  "src/tools/bsan/borrowtracker",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/jsondocck",

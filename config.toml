@@ -1,10 +1,28 @@
-# Includes one of the default files in src/bootstrap/defaults
-profile = "dist"
 change-id = 132494
+
+[build]
+sanitizers = true
+build-stage = 1
+test-stage = 1
+docs = false
+tools = [
+    "cargo",
+    "clippy",
+    "bsan",
+    "rustfmt",
+    "rust-analyzer",
+    "rust-analyzer-proc-macro-srv",
+    "analysis",
+    "src",
+    "miri", 
+    "cargo-miri",
+    "bsan"
+]
+
+[rust]
+incremental = true
+channel = "nightly"
 
 [llvm]
 download-ci-llvm = false
 clang = true
-
-[build]
-sanitizers = true

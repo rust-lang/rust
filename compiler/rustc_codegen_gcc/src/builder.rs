@@ -23,6 +23,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::{RetagKind, PlaceKind};
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
@@ -1664,7 +1665,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn retag(&mut self, _place: _PlaceValue<&'ll Value>, _kind: RetagKind) {
+    fn retag(&mut self, _place: _PlaceValue<&'ll Value>, _place_kind: PlaceKind, _retag_kind: RetagKind) {
         unimplemented!();
     }
 

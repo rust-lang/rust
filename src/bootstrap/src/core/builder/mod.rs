@@ -16,7 +16,7 @@ use clap::ValueEnum;
 pub use self::cargo::Cargo;
 pub use crate::Compiler;
 use crate::core::build_steps::{
-    check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
+bsan, check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor
 };
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
@@ -800,6 +800,8 @@ impl<'a> Builder<'a> {
                 llvm::Llvm,
                 gcc::Gcc,
                 llvm::Sanitizers,
+                bsan::Bsan,
+                bsan::BsanBorrowTracker,
                 tool::Rustfmt,
                 tool::Miri,
                 tool::CargoMiri,

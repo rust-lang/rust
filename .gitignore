@@ -52,6 +52,7 @@ build/
 /dist/
 /unicode-downloads
 /target
+**/target
 /library/target
 /src/bootstrap/target
 /src/tools/x/target

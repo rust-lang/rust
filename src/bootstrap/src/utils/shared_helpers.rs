@@ -56,6 +56,20 @@ pub fn exe(name: &str, target: &str) -> String {
     }
 }
 
+/// Given a library called `name`, return the filename for the
+/// shared library for a particular target.
+pub fn dylib(name: &str, target: &str) -> String {
+    let extension = if target.contains("windows") {
+        "dll"
+    } else if target.contains("apple") {
+        "dylib"
+    } else {
+        "so"
+    };
+    format!("lib{name}.{extension}")
+}
+
+
 /// Parses the value of the "RUSTC_VERBOSE" environment variable and returns it as a `usize`.
 /// If it was not defined, returns 0 by default.
 ///

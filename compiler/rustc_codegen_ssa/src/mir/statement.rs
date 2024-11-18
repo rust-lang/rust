@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic};
+use rustc_middle::mir::{self, PlaceKind, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use tracing::instrument;
 
@@ -89,7 +89,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
             }
 
-            mir::StatementKind::Retag(kind, box ref place) => {
+            mir::StatementKind::Retag(retag_kind, box ref place) => {
                 if self.cx.sess().emit_retags() {
                     let place_value = if let Some(index) = place.as_local() {
                         match self.locals[index] {
@@ -115,7 +115,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }else{
                         self.codegen_place(bx, place.as_ref()).val
                     };
-                    bx.retag(place_value, kind);
+                    bx.retag(place_value, PlaceKind::Default, retag_kind);
                 }
             }
             mir::StatementKind::FakeRead(..)

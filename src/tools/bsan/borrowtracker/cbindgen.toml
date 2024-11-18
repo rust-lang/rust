@@ -1,0 +1,3 @@
+[parse]
+parse_deps = true
+include = ["bsan/src/lib.rs", "miri"]
