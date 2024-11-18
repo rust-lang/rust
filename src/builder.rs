@@ -1103,7 +1103,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn store_with_flags(
         &mut self,
-        mut val: RValue<'gcc>,
+        val: RValue<'gcc>,
         ptr: RValue<'gcc>,
         align: Align,
         flags: MemFlags,
@@ -1119,16 +1119,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             modified_destination_type = modified_destination_type.make_volatile();
         }
 
-        // FIXME(antoyo): The type checking in `add_assignment` removes only one
-        // qualifier from each side. So the writes `int → volatile int` and
-        // `int → int __attribute__((aligned(1)))` are considered legal but
-        // `int → volatile int __attribute__((aligned(1)))` is not. This seems
-        // like a bug in libgccjit. The easiest way to work around this is to
-        // bitcast `val` to have the matching qualifiers.
-        val = self.cx.context.new_bitcast(None, val, modified_destination_type);
-
         let modified_ptr =
-            self.cx.context.new_bitcast(None, ptr, modified_destination_type.make_pointer());
+            self.cx.context.new_cast(None, ptr, modified_destination_type.make_pointer());
         let modified_destination = modified_ptr.dereference(None);
         self.llbb().add_assignment(None, modified_destination, val);
         // TODO(antoyo): handle `MemFlags::NONTEMPORAL`.
