@@ -417,9 +417,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // These just return their argument
                 self.copy_op(&args[0], dest)?;
             }
-            sym::cold_path => {
-                // This is a no-op. The intrinsic is just a hint to the optimizer.
-            }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
