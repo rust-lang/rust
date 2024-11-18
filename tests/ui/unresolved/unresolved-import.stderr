@@ -2,9 +2,9 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-import.rs:1:5
    |
 LL | use foo::bar;
-   |     ^^^ you might be missing crate `foo`
+   |     ^^^ use of unresolved module or unlinked crate `foo`
    |
-help: consider importing the `foo` crate
+help: you might be missing a crate named `foo`, add it to your project and import it in your code
    |
 LL + extern crate foo;
    |
