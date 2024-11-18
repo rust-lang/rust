@@ -136,18 +136,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         return t;
                     }
                     let variant = adt_def.non_enum_variant();
-                    let param_env = self.tcx.param_env(variant.def_id);
+                    let typing_env = ty::TypingEnv::post_analysis(self.tcx, variant.def_id);
                     let field = variant.fields.iter().find(|field| {
                         let ty = self.tcx.type_of(field.did).instantiate_identity();
                         let is_zst = self
                             .tcx
-                            .layout_of(param_env.and(ty))
+                            .layout_of(typing_env.as_query_input(ty))
                             .is_ok_and(|layout| layout.is_zst());
                         !is_zst
                     });
                     if let Some(field) = field {
                         let ty0 = self.tcx.normalize_erasing_regions(
-                            ty::ParamEnv::reveal_all(),
+                            ty::TypingEnv::fully_monomorphized(),
                             field.ty(self.tcx, args),
                         );
                         // Generalize any repr(transparent) user-defined type that is either a
@@ -209,9 +209,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 }
             }
 
-            ty::Alias(..) => {
-                self.fold_ty(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), t))
-            }
+            ty::Alias(..) => self.fold_ty(
+                self.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), t),
+            ),
 
             ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
                 bug!("fold_ty: unexpected `{:?}`", t.kind());
@@ -241,7 +241,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                         let alias_ty =
                             ty::AliasTy::new_from_args(tcx, assoc_ty.def_id, super_trait_ref.args);
                         let resolved = tcx.normalize_erasing_regions(
-                            ty::ParamEnv::reveal_all(),
+                            ty::TypingEnv::fully_monomorphized(),
                             alias_ty.to_ty(tcx),
                         );
                         debug!("Resolved {:?} -> {resolved}", alias_ty.to_ty(tcx));
@@ -376,7 +376,7 @@ pub(crate) fn transform_instance<'tcx>(
             // implementation will not. We need to walk back to the more general trait method
             let trait_ref = tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
-                ty::ParamEnv::reveal_all(),
+                ty::TypingEnv::fully_monomorphized(),
                 trait_ref,
             );
             let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
@@ -397,7 +397,7 @@ pub(crate) fn transform_instance<'tcx>(
         } else if tcx.is_closure_like(instance.def_id()) {
             // We're either a closure or a coroutine. Our goal is to find the trait we're defined on,
             // instantiate it, and take the type of its only method as our own.
-            let closure_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+            let closure_ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
             let (trait_id, inputs) = match closure_ty.kind() {
                 ty::Closure(..) => {
                     let closure_args = instance.args.as_closure();

@@ -12,6 +12,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
+use rustc_middle::ty::solve::Reveal;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
 
@@ -107,6 +108,17 @@ impl<'tcx> Cx<'tcx> {
                 .iter()
                 .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
         }
+    }
+
+    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
+        debug_assert_eq!(self.param_env.reveal(), Reveal::UserFacing);
+        // FIXME(#132279): In case we're in a body, we should use a typing
+        // mode which reveals the opaque types defined by that body.
+        ty::TypingMode::non_body_analysis()
+    }
+
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
     }
 
     #[instrument(level = "debug", skip(self))]

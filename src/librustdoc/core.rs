@@ -19,7 +19,7 @@ use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
@@ -86,6 +86,13 @@ impl<'tcx> DocContext<'tcx> {
         let ret = f(self);
         self.param_env = old_param_env;
         ret
+    }
+
+    pub(crate) fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv {
+            typing_mode: ty::TypingMode::non_body_analysis(),
+            param_env: self.param_env,
+        }
     }
 
     /// Call the closure with the given parameters set as

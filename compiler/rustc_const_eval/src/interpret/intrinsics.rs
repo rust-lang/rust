@@ -40,6 +40,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
     let tp_ty = args.type_at(0);
     let name = tcx.item_name(def_id);
+    let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env };
     interp_ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
@@ -48,11 +49,13 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+            ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
         }
         sym::pref_align_of => {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(*e)))?;
+            let layout = tcx
+                .layout_of(typing_env.as_query_input(tp_ty))
+                .map_err(|e| err_inval!(Layout(*e)))?;
             ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
         }
         sym::type_id => {
@@ -355,7 +358,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let should_panic = !self
                     .tcx
-                    .check_validity_requirement((requirement, self.param_env.and(ty)))
+                    .check_validity_requirement((requirement, self.typing_env().as_query_input(ty)))
                     .map_err(|_| err_inval!(TooGeneric))?;
 
                 if should_panic {

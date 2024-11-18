@@ -474,7 +474,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
-                                    ty::ParamEnv::reveal_all(),
+                                    bx.typing_env(),
                                     def_id,
                                     args,
                                 )
@@ -709,7 +709,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()
-                            .offset_of_subfield(bx.param_env(), layout, fields.iter())
+                            .offset_of_subfield(bx.typing_env(), layout, fields.iter())
                             .bytes();
                         bx.cx().const_usize(val)
                     }
@@ -727,7 +727,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
-                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id, bx.typing_env()));
                 let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
                 {
                     let instance = ty::Instance {

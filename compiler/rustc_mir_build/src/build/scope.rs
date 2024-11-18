@@ -1010,7 +1010,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let needs_drop = match drop_kind {
             DropKind::Value => {
-                if !self.local_decls[local].ty.needs_drop(self.tcx, self.param_env) {
+                if !self.local_decls[local].ty.needs_drop(self.tcx, self.typing_env()) {
                     return;
                 }
                 true

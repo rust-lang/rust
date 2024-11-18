@@ -1224,16 +1224,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // The regions of a type don't affect the size of the type
         let tcx = self.tcx();
         let self_ty = tcx.instantiate_bound_regions_with_erased(obligation.predicate.self_ty());
-        // We should erase regions from both the param-env and type, since both
-        // may have infer regions. Specifically, after canonicalizing and instantiating,
-        // early bound regions turn into region vars in both the new and old solver.
-        let key = tcx.erase_regions(obligation.param_env.and(self_ty));
+
         // But if there are inference variables, we have to wait until it's resolved.
-        if key.has_non_region_infer() {
+        if (obligation.param_env, self_ty).has_non_region_infer() {
             candidates.ambiguous = true;
             return;
         }
 
+        // We should erase regions from both the param-env and type, since both
+        // may have infer regions. Specifically, after canonicalizing and instantiating,
+        // early bound regions turn into region vars in both the new and old solver.
+        let key = self.infcx.pseudo_canonicalize_query(
+            tcx.erase_regions(obligation.param_env),
+            tcx.erase_regions(self_ty),
+        );
         if let Ok(layout) = tcx.layout_of(key)
             && layout.layout.is_pointer_like(&tcx.data_layout)
         {

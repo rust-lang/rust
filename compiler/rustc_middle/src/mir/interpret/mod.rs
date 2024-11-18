@@ -351,7 +351,11 @@ impl<'tcx> GlobalAlloc<'tcx> {
         }
     }
 
-    pub fn size_and_align(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> (Size, Align) {
+    pub fn size_and_align(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> (Size, Align) {
         match self {
             GlobalAlloc::Static(def_id) => {
                 let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else {
@@ -374,7 +378,7 @@ impl<'tcx> GlobalAlloc<'tcx> {
                         .type_of(def_id)
                         .no_bound_vars()
                         .expect("statics should not have generic parameters");
-                    let layout = tcx.layout_of(param_env.and(ty)).unwrap();
+                    let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
                     assert!(layout.is_sized());
                     (layout.size, layout.align.abi)
                 }

@@ -9,7 +9,7 @@ use tracing::debug;
 pub fn is_disaligned<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     place: Place<'tcx>,
 ) -> bool
 where
@@ -22,8 +22,8 @@ where
     };
 
     let ty = place.ty(local_decls, tcx).ty;
-    let unsized_tail = || tcx.struct_tail_for_codegen(ty, param_env);
-    match tcx.layout_of(param_env.and(ty)) {
+    let unsized_tail = || tcx.struct_tail_for_codegen(ty, typing_env);
+    match tcx.layout_of(typing_env.as_query_input(ty)) {
         Ok(layout)
             if layout.align.abi <= pack
                 && (layout.is_sized()

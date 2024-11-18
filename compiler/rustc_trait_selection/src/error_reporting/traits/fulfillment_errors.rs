@@ -2079,7 +2079,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 cand.trait_ref = self
                     .tcx
                     .try_normalize_erasing_regions(
-                        self.tcx.param_env(cand.impl_def_id),
+                        ty::TypingEnv::non_body_analysis(self.tcx, cand.impl_def_id),
                         cand.trait_ref,
                     )
                     .unwrap_or(cand.trait_ref);

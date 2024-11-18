@@ -262,7 +262,11 @@ where
             return ecx.forced_ambiguity(MaybeCause::Ambiguity);
         }
 
-        if cx.layout_is_pointer_like(goal.param_env, goal.predicate.self_ty()) {
+        if cx.layout_is_pointer_like(
+            ecx.typing_mode(goal.param_env),
+            goal.param_env,
+            goal.predicate.self_ty(),
+        ) {
             ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
                 .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
         } else {

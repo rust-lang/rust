@@ -18,6 +18,7 @@ use rustc_span::sym;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
+use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::Providers;
 use crate::ty::layout::{FloatExt, IntegerExt};
@@ -177,9 +178,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Should only be called if `ty` has no inference variables and does not
     /// need its lifetimes preserved (e.g. as part of codegen); otherwise
     /// normalization attempt may cause compiler bugs.
-    pub fn struct_tail_for_codegen(self, ty: Ty<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn struct_tail_for_codegen(
+        self,
+        ty: Ty<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(param_env, ty), || {})
+        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(typing_env, ty), || {})
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -271,11 +276,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         source: Ty<'tcx>,
         target: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let tcx = self;
         tcx.struct_lockstep_tails_raw(source, target, |ty| {
-            tcx.normalize_erasing_regions(param_env, ty)
+            tcx.normalize_erasing_regions(typing_env, ty)
         })
     }
 
@@ -420,10 +425,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Async drop glue morphology is an internal detail, so reveal_all probably
         // should be fine
-        let param_env = ty::ParamEnv::reveal_all();
-        if ty.needs_async_drop(self, param_env) {
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        if ty.needs_async_drop(self, typing_env) {
             AsyncDropGlueMorphology::Custom
-        } else if ty.needs_drop(self, param_env) {
+        } else if ty.needs_drop(self, typing_env) {
             AsyncDropGlueMorphology::DeferredDropInPlace
         } else {
             AsyncDropGlueMorphology::Noop
@@ -683,12 +688,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Get the type of the pointer to the static that we use in MIR.
-    pub fn static_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
+    pub fn static_ptr_ty(self, def_id: DefId, typing_env: ty::TypingEnv<'tcx>) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
-        let static_ty = self.normalize_erasing_regions(
-            ty::ParamEnv::empty(),
-            self.type_of(def_id).instantiate_identity(),
-        );
+        let static_ty =
+            self.normalize_erasing_regions(typing_env, self.type_of(def_id).instantiate_identity());
 
         // Make sure that accesses to unsafe statics end up using raw pointers.
         // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
@@ -1157,15 +1160,17 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+        let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(_, max)| ty::Const::from_bits(tcx, max, ty::ParamEnv::empty().and(self)))
+            .map(|(_, max)| ty::Const::from_bits(tcx, max, typing_env, self))
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
     pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<ty::Const<'tcx>> {
+        let typing_env = TypingEnv::fully_monomorphized();
         self.numeric_min_and_max_as_bits(tcx)
-            .map(|(min, _)| ty::Const::from_bits(tcx, min, ty::ParamEnv::empty().and(self)))
+            .map(|(min, _)| ty::Const::from_bits(tcx, min, typing_env, self))
     }
 
     /// Checks whether values of this type `T` are *moved* or *copied*
@@ -1345,7 +1350,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Note that this method is used to check eligible types in unions.
     #[inline]
-    pub fn needs_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn needs_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1359,14 +1364,13 @@ impl<'tcx> Ty<'tcx> {
                 };
 
                 // This doesn't depend on regions, so try to minimize distinct
-                // query keys used.
-                // If normalization fails, we just use `query_ty`.
-                debug_assert!(!param_env.has_infer());
+                // query keys used. If normalization fails, we just use `query_ty`.
+                debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, query_ty)
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
-                tcx.needs_drop_raw(param_env.and(query_ty))
+                tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
             }
         }
     }
@@ -1385,7 +1389,7 @@ impl<'tcx> Ty<'tcx> {
     // FIXME(zetanumbers): Note that this method is used to check eligible types
     // in unions.
     #[inline]
-    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn needs_async_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1401,12 +1405,12 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // If normalization fails, we just use `query_ty`.
-                debug_assert!(!param_env.has_infer());
+                debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, query_ty)
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
-                tcx.needs_async_drop_raw(param_env.and(query_ty))
+                tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
             }
         }
     }
@@ -1420,7 +1424,7 @@ impl<'tcx> Ty<'tcx> {
     /// Note that this method is used to check for change in drop order for
     /// 2229 drop reorder migration analysis.
     #[inline]
-    pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+    pub fn has_significant_drop(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
         // Avoid querying in simple cases.
         match needs_drop_components(tcx, self) {
             Err(AlwaysRequiresDrop) => true,
@@ -1443,8 +1447,8 @@ impl<'tcx> Ty<'tcx> {
 
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
-                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
-                tcx.has_significant_drop_raw(param_env.and(erased))
+                let erased = tcx.normalize_erasing_regions(typing_env, query_ty);
+                tcx.has_significant_drop_raw(typing_env.as_query_input(erased))
             }
         }
     }

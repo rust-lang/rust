@@ -333,10 +333,14 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
-    let const_kind = tcx.hir().body_const_context(def);
-
+    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
+    // cannot yet be stolen), because `mir_promoted()`, which steals
+    // from `mir_built()`, forces this query to execute before
+    // performing the steal.
+    let body = &tcx.mir_built(def).borrow();
+    let ccx = check_consts::ConstCx::new(tcx, body);
     // No need to const-check a non-const `fn`.
-    match const_kind {
+    match ccx.const_kind {
         Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
         None => span_bug!(
             tcx.def_span(def),
@@ -344,19 +348,11 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
         ),
     }
 
-    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
-    // cannot yet be stolen), because `mir_promoted()`, which steals
-    // from `mir_built()`, forces this query to execute before
-    // performing the steal.
-    let body = &tcx.mir_built(def).borrow();
-
     if body.return_ty().references_error() {
         // It's possible to reach here without an error being emitted (#121103).
         tcx.dcx().span_delayed_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
-
-    let ccx = check_consts::ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def) };
 
     let mut validator = check_consts::check::Checker::new(&ccx);
     validator.check_body();

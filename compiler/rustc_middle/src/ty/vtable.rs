@@ -97,7 +97,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     assert!(vtable_entries.len() >= vtable_min_entries(tcx, poly_trait_ref));
 
     let layout = tcx
-        .layout_of(ty::ParamEnv::reveal_all().and(ty))
+        .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
         .expect("failed to build vtable representation");
     assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();
@@ -117,7 +117,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let idx: u64 = u64::try_from(idx).unwrap();
         let scalar = match entry {
             VtblEntry::MetadataDropInPlace => {
-                if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
+                if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
                     let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);

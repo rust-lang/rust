@@ -32,7 +32,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns a zero literal operand for the appropriate type, works for
     /// bool, char and integers.
     pub(crate) fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = Const::from_bits(self.tcx, 0, ty::ParamEnv::empty().and(ty));
+        let literal = Const::from_bits(self.tcx, 0, ty::TypingEnv::fully_monomorphized(), ty);
 
         self.literal_operand(span, literal)
     }

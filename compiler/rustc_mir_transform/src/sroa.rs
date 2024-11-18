@@ -28,12 +28,12 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
         }
 
         let mut excluded = excluded_locals(body);
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         loop {
             debug!(?excluded);
-            let escaping = escaping_locals(tcx, param_env, &excluded, body);
+            let escaping = escaping_locals(tcx, typing_env, &excluded, body);
             debug!(?escaping);
-            let replacements = compute_flattening(tcx, param_env, body, escaping);
+            let replacements = compute_flattening(tcx, typing_env, body, escaping);
             debug!(?replacements);
             let all_dead_locals = replace_flattened_locals(tcx, body, replacements);
             if !all_dead_locals.is_empty() {
@@ -59,7 +59,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 ///   client code.
 fn escaping_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     excluded: &BitSet<Local>,
     body: &Body<'tcx>,
 ) -> BitSet<Local> {
@@ -84,7 +84,7 @@ fn escaping_locals<'tcx>(
                 // niche, so we do not want to automatically exclude it.
                 return false;
             }
-            let Ok(layout) = tcx.layout_of(param_env.and(ty)) else {
+            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
                 // We can't get the layout
                 return true;
             };
@@ -196,7 +196,7 @@ impl<'tcx> ReplacementMap<'tcx> {
 /// The replacement will be done later in `ReplacementVisitor`.
 fn compute_flattening<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     body: &mut Body<'tcx>,
     escaping: BitSet<Local>,
 ) -> ReplacementMap<'tcx> {
@@ -208,7 +208,7 @@ fn compute_flattening<'tcx>(
         }
         let decl = body.local_decls[local].clone();
         let ty = decl.ty;
-        iter_fields(ty, tcx, param_env, |variant, field, field_ty| {
+        iter_fields(ty, tcx, typing_env, |variant, field, field_ty| {
             if variant.is_some() {
                 // Downcasts are currently not supported.
                 return;

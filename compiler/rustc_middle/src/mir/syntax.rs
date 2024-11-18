@@ -20,7 +20,7 @@ use smallvec::SmallVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -98,13 +98,6 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
-        }
-    }
-
-    pub fn param_env<'tcx>(&self, tcx: TyCtxt<'tcx>, body_def_id: DefId) -> ty::ParamEnv<'tcx> {
-        match self {
-            MirPhase::Built | MirPhase::Analysis(_) => tcx.param_env(body_def_id),
-            MirPhase::Runtime(_) => tcx.param_env_reveal_all_normalized(body_def_id),
         }
     }
 }

@@ -103,7 +103,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
-use crate::query::Providers;
+use crate::query::{IntoQueryParam, Providers};
 use crate::traits::{self, Reveal};
 use crate::ty;
 pub use crate::ty::diagnostics::*;
@@ -1120,6 +1120,105 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn into_parts(self) -> (ParamEnv<'tcx>, T) {
         (self.param_env, self.value)
     }
+}
+
+/// The environment in which to do trait solving.
+///
+/// Most of the time you only need to care about the `ParamEnv`
+/// as the `TypingMode` is simply stored in the `InferCtxt`.
+///
+/// However, there are some places which rely on trait solving
+/// without using an `InferCtxt` themselves. For these to be
+/// able to use the trait system they have to be able to initialize
+/// such an `InferCtxt` with the right `typing_mode`, so they need
+/// to track both.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TypeVisitable, TypeFoldable)]
+pub struct TypingEnv<'tcx> {
+    pub typing_mode: TypingMode<'tcx>,
+    pub param_env: ParamEnv<'tcx>,
+}
+
+impl<'tcx> TypingEnv<'tcx> {
+    // FIXME(#132279): This method should be removed but simplifies the
+    // transition.
+    pub fn from_param_env(param_env: ParamEnv<'tcx>) -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: TypingMode::from_param_env(param_env), param_env }
+    }
+
+    /// Create a typing environment with no where-clauses in scope
+    /// where all opaque types and default associated items are revealed.
+    ///
+    /// This is only suitable for monomorphized, post-typeck environments.
+    /// Do not use this for MIR optimizations, as even though they also
+    /// use `TypingMode::PostAnalysis`, they may still have where-clauses
+    /// in scope.
+    pub fn fully_monomorphized() -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::reveal_all() }
+    }
+
+    /// Create a typing environment for use during analysis outside of a body.
+    ///
+    /// Using a typing environment inside of bodies is not supported as the body
+    /// may define opaque types. In this case the used functions have to be
+    /// converted to use proper canonical inputs instead.
+    pub fn non_body_analysis(
+        tcx: TyCtxt<'tcx>,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: TypingMode::non_body_analysis(), param_env: tcx.param_env(def_id) }
+    }
+
+    pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
+        TypingEnv {
+            typing_mode: TypingMode::PostAnalysis,
+            param_env: tcx.param_env_reveal_all_normalized(def_id),
+        }
+    }
+
+    /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
+    /// opaque types in the `param_env`.
+    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        let TypingEnv { typing_mode: _, param_env } = self;
+        let param_env = param_env.with_reveal_all_normalized(tcx);
+        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
+    }
+
+    /// Combine this typing environment with the given `value` to be used by
+    /// not (yet) canonicalized queries. This only works if the value does not
+    /// contain anything local to some `InferCtxt`, i.e. inference variables or
+    /// placeholders.
+    pub fn as_query_input<T>(self, value: T) -> PseudoCanonicalInput<'tcx, T>
+    where
+        T: TypeVisitable<TyCtxt<'tcx>>,
+    {
+        debug_assert!(!value.has_infer());
+        // FIXME(#132279): We should assert that the value does not contain any placeholders
+        // as these placeholders are also local to the current inference context. However, we
+        // currently use pseudo-canonical queries in the trait solver which replaces params with
+        // placeholders. We should also simply not use pseudo-canonical queries in the trait
+        // solver, at which point we can readd this assert. As of writing this comment, this is
+        // only used by `fn layout_is_pointer_like` when calling `layout_of`.
+        //
+        // debug_assert!(!value.has_placeholders());
+        PseudoCanonicalInput { typing_env: self, value }
+    }
+}
+
+/// Similar to `CanonicalInput`, this carries the `typing_mode` and the environment
+/// necessary to do any kind of trait solving inside of nested queries.
+///
+/// Unlike proper canonicalization, this requires the `param_env` and the `value` to not
+/// contain anything local to the `infcx` of the caller, so we don't actually canonicalize
+/// anything.
+///
+/// This should be created by using `infcx.pseudo_canonicalize_query(param_env, value)`
+/// or by using `typing_env.as_query_input(value)`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable)]
+pub struct PseudoCanonicalInput<'tcx, T> {
+    pub typing_env: TypingEnv<'tcx>,
+    pub value: T,
 }
 
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]

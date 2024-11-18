@@ -952,7 +952,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             if let Ok(Some(instance)) = ty::Instance::try_resolve(
                 tcx,
-                self.param_env,
+                self.infcx.typing_env(self.param_env),
                 *fn_did,
                 self.infcx.resolve_vars_if_possible(args),
             ) {

@@ -214,7 +214,7 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                         || !v
                             .inhabited_predicate(cx.tcx, adt_def)
                             .instantiate(cx.tcx, args)
-                            .apply_ignore_module(cx.tcx, cx.param_env)
+                            .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {

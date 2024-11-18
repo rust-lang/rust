@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{Body, SourceScope};
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
 use rustc_span::BytePos;
@@ -118,7 +118,7 @@ fn make_mir_scope<'ll, 'tcx>(
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
             let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 ty::EarlyBinder::bind(callee),
             );
             debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {

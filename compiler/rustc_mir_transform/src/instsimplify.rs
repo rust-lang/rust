@@ -70,6 +70,12 @@ struct InstSimplifyContext<'a, 'tcx> {
 }
 
 impl<'tcx> InstSimplifyContext<'_, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env }
+    }
+}
+
+impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     fn should_simplify(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.should_simplify_custom(source_info, "Rvalue", rvalue)
     }
@@ -348,7 +354,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         }
 
         let known_is_valid =
-            intrinsic_assert_panics(self.tcx, self.param_env, args[0], intrinsic_name);
+            intrinsic_assert_panics(self.tcx, self.typing_env(), args[0], intrinsic_name);
         match known_is_valid {
             // We don't know the layout or it's not validity assertion at all, don't touch it
             None => {}
@@ -366,13 +372,13 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
 fn intrinsic_assert_panics<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     arg: ty::GenericArg<'tcx>,
     intrinsic_name: Symbol,
 ) -> Option<bool> {
     let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
     let ty = arg.expect_ty();
-    Some(!tcx.check_validity_requirement((requirement, param_env.and(ty))).ok()?)
+    Some(!tcx.check_validity_requirement((requirement, typing_env.as_query_input(ty))).ok()?)
 }
 
 fn resolve_rust_intrinsic<'tcx>(

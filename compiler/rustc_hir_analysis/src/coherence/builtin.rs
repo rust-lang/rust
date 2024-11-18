@@ -259,7 +259,9 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     let ty_a = field.ty(tcx, args_a);
                     let ty_b = field.ty(tcx, args_b);
 
-                    if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
+                    if let Ok(layout) =
+                        tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
+                    {
                         if layout.is_1zst() {
                             // ignore 1-ZST fields
                             return false;

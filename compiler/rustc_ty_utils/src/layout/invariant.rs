@@ -9,7 +9,7 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
     let tcx = cx.tcx();
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
-    if layout.ty.is_privately_uninhabited(tcx, cx.param_env) {
+    if layout.ty.is_privately_uninhabited(tcx, cx.typing_env) {
         assert!(layout.is_uninhabited());
     }
 

@@ -61,7 +61,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         trace!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -128,7 +128,9 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
     ) -> Option<Size> {
         let ty = operand.ty(self.body, self.tcx);
         let ty = self.monomorphize(ty);
-        let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
+        let Ok(layout) =
+            self.tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+        else {
             return None;
         };
         if layout.size.bytes_usize() > limit.0 {

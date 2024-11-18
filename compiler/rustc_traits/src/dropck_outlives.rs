@@ -5,7 +5,7 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
-use rustc_middle::ty::{GenericArgs, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, TyCtxt};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, dtorck_constraint_for_ty_inner,
@@ -35,7 +35,7 @@ pub(crate) fn adt_dtorck_constraint(
 ) -> Result<&DropckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
-    let param_env = tcx.param_env(def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
     debug!("dtorck_constraint: {:?}", def);
 
     if def.is_manually_drop() {
@@ -57,7 +57,7 @@ pub(crate) fn adt_dtorck_constraint(
     let mut result = DropckConstraint::empty();
     for field in def.all_fields() {
         let fty = tcx.type_of(field.did).instantiate_identity();
-        dtorck_constraint_for_ty_inner(tcx, param_env, span, 0, fty, &mut result)?;
+        dtorck_constraint_for_ty_inner(tcx, typing_env, span, 0, fty, &mut result)?;
     }
     result.outlives.extend(tcx.destructor_constraints(def));
     dedup_dtorck_constraint(&mut result);

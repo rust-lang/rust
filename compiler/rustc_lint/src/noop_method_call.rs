@@ -94,9 +94,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
 
         let args = cx
             .tcx
-            .normalize_erasing_regions(cx.param_env, cx.typeck_results().node_args(expr.hir_id));
+            .normalize_erasing_regions(cx.typing_env(), cx.typeck_results().node_args(expr.hir_id));
         // Resolve the trait method instance.
-        let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.param_env, did, args) else {
+        let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), did, args) else {
             return;
         };
         // (Re)check that it implements the noop diagnostic.

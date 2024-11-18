@@ -151,7 +151,7 @@ fn is_ref_iterable<'tcx>(
                 // Using by value won't consume anything
                 if implements_trait(cx, self_ty, trait_id, &[])
                     && let Some(ty) =
-                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [self_ty])
+                        make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [self_ty])
                     && ty == res_ty
                 {
                     return Some((AdjustKind::None, self_ty));
@@ -168,7 +168,7 @@ fn is_ref_iterable<'tcx>(
                 };
                 if implements_trait(cx, self_ty, trait_id, &[])
                     && let Some(ty) =
-                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [self_ty])
+                        make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [self_ty])
                     && ty == res_ty
                 {
                     return Some((AdjustKind::reborrow(mutbl), self_ty));
@@ -181,7 +181,7 @@ fn is_ref_iterable<'tcx>(
             // Attempt to borrow
             let self_ty = Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, self_ty, mutbl);
             if implements_trait(cx, self_ty, trait_id, &[])
-                && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [self_ty])
+                && let Some(ty) = make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [self_ty])
                 && ty == res_ty
             {
                 return Some((AdjustKind::borrow(mutbl), self_ty));
@@ -204,7 +204,7 @@ fn is_ref_iterable<'tcx>(
                     && target != self_ty
                     && implements_trait(cx, target, trait_id, &[])
                     && let Some(ty) =
-                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                        make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::auto_reborrow(mutbl), target))
@@ -222,7 +222,7 @@ fn is_ref_iterable<'tcx>(
                 if is_copy(cx, target)
                     && implements_trait(cx, target, trait_id, &[])
                     && let Some(ty) =
-                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                        make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::Deref, target))
@@ -240,7 +240,7 @@ fn is_ref_iterable<'tcx>(
                 if self_ty.is_ref()
                     && implements_trait(cx, target, trait_id, &[])
                     && let Some(ty) =
-                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                        make_normalized_projection(cx.tcx, cx.typing_env(), trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::auto_borrow(mutbl), target))
