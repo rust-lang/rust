@@ -2738,6 +2738,10 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Removes an empty directory.
 ///
+/// If you want to remove a directory that is not empty, as well as all
+/// of its contents recursively, consider using [`remove_dir_all`]
+/// instead.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rmdir` function on Unix
