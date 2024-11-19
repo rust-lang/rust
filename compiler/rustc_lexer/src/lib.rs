@@ -57,11 +57,10 @@ impl Token {
 /// Enum representing common lexeme types.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
-    // Multi-char tokens:
-    /// "// comment"
+    /// A line comment, e.g. `// comment`.
     LineComment { doc_style: Option<DocStyle> },
 
-    /// `/* block comment */`
+    /// A block comment, e.g. `/* block comment */`.
     ///
     /// Block comments can be recursive, so a sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
@@ -70,18 +69,17 @@ pub enum TokenKind {
     /// Any whitespace character sequence.
     Whitespace,
 
-    /// "ident" or "continue"
-    ///
-    /// At this step, keywords are also considered identifiers.
+    /// An identifier or keyword, e.g. `ident` or `continue`.
     Ident,
 
-    /// Like the above, but containing invalid unicode codepoints.
+    /// An identifier that is invalid because it contains emoji.
     InvalidIdent,
 
-    /// "r#ident"
+    /// A raw identifier, e.g. "r#ident".
     RawIdent,
 
-    /// An unknown prefix, like `foo#`, `foo'`, `foo"`.
+    /// An unknown literal prefix, like `foo#`, `foo'`, `foo"`. Excludes
+    /// literal prefixes that contain emoji, which are considered "invalid".
     ///
     /// Note that only the
     /// prefix (`foo`) is included in the token, not the separator (which is
@@ -93,16 +91,13 @@ pub enum TokenKind {
 
     /// An unknown prefix in a lifetime, like `'foo#`.
     ///
-    /// Note that like above, only the `'` and prefix are included in the token
+    /// Like `UnknownPrefix`, only the `'` and prefix are included in the token
     /// and not the separator.
     UnknownPrefixLifetime,
 
-    /// `'r#lt`, which in edition < 2021 is split into several tokens: `'r # lt`.
+    /// A raw lifetime, e.g. `'r#foo`. In edition < 2021 it will be split into
+    /// several tokens: `'r` and `#` and `foo`.
     RawLifetime,
-
-    /// Similar to the above, but *always* an error on every edition. This is used
-    /// for emoji identifier recovery, as those are not meant to be ever accepted.
-    InvalidPrefix,
 
     /// Guarded string literal prefix: `#"` or `##`.
     ///
@@ -110,70 +105,69 @@ pub enum TokenKind {
     /// Split into the component tokens on older editions.
     GuardedStrPrefix,
 
-    /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
+    /// Literals, e.g. `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
     /// suffix, but may be present here on string and float literals. Users of
     /// this type will need to check for and reject that case.
     ///
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
 
-    /// "'a"
+    /// A lifetime, e.g. `'a`.
     Lifetime { starts_with_number: bool },
 
-    // One-char tokens:
-    /// ";"
+    /// `;`
     Semi,
-    /// ","
+    /// `,`
     Comma,
-    /// "."
+    /// `.`
     Dot,
-    /// "("
+    /// `(`
     OpenParen,
-    /// ")"
+    /// `)`
     CloseParen,
-    /// "{"
+    /// `{`
     OpenBrace,
-    /// "}"
+    /// `}`
     CloseBrace,
-    /// "["
+    /// `[`
     OpenBracket,
-    /// "]"
+    /// `]`
     CloseBracket,
-    /// "@"
+    /// `@`
     At,
-    /// "#"
+    /// `#`
     Pound,
-    /// "~"
+    /// `~`
     Tilde,
-    /// "?"
+    /// `?`
     Question,
-    /// ":"
+    /// `:`
     Colon,
-    /// "$"
+    /// `$`
     Dollar,
-    /// "="
+    /// `=`
     Eq,
-    /// "!"
+    /// `!`
     Bang,
-    /// "<"
+    /// `<`
     Lt,
-    /// ">"
+    /// `>`
     Gt,
-    /// "-"
+    /// `-`
     Minus,
-    /// "&"
+    /// `&`
     And,
-    /// "|"
+    /// `|`
     Or,
-    /// "+"
+    /// `+`
     Plus,
-    /// "*"
+    /// `*`
     Star,
-    /// "/"
+    /// `/`
     Slash,
-    /// "^"
+    /// `^`
     Caret,
-    /// "%"
+    /// `%`
     Percent,
 
     /// Unknown token, not expected by the lexer, e.g. "№"
@@ -468,7 +462,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -552,24 +546,22 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Ident,
         }
     }
 
-    fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
+    fn invalid_ident(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
-            unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && c.is_emoji_char())
-                || c == '\u{200d}'
+            const ZERO_WIDTH_JOINER: char = '\u{200d}';
+            is_id_continue(c) || (!c.is_ascii() && c.is_emoji_char()) || c == ZERO_WIDTH_JOINER
         });
-        // Known prefixes must have been handled earlier. So if
-        // we see a prefix here, it is definitely an unknown prefix.
-        match self.first() {
-            '#' | '"' | '\'' => InvalidPrefix,
-            _ => InvalidIdent,
-        }
+        // An invalid identifier followed by '#' or '"' or '\'' could be
+        // interpreted as an invalid literal prefix. We don't bother doing that
+        // because the treatment of invalid identifiers and invalid prefixes
+        // would be the same.
+        InvalidIdent
     }
 
     fn c_or_byte_string(
