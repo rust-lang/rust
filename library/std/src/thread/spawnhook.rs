@@ -83,7 +83,7 @@ struct SpawnHook {
 ///     assert_eq!(X.get(), 123);
 /// }).join().unwrap();
 /// ```
-#[unstable(feature = "thread_spawn_hook", issue = "none")]
+#[unstable(feature = "thread_spawn_hook", issue = "132951")]
 pub fn add_spawn_hook<F, G>(hook: F)
 where
     F: 'static + Send + Sync + Fn(&Thread) -> G,
