@@ -9,7 +9,7 @@ use rustc_middle::mir::{Body, SourceScope};
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, hygiene};
 
 use super::metadata::file_metadata;
 use super::utils::DIB;
@@ -138,8 +138,7 @@ fn make_mir_scope<'ll, 'tcx>(
     };
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
-        // FIXME(eddyb) this doesn't account for the macro-related
-        // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
+        let callsite_span = hygiene::walk_chain_collapsed(callsite_span, mir.span);
         let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
         let loc = cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
 
