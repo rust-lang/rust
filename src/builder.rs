@@ -1106,18 +1106,24 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         val: RValue<'gcc>,
         ptr: RValue<'gcc>,
         align: Align,
-        _flags: MemFlags,
+        flags: MemFlags,
     ) -> RValue<'gcc> {
         let ptr = self.check_store(val, ptr);
         let destination = ptr.dereference(self.location);
         // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
         // to type so it gets the proper alignment.
         let destination_type = destination.to_rvalue().get_type().unqualified();
-        let aligned_type = destination_type.get_aligned(align.bytes()).make_pointer();
-        let aligned_destination = self.cx.context.new_bitcast(self.location, ptr, aligned_type);
-        let aligned_destination = aligned_destination.dereference(self.location);
-        self.llbb().add_assignment(self.location, aligned_destination, val);
-        // TODO(antoyo): handle align and flags.
+        let align = if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() };
+        let mut modified_destination_type = destination_type.get_aligned(align);
+        if flags.contains(MemFlags::VOLATILE) {
+            modified_destination_type = modified_destination_type.make_volatile();
+        }
+
+        let modified_ptr =
+            self.cx.context.new_cast(self.location, ptr, modified_destination_type.make_pointer());
+        let modified_destination = modified_ptr.dereference(self.location);
+        self.llbb().add_assignment(self.location, modified_destination, val);
+        // TODO(antoyo): handle `MemFlags::NONTEMPORAL`.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
