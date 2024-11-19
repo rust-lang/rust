@@ -3767,6 +3767,179 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> Unpin for UniqueRc<T, A> {}
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueRc<T, A> {
+    /// Equality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are equal if their inner values are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five == UniqueRc::new(5));
+    /// ```
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(&**self, &**other)
+    }
+
+    /// Inequality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are not equal if their inner values are not equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five != UniqueRc::new(6));
+    /// ```
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        PartialEq::ne(&**self, &**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for UniqueRc<T, A> {
+    /// Partial comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `partial_cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline(always)]
+    fn partial_cmp(&self, other: &UniqueRc<T, A>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    /// Less-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five < UniqueRc::new(6));
+    /// ```
+    #[inline(always)]
+    fn lt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self < **other
+    }
+
+    /// 'Less than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five <= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn le(&self, other: &UniqueRc<T, A>) -> bool {
+        **self <= **other
+    }
+
+    /// Greater-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five > UniqueRc::new(4));
+    /// ```
+    #[inline(always)]
+    fn gt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self > **other
+    }
+
+    /// 'Greater than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five >= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn ge(&self, other: &UniqueRc<T, A>) -> bool {
+        **self >= **other
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Ord, A: Allocator> Ord for UniqueRc<T, A> {
+    /// Comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Ordering::Less, five.cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline]
+    fn cmp(&self, other: &UniqueRc<T, A>) -> Ordering {
+        (**self).cmp(&**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Eq, A: Allocator> Eq for UniqueRc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Hash, A: Allocator> Hash for UniqueRc<T, A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
 // Depends on A = Global
 impl<T> UniqueRc<T> {
     /// Creates a new `UniqueRc`.
