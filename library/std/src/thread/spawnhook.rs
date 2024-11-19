@@ -1,4 +1,5 @@
 use crate::cell::Cell;
+use crate::iter;
 use crate::sync::Arc;
 use crate::thread::Thread;
 
@@ -91,9 +92,10 @@ where
 {
     SPAWN_HOOKS.with(|h| {
         let mut hooks = h.take();
+        let next = hooks.first.take();
         hooks.first = Some(Arc::new(SpawnHook {
             hook: Box::new(move |thread| Box::new(hook(thread))),
-            next: hooks.first.take(),
+            next,
         }));
         h.set(hooks);
     });
@@ -113,12 +115,9 @@ pub(super) fn run_spawn_hooks(thread: &Thread) -> ChildSpawnHooks {
         snapshot
     });
     // Iterate over the hooks, run them, and collect the results in a vector.
-    let mut next: &Option<Arc<SpawnHook>> = &hooks.first;
-    let mut to_run = Vec::new();
-    while let Some(hook) = next {
-        to_run.push((hook.hook)(thread));
-        next = &hook.next;
-    }
+    let to_run: Vec<_> = iter::successors(hooks.first.as_deref(), |hook| hook.next.as_deref())
+        .map(|hook| (hook.hook)(thread))
+        .collect();
     // Pass on the snapshot of the hooks and the results to the new thread,
     // which will then run SpawnHookResults::run().
     ChildSpawnHooks { hooks, to_run }
