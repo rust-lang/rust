@@ -306,11 +306,10 @@ where
             return false;
         }
 
-        // This is currently unconditionally true for all qualifs, since we do
-        // not recurse into the pointer of a deref projection, but that may change
-        // in the future. If that changes, each qualif should be required to
-        // specify whether it operates structurally for deref projections, just like
-        // we do for `Qualif::is_structural_in_adt`.
+        // `Deref` currently unconditionally "qualifies" if `in_any_value_of_ty` returns true,
+        // i.e., we treat all qualifs as non-structural for deref projections. Generally,
+        // we can say very little about `*ptr` even if we know that `ptr` satisfies all
+        // sorts of properties.
         if matches!(elem, ProjectionElem::Deref) {
             // We have to assume that this qualifies.
             return true;

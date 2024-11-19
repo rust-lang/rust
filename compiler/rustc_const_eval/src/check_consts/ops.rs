@@ -459,7 +459,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
 
 #[derive(Debug)]
 pub(crate) struct LiveDrop<'tcx> {
-    pub dropped_at: Option<Span>,
+    pub dropped_at: Span,
     pub dropped_ty: Ty<'tcx>,
     pub needs_non_const_drop: bool,
 }

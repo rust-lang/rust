@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature `const_destruct`
 LL | use std::marker::Destruct;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -14,7 +14,7 @@ error[E0658]: use of unstable library feature `const_destruct`
 LL |     T: ~const Fn<()> + ~const Destruct,
    |                               ^^^^^^^^
    |
-   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -24,7 +24,7 @@ error[E0658]: use of unstable library feature `const_destruct`
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |                                  ^^^^^^^^
    |
-   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -34,7 +34,7 @@ error[E0658]: use of unstable library feature `const_destruct`
 LL |     T: ~const Fn<()> + ~const Destruct,
    |                               ^^^^^^^^
    |
-   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -44,7 +44,7 @@ error[E0658]: use of unstable library feature `const_destruct`
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |                                  ^^^^^^^^
    |
-   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
    = help: add `#![feature(const_destruct)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

@@ -1,5 +1,5 @@
 error[E0493]: destructor of `ConstDrop` cannot be evaluated at compile-time
-  --> $DIR/minicore-drop-without-feature-gate.rs:23:13
+  --> $DIR/minicore-drop-without-feature-gate.rs:24:13
    |
 LL |     let _ = ConstDrop;
    |             ^^^^^^^^^- value is dropped here

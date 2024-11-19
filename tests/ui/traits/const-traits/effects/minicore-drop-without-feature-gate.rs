@@ -2,6 +2,7 @@
 //@ compile-flags: --crate-type=lib -Znext-solver
 //@ revisions: yes no
 //@[yes] check-pass
+// gate-test-const_destruct
 
 #![feature(no_core, const_trait_impl)]
 #![cfg_attr(yes, feature(const_destruct))]

@@ -324,14 +324,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
     }
 
-    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context. This is meant for use in a post-const-checker pass such as the const precise
-    /// live drops lint.
-    pub fn check_op_spanned_post<O: NonConstOp<'tcx>>(mut self, op: O, span: Span) {
-        self.check_op_spanned(op, span);
-        assert!(self.secondary_errors.is_empty());
-    }
-
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
@@ -428,6 +420,43 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         true
+    }
+
+    pub fn check_drop_terminator(
+        &mut self,
+        dropped_place: Place<'tcx>,
+        location: Location,
+        terminator_span: Span,
+    ) {
+        let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
+
+        let needs_drop = if let Some(local) = dropped_place.as_local() {
+            self.qualifs.needs_drop(self.ccx, local, location)
+        } else {
+            qualifs::NeedsDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
+        };
+        // If this type doesn't need a drop at all, then there's nothing to enforce.
+        if !needs_drop {
+            return;
+        }
+
+        let mut err_span = self.span;
+        let needs_non_const_drop = if let Some(local) = dropped_place.as_local() {
+            // Use the span where the local was declared as the span of the drop error.
+            err_span = self.body.local_decls[local].source_info.span;
+            self.qualifs.needs_non_const_drop(self.ccx, local, location)
+        } else {
+            qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
+        };
+
+        self.check_op_spanned(
+            ops::LiveDrop {
+                dropped_at: terminator_span,
+                dropped_ty: ty_of_dropped_place,
+                needs_non_const_drop,
+            },
+            err_span,
+        );
     }
 }
 
@@ -874,35 +903,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                let mut err_span = self.span;
-                let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
-
-                let needs_drop = if let Some(local) = dropped_place.as_local() {
-                    self.qualifs.needs_drop(self.ccx, local, location)
-                } else {
-                    qualifs::NeedsDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
-                };
-                // If this type doesn't need a drop at all, then there's nothing to enforce.
-                if !needs_drop {
-                    return;
-                }
-
-                let needs_non_const_drop = if let Some(local) = dropped_place.as_local() {
-                    // Use the span where the local was declared as the span of the drop error.
-                    err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_non_const_drop(self.ccx, local, location)
-                } else {
-                    qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
-                };
-
-                self.check_op_spanned(
-                    ops::LiveDrop {
-                        dropped_at: Some(terminator.source_info.span),
-                        dropped_ty: ty_of_dropped_place,
-                        needs_non_const_drop,
-                    },
-                    err_span,
-                );
+                self.check_drop_terminator(*dropped_place, location, terminator.source_info.span);
             }
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
