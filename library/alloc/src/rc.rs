@@ -2232,11 +2232,19 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
+
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
+
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueRc<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized> LegacyReceiver for Rc<T> {}
@@ -4030,9 +4038,6 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
         unsafe { &self.ptr.as_ref().value }
     }
 }
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueRc<T> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
