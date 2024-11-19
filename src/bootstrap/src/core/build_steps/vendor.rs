@@ -57,7 +57,9 @@ impl Step for Vendor {
         }
 
         // These submodules must be present for `x vendor` to work.
-        for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
+        for submodule in
+            SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo", "src/tools/rustc-perf"].iter())
+        {
             builder.build.require_submodule(submodule, None);
         }
 
