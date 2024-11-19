@@ -139,6 +139,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::doc::DOC_LAZY_CONTINUATION_INFO,
     crate::doc::DOC_LINK_WITH_QUOTES_INFO,
     crate::doc::DOC_MARKDOWN_INFO,
+    crate::doc::DOC_NESTED_REFDEFS_INFO,
     crate::doc::EMPTY_DOCS_INFO,
     crate::doc::EMPTY_LINE_AFTER_DOC_COMMENTS_INFO,
     crate::doc::EMPTY_LINE_AFTER_OUTER_ATTR_INFO,
