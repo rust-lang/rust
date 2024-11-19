@@ -2,6 +2,7 @@ use std::mem::variant_count;
 
 use rustc_abi::HasDataLayout;
 
+use crate::concurrency::thread::ThreadNotFound;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -14,7 +15,7 @@ pub enum PseudoHandle {
 pub enum Handle {
     Null,
     Pseudo(PseudoHandle),
-    Thread(u32),
+    Thread(ThreadId),
 }
 
 impl PseudoHandle {
@@ -34,6 +35,14 @@ impl PseudoHandle {
     }
 }
 
+/// Errors that can occur when constructing a [`Handle`] from a Scalar.
+pub enum HandleError {
+    /// There is no thread with the given ID.
+    ThreadNotFound(ThreadNotFound),
+    /// Can't convert scalar to handle because it is structurally invalid.
+    InvalidHandle,
+}
+
 impl Handle {
     const NULL_DISCRIMINANT: u32 = 0;
     const PSEUDO_DISCRIMINANT: u32 = 1;
@@ -51,7 +60,7 @@ impl Handle {
         match self {
             Self::Null => 0,
             Self::Pseudo(pseudo_handle) => pseudo_handle.value(),
-            Self::Thread(thread) => thread,
+            Self::Thread(thread) => thread.to_u32(),
         }
     }
 
@@ -95,7 +104,7 @@ impl Handle {
         match discriminant {
             Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
             Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
-            Self::THREAD_DISCRIMINANT => Some(Self::Thread(data)),
+            Self::THREAD_DISCRIMINANT => Some(Self::Thread(ThreadId::new_unchecked(data))),
             _ => None,
         }
     }
@@ -126,10 +135,14 @@ impl Handle {
         Scalar::from_target_isize(signed_handle.into(), cx)
     }
 
-    pub fn from_scalar<'tcx>(
+    /// Convert a scalar into a structured `Handle`.
+    /// Structurally invalid handles return [`HandleError::InvalidHandle`].
+    /// If the handle is structurally valid but semantically invalid, e.g. a for non-existent thread
+    /// ID, returns [`HandleError::ThreadNotFound`].
+    pub fn try_from_scalar<'tcx>(
         handle: Scalar,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Option<Self>> {
+        cx: &MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<Self, HandleError>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
 
         #[expect(clippy::cast_sign_loss)] // we want to lose the sign
@@ -137,10 +150,20 @@ impl Handle {
             signed_handle as u32
         } else {
             // if a handle doesn't fit in an i32, it isn't valid.
-            return interp_ok(None);
+            return interp_ok(Err(HandleError::InvalidHandle));
         };
 
-        interp_ok(Self::from_packed(handle))
+        match Self::from_packed(handle) {
+            Some(Self::Thread(thread)) => {
+                // validate the thread id
+                match cx.machine.threads.thread_id_try_from(thread.to_u32()) {
+                    Ok(id) => interp_ok(Ok(Self::Thread(id))),
+                    Err(e) => interp_ok(Err(HandleError::ThreadNotFound(e))),
+                }
+            }
+            Some(handle) => interp_ok(Ok(handle)),
+            None => interp_ok(Err(HandleError::InvalidHandle)),
+        }
     }
 }
 
@@ -158,14 +181,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let handle = this.read_scalar(handle_op)?;
-        let ret = match Handle::from_scalar(handle, this)? {
-            Some(Handle::Thread(thread)) => {
-                if let Ok(thread) = this.thread_id_try_from(thread) {
-                    this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
-                    this.eval_windows("c", "TRUE")
-                } else {
-                    this.invalid_handle("CloseHandle")?
-                }
+        let ret = match Handle::try_from_scalar(handle, this)? {
+            Ok(Handle::Thread(thread)) => {
+                this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
+                this.eval_windows("c", "TRUE")
             }
             _ => this.invalid_handle("CloseHandle")?,
         };
