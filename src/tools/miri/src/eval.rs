@@ -274,7 +274,7 @@ pub fn create_ecx<'tcx>(
         tcx,
         rustc_span::DUMMY_SP,
         typing_env.param_env,
-        MiriMachine::new(config, layout_cx)
+        MiriMachine::new(config, layout_cx),
     );
 
     // Some parts of initialization require a full `InterpCx`.
