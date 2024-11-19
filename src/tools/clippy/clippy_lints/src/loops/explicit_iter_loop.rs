@@ -115,11 +115,11 @@ fn is_ref_iterable<'tcx>(
             .tcx
             .liberate_late_bound_regions(fn_id, cx.tcx.fn_sig(fn_id).skip_binder())
         && let &[req_self_ty, req_res_ty] = &**sig.inputs_and_output
-        && let param_env = cx.tcx.param_env(fn_id)
-        && implements_trait_with_env(cx.tcx, param_env, req_self_ty, trait_id, Some(fn_id), &[])
+        && let typing_env = ty::TypingEnv::non_body_analysis(cx.tcx, fn_id)
+        && implements_trait_with_env(cx.tcx, typing_env, req_self_ty, trait_id, Some(fn_id), &[])
         && let Some(into_iter_ty) =
-            make_normalized_projection_with_regions(cx.tcx, param_env, trait_id, sym!(IntoIter), [req_self_ty])
-        && let req_res_ty = normalize_with_regions(cx.tcx, param_env, req_res_ty)
+            make_normalized_projection_with_regions(cx.tcx, typing_env, trait_id, sym!(IntoIter), [req_self_ty])
+        && let req_res_ty = normalize_with_regions(cx.tcx, typing_env, req_res_ty)
         && into_iter_ty == req_res_ty
     {
         let adjustments = typeck.expr_adjustments(self_arg);
