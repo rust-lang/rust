@@ -539,6 +539,7 @@ of these sanitizers:
 
 | Target                      | Sanitizers      |
 |-----------------------------|-----------------|
+| aarch64-apple-darwin        | address         |
 | aarch64-unknown-linux-gnu   | address, leak   |
 | i686-pc-windows-msvc        | address         |
 | i686-unknown-linux-gnu      | address         |
