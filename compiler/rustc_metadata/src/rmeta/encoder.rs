@@ -1532,6 +1532,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_explicit_item_super_predicates(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
+                if tcx.is_conditionally_const(def_id) {
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                        <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                }
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
