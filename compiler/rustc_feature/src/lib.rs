@@ -26,6 +26,7 @@ mod unstable;
 #[cfg(test)]
 mod tests;
 
+use std::env;
 use std::num::NonZero;
 
 use rustc_span::symbol::Symbol;
@@ -68,6 +69,14 @@ impl UnstableFeatures {
     /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
     /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
+        Self::from_environment_inner(krate, |name| env::var(name))
+    }
+
+    /// Unit tests can pass a mock `std::env::var` instead of modifying the real environment.
+    fn from_environment_inner(
+        krate: Option<&str>,
+        env_var: impl Fn(&str) -> Result<String, env::VarError>, // std::env::var
+    ) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features =
             option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
@@ -75,7 +84,7 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
-        let bootstrap = std::env::var("RUSTC_BOOTSTRAP").ok();
+        let bootstrap = env_var("RUSTC_BOOTSTRAP").ok();
         if let Some(val) = bootstrap.as_deref() {
             match val {
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,

@@ -1,10 +1,18 @@
+use std::env;
+
 use super::UnstableFeatures;
+
+fn unstable_features(rustc_bootstrap: &str, crate_name: Option<&str>) -> UnstableFeatures {
+    UnstableFeatures::from_environment_inner(crate_name, |name| match name {
+        "RUSTC_BOOTSTRAP" => Ok(rustc_bootstrap.to_owned()),
+        _ => Err(env::VarError::NotPresent),
+    })
+}
 
 #[test]
 fn rustc_bootstrap_parsing() {
-    let is_bootstrap = |env, krate| {
-        std::env::set_var("RUSTC_BOOTSTRAP", env);
-        matches!(UnstableFeatures::from_environment(krate), UnstableFeatures::Cheat)
+    let is_bootstrap = |rustc_bootstrap, crate_name| {
+        matches!(unstable_features(rustc_bootstrap, crate_name), UnstableFeatures::Cheat)
     };
     assert!(is_bootstrap("1", None));
     assert!(is_bootstrap("1", Some("x")));
@@ -22,10 +30,8 @@ fn rustc_bootstrap_parsing() {
     assert!(!is_bootstrap("0", None));
 
     // `RUSTC_BOOTSTRAP=-1` is force-stable, no unstable features allowed.
-    let is_force_stable = |krate| {
-        std::env::set_var("RUSTC_BOOTSTRAP", "-1");
-        matches!(UnstableFeatures::from_environment(krate), UnstableFeatures::Disallow)
-    };
+    let is_force_stable =
+        |crate_name| matches!(unstable_features("-1", crate_name), UnstableFeatures::Disallow);
     assert!(is_force_stable(None));
     // Does not support specifying any crate.
     assert!(is_force_stable(Some("x")));
