@@ -669,3 +669,25 @@ impl ImplDoc {
 impl ImplDoc {
     pub fn bar2() {}
 }
+
+// ignore-tidy-linelength
+/// | this::is::a::kinda::very::long::header::number::one | this::is::a::kinda::very::long::header::number::two | this::is::a::kinda::very::long::header::number::three |
+/// |-|-|-|
+/// | bla | bli | blob |
+impl ImplDoc {
+    pub fn bar3() {}
+}
+
+/// # h1
+///
+/// bla
+impl ImplDoc {
+    pub fn bar4() {}
+}
+
+/// * list
+/// * list
+/// * list
+impl ImplDoc {
+    pub fn bar5() {}
+}

@@ -31,3 +31,12 @@ assert: (|impl_y| + |impl_height|) <= (|doc_y| + |doc_height|)
 call-function: ("compare-size-and-pos", {"nth_impl": 2})
 // The second impl block has a short line.
 assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+
+// FIXME: Needs `if` condition to make this test check that `padding-top` on the "..." element
+// is as expected for tables.
+call-function: ("compare-size-and-pos", {"nth_impl": 3})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+call-function: ("compare-size-and-pos", {"nth_impl": 4})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+call-function: ("compare-size-and-pos", {"nth_impl": 5})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)

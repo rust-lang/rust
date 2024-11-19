@@ -2215,7 +2215,7 @@ details.toggle:not([open]) > summary .docblock {
 	overflow-y: hidden;
 }
 details.toggle:not([open]) > summary .docblock > :first-child {
-	max-width: calc(100% - 1em);
+	max-width: 100%;
 	overflow: hidden;
 	width: fit-content;
 	white-space: nowrap;
@@ -2230,10 +2230,15 @@ details.toggle:not([open]) > summary .docblock > :first-child::after {
 	bottom: 0;
 	z-index: 1;
 	background-color: var(--main-background-color);
-	/* In case this ends up in a heading or a `<code>` item. */
-	font-weight: normal;
 	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	/* To make it look a bit better and not have it stuck to the preceding element. */
+	padding-left: 0.2em;
 }
+details.toggle:not([open]) > summary .docblock > div:first-child::after {
+	/* This is to make the "..." always appear at the bottom. */
+	padding-top: calc(1.5em + 0.75em - 1.2rem);
+}
+
 details.toggle > summary .docblock {
 	margin-top: 0.75em;
 }
