@@ -1817,9 +1817,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
                         const_arg.kind
                     {
-                        // Only anon consts can implicitly capture params.
-                        // FIXME: is this correct behavior?
-                        let typing_env = ty::TypingEnv::from_param_env(cx.tcx.param_env(*def_id));
+                        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                         cx.tcx.normalize_erasing_regions(typing_env, ct)
                     } else {
                         ct
