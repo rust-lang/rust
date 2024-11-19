@@ -670,13 +670,6 @@ Cargo
 - [Support `target.<triple>.rustdocflags` officially](https://github.com/rust-lang/cargo/pull/13197/)
 - [Stabilize global cache data tracking](https://github.com/rust-lang/cargo/pull/13492/)
 
-<a id="1.78.0-Misc"></a>
-
-Misc
-----
-
-- [rustdoc: add `--test-builder-wrapper` arg to support wrappers such as RUSTC_WRAPPER when building doctests](https://github.com/rust-lang/rust/pull/114651/)
-
 <a id="1.78.0-Compatibility-Notes"></a>
 
 Compatibility Notes
