@@ -85,6 +85,7 @@ pub(super) fn unexpected_cfg_name(
     };
 
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
+    let is_from_external_macro = rustc_middle::lint::in_external_macro(sess, name_span);
     let mut is_feature_cfg = name == sym::feature;
 
     let code_sugg = if is_feature_cfg && is_from_cargo {
@@ -185,7 +186,11 @@ pub(super) fn unexpected_cfg_name(
     };
 
     let invocation_help = if is_from_cargo {
-        let sub = if !is_feature_cfg { Some(cargo_help_sub(sess, &inst)) } else { None };
+        let sub = if !is_feature_cfg && !is_from_external_macro {
+            Some(cargo_help_sub(sess, &inst))
+        } else {
+            None
+        };
         lints::unexpected_cfg_name::InvocationHelp::Cargo { sub }
     } else {
         lints::unexpected_cfg_name::InvocationHelp::Rustc(lints::UnexpectedCfgRustcHelp::new(
@@ -216,7 +221,9 @@ pub(super) fn unexpected_cfg_value(
         .copied()
         .flatten()
         .collect();
+
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
+    let is_from_external_macro = rustc_middle::lint::in_external_macro(sess, name_span);
 
     // Show the full list if all possible values for a given name, but don't do it
     // for names as the possibilities could be very long
@@ -284,13 +291,13 @@ pub(super) fn unexpected_cfg_value(
     };
 
     let invocation_help = if is_from_cargo {
-        let help = if name == sym::feature {
+        let help = if name == sym::feature && !is_from_external_macro {
             if let Some((value, _value_span)) = value {
                 Some(lints::unexpected_cfg_value::CargoHelp::AddFeature { value })
             } else {
                 Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
-        } else if can_suggest_adding_value {
+        } else if can_suggest_adding_value && !is_from_external_macro {
             Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
