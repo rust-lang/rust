@@ -19,10 +19,12 @@ fn main() {
     // Should not lint!
     format!("{y:?}");
     println!("{y:?}");
-    x.expect(" {} "); // For now we ignore `{}` to limit false positives.
-    x.expect(" {   } "); // For now we ignore `{}` to limit false positives.
+    x.expect(" {} "); // We ignore `{}` to limit false positives.
+    x.expect(" {   } "); // We ignore `{}` to limit false positives.
     x.expect("{{y} {x");
     x.expect("{{y:?}");
+    x.expect(" {0}"); // If it only contains an integer, we ignore it.
+    x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
     x.expect("{y:...}");
     let _ = "fn main {\n\
     }";

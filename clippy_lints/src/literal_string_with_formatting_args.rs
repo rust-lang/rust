@@ -1,11 +1,13 @@
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::token::LitKind;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_ast::{LitKind, StrStyle};
+use rustc_hir::{Expr, ExprKind};
+use rustc_lexer::is_ident;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::declare_lint_pass;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, Span};
 
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::mir::enclosing_mir;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -35,18 +37,65 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LiteralStringWithFormattingArg => [LITERAL_STRING_WITH_FORMATTING_ARGS]);
 
-impl EarlyLintPass for LiteralStringWithFormattingArg {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<String>)]) {
+    if !spans.is_empty()
+        && let Some(mir) = enclosing_mir(cx.tcx, expr.hir_id)
+    {
+        let spans = spans
+            .iter()
+            .filter_map(|(span, name)| {
+                if let Some(name) = name {
+                    // We need to check that the name is a local.
+                    if !mir
+                        .var_debug_info
+                        .iter()
+                        .any(|local| !local.source_info.span.from_expansion() && local.name.as_str() == name)
+                    {
+                        return None;
+                    }
+                }
+                Some(*span)
+            })
+            .collect::<Vec<_>>();
+        match spans.len() {
+            0 => {},
+            1 => {
+                span_lint(
+                    cx,
+                    LITERAL_STRING_WITH_FORMATTING_ARGS,
+                    spans,
+                    "this looks like a formatting argument but it is not part of a formatting macro",
+                );
+            },
+            _ => {
+                span_lint(
+                    cx,
+                    LITERAL_STRING_WITH_FORMATTING_ARGS,
+                    spans,
+                    "these look like formatting arguments but are not part of a formatting macro",
+                );
+            },
+        }
+    }
+}
+
+impl LateLintPass<'_> for LiteralStringWithFormattingArg {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
         if let ExprKind::Lit(lit) = expr.kind {
-            let add = match lit.kind {
-                LitKind::Str => 1,
-                LitKind::StrRaw(nb) => nb as usize + 2,
+            let (add, symbol) = match lit.node {
+                LitKind::Str(symbol, style) => {
+                    let add = match style {
+                        StrStyle::Cooked => 1,
+                        StrStyle::Raw(nb) => nb as usize + 2,
+                    };
+                    (add, symbol)
+                },
                 _ => return,
             };
-            let fmt_str = lit.symbol.as_str();
+            let fmt_str = symbol.as_str();
             let lo = expr.span.lo();
             let mut current = fmt_str;
             let mut diff_len = 0;
@@ -74,7 +123,7 @@ impl EarlyLintPass for LiteralStringWithFormattingArg {
                     }
 
                     if fmt_str[start + 1..].trim_start().starts_with('}') {
-                        // For now, we ignore `{}`.
+                        // We ignore `{}`.
                         continue;
                     }
 
@@ -82,32 +131,29 @@ impl EarlyLintPass for LiteralStringWithFormattingArg {
                         .find('}')
                         .map_or(pos.end, |found| start + 1 + found)
                         + 1;
-                    spans.push(
+                    let ident_start = start + 1;
+                    let colon_pos = fmt_str[ident_start..end].find(':');
+                    let ident_end = colon_pos.unwrap_or(end - 1);
+                    let mut name = None;
+                    if ident_start < ident_end
+                        && let arg = &fmt_str[ident_start..ident_end]
+                        && !arg.is_empty()
+                        && is_ident(arg)
+                    {
+                        name = Some(arg.to_string());
+                    } else if colon_pos.is_none() {
+                        // Not a `{:?}`.
+                        continue;
+                    }
+                    spans.push((
                         expr.span
                             .with_hi(lo + BytePos((start + add).try_into().unwrap()))
                             .with_lo(lo + BytePos((end + add).try_into().unwrap())),
-                    );
+                        name,
+                    ));
                 }
             }
-            match spans.len() {
-                0 => {},
-                1 => {
-                    span_lint(
-                        cx,
-                        LITERAL_STRING_WITH_FORMATTING_ARGS,
-                        spans,
-                        "this looks like a formatting argument but it is not part of a formatting macro",
-                    );
-                },
-                _ => {
-                    span_lint(
-                        cx,
-                        LITERAL_STRING_WITH_FORMATTING_ARGS,
-                        spans,
-                        "these look like formatting arguments but are not part of a formatting macro",
-                    );
-                },
-            }
+            emit_lint(cx, expr, &spans);
         }
     }
 }

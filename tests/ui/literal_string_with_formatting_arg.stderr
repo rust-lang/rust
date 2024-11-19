@@ -1,65 +1,71 @@
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:7:15
+  --> tests/ui/literal_string_with_formatting_arg.rs:7:15
    |
 LL |     x.expect("{y} {}");
    |               ^^^
    |
-   = note: `-D clippy::literal-string-with-formatting-arg` implied by `-D warnings`
+   = note: `-D clippy::literal-string-with-formatting-args` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::literal_string_with_formatting_args)]`
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:8:16
+  --> tests/ui/literal_string_with_formatting_arg.rs:8:16
    |
 LL |     x.expect(" {y} bla");
    |                ^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:9:15
+  --> tests/ui/literal_string_with_formatting_arg.rs:9:15
    |
 LL |     x.expect("{:?}");
    |               ^^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:10:15
+  --> tests/ui/literal_string_with_formatting_arg.rs:10:15
    |
 LL |     x.expect("{y:?}");
    |               ^^^^^
 
 error: these look like formatting arguments but are not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:11:16
+  --> tests/ui/literal_string_with_formatting_arg.rs:11:16
    |
 LL |     x.expect(" {y:?} {y:?} ");
    |                ^^^^^ ^^^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:12:23
+  --> tests/ui/literal_string_with_formatting_arg.rs:12:23
    |
 LL |     x.expect(" {y:..} {y:?} ");
    |                       ^^^^^
 
 error: these look like formatting arguments but are not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:13:16
+  --> tests/ui/literal_string_with_formatting_arg.rs:13:16
    |
 LL |     x.expect(r"{y:?}  {y:?} ");
    |                ^^^^^  ^^^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:14:16
+  --> tests/ui/literal_string_with_formatting_arg.rs:14:16
    |
 LL |     x.expect(r"{y:?} y:?}");
    |                ^^^^^
 
 error: these look like formatting arguments but are not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:15:19
+  --> tests/ui/literal_string_with_formatting_arg.rs:15:19
    |
 LL |     x.expect(r##" {y:?} {y:?} "##);
    |                   ^^^^^ ^^^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_args.rs:17:18
+  --> tests/ui/literal_string_with_formatting_arg.rs:17:18
    |
 LL |     x.expect("———{:?}");
    |                  ^^^^
 
-error: aborting due to 10 previous errors
+error: this looks like a formatting argument but it is not part of a formatting macro
+  --> tests/ui/literal_string_with_formatting_arg.rs:27:19
+   |
+LL |     x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
+   |                   ^^^^^
+
+error: aborting due to 11 previous errors
 
