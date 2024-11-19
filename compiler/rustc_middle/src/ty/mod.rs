@@ -1186,7 +1186,6 @@ impl<'tcx> TypingEnv<'tcx> {
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        debug_assert!(!value.has_infer());
         // FIXME(#132279): We should assert that the value does not contain any placeholders
         // as these placeholders are also local to the current inference context. However, we
         // currently use pseudo-canonical queries in the trait solver which replaces params with
@@ -1209,7 +1208,7 @@ impl<'tcx> TypingEnv<'tcx> {
 /// This should be created by using `infcx.pseudo_canonicalize_query(param_env, value)`
 /// or by using `typing_env.as_query_input(value)`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable)]
+#[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct PseudoCanonicalInput<'tcx, T> {
     pub typing_env: TypingEnv<'tcx>,
     pub value: T,

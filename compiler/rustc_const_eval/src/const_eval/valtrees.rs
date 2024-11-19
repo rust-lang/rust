@@ -2,7 +2,6 @@ use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::solve::Reveal;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
@@ -229,16 +228,19 @@ fn create_valtree_place<'tcx>(
 /// Evaluates a constant and turns it into a type-level constant value.
 pub(crate) fn eval_to_valtree<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
-    let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
+    // Const eval always happens in PostAnalysis mode . See the comment in
+    // `InterpCx::new` for more details.
+    debug_assert_eq!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+    let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`
     let ecx = mk_eval_cx_to_read_const_val(
         tcx,
         DUMMY_SP,
-        param_env,
+        typing_env,
         // It is absolutely crucial for soundness that
         // we do not read from mutable memory.
         CanAccessMutGlobal::No,
@@ -273,7 +275,8 @@ pub(crate) fn eval_to_valtree<'tcx>(
 #[instrument(skip(tcx), level = "debug", ret)]
 pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
     valtree: ty::ValTree<'tcx>,
 ) -> mir::ConstValue<'tcx> {
     // Basic idea: We directly construct `Scalar` values from trivial `ValTree`s
@@ -282,10 +285,6 @@ pub fn valtree_to_const_value<'tcx>(
     // the `ValTree` and using `place_projection` and `place_field` to
     // create inner `MPlace`s which are filled recursively.
     // FIXME Does this need an example?
-    let (param_env, ty) = param_env_ty.into_parts();
-    debug_assert_eq!(param_env.reveal(), Reveal::All);
-    let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env };
-
     match *ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
@@ -299,10 +298,10 @@ pub fn valtree_to_const_value<'tcx>(
                 ),
             }
         }
-        ty::Pat(ty, _) => valtree_to_const_value(tcx, param_env.and(ty), valtree),
+        ty::Pat(ty, _) => valtree_to_const_value(tcx, typing_env, ty, valtree),
         ty::Ref(_, inner_ty, _) => {
             let mut ecx =
-                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, typing_env, CanAccessMutGlobal::No);
             let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
             let imm =
                 ImmTy::from_immediate(imm, tcx.layout_of(typing_env.as_query_input(ty)).unwrap());
@@ -324,14 +323,14 @@ pub fn valtree_to_const_value<'tcx>(
                 for (i, &inner_valtree) in branches.iter().enumerate() {
                     let field = layout.field(&LayoutCx::new(tcx, typing_env), i);
                     if !field.is_zst() {
-                        return valtree_to_const_value(tcx, param_env.and(field.ty), inner_valtree);
+                        return valtree_to_const_value(tcx, typing_env, field.ty, inner_valtree);
                     }
                 }
                 bug!("could not find non-ZST field during in {layout:#?}");
             }
 
             let mut ecx =
-                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, typing_env, CanAccessMutGlobal::No);
 
             // Need to create a place for this valtree.
             let place = create_valtree_place(&mut ecx, layout, valtree);

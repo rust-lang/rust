@@ -183,7 +183,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // to runtime, so we have to manually specify the correct typing mode.
         let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
         let can_const_prop = CanConstProp::check(tcx, typing_env, body);
-        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env.param_env, DummyMachine);
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 
         ConstPropagator {
             ecx,

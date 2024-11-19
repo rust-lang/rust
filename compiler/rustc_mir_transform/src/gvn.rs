@@ -125,8 +125,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
 
-        let mut state =
-            VnState::new(tcx, body, typing_env.param_env, &ssa, dominators, &body.local_decls);
+        let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
         ssa.for_each_assignment_mut(
             body.basic_blocks.as_mut_preserves_cfg(),
             |local, value, location| {
@@ -266,7 +265,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ssa: &'body SsaLocals,
         dominators: Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
@@ -280,7 +279,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 + 4 * body.basic_blocks.len();
         VnState {
             tcx,
-            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: IndexVec::with_capacity(num_values),
@@ -295,7 +294,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        self.ecx.typing_env()
+        self.ecx.typing_env
     }
 
     #[instrument(level = "trace", skip(self), ret)]

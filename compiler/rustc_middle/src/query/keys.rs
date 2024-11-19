@@ -456,18 +456,6 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
-    type Cache<V> = DefaultCache<Self, V>;
-
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.value.default_span(tcx)
-    }
-
-    fn ty_def_id(&self) -> Option<DefId> {
-        self.value.ty_def_id()
-    }
-}
-
 impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
     type Cache<V> = DefaultCache<Self, V>;
 
