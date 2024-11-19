@@ -80,7 +80,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
-    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     consumer_options: Option<ConsumerOptions>,

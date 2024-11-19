@@ -190,7 +190,7 @@ fn do_mir_borrowck<'tcx>(
         .iter_enumerated()
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
-    let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .iterate_to_fixpoint(tcx, body, Some("borrowck"))
         .into_results_cursor(body);
 
@@ -211,11 +211,15 @@ fn do_mir_borrowck<'tcx>(
         body,
         &promoted,
         &location_table,
-        flow_inits,
+        &mut flow_inits,
         &move_data,
         &borrow_set,
         consumer_options,
     );
+
+    // `flow_inits` is large, so we drop it as soon as possible. This reduces
+    // peak memory usage significantly on some benchmarks.
+    drop(flow_inits);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
