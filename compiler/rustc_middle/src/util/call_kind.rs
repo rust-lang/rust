@@ -8,7 +8,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{DesugaringKind, Span, sym};
 use tracing::debug;
 
-use crate::ty::{AssocItemContainer, GenericArgsRef, Instance, ParamEnv, Ty, TyCtxt};
+use crate::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CallDesugaringKind {
@@ -62,7 +62,7 @@ pub enum CallKind<'tcx> {
 
 pub fn call_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: TypingEnv<'tcx>,
     method_did: DefId,
     method_args: GenericArgsRef<'tcx>,
     fn_call_span: Span,
@@ -98,10 +98,10 @@ pub fn call_kind<'tcx>(
         Some(CallKind::Operator { self_arg, trait_id, self_ty: method_args.type_at(0) })
     } else if is_deref {
         let deref_target = tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-            Instance::try_resolve(tcx, param_env, deref_target, method_args).transpose()
+            Instance::try_resolve(tcx, typing_env, deref_target, method_args).transpose()
         });
         if let Some(Ok(instance)) = deref_target {
-            let deref_target_ty = instance.ty(tcx, param_env);
+            let deref_target_ty = instance.ty(tcx, typing_env);
             Some(CallKind::DerefCoercion {
                 deref_target: tcx.def_span(instance.def_id()),
                 deref_target_ty,

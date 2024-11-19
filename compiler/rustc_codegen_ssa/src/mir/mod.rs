@@ -4,7 +4,7 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{UnwindTerminateReason, traversal};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_target::callconv::{FnAbi, PassMode};
@@ -128,7 +128,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.cx.tcx(),
-            ty::ParamEnv::reveal_all(),
+            self.cx.typing_env(),
             ty::EarlyBinder::bind(value),
         )
     }

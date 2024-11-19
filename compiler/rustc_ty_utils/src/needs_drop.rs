@@ -14,14 +14,17 @@ use crate::errors::NeedsDropOverflow;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
-fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+fn needs_drop_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+) -> bool {
     // If we don't know a type doesn't need drop, for example if it's a type
     // parameter without a `Copy` bound, then we conservatively return that it
     // needs drop.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false)
-        .filter(filter_array_elements(tcx, query.param_env))
+    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_dtor, false)
+        .filter(filter_array_elements(tcx, query.typing_env))
         .next()
         .is_some();
 
@@ -29,14 +32,17 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     res
 }
 
-fn needs_async_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+fn needs_async_drop_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+) -> bool {
     // If we don't know a type doesn't need async drop, for example if it's a
     // type parameter without a `Copy` bound, then we conservatively return that
     // it needs async drop.
     let adt_has_async_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_async_dtor, false)
-        .filter(filter_array_elements(tcx, query.param_env))
+    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_async_dtor, false)
+        .filter(filter_array_elements(tcx, query.typing_env))
         .next()
         .is_some();
 
@@ -50,11 +56,11 @@ fn needs_async_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty
 /// logic that is easier to follow while not repeating any checks that may thus diverge.
 fn filter_array_elements<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 ) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
     move |ty| match ty {
         Ok(ty) => match *ty.kind() {
-            ty::Array(elem, _) => tcx.needs_drop_raw(param_env.and(elem)),
+            ty::Array(elem, _) => tcx.needs_drop_raw(typing_env.as_query_input(elem)),
             _ => true,
         },
         Err(AlwaysRequiresDrop) => true,
@@ -63,16 +69,16 @@ fn filter_array_elements<'tcx>(
 
 fn has_significant_drop_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> bool {
     let res = drop_tys_helper(
         tcx,
         query.value,
-        query.param_env,
+        query.typing_env,
         adt_consider_insignificant_dtor(tcx),
         true,
     )
-    .filter(filter_array_elements(tcx, query.param_env))
+    .filter(filter_array_elements(tcx, query.typing_env))
     .next()
     .is_some();
     debug!("has_significant_drop_raw({:?}) = {:?}", query, res);
@@ -81,7 +87,7 @@ fn has_significant_drop_raw<'tcx>(
 
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     // Whether to reveal coroutine witnesses, this is set
     // to `false` unless we compute `needs_drop` for a coroutine witness.
     reveal_coroutine_witnesses: bool,
@@ -99,7 +105,7 @@ struct NeedsDropTypes<'tcx, F> {
 impl<'tcx, F> NeedsDropTypes<'tcx, F> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
         adt_components: F,
     ) -> Self {
@@ -107,7 +113,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         seen_tys.insert(ty);
         Self {
             tcx,
-            param_env,
+            typing_env,
             reveal_coroutine_witnesses: false,
             seen_tys,
             query_ty: ty,
@@ -180,7 +186,7 @@ where
                         }
                     }
 
-                    _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.typing_env.param_env) => (),
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {
@@ -204,7 +210,7 @@ where
                         };
                         for required_ty in tys {
                             let required = tcx
-                                .try_normalize_erasing_regions(self.param_env, required_ty)
+                                .try_normalize_erasing_regions(self.typing_env, required_ty)
                                 .unwrap_or(required_ty);
 
                             queue_type(self, required);
@@ -271,7 +277,7 @@ enum DtorType {
 fn drop_tys_helper<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    param_env: rustc_middle::ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     adt_has_dtor: impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType>,
     only_significant: bool,
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
@@ -337,7 +343,7 @@ fn drop_tys_helper<'tcx>(
         .map(|v| v.into_iter())
     };
 
-    NeedsDropTypes::new(tcx, param_env, ty, adt_components)
+    NeedsDropTypes::new(tcx, typing_env, ty, adt_components)
 }
 
 fn adt_consider_insignificant_dtor<'tcx>(
@@ -375,7 +381,7 @@ fn adt_drop_tys<'tcx>(
     drop_tys_helper(
         tcx,
         tcx.type_of(def_id).instantiate_identity(),
-        tcx.param_env(def_id),
+        ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
         false,
     )
@@ -392,7 +398,7 @@ fn adt_significant_drop_tys(
     drop_tys_helper(
         tcx,
         tcx.type_of(def_id).instantiate_identity(), // identical to `tcx.make_adt(def, identity_args)`
-        tcx.param_env(def_id),
+        ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_consider_insignificant_dtor(tcx),
         true,
     )

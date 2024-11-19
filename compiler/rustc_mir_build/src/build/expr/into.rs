@@ -266,7 +266,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // that makes the call.
                     target: expr
                         .ty
-                        .is_inhabited_from(this.tcx, this.parent_module, this.param_env)
+                        .is_inhabited_from(
+                            this.tcx,
+                            this.parent_module,
+                            this.infcx.typing_env(this.param_env),
+                        )
                         .then_some(success),
                     call_source: if from_hir_call {
                         CallSource::Normal

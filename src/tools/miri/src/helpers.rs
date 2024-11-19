@@ -116,8 +116,8 @@ pub fn resolve_path<'tcx>(
 /// Gets the layout of a type at a path.
 #[track_caller]
 pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLayout<'tcx> {
-    let ty =
-        resolve_path(cx.tcx(), path, Namespace::TypeNS).ty(cx.tcx(), ty::ParamEnv::reveal_all());
+    let ty = resolve_path(cx.tcx(), path, Namespace::TypeNS)
+        .ty(cx.tcx(), cx.typing_env());
     cx.layout_of(ty).to_result().ok().unwrap()
 }
 

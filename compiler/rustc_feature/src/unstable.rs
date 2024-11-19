@@ -54,7 +54,7 @@ pub struct EnabledLangFeature {
     pub stable_since: Option<Symbol>,
 }
 
-/// Information abhout an enabled library feature.
+/// Information about an enabled library feature.
 #[derive(Debug, Copy, Clone)]
 pub struct EnabledLibFeature {
     pub gate_name: Symbol,

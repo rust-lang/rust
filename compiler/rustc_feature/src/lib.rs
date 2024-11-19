@@ -74,14 +74,19 @@ impl UnstableFeatures {
         // Returns whether `krate` should be counted as unstable
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
-        // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap =
-            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(&var));
-        match (disable_unstable_features, bootstrap) {
-            (_, true) => UnstableFeatures::Cheat,
-            (true, _) => UnstableFeatures::Disallow,
-            (false, _) => UnstableFeatures::Allow,
+
+        let bootstrap = std::env::var("RUSTC_BOOTSTRAP").ok();
+        if let Some(val) = bootstrap.as_deref() {
+            match val {
+                val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
+                // Hypnotize ourselves so that we think we are a stable compiler and thus don't
+                // allow any unstable features.
+                "-1" => return UnstableFeatures::Disallow,
+                _ => {}
+            }
         }
+
+        if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
     pub fn is_nightly_build(&self) -> bool {

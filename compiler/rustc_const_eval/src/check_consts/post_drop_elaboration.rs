@@ -32,17 +32,15 @@ pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
 /// This is separate from the rest of the const checking logic because it must run after drop
 /// elaboration.
 pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
-    let def_id = body.source.def_id().expect_local();
-    let const_kind = tcx.hir().body_const_context(def_id);
-    if const_kind.is_none() {
+    let ccx = ConstCx::new(tcx, body);
+    if ccx.const_kind.is_none() {
         return;
     }
 
-    if tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+    if tcx.has_attr(body.source.def_id(), sym::rustc_do_not_const_check) {
         return;
     }
 
-    let ccx = ConstCx { body, tcx, const_kind, param_env: tcx.param_env(def_id) };
     if !checking_enabled(&ccx) {
         return;
     }

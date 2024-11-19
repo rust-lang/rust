@@ -17,7 +17,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -755,7 +755,8 @@ impl TyCoercionStability {
             DefinedTy::Hir(ty) => Self::for_hir_ty(ty),
             DefinedTy::Mir(ty) => Self::for_mir_ty(
                 cx.tcx,
-                ty.param_env,
+                // FIXME(#132279): convert `DefinedTy` to use `TypingEnv` instead.
+                ty::TypingEnv::from_param_env(ty.param_env),
                 cx.tcx.instantiate_bound_regions_with_erased(ty.value),
                 for_return,
             ),
@@ -823,12 +824,12 @@ impl TyCoercionStability {
         }
     }
 
-    fn for_mir_ty<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>, for_return: bool) -> Self {
+    fn for_mir_ty<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>, for_return: bool) -> Self {
         let ty::Ref(_, mut ty, _) = *ty.kind() else {
             return Self::None;
         };
 
-        ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+        ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
         loop {
             break match *ty.kind() {
                 ty::Ref(_, ref_ty, _) => {

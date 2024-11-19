@@ -98,7 +98,7 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceKind, IntTy, ParamEnv, Ty, TyCtxt, UintTy,
+        self, FloatTy, Instance, InstanceKind, IntTy, Ty, TyCtxt, UintTy,
     };
     pub(crate) use rustc_span::Span;
 

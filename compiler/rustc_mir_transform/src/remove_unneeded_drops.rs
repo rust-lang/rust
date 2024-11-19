@@ -16,18 +16,18 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
 
-        let did = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(did);
+        let typing_env = body.typing_env(tcx);
         let mut should_simplify = false;
-
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
             if let TerminatorKind::Drop { place, target, .. } = terminator.kind {
                 let ty = place.ty(&body.local_decls, tcx);
-                if ty.ty.needs_drop(tcx, param_env) {
+                if ty.ty.needs_drop(tcx, typing_env) {
                     continue;
                 }
-                if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {did:?} ")) {
+                if !tcx.consider_optimizing(|| {
+                    format!("RemoveUnneededDrops {:?}", body.source.def_id())
+                }) {
                     continue;
                 }
                 debug!("SUCCESS: replacing `drop` with goto({:?})", target);

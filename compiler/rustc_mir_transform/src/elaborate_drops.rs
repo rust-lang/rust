@@ -3,6 +3,7 @@ use std::fmt;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
+use rustc_infer::traits::Reveal;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -53,14 +54,14 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
-
-        let def_id = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
         // For types that do not need dropping, the behaviour is trivial. So we only need to track
         // init/uninit for types that do need dropping.
-        let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, param_env));
+        let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, typing_env));
         let elaborate_patch = {
-            let env = MoveDataParamEnv { move_data, param_env };
+            let env = MoveDataParamEnv { move_data, param_env: typing_env.param_env };
 
             let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
                 .skipping_unreachable_unwind()
@@ -147,8 +148,8 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env()
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -250,6 +251,11 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         self.env.param_env
     }
 
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        debug_assert_eq!(self.param_env().reveal(), Reveal::All);
+        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env() }
+    }
+
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.body.span);
@@ -335,7 +341,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
             if !place
                 .ty(&self.body.local_decls, self.tcx)
                 .ty
-                .needs_drop(self.tcx, self.env.param_env)
+                .needs_drop(self.tcx, self.typing_env())
             {
                 self.patch.patch_terminator(bb, TerminatorKind::Goto { target });
                 continue;

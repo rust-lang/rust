@@ -251,7 +251,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lo = lo.unwrap_or(PatRangeBoundary::NegInfinity);
         let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
 
-        let cmp = lo.compare_with(hi, ty, self.tcx, self.param_env);
+        let cmp = lo.compare_with(hi, ty, self.tcx, ty::TypingEnv::from_param_env(self.param_env));
         let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
         match (end, cmp) {
             // `x..y` where `x < y`.

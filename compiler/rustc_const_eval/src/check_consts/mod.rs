@@ -24,17 +24,15 @@ mod resolver;
 pub struct ConstCx<'mir, 'tcx> {
     pub body: &'mir mir::Body<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
     pub const_kind: Option<hir::ConstContext>,
 }
 
 impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
-        let def_id = body.source.def_id().expect_local();
-        let param_env = tcx.param_env(def_id);
-
+        let typing_env = body.typing_env(tcx);
         let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
-        ConstCx { body, tcx, param_env, const_kind }
+        ConstCx { body, tcx, typing_env, const_kind }
     }
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'tcx> {

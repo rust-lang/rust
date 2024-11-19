@@ -2357,8 +2357,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Only assoc fns that return `Self`
                     let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
                     let ret_ty = fn_sig.output();
-                    let ret_ty =
-                        self.tcx.normalize_erasing_late_bound_regions(self.param_env, ret_ty);
+                    let ret_ty = self.tcx.normalize_erasing_late_bound_regions(
+                        self.typing_env(self.param_env),
+                        ret_ty,
+                    );
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
                     }

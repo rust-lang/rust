@@ -498,12 +498,13 @@ impl<'tcx> AdtDef<'tcx> {
         expr_did: DefId,
     ) -> Result<Discr<'tcx>, ErrorGuaranteed> {
         assert!(self.is_enum());
-        let param_env = tcx.param_env(expr_did);
+
         let repr_type = self.repr().discr_type();
         match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
+                let typing_env = ty::TypingEnv::post_analysis(tcx, expr_did);
                 let ty = repr_type.to_ty(tcx);
-                if let Some(b) = val.try_to_bits_for_ty(tcx, param_env, ty) {
+                if let Some(b) = val.try_to_bits_for_ty(tcx, typing_env, ty) {
                     trace!("discriminants: {} ({:?})", b, repr_type);
                     Ok(Discr { val: b, ty })
                 } else {

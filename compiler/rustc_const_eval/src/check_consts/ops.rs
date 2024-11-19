@@ -120,7 +120,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
     #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
         let FnCallNonConst { callee, args, span, call_source } = *self;
-        let ConstCx { tcx, param_env, .. } = *ccx;
+        let ConstCx { tcx, typing_env, .. } = *ccx;
         let caller = ccx.def_id();
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
@@ -146,13 +146,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 }
                 ty::Adt(..) => {
+                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
-
-                    let infcx = tcx.infer_ctxt().build(ccx.body.typing_mode(tcx));
                     let mut selcx = SelectionContext::new(&infcx);
                     let implsrc = selcx.select(&obligation);
-
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
                         // FIXME(const_trait_impl) revisit this
                         if !tcx.is_const_trait_impl(data.impl_def_id) {
@@ -166,7 +164,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         };
 
         let call_kind =
-            call_kind(tcx, ccx.param_env, callee, args, span, call_source.from_hir_call(), None);
+            call_kind(tcx, ccx.typing_env, callee, args, span, call_source.from_hir_call(), None);
 
         debug!(?call_kind);
 

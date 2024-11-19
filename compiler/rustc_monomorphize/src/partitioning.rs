@@ -666,7 +666,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     // This is a method within an impl, find out what the self-type is:
                     let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         tcx.type_of(impl_def_id),
                     );
                     if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {

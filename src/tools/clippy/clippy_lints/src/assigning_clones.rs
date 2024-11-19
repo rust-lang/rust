@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
                 },
                 _ => return,
             }
-            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.param_env, fn_id, fn_gen_args)
+            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.typing_env(), fn_id, fn_gen_args)
             // TODO: This check currently bails if the local variable has no initializer.
             // That is overly conservative - the lint should fire even if there was no initializer,
             // but the variable has been initialized before `lhs` was evaluated.

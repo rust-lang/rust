@@ -595,8 +595,10 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
 
     let (conv, args) = instance
         .map(|i| {
-            tcx.fn_abi_of_instance(ty::ParamEnv::reveal_all().and((i, ty::List::empty())))
-                .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
+            tcx.fn_abi_of_instance(
+                ty::TypingEnv::fully_monomorphized().as_query_input((i, ty::List::empty())),
+            )
+            .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
         })
         .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
         .unwrap_or((Conv::Rust, &[]));

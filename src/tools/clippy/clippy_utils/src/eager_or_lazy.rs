@@ -105,7 +105,7 @@ fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> boo
     {
         cx.typeck_results()
             .expr_ty(e)
-            .has_significant_drop(cx.tcx, cx.param_env)
+            .has_significant_drop(cx.tcx, cx.typing_env())
     } else {
         false
     }

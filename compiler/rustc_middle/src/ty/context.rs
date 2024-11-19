@@ -596,8 +596,16 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.coroutine_is_async_gen(coroutine_def_id)
     }
 
-    fn layout_is_pointer_like(self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        self.layout_of(self.erase_regions(param_env.and(ty)))
+    // We don't use `TypingEnv` here as it's only defined in `rustc_middle` and
+    // `rustc_next_trait_solver` shouldn't have to know about it.
+    fn layout_is_pointer_like(
+        self,
+        typing_mode: ty::TypingMode<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        let typing_env = ty::TypingEnv { typing_mode, param_env };
+        self.layout_of(self.erase_regions(typing_env).as_query_input(self.erase_regions(ty)))
             .is_ok_and(|layout| layout.layout.is_pointer_like(&self.data_layout))
     }
 

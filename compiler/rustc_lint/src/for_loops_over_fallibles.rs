@@ -166,7 +166,7 @@ fn suggest_question_mark<'tcx>(
     }
 
     let ty = args.type_at(0);
-    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
+    let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
     let ocx = ObligationCtxt::new(&infcx);
 
     let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
@@ -175,7 +175,7 @@ fn suggest_question_mark<'tcx>(
 
     ocx.register_bound(
         cause,
-        cx.param_env,
+        param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,

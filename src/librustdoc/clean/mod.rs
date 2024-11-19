@@ -1819,8 +1819,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     {
                         // Only anon consts can implicitly capture params.
                         // FIXME: is this correct behavior?
-                        let param_env = cx.tcx.param_env(*def_id);
-                        cx.tcx.normalize_erasing_regions(param_env, ct)
+                        let typing_env = ty::TypingEnv::from_param_env(cx.tcx.param_env(*def_id));
+                        cx.tcx.normalize_erasing_regions(typing_env, ct)
                     } else {
                         ct
                     };
@@ -2039,7 +2039,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             format!("{pat:?}").into_boxed_str(),
         ),
         ty::Array(ty, n) => {
-            let n = cx.tcx.normalize_erasing_regions(cx.param_env, n);
+            let n = cx.tcx.normalize_erasing_regions(cx.typing_env(), n);
             let n = print_const(cx, n);
             Array(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None, None)), n.into())
         }

@@ -157,15 +157,17 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 Some(ty_def) if cx.tcx.is_lang_item(ty_def.did(), LangItem::String),
             );
 
-            let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
+            let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
             let suggest_display = is_str
-                || cx.tcx.get_diagnostic_item(sym::Display).is_some_and(|t| {
-                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
-                });
+                || cx
+                    .tcx
+                    .get_diagnostic_item(sym::Display)
+                    .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
             let suggest_debug = !suggest_display
-                && cx.tcx.get_diagnostic_item(sym::Debug).is_some_and(|t| {
-                    infcx.type_implements_trait(t, [ty], cx.param_env).may_apply()
-                });
+                && cx
+                    .tcx
+                    .get_diagnostic_item(sym::Debug)
+                    .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 

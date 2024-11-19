@@ -46,7 +46,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let span = tcx.hir().span(hir_id);
         let normalize = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
-            self.tcx.normalize_erasing_regions(self.param_env, ty)
+            self.tcx.normalize_erasing_regions(self.typing_env(self.param_env), ty)
         };
         let from = normalize(from);
         let to = normalize(to);
@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let skel = |ty| SizeSkeleton::compute(ty, tcx, self.param_env);
+        let skel = |ty| SizeSkeleton::compute(ty, tcx, self.typing_env(self.param_env));
         let sk_from = skel(from);
         let sk_to = skel(to);
         trace!(?sk_from, ?sk_to);

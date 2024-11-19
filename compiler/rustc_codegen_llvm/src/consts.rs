@@ -13,8 +13,8 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
 use tracing::{debug, instrument, trace};
@@ -244,7 +244,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llty = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, self.typing_env());
             trace!(?ty);
             self.layout_of(ty).llvm_type(self)
         };

@@ -22,29 +22,29 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
     let typeck_results = tcx.typeck(closure_def_id);
 
     if typeck_results.closure_size_eval.contains_key(&closure_def_id) {
-        let param_env = ty::ParamEnv::reveal_all();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
 
         let ClosureSizeProfileData { before_feature_tys, after_feature_tys } =
             typeck_results.closure_size_eval[&closure_def_id];
 
         let before_feature_tys = tcx.instantiate_and_normalize_erasing_regions(
             closure_instance.args,
-            param_env,
+            typing_env,
             ty::EarlyBinder::bind(before_feature_tys),
         );
         let after_feature_tys = tcx.instantiate_and_normalize_erasing_regions(
             closure_instance.args,
-            param_env,
+            typing_env,
             ty::EarlyBinder::bind(after_feature_tys),
         );
 
         let new_size = tcx
-            .layout_of(param_env.and(after_feature_tys))
+            .layout_of(typing_env.as_query_input(after_feature_tys))
             .map(|l| format!("{:?}", l.size.bytes()))
             .unwrap_or_else(|e| format!("Failed {e:?}"));
 
         let old_size = tcx
-            .layout_of(param_env.and(before_feature_tys))
+            .layout_of(typing_env.as_query_input(before_feature_tys))
             .map(|l| format!("{:?}", l.size.bytes()))
             .unwrap_or_else(|e| format!("Failed {e:?}"));
 

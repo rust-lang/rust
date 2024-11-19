@@ -513,7 +513,7 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
 
     let method_def_id = method.def_id;
     let sig = tcx.fn_sig(method_def_id).instantiate_identity();
-    let param_env = tcx.param_env(method_def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, method_def_id);
     let receiver_ty = tcx.liberate_late_bound_regions(method_def_id, sig.input(0));
 
     if receiver_ty == tcx.types.self_param {
@@ -523,7 +523,7 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
 
     // e.g., `Rc<()>`
     let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
-    match tcx.layout_of(param_env.and(unit_receiver_ty)).map(|l| l.backend_repr) {
+    match tcx.layout_of(typing_env.as_query_input(unit_receiver_ty)).map(|l| l.backend_repr) {
         Ok(BackendRepr::Scalar(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(
@@ -538,7 +538,7 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
     // e.g., `Rc<dyn Trait>`
     let trait_object_receiver =
         receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
-    match tcx.layout_of(param_env.and(trait_object_receiver)).map(|l| l.backend_repr) {
+    match tcx.layout_of(typing_env.as_query_input(trait_object_receiver)).map(|l| l.backend_repr) {
         Ok(BackendRepr::ScalarPair(..)) => (),
         abi => {
             tcx.dcx().span_delayed_bug(

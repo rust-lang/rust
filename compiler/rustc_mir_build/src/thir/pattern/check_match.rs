@@ -735,8 +735,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 .variant(*variant_index)
                 .inhabited_predicate(self.tcx, *adt)
                 .instantiate(self.tcx, args);
-            variant_inhabited.apply(self.tcx, cx.param_env, cx.module)
-                && !variant_inhabited.apply_ignore_module(self.tcx, cx.param_env)
+            variant_inhabited.apply(self.tcx, cx.typing_env(), cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env())
         } else {
             false
         };
@@ -1139,7 +1139,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     }
 
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.typing_env()) {
             err.note("references are always considered inhabited");
         }
     }

@@ -611,11 +611,12 @@ pub fn try_evaluate_const<'tcx>(
             //
             // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
             // instead of having this logic here
-            let env = tcx.erase_regions(param_env).with_reveal_all_normalized(tcx);
+            let typing_env =
+                tcx.erase_regions(infcx.typing_env(param_env)).with_reveal_all_normalized(tcx);
             let erased_uv = tcx.erase_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;
-            match tcx.const_eval_resolve_for_typeck(env, erased_uv, DUMMY_SP) {
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, DUMMY_SP) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,

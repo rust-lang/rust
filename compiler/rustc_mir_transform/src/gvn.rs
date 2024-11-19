@@ -100,7 +100,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
@@ -293,6 +293,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),
         }
+    }
+
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -531,7 +535,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx
-                        .offset_of_subfield(self.ecx.param_env(), layout, fields.iter())
+                        .offset_of_subfield(self.typing_env(), layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
                 };
@@ -1476,8 +1480,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if left_meta_ty == right_meta_ty {
             true
         } else if let Ok(left) =
-            self.tcx.try_normalize_erasing_regions(self.param_env, left_meta_ty)
-            && let Ok(right) = self.tcx.try_normalize_erasing_regions(self.param_env, right_meta_ty)
+            self.tcx.try_normalize_erasing_regions(self.typing_env(), left_meta_ty)
+            && let Ok(right) =
+                self.tcx.try_normalize_erasing_regions(self.typing_env(), right_meta_ty)
         {
             left == right
         } else {

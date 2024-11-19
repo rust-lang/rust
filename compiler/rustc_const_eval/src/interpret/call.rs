@@ -215,7 +215,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Even if `ty` is normalized, the search for the unsized tail will project
                 // to fields, which can yield non-normalized types. So we need to provide a
                 // normalization function.
-                let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
+                let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env(), ty);
                 ty.ptr_metadata_ty(*self.tcx, normalize)
             };
             return interp_ok(meta_ty(caller) == meta_ty(callee));
@@ -652,35 +652,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let (trait_, dyn_ty, adjusted_recv) = if let ty::Dynamic(data, _, ty::DynStar) =
-                    receiver_place.layout.ty.kind()
-                {
-                    let recv = self.unpack_dyn_star(&receiver_place, data)?;
+                let (trait_, dyn_ty, adjusted_recv) =
+                    if let ty::Dynamic(data, _, ty::DynStar) = receiver_place.layout.ty.kind() {
+                        let recv = self.unpack_dyn_star(&receiver_place, data)?;
 
-                    (data.principal(), recv.layout.ty, recv.ptr())
-                } else {
-                    // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
-                    // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail =
-                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.param_env);
-                    let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
-                        span_bug!(
-                            self.cur_span(),
-                            "dynamic call on non-`dyn` type {}",
-                            receiver_tail
-                        )
+                        (data.principal(), recv.layout.ty, recv.ptr())
+                    } else {
+                        // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
+                        // (For that reason we also cannot use `unpack_dyn_trait`.)
+                        let receiver_tail = self
+                            .tcx
+                            .struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env());
+                        let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
+                            span_bug!(
+                                self.cur_span(),
+                                "dynamic call on non-`dyn` type {}",
+                                receiver_tail
+                            )
+                        };
+                        assert!(receiver_place.layout.is_unsized());
+
+                        // Get the required information from the vtable.
+                        let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
+                        let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
+
+                        // It might be surprising that we use a pointer as the receiver even if this
+                        // is a by-val case; this works because by-val passing of an unsized `dyn
+                        // Trait` to a function is actually desugared to a pointer.
+                        (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
                     };
-                    assert!(receiver_place.layout.is_unsized());
-
-                    // Get the required information from the vtable.
-                    let vptr = receiver_place.meta().unwrap_meta().to_pointer(self)?;
-                    let dyn_ty = self.get_ptr_vtable_ty(vptr, Some(receiver_trait))?;
-
-                    // It might be surprising that we use a pointer as the receiver even if this
-                    // is a by-val case; this works because by-val passing of an unsized `dyn
-                    // Trait` to a function is actually desugared to a pointer.
-                    (receiver_trait.principal(), dyn_ty, receiver_place.ptr())
-                };
 
                 // Now determine the actual method to call. Usually we use the easy way of just
                 // looking up the method at index `idx`.
@@ -704,7 +704,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     let concrete_method = Instance::expect_resolve_for_vtable(
                         tcx,
-                        self.param_env,
+                        self.typing_env(),
                         def_id,
                         instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
                         self.cur_span(),
