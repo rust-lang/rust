@@ -1,7 +1,7 @@
 //@ aux-build:minicore.rs
 //@ compile-flags: --crate-type=lib -Znext-solver
 
-#![feature(no_core, const_trait_impl)]
+#![feature(no_core, const_trait_impl, const_destruct)]
 #![no_std]
 #![no_core]
 

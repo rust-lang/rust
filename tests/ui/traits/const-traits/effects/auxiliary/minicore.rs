@@ -11,7 +11,8 @@
     rustc_attrs,
     fundamental,
     marker_trait_attr,
-    const_trait_impl
+    const_trait_impl,
+    const_destruct,
 )]
 #![allow(internal_features, incomplete_features)]
 #![no_std]

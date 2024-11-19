@@ -62,12 +62,12 @@ pub trait Qualif {
     /// It also determines the `Qualif`s for primitive types.
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
 
-    /// Returns `true` if the `Qualif` is structural in an ADT's fields, i.e. that we may
-    /// recurse into an operand if we know what it is.
+    /// Returns `true` if the `Qualif` is structural in an ADT's fields, i.e. if we may
+    /// recurse into an operand *value* to determine whether it has this `Qualif`.
     ///
     /// If this returns false, `in_any_value_of_ty` will be invoked to determine the
     /// final qualif for this ADT.
-    fn is_structural_in_adt<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool;
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -123,7 +123,7 @@ impl Qualif for HasMutInterior {
         !errors.is_empty()
     }
 
-    fn is_structural_in_adt<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+    fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         !adt.is_unsafe_cell()
@@ -140,6 +140,7 @@ pub struct NeedsDrop;
 impl Qualif for NeedsDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
+    const ALLOW_PROMOTED: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.needs_drop
@@ -149,7 +150,7 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.typing_env)
     }
 
-    fn is_structural_in_adt<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         !adt.has_dtor(cx.tcx)
     }
 }
@@ -179,34 +180,30 @@ impl Qualif for NeedsNonConstDrop {
         // that the components of this type are also `~const Destruct`. This
         // amounts to verifying that there are no values in this ADT that may have
         // a non-const drop.
-        if cx.tcx.features().const_trait_impl() {
-            let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
-            let infcx =
-                cx.tcx.infer_ctxt().build(TypingMode::from_param_env(cx.typing_env.param_env));
-            let ocx = ObligationCtxt::new(&infcx);
-            ocx.register_obligation(Obligation::new(
-                cx.tcx,
-                ObligationCause::misc(cx.body.span, cx.def_id()),
-                cx.typing_env.param_env,
-                ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
-                    .to_host_effect_clause(cx.tcx, match cx.const_kind() {
-                        rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
-                        rustc_hir::ConstContext::Static(_)
-                        | rustc_hir::ConstContext::Const { .. } => ty::BoundConstness::Const,
-                    }),
-            ));
-            !ocx.select_all_or_error().is_empty()
-        } else {
-            NeedsDrop::in_any_value_of_ty(cx, ty)
-        }
+        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_obligation(Obligation::new(
+            cx.tcx,
+            ObligationCause::misc(cx.body.span, cx.def_id()),
+            param_env,
+            ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
+                .to_host_effect_clause(cx.tcx, match cx.const_kind() {
+                    rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+                    rustc_hir::ConstContext::Static(_) | rustc_hir::ConstContext::Const { .. } => {
+                        ty::BoundConstness::Const
+                    }
+                }),
+        ));
+        !ocx.select_all_or_error().is_empty()
     }
 
-    fn is_structural_in_adt<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // As soon as an ADT has a destructor, then the drop becomes non-structural
         // in its value since:
-        // 1. The destructor may have `~const` bounds that need to be satisfied on
-        //   top of checking that the components of a specific operand are const-drop.
-        //   While this could be instead satisfied by checking that the `~const Drop`
+        // 1. The destructor may have `~const` bounds which are not present on the type.
+        //   Someone needs to check that those are satisfied.
+        //   While this could be done instead satisfied by checking that the `~const Drop`
         //   impl holds (i.e. replicating part of the `in_any_value_of_ty` logic above),
         //   even in this case, we have another problem, which is,
         // 2. The destructor may *modify* the operand being dropped, so even if we
@@ -271,7 +268,7 @@ where
                 // then we cannot recurse on its fields. Instead,
                 // we fall back to checking the qualif for *any* value
                 // of the ADT.
-                if def.is_union() || !Q::is_structural_in_adt(cx, def) {
+                if def.is_union() || !Q::is_structural_in_adt_value(cx, def) {
                     return Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx));
                 }
             }

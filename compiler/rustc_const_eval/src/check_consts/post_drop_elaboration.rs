@@ -1,14 +1,15 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::trace;
 
 use super::ConstCx;
 use super::check::Qualifs;
-use super::ops::{self, NonConstOp};
+use super::ops::{self};
 use super::qualifs::{NeedsNonConstDrop, Qualif};
+use crate::check_consts::check::Checker;
+use crate::check_consts::qualifs::NeedsDrop;
 use crate::check_consts::rustc_allow_const_fn_unstable;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
@@ -64,12 +65,6 @@ impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     }
 }
 
-impl<'tcx> CheckLiveDrops<'_, 'tcx> {
-    fn check_live_drop(&self, span: Span, dropped_ty: Ty<'tcx>) {
-        ops::LiveDrop { dropped_at: None, dropped_ty }.build_error(self.ccx, span).emit();
-    }
-}
-
 impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &mir::BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
@@ -87,28 +82,39 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
 
         match &terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
-                let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
+                let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
 
-                if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
-                    // Instead of throwing a bug, we just return here. This is because we have to
-                    // run custom `const Drop` impls.
+                let needs_drop = if let Some(local) = dropped_place.as_local() {
+                    self.qualifs.needs_drop(self.ccx, local, location)
+                } else {
+                    NeedsDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
+                };
+                // If this type doesn't need a drop at all, then there's nothing to enforce.
+                if !needs_drop {
                     return;
                 }
 
-                if dropped_place.is_indirect() {
-                    self.check_live_drop(terminator.source_info.span, dropped_ty);
-                    return;
-                }
+                let mut err_span = terminator.source_info.span;
 
-                // Drop elaboration is not precise enough to accept code like
-                // `tests/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
-                // initialized with `None` and never changed, it still emits drop glue.
-                // Hence we additionally check the qualifs here to allow more code to pass.
-                if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {
-                    // Use the span where the dropped local was declared for the error.
-                    let span = self.body.local_decls[dropped_place.local].source_info.span;
-                    self.check_live_drop(span, dropped_ty);
-                }
+                let needs_non_const_drop = if let Some(local) = dropped_place.as_local() {
+                    // Use the span where the local was declared as the span of the drop error.
+                    err_span = self.body.local_decls[local].source_info.span;
+                    self.qualifs.needs_non_const_drop(self.ccx, local, location)
+                } else {
+                    NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
+                };
+
+                // I know it's not great to be creating a new const checker, but I'd
+                // rather use it so we can deduplicate the error emitting logic that
+                // it contains.
+                Checker::new(self.ccx).check_op_spanned_post(
+                    ops::LiveDrop {
+                        dropped_at: Some(terminator.source_info.span),
+                        dropped_ty: ty_of_dropped_place,
+                        needs_non_const_drop,
+                    },
+                    err_span,
+                );
             }
 
             mir::TerminatorKind::UnwindTerminate(_)

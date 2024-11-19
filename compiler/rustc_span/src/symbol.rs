@@ -610,6 +610,7 @@ symbols! {
         const_compare_raw_pointers,
         const_constructor,
         const_deallocate,
+        const_destruct,
         const_eval_limit,
         const_eval_select,
         const_evaluatable_checked,

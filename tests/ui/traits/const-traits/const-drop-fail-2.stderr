@@ -1,3 +1,23 @@
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/const-drop-fail-2.rs:5:19
+   |
+LL | use std::marker::{Destruct, PhantomData};
+   |                   ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/const-drop-fail-2.rs:20:26
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                          ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
   --> $DIR/const-drop-fail-2.rs:39:25
    |
@@ -35,7 +55,7 @@ LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    |
    |                                    the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0277, E0493.
+Some errors have detailed explanations: E0277, E0493, E0658.
 For more information about an error, try `rustc --explain E0277`.

@@ -1,3 +1,53 @@
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/fn_trait_refs.rs:9:5
+   |
+LL | use std::marker::Destruct;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/fn_trait_refs.rs:13:31
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |                               ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/fn_trait_refs.rs:20:34
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |                                  ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/fn_trait_refs.rs:34:31
+   |
+LL |     T: ~const Fn<()> + ~const Destruct,
+   |                               ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `const_destruct`
+  --> $DIR/fn_trait_refs.rs:48:34
+   |
+LL |     T: ~const FnMut<()> + ~const Destruct,
+   |                                  ^^^^^^^^
+   |
+   = note: see issue #10 <https://github.com/rust-lang/rust/issues/10> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0635]: unknown feature `const_fn_trait_ref_impls`
   --> $DIR/fn_trait_refs.rs:3:12
    |
@@ -264,7 +314,7 @@ LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
 LL | }
    | - value is dropped here
 
-error: aborting due to 34 previous errors
+error: aborting due to 39 previous errors
 
-Some errors have detailed explanations: E0015, E0493, E0635.
+Some errors have detailed explanations: E0015, E0493, E0635, E0658.
 For more information about an error, try `rustc --explain E0015`.
