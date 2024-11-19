@@ -958,6 +958,12 @@ pub(super) fn const_conditions<'tcx>(
             hir::ForeignItemKind::Fn(_, _, generics) => (generics, None, false),
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
+        Node::OpaqueTy(opaque) => match opaque.origin {
+            hir::OpaqueTyOrigin::FnReturn { parent, .. } => return tcx.const_conditions(parent),
+            hir::OpaqueTyOrigin::AsyncFn { .. } | hir::OpaqueTyOrigin::TyAlias { .. } => {
+                unreachable!()
+            }
+        },
         // N.B. Tuple ctors are unconditionally constant.
         Node::Ctor(hir::VariantData::Tuple { .. }) => return Default::default(),
         _ => bug!("const_conditions called on wrong item: {def_id:?}"),
@@ -1033,7 +1039,8 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
                 PredicateFilter::SelfConstIfConst,
             )
         }
-        Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. }) => {
+        Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
+        | Node::OpaqueTy(_) => {
             explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
         }
         _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),

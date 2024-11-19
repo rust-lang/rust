@@ -339,6 +339,10 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.ensure().explicit_item_super_predicates(def_id);
         self.tcx.ensure().item_bounds(def_id);
         self.tcx.ensure().item_super_predicates(def_id);
+        if self.tcx.is_conditionally_const(def_id) {
+            self.tcx.ensure().explicit_implied_const_bounds(def_id);
+            self.tcx.ensure().const_conditions(def_id);
+        }
         intravisit::walk_opaque_ty(self, opaque);
     }
 
@@ -681,6 +685,10 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().generics_of(item.owner_id);
                 tcx.ensure().type_of(item.owner_id);
                 tcx.ensure().predicates_of(item.owner_id);
+                if tcx.is_conditionally_const(def_id) {
+                    tcx.ensure().explicit_implied_const_bounds(def_id);
+                    tcx.ensure().const_conditions(def_id);
+                }
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => {
                         tcx.ensure().codegen_fn_attrs(item.owner_id);
