@@ -14,8 +14,8 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
-    GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
+    ExplicitLateBound, FeedConstTy, GenericArgCountMismatch, GenericArgCountResult,
+    GenericArgsLowerer, GenericPathSegment, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
@@ -491,7 +491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
             hir::ArrayLen::Body(const_arg) => {
                 let span = const_arg.span();
-                let c = ty::Const::from_const_arg(self.tcx, const_arg, ty::FeedConstTy::No);
+                let c = self.lowerer().lower_const_arg(const_arg, FeedConstTy::No);
                 self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
                 self.normalize(span, c)
             }
@@ -503,8 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         const_arg: &'tcx hir::ConstArg<'tcx>,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        let ct =
-            ty::Const::from_const_arg(self.tcx, const_arg, ty::FeedConstTy::Param(param_def_id));
+        let ct = self.lowerer().lower_const_arg(const_arg, FeedConstTy::Param(param_def_id));
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir().span(const_arg.hir_id),

@@ -2052,6 +2052,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    /// Used when lowering a type argument that turned out to actually be a const argument.
+    ///
+    /// Only use for that purpose since otherwise it will create a duplicate def.
     #[instrument(level = "debug", skip(self))]
     fn lower_const_path_to_const_arg(
         &mut self,
@@ -2060,51 +2063,58 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ty_id: NodeId,
         span: Span,
     ) -> &'hir hir::ConstArg<'hir> {
-        let ct_kind = match res {
-            Res::Def(DefKind::ConstParam, _) => {
-                let qpath = self.lower_qpath(
-                    ty_id,
-                    &None,
-                    path,
-                    ParamMode::Optional,
-                    AllowReturnTypeNotation::No,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    None,
-                );
-                hir::ConstArgKind::Path(qpath)
-            }
-            _ => {
-                // Construct an AnonConst where the expr is the "ty"'s path.
+        let tcx = self.tcx;
 
-                let parent_def_id = self.current_def_id_parent;
-                let node_id = self.next_node_id();
-                let span = self.lower_span(span);
+        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
+        let ct_kind = if path.is_potential_trivial_const_arg()
+            && (tcx.features().min_generic_const_args()
+                || matches!(res, Res::Def(DefKind::ConstParam, _)))
+        {
+            let qpath = self.lower_qpath(
+                ty_id,
+                &None,
+                path,
+                ParamMode::Optional,
+                AllowReturnTypeNotation::No,
+                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                None,
+            );
+            hir::ConstArgKind::Path(qpath)
+        } else {
+            // Construct an AnonConst where the expr is the "ty"'s path.
 
-                // Add a definition for the in-band const def.
-                let def_id =
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
-                let hir_id = self.lower_node_id(node_id);
+            let parent_def_id = self.current_def_id_parent;
+            let node_id = self.next_node_id();
+            let span = self.lower_span(span);
 
-                let path_expr = Expr {
-                    id: ty_id,
-                    kind: ExprKind::Path(None, path.clone()),
+            // Add a definition for the in-band const def.
+            // We're lowering a const argument that was originally thought to be a type argument,
+            // so the def collector didn't create the def ahead of time. That's why we have to do
+            // it here.
+            let def_id =
+                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
+            let hir_id = self.lower_node_id(node_id);
+
+            let path_expr = Expr {
+                id: ty_id,
+                kind: ExprKind::Path(None, path.clone()),
+                span,
+                attrs: AttrVec::new(),
+                tokens: None,
+            };
+
+            let ct = self.with_new_scopes(span, |this| {
+                self.arena.alloc(hir::AnonConst {
+                    def_id,
+                    hir_id,
+                    body: this.with_def_id_parent(def_id, |this| {
+                        this.lower_const_body(path_expr.span, Some(&path_expr))
+                    }),
                     span,
-                    attrs: AttrVec::new(),
-                    tokens: None,
-                };
-
-                let ct = self.with_new_scopes(span, |this| {
-                    self.arena.alloc(hir::AnonConst {
-                        def_id,
-                        hir_id,
-                        body: this.with_def_id_parent(def_id, |this| {
-                            this.lower_const_body(path_expr.span, Some(&path_expr))
-                        }),
-                        span,
-                    })
-                });
-                hir::ConstArgKind::Anon(ct)
-            }
+                })
+            });
+            hir::ConstArgKind::Anon(ct)
         };
 
         self.arena.alloc(hir::ConstArg {
@@ -2122,6 +2132,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn lower_anon_const_to_const_arg_direct(&mut self, anon: &AnonConst) -> hir::ConstArg<'hir> {
+        let tcx = self.tcx;
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = if let ExprKind::Block(block, _) = &anon.value.kind
@@ -2135,18 +2146,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         let maybe_res =
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        debug!("res={:?}", maybe_res);
-        // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
-        if let Some(res) = maybe_res
-            && let Res::Def(DefKind::ConstParam, _) = res
-            && let ExprKind::Path(qself, path) = &expr.kind
+        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
+        if let ExprKind::Path(None, path) = &expr.kind
+            && path.is_potential_trivial_const_arg()
+            && (tcx.features().min_generic_const_args()
+                || matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _))))
         {
             let qpath = self.lower_qpath(
                 expr.id,
-                qself,
+                &None,
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
+                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

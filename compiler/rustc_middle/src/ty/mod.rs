@@ -62,7 +62,7 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, Expr, ExprKind, FeedConstTy, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
@@ -2249,7 +2249,6 @@ pub fn provide(providers: &mut Providers) {
         incoherent_impls: trait_def::incoherent_impls_provider,
         trait_impls_in_crate: trait_def::trait_impls_in_crate_provider,
         traits: trait_def::traits_provider,
-        const_param_default: consts::const_param_default,
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers
     };
