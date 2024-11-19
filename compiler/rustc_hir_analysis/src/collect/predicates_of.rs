@@ -223,11 +223,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 trace!(?predicates);
             }
             hir::GenericParamKind::Const { .. } => {
+                let param_def_id = param.def_id.to_def_id();
                 let ct_ty = tcx
-                    .type_of(param.def_id.to_def_id())
+                    .type_of(param_def_id)
                     .no_bound_vars()
                     .expect("const parameters cannot be generic");
-                let ct = icx.lowerer().lower_const_param(param.hir_id);
+                let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
             }

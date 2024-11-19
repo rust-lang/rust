@@ -19,7 +19,9 @@ use tracing::{debug, instrument};
 use super::errors::GenericsArgsErrExtend;
 use crate::bounds::Bounds;
 use crate::errors;
-use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
@@ -346,9 +348,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No).into()
-                    }
+                    hir::Term::Const(ct) => self.lower_const_arg(ct, FeedConstTy::No).into(),
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
