@@ -1825,7 +1825,7 @@ pub fn parse_crate_edition(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches
     };
 
     if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
-        let is_nightly = nightly_options::match_is_nightly_build(matches);
+        let is_nightly = nightly_options::is_nightly_build();
         let msg = if !is_nightly {
             format!(
                 "the crate requires edition {edition}, but the latest edition supported by this Rust version is {LATEST_STABLE_EDITION}"
@@ -2510,7 +2510,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debuginfo_compression = unstable_opts.debuginfo_compression;
 
     let crate_name = matches.opt_str("crate-name");
-    let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
+    let unstable_features = UnstableFeatures::from_environment();
     // Parse any `-l` flags, which link to native libraries.
     let libs = parse_native_libs(early_dcx, &unstable_opts, unstable_features, matches);
 

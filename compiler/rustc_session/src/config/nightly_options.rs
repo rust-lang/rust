@@ -4,16 +4,11 @@ use crate::EarlyDiagCtxt;
 use crate::config::{OptionStability, RustcOptGroup};
 
 pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-    match_is_nightly_build(matches)
-        && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
+    is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
 }
 
-pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
-    is_nightly_build(matches.opt_str("crate-name").as_deref())
-}
-
-fn is_nightly_build(krate: Option<&str>) -> bool {
-    UnstableFeatures::from_environment(krate).is_nightly_build()
+pub fn is_nightly_build() -> bool {
+    UnstableFeatures::from_environment().is_nightly_build()
 }
 
 pub fn check_nightly_options(
@@ -22,7 +17,7 @@ pub fn check_nightly_options(
     flags: &[RustcOptGroup],
 ) {
     let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-    let really_allows_unstable_options = match_is_nightly_build(matches);
+    let really_allows_unstable_options = is_nightly_build();
     let mut nightly_options_on_stable = 0;
 
     for opt in flags.iter() {

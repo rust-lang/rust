@@ -3,8 +3,9 @@ use std::env;
 use super::UnstableFeatures;
 
 fn unstable_features(rustc_bootstrap: &str, crate_name: Option<&str>) -> UnstableFeatures {
-    UnstableFeatures::from_environment_inner(crate_name, |name| match name {
+    UnstableFeatures::from_environment_inner(|name| match name {
         "RUSTC_BOOTSTRAP" => Ok(rustc_bootstrap.to_owned()),
+        "CARGO_CRATE_NAME" => crate_name.map(str::to_owned).ok_or(env::VarError::NotPresent),
         _ => Err(env::VarError::NotPresent),
     })
 }
@@ -21,6 +22,7 @@ fn rustc_bootstrap_parsing() {
     // RUSTC_BOOTSTRAP allows multiple comma-delimited crates
     assert!(is_bootstrap("x,y,z", Some("x")));
     assert!(is_bootstrap("x,y,z", Some("y")));
+    assert!(is_bootstrap("x,y-utils", Some("y_utils")));
     // Crate that aren't specified do not get unstable features
     assert!(!is_bootstrap("x", Some("a")));
     assert!(!is_bootstrap("x,y,z", Some("a")));

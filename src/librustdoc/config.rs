@@ -409,7 +409,7 @@ impl Options {
                 println_condition(p.condition);
             }
 
-            if nightly_options::match_is_nightly_build(matches) {
+            if nightly_options::is_nightly_build() {
                 println!("\nPasses run with `--show-coverage`:");
                 for p in passes::COVERAGE_PASSES {
                     print!("{:>20}", p.pass.name);
@@ -653,7 +653,7 @@ impl Options {
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
-            nightly_options::match_is_nightly_build(matches),
+            nightly_options::is_nightly_build(),
             dcx,
             &mut id_map,
             edition,
@@ -775,8 +775,7 @@ impl Options {
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
 
-        let unstable_features =
-            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+        let unstable_features = rustc_feature::UnstableFeatures::from_environment();
         let options = Options {
             bin_crate,
             proc_macro_crate,

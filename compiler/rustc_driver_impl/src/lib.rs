@@ -1211,9 +1211,7 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
-        let nightly_build =
-            rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build();
-        usage(false, false, nightly_build);
+        usage(false, false, nightly_options::is_nightly_build());
         return None;
     }
 
@@ -1265,7 +1263,7 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
-        let nightly_build = nightly_options::match_is_nightly_build(&matches);
+        let nightly_build = nightly_options::is_nightly_build();
         usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
         return None;
     }
@@ -1337,7 +1335,7 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
     }
 
     ICE_PATH.get_or_init(|| {
-        if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+        if !nightly_options::is_nightly_build() {
             return None;
         }
         let mut path = match std::env::var_os("RUSTC_ICE") {
@@ -1493,7 +1491,7 @@ fn report_ice(
         dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
 
         // Only emit update nightly hint for users on nightly builds.
-        if rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+        if nightly_options::is_nightly_build() {
             dcx.emit_note(session_diagnostics::UpdateNightlyNote);
         }
     }

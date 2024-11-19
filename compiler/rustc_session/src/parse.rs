@@ -251,7 +251,7 @@ impl ParseSess {
     pub fn with_dcx(dcx: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
         Self {
             dcx,
-            unstable_features: UnstableFeatures::from_environment(None),
+            unstable_features: UnstableFeatures::from_environment(),
             config: Cfg::default(),
             check_config: CheckCfg::default(),
             edition: ExpnId::root().expn_data().edition,

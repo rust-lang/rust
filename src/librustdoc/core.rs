@@ -260,7 +260,7 @@ pub(crate) fn create_config(
         cg: codegen_options,
         externs,
         target_triple: target,
-        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
+        unstable_features: UnstableFeatures::from_environment(),
         actually_rustdoc: true,
         resolve_doc_links,
         unstable_opts,

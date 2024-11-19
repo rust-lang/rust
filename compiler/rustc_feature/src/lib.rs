@@ -64,38 +64,52 @@ pub enum UnstableFeatures {
 }
 
 impl UnstableFeatures {
-    /// This takes into account `RUSTC_BOOTSTRAP`.
-    ///
-    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
-    /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
-    pub fn from_environment(krate: Option<&str>) -> Self {
-        Self::from_environment_inner(krate, |name| env::var(name))
+    /// Determines whether this compiler allows unstable options/features,
+    /// according to whether it was built as a stable/beta compiler or a nightly
+    /// compiler, and taking `RUSTC_BOOTSTRAP` into account.
+    #[inline(never)]
+    pub fn from_environment() -> Self {
+        Self::from_environment_inner(|name| env::var(name))
     }
 
     /// Unit tests can pass a mock `std::env::var` instead of modifying the real environment.
     fn from_environment_inner(
-        krate: Option<&str>,
         env_var: impl Fn(&str) -> Result<String, env::VarError>, // std::env::var
     ) -> Self {
-        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
+        // If `CFG_DISABLE_UNSTABLE_FEATURES` was true when this compiler was
+        // built, it is a stable/beta compiler that forbids unstable features.
         let disable_unstable_features =
             option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
-        // Returns whether `krate` should be counted as unstable
-        let is_unstable_crate =
-            |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
+        let default_answer = if disable_unstable_features {
+            UnstableFeatures::Disallow
+        } else {
+            UnstableFeatures::Allow
+        };
 
-        let bootstrap = env_var("RUSTC_BOOTSTRAP").ok();
-        if let Some(val) = bootstrap.as_deref() {
-            match val {
-                val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
-                // Hypnotize ourselves so that we think we are a stable compiler and thus don't
-                // allow any unstable features.
-                "-1" => return UnstableFeatures::Disallow,
-                _ => {}
-            }
+        // Returns true if the given list of comma-separated crate names
+        // contains `CARGO_CRATE_NAME`.
+        //
+        // This is not actually used by bootstrap; it only exists so that when
+        // cargo sees a third-party crate trying to set `RUSTC_BOOTSTRAP=1` in
+        // build.rs, it can suggest a somewhat less horrifying alternative.
+        //
+        // See <https://github.com/rust-lang/rust/pull/77802> for context.
+        let includes_current_crate = |names: &str| -> bool {
+            let Ok(crate_name) = env_var("CARGO_CRATE_NAME") else { return false };
+            // Normalize `-` in crate names to `_`.
+            let crate_name = crate_name.replace('-', "_");
+            names.replace('-', "_").split(',').any(|name| name == crate_name)
+        };
+
+        match env_var("RUSTC_BOOTSTRAP").as_deref() {
+            // Force the compiler to act as nightly, even if it's stable.
+            Ok("1") => UnstableFeatures::Cheat,
+            // Force the compiler to act as stable, even if it's nightly.
+            Ok("-1") => UnstableFeatures::Disallow,
+            // Force nightly if `RUSTC_BOOTSTRAP` contains the current crate name.
+            Ok(names) if includes_current_crate(names) => UnstableFeatures::Cheat,
+            _ => default_answer,
         }
-
-        if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
     pub fn is_nightly_build(&self) -> bool {
