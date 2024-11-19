@@ -1,9 +1,10 @@
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ExpnKind, Span, Symbol, sym};
 
 use crate::lints;
 
@@ -57,6 +58,35 @@ fn cargo_help_sub(
         lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
     } else {
         lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
+    }
+}
+
+fn rustc_macro_help(span: Span) -> Option<lints::UnexpectedCfgRustcMacroHelp> {
+    let oexpn = span.ctxt().outer_expn_data();
+    if let Some(def_id) = oexpn.macro_def_id
+        && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
+        && def_id.krate != LOCAL_CRATE
+    {
+        Some(lints::UnexpectedCfgRustcMacroHelp { macro_kind: macro_kind.descr(), macro_name })
+    } else {
+        None
+    }
+}
+
+fn cargo_macro_help(span: Span) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
+    let oexpn = span.ctxt().outer_expn_data();
+    if let Some(def_id) = oexpn.macro_def_id
+        && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
+        && def_id.krate != LOCAL_CRATE
+    {
+        Some(lints::UnexpectedCfgCargoMacroHelp {
+            macro_kind: macro_kind.descr(),
+            macro_name,
+            // FIXME: Get access to a `TyCtxt` from an `EarlyContext`
+            // crate_name: cx.tcx.crate_name(def_id.krate),
+        })
+    } else {
+        None
     }
 }
 
@@ -186,16 +216,21 @@ pub(super) fn unexpected_cfg_name(
     };
 
     let invocation_help = if is_from_cargo {
-        let sub = if !is_feature_cfg && !is_from_external_macro {
+        let help = if !is_feature_cfg && !is_from_external_macro {
             Some(cargo_help_sub(sess, &inst))
         } else {
             None
         };
-        lints::unexpected_cfg_name::InvocationHelp::Cargo { sub }
+        lints::unexpected_cfg_name::InvocationHelp::Cargo {
+            help,
+            macro_help: cargo_macro_help(name_span),
+        }
     } else {
-        lints::unexpected_cfg_name::InvocationHelp::Rustc(lints::UnexpectedCfgRustcHelp::new(
-            &inst(EscapeQuotes::No),
-        ))
+        let help = lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
+        lints::unexpected_cfg_name::InvocationHelp::Rustc {
+            help,
+            macro_help: rustc_macro_help(name_span),
+        }
     };
 
     lints::UnexpectedCfgName { code_sugg, invocation_help, name }
@@ -302,14 +337,20 @@ pub(super) fn unexpected_cfg_value(
         } else {
             None
         };
-        lints::unexpected_cfg_value::InvocationHelp::Cargo(help)
+        lints::unexpected_cfg_value::InvocationHelp::Cargo {
+            help,
+            macro_help: cargo_macro_help(name_span),
+        }
     } else {
         let help = if can_suggest_adding_value {
             Some(lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
         } else {
             None
         };
-        lints::unexpected_cfg_value::InvocationHelp::Rustc(help)
+        lints::unexpected_cfg_value::InvocationHelp::Rustc {
+            help,
+            macro_help: rustc_macro_help(name_span),
+        }
     };
 
     lints::UnexpectedCfgValue {

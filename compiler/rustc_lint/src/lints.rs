@@ -2131,6 +2131,25 @@ impl UnexpectedCfgRustcHelp {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+pub(crate) struct UnexpectedCfgRustcMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+#[help(lint_unexpected_cfg_cargo_update)]
+pub(crate) struct UnexpectedCfgCargoMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+    // FIXME: Figure out a way to get the crate name
+    // crate_name: String,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(lint_unexpected_cfg_name)]
 pub(crate) struct UnexpectedCfgName {
@@ -2235,10 +2254,17 @@ pub(crate) mod unexpected_cfg_name {
         #[note(lint_unexpected_cfg_doc_cargo)]
         Cargo {
             #[subdiagnostic]
-            sub: Option<super::UnexpectedCfgCargoHelp>,
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgCargoHelp>,
         },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] super::UnexpectedCfgRustcHelp),
+        Rustc {
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+            #[subdiagnostic]
+            help: super::UnexpectedCfgRustcHelp,
+        },
     }
 }
 
@@ -2341,9 +2367,19 @@ pub(crate) mod unexpected_cfg_value {
     #[derive(Subdiagnostic)]
     pub(crate) enum InvocationHelp {
         #[note(lint_unexpected_cfg_doc_cargo)]
-        Cargo(#[subdiagnostic] Option<CargoHelp>),
+        Cargo {
+            #[subdiagnostic]
+            help: Option<CargoHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+        },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] Option<super::UnexpectedCfgRustcHelp>),
+        Rustc {
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgRustcHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+        },
     }
 
     #[derive(Subdiagnostic)]

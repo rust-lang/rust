@@ -5,6 +5,9 @@ LL |     cfg_macro::my_lib_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: expected names are: `clippy`, `debug_assertions`, `doc`, `doctest`, `feature`, `fmt_debug`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `rustfmt`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `ub_checks`, `unix`, and `windows`
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try refering to `cfg_macro::my_lib_macro` crate for guidance on how handle this unexpected cfg
+   = help: the macro `cfg_macro::my_lib_macro` may come from an old version of it's defining crate, try updating your dependencies with `cargo update`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
    = note: this warning originates in the macro `cfg_macro::my_lib_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -16,6 +19,9 @@ LL |     cfg_macro::my_lib_macro_value!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected values for `panic` are: `abort` and `unwind`
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try refering to `cfg_macro::my_lib_macro_value` crate for guidance on how handle this unexpected cfg
+   = help: the macro `cfg_macro::my_lib_macro_value` may come from an old version of it's defining crate, try updating your dependencies with `cargo update`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: this warning originates in the macro `cfg_macro::my_lib_macro_value` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -26,6 +32,9 @@ LL |     cfg_macro::my_lib_macro_feature!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: no expected values for `feature`
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try refering to `cfg_macro::my_lib_macro_feature` crate for guidance on how handle this unexpected cfg
+   = help: the macro `cfg_macro::my_lib_macro_feature` may come from an old version of it's defining crate, try updating your dependencies with `cargo update`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: this warning originates in the macro `cfg_macro::my_lib_macro_feature` (in Nightly builds, run with -Z macro-backtrace for more info)
 
