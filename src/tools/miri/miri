@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -e
 # We want to call the binary directly, so we need to know where it ends up.
-MIRI_SCRIPT_TARGET_DIR="$(dirname "$0")"/miri-script/target
+ROOT_DIR="$(dirname "$0")"
+MIRI_SCRIPT_TARGET_DIR="$ROOT_DIR"/miri-script/target
 # If stdout is not a terminal and we are not on CI, assume that we are being invoked by RA, and use JSON output.
 if ! [ -t 1 ] && [ -z "$CI" ]; then
   MESSAGE_FORMAT="--message-format=json"
 fi
-# We need a nightly toolchain, for the `profile-rustflags` cargo feature.
-cargo +nightly build $CARGO_EXTRA_FLAGS --manifest-path "$(dirname "$0")"/miri-script/Cargo.toml \
+# We need a nightly toolchain, for `-Zroot-dir`.
+cargo +nightly build $CARGO_EXTRA_FLAGS --manifest-path "$ROOT_DIR"/miri-script/Cargo.toml \
+  -Zroot-dir="$ROOT_DIR" \
   -q --target-dir "$MIRI_SCRIPT_TARGET_DIR" $MESSAGE_FORMAT || \
   ( echo "Failed to build miri-script. Is the 'nightly' toolchain installed?"; exit 1 )
 # Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly. Invoking `cargo run` goes through

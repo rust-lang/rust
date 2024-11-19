@@ -105,7 +105,7 @@ impl MiriEnv {
 
         // Get extra flags for cargo.
         let cargo_extra_flags = std::env::var("CARGO_EXTRA_FLAGS").unwrap_or_default();
-        let cargo_extra_flags = flagsplit(&cargo_extra_flags);
+        let mut cargo_extra_flags = flagsplit(&cargo_extra_flags);
         if cargo_extra_flags.iter().any(|a| a == "--release" || a.starts_with("--profile")) {
             // This makes binaries end up in different paths, let's not do that.
             eprintln!(
@@ -113,6 +113,8 @@ impl MiriEnv {
             );
             std::process::exit(1);
         }
+        // Also set `-Zroot-dir` for cargo, to print diagnostics relative to the miri dir.
+        cargo_extra_flags.push(format!("-Zroot-dir={}", miri_dir.display()));
 
         Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags, libdir })
     }
