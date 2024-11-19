@@ -12,7 +12,6 @@ use crate::borrow_set::BorrowSet;
 use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
-use crate::universal_regions::UniversalRegions;
 
 mod loan_invalidations;
 mod loan_kills;
@@ -32,7 +31,6 @@ pub(crate) fn emit_facts<'tcx>(
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     move_data: &MoveData<'_>,
-    universal_regions: &UniversalRegions<'_>,
     universal_region_relations: &UniversalRegionRelations<'_>,
 ) {
     let Some(all_facts) = all_facts else {
@@ -41,12 +39,7 @@ pub(crate) fn emit_facts<'tcx>(
     };
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     emit_move_facts(all_facts, move_data, location_table, body);
-    emit_universal_region_facts(
-        all_facts,
-        borrow_set,
-        universal_regions,
-        universal_region_relations,
-    );
+    emit_universal_region_facts(all_facts, borrow_set, universal_region_relations);
     emit_cfg_and_loan_kills_facts(all_facts, tcx, location_table, body, borrow_set);
     emit_loan_invalidations_facts(all_facts, tcx, location_table, body, borrow_set);
 }
@@ -129,7 +122,6 @@ fn emit_move_facts(
 fn emit_universal_region_facts(
     all_facts: &mut AllFacts,
     borrow_set: &BorrowSet<'_>,
-    universal_regions: &UniversalRegions<'_>,
     universal_region_relations: &UniversalRegionRelations<'_>,
 ) {
     // 1: universal regions are modeled in Polonius as a pair:
@@ -138,9 +130,10 @@ fn emit_universal_region_facts(
     //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
     //   added to the existing number of loans, as if they succeeded them in the set.
     //
+    let universal_regions = &universal_region_relations.universal_regions;
     all_facts
         .universal_region
-        .extend(universal_regions.universal_regions().map(PoloniusRegionVid::from));
+        .extend(universal_regions.universal_regions_iter().map(PoloniusRegionVid::from));
     let borrow_count = borrow_set.len();
     debug!(
         "emit_universal_region_facts: polonius placeholders, num_universals={}, borrow_count={}",
@@ -148,7 +141,7 @@ fn emit_universal_region_facts(
         borrow_count
     );
 
-    for universal_region in universal_regions.universal_regions() {
+    for universal_region in universal_regions.universal_regions_iter() {
         let universal_region_idx = universal_region.index();
         let placeholder_loan_idx = borrow_count + universal_region_idx;
         all_facts.placeholder.push((universal_region.into(), placeholder_loan_idx.into()));

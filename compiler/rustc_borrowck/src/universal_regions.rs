@@ -248,12 +248,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// MIR -- that is, all the regions that appear in the function's
     /// signature. This will also compute the relationships that are
     /// known between those regions.
-    pub(crate) fn new(
-        infcx: &BorrowckInferCtxt<'tcx>,
-        mir_def: LocalDefId,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Self {
-        UniversalRegionsBuilder { infcx, mir_def, param_env }.build()
+    pub(crate) fn new(infcx: &BorrowckInferCtxt<'tcx>, mir_def: LocalDefId) -> Self {
+        UniversalRegionsBuilder { infcx, mir_def }.build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -312,7 +308,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub(crate) fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
+    pub(crate) fn universal_regions_iter(&self) -> impl Iterator<Item = RegionVid> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 
@@ -336,7 +332,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Gets an iterator over all the early-bound regions that have names.
-    pub(crate) fn named_universal_regions<'s>(
+    pub(crate) fn named_universal_regions_iter<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
@@ -426,7 +422,6 @@ impl<'tcx> UniversalRegions<'tcx> {
 struct UniversalRegionsBuilder<'infcx, 'tcx> {
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
@@ -435,7 +430,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
 
-        let param_env = self.param_env;
+        let param_env = self.infcx.param_env;
         debug!("build: param_env={:?}", param_env);
 
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
