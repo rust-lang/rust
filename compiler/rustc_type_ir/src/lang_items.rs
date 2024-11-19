@@ -31,7 +31,6 @@ pub enum TraitSolverLangItem {
     Metadata,
     Option,
     PointeeTrait,
-    PointerLike,
     Poll,
     Sized,
     TransmuteTrait,
