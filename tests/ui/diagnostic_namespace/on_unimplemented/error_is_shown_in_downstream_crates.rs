@@ -1,4 +1,5 @@
 //@ aux-build:other.rs
+//@ reference: attributes.diagnostic.on_unimplemented.intro
 
 extern crate other;
 
