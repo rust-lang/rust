@@ -215,7 +215,7 @@ pub macro const_panic {
                 #[noinline]
                 if const #[track_caller] #[inline] { // Inline this, to prevent codegen
                     $crate::panic!($const_msg)
-                } else #[track_caller] { // Do not inline this, it makes perf worse
+                } else #[track_caller] #[cfg_attr(bootstrap, inline)] { // Do not inline this, it makes perf worse
                     $crate::panic!($runtime_msg)
                 }
             )
