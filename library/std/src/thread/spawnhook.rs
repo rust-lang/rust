@@ -3,8 +3,12 @@ use crate::iter;
 use crate::sync::Arc;
 use crate::thread::Thread;
 
-// A thread local linked list of spawn hooks.
 crate::thread_local! {
+    /// A thread local linked list of spawn hooks.
+    ///
+    /// It is a linked list of Arcs, such that it can very cheaply be inhereted by spawned threads.
+    ///
+    /// (That technically makes it a set of linked lists with shared tails, so a linked tree.)
     static SPAWN_HOOKS: Cell<SpawnHooks> = const { Cell::new(SpawnHooks { first: None }) };
 }
 
@@ -42,7 +46,7 @@ struct SpawnHook {
 ///
 /// Hooks can only be added, not removed.
 ///
-/// The hooks will run in order, starting with the most recently added.
+/// The hooks will run in reverse order, starting with the most recently added.
 ///
 /// # Usage
 ///
