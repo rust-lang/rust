@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 let has_interior_mutability = !cx
                     .typeck_results()
                     .node_type(canonical_id)
-                    .is_freeze(cx.tcx, cx.param_env);
+                    .is_freeze(cx.tcx, cx.typing_env());
                 if has_interior_mutability {
                     return;
                 }
