@@ -627,3 +627,36 @@ add the `--scrape-tests` flag.
 
 This flag enables the generation of links in the source code pages which allow the reader
 to jump to a type definition.
+
+### `--test-builder`: `rustc`-like program to build tests
+
+ * Tracking issue: [#102981](https://github.com/rust-lang/rust/issues/102981)
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc --test-builder /path/to/rustc src/lib.rs
+```
+
+Rustdoc will use the provided program to compile tests instead of the default `rustc` program from
+the sysroot.
+
+### `--test-builder-wrapper`: wrap calls to the test builder
+
+ * Tracking issue: [#102981](https://github.com/rust-lang/rust/issues/102981)
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc -Zunstable-options --test-builder-wrapper /path/to/rustc-wrapper src/lib.rs
+$ rustdoc -Zunstable-options \
+    --test-builder-wrapper rustc-wrapper1 \
+    --test-builder-wrapper rustc-wrapper2 \
+    --test-builder rustc \
+    src/lib.rs
+```
+
+Similar to cargo `build.rustc-wrapper` option, this flag takes a `rustc` wrapper program.
+The first argument to the program will be the test builder program.
+
+This flag can be passed multiple times to nest wrappers.
