@@ -77,18 +77,35 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
+                let is_let = self.token.is_keyword(kw::Let);
+                let is_let_mut = is_let && self.look_ahead(1, |t| t.is_keyword(kw::Mut));
+                let let_has_ident = is_let && !is_let_mut && self.is_kw_followed_by_ident(kw::Let);
+
                 let msg = format!("expected item, found {token_str}");
                 let mut err = self.dcx().struct_span_err(self.token.span, msg);
-                let span = self.token.span;
-                if self.is_kw_followed_by_ident(kw::Let) {
-                    err.span_label(
-                        span,
-                        "consider using `const` or `static` instead of `let` for global variables",
-                    );
+
+                let label = if is_let {
+                    "`let` cannot be used for global variables"
                 } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+                    "expected item"
                 };
+                err.span_label(self.token.span, label);
+
+                if is_let {
+                    if is_let_mut {
+                        err.help("consider using `static` and a `Mutex` instead of `let mut`");
+                    } else if let_has_ident {
+                        err.span_suggestion_short(
+                            self.token.span,
+                            "consider using `static` or `const` instead of `let`",
+                            "static",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.help("consider using `static` or `const` instead of `let`");
+                    }
+                }
+                err.note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
                 return Err(err);
             }
         }

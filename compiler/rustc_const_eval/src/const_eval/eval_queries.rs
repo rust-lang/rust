@@ -221,7 +221,7 @@ pub(super) fn op_to_const<'tcx>(
                 let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
-                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.param_env).kind(),
+                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.typing_env()).kind(),
                         ty::Str | ty::Slice(..),
                     ),
                     "`ConstValue::Slice` is for slice-tailed types only, but got {}",
@@ -280,11 +280,13 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     // opaque types. This is needed for trivial things like `size_of`, but also for using associated
     // types that are not specified in the opaque type.
     assert_eq!(key.param_env.reveal(), Reveal::All);
+    let typing_env =
+        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: key.param_env };
 
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.param_env);
+        let ty = key.value.instance.ty(tcx, typing_env);
         let ty::FnDef(_, args) = ty.kind() else {
             bug!("intrinsic with type {:?}", ty);
         };

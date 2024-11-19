@@ -55,8 +55,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     let tcx = bx.tcx();
-    let sig =
-        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
+    let sig = tcx.normalize_erasing_late_bound_regions(
+        ty::TypingEnv::fully_monomorphized(),
+        callee_ty.fn_sig(tcx),
+    );
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
@@ -478,7 +480,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -493,7 +495,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,

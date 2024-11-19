@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 sym::mem_forget if is_copy => return,
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => return,
                 sym::mem_drop
-                    if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
+                    if !(arg_ty.needs_drop(cx.tcx, cx.typing_env())
                         || is_must_use_func_call(cx, arg)
                         || is_must_use_ty(cx, arg_ty)
                         || drop_is_single_call_in_arm) =>
@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
                 },
                 sym::mem_forget => {
-                    if arg_ty.needs_drop(cx.tcx, cx.param_env) {
+                    if arg_ty.needs_drop(cx.tcx, cx.typing_env()) {
                         (
                             MEM_FORGET,
                             Cow::Owned(format!(

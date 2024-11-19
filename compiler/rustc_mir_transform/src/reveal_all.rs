@@ -8,14 +8,16 @@ pub(super) struct RevealAll;
 
 impl<'tcx> crate::MirPass<'tcx> for RevealAll {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        RevealAllVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 }
 
 struct RevealAllVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
@@ -53,7 +55,7 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.param_env, constant.const_) {
+        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.typing_env, constant.const_) {
             constant.const_ = c;
         }
         self.super_const_operand(constant, location);
@@ -64,7 +66,7 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(t) = self.tcx.try_normalize_erasing_regions(self.param_env, *ty) {
+        if let Ok(t) = self.tcx.try_normalize_erasing_regions(self.typing_env, *ty) {
             *ty = t;
         }
     }

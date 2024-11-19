@@ -272,7 +272,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 || !ty.is_inhabited_from(
                     cx.tcx,
                     cx.tcx.parent_module(expr.hir_id).to_def_id(),
-                    cx.param_env,
+                    cx.typing_env(),
                 )
             {
                 return Some(MustUsePath::Suppressed);
@@ -556,7 +556,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
         if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 let ty = cx.typeck_results().expr_ty(expr);
-                if ty.needs_drop(cx.tcx, cx.param_env) {
+                if ty.needs_drop(cx.tcx, cx.typing_env()) {
                     let sub = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span)
                     {
                         PathStatementDropSub::Suggestion { span: s.span, snippet }

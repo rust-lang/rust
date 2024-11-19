@@ -284,10 +284,9 @@ impl<'tcx> Cx<'tcx> {
             let ty = adt_def.repr().discr_type();
             let discr_ty = ty.to_ty(tcx);
 
-            let param_env_ty = self.param_env.and(discr_ty);
             let size = tcx
-                .layout_of(param_env_ty)
-                .unwrap_or_else(|e| panic!("could not compute layout for {param_env_ty:?}: {e:?}"))
+                .layout_of(self.typing_env().as_query_input(discr_ty))
+                .unwrap_or_else(|e| panic!("could not compute layout for {discr_ty:?}: {e:?}"))
                 .size;
 
             let (lit, overflowing) = ScalarInt::truncate_from_uint(discr_offset as u128, size);
@@ -1025,7 +1024,7 @@ impl<'tcx> Cx<'tcx> {
             // but distinguish between &STATIC and &THREAD_LOCAL as they have different semantics
             Res::Def(DefKind::Static { .. }, id) => {
                 // this is &raw for extern static or static mut, and & for other statics
-                let ty = self.tcx.static_ptr_ty(id);
+                let ty = self.tcx.static_ptr_ty(id, self.typing_env());
                 let temp_lifetime = self
                     .rvalue_scopes
                     .temporary_scope(self.region_scope_tree, expr.hir_id.local_id);

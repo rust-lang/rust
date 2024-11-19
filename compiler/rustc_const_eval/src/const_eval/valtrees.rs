@@ -2,6 +2,7 @@ use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::solve::Reveal;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
@@ -281,8 +282,9 @@ pub fn valtree_to_const_value<'tcx>(
     // the `ValTree` and using `place_projection` and `place_field` to
     // create inner `MPlace`s which are filled recursively.
     // FIXME Does this need an example?
-
     let (param_env, ty) = param_env_ty.into_parts();
+    debug_assert_eq!(param_env.reveal(), Reveal::All);
+    let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env };
 
     match *ty.kind() {
         ty::FnDef(..) => {
@@ -302,11 +304,12 @@ pub fn valtree_to_const_value<'tcx>(
             let mut ecx =
                 mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
             let imm = valtree_to_ref(&mut ecx, valtree, inner_ty);
-            let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
+            let imm =
+                ImmTy::from_immediate(imm, tcx.layout_of(typing_env.as_query_input(ty)).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
         ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
-            let layout = tcx.layout_of(param_env_ty).unwrap();
+            let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
             if layout.is_zst() {
                 // Fast path to avoid some allocations.
                 return mir::ConstValue::ZeroSized;
@@ -319,7 +322,7 @@ pub fn valtree_to_const_value<'tcx>(
                 let branches = valtree.unwrap_branch();
                 // Find the non-ZST field. (There can be aligned ZST!)
                 for (i, &inner_valtree) in branches.iter().enumerate() {
-                    let field = layout.field(&LayoutCx::new(tcx, param_env), i);
+                    let field = layout.field(&LayoutCx::new(tcx, typing_env), i);
                     if !field.is_zst() {
                         return valtree_to_const_value(tcx, param_env.and(field.ty), inner_valtree);
                     }

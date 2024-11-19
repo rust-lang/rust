@@ -58,7 +58,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn const_eval_resolve(
         self,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ct: mir::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToConstValueResult<'tcx> {
@@ -72,14 +72,11 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::try_resolve(
-            self, param_env,
-            // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
-            ct.def, ct.args,
-        ) {
+        // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
+        match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
-                self.const_eval_global_id(param_env, cid, span)
+                self.const_eval_global_id(typing_env.param_env, cid, span)
             }
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
@@ -91,7 +88,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn const_eval_resolve_for_typeck(
         self,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
@@ -105,10 +102,10 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        match ty::Instance::try_resolve(self, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
-                self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
+                self.const_eval_global_id_for_typeck(typing_env.param_env, cid, span).inspect(|_| {
                     // We are emitting the lint here instead of in `is_const_evaluatable`
                     // as we normalize obligations before checking them, and normalization
                     // uses this function to evaluate this constant.

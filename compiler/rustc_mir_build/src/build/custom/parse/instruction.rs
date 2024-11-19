@@ -159,7 +159,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     });
                 }
             };
-            values.push(value.eval_bits(self.tcx, self.param_env));
+            values.push(value.eval_bits(self.tcx, self.typing_env));
             targets.push(self.parse_block(arm.body)?);
         }
 
@@ -393,7 +393,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstBlock { .. } => Ok({
                 let value = as_constant_inner(expr, |_| None, self.tcx);
-                value.const_.eval_bits(self.tcx, self.param_env)
+                value.const_.eval_bits(self.tcx, self.typing_env)
             }),
         )
     }

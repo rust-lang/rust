@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, Size};
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 

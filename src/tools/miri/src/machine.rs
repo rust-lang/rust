@@ -1127,7 +1127,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             };
             let info = ecx.get_alloc_info(alloc_id);
             let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
-            let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
+            let extern_decl_layout =
+                ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
             if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
                 throw_unsup_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \

@@ -3,7 +3,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
@@ -26,11 +26,8 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
         // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure
         // out the llvm type from the actual evaluated initializer.
-        let ty = if nested {
-            self.tcx.types.unit
-        } else {
-            instance.ty(self.tcx, ty::ParamEnv::reveal_all())
-        };
+        let ty =
+            if nested { self.tcx.types.unit } else { instance.ty(self.tcx, self.typing_env()) };
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {

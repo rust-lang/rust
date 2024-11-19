@@ -274,9 +274,9 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     if ty.is_some() {
         let patch = {
-            let param_env = tcx.param_env_reveal_all_normalized(def_id);
+            let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator =
-                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
+                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, typing_env };
             let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
@@ -334,7 +334,7 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -355,8 +355,8 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -914,7 +914,7 @@ fn build_call_shim<'tcx>(
 pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, ctor_id);
 
     // Normalize the sig.
     let sig = tcx
@@ -922,7 +922,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         .instantiate_identity()
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
-    let sig = tcx.normalize_erasing_regions(param_env, sig);
+    let sig = tcx.normalize_erasing_regions(typing_env, sig);
 
     let ty::Adt(adt_def, args) = sig.output().kind() else {
         bug!("unexpected type for ADT ctor {:?}", sig.output());

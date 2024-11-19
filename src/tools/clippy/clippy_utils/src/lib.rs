@@ -1631,7 +1631,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
     if let Some(Constant::Int(v)) =
-        ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(enclosing_body), cx.tcx.typeck(enclosing_body)).eval(e)
+        ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
     {
         return value == v;
     }

@@ -37,9 +37,9 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
         }
 
         let tcx = cx.tcx();
-        let param_env = tcx.param_env(ty_def_id);
+        let typing_env = ty::TypingEnv::post_analysis(tcx, ty_def_id);
         let ty = tcx.type_of(ty_def_id).instantiate_identity();
-        let type_layout = tcx.layout_of(param_env.and(ty));
+        let type_layout = tcx.layout_of(typing_env.as_query_input(ty));
 
         let variants = if let Ok(type_layout) = type_layout
             && let Variants::Multiple { variants, tag, tag_encoding, .. } =
@@ -71,7 +71,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
             Vec::new()
         };
 
-        let type_layout_size = tcx.layout_of(param_env.and(ty)).map(|layout| {
+        let type_layout_size = tcx.layout_of(typing_env.as_query_input(ty)).map(|layout| {
             let is_unsized = layout.is_unsized();
             let is_uninhabited = layout.is_uninhabited();
             let size = layout.size.bytes();

@@ -467,6 +467,18 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     }
 }
 
+impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.value.default_span(tcx)
+    }
+
+    fn ty_def_id(&self) -> Option<DefId> {
+        self.value.ty_def_id()
+    }
+}
+
 impl Key for Symbol {
     type Cache<V> = DefaultCache<Self, V>;
 
@@ -575,7 +587,7 @@ impl Key for (LocalDefId, HirId) {
     }
 }
 
-impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
+impl<'tcx> Key for (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) {
     type Cache<V> = DefaultCache<Self, V>;
 
     // Just forward to `Ty<'tcx>`

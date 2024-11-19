@@ -528,7 +528,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Find the method being called.
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
-            ctxt.param_env,
+            self.cx.typing_env(ctxt.param_env),
             ctxt.assoc_item.def_id,
             self.cx.resolve_vars_if_possible(ctxt.args),
         ) else {

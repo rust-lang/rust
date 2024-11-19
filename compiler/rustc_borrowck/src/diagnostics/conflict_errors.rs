@@ -27,7 +27,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, ClauseKind, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_middle::util::CallKind;
@@ -649,11 +649,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) -> Option<ty::Mutability> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
-        let clauses = tcx.predicates_of(callee_did).instantiate_identity(self.infcx.tcx).predicates;
+        let clauses = tcx.predicates_of(callee_did);
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
-        if !clauses.iter().any(|clause| {
+        if !clauses.instantiate_identity(tcx).predicates.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
@@ -682,8 +682,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 // Normalize before comparing to see through type aliases and projections.
                 let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
                 let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
-                if let Ok(old_ty) = tcx.try_normalize_erasing_regions(self.param_env, old_ty)
-                    && let Ok(new_ty) = tcx.try_normalize_erasing_regions(self.param_env, new_ty)
+                if let Ok(old_ty) =
+                    tcx.try_normalize_erasing_regions(self.infcx.typing_env(self.param_env), old_ty)
+                    && let Ok(new_ty) = tcx.try_normalize_erasing_regions(
+                        self.infcx.typing_env(self.param_env),
+                        new_ty,
+                    )
                 {
                     old_ty == new_ty
                 } else {
@@ -700,23 +704,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return false;
             }
 
-            // Test the callee's predicates, substituting a reference in for the self ty
-            // in bounds on `param`.
-            clauses.iter().all(|&clause| {
-                let clause_for_ref = clause.kind().map_bound(|kind| match kind {
-                    ClauseKind::Trait(c) if c.self_ty().is_param(param.index) => {
-                        ClauseKind::Trait(c.with_self_ty(tcx, ref_ty))
-                    }
-                    ClauseKind::Projection(c) if c.self_ty().is_param(param.index) => {
-                        ClauseKind::Projection(c.with_self_ty(tcx, ref_ty))
-                    }
-                    _ => kind,
-                });
+            // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
+            clauses.instantiate(tcx, new_args).predicates.iter().all(|&(mut clause)| {
+                // Normalize before testing to see through type aliases and projections.
+                if let Ok(normalized) =
+                    tcx.try_normalize_erasing_regions(self.infcx.typing_env(self.param_env), clause)
+                {
+                    clause = normalized;
+                }
                 self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
                     tcx,
                     ObligationCause::dummy(),
                     self.param_env,
-                    ty::EarlyBinder::bind(clause_for_ref).instantiate(tcx, generic_args),
+                    clause,
                 ))
             })
         }) {
@@ -3837,11 +3837,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if tcx.is_diagnostic_item(sym::deref_method, method_did) {
                 let deref_target =
                     tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::try_resolve(tcx, self.param_env, deref_target, method_args)
-                            .transpose()
+                        Instance::try_resolve(
+                            tcx,
+                            self.infcx.typing_env(self.param_env),
+                            deref_target,
+                            method_args,
+                        )
+                        .transpose()
                     });
                 if let Some(Ok(instance)) = deref_target {
-                    let deref_target_ty = instance.ty(tcx, self.param_env);
+                    let deref_target_ty = instance.ty(tcx, self.infcx.typing_env(self.param_env));
                     err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));
                     err.span_note(tcx.def_span(instance.def_id()), "deref defined here");
                 }

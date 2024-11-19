@@ -3,7 +3,7 @@
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::{self, traversal};
 use rustc_middle::ty::inherent::*;
-use rustc_middle::ty::{self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -62,8 +62,9 @@ fn do_check_abi<'tcx>(
 /// Checks that the ABI of a given instance of a function does not contain vector-passed arguments
 /// or return values for which the corresponding target feature is not enabled.
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let param_env = ParamEnv::reveal_all();
-    let Ok(abi) = tcx.fn_abi_of_instance(param_env.and((instance, ty::List::empty()))) else {
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+    else {
         // An error will be reported during codegen if we cannot determine the ABI of this
         // function.
         return;
@@ -100,18 +101,18 @@ fn check_call_site_abi<'tcx>(
         // "Rust" ABI never passes arguments in vector registers.
         return;
     }
-    let param_env = ParamEnv::reveal_all();
+    let typing_env = ty::TypingEnv::fully_monomorphized();
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
-            tcx.fn_abi_of_fn_ptr(param_env.and((callee.fn_sig(tcx), ty::List::empty())))
+            tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((callee.fn_sig(tcx), ty::List::empty())))
         }
         ty::FnDef(def_id, args) => {
             // Intrinsics are handled separately by the compiler.
             if tcx.intrinsic(def_id).is_some() {
                 return;
             }
-            let instance = ty::Instance::expect_resolve(tcx, param_env, def_id, args, DUMMY_SP);
-            tcx.fn_abi_of_instance(param_env.and((instance, ty::List::empty())))
+            let instance = ty::Instance::expect_resolve(tcx, typing_env, def_id, args, DUMMY_SP);
+            tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
         }
         _ => {
             panic!("Invalid function call");
@@ -151,7 +152,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                 let callee_ty = func.ty(body, tcx);
                 let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     ty::EarlyBinder::bind(callee_ty),
                 );
                 check_call_site_abi(tcx, callee_ty, *fn_span, body.source.instance);

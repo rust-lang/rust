@@ -20,7 +20,9 @@ use crate::traits::*;
 
 pub struct FunctionDebugContext<'tcx, S, L> {
     /// Maps from source code to the corresponding debug info scope.
-    pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
+    /// May be None if the backend is not capable of representing the scope for
+    /// some reason.
+    pub scopes: IndexVec<mir::SourceScope, Option<DebugScope<S, L>>>,
 
     /// Maps from an inlined function to its debug info declaration.
     pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
@@ -231,7 +233,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
-        let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
+        let scope = &self.debug_context.as_ref()?.scopes[source_info.scope]?;
         let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
         Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
     }

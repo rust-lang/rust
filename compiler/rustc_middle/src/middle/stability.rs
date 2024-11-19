@@ -10,7 +10,6 @@ use rustc_attr::{
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
@@ -24,7 +23,7 @@ use rustc_span::symbol::{Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
-use crate::ty::{self, TyCtxt};
+use crate::ty::TyCtxt;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -273,22 +272,6 @@ pub enum EvalResult {
     Unmarked,
 }
 
-// See issue #38412.
-fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if tcx.def_kind(def_id) == DefKind::TyParam {
-        // Have no visibility, considered public for the purpose of this check.
-        return false;
-    }
-    match tcx.visibility(def_id) {
-        // Must check stability for `pub` items.
-        ty::Visibility::Public => false,
-
-        // These are not visible outside crate; therefore
-        // stability markers are irrelevant, if even present.
-        ty::Visibility::Restricted(..) => true,
-    }
-}
-
 // See issue #83250.
 fn suggestion_for_allocator_api(
     tcx: TyCtxt<'_>,
@@ -407,11 +390,6 @@ impl<'tcx> TyCtxt<'tcx> {
             def_id, span, stability
         );
 
-        // Issue #38412: private items lack stability markers.
-        if skip_stability_check_due_to_privacy(self, def_id) {
-            return EvalResult::Allow;
-        }
-
         match stability {
             Some(Stability {
                 level: attr::Unstable { reason, issue, is_soft, implied_by },
@@ -494,11 +472,6 @@ impl<'tcx> TyCtxt<'tcx> {
         debug!(
             "body stability: inspecting def_id={def_id:?} span={span:?} of stability={stability:?}"
         );
-
-        // Issue #38412: private items lack stability markers.
-        if skip_stability_check_due_to_privacy(self, def_id) {
-            return EvalResult::Allow;
-        }
 
         match stability {
             Some(DefaultBodyStability {

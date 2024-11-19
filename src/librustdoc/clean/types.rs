@@ -772,8 +772,10 @@ impl Item {
                         .find(|field| {
                             let ty =
                                 field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                            tcx.layout_of(tcx.param_env(field.did).and(ty))
-                                .is_ok_and(|layout| !layout.is_1zst())
+                            tcx.layout_of(
+                                ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty),
+                            )
+                            .is_ok_and(|layout| !layout.is_1zst())
                         })
                         .map_or_else(
                             || adt.all_fields().any(|field| field.vis.is_public()),

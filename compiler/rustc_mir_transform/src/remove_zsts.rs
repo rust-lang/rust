@@ -21,9 +21,9 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
             return;
         }
 
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         let local_decls = &body.local_decls;
-        let mut replacer = Replacer { tcx, param_env, local_decls };
+        let mut replacer = Replacer { tcx, typing_env, local_decls };
         for var_debug_info in &mut body.var_debug_info {
             replacer.visit_var_debug_info(var_debug_info);
         }
@@ -35,7 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
 
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
 }
 
@@ -61,7 +61,7 @@ impl<'tcx> Replacer<'_, 'tcx> {
         if !maybe_zst(ty) {
             return false;
         }
-        let Ok(layout) = self.tcx.layout_of(self.param_env.and(ty)) else {
+        let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
             return false;
         };
         layout.is_zst()

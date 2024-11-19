@@ -6,7 +6,7 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{
@@ -613,7 +613,7 @@ impl<'tcx> Collector<'tcx> {
             .map(|ty| {
                 let layout = self
                     .tcx
-                    .layout_of(ParamEnvAnd { param_env: ParamEnv::empty(), value: ty })
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                     .expect("layout")
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the

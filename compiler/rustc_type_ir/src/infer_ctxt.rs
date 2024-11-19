@@ -1,6 +1,7 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -20,6 +21,7 @@ use crate::{self as ty, Interner};
 /// If neither of these functions are available, feel free to reach out to
 /// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations

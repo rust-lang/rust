@@ -2485,7 +2485,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             });
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
-            if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+            if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty)) {
                 if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
                     &layout.backend_repr
                 {
@@ -2521,7 +2521,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            let ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
+            let ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty);
 
             use rustc_type_ir::TyKind::*;
             match ty.kind() {
@@ -2568,7 +2568,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx, *adt_def)
                             .instantiate(cx.tcx, args)
-                            .apply_any_module(cx.tcx, cx.param_env)
+                            .apply_any_module(cx.tcx, cx.typing_env())
                         {
                             // Entirely skip uninhabited variants.
                             Some(false) => return None,

@@ -6,10 +6,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{Body, SourceScope};
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::{self, Instance};
 use rustc_session::config::DebugInfo;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, hygiene};
 
 use super::metadata::file_metadata;
 use super::utils::DIB;
@@ -85,15 +85,23 @@ fn make_mir_scope<'ll, 'tcx>(
             discriminators,
             parent,
         );
-        debug_context.scopes[parent]
+        if let Some(parent_scope) = debug_context.scopes[parent] {
+            parent_scope
+        } else {
+            // If the parent scope could not be represented then no children
+            // can be either.
+            debug_context.scopes[scope] = None;
+            instantiated.insert(scope);
+            return;
+        }
     } else {
         // The root is the function itself.
         let file = cx.sess().source_map().lookup_source_file(mir.span.lo());
-        debug_context.scopes[scope] = DebugScope {
+        debug_context.scopes[scope] = Some(DebugScope {
             file_start_pos: file.start_pos,
             file_end_pos: file.end_position(),
-            ..debug_context.scopes[scope]
-        };
+            ..debug_context.scopes[scope].unwrap()
+        });
         instantiated.insert(scope);
         return;
     };
@@ -104,7 +112,7 @@ fn make_mir_scope<'ll, 'tcx>(
     {
         // Do not create a DIScope if there are no variables defined in this
         // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
-        debug_context.scopes[scope] = parent_scope;
+        debug_context.scopes[scope] = Some(parent_scope);
         instantiated.insert(scope);
         return;
     }
@@ -118,7 +126,7 @@ fn make_mir_scope<'ll, 'tcx>(
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
             let callee = cx.tcx.instantiate_and_normalize_erasing_regions(
                 instance.args,
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 ty::EarlyBinder::bind(callee),
             );
             debug_context.inlined_function_scopes.entry(callee).or_insert_with(|| {
@@ -137,14 +145,20 @@ fn make_mir_scope<'ll, 'tcx>(
         },
     };
 
-    let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
-        // FIXME(eddyb) this doesn't account for the macro-related
-        // `Span` fixups that `rustc_codegen_ssa::mir::debuginfo` does.
+    let mut debug_scope = Some(DebugScope {
+        dbg_scope,
+        inlined_at: parent_scope.inlined_at,
+        file_start_pos: loc.file.start_pos,
+        file_end_pos: loc.file.end_position(),
+    });
+
+    if let Some((_, callsite_span)) = scope_data.inlined {
+        let callsite_span = hygiene::walk_chain_collapsed(callsite_span, mir.span);
         let callsite_scope = parent_scope.adjust_dbg_scope_for_span(cx, callsite_span);
         let loc = cx.dbg_loc(callsite_scope, parent_scope.inlined_at, callsite_span);
 
         // NB: In order to produce proper debug info for variables (particularly
-        // arguments) in multiply-inline functions, LLVM expects to see a single
+        // arguments) in multiply-inlined functions, LLVM expects to see a single
         // DILocalVariable with multiple different DILocations in the IR. While
         // the source information for each DILocation would be identical, their
         // inlinedAt attributes will be unique to the particular callsite.
@@ -152,7 +166,7 @@ fn make_mir_scope<'ll, 'tcx>(
         // We generate DILocations here based on the callsite's location in the
         // source code. A single location in the source code usually can't
         // produce multiple distinct calls so this mostly works, until
-        // proc-macros get involved. A proc-macro can generate multiple calls
+        // macros get involved. A macro can generate multiple calls
         // at the same span, which breaks the assumption that we're going to
         // produce a unique DILocation for every scope we process here. We
         // have to explicitly add discriminators if we see inlines into the
@@ -161,24 +175,29 @@ fn make_mir_scope<'ll, 'tcx>(
         // Note further that we can't key this hashtable on the span itself,
         // because these spans could have distinct SyntaxContexts. We have
         // to key on exactly what we're giving to LLVM.
-        match discriminators.entry(callsite_span.lo()) {
+        let inlined_at = match discriminators.entry(callsite_span.lo()) {
             Entry::Occupied(mut o) => {
                 *o.get_mut() += 1;
                 unsafe { llvm::LLVMRustDILocationCloneWithBaseDiscriminator(loc, *o.get()) }
-                    .expect("Failed to encode discriminator in DILocation")
             }
             Entry::Vacant(v) => {
                 v.insert(0);
-                loc
+                Some(loc)
+            }
+        };
+        match inlined_at {
+            Some(inlined_at) => {
+                debug_scope.as_mut().unwrap().inlined_at = Some(inlined_at);
+            }
+            None => {
+                // LLVM has a maximum discriminator that it can encode (currently
+                // it uses 12 bits for 4096 possible values). If we exceed that
+                // there is little we can do but drop the debug info.
+                debug_scope = None;
             }
         }
-    });
+    }
 
-    debug_context.scopes[scope] = DebugScope {
-        dbg_scope,
-        inlined_at: inlined_at.or(parent_scope.inlined_at),
-        file_start_pos: loc.file.start_pos,
-        file_end_pos: loc.file.end_position(),
-    };
+    debug_context.scopes[scope] = debug_scope;
     instantiated.insert(scope);
 }

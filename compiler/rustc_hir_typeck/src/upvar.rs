@@ -1257,7 +1257,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<FxIndexSet<UpvarMigrationInfo>> {
         let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
-        if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
+        // FIXME(#132279): Using `non_body_analysis` here feels wrong.
+        if !ty.has_significant_drop(
+            self.tcx,
+            ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id),
+        ) {
             debug!("does not have significant drop");
             return None;
         }
@@ -1535,8 +1539,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_path_ty: Ty<'tcx>,
         captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
-        let needs_drop =
-            |ty: Ty<'tcx>| ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id));
+        // FIXME(#132279): Using `non_body_analysis` here feels wrong.
+        let needs_drop = |ty: Ty<'tcx>| {
+            ty.has_significant_drop(
+                self.tcx,
+                ty::TypingEnv::non_body_analysis(self.tcx, closure_def_id),
+            )
+        };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));

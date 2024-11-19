@@ -1,5 +1,5 @@
 error[E0658]: link kind `link-arg` is unstable
-  --> $DIR/feature-gate-link-arg-attribute.rs:1:15
+  --> $DIR/feature-gate-link-arg-attribute.rs:5:15
    |
 LL | #[link(kind = "link-arg", name = "foo")]
    |               ^^^^^^^^^^
