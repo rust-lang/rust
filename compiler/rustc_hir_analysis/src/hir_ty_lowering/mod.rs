@@ -221,7 +221,7 @@ impl AssocItemQSelf {
 /// through const generics need to have their type "fed" to them
 /// using the query system.
 ///
-/// Use this enum with [`Const::from_const_arg`] to instruct it with the
+/// Use this enum with `<dyn HirTyLowerer>::lower_const_arg` to instruct it with the
 /// desired behavior.
 #[derive(Debug, Clone, Copy)]
 pub enum FeedConstTy {
