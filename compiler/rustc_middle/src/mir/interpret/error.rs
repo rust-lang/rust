@@ -59,22 +59,33 @@ impl ErrorHandled {
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
     is_tainted_by_errors: bool,
+    /// Whether this is the kind of error that can sometimes occur, and sometimes not.
+    /// Used for resource exhaustion errors.
+    can_be_spurious: bool,
 }
 
 impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: true, error }
+        ReportedErrorInfo { is_tainted_by_errors: true, can_be_spurious: false, error }
     }
+    #[inline]
+    pub fn spurious(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { can_be_spurious: true, is_tainted_by_errors: false, error }
+    }
+
     pub fn is_tainted_by_errors(&self) -> bool {
         self.is_tainted_by_errors
+    }
+    pub fn can_be_spurious(&self) -> bool {
+        self.can_be_spurious
     }
 }
 
 impl From<ErrorGuaranteed> for ReportedErrorInfo {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: false, error }
+        ReportedErrorInfo { is_tainted_by_errors: false, can_be_spurious: false, error }
     }
 }
 

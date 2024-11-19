@@ -152,13 +152,20 @@ where
             let span = span.substitute_dummy(our_span);
             let err = mk(span, frames);
             let mut err = tcx.dcx().create_err(err);
+            let can_be_spurious = matches!(error, InterpErrorKind::ResourceExhaustion(_));
 
             let msg = error.diagnostic_message();
             error.add_args(&mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);
-            ErrorHandled::Reported(err.emit().into(), span)
+            let g = err.emit();
+            let reported = if can_be_spurious {
+                ReportedErrorInfo::spurious(g)
+            } else {
+                ReportedErrorInfo::from(g)
+            };
+            ErrorHandled::Reported(reported, span)
         }
     }
 }
