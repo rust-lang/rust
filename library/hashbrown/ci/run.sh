@@ -9,7 +9,7 @@ case "${TARGET}" in
         CROSS=0
         NO_STD=0
         ;;
-    thumbv6m-none-eabi)
+    thumbv6m-none-eabi|loongarch64-unknown-linux-gnu)
         CROSS=1
         NO_STD=1
         ;;
