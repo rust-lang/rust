@@ -99,10 +99,6 @@ pub enum TokenKind {
     /// several tokens: `'r` and `#` and `foo`.
     RawLifetime,
 
-    /// Similar to the above, but *always* an error on every edition. This is used
-    /// for emoji identifier recovery, as those are not meant to be ever accepted.
-    InvalidPrefix,
-
     /// Guarded string literal prefix: `#"` or `##`.
     ///
     /// Used for reserving "guarded strings" (RFC 3598) in edition 2024.
@@ -466,7 +462,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident_or_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -550,23 +546,22 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident_or_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
             _ => Ident,
         }
     }
 
-    fn invalid_ident_or_prefix(&mut self) -> TokenKind {
+    fn invalid_ident(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
             const ZERO_WIDTH_JOINER: char = '\u{200d}';
             is_id_continue(c) || (!c.is_ascii() && c.is_emoji_char()) || c == ZERO_WIDTH_JOINER
         });
-        // Known prefixes must have been handled earlier. So if
-        // we see a prefix here, it is definitely an unknown prefix.
-        match self.first() {
-            '#' | '"' | '\'' => InvalidPrefix,
-            _ => InvalidIdent,
-        }
+        // An invalid identifier followed by '#' or '"' or '\'' could be
+        // interpreted as an invalid literal prefix. We don't bother doing that
+        // because the treatment of invalid identifiers and invalid prefixes
+        // would be the same.
+        InvalidIdent
     }
 
     fn c_or_byte_string(
