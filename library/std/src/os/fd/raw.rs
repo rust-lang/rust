@@ -266,6 +266,14 @@ impl<T: AsRawFd> AsRawFd for crate::rc::Rc<T> {
     }
 }
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: AsRawFd + ?Sized> AsRawFd for crate::rc::UniqueRc<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
 #[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
 impl<T: AsRawFd> AsRawFd for Box<T> {
     #[inline]
