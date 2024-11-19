@@ -468,7 +468,7 @@ impl Cursor<'_> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident_or_prefix(),
             _ => Unknown,
         };
         let res = Token::new(token_kind, self.pos_within_token());
@@ -552,17 +552,16 @@ impl Cursor<'_> {
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && c.is_emoji_char() => self.fake_ident_or_unknown_prefix(),
+            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident_or_prefix(),
             _ => Ident,
         }
     }
 
-    fn fake_ident_or_unknown_prefix(&mut self) -> TokenKind {
+    fn invalid_ident_or_prefix(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(|c| {
-            unicode_xid::UnicodeXID::is_xid_continue(c)
-                || (!c.is_ascii() && c.is_emoji_char())
-                || c == '\u{200d}'
+            const ZERO_WIDTH_JOINER: char = '\u{200d}';
+            is_id_continue(c) || (!c.is_ascii() && c.is_emoji_char()) || c == ZERO_WIDTH_JOINER
         });
         // Known prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely an unknown prefix.
