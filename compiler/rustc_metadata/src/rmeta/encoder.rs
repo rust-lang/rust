@@ -1463,8 +1463,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
-                    record_defaulted_array!(self.tables.implied_const_bounds[def_id]
-                        <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                        <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
             }
             if let DefKind::TraitAlias = def_kind {
@@ -1654,8 +1654,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_super_predicates(def_id);
                     if tcx.is_conditionally_const(def_id) {
-                        record_defaulted_array!(self.tables.implied_const_bounds[def_id]
-                            <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                        record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                            <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
                     }
                 }
             }

@@ -1017,7 +1017,7 @@ pub(super) fn const_conditions<'tcx>(
     }
 }
 
-pub(super) fn implied_const_bounds<'tcx>(
+pub(super) fn explicit_implied_const_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
@@ -1036,7 +1036,7 @@ pub(super) fn implied_const_bounds<'tcx>(
         Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. }) => {
             explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
         }
-        _ => bug!("implied_const_bounds called on wrong item: {def_id:?}"),
+        _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),
     };
 
     bounds.map_bound(|bounds| {

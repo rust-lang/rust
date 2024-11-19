@@ -697,7 +697,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query implied_const_bounds(
+    query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
         desc { |tcx| "computing the implied `~const` bounds for `{}`",

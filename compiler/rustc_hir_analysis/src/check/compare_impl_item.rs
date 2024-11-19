@@ -2083,7 +2083,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // Only in a const implementation do we need to check that the `~const` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(
-            tcx.implied_const_bounds(trait_ty.def_id)
+            tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
                 .map(|(c, span)| {
                     traits::Obligation::new(

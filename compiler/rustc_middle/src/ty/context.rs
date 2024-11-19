@@ -387,12 +387,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    fn implied_const_bounds(
+    fn explicit_implied_const_bounds(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
         ty::EarlyBinder::bind(
-            self.implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+            self.explicit_implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
         )
     }
 
