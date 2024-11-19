@@ -988,6 +988,12 @@ class VlqHexDecoder {
 }
 class RoaringBitmap {
     constructor(str) {
+        // https://github.com/RoaringBitmap/RoaringFormatSpec
+        //
+        // Roaring bitmaps are used for flags that can be kept in their
+        // compressed form, even when loaded into memory. This decoder
+        // turns the containers into objects, but uses byte array
+        // slices of the original format for the data payload.
         const strdecoded = atob(str);
         const u8array = new Uint8Array(strdecoded.length);
         for (let j = 0; j < strdecoded.length; ++j) {
@@ -1053,9 +1059,24 @@ class RoaringBitmap {
     contains(keyvalue) {
         const key = keyvalue >> 16;
         const value = keyvalue & 0xFFFF;
-        for (let i = 0; i < this.keys.length; ++i) {
-            if (this.keys[i] === key) {
-                return this.containers[i].contains(value);
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Format is required by specification to be sorted.
+        // Because keys are 16 bits and unique, length can't be
+        // bigger than 2**16, and because we have 32 bits of safe int,
+        // left + right can't overflow.
+        let left = 0;
+        let right = this.keys.length - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const x = this.keys[mid];
+            if (x < key) {
+                left = mid + 1;
+            } else if (x > key) {
+                right = mid - 1;
+            } else {
+                return this.containers[mid].contains(value);
             }
         }
         return false;
@@ -1068,11 +1089,23 @@ class RoaringBitmapRun {
         this.array = array;
     }
     contains(value) {
-        const l = this.runcount * 4;
-        for (let i = 0; i < l; i += 4) {
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Since runcount is stored as 16 bits, left + right
+        // can't overflow.
+        let left = 0;
+        let right = this.runcount - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const i = mid * 4;
             const start = this.array[i] | (this.array[i + 1] << 8);
             const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
-            if (value >= start && value <= (start + lenm1)) {
+            if ((start + lenm1) < value) {
+                left = mid + 1;
+            } else if (start > value) {
+                right = mid - 1;
+            } else {
                 return true;
             }
         }
@@ -1085,10 +1118,22 @@ class RoaringBitmapArray {
         this.array = array;
     }
     contains(value) {
-        const l = this.cardinality * 2;
-        for (let i = 0; i < l; i += 2) {
-            const start = this.array[i] | (this.array[i + 1] << 8);
-            if (value === start) {
+        // Binary search algorithm copied from
+        // https://en.wikipedia.org/wiki/Binary_search#Procedure
+        //
+        // Since cardinality can't be higher than 4096, left + right
+        // cannot overflow.
+        let left = 0;
+        let right = this.cardinality - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            const i = mid * 2;
+            const x = this.array[i] | (this.array[i + 1] << 8);
+            if (x < value) {
+                left = mid + 1;
+            } else if (x > value) {
+                right = mid - 1;
+            } else {
                 return true;
             }
         }
