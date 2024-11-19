@@ -4,10 +4,10 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::FileDescriptionRef;
+use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
-use crate::shims::unix::*;
 use crate::*;
+use crate::shims::unix::fd::UnixFileDescription;
 
 /// Maximum value that the eventfd counter can hold.
 const MAX_COUNTER: u64 = u64::MAX - 1;
@@ -31,17 +31,6 @@ struct Event {
 impl FileDescription for Event {
     fn name(&self) -> &'static str {
         "event"
-    }
-
-    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
-        // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
-        // need to be supported in the future, the check should be added here.
-
-        interp_ok(EpollReadyEvents {
-            epollin: self.counter.get() != 0,
-            epollout: self.counter.get() != MAX_COUNTER,
-            ..EpollReadyEvents::new()
-        })
     }
 
     fn close<'tcx>(
@@ -158,6 +147,19 @@ impl FileDescription for Event {
 
         // Return how many bytes we read.
         ecx.write_int(buf_place.layout.size.bytes(), dest)
+    }
+}
+
+impl UnixFileDescription for Event {
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
+        // need to be supported in the future, the check should be added here.
+
+        interp_ok(EpollReadyEvents {
+            epollin: self.counter.get() != 0,
+            epollout: self.counter.get() != MAX_COUNTER,
+            ..EpollReadyEvents::new()
+        })
     }
 }
 

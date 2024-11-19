@@ -8,6 +8,7 @@ mod unix;
 mod wasi;
 mod windows;
 mod x86;
+mod files;
 
 pub mod env;
 pub mod extern_static;
@@ -18,7 +19,8 @@ pub mod panic;
 pub mod time;
 pub mod tls;
 
-pub use self::unix::{DirTable, EpollInterestTable, FdTable};
+pub use self::unix::{DirTable, EpollInterestTable};
+pub use self::files::FdTable;
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {

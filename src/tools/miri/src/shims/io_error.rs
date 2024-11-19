@@ -87,6 +87,7 @@ const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
         ("ERROR_ACCESS_DENIED", PermissionDenied),
         ("ERROR_FILE_NOT_FOUND", NotFound),
         ("ERROR_INVALID_PARAMETER", InvalidInput),
+        ("ERROR_FILE_EXISTS", AlreadyExists),
     ]
 };
 

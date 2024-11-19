@@ -4,9 +4,11 @@ mod env;
 mod handle;
 mod sync;
 mod thread;
+mod fs;
 
 // All the Windows-specific extension traits
 pub use self::env::{EvalContextExt as _, WindowsEnvVars};
 pub use self::handle::EvalContextExt as _;
 pub use self::sync::EvalContextExt as _;
 pub use self::thread::EvalContextExt as _;
+pub use self::fs::EvalContextExt as _;

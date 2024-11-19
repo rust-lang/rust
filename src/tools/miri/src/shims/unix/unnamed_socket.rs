@@ -10,10 +10,10 @@ use std::io::{ErrorKind, Read};
 use rustc_abi::Size;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::unix::fd::UnixFileDescription;
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
-use crate::shims::unix::*;
 use crate::*;
+use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef, EvalContextExt as _};
 
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always
@@ -58,52 +58,6 @@ impl AnonSocket {
 impl FileDescription for AnonSocket {
     fn name(&self) -> &'static str {
         "socketpair"
-    }
-
-    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
-        // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
-        // If other event flags need to be supported in the future, the check should be added here.
-
-        let mut epoll_ready_events = EpollReadyEvents::new();
-
-        // Check if it is readable.
-        if let Some(readbuf) = &self.readbuf {
-            if !readbuf.borrow().buf.is_empty() {
-                epoll_ready_events.epollin = true;
-            }
-        } else {
-            // Without a read buffer, reading never blocks, so we are always ready.
-            epoll_ready_events.epollin = true;
-        }
-
-        // Check if is writable.
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            if let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf {
-                let data_size = writebuf.borrow().buf.len();
-                let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
-                if available_space != 0 {
-                    epoll_ready_events.epollout = true;
-                }
-            } else {
-                // Without a write buffer, writing never blocks.
-                epoll_ready_events.epollout = true;
-            }
-        } else {
-            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
-            // as we do not support `shutdown` that could be used to partially close the stream.
-            epoll_ready_events.epollrdhup = true;
-            epoll_ready_events.epollhup = true;
-            // Since the peer is closed, even if no data is available reads will return EOF and
-            // writes will return EPIPE. In other words, they won't block, so we mark this as ready
-            // for read and write.
-            epoll_ready_events.epollin = true;
-            epoll_ready_events.epollout = true;
-            // If there is data lost in peer_fd, set EPOLLERR.
-            if self.peer_lost_data.get() {
-                epoll_ready_events.epollerr = true;
-            }
-        }
-        interp_ok(epoll_ready_events)
     }
 
     fn close<'tcx>(
@@ -250,6 +204,54 @@ impl FileDescription for AnonSocket {
         ecx.check_and_update_readiness(&peer_fd)?;
 
         ecx.return_write_success(actual_write_size, dest)
+    }
+}
+
+impl UnixFileDescription for AnonSocket {
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
+        // If other event flags need to be supported in the future, the check should be added here.
+
+        let mut epoll_ready_events = EpollReadyEvents::new();
+
+        // Check if it is readable.
+        if let Some(readbuf) = &self.readbuf {
+            if !readbuf.borrow().buf.is_empty() {
+                epoll_ready_events.epollin = true;
+            }
+        } else {
+            // Without a read buffer, reading never blocks, so we are always ready.
+            epoll_ready_events.epollin = true;
+        }
+
+        // Check if is writable.
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            if let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf {
+                let data_size = writebuf.borrow().buf.len();
+                let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
+                if available_space != 0 {
+                    epoll_ready_events.epollout = true;
+                }
+            } else {
+                // Without a write buffer, writing never blocks.
+                epoll_ready_events.epollout = true;
+            }
+        } else {
+            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
+            // as we do not support `shutdown` that could be used to partially close the stream.
+            epoll_ready_events.epollrdhup = true;
+            epoll_ready_events.epollhup = true;
+            // Since the peer is closed, even if no data is available reads will return EOF and
+            // writes will return EPIPE. In other words, they won't block, so we mark this as ready
+            // for read and write.
+            epoll_ready_events.epollin = true;
+            epoll_ready_events.epollout = true;
+            // If there is data lost in peer_fd, set EPOLLERR.
+            if self.peer_lost_data.get() {
+                epoll_ready_events.epollerr = true;
+            }
+        }
+        interp_ok(epoll_ready_events)
     }
 }
 

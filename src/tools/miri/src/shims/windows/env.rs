@@ -1,7 +1,6 @@
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
-
 use rustc_data_structures::fx::FxHashMap;
 
 use self::helpers::windows_check_buffer_size;
