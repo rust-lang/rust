@@ -52,14 +52,13 @@ pub struct PackageMetadata {
 /// assume `reuse` has covered it already.
 pub fn get_metadata_and_notices(
     cargo: &Path,
-    dest: &Path,
+    vendor_path: &Path,
     root_path: &Path,
     manifest_paths: &[&Path],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
     let mut output = get_metadata(cargo, root_path, manifest_paths)?;
 
     // Now do a cargo-vendor and grab everything
-    let vendor_path = dest.join("vendor");
     println!("Vendoring deps into {}...", vendor_path.display());
     run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
 

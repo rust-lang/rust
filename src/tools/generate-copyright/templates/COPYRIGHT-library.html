@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Copyright notices for The Rust Standard Library</title>
+</head>
+<body>
+
+<h1>Copyright notices for The Rust Standard Library</h1>
+
+<p>This file describes the copyright and licensing information for the Rust
+Standard Library source code within The Rust Project git tree, and the
+third-party dependencies used when building the Rust Standard Library.</p>
+
+<h2>Table of Contents</h2>
+<ul>
+    <li><a href="#in-tree-files">In-tree files</a></li>
+    <li><a href="#out-of-tree-dependencies">Out-of-tree dependencies</a></li>
+</ul>
+
+<h2 id="in-tree-files">In-tree files</h2>
+
+<p>The following licenses cover the in-tree source files that were used in this
+release:</p>
+
+{{ in_tree|safe }}
+
+<h2 id="out-of-tree-dependencies">Out-of-tree dependencies</h2>
+
+<p>The following licenses cover the out-of-tree crates that were used in the
+Rust Standard Library in this release:</p>
+
+{% for (key, value) in dependencies %}
+    <h3>📦 {{key.name}}-{{key.version}}</h3>
+    <p><b>URL:</b> <a href="https://crates.io/crates/{{ key.name }}/{{ key.version }}">https://crates.io/crates/{{ key.name }}/{{ key.version }}</a></p>
+    <p><b>Authors:</b> {{ value.authors|join(", ") }}</p>
+    <p><b>License:</b> {{ value.license }}</p>
+    {% let len = value.notices.len() %}
+    {% if len > 0 %}
+        <p><b>Notices:</b>
+        {% for (notice_name, notice_text) in value.notices %}
+            <details>
+                <summary><code>{{ notice_name }}</code></summary>
+                <pre>
+{{ notice_text }}
+                </pre>
+            </details>
+        {% endfor %}
+        </p>
+    {% endif %}
+{% endfor %}
+</body>
+</html>
