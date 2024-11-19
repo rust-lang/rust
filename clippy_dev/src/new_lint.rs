@@ -1,4 +1,4 @@
-use crate::clippy_project_root;
+use crate::utils::{clippy_project_root, clippy_version};
 use indoc::{formatdoc, writedoc};
 use std::fmt;
 use std::fmt::Write as _;
@@ -186,23 +186,8 @@ fn to_camel_case(name: &str) -> String {
 }
 
 pub(crate) fn get_stabilization_version() -> String {
-    fn parse_manifest(contents: &str) -> Option<String> {
-        let version = contents
-            .lines()
-            .filter_map(|l| l.split_once('='))
-            .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))?;
-        let Some(("0", version)) = version.get(1..version.len() - 1)?.split_once('.') else {
-            return None;
-        };
-        let (minor, patch) = version.split_once('.')?;
-        Some(format!(
-            "{}.{}.0",
-            minor.parse::<u32>().ok()?,
-            patch.parse::<u32>().ok()?
-        ))
-    }
-    let contents = fs::read_to_string("Cargo.toml").expect("Unable to read `Cargo.toml`");
-    parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
+    let (minor, patch) = clippy_version();
+    format!("{minor}.{patch}.0")
 }
 
 fn get_test_file_contents(lint_name: &str, msrv: bool) -> String {
