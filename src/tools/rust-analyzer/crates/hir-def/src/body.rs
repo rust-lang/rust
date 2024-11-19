@@ -31,7 +31,7 @@ use crate::{
     path::{ModPath, Path},
     src::HasSource,
     type_ref::{TypeRef, TypeRefId, TypesMap, TypesSourceMap},
-    BlockId, DefWithBodyId, HasModule, Lookup,
+    BlockId, DefWithBodyId, HasModule, Lookup, SyntheticSyntax,
 };
 
 /// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
@@ -159,9 +159,6 @@ pub struct BodySourceMap {
     /// the source map (since they're just as volatile).
     diagnostics: Vec<BodyDiagnostic>,
 }
-
-#[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
-pub struct SyntheticSyntax;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum BodyDiagnostic {

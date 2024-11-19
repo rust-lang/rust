@@ -576,10 +576,12 @@ impl Resolver {
             match scope {
                 Scope::BlockScope(m) => traits.extend(m.def_map[m.module_id].scope.traits()),
                 &Scope::ImplDefScope(impl_) => {
-                    if let Some(target_trait) = &db.impl_data(impl_).target_trait {
-                        if let Some(TypeNs::TraitId(trait_)) =
-                            self.resolve_path_in_type_ns_fully(db, &target_trait.path)
-                        {
+                    let impl_data = db.impl_data(impl_);
+                    if let Some(target_trait) = impl_data.target_trait {
+                        if let Some(TypeNs::TraitId(trait_)) = self.resolve_path_in_type_ns_fully(
+                            db,
+                            &impl_data.types_map[target_trait.path],
+                        ) {
                             traits.insert(trait_);
                         }
                     }

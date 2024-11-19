@@ -13,7 +13,7 @@ use hir_ty::{
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 pub use hir_def::VariantId;
-use hir_def::{body::SyntheticSyntax, hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId};
+use hir_def::{hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId, SyntheticSyntax};
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 use triomphe::Arc;

@@ -10,7 +10,7 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     path::Path,
-    type_ref::{TypeBound, TypePtr, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
+    type_ref::{PathId, TypeBound, TypePtr, TypeRef, TypeRefId, TypesMap, TypesSourceMap},
 };
 
 pub struct LowerCtx<'a> {
@@ -141,5 +141,9 @@ impl<'a> LowerCtx<'a> {
 
     pub(crate) fn alloc_error_type(&mut self) -> TypeRefId {
         self.types_map.types.alloc(TypeRef::Error)
+    }
+
+    pub(crate) fn alloc_path(&mut self, path: Path, node: TypePtr) -> PathId {
+        PathId::from_type_ref_unchecked(self.alloc_type_ref(TypeRef::Path(path), node))
     }
 }

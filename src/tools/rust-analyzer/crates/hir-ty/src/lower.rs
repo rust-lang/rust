@@ -33,8 +33,8 @@ use hir_def::{
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
     type_ref::{
-        ConstRef, LifetimeRef, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef,
-        TypeRefId, TypesMap, TypesSourceMap,
+        ConstRef, LifetimeRef, PathId, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound,
+        TypeRef, TypeRefId, TypesMap, TypesSourceMap,
     },
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstLoc, ItemContainerId,
@@ -264,7 +264,8 @@ impl<'a> TyLoweringContext<'a> {
                     .intern(Interner)
             }
             TypeRef::Path(path) => {
-                let (ty, res_) = self.lower_path(path);
+                let (ty, res_) =
+                    self.lower_path(path, PathId::from_type_ref_unchecked(type_ref_id));
                 res = res_;
                 ty
             }
@@ -677,7 +678,7 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_ty_relative_path(ty, Some(resolution), remaining_segments)
     }
 
-    pub(crate) fn lower_path(&mut self, path: &Path) -> (Ty, Option<TypeNs>) {
+    pub(crate) fn lower_path(&mut self, path: &Path, path_id: PathId) -> (Ty, Option<TypeNs>) {
         // Resolve the path (in type namespace)
         if let Some(type_ref) = path.type_anchor() {
             let (ty, res) = self.lower_ty_ext(type_ref);
@@ -692,7 +693,7 @@ impl<'a> TyLoweringContext<'a> {
 
         if matches!(resolution, TypeNs::TraitId(_)) && remaining_index.is_none() {
             // trait object type without dyn
-            let bound = TypeBound::Path(path.clone(), TraitBoundModifier::None);
+            let bound = TypeBound::Path(path_id, TraitBoundModifier::None);
             let ty = self.lower_dyn_trait(&[bound]);
             return (ty, None);
         }
@@ -998,7 +999,12 @@ impl<'a> TyLoweringContext<'a> {
         TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
-    fn lower_trait_ref_from_path(&mut self, path: &Path, explicit_self_ty: Ty) -> Option<TraitRef> {
+    fn lower_trait_ref_from_path(
+        &mut self,
+        path_id: PathId,
+        explicit_self_ty: Ty,
+    ) -> Option<TraitRef> {
+        let path = &self.types_map[path_id];
         let resolved = match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path)? {
             // FIXME(trait_alias): We need to handle trait alias here.
             TypeNs::TraitId(tr) => tr,
@@ -1013,7 +1019,7 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: &HirTraitRef,
         explicit_self_ty: Ty,
     ) -> Option<TraitRef> {
-        self.lower_trait_ref_from_path(&trait_ref.path, explicit_self_ty)
+        self.lower_trait_ref_from_path(trait_ref.path, explicit_self_ty)
     }
 
     fn trait_ref_substs_from_path(
@@ -1072,11 +1078,11 @@ impl<'a> TyLoweringContext<'a> {
     ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'b, 'a> {
         let mut trait_ref = None;
         let clause = match bound {
-            TypeBound::Path(path, TraitBoundModifier::None) => {
+            &TypeBound::Path(path, TraitBoundModifier::None) => {
                 trait_ref = self.lower_trait_ref_from_path(path, self_ty);
                 trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
-            TypeBound::Path(path, TraitBoundModifier::Maybe) => {
+            &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self
                     .db
                     .lang_item(self.resolver.krate(), LangItem::Sized)
@@ -1092,7 +1098,7 @@ impl<'a> TyLoweringContext<'a> {
                 }
                 None
             }
-            TypeBound::ForLifetime(_, path) => {
+            &TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
                 trait_ref = self.lower_trait_ref_from_path(path, self_ty);
                 trait_ref.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
@@ -1121,8 +1127,8 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: TraitRef,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + use<'b, 'a> {
         let last_segment = match bound {
-            TypeBound::Path(path, TraitBoundModifier::None) | TypeBound::ForLifetime(_, path) => {
-                path.segments().last()
+            &TypeBound::Path(path, TraitBoundModifier::None) | &TypeBound::ForLifetime(_, path) => {
+                self.types_map[path].segments().last()
             }
             TypeBound::Path(_, TraitBoundModifier::Maybe)
             | TypeBound::Use(_)
@@ -1593,9 +1599,10 @@ pub(crate) fn generic_predicates_for_param_query(
             }
 
             match bound {
-                TypeBound::ForLifetime(_, path) | TypeBound::Path(path, _) => {
+                &TypeBound::ForLifetime(_, path) | &TypeBound::Path(path, _) => {
                     // Only lower the bound if the trait could possibly define the associated
                     // type we're looking for.
+                    let path = &ctx.types_map[path];
 
                     let Some(assoc_name) = &assoc_name else { return true };
                     let Some(TypeNs::TraitId(tr)) =
