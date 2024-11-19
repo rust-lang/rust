@@ -580,7 +580,7 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
         cmd.arg("-R");
         true
     } else {
-        ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name)
+        ["bat", "batcat", "delta"].iter().any(|v| *v == pager_name)
     };
 
     if color == ColorConfig::Never {
