@@ -213,7 +213,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident, IdentIsRaw::No)
                 }
-                rustc_lexer::TokenKind::InvalidIdent | rustc_lexer::TokenKind::InvalidPrefix
+                rustc_lexer::TokenKind::InvalidIdent
                     // Do not recover an identifier with emoji if the codepoint is a confusable
                     // with a recoverable substitution token, like `➖`.
                     if !UNICODE_ARRAY.iter().any(|&(c, _, _)| {
@@ -359,8 +359,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
                 rustc_lexer::TokenKind::Unknown
-                | rustc_lexer::TokenKind::InvalidIdent
-                | rustc_lexer::TokenKind::InvalidPrefix => {
+                | rustc_lexer::TokenKind::InvalidIdent => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;

@@ -300,4 +300,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
     },
+    ChangeInfo {
+        change_id: 133207,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.llvm-tools` is now enabled by default when no `config.toml` is provided.",
+    },
 ];

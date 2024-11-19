@@ -24,6 +24,7 @@
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
 #![feature(test)]
+#![feature(thread_spawn_hook)]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]
 
@@ -134,6 +135,16 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
                 }
             });
             panic::set_hook(hook);
+            // Use a thread spawning hook to make new threads inherit output capturing.
+            std::thread::add_spawn_hook(|_| {
+                // Get and clone the output capture of the current thread.
+                let output_capture = io::set_output_capture(None);
+                io::set_output_capture(output_capture.clone());
+                // Set the output capture of the new thread.
+                || {
+                    io::set_output_capture(output_capture);
+                }
+            });
         }
         let res = console::run_tests_console(&opts, tests);
         // Prevent Valgrind from reporting reachable blocks in users' unit tests.

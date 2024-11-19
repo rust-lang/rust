@@ -143,6 +143,7 @@
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_index_methods)]
+#![feature(slice_iter_mut_as_mut_slice)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(std_internals)]
