@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::eq_op)]
-#![allow(clippy::literal_string_with_formatting_arg)]
+#![allow(clippy::literal_string_with_formatting_args)]
 
 extern crate proc_macro;
 

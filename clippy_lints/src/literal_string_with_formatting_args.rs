@@ -28,12 +28,12 @@ declare_clippy_lint! {
     /// x.expect(&format!("{y:?}"));
     /// ```
     #[clippy::version = "1.83.0"]
-    pub LITERAL_STRING_WITH_FORMATTING_ARG,
+    pub LITERAL_STRING_WITH_FORMATTING_ARGS,
     suspicious,
     "Checks if string literals have formatting arguments"
 }
 
-declare_lint_pass!(LiteralStringWithFormattingArg => [LITERAL_STRING_WITH_FORMATTING_ARG]);
+declare_lint_pass!(LiteralStringWithFormattingArg => [LITERAL_STRING_WITH_FORMATTING_ARGS]);
 
 impl EarlyLintPass for LiteralStringWithFormattingArg {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
@@ -94,7 +94,7 @@ impl EarlyLintPass for LiteralStringWithFormattingArg {
                 1 => {
                     span_lint(
                         cx,
-                        LITERAL_STRING_WITH_FORMATTING_ARG,
+                        LITERAL_STRING_WITH_FORMATTING_ARGS,
                         spans,
                         "this looks like a formatting argument but it is not part of a formatting macro",
                     );
@@ -102,7 +102,7 @@ impl EarlyLintPass for LiteralStringWithFormattingArg {
                 _ => {
                     span_lint(
                         cx,
-                        LITERAL_STRING_WITH_FORMATTING_ARG,
+                        LITERAL_STRING_WITH_FORMATTING_ARGS,
                         spans,
                         "these look like formatting arguments but are not part of a formatting macro",
                     );

@@ -1,20 +1,20 @@
-#![warn(clippy::literal_string_with_formatting_arg)]
+#![warn(clippy::literal_string_with_formatting_args)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
 fn main() {
     let x: Option<usize> = None;
     let y = "hello";
-    x.expect("{y} {}"); //~ literal_string_with_formatting_arg
-    x.expect(" {y} bla"); //~ literal_string_with_formatting_arg
-    x.expect("{:?}"); //~ literal_string_with_formatting_arg
-    x.expect("{y:?}"); //~ literal_string_with_formatting_arg
-    x.expect(" {y:?} {y:?} "); //~ literal_string_with_formatting_arg
-    x.expect(" {y:..} {y:?} "); //~ literal_string_with_formatting_arg
-    x.expect(r"{y:?}  {y:?} "); //~ literal_string_with_formatting_arg
-    x.expect(r"{y:?} y:?}"); //~ literal_string_with_formatting_arg
-    x.expect(r##" {y:?} {y:?} "##); //~ literal_string_with_formatting_arg
+    x.expect("{y} {}"); //~ literal_string_with_formatting_args
+    x.expect(" {y} bla"); //~ literal_string_with_formatting_args
+    x.expect("{:?}"); //~ literal_string_with_formatting_args
+    x.expect("{y:?}"); //~ literal_string_with_formatting_args
+    x.expect(" {y:?} {y:?} "); //~ literal_string_with_formatting_args
+    x.expect(" {y:..} {y:?} "); //~ literal_string_with_formatting_args
+    x.expect(r"{y:?}  {y:?} "); //~ literal_string_with_formatting_args
+    x.expect(r"{y:?} y:?}"); //~ literal_string_with_formatting_args
+    x.expect(r##" {y:?} {y:?} "##); //~ literal_string_with_formatting_args
     // Ensure that it doesn't try to go in the middle of a unicode character.
-    x.expect("———{:?}"); //~ literal_string_with_formatting_arg
+    x.expect("———{:?}"); //~ literal_string_with_formatting_args
 
     // Should not lint!
     format!("{y:?}");
