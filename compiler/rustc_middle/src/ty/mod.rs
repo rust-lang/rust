@@ -1140,12 +1140,6 @@ pub struct TypingEnv<'tcx> {
 }
 
 impl<'tcx> TypingEnv<'tcx> {
-    // FIXME(#132279): This method should be removed but simplifies the
-    // transition.
-    pub fn from_param_env(param_env: ParamEnv<'tcx>) -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::from_param_env(param_env), param_env }
-    }
-
     /// Create a typing environment with no where-clauses in scope
     /// where all opaque types and default associated items are revealed.
     ///
