@@ -85,8 +85,8 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
+    let typing_env = body.typing_env(tcx);
+    let ssa = SsaLocals::new(tcx, body, typing_env);
 
     let mut replacer = compute_replacement(tcx, body, &ssa);
     debug!(?replacer.targets);

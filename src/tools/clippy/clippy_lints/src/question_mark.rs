@@ -251,7 +251,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     {
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-        let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+        let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
             && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
         let sugg = if let Some(else_inner) = r#else {
             if eq_expr_value(cx, caller, peel_blocks(else_inner)) {

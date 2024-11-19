@@ -208,7 +208,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
                     // blow-up in compile times: #113372
                     && tcx
                         .normalize_erasing_regions(typing_env, local_decl.ty)
-                        .is_freeze(tcx, typing_env.param_env),
+                        .is_freeze(tcx, typing_env),
             },
         ),
     );

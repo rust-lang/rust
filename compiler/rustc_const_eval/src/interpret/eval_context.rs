@@ -250,7 +250,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.typing_env())
     }
 
     pub fn load_mir(

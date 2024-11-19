@@ -667,7 +667,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 .is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.
-            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.param_env);
+            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env());
             let place = ecx.ref_to_mplace(val)?;
             let new_place = if is_immutable {
                 place.map_provenance(CtfeProvenance::as_immutable)

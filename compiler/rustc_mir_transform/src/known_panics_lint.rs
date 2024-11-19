@@ -451,7 +451,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.has_param() {
             return None;
         }
-        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env.param_env) {
+        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env) {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;

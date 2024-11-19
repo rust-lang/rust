@@ -105,7 +105,7 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if !field.ty.is_sized(cx.tcx(), cx.typing_env.param_env) {
+            if !field.ty.is_sized(cx.tcx(), cx.typing_env) {
                 cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
@@ -236,7 +236,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             let pointee = tcx.normalize_erasing_regions(cx.typing_env, pointee);
-            if pointee.is_sized(tcx, cx.typing_env.param_env) {
+            if pointee.is_sized(tcx, cx.typing_env) {
                 return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
             }
 
@@ -594,8 +594,8 @@ fn layout_of_uncached<'tcx>(
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let param_env = tcx.param_env(def.did());
-                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, param_env)
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
                 });
 
             let layout = cx
@@ -620,11 +620,7 @@ fn layout_of_uncached<'tcx>(
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
-                && def
-                    .non_enum_variant()
-                    .tail()
-                    .ty(tcx, args)
-                    .is_sized(tcx, cx.typing_env.param_env)
+                && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.typing_env)
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();

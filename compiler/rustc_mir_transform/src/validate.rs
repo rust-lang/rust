@@ -623,7 +623,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
-                if !ty.is_copy_modulo_regions(self.tcx, self.typing_env.param_env) {
+                if !ty.is_copy_modulo_regions(self.tcx, self.typing_env) {
                     self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
                 }
             }
@@ -989,7 +989,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
 
                             // FIXME: check `Thin` instead of `Sized`
-                            if !in_pointee.is_sized(self.tcx, self.typing_env.param_env) {
+                            if !in_pointee.is_sized(self.tcx, self.typing_env) {
                                 self.fail(location, "input pointer must be thin");
                             }
                         } else {
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             if !self.mir_assign_valid_types(metadata_ty, self.tcx.types.usize) {
                                 self.fail(location, "slice metadata must be usize");
                             }
-                        } else if pointee_ty.is_sized(self.tcx, self.typing_env.param_env) {
+                        } else if pointee_ty.is_sized(self.tcx, self.typing_env) {
                             if metadata_ty != self.tcx.types.unit {
                                 self.fail(location, "metadata for pointer-to-thin must be unit");
                             }
@@ -1294,7 +1294,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             if !self
                                 .tcx
                                 .normalize_erasing_regions(self.typing_env, op_ty)
-                                .is_sized(self.tcx, self.typing_env.param_env)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,
@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             if !self
                                 .tcx
                                 .normalize_erasing_regions(self.typing_env, *target_type)
-                                .is_sized(self.tcx, self.typing_env.param_env)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,

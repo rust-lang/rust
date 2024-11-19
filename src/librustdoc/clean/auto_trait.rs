@@ -42,7 +42,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
         })
         .collect();
     // We are only interested in case the type *doesn't* implement the `Sized` trait.
-    if !ty.is_sized(tcx, param_env)
+    if !ty.is_sized(tcx, ty::TypingEnv::from_param_env(param_env))
         && let Some(sized_trait_def_id) = tcx.lang_items().sized_trait()
         && let Some(impl_item) = synthesize_auto_trait_impl(
             cx,

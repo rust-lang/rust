@@ -203,8 +203,6 @@ impl<'tcx> ConstToPat<'tcx> {
     fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;
         let tcx = self.tcx();
-        let param_env = self.param_env;
-
         let kind = match ty.kind() {
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
                 // Extremely important check for all ADTs! Make sure they opted-in to be used in
@@ -276,7 +274,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
                 _ => {
-                    if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
+                    if !pointee_ty.is_sized(tcx, self.infcx.typing_env(self.param_env))
+                        && !pointee_ty.is_slice()
+                    {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         let e = tcx.dcx().emit_err(err);
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.

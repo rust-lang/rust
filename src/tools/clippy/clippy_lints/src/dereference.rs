@@ -1028,7 +1028,7 @@ fn report<'tcx>(
         State::ExplicitDeref { mutability } => {
             if is_block_like(expr)
                 && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
-                && ty.is_sized(cx.tcx, cx.param_env)
+                && ty.is_sized(cx.tcx, cx.typing_env())
             {
                 // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
                 return;

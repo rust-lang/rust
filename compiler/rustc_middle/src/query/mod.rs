@@ -1390,19 +1390,19 @@ rustc_queries! {
 
     /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
-    query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
     }
     /// Query backing `Ty::is_sized`.
-    query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
     }
     /// Query backing `Ty::is_freeze`.
-    query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_freeze_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
     /// Query backing `Ty::is_unpin`.
-    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_unpin_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
     /// Query backing `Ty::needs_drop`.
