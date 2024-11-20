@@ -39,8 +39,8 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     pub tcx: TyCtxtAt<'tcx>,
 
     /// The current context in case we're evaluating in a
-    /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`
-    pub typing_env: ty::TypingEnv<'tcx>,
+    /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`.
+    pub(super) typing_env: ty::TypingEnv<'tcx>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,

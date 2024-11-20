@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Span;
@@ -667,7 +667,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 .is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.
-            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env);
+            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env());
             let place = ecx.ref_to_mplace(val)?;
             let new_place = if is_immutable {
                 place.map_provenance(CtfeProvenance::as_immutable)
