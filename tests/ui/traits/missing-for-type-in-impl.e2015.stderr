@@ -34,17 +34,18 @@ help: you might have intended to implement this trait for a given type
 LL | impl Foo<i64> for /* Type */ {
    |               ++++++++++++++
 
-error[E0038]: the trait `Foo` cannot be made into an object
+error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/missing-for-type-in-impl.rs:8:6
    |
 LL | impl Foo<i64> {
-   |      ^^^^^^^^ `Foo` cannot be made into an object
+   |      ^^^^^^^^ `Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/missing-for-type-in-impl.rs:4:8
    |
 LL | trait Foo<T> {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |     fn id(me: T) -> T;
    |        ^^ ...because associated function `id` has no `self` parameter
 help: consider turning `id` into a method by giving it a `&self` argument

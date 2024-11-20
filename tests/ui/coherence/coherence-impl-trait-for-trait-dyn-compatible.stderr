@@ -1,16 +1,17 @@
-error[E0038]: the trait `DynIncompatible` cannot be made into an object
+error[E0038]: the trait `DynIncompatible` is not dyn compatible
   --> $DIR/coherence-impl-trait-for-trait-dyn-compatible.rs:7:26
    |
 LL | impl DynIncompatible for dyn DynIncompatible { }
-   |                          ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` cannot be made into an object
+   |                          ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/coherence-impl-trait-for-trait-dyn-compatible.rs:6:45
    |
 LL | trait DynIncompatible { fn eq(&self, other: Self); }
    |       ---------------                       ^^^^ ...because method `eq` references the `Self` type in this parameter
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
    = help: consider moving `eq` to another trait
 
 error[E0046]: not all trait items implemented, missing: `eq`

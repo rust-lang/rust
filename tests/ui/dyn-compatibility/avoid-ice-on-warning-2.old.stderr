@@ -26,14 +26,15 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL | fn id<F>(f: dyn Copy) -> usize {
    |             +++
 
-error[E0038]: the trait `Copy` cannot be made into an object
+error[E0038]: the trait `Copy` is not dyn compatible
   --> $DIR/avoid-ice-on-warning-2.rs:4:13
    |
 LL | fn id<F>(f: Copy) -> usize {
-   |             ^^^^ `Copy` cannot be made into an object
+   |             ^^^^ `Copy` is not dyn compatible
    |
-   = note: the trait cannot be made into an object because it requires `Self: Sized`
-   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
 
 error[E0618]: expected function, found `(dyn Copy + 'static)`
   --> $DIR/avoid-ice-on-warning-2.rs:12:5

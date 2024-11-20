@@ -5,9 +5,9 @@ trait Trait {
 }
 
 impl dyn Trait {
-    //~^ ERROR the trait `Trait` cannot be made into an object [E0038]
+    //~^ ERROR the trait `Trait` is not dyn compatible [E0038]
     const fn n() -> usize { Self::N }
-    //~^ ERROR the trait `Trait` cannot be made into an object [E0038]
+    //~^ ERROR the trait `Trait` is not dyn compatible [E0038]
 }
 
 fn main() {}

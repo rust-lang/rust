@@ -1,14 +1,15 @@
-error[E0038]: the trait `Foo` cannot be made into an object
+error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/dyn-compatibility.rs:9:12
    |
 LL |     let x: &dyn Foo = todo!();
-   |            ^^^^^^^^ `Foo` cannot be made into an object
+   |            ^^^^^^^^ `Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/dyn-compatibility.rs:5:14
    |
 LL | trait Foo {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |     async fn foo(&self);
    |              ^^^ ...because method `foo` is `async`
    = help: consider moving `foo` to another trait

@@ -163,7 +163,7 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),

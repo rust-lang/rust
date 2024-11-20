@@ -1,14 +1,15 @@
-error[E0038]: the trait `Qux` cannot be made into an object
+error[E0038]: the trait `Qux` is not dyn compatible
   --> $DIR/taint-const-eval.rs:11:33
    |
 LL | static FOO: &(dyn Qux + Sync) = "desc";
-   |                                 ^^^^^^ `Qux` cannot be made into an object
+   |                                 ^^^^^^ `Qux` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/taint-const-eval.rs:8:8
    |
 LL | trait Qux {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |     fn bar();
    |        ^^^ ...because associated function `bar` has no `self` parameter
    = note: required for the cast from `&'static str` to `&'static (dyn Qux + Sync + 'static)`

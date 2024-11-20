@@ -1,17 +1,14 @@
-error[E0038]: the trait `AsyncFnMut` cannot be made into an object
+error[E0038]: the trait `AsyncFnMut` is not dyn compatible
   --> $DIR/dyn-pos.rs:3:16
    |
 LL | fn foo(x: &dyn AsyncFn()) {}
-   |                ^^^^^^^^^ `AsyncFnMut` cannot be made into an object
+   |                ^^^^^^^^^ `AsyncFnMut` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
-   = note: the trait cannot be made into an object because it contains the generic associated type `CallRefFuture`
-   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFnMut` for this new enum and using it instead:
-             &F
-             &mut F
-             std::boxed::Box<F, A>
+   = note: the trait is not dyn compatible because it contains the generic associated type `CallRefFuture`
 
 error: aborting due to 1 previous error
 

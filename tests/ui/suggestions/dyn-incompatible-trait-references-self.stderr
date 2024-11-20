@@ -1,14 +1,15 @@
-error[E0038]: the trait `Trait` cannot be made into an object
+error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-references-self.rs:9:12
    |
 LL | fn bar(x: &dyn Trait) {}
-   |            ^^^^^^^^^ `Trait` cannot be made into an object
+   |            ^^^^^^^^^ `Trait` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/dyn-incompatible-trait-references-self.rs:2:22
    |
 LL | trait Trait {
-   |       ----- this trait cannot be made into an object...
+   |       ----- this trait is not dyn compatible...
 LL |     fn baz(&self, _: Self) {}
    |                      ^^^^ ...because method `baz` references the `Self` type in this parameter
 LL |
@@ -17,19 +18,20 @@ LL |     fn bat(&self) -> Self {}
    = help: consider moving `baz` to another trait
    = help: consider moving `bat` to another trait
 
-error[E0038]: the trait `Other` cannot be made into an object
+error[E0038]: the trait `Other` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-references-self.rs:13:12
    |
 LL | fn foo(x: &dyn Other) {}
-   |            ^^^^^^^^^ `Other` cannot be made into an object
+   |            ^^^^^^^^^ `Other` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/dyn-incompatible-trait-references-self.rs:11:14
    |
 LL | trait Other: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/dyn-incompatible-trait-references-self.rs:2:22

@@ -1,53 +1,53 @@
-error[E0038]: the trait `Foo` cannot be made into an object
+error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/almost-supertrait-associated-type.rs:21:20
    |
 LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {
-   |                    ^^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |                    ^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 ...
 LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
    = help: consider moving `transmute` to another trait
-   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
 
-error[E0038]: the trait `Foo` cannot be made into an object
+error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/almost-supertrait-associated-type.rs:7:27
    |
 LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
-   |                           ^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |                           ^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 ...
 LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
    = help: consider moving `transmute` to another trait
-   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
 
-error[E0038]: the trait `Foo` cannot be made into an object
+error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/almost-supertrait-associated-type.rs:7:6
    |
 LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
-   |      ^^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |      ^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 ...
 LL |     fn transmute(&self, t: T) -> <Self as Super<NotActuallySuper>>::Assoc;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `transmute` references the `Self` type in its return type
    = help: consider moving `transmute` to another trait
-   = help: only type `std::marker::PhantomData<T>` implements the trait, consider using it directly instead
    = note: required for the cast from `&PhantomData<T>` to `&dyn Foo<T, U>`
 
 error: aborting due to 3 previous errors
