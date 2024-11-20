@@ -5,7 +5,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         NAN => {},
-   |         ^^^
+   |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -17,7 +17,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         [NAN, _] => {},
-   |          ^^^
+   |          ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -29,7 +29,7 @@ LL | const C: MyType<f32> = MyType(f32::NAN);
    | -------------------- constant defined here
 ...
 LL |         C => {},
-   |         ^
+   |         ^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -41,7 +41,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         NAN..=1.0 => {},
-   |         ^^^
+   |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -53,7 +53,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         -1.0..=NAN => {},
-   |                ^^^
+   |                ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -65,7 +65,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         NAN.. => {},
-   |         ^^^
+   |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
@@ -77,7 +77,7 @@ LL | const NAN: f64 = f64::NAN;
    | -------------- constant defined here
 ...
 LL |         ..NAN => {},
-   |           ^^^
+   |           ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
    = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead

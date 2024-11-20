@@ -86,7 +86,9 @@ mir_build_confused = missing patterns are not covered because `{$variable}` is i
 
 mir_build_const_defined_here = constant defined here
 
-mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
+mir_build_const_param_in_pattern = constant parameters cannot be referenced in patterns
+    .label = can't be used in patterns
+mir_build_const_param_in_pattern_def = constant defined here
 
 mir_build_const_pattern_depends_on_generic_parameter = constant pattern depends on a generic parameter, which is not allowed
     .label = `const` depends on a generic parameter
@@ -247,10 +249,12 @@ mir_build_mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsa
     .label = mutation of layout constrained field
 
 mir_build_nan_pattern = cannot use NaN in patterns
+    .label = evaluates to `NaN`, which is not allowed in patterns
     .note = NaNs compare inequal to everything, even themselves, so this pattern would never match
     .help = try using the `is_nan` method instead
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
+    .label = references a runtime value
 
 mir_build_non_empty_never_pattern =
     mismatched types
@@ -270,6 +274,7 @@ mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type
 
 mir_build_non_partial_eq_match =
     to use a constant of type `{$non_peq_ty}` in a pattern, the type must implement `PartialEq`
+    .label = constant of non-structural type
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
@@ -288,6 +293,8 @@ mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
     .missing_box = `#[rustc_box]` requires the `owned_box` lang item
 
 mir_build_static_in_pattern = statics cannot be referenced in patterns
+    .label = can't be used in patterns
+mir_build_static_in_pattern_def = `static` defined here
 
 mir_build_suggest_attempted_int_lit = alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
 
@@ -339,6 +346,7 @@ mir_build_union_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .label = access to union field
 
 mir_build_union_pattern = cannot use unions in constant patterns
+    .label = can't use a `union` here
 
 mir_build_unreachable_making_this_unreachable = collectively making this unreachable
 

@@ -631,20 +631,27 @@ pub(crate) struct NonExhaustiveMatchAllArmsGuarded;
 #[diag(mir_build_static_in_pattern, code = E0158)]
 pub(crate) struct StaticInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_static_in_pattern_def)]
+    pub(crate) static_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_const_param_in_pattern_def)]
+    pub(crate) const_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_const_path, code = E0080)]
 pub(crate) struct NonConstPath {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -869,6 +876,7 @@ pub(crate) enum Conflict {
 #[diag(mir_build_union_pattern)]
 pub(crate) struct UnionPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -886,6 +894,7 @@ pub(crate) struct TypeNotStructural<'tcx> {
 #[diag(mir_build_non_partial_eq_match)]
 pub(crate) struct TypeNotPartialEq<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) non_peq_ty: Ty<'tcx>,
 }
@@ -912,6 +921,7 @@ pub(crate) struct UnsizedPattern<'tcx> {
 #[help]
 pub(crate) struct NaNPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 

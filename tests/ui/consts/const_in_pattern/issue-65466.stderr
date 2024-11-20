@@ -5,7 +5,7 @@ LL | const C: &[O<B>] = &[O::None];
    | ---------------- constant defined here
 ...
 LL |         C => (),
-   |         ^
+   |         ^ constant of non-structural type
 
 error: aborting due to 1 previous error
 
