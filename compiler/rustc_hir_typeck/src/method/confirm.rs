@@ -531,24 +531,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.register_predicates(obligations);
             }
             Err(terr) => {
-                if self.tcx.features().arbitrary_self_types() {
-                    self.err_ctxt()
-                        .report_mismatched_types(
-                            &cause,
-                            self.param_env,
-                            method_self_ty,
-                            self_ty,
-                            terr,
-                        )
-                        .emit();
-                } else {
-                    // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
-                    // may run before wfcheck if the function is used in const eval.
-                    self.dcx().span_delayed_bug(
-                        cause.span,
-                        format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
-                    );
-                }
+                self.err_ctxt()
+                    .report_mismatched_types(&cause, self.param_env, method_self_ty, self_ty, terr)
+                    .emit();
             }
         }
     }
