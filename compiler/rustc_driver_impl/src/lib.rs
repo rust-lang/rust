@@ -620,8 +620,7 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     // to standard output
     if fallback_to_println {
         let fmt_success = match color {
-            ColorConfig::Auto => io::stdout().is_terminal() && bufwtr.print(&mdbuf).is_ok(),
-            ColorConfig::Always => bufwtr.print(&mdbuf).is_ok(),
+            ColorConfig::Auto | ColorConfig::Always => bufwtr.print(&mdbuf).is_ok(),
             ColorConfig::Never => false,
         };
 
