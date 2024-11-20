@@ -1,9 +1,7 @@
 //! File and file system access
 
 use std::borrow::Cow;
-use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
-};
+use std::fs::{DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename, Metadata};
 use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -98,6 +96,10 @@ impl FileDescription for FileHandle {
             drop(*self);
             interp_ok(Ok(()))
         }
+    }
+
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+        interp_ok(self.file.metadata())
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
