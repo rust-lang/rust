@@ -1,5 +1,6 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, PResult};
 use rustc_hir as hir;
 use rustc_index::Idx;
@@ -7,9 +8,10 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeVisitor, ValTree};
 use rustc_middle::{mir, span_bug};
-use rustc_span::Span;
+use rustc_span::def_id::DefId;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument, trace};
@@ -189,40 +191,14 @@ impl<'tcx> ConstToPat<'tcx> {
 
         if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
-            if !self.type_has_partial_eq_impl(ty) {
-                let err = TypeNotPartialEq { span: self.span, ty };
-                // FIXME: visit every type in `ty` and if it doesn't derive `PartialEq`, mention it.
-                return self.mk_err(self.tcx.dcx().create_err(err), ty);
+            if !type_has_partial_eq_impl(self.tcx, typing_env, ty).0 {
+                let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
+                extend_type_not_partial_eq(self.tcx, typing_env, ty, &mut err);
+                return self.mk_err(err, ty);
             }
         }
 
         inlined_const_as_pat
-    }
-
-    #[instrument(level = "trace", skip(self), ret)]
-    fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
-        // double-check there even *is* a semantic `PartialEq` to dispatch to.
-        //
-        // (If there isn't, then we can safely issue a hard
-        // error, because that's never worked, due to compiler
-        // using `PartialEq::eq` in this scenario in the past.)
-        let partial_eq_trait_id =
-            self.tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-        let partial_eq_obligation = Obligation::new(
-            self.tcx,
-            ObligationCause::dummy(),
-            param_env,
-            ty::TraitRef::new(self.tcx, partial_eq_trait_id, [ty, ty]),
-        );
-
-        // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
-        // ignored. However that should be pretty much impossible since consts that do not depend on
-        // generics can only mention the `'static` lifetime, and how would one have a type that's
-        // `PartialEq` for some lifetime but *not* for `'static`? If this ever becomes a problem
-        // we'll need to leave some sort of trace of this requirement in the MIR so that borrowck
-        // can ensure that the type really implements `PartialEq`.
-        infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation)
     }
 
     fn field_pats(
@@ -255,21 +231,23 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Extremely important check for all ADTs! Make sure they opted-in to be used in
                 // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty);
+                let (impls_partial_eq, derived, structural, impl_def_id) =
+                    type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
+                let (manual_partialeq_impl_span, manual_partialeq_impl_note) =
+                    match (impls_partial_eq, derived, structural, impl_def_id) {
+                        (_, _, true, _) => (None, false),
+                        (_, false, _, Some(def_id)) if def_id.is_local() => {
+                            (Some(tcx.def_span(def_id)), false)
+                        }
+                        _ => (None, true),
+                    };
                 let ty_def_span = tcx.def_span(adt_def.did());
-                let mut manual_partialeq_impl_span = None;
-                let partial_eq_trait_id =
-                    tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
-                tcx.for_each_relevant_impl(partial_eq_trait_id, ty, |def_id| {
-                    if def_id.is_local() {
-                        manual_partialeq_impl_span = Some(tcx.def_span(def_id));
-                    }
-                });
                 let err = TypeNotStructural {
                     span,
                     ty,
                     ty_def_span,
                     manual_partialeq_impl_span,
-                    manual_partialeq_impl_note: manual_partialeq_impl_span.is_none(),
+                    manual_partialeq_impl_note,
                 };
                 return Err(tcx.dcx().create_err(err));
             }
@@ -401,4 +379,142 @@ impl<'tcx> ConstToPat<'tcx> {
 
         Ok(Box::new(Pat { span, ty, kind }))
     }
+}
+
+/// Given a type with type parameters, visit every ADT looking for types that need to
+/// `#[derive(PartialEq)]` to be a structural type.
+fn extend_type_not_partial_eq<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+    err: &mut Diag<'_>,
+) {
+    /// Collect all types that need to be `StructuralPartialEq`.
+    struct UsedParamsNeedInstantiationVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        /// The user has written `impl PartialEq for Ty` which means it's non-structual.
+        adts_with_manual_partialeq: FxHashSet<Span>,
+        /// The type has no `PartialEq` implementation, neither manual or derived.
+        adts_without_partialeq: FxHashSet<Span>,
+        /// The user has written `impl PartialEq for Ty` which means it's non-structual,
+        /// but we don't have a span to point at, so we'll just add them as a `note`.
+        manual: Vec<Ty<'tcx>>,
+        /// The type has no `PartialEq` implementation, neither manual or derived, but
+        /// we don't have a span to point at, so we'll just add them as a `note`.
+        without: Vec<Ty<'tcx>>,
+    }
+
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+            if let ty::Adt(def, _args) = ty.kind() {
+                let ty_def_id = def.did();
+                let ty_def_span = self.tcx.def_span(ty_def_id);
+                let (impls_partial_eq, derived, structural, impl_def_id) =
+                    type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
+                match (impls_partial_eq, derived, structural, impl_def_id) {
+                    (_, _, true, _) => {}
+                    (true, false, _, Some(def_id)) if def_id.is_local() => {
+                        self.adts_with_manual_partialeq.insert(self.tcx.def_span(def_id));
+                    }
+                    (true, false, _, _) if ty_def_id.is_local() => {
+                        self.adts_with_manual_partialeq.insert(ty_def_span);
+                    }
+                    (false, _, _, _) if ty_def_id.is_local() => {
+                        self.adts_without_partialeq.insert(ty_def_span);
+                    }
+                    (true, false, _, _) => {
+                        self.manual.push(ty);
+                    }
+                    (false, _, _, _) => {
+                        self.without.push(ty);
+                    }
+                    _ => {}
+                };
+            }
+            use rustc_middle::ty::TypeSuperVisitable;
+            ty.super_visit_with(self)
+        }
+    }
+    let mut v = UsedParamsNeedInstantiationVisitor {
+        tcx,
+        typing_env,
+        adts_with_manual_partialeq: FxHashSet::default(),
+        adts_without_partialeq: FxHashSet::default(),
+        manual: vec![],
+        without: vec![],
+    };
+    v.visit_ty(ty);
+    #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
+    for span in v.adts_with_manual_partialeq {
+        err.span_note(span, "the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details");
+    }
+    #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
+    for span in v.adts_without_partialeq {
+        err.span_label(
+            span,
+            "must be annotated with `#[derive(PartialEq)]` to be usable in patterns",
+        );
+    }
+    for ty in v.manual {
+        err.note(format!(
+            "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
+        ));
+    }
+    for ty in v.without {
+        err.note(format!(
+            "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns"
+        ));
+    }
+}
+
+#[instrument(level = "trace", skip(tcx), ret)]
+fn type_has_partial_eq_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> (
+    /* has impl */ bool,
+    /* is derived */ bool,
+    /* structural partial eq */ bool,
+    /* non-blanket impl */ Option<DefId>,
+) {
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+    // double-check there even *is* a semantic `PartialEq` to dispatch to.
+    //
+    // (If there isn't, then we can safely issue a hard
+    // error, because that's never worked, due to compiler
+    // using `PartialEq::eq` in this scenario in the past.)
+    let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, None);
+    let structural_partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::StructuralPeq, None);
+
+    let partial_eq_obligation = Obligation::new(
+        tcx,
+        ObligationCause::dummy(),
+        param_env,
+        ty::TraitRef::new(tcx, partial_eq_trait_id, [ty, ty]),
+    );
+
+    let mut automatically_derived = false;
+    let mut structural_peq = false;
+    let mut impl_def_id = None;
+    for def_id in tcx.non_blanket_impls_for_ty(partial_eq_trait_id, ty) {
+        automatically_derived = tcx.has_attr(def_id, sym::automatically_derived);
+        impl_def_id = Some(def_id);
+    }
+    for _ in tcx.non_blanket_impls_for_ty(structural_partial_eq_trait_id, ty) {
+        structural_peq = true;
+    }
+    // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
+    // ignored. However that should be pretty much impossible since consts that do not depend on
+    // generics can only mention the `'static` lifetime, and how would one have a type that's
+    // `PartialEq` for some lifetime but *not* for `'static`? If this ever becomes a problem
+    // we'll need to leave some sort of trace of this requirement in the MIR so that borrowck
+    // can ensure that the type really implements `PartialEq`.
+    (
+        infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation),
+        automatically_derived,
+        structural_peq,
+        impl_def_id,
+    )
 }
