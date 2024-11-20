@@ -500,6 +500,7 @@ impl CStr {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
+    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
     #[rustc_never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
