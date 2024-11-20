@@ -1,0 +1,83 @@
+error[E0802]: the trait `AsyncFn` is not yet dyn-compatible
+  --> $DIR/dyn.rs:10:23
+   |
+LL | fn takes_async_fn(_: &dyn AsyncFn()) {}
+   |                       ^^^^^^^^^^^^^ `AsyncFn` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn(_: &impl AsyncFn()) {}
+   |                       ~~~~
+
+error[E0802]: the trait `AsyncFnMut` is not yet dyn-compatible
+  --> $DIR/dyn.rs:13:31
+   |
+LL | fn takes_async_fn_mut(_: &mut dyn AsyncFnMut()) {}
+   |                               ^^^^^^^^^^^^^^^^ `AsyncFnMut` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn_mut(_: &mut impl AsyncFnMut()) {}
+   |                               ~~~~
+
+error[E0802]: the trait `AsyncFnOnce` is not yet dyn-compatible
+  --> $DIR/dyn.rs:16:31
+   |
+LL | fn takes_async_fn_once(_: Box<dyn AsyncFnOnce()>) {}
+   |                               ^^^^^^^^^^^^^^^^^ `AsyncFnOnce` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn_once(_: Box<impl AsyncFnOnce()>) {}
+   |                               ~~~~
+
+error[E0802]: the trait `AsyncFn` is not yet dyn-compatible
+  --> $DIR/dyn.rs:22:36
+   |
+LL | fn takes_async_fn_implicit_dyn(_: &AsyncFn()) {}
+   |                                    ^^^^^^^^^ `AsyncFn` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn_implicit_dyn(_: &impl AsyncFn()) {}
+   |                                    ++++
+
+error[E0802]: the trait `AsyncFnMut` is not yet dyn-compatible
+  --> $DIR/dyn.rs:26:44
+   |
+LL | fn takes_async_fn_mut_implicit_dyn(_: &mut AsyncFnMut()) {}
+   |                                            ^^^^^^^^^^^^ `AsyncFnMut` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn_mut_implicit_dyn(_: &mut impl AsyncFnMut()) {}
+   |                                            ++++
+
+error[E0802]: the trait `AsyncFnOnce` is not yet dyn-compatible
+  --> $DIR/dyn.rs:30:44
+   |
+LL | fn takes_async_fn_once_implicit_dyn(_: Box<AsyncFnOnce()>) {}
+   |                                            ^^^^^^^^^^^^^ `AsyncFnOnce` is not yet dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL | fn takes_async_fn_once_implicit_dyn(_: Box<impl AsyncFnOnce()>) {}
+   |                                            ++++
+
+error[E0038]: the trait `SubAsyncFn` cannot be made into an object
+  --> $DIR/dyn.rs:36:27
+   |
+LL | fn takes_sub_async_fn(_: &dyn SubAsyncFn) {}
+   |                           ^^^^^^^^^^^^^^ `SubAsyncFn` cannot be made into an object
+   |
+   = note: the trait cannot be made into an object because `async` function traits are not yet dyn-compatible
+   = note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+help: consider using an opaque type instead
+   |
+LL | fn takes_sub_async_fn(_: &impl SubAsyncFn) {}
+   |                           ~~~~
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0038, E0802.
+For more information about an error, try `rustc --explain E0038`.

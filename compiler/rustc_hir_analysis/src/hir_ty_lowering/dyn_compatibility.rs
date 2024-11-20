@@ -103,17 +103,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
         for item in &regular_traits {
-            let violations =
-                hir_ty_lowering_dyn_compatibility_violations(tcx, item.trait_ref().def_id());
+            let item_def_id = item.trait_ref().def_id();
+            let violations = hir_ty_lowering_dyn_compatibility_violations(tcx, item_def_id);
             if !violations.is_empty() {
-                let reported = report_dyn_incompatibility(
-                    tcx,
-                    span,
-                    Some(hir_id),
-                    item.trait_ref().def_id(),
-                    &violations,
-                )
-                .emit();
+                let reported =
+                    report_dyn_incompatibility(tcx, span, Some(hir_id), item_def_id, &violations)
+                        .emit();
                 return Ty::new_error(tcx, reported);
             }
         }

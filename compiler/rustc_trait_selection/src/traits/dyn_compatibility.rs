@@ -39,6 +39,16 @@ pub fn hir_ty_lowering_dyn_compatibility_violations(
     trait_def_id: DefId,
 ) -> Vec<DynCompatibilityViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
+
+    // Check for `AsyncFn` traits first to avoid reporting various other
+    // errors about the details of why these traits aren't dyn-compatible.
+    for supertrait in tcx.supertrait_def_ids(trait_def_id) {
+        if tcx.async_fn_trait_kind_from_def_id(supertrait).is_some() {
+            let fn_trait = tcx.item_name(supertrait);
+            return vec![DynCompatibilityViolation::AsyncFnTrait { fn_trait }];
+        }
+    }
+
     tcx.supertrait_def_ids(trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
@@ -52,6 +62,17 @@ fn dyn_compatibility_violations(
 ) -> &'_ [DynCompatibilityViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("dyn_compatibility_violations: {:?}", trait_def_id);
+
+    // Check for `AsyncFn` traits first to avoid reporting various other
+    // errors about the details of why these traits aren't dyn-compatible.
+    for supertrait in tcx.supertrait_def_ids(trait_def_id) {
+        if tcx.async_fn_trait_kind_from_def_id(supertrait).is_some() {
+            let fn_trait = tcx.item_name(supertrait);
+            return core::slice::from_ref(
+                tcx.arena.alloc(DynCompatibilityViolation::AsyncFnTrait { fn_trait }),
+            );
+        }
+    }
 
     tcx.arena.alloc_from_iter(
         tcx.supertrait_def_ids(trait_def_id)

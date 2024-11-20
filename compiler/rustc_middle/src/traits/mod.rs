@@ -712,6 +712,22 @@ pub enum DynCompatibilityViolation {
 
     /// GAT
     GAT(Symbol, Span),
+
+    /// Async{Fn, FnMut, FnOnce}
+    ///
+    /// `fn_trait` is the name of the `AsyncFn...` trait,
+    AsyncFnTrait {
+        /// The `AsyncFn...` trait referenced.
+        ///
+        /// This is useful for better error reporting in cases where the
+        /// `dyn`-incompatible trait inherits from `Async...`.
+        //
+        // FIXME(cramertj): I'd love for this to be a DefId for proper comparison
+        // in the error reporting stage, but sadly this isn't possible because
+        // DefIds cannot be stored at this stage. Is there a better way to handle
+        // catching the supertrait case than string comparison?
+        fn_trait: Symbol,
+    },
 }
 
 impl DynCompatibilityViolation {
@@ -779,6 +795,9 @@ impl DynCompatibilityViolation {
             DynCompatibilityViolation::GAT(name, _) => {
                 format!("it contains the generic associated type `{name}`").into()
             }
+            DynCompatibilityViolation::AsyncFnTrait { .. } => {
+                "`async` function traits are not yet dyn-compatible".into()
+            }
         }
     }
 
@@ -786,7 +805,8 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SizedSelf(_)
             | DynCompatibilityViolation::SupertraitSelf(_)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
+            | DynCompatibilityViolation::AsyncFnTrait { .. } => {
                 DynCompatibilityViolationSolution::None
             }
             DynCompatibilityViolation::Method(

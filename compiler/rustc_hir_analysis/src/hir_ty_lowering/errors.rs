@@ -733,6 +733,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
             })
             .collect();
+
         let mut names: FxIndexMap<String, Vec<Symbol>> = Default::default();
         let mut names_len = 0;
 

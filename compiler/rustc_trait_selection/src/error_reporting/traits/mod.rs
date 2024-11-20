@@ -7,7 +7,7 @@ pub mod suggestions;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
+use rustc_errors::{Applicability, Diag, E0038, E0276, E0802, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem};
@@ -428,10 +428,46 @@ pub fn report_dyn_incompatibility<'tcx>(
     violations: &[DynCompatibilityViolation],
 ) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
+
+    // Avoid errors diving into the details of the `AsyncFn` traits if this is
+    // a straightforward "`AsyncFn` is not yet dyn-compatible" error.
+    if let Some(async_fn_trait_kind) = tcx.async_fn_trait_kind_from_def_id(trait_def_id) {
+        let async_fn_trait_name = match async_fn_trait_kind {
+            ty::ClosureKind::Fn => "AsyncFn",
+            ty::ClosureKind::FnMut => "AsyncFnMut",
+            ty::ClosureKind::FnOnce => "AsyncFnOnce",
+        };
+
+        let mut err = struct_span_code_err!(
+            tcx.dcx(),
+            span,
+            E0802,
+            "the trait `{}` is not yet dyn-compatible",
+            async_fn_trait_name
+        );
+        // Note: this check is quite imprecise.
+        // Comparing the DefIds or similar would be better, but we can't store
+        // DefIds in `DynCompatibilityViolation`.
+        if async_fn_trait_name == trait_str {
+            err.span_label(span, format!("`{async_fn_trait_name}` is not yet dyn compatible"));
+        } else {
+            let trait_str = tcx.def_path_str(trait_def_id);
+            err.span_label(
+                span,
+                format!(
+                    "`{trait_str}` inherits from `{async_fn_trait_name}` which is not yet dyn-compatible'"
+                ),
+            );
+        }
+        attempt_dyn_to_impl_suggestion(tcx, hir_id, &mut err);
+        return err;
+    }
+
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
+
     let mut err = struct_span_code_err!(
         tcx.dcx(),
         span,
@@ -441,24 +477,8 @@ pub fn report_dyn_incompatibility<'tcx>(
     );
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
-    if let Some(hir_id) = hir_id
-        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
-        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
-    {
-        let mut hir_id = hir_id;
-        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
-            hir_id = ty.hir_id;
-        }
-        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
-            // Do not suggest `impl Trait` when dealing with things like super-traits.
-            err.span_suggestion_verbose(
-                ty.span.until(trait_ref.span),
-                "consider using an opaque type instead",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-        }
-    }
+    attempt_dyn_to_impl_suggestion(tcx, hir_id, &mut err);
+
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
@@ -582,4 +602,31 @@ pub fn report_dyn_incompatibility<'tcx>(
     }
 
     err
+}
+
+fn attempt_dyn_to_impl_suggestion(tcx: TyCtxt<'_>, hir_id: Option<hir::HirId>, err: &mut Diag<'_>) {
+    let Some(hir_id) = hir_id else { return };
+    let hir::Node::Ty(ty) = tcx.hir_node(hir_id) else { return };
+    let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind else { return };
+
+    // Only suggest converting `dyn` to `impl` if we're in a function signature.
+    // Get the top-most parent element which is a type.
+    let parent_ty_hir_id = tcx
+        .hir()
+        .parent_iter(hir_id)
+        .take_while(|(_id, node)| matches!(node, hir::Node::Ty(_)))
+        .last()
+        .map(|(id, _node)| id)
+        .unwrap_or(hir_id);
+    if tcx.parent_hir_node(parent_ty_hir_id).fn_sig().is_none() {
+        // Do not suggest `impl Trait` when dealing with things like super-traits.
+        return;
+    }
+
+    err.span_suggestion_verbose(
+        ty.span.until(trait_ref.span),
+        "consider using an opaque type instead",
+        "impl ",
+        Applicability::MaybeIncorrect,
+    );
 }
