@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     base.vendor = "win7".into();
 
     Target {
-        llvm_target: "x86_64-win7-windows-msvc".into(),
+        llvm_target: "x86_64-pc-windows-msvc".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("64-bit Windows 7 support".into()),
             tier: Some(3),
