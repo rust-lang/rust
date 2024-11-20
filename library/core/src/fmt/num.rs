@@ -219,29 +219,13 @@ macro_rules! impl_Display {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Display for $signed {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let is_nonnegative = *self >= 0;
-
-                if !is_nonnegative {
-                    #[cfg(not(feature = "optimize_for_size"))]
-                    {
-                        // convert the negative num to positive by summing 1 to its 2s complement
-                        return (!self as $unsigned).wrapping_add(1)._fmt(false, f);
-                    }
-                    #[cfg(feature = "optimize_for_size")]
-                    {
-                        // convert the negative num to positive by summing 1 to its 2s complement
-                        return $gen_name((!self.$conv_fn()).wrapping_add(1), false, f);
-                    }
-                }
-
-                // If it's a positive integer.
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
-                    (*self as $unsigned)._fmt(true, f)
+                    return self.unsigned_abs()._fmt(*self >= 0, f);
                 }
                 #[cfg(feature = "optimize_for_size")]
                 {
-                    $gen_name(self.$conv_fn(), true, f)
+                    return $gen_name((!self.unsigned_abs().$conv_fn()), *self >= 0, f);
                 }
             }
         }
