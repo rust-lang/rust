@@ -52,6 +52,17 @@ fn main() {
     //~^ ERROR a dangling pointer will be produced because the temporary `UnsafeCell<u8>` will be dropped
     declval::<SyncUnsafeCell<u8>>().get();
     //~^ ERROR a dangling pointer will be produced because the temporary `SyncUnsafeCell<u8>` will be dropped
-    declval::<Box<AsPtrFake>>().as_ptr();
+    declval::<MaybeUninit<MaybeUninit<&u8>>>().as_ptr();
+    //~^ ERROR a dangling pointer will be produced because the temporary `MaybeUninit<MaybeUninit<&u8>>` will be dropped
+    declval::<Box<MaybeUninit<&u8>>>().as_ptr();
+    //~^ ERROR a dangling pointer will be produced because the temporary `Box<MaybeUninit<&u8>>` will be dropped
+    declval::<MaybeUninit<&u8>>().as_ptr();
+    //~^ ERROR a dangling pointer will be produced because the temporary `MaybeUninit<&u8>` will be dropped
+    declval::<[&u8; 10]>().as_ptr();
+    //~^ ERROR a dangling pointer will be produced because the temporary `[&u8; 10]` will be dropped
+
+    // should not lint
+    declval::<&[u8]>().as_ptr();
     declval::<AsPtrFake>().as_ptr();
+    declval::<Box<AsPtrFake>>().as_ptr();
 }

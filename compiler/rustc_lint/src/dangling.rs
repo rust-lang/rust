@@ -1,8 +1,9 @@
 use rustc_ast::visit::{visit_opt, walk_list};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl};
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::symbol::sym;
@@ -132,7 +133,8 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
         && is_temporary_rvalue(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
-        && owns_allocation(cx.tcx, ty)
+        && let adjs = cx.typeck_results().expr_adjustments(receiver)
+        && is_inner_allocation_owned(ty, adjs)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
     {
@@ -149,6 +151,34 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
             },
         )
     }
+}
+
+/// Determine if a `#[rustc_as_ptr]` receiver type (with adjustments) is only applied
+/// to owned allocations.
+fn is_inner_allocation_owned(input_ty: Ty<'_>, adjs: &[Adjustment<'_>]) -> bool {
+    // 1. Exclude any pointer types (as they cannot be owned)
+    //
+    //  - `&[u8]`: NOT OWNED
+    //  - `*const u8`: NOT OWNED
+    //  - `Box<u8>`: MAYBE OWNED
+    //  - `Box<&u8>`: MAYBE OWNED
+    !input_ty.is_any_ptr()
+    // 2. Look at all the deref-ed types and exclude any pointer types
+    //
+    //  - `Box<u8>` -> `u8`: OWNED
+    //  - `Box<&u8>` -> `&u8`: NOT OWNED
+    //  - `Box<Box<u8>>` -> `Box<u8>` -> `u8`: OWNED
+    //  - `MaybeUninit<MaybeUninit<&u8>>`: OWNED
+    //  - `Box<MaybeUninit<&u8>>` -> `MaybeUninit<&u8>`: OWNED
+    && adjs.iter()
+        .filter_map(|adj| match adj.kind {
+            Adjust::Deref(_) => Some(adj.target),
+            Adjust::NeverToAny
+            | Adjust::Borrow(_)
+            | Adjust::Pointer(_)
+            | Adjust::ReborrowPin(_) => None,
+        })
+        .all(|deref_ty| !deref_ty.is_any_ptr())
 }
 
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
@@ -194,29 +224,5 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
 
         // Not applicable
         ExprKind::Type(..) | ExprKind::Err(..) => false,
-    }
-}
-
-// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>, UnsafeCell,
-// SyncUnsafeCell, or any of the above in arbitrary many nested Box'es.
-fn owns_allocation(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
-    if ty.is_array() {
-        true
-    } else if let Some(inner) = ty.boxed_ty() {
-        inner.is_slice()
-            || inner.is_str()
-            || inner.ty_adt_def().is_some_and(|def| tcx.is_lang_item(def.did(), LangItem::CStr))
-            || owns_allocation(tcx, inner)
-    } else if let Some(def) = ty.ty_adt_def() {
-        for lang_item in [LangItem::String, LangItem::MaybeUninit, LangItem::UnsafeCell] {
-            if tcx.is_lang_item(def.did(), lang_item) {
-                return true;
-            }
-        }
-        tcx.get_diagnostic_name(def.did()).is_some_and(|name| {
-            matches!(name, sym::cstring_type | sym::Vec | sym::Cell | sym::SyncUnsafeCell)
-        })
-    } else {
-        false
     }
 }

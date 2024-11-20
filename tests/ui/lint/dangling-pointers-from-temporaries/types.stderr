@@ -190,5 +190,49 @@ LL |     declval::<SyncUnsafeCell<u8>>().get();
    = note: pointers do not have a lifetime; when calling `get` the `SyncUnsafeCell<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-error: aborting due to 17 previous errors
+error: a dangling pointer will be produced because the temporary `MaybeUninit<MaybeUninit<&u8>>` will be dropped
+  --> $DIR/types.rs:55:48
+   |
+LL |     declval::<MaybeUninit<MaybeUninit<&u8>>>().as_ptr();
+   |     ------------------------------------------ ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `MaybeUninit<MaybeUninit<&u8>>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `MaybeUninit<MaybeUninit<&u8>>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Box<MaybeUninit<&u8>>` will be dropped
+  --> $DIR/types.rs:57:40
+   |
+LL |     declval::<Box<MaybeUninit<&u8>>>().as_ptr();
+   |     ---------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Box<MaybeUninit<&u8>>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Box<MaybeUninit<&u8>>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `MaybeUninit<&u8>` will be dropped
+  --> $DIR/types.rs:59:35
+   |
+LL |     declval::<MaybeUninit<&u8>>().as_ptr();
+   |     ----------------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `MaybeUninit<&u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `MaybeUninit<&u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `[&u8; 10]` will be dropped
+  --> $DIR/types.rs:61:28
+   |
+LL |     declval::<[&u8; 10]>().as_ptr();
+   |     ---------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `[&u8; 10]` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `[&u8; 10]` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 21 previous errors
 
