@@ -981,6 +981,18 @@ pub trait Tuple {}
 )]
 pub trait PointerLike {}
 
+#[cfg(not(bootstrap))]
+marker_impls! {
+    #[unstable(feature = "pointer_like_trait", issue = "none")]
+    PointerLike for
+        usize,
+        {T} &T,
+        {T} &mut T,
+        {T} *const T,
+        {T} *mut T,
+        {T: PointerLike} crate::pin::Pin<T>,
+}
+
 /// A marker for types which can be used as types of `const` generic parameters.
 ///
 /// These types must have a proper equivalence relation (`Eq`) and it must be automatically
