@@ -1,0 +1,26 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/hidden-ty-mismatch-tainting-issue-120016.rs:11:20
+   |
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^ expected `{async block@$DIR/hidden-ty-mismatch-tainting-issue-120016.rs:9:13: 9:18}`, got `{async block@$DIR/hidden-ty-mismatch-tainting-issue-120016.rs:11:20: 11:25}`
+   |
+note: previous use here
+  --> $DIR/hidden-ty-mismatch-tainting-issue-120016.rs:9:13
+   |
+LL |             async {}
+   |             ^^^^^^^^
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/hidden-ty-mismatch-tainting-issue-120016.rs:11:20
+   |
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^ expected `()`, got `i32`
+   |
+note: previous use here
+  --> $DIR/hidden-ty-mismatch-tainting-issue-120016.rs:9:13
+   |
+LL |             async {}
+   |             ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
