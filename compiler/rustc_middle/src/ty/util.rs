@@ -423,8 +423,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn async_drop_glue_morphology(self, did: DefId) -> AsyncDropGlueMorphology {
         let ty: Ty<'tcx> = self.type_of(did).instantiate_identity();
 
-        // Async drop glue morphology is an internal detail, so reveal_all probably
-        // should be fine
+        // Async drop glue morphology is an internal detail, so
+        // using `TypingMode::PostAnalysis` probably should be fine.
         let typing_env = ty::TypingEnv::fully_monomorphized();
         if ty.needs_async_drop(self, typing_env) {
             AsyncDropGlueMorphology::Custom

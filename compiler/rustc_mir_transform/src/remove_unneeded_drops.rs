@@ -2,7 +2,8 @@
 //!
 //! When the MIR is built, we check `needs_drop` before emitting a `Drop` for a place. This pass is
 //! useful because (unlike MIR building) it runs after type checking, so it can make use of
-//! `Reveal::All` to provide more precise type information.
+//! `TypingMode::PostAnalysis` to provide more precise type information, especially about opaque
+//! types.
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;

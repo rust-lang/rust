@@ -1,26 +1,27 @@
-//! Normalizes MIR in RevealAll mode.
+//! Normalizes MIR in TypingMode::PostAnalysis mode, most notably revealing
+//! its opaques.
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub(super) struct RevealAll;
+pub(super) struct PostAnalysisNormalize;
 
-impl<'tcx> crate::MirPass<'tcx> for RevealAll {
+impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(#132279): This is used during the phase transition from analysis
         // to runtime, so we have to manually specify the correct typing mode.
         let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
-        RevealAllVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
+        PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 }
 
-struct RevealAllVisitor<'tcx> {
+struct PostAnalysisNormalizeVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
@@ -38,7 +39,7 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
             return;
         }
         // `OpaqueCast` projections are only needed if there are opaque types on which projections
-        // are performed. After the `RevealAll` pass, all opaque types are replaced with their
+        // are performed. After the `PostAnalysisNormalize` pass, all opaque types are replaced with their
         // hidden types, so we don't need these projections anymore.
         place.projection = self.tcx.mk_place_elems(
             &place

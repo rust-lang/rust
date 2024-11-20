@@ -603,12 +603,12 @@ pub fn try_evaluate_const<'tcx>(
             };
             let uv = ty::UnevaluatedConst::new(uv.def, args);
 
-            // It's not *technically* correct to be revealing opaque types here as we could still be
-            // before borrowchecking. However, CTFE itself uses `Reveal::All` unconditionally even during
-            // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821). As a result we
-            // always use a revealed env when resolving the instance to evaluate.
+            // It's not *technically* correct to be revealing opaque types here as borrowcheck has
+            // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
+            // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+            // As a result we always use a revealed env when resolving the instance to evaluate.
             //
-            // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
+            // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
             // instead of having this logic here
             let typing_env =
                 tcx.erase_regions(infcx.typing_env(param_env)).with_post_analysis_normalized(tcx);

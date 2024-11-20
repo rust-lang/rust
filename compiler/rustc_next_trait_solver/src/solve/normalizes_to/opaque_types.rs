@@ -1,6 +1,5 @@
 //! Computes a normalizes-to (projection) goal for opaque types. This goal
-//! behaves differently depending on the param-env's reveal mode and whether
-//! the opaque is in a defining scope.
+//! behaves differently depending on the current `TypingMode`.
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_type_ir::inherent::*;

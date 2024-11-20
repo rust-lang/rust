@@ -1373,9 +1373,10 @@ rustc_queries! {
     /// Gets the ParameterEnvironment for a given item; this environment
     /// will be in "user-facing" mode, meaning that it is suitable for
     /// type-checking etc, and it does not normalize specializable
-    /// associated types. This is almost always what you want,
-    /// unless you are doing MIR optimizations, in which case you
-    /// might want to use `reveal_all()` method to change modes.
+    /// associated types.
+    ///
+    /// You should pretty much only use this if an `infcx` is available,
+    /// otherwise use a `TypingEnv`.
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
@@ -1471,7 +1472,7 @@ rustc_queries! {
     }
 
     /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
+    /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     query layout_of(
         key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {

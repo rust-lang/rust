@@ -115,7 +115,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
 ) -> bool {
     let mut flags = ty::TypeFlags::HAS_ALIAS;
 
-    // Opaques are treated as rigid with `Reveal::UserFacing`,
+    // Opaques are treated as rigid outside of `TypingMode::PostAnalysis`,
     // so we can ignore those.
     match infcx.typing_mode() {
         TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {

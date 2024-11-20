@@ -1,5 +1,5 @@
-- // MIR for `bar` before RevealAll
-+ // MIR for `bar` after RevealAll
+- // MIR for `bar` before PostAnalysisNormalize
++ // MIR for `bar` after PostAnalysisNormalize
   
   fn bar(_1: P) -> () {
       debug _baz => _1;
@@ -36,7 +36,7 @@
           StorageDead(_4);
           StorageDead(_2);
           _0 = const ();
-          drop(_1) -> [return: bb4, unwind continue];
+          drop(_1) -> [return: bb4, unwind: bb7];
       }
   
       bb4: {
