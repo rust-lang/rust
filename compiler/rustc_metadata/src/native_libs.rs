@@ -540,7 +540,7 @@ impl<'tcx> Collector<'tcx> {
             // can move them to the end of the list below.
             let mut existing = self
                 .libs
-                .extract_if(|lib| {
+                .extract_if(.., |lib| {
                     if lib.name.as_str() == passed_lib.name {
                         // FIXME: This whole logic is questionable, whether modifiers are
                         // involved or not, library reordering and kind overriding without
