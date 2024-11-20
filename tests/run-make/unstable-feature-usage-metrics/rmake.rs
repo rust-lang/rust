@@ -51,9 +51,9 @@ fn test_metrics_dump() {
         let json_path =
             metrics.pop().expect("there should be one metrics file in the output directory");
 
-        assert_eq!(
-            0,
-            metrics.len(),
+        // After the `pop` above, there should be no files left.
+        assert!(
+            metrics.is_empty(),
             "there should be no more than one metrics file in the output directory"
         );
 
