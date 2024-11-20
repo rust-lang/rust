@@ -43,7 +43,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_type_ir::solve::Reveal;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -624,22 +623,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn typing_mode(
-        &self,
-        param_env_for_debug_assertion: ty::ParamEnv<'tcx>,
-    ) -> TypingMode<'tcx> {
-        if cfg!(debug_assertions) {
-            match (param_env_for_debug_assertion.reveal(), self.typing_mode) {
-                (Reveal::All, TypingMode::PostAnalysis)
-                | (Reveal::UserFacing, TypingMode::Coherence | TypingMode::Analysis { .. }) => {}
-                (r, t) => unreachable!("TypingMode x Reveal mismatch: {r:?} {t:?}"),
-            }
-        }
-        self.typing_mode
-    }
-
-    #[inline(always)]
-    pub fn typing_mode_unchecked(&self) -> TypingMode<'tcx> {
+    pub fn typing_mode(&self) -> TypingMode<'tcx> {
         self.typing_mode
     }
 
@@ -1005,7 +989,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
-        match self.typing_mode_unchecked() {
+        match self.typing_mode() {
             TypingMode::Analysis { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
@@ -1290,7 +1274,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// which contains the necessary information to use the trait system without
     /// using canonicalization or carrying this inference context around.
     pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
-        let typing_mode = match self.typing_mode(param_env) {
+        let typing_mode = match self.typing_mode() {
             ty::TypingMode::Coherence => ty::TypingMode::Coherence,
             // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
             // to handle them without proper canonicalization. This means we may cause cycle

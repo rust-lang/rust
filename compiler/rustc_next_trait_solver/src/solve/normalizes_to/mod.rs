@@ -71,7 +71,7 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match self.typing_mode(param_env) {
+                match self.typing_mode() {
                     // Opaques are never rigid outside of analysis mode.
                     TypingMode::Coherence | TypingMode::PostAnalysis => Err(NoSolution),
                     // During analysis, opaques are only rigid if we may not define it.

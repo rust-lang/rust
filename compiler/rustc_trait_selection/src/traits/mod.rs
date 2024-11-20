@@ -423,7 +423,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal());
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -470,8 +470,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
-    let outlives_env =
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env), unnormalized_env.reveal());
+    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
     let Ok(outlives_predicates) =
         do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
     else {
@@ -484,7 +483,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
 #[derive(Debug)]
@@ -612,7 +611,7 @@ pub fn try_evaluate_const<'tcx>(
             // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
             // instead of having this logic here
             let typing_env =
-                tcx.erase_regions(infcx.typing_env(param_env)).with_reveal_all_normalized(tcx);
+                tcx.erase_regions(infcx.typing_env(param_env)).with_post_analysis_normalized(tcx);
             let erased_uv = tcx.erase_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;

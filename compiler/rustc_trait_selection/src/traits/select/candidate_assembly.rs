@@ -760,9 +760,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if let TypingMode::Coherence =
-                        self.infcx.typing_mode(obligation.param_env)
-                    {
+                    } else if let TypingMode::Coherence = self.infcx.typing_mode() {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;
@@ -905,7 +903,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //
         // FIXME(@lcnr): This should probably only trigger during analysis,
         // disabling candidates during codegen is also questionable.
-        if let TypingMode::Coherence = self.infcx.typing_mode(param_env) {
+        if let TypingMode::Coherence = self.infcx.typing_mode() {
             return None;
         }
 

@@ -87,7 +87,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
         // instead of having this logic here
         let typing_env =
-            self.tcx.erase_regions(self.typing_env).with_reveal_all_normalized(self.tcx);
+            self.tcx.erase_regions(self.typing_env).with_post_analysis_normalized(self.tcx);
         let uv = self.tcx.erase_regions(uv);
 
         // try to resolve e.g. associated constants to their definition on an impl, and then

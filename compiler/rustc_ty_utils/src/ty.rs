@@ -158,8 +158,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local();
 
-    let unnormalized_env =
-        ty::ParamEnv::new(tcx.mk_clauses(&predicates), traits::Reveal::UserFacing);
+    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
 
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
@@ -249,8 +248,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    tcx.param_env(def_id).with_reveal_all_normalized(tcx)
+fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    // This is a bit ugly but the easiest way to avoid code duplication.
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
+    typing_env.with_post_analysis_normalized(tcx).param_env
 }
 
 /// If the given trait impl enables exploiting the former order dependence of trait objects,
@@ -362,7 +363,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         asyncness,
         adt_sized_constraint,
         param_env,
-        param_env_reveal_all_normalized,
+        param_env_normalized_for_post_analysis,
         self_ty_of_trait_impl_enabling_order_dep_trait_object_hack,
         defaultness,
         unsizing_params_for_adt,

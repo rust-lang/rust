@@ -22,7 +22,7 @@ where
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
-        match self.typing_mode(goal.param_env) {
+        match self.typing_mode() {
             TypingMode::Coherence => {
                 // An impossible opaque type bound is the only way this goal will fail
                 // e.g. assigning `impl Copy := NotCopy`

@@ -604,7 +604,7 @@ fn augment_param_env<'tcx>(
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal())
+    ty::ParamEnv::new(bounds)
 }
 
 /// We use the following trait as an example throughout this function.

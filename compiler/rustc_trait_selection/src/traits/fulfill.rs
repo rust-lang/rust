@@ -768,8 +768,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global()
-            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        if obligation.predicate.is_global() && !matches!(infcx.typing_mode(), TypingMode::Coherence)
         {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
@@ -824,8 +823,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global()
-            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        if obligation.predicate.is_global() && !matches!(infcx.typing_mode(), TypingMode::Coherence)
         {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.

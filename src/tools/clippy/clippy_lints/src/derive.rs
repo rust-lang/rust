@@ -11,7 +11,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
     self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast,
 };
@@ -516,7 +515,6 @@ fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId
                 .upcast(tcx)
             }),
         )),
-        Reveal::UserFacing,
     );
     ty::TypingEnv {
         typing_mode: ty::TypingMode::non_body_analysis(),
