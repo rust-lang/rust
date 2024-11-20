@@ -1279,7 +1279,7 @@ impl<'a> WasmLd<'a> {
         let mut wasm_ld = WasmLd { cmd, sess };
         if sess.target_features.contains(&sym::atomics) {
             wasm_ld.link_args(&["--shared-memory", "--max-memory=1073741824", "--import-memory"]);
-            if sess.target.os == "unknown" {
+            if sess.target.os == "unknown" || sess.target.os == "none" {
                 wasm_ld.link_args(&[
                     "--export=__wasm_init_tls",
                     "--export=__tls_size",
@@ -1403,7 +1403,7 @@ impl<'a> Linker for WasmLd<'a> {
         // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of wasm32-unknown-unknown tooling use
         // this, so be sure these symbols make their way out of the linker as well.
-        if self.sess.target.os == "unknown" {
+        if self.sess.target.os == "unknown" || self.sess.target.os == "none" {
             self.link_args(&["--export=__heap_base", "--export=__data_end"]);
         }
     }
