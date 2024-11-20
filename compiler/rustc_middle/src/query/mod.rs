@@ -1095,7 +1095,7 @@ rustc_queries! {
     /// Evaluates a constant and returns the computed allocation.
     ///
     /// **Do not use this** directly, use the `eval_to_const_value` or `eval_to_valtree` instead.
-    query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_allocation_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
             "const-evaluating + checking `{}`",
@@ -1121,7 +1121,7 @@ rustc_queries! {
     ///
     /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
     /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-    query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_const_value_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToConstValueResult<'tcx> {
         desc { |tcx|
             "simplifying constant for the type system `{}`",
@@ -1133,7 +1133,7 @@ rustc_queries! {
     /// Evaluate a constant and convert it to a type level constant or
     /// return `None` if that is not possible.
     query eval_to_valtree(
-        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
+        key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
         desc { "evaluating type-level constant" }
     }
@@ -1390,19 +1390,19 @@ rustc_queries! {
 
     /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
-    query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
     }
     /// Query backing `Ty::is_sized`.
-    query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
     }
     /// Query backing `Ty::is_freeze`.
-    query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_freeze_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
     /// Query backing `Ty::is_unpin`.
-    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_unpin_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
     /// Query backing `Ty::needs_drop`.

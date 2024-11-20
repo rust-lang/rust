@@ -186,7 +186,7 @@ where
                         }
                     }
 
-                    _ if component.is_copy_modulo_regions(tcx, self.typing_env.param_env) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.typing_env) => (),
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {

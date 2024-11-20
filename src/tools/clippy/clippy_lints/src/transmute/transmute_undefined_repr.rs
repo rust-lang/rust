@@ -206,12 +206,12 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
                 continue;
             },
             (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)), _)
-                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (true, false)
             },
             (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)))
-                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (false, true)
             },

@@ -7,6 +7,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_e
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_infer::traits::Reveal;
 use rustc_middle::bug;
 use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
@@ -191,6 +192,15 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        // FIXME(#132279): We're in a body, should handle opaques.
+        debug_assert_eq!(self.param_env.reveal(), Reveal::UserFacing);
+        ty::TypingEnv {
+            typing_mode: ty::TypingMode::non_body_analysis(),
+            param_env: self.param_env,
+        }
+    }
+
     #[instrument(level = "trace", skip(self, f))]
     fn with_let_source(&mut self, let_source: LetSource, f: impl FnOnce(&mut Self)) {
         let old_let_source = self.let_source;
@@ -760,7 +770,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
         return;
     };
 
-    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
+    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.typing_env());
 
     let sess = cx.tcx.sess;
 

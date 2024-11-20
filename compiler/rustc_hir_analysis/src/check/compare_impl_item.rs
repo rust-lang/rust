@@ -1193,9 +1193,9 @@ fn compare_self_type<'tcx>(
             ty::AssocItemContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
-        let param_env = ty::ParamEnv::reveal_all();
-
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let (infcx, param_env) = tcx
+            .infer_ctxt()
+            .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {

@@ -165,7 +165,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx, const_eval
         InternKind::Static(Mutability::Not) => {
             (
                 // Outermost allocation is mutable if `!Freeze`.
-                if ret.layout.ty.is_freeze(*ecx.tcx, ecx.param_env) {
+                if ret.layout.ty.is_freeze(*ecx.tcx, ecx.typing_env) {
                     Mutability::Not
                 } else {
                     Mutability::Mut

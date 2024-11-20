@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
             && let boxed_alloc_ty = last.args.get(1)
             && let ty_ty = lower_ty(cx.tcx, boxed_ty)
             && !ty_ty.has_escaping_bound_vars()
-            && ty_ty.is_sized(cx.tcx, cx.param_env)
+            && ty_ty.is_sized(cx.tcx, cx.typing_env())
             && let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes())
             && ty_ty_size < box_size_threshold
             // https://github.com/rust-lang/rust-clippy/issues/7114

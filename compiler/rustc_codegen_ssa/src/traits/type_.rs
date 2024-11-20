@@ -78,15 +78,15 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx(), ty::ParamEnv::reveal_all())
+        ty.is_sized(self.tcx(), self.typing_env())
     }
 
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx(), ty::ParamEnv::reveal_all())
+        ty.is_freeze(self.tcx(), self.typing_env())
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        if ty.is_sized(self.tcx(), self.param_env()) {
+        if ty.is_sized(self.tcx(), self.typing_env()) {
             return false;
         }
 

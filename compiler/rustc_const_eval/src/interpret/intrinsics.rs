@@ -34,13 +34,12 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
 /// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
 pub(crate) fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     def_id: DefId,
     args: GenericArgsRef<'tcx>,
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
     let tp_ty = args.type_at(0);
     let name = tcx.item_name(def_id);
-    let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env };
     interp_ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
@@ -152,8 +151,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::type_name => Ty::new_static_str(self.tcx.tcx),
                     _ => bug!(),
                 };
-                let val =
-                    self.ctfe_query(|tcx| tcx.const_eval_global_id(self.param_env, gid, tcx.span))?;
+                let val = self
+                    .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
@@ -358,7 +357,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let should_panic = !self
                     .tcx
-                    .check_validity_requirement((requirement, self.typing_env().as_query_input(ty)))
+                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
                     .map_err(|_| err_inval!(TooGeneric))?;
 
                 if should_panic {

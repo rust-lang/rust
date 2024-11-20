@@ -32,7 +32,7 @@ use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Upcast, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
 use rustc_session::lint::FutureIncompatibilityReason;
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
@@ -586,10 +586,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 return;
             }
         }
-        if ty.is_copy_modulo_regions(cx.tcx, cx.param_env) {
+        if ty.is_copy_modulo_regions(cx.tcx, cx.typing_env()) {
             return;
         }
-        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, cx.param_env) {
+        if type_implements_negative_copy_modulo_regions(cx.tcx, ty, cx.typing_env()) {
             return;
         }
         if def.is_variant_list_non_exhaustive()
@@ -637,8 +637,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
 fn type_implements_negative_copy_modulo_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 ) -> bool {
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     let trait_ref = ty::TraitRef::new(tcx, tcx.require_lang_item(hir::LangItem::Copy, None), [ty]);
     let pred = ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Negative };
     let obligation = traits::Obligation {
@@ -647,10 +648,7 @@ fn type_implements_negative_copy_modulo_regions<'tcx>(
         recursion_depth: 0,
         predicate: pred.upcast(tcx),
     };
-
-    tcx.infer_ctxt()
-        .build(TypingMode::non_body_analysis())
-        .predicate_must_hold_modulo_regions(&obligation)
+    infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
 declare_lint! {

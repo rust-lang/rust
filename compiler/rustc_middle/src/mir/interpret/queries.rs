@@ -25,8 +25,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
-        self.const_eval_global_id(param_env, cid, DUMMY_SP)
+        let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        self.const_eval_global_id(typing_env, cid, DUMMY_SP)
     }
 
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -41,8 +41,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, args);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
-        let inputs = self.erase_regions(param_env.and(cid));
+        let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        let inputs = self.erase_regions(typing_env.as_query_input(cid));
         self.eval_to_allocation_raw(inputs)
     }
 
@@ -76,7 +76,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
-                self.const_eval_global_id(typing_env.param_env, cid, span)
+                self.const_eval_global_id(typing_env, cid, span)
             }
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
@@ -105,7 +105,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
-                self.const_eval_global_id_for_typeck(typing_env.param_env, cid, span).inspect(|_| {
+                self.const_eval_global_id_for_typeck(typing_env, cid, span).inspect(|_| {
                     // We are emitting the lint here instead of in `is_const_evaluatable`
                     // as we normalize obligations before checking them, and normalization
                     // uses this function to evaluate this constant.
@@ -144,24 +144,25 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn const_eval_instance(
         self,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         instance: ty::Instance<'tcx>,
         span: Span,
     ) -> EvalToConstValueResult<'tcx> {
-        self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
+        self.const_eval_global_id(typing_env, GlobalId { instance, promoted: None }, span)
     }
 
     /// Evaluate a constant to a `ConstValue`.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_global_id(
         self,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         cid: GlobalId<'tcx>,
         span: Span,
     ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
+        let inputs =
+            self.erase_regions(typing_env.with_reveal_all_normalized(self).as_query_input(cid));
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
@@ -174,13 +175,14 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_global_id_for_typeck(
         self,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         cid: GlobalId<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
+        let inputs =
+            self.erase_regions(typing_env.with_reveal_all_normalized(self).as_query_input(cid));
         debug!(?inputs);
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
@@ -202,12 +204,12 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self.tcx, def_id);
-        let instance = ty::Instance::new(def_id, args);
+        let instance = ty::Instance::new(def_id, self.tcx.erase_regions(args));
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx);
+        let typing_env = ty::TypingEnv::post_analysis(self.tcx, def_id);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.tcx.erase_regions(param_env.and(cid));
+        let inputs = self.tcx.erase_regions(typing_env.as_query_input(cid));
         self.eval_to_const_value_raw(inputs)
     }
 }

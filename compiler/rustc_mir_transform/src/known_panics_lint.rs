@@ -183,7 +183,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // to runtime, so we have to manually specify the correct typing mode.
         let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
         let can_const_prop = CanConstProp::check(tcx, typing_env, body);
-        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env.param_env, DummyMachine);
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 
         ConstPropagator {
             ecx,
@@ -451,7 +451,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.has_param() {
             return None;
         }
-        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env.param_env) {
+        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env) {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;

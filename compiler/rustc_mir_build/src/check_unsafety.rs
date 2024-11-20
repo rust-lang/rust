@@ -11,7 +11,7 @@ use rustc_middle::span_bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -37,7 +37,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// of the LHS and the span of the assignment expression.
     assignment_info: Option<Ty<'tcx>>,
     in_union_destructure: bool,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     inside_adt: bool,
     warnings: &'a mut Vec<UnusedUnsafeWarning>,
 
@@ -213,7 +213,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 body_target_features: self.body_target_features,
                 assignment_info: self.assignment_info,
                 in_union_destructure: false,
-                param_env: self.param_env,
+                typing_env: self.typing_env,
                 inside_adt: false,
                 warnings: self.warnings,
                 suggest_unsafe_block: self.suggest_unsafe_block,
@@ -370,7 +370,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     };
                     match rm {
                         Mutability::Not => {
-                            if !ty.is_freeze(self.tcx, self.param_env) {
+                            if !ty.is_freeze(self.tcx, self.typing_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
@@ -566,9 +566,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     && adt_def.is_union()
                 {
                     if let Some(assigned_ty) = self.assignment_info {
-                        if assigned_ty
-                            .needs_drop(self.tcx, ty::TypingEnv::from_param_env(self.param_env))
-                        {
+                        if assigned_ty.needs_drop(self.tcx, self.typing_env) {
                             // This would be unsafe, but should be outright impossible since we
                             // reject such unions.
                             assert!(
@@ -608,7 +606,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if visitor.found {
                     match borrow_kind {
                         BorrowKind::Fake(_) | BorrowKind::Shared
-                            if !self.thir[arg].ty.is_freeze(self.tcx, self.param_env) =>
+                            if !self.thir[arg].ty.is_freeze(self.tcx, self.typing_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
@@ -1026,7 +1024,8 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        param_env: tcx.param_env(def),
+        // FIXME(#132279): we're clearly in a body here.
+        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,

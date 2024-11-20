@@ -6,7 +6,7 @@ use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, layout};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
@@ -34,7 +34,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         let ctx = InstSimplifyContext {
             tcx,
             local_decls: &body.local_decls,
-            param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
+            typing_env: body.typing_env(tcx),
         };
         let preserve_ub_checks =
             attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
@@ -66,13 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
 struct InstSimplifyContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
-    param_env: ParamEnv<'tcx>,
-}
-
-impl<'tcx> InstSimplifyContext<'_, 'tcx> {
-    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env }
-    }
+    typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl<'tcx> InstSimplifyContext<'_, 'tcx> {
@@ -354,7 +348,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         }
 
         let known_is_valid =
-            intrinsic_assert_panics(self.tcx, self.typing_env(), args[0], intrinsic_name);
+            intrinsic_assert_panics(self.tcx, self.typing_env, args[0], intrinsic_name);
         match known_is_valid {
             // We don't know the layout or it's not validity assertion at all, don't touch it
             None => {}
