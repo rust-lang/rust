@@ -287,6 +287,18 @@ where
     }
 }
 
+impl<T> From<&NonZero<T>> for &T
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: &NonZero<T>) -> Self {
+        // SAFETY: `ZeroablePrimitive` guarantees that the size and bit
+        // validity of `.0` is such that this transmute is sound.
+        unsafe { intrinsics::transmute_unchecked(nonzero) }
+    }
+}
+
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 impl<T> BitOr for NonZero<T>
 where
