@@ -1,4 +1,4 @@
-error[E0158]: constant pattern depends on a generic parameter
+error[E0158]: constant pattern depends on a generic parameter, which is not allowed
   --> $DIR/associated-const-type-parameter-pattern.rs:20:9
    |
 LL | pub trait Foo {
@@ -6,10 +6,13 @@ LL | pub trait Foo {
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
+LL | pub fn test<A: Foo, B: Foo>(arg: EFoo) {
+   |             - constant depends on this generic param
+LL |     match arg {
 LL |         A::X => println!("A::X"),
-   |         ^^^^
+   |         ^^^^ `const` depends on a generic parameter
 
-error[E0158]: constant pattern depends on a generic parameter
+error[E0158]: constant pattern depends on a generic parameter, which is not allowed
   --> $DIR/associated-const-type-parameter-pattern.rs:22:9
    |
 LL | pub trait Foo {
@@ -17,10 +20,13 @@ LL | pub trait Foo {
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
+LL | pub fn test<A: Foo, B: Foo>(arg: EFoo) {
+   |                     - constant depends on this generic param
+...
 LL |         B::X => println!("B::X"),
-   |         ^^^^
+   |         ^^^^ `const` depends on a generic parameter
 
-error[E0158]: constant pattern depends on a generic parameter
+error[E0158]: constant pattern depends on a generic parameter, which is not allowed
   --> $DIR/associated-const-type-parameter-pattern.rs:30:9
    |
 LL | pub trait Foo {
@@ -28,10 +34,13 @@ LL | pub trait Foo {
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
+LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
+   |                     - constant depends on this generic param
+LL |
 LL |     let A::X = arg;
-   |         ^^^^
+   |         ^^^^ `const` depends on a generic parameter
 
-error[E0158]: constant pattern depends on a generic parameter
+error[E0158]: constant pattern depends on a generic parameter, which is not allowed
   --> $DIR/associated-const-type-parameter-pattern.rs:28:48
    |
 LL | pub trait Foo {
@@ -40,7 +49,9 @@ LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
 LL | pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
-   |                                                ^^^^
+   |                     -                          ^^^^ `const` depends on a generic parameter
+   |                     |
+   |                     constant depends on this generic param
 
 error: aborting due to 4 previous errors
 

@@ -88,8 +88,8 @@ mir_build_const_defined_here = constant defined here
 
 mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
 
-mir_build_const_pattern_depends_on_generic_parameter =
-    constant pattern depends on a generic parameter
+mir_build_const_pattern_depends_on_generic_parameter = constant pattern depends on a generic parameter, which is not allowed
+    .label = `const` depends on a generic parameter
 
 mir_build_could_not_eval_const_pattern = could not evaluate constant pattern
     .label = could not evaluate constant

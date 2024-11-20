@@ -53,6 +53,7 @@ struct ConstToPat<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     span: Span,
+    id: hir::HirId,
 
     treat_byte_string_as_slice: bool,
 
@@ -66,6 +67,7 @@ impl<'tcx> ConstToPat<'tcx> {
             tcx: pat_ctxt.tcx,
             typing_env: pat_ctxt.typing_env,
             span,
+            id,
             treat_byte_string_as_slice: pat_ctxt
                 .typeck_results
                 .treat_byte_string_as_slice
@@ -135,10 +137,28 @@ impl<'tcx> ConstToPat<'tcx> {
                 return self.mk_err(err, ty);
             }
             Err(ErrorHandled::TooGeneric(_)) => {
-                let e = self
+                let mut e = self
                     .tcx
                     .dcx()
                     .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+                for arg in uv.args {
+                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                        && let ty::Param(param_ty) = ty.kind()
+                    {
+                        let def_id = self.tcx.hir().enclosing_body_owner(self.id);
+                        let generics = self.tcx.generics_of(def_id);
+                        let param = generics.type_param(*param_ty, self.tcx);
+                        let span = self.tcx.def_span(param.def_id);
+                        e.span_label(span, "constant depends on this generic param");
+                        if let Some(ident) = self.tcx.def_ident_span(def_id)
+                            && self.tcx.sess.source_map().is_multiline(ident.between(span))
+                        {
+                            // Display the `fn` name as well in the diagnostic, as the generic isn't
+                            // in the same line and it could be confusing otherwise.
+                            e.span_label(ident, "");
+                        }
+                    }
+                }
                 return self.mk_err(e, ty);
             }
             Ok(Err(bad_ty)) => {
