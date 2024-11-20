@@ -1326,12 +1326,12 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx>,
+    pub selection_cache: traits::SelectionCache<'tcx, ty::TypingEnv<'tcx>>,
 
     /// Caches the results of trait evaluation. This cache is used
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
-    pub evaluation_cache: traits::EvaluationCache<'tcx>,
+    pub evaluation_cache: traits::EvaluationCache<'tcx, ty::TypingEnv<'tcx>>,
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,

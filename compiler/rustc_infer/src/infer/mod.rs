@@ -264,11 +264,12 @@ pub struct InferCtxt<'tcx> {
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
-    /// for things that have to do with the parameters in scope.
-    pub selection_cache: select::SelectionCache<'tcx>,
+    /// for things that depends on inference variables or placeholders.
+    pub selection_cache: select::SelectionCache<'tcx, ty::ParamEnv<'tcx>>,
 
-    /// Caches the results of trait evaluation.
-    pub evaluation_cache: select::EvaluationCache<'tcx>,
+    /// Caches the results of trait evaluation. This cache is used
+    /// for things that depends on inference variables or placeholders.
+    pub evaluation_cache: select::EvaluationCache<'tcx, ty::ParamEnv<'tcx>>,
 
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
