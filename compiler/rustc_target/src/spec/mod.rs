@@ -2327,8 +2327,6 @@ pub struct TargetOptions {
     /// If we give emcc .o files that are actually .bc files it
     /// will 'just work'.
     pub obj_is_bitcode: bool,
-    /// Whether the target requires that emitted object code includes bitcode.
-    pub forces_embed_bitcode: bool,
     /// Content of the LLVM cmdline section associated with embedded bitcode.
     pub bitcode_llvm_cmdline: StaticCow<str>,
 
@@ -2671,7 +2669,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
-            forces_embed_bitcode: false,
             bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
@@ -3412,7 +3409,6 @@ impl Target {
         key!(main_needs_argc_argv, bool);
         key!(has_thread_local, bool);
         key!(obj_is_bitcode, bool);
-        key!(forces_embed_bitcode, bool);
         key!(bitcode_llvm_cmdline);
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
@@ -3687,7 +3683,6 @@ impl ToJson for Target {
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_thread_local);
         target_option_val!(obj_is_bitcode);
-        target_option_val!(forces_embed_bitcode);
         target_option_val!(bitcode_llvm_cmdline);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);

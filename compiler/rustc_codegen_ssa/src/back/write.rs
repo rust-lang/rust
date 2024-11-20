@@ -432,11 +432,9 @@ struct CompiledModules {
 
 fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
     let sess = tcx.sess;
-    let requested_for_rlib = sess.opts.cg.embed_bitcode
+    sess.opts.cg.embed_bitcode
         && tcx.crate_types().contains(&CrateType::Rlib)
-        && sess.opts.output_types.contains_key(&OutputType::Exe);
-    let forced_by_target = sess.target.forces_embed_bitcode;
-    requested_for_rlib || forced_by_target
+        && sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
 fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
