@@ -1,4 +1,5 @@
-use core::{ops::{Range, RangeBounds}, ptr, slice};
+use core::ops::{Range, RangeBounds};
+use core::{ptr, slice};
 
 use super::Vec;
 use crate::alloc::{Allocator, Global};
@@ -24,9 +25,7 @@ pub struct ExtractIf<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> where
-    F: FnMut(&mut T) -> bool,
-{
+> {
     pub(super) vec: &'a mut Vec<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
     pub(super) idx: usize,
@@ -40,10 +39,7 @@ pub struct ExtractIf<
     pub(super) pred: F,
 }
 
-impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
+impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
     pub(super) fn new<R: RangeBounds<usize>>(vec: &'a mut Vec<T, A>, pred: F, range: R) -> Self {
         let old_len = vec.len();
         let Range { start, end } = slice::range(range, ..old_len);
@@ -100,10 +96,7 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
+impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
     fn drop(&mut self) {
         unsafe {
             if self.idx < self.old_len && self.del > 0 {
