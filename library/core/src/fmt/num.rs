@@ -219,9 +219,7 @@ macro_rules! impl_Display {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Display for $signed {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let is_nonnegative = *self >= 0;
-
-                if !is_nonnegative {
+                if *self < 0 {
                     #[cfg(not(feature = "optimize_for_size"))]
                     {
                         // convert the negative num to positive by summing 1 to its 2s complement
