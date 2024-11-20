@@ -882,12 +882,17 @@ pub(crate) struct UnionPattern {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotStructural<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_type_not_structural_def)]
+    pub(crate) ty_def_span: Span,
     pub(crate) non_sm_ty: Ty<'tcx>,
+    #[note(mir_build_type_not_structural_tip)]
+    pub(crate) manual_partialeq_impl_span: Option<Span>,
+    #[note(mir_build_type_not_structural_more_info)]
+    pub(crate) manual_partialeq_impl_note: bool,
 }
 
 #[derive(Diagnostic)]

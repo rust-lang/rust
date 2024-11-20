@@ -322,12 +322,12 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
         *[other] them
     } into the body
 
-mir_build_type_not_structural =
-     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
-
+mir_build_type_not_structural = constant of non-structural type `{$non_sm_ty}` in a pattern
+    .label = constant of non-structural type
+mir_build_type_not_structural_def = `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-
-mir_build_type_not_structural_tip = the traits must be derived, manual `impl`s are not sufficient
+mir_build_type_not_structural_tip =
+    the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 mir_build_unconditional_recursion = function cannot return without recursing
     .label = cannot return without recursing

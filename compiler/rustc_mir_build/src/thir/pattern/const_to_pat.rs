@@ -254,7 +254,22 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Extremely important check for all ADTs! Make sure they opted-in to be used in
                 // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty);
-                let err = TypeNotStructural { span, non_sm_ty: ty };
+                let ty_def_span = tcx.def_span(adt_def.did());
+                let mut manual_partialeq_impl_span = None;
+                let partial_eq_trait_id =
+                    tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+                tcx.for_each_relevant_impl(partial_eq_trait_id, ty, |def_id| {
+                    if def_id.is_local() {
+                        manual_partialeq_impl_span = Some(tcx.def_span(def_id));
+                    }
+                });
+                let err = TypeNotStructural {
+                    span,
+                    non_sm_ty: ty,
+                    ty_def_span,
+                    manual_partialeq_impl_span,
+                    manual_partialeq_impl_note: manual_partialeq_impl_span.is_none(),
+                };
                 return Err(tcx.dcx().create_err(err));
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
@@ -269,7 +284,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             adt_def.variants()[variant_index]
                                 .fields
                                 .iter()
-                                .map(|field| field.ty(self.tcx, args)),
+                                .map(|field| field.ty(tcx, args)),
                         ),
                     ),
                 }
@@ -278,7 +293,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 assert!(!def.is_union()); // Valtree construction would never succeed for unions.
                 PatKind::Leaf {
                     subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(
-                        def.non_enum_variant().fields.iter().map(|field| field.ty(self.tcx, args)),
+                        def.non_enum_variant().fields.iter().map(|field| field.ty(tcx, args)),
                     )),
                 }
             }
@@ -377,7 +392,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let err = InvalidPattern {
                     span,
                     non_sm_ty: ty,
-                    prefix: ty.prefix_string(self.tcx).to_string(),
+                    prefix: ty.prefix_string(tcx).to_string(),
                 };
                 return Err(tcx.dcx().create_err(err));
             }

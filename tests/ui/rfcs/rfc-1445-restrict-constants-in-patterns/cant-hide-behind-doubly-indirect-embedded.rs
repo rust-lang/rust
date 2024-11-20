@@ -20,7 +20,7 @@ const WRAP_DOUBLY_INDIRECT_INLINE: & &WrapInline = & &WrapInline(& & NoDerive(0)
 fn main() {
     match WRAP_DOUBLY_INDIRECT_INLINE {
         WRAP_DOUBLY_INDIRECT_INLINE => { panic!("WRAP_DOUBLY_INDIRECT_INLINE matched itself"); }
-        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
+        //~^ ERROR constant of non-structural type `NoDerive` in a pattern
         _ => { println!("WRAP_DOUBLY_INDIRECT_INLINE correctly did not match itself"); }
     }
 }
