@@ -58,7 +58,7 @@ use crate::{
     fold_tys,
     generics::Generics,
     infer::{coerce::CoerceMany, expr::ExprIsRead, unify::InferenceTable},
-    lower::ImplTraitLoweringMode,
+    lower::{ImplTraitLoweringMode, TyLoweringDiagnostic},
     mir::MirSpan,
     to_assoc_type_id,
     traits::FnTrait,
@@ -191,6 +191,14 @@ impl<T> InferOk<T> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum InferenceTyDiagnosticSource {
+    /// Diagnostics that come from types in the body.
+    Body,
+    /// Diagnostics that come from types in fn parameters/return type, or static & const types.
+    Signature,
+}
+
 #[derive(Debug)]
 pub(crate) struct TypeError;
 pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
@@ -263,6 +271,10 @@ pub enum InferenceDiagnostic {
         error: CastError,
         expr_ty: Ty,
         cast_ty: Ty,
+    },
+    TyDiagnostic {
+        source: InferenceTyDiagnosticSource,
+        diag: TyLoweringDiagnostic,
     },
 }
 
@@ -858,7 +870,8 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
-        let return_ty = self.make_ty(data.type_ref, &data.types_map);
+        let return_ty =
+            self.make_ty(data.type_ref, &data.types_map, InferenceTyDiagnosticSource::Signature);
 
         // Constants might be defining usage sites of TAITs.
         self.make_tait_coercion_table(iter::once(&return_ty));
@@ -867,7 +880,8 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_static(&mut self, data: &StaticData) {
-        let return_ty = self.make_ty(data.type_ref, &data.types_map);
+        let return_ty =
+            self.make_ty(data.type_ref, &data.types_map, InferenceTyDiagnosticSource::Signature);
 
         // Statics might be defining usage sites of TAITs.
         self.make_tait_coercion_table(iter::once(&return_ty));
@@ -877,11 +891,12 @@ impl<'a> InferenceContext<'a> {
 
     fn collect_fn(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        let mut param_tys = self.with_ty_lowering(&data.types_map, |ctx| {
-            ctx.type_param_mode(ParamLoweringMode::Placeholder)
-                .impl_trait_mode(ImplTraitLoweringMode::Param);
-            data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>()
-        });
+        let mut param_tys =
+            self.with_ty_lowering(&data.types_map, InferenceTyDiagnosticSource::Signature, |ctx| {
+                ctx.type_param_mode(ParamLoweringMode::Placeholder)
+                    .impl_trait_mode(ImplTraitLoweringMode::Param);
+                data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>()
+            });
         // Check if function contains a va_list, if it does then we append it to the parameter types
         // that are collected from the function data
         if data.is_varargs() {
@@ -918,11 +933,12 @@ impl<'a> InferenceContext<'a> {
         }
         let return_ty = data.ret_type;
 
-        let return_ty = self.with_ty_lowering(&data.types_map, |ctx| {
-            ctx.type_param_mode(ParamLoweringMode::Placeholder)
-                .impl_trait_mode(ImplTraitLoweringMode::Opaque)
-                .lower_ty(return_ty)
-        });
+        let return_ty =
+            self.with_ty_lowering(&data.types_map, InferenceTyDiagnosticSource::Signature, |ctx| {
+                ctx.type_param_mode(ParamLoweringMode::Placeholder)
+                    .impl_trait_mode(ImplTraitLoweringMode::Opaque)
+                    .lower_ty(return_ty)
+            });
         let return_ty = self.insert_type_vars(return_ty);
 
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
@@ -1226,9 +1242,20 @@ impl<'a> InferenceContext<'a> {
         self.result.diagnostics.push(diagnostic);
     }
 
+    fn push_ty_diagnostics(
+        &mut self,
+        source: InferenceTyDiagnosticSource,
+        diagnostics: Vec<TyLoweringDiagnostic>,
+    ) {
+        self.result.diagnostics.extend(
+            diagnostics.into_iter().map(|diag| InferenceDiagnostic::TyDiagnostic { source, diag }),
+        );
+    }
+
     fn with_ty_lowering<R>(
-        &self,
+        &mut self,
         types_map: &TypesMap,
+        types_source: InferenceTyDiagnosticSource,
         f: impl FnOnce(&mut crate::lower::TyLoweringContext<'_>) -> R,
     ) -> R {
         let mut ctx = crate::lower::TyLoweringContext::new(
@@ -1237,32 +1264,41 @@ impl<'a> InferenceContext<'a> {
             types_map,
             self.owner.into(),
         );
-        f(&mut ctx)
+        let result = f(&mut ctx);
+        self.push_ty_diagnostics(types_source, ctx.diagnostics);
+        result
     }
 
     fn with_body_ty_lowering<R>(
-        &self,
+        &mut self,
         f: impl FnOnce(&mut crate::lower::TyLoweringContext<'_>) -> R,
     ) -> R {
-        self.with_ty_lowering(&self.body.types, f)
+        self.with_ty_lowering(&self.body.types, InferenceTyDiagnosticSource::Body, f)
     }
 
-    fn make_ty(&mut self, type_ref: TypeRefId, types_map: &TypesMap) -> Ty {
-        let ty = self.with_ty_lowering(types_map, |ctx| ctx.lower_ty(type_ref));
+    fn make_ty(
+        &mut self,
+        type_ref: TypeRefId,
+        types_map: &TypesMap,
+        type_source: InferenceTyDiagnosticSource,
+    ) -> Ty {
+        let ty = self.with_ty_lowering(types_map, type_source, |ctx| ctx.lower_ty(type_ref));
         let ty = self.insert_type_vars(ty);
         self.normalize_associated_types_in(ty)
     }
 
     fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty {
-        self.make_ty(type_ref, &self.body.types)
+        self.make_ty(type_ref, &self.body.types, InferenceTyDiagnosticSource::Body)
     }
 
     fn err_ty(&self) -> Ty {
         self.result.standard_types.unknown.clone()
     }
 
-    fn make_lifetime(&mut self, lifetime_ref: &LifetimeRef) -> Lifetime {
-        let lt = self.with_ty_lowering(TypesMap::EMPTY, |ctx| ctx.lower_lifetime(lifetime_ref));
+    fn make_body_lifetime(&mut self, lifetime_ref: &LifetimeRef) -> Lifetime {
+        let lt = self.with_ty_lowering(TypesMap::EMPTY, InferenceTyDiagnosticSource::Body, |ctx| {
+            ctx.lower_lifetime(lifetime_ref)
+        });
         self.insert_type_vars(lt)
     }
 
@@ -1431,12 +1467,20 @@ impl<'a> InferenceContext<'a> {
                 Some(ResolveValueResult::ValueNs(value, _)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
+                        self.push_ty_diagnostics(
+                            InferenceTyDiagnosticSource::Body,
+                            ctx.diagnostics,
+                        );
                         let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
                     ValueNs::StructId(strukt) => {
                         let substs = ctx.substs_from_path(path, strukt.into(), true);
+                        self.push_ty_diagnostics(
+                            InferenceTyDiagnosticSource::Body,
+                            ctx.diagnostics,
+                        );
                         let ty = self.db.ty(strukt.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(strukt.into()));
@@ -1462,18 +1506,21 @@ impl<'a> InferenceContext<'a> {
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = ctx.substs_from_path(path, strukt.into(), true);
+                self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::AdtId(AdtId::UnionId(u)) => {
                 let substs = ctx.substs_from_path(path, u.into(), true);
+                self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
                 let ty = self.db.ty(u.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(u.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = ctx.substs_from_path(path, var.into(), true);
+                self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
                 let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
@@ -1519,6 +1566,9 @@ impl<'a> InferenceContext<'a> {
                         resolved_segment,
                         current_segment,
                         false,
+                        &mut |_, _reason| {
+                            // FIXME: Report an error.
+                        },
                     );
 
                     ty = self.table.insert_type_vars(ty);
@@ -1532,6 +1582,7 @@ impl<'a> InferenceContext<'a> {
                     remaining_idx += 1;
                     remaining_segments = remaining_segments.skip(1);
                 }
+                self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
 
                 let variant = ty.as_adt().and_then(|(id, _)| match id {
                     AdtId::StructId(s) => Some(VariantId::StructId(s)),
@@ -1550,6 +1601,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let substs =
                     ctx.substs_from_path_segment(resolved_seg, Some(it.into()), true, None);
+                self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
                 let ty = self.db.ty(it.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
 

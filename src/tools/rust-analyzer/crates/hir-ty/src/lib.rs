@@ -84,12 +84,13 @@ pub use infer::{
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
     could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast,
+    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
+    PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
-    TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, GenericArgsProhibitedReason, ImplTraitLoweringMode,
+    ParamLoweringMode, TyDefId, TyLoweringContext, TyLoweringDiagnosticKind, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,

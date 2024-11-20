@@ -1,0 +1,242 @@
+use either::Either;
+use hir::GenericArgsProhibitedReason;
+use ide_db::assists::Assist;
+use ide_db::source_change::SourceChange;
+use ide_db::text_edit::TextEdit;
+use syntax::{ast, AstNode, TextRange};
+
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+
+// Diagnostic: generic-args-prohibited
+//
+// This diagnostic is shown when generic arguments are provided for a type that does not accept
+// generic arguments.
+pub(crate) fn generic_args_prohibited(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::GenericArgsProhibited,
+) -> Diagnostic {
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0109"),
+        describe_reason(d.reason),
+        d.args.map(Into::into),
+    )
+    .with_fixes(fixes(ctx, d))
+}
+
+fn describe_reason(reason: GenericArgsProhibitedReason) -> String {
+    let kind = match reason {
+        GenericArgsProhibitedReason::Module => "modules",
+        GenericArgsProhibitedReason::TyParam => "type parameters",
+        GenericArgsProhibitedReason::SelfTy => "`Self`",
+        GenericArgsProhibitedReason::PrimitiveTy => "builtin types",
+        GenericArgsProhibitedReason::EnumVariant => {
+            return "you can specify generic arguments on either the enum or the variant, but not both"
+                .to_owned();
+        }
+    };
+    format!("generic arguments are not allowed on {kind}")
+}
+
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::GenericArgsProhibited) -> Option<Vec<Assist>> {
+    let file_id = d.args.file_id.file_id()?;
+    let syntax = d.args.to_node(ctx.sema.db);
+    let range = match &syntax {
+        Either::Left(_) => syntax.syntax().text_range(),
+        Either::Right(param_list) => {
+            let path_segment = ast::PathSegment::cast(param_list.syntax().parent()?)?;
+            let start = if let Some(coloncolon) = path_segment.coloncolon_token() {
+                coloncolon.text_range().start()
+            } else {
+                param_list.syntax().text_range().start()
+            };
+            let end = if let Some(ret_type) = path_segment.ret_type() {
+                ret_type.syntax().text_range().end()
+            } else {
+                param_list.syntax().text_range().end()
+            };
+            TextRange::new(start, end)
+        }
+    };
+    Some(vec![fix(
+        "remove_generic_args",
+        "Remove these generics",
+        SourceChange::from_text_edit(file_id, TextEdit::delete(range)),
+        syntax.syntax().text_range(),
+    )])
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::{check_diagnostics, check_fix};
+
+    #[test]
+    fn primitives() {
+        check_diagnostics(
+            r#"
+//- /core.rs crate:core library
+#![rustc_coherence_is_core]
+impl str {
+    pub fn trim() {}
+}
+
+//- /lib.rs crate:foo deps:core
+fn bar<T>() {}
+
+fn foo() {
+    let _: (bool<()>, ());
+             // ^^^^ 💡 error: generic arguments are not allowed on builtin types
+    let _ = <str<'_>>::trim;
+             // ^^^^ 💡 error: generic arguments are not allowed on builtin types
+    bar::<u32<{ const { 1 + 1 } }>>();
+          // ^^^^^^^^^^^^^^^^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn modules() {
+        check_diagnostics(
+            r#"
+pub mod foo {
+    pub mod bar {
+        pub struct Baz;
+
+        impl Baz {
+            pub fn qux() {}
+        }
+    }
+}
+
+fn foo() {
+    let _: foo::<'_>::bar::Baz;
+           // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    let _ = <foo::bar<()>::Baz>::qux;
+                  // ^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn type_parameters() {
+        check_diagnostics(
+            r#"
+fn foo<T, U>() {
+    let _: T<'a>;
+         // ^^^^ 💡 error: generic arguments are not allowed on type parameters
+    let _: U::<{ 1 + 2 }>;
+         // ^^^^^^^^^^^^^ 💡 error: generic arguments are not allowed on type parameters
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn fn_like_generic_args() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    let _: bool(bool, i32) -> ();
+            // ^^^^^^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn fn_signature() {
+        check_diagnostics(
+            r#"
+fn foo(
+    _a: bool<'_>,
+         // ^^^^ 💡 error: generic arguments are not allowed on builtin types
+    _b: i32::<i64>,
+        // ^^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    _c: &(&str<1>)
+           // ^^^ 💡 error: generic arguments are not allowed on builtin types
+) -> ((), i32<bool>) {
+          // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    ((), 0)
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn const_static_type() {
+        check_diagnostics(
+            r#"
+const A: i32<bool> = 0;
+         // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+static A: i32::<{ 1 + 3 }> = 0;
+          // ^^^^^^^^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+        "#,
+        );
+    }
+
+    #[test]
+    fn fix() {
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool<'_, (), { 1 + 1 }>$0;
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool::$0<'_, (), { 1 + 1 }>;
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool(i$032);
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool$0(i32) -> i64;
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool::(i$032) -> i64;
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+        check_fix(
+            r#"
+fn foo() {
+    let _: bool::(i32)$0;
+}"#,
+            r#"
+fn foo() {
+    let _: bool;
+}"#,
+        );
+    }
+}

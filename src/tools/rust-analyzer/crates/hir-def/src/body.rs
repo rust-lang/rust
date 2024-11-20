@@ -141,7 +141,7 @@ pub struct BodySourceMap {
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
 
-    types: TypesSourceMap,
+    pub types: TypesSourceMap,
 
     // FIXME: Make this a sane struct.
     template_map: Option<

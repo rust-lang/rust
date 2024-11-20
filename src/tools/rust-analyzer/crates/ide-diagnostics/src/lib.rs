@@ -27,6 +27,7 @@ mod handlers {
     pub(crate) mod await_outside_of_async;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
+    pub(crate) mod generic_args_prohibited;
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
     pub(crate) mod incorrect_case;
@@ -468,6 +469,7 @@ pub fn semantic_diagnostics(
                 Some(it) => it,
                 None => continue,
             },
+            AnyDiagnostic::GenericArgsProhibited(d) => handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
         };
         res.push(d)
     }

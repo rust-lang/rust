@@ -1,5 +1,7 @@
 //! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
 mod lower;
+#[cfg(test)]
+mod tests;
 
 use std::{
     fmt::{self, Display},
@@ -18,6 +20,8 @@ use stdx::thin_vec::thin_vec_with_header_struct;
 use syntax::ast;
 
 pub use hir_expand::mod_path::{path, ModPath, PathKind};
+
+pub use lower::hir_segment_to_ast_segment;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportAlias {
@@ -230,7 +234,7 @@ impl Path {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PathSegment<'a> {
     pub name: &'a Name,
     pub args_and_bindings: Option<&'a GenericArgs>,
@@ -272,6 +276,12 @@ impl<'a> PathSegments<'a> {
         PathSegments {
             segments: self.segments.get(..len).unwrap_or(self.segments),
             generic_args: self.generic_args.map(|it| it.get(..len).unwrap_or(it)),
+        }
+    }
+    pub fn strip_last(&self) -> PathSegments<'a> {
+        PathSegments {
+            segments: self.segments.split_last().map_or(&[], |it| it.1),
+            generic_args: self.generic_args.map(|it| it.split_last().map_or(&[][..], |it| it.1)),
         }
     }
     pub fn iter(&self) -> impl Iterator<Item = PathSegment<'a>> {

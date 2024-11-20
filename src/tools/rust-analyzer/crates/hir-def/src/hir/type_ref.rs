@@ -219,6 +219,8 @@ pub struct TypesSourceMap {
 }
 
 impl TypesSourceMap {
+    pub const EMPTY: Self = Self { types_map_back: ArenaMap::new() };
+
     pub fn type_syntax(&self, id: TypeRefId) -> Result<TypeSource, SyntheticSyntax> {
         self.types_map_back.get(id).cloned().ok_or(SyntheticSyntax)
     }

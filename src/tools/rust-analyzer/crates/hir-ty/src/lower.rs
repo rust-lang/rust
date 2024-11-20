@@ -102,6 +102,31 @@ impl ImplTraitLoweringState {
     }
 }
 
+type TypeSource = Either<TypeRefId, hir_def::type_ref::TypeSource>;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TyLoweringDiagnostic {
+    pub source: TypeSource,
+    pub kind: TyLoweringDiagnosticKind,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TyLoweringDiagnosticKind {
+    GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenericArgsProhibitedReason {
+    Module,
+    TyParam,
+    SelfTy,
+    PrimitiveTy,
+    /// When there is a generic enum, within the expression `Enum::Variant`,
+    /// either `Enum` or `Variant` are allowed to have generic arguments, but not both.
+    // FIXME: This is not used now but it should be.
+    EnumVariant,
+}
+
 #[derive(Debug)]
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
@@ -125,6 +150,7 @@ pub struct TyLoweringContext<'a> {
     expander: Option<Expander>,
     /// Tracks types with explicit `?Sized` bounds.
     pub(crate) unsized_types: FxHashSet<Ty>,
+    pub(crate) diagnostics: Vec<TyLoweringDiagnostic>,
 }
 
 impl<'a> TyLoweringContext<'a> {
@@ -159,6 +185,7 @@ impl<'a> TyLoweringContext<'a> {
             type_param_mode,
             expander: None,
             unsized_types: FxHashSet::default(),
+            diagnostics: Vec::new(),
         }
     }
 
@@ -197,6 +224,20 @@ impl<'a> TyLoweringContext<'a> {
     pub fn type_param_mode(&mut self, type_param_mode: ParamLoweringMode) -> &mut Self {
         self.type_param_mode = type_param_mode;
         self
+    }
+
+    pub fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
+        let source = match self.types_source_map {
+            Some(source_map) => {
+                let Ok(source) = source_map.type_syntax(type_ref) else {
+                    stdx::never!("error in synthetic type");
+                    return;
+                };
+                Either::Right(source)
+            }
+            None => Either::Left(type_ref),
+        };
+        self.diagnostics.push(TyLoweringDiagnostic { source, kind });
     }
 }
 
@@ -464,6 +505,7 @@ impl<'a> TyLoweringContext<'a> {
                                 impl_trait_mode: mem::take(&mut self.impl_trait_mode),
                                 expander: self.expander.take(),
                                 unsized_types: mem::take(&mut self.unsized_types),
+                                diagnostics: mem::take(&mut self.diagnostics),
                             };
 
                             let ty = inner_ctx.lower_ty(type_ref);
@@ -471,6 +513,7 @@ impl<'a> TyLoweringContext<'a> {
                             self.impl_trait_mode = inner_ctx.impl_trait_mode;
                             self.expander = inner_ctx.expander;
                             self.unsized_types = inner_ctx.unsized_types;
+                            self.diagnostics = inner_ctx.diagnostics;
 
                             self.expander.as_mut().unwrap().exit(mark);
                             Some(ty)
@@ -542,6 +585,10 @@ impl<'a> TyLoweringContext<'a> {
         resolved_segment: PathSegment<'_>,
         remaining_segments: PathSegments<'_>,
         infer_args: bool,
+        on_prohibited_generics_for_resolved_segment: &mut dyn FnMut(
+            &mut Self,
+            GenericArgsProhibitedReason,
+        ),
     ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
@@ -608,28 +655,44 @@ impl<'a> TyLoweringContext<'a> {
                 // FIXME(trait_alias): Implement trait alias.
                 return (TyKind::Error.intern(Interner), None);
             }
-            TypeNs::GenericParam(param_id) => match self.type_param_mode {
-                ParamLoweringMode::Placeholder => {
-                    TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
+            TypeNs::GenericParam(param_id) => {
+                if resolved_segment.args_and_bindings.is_some() {
+                    on_prohibited_generics_for_resolved_segment(
+                        self,
+                        GenericArgsProhibitedReason::TyParam,
+                    );
                 }
-                ParamLoweringMode::Variable => {
-                    let idx = match self
-                        .generics()
-                        .expect("generics in scope")
-                        .type_or_const_param_idx(param_id.into())
-                    {
-                        None => {
-                            never!("no matching generics");
-                            return (TyKind::Error.intern(Interner), None);
-                        }
-                        Some(idx) => idx,
-                    };
 
-                    TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
+                match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
+                    }
+                    ParamLoweringMode::Variable => {
+                        let idx = match self
+                            .generics()
+                            .expect("generics in scope")
+                            .type_or_const_param_idx(param_id.into())
+                        {
+                            None => {
+                                never!("no matching generics");
+                                return (TyKind::Error.intern(Interner), None);
+                            }
+                            Some(idx) => idx,
+                        };
+
+                        TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
+                    }
                 }
+                .intern(Interner)
             }
-            .intern(Interner),
             TypeNs::SelfType(impl_id) => {
+                if resolved_segment.args_and_bindings.is_some() {
+                    on_prohibited_generics_for_resolved_segment(
+                        self,
+                        GenericArgsProhibitedReason::SelfTy,
+                    );
+                }
+
                 let generics = self.generics().expect("impl should have generic param scope");
 
                 match self.type_param_mode {
@@ -655,6 +718,13 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             TypeNs::AdtSelfType(adt) => {
+                if resolved_segment.args_and_bindings.is_some() {
+                    on_prohibited_generics_for_resolved_segment(
+                        self,
+                        GenericArgsProhibitedReason::SelfTy,
+                    );
+                }
+
                 let generics = generics(self.db.upcast(), adt.into());
                 let substs = match self.type_param_mode {
                     ParamLoweringMode::Placeholder => generics.placeholder_subst(self.db),
@@ -667,6 +737,12 @@ impl<'a> TyLoweringContext<'a> {
 
             TypeNs::AdtId(it) => self.lower_path_inner(resolved_segment, it.into(), infer_args),
             TypeNs::BuiltinType(it) => {
+                if resolved_segment.args_and_bindings.is_some() {
+                    on_prohibited_generics_for_resolved_segment(
+                        self,
+                        GenericArgsProhibitedReason::PrimitiveTy,
+                    );
+                }
                 self.lower_path_inner(resolved_segment, it.into(), infer_args)
             }
             TypeNs::TypeAliasId(it) => {
@@ -698,14 +774,39 @@ impl<'a> TyLoweringContext<'a> {
             return (ty, None);
         }
 
-        let (resolved_segment, remaining_segments) = match remaining_index {
-            None => (
-                path.segments().last().expect("resolved path has at least one element"),
-                PathSegments::EMPTY,
-            ),
-            Some(i) => (path.segments().get(i - 1).unwrap(), path.segments().skip(i)),
-        };
-        self.lower_partly_resolved_path(resolution, resolved_segment, remaining_segments, false)
+        let (module_segments, resolved_segment_idx, resolved_segment, remaining_segments) =
+            match remaining_index {
+                None => (
+                    path.segments().strip_last(),
+                    path.segments().len() - 1,
+                    path.segments().last().expect("resolved path has at least one element"),
+                    PathSegments::EMPTY,
+                ),
+                Some(i) => (
+                    path.segments().take(i - 1),
+                    i - 1,
+                    path.segments().get(i - 1).unwrap(),
+                    path.segments().skip(i),
+                ),
+            };
+
+        self.prohibit_generics(path_id, 0, module_segments, GenericArgsProhibitedReason::Module);
+
+        self.lower_partly_resolved_path(
+            resolution,
+            resolved_segment,
+            remaining_segments,
+            false,
+            &mut |this, reason| {
+                this.push_diagnostic(
+                    path_id.type_ref(),
+                    TyLoweringDiagnosticKind::GenericArgsProhibited {
+                        segment: resolved_segment_idx as u32,
+                        reason,
+                    },
+                )
+            },
+        )
     }
 
     fn select_associated_type(&mut self, res: Option<TypeNs>, segment: PathSegment<'_>) -> Ty {
@@ -742,12 +843,8 @@ impl<'a> TyLoweringContext<'a> {
                 // generic params. It's inefficient to splice the `Substitution`s, so we may want
                 // that method to optionally take parent `Substitution` as we already know them at
                 // this point (`t.substitution`).
-                let substs = self.substs_from_path_segment(
-                    segment.clone(),
-                    Some(associated_ty.into()),
-                    false,
-                    None,
-                );
+                let substs =
+                    self.substs_from_path_segment(segment, Some(associated_ty.into()), false, None);
 
                 let len_self =
                     crate::generics::generics(self.db.upcast(), associated_ty.into()).len_self();
@@ -999,6 +1096,23 @@ impl<'a> TyLoweringContext<'a> {
         TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
+    fn prohibit_generics(
+        &mut self,
+        path_id: PathId,
+        idx: u32,
+        segments: PathSegments<'_>,
+        reason: GenericArgsProhibitedReason,
+    ) {
+        segments.iter().zip(idx..).for_each(|(segment, idx)| {
+            if segment.args_and_bindings.is_some() {
+                self.push_diagnostic(
+                    path_id.type_ref(),
+                    TyLoweringDiagnosticKind::GenericArgsProhibited { segment: idx, reason },
+                );
+            }
+        });
+    }
+
     fn lower_trait_ref_from_path(
         &mut self,
         path_id: PathId,
@@ -1010,6 +1124,13 @@ impl<'a> TyLoweringContext<'a> {
             TypeNs::TraitId(tr) => tr,
             _ => return None,
         };
+        // Do this after we verify it's indeed a trait to not confuse the user if they're not modules.
+        self.prohibit_generics(
+            path_id,
+            0,
+            path.segments().strip_last(),
+            GenericArgsProhibitedReason::Module,
+        );
         let segment = path.segments().last().expect("path should have at least one segment");
         Some(self.lower_trait_ref_from_resolved_path(resolved, segment, explicit_self_ty))
     }
@@ -1233,7 +1354,9 @@ impl<'a> TyLoweringContext<'a> {
                                     }
                                     _ => unreachable!(),
                                 }
-                                ext.lower_ty(type_ref)
+                                let ty = ext.lower_ty(type_ref);
+                                self.diagnostics.extend(ext.diagnostics);
+                                ty
                             } else {
                                 self.lower_ty(type_ref)
                             };

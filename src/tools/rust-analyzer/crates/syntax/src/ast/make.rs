@@ -402,7 +402,7 @@ pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
 
 // FIXME: should not be pub
 pub fn path_from_text(text: &str) -> ast::Path {
-    ast_from_text(&format!("fn main() {{ let test = {text}; }}"))
+    ast_from_text(&format!("fn main() {{ let test: {text}; }}"))
 }
 
 pub fn use_tree_glob() -> ast::UseTree {
