@@ -1,3 +1,5 @@
+//@ reference: attributes.diagnostic.on_unimplemented.intro
+//@ reference: attributes.diagnostic.on_unimplemented.keys
 #[diagnostic::on_unimplemented(message = "my message", label = "my label", note = "my note")]
 pub trait ProviderLt {}
 

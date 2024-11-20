@@ -38,7 +38,7 @@ pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &DenseLocationMap,
-    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -113,7 +113,7 @@ struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'a mut ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
+    flow_inits: ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -608,7 +608,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         value.visit_with(&mut for_liveness::FreeRegionsVisitor {
             tcx: typeck.tcx(),
-            param_env: typeck.param_env,
+            param_env: typeck.infcx.param_env,
             op: |r| {
                 let live_region_vid = typeck.universal_regions.to_region_vid(r);
 
@@ -621,6 +621,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck
+            .infcx
             .param_env
             .and(DropckOutlives { dropped_ty })
             .fully_perform(typeck.infcx, DUMMY_SP)

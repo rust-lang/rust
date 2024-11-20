@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NotFoo: !Foo` is not satisfied
-  --> $DIR/on-unimplemented.rs:7:15
+  --> $DIR/on-unimplemented.rs:9:15
    |
 LL | fn hello() -> impl !Foo {
    |               ^^^^^^^^^ the trait bound `NotFoo: !Foo` is not satisfied

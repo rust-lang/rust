@@ -258,10 +258,9 @@ impl PlaceholderIndices {
 /// Here, the variable `'0` would contain the free region `'a`,
 /// because (since it is returned) it must live for at least `'a`. But
 /// it would also contain various points from within the function.
-#[derive(Clone)]
 pub(crate) struct RegionValues<N: Idx> {
     elements: Rc<DenseLocationMap>,
-    placeholder_indices: Rc<PlaceholderIndices>,
+    placeholder_indices: PlaceholderIndices,
     points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
 
@@ -277,7 +276,7 @@ impl<N: Idx> RegionValues<N> {
     pub(crate) fn new(
         elements: Rc<DenseLocationMap>,
         num_universal_regions: usize,
-        placeholder_indices: Rc<PlaceholderIndices>,
+        placeholder_indices: PlaceholderIndices,
     ) -> Self {
         let num_points = elements.num_points();
         let num_placeholders = placeholder_indices.len();

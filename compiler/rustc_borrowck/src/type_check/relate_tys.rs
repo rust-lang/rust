@@ -522,7 +522,7 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.type_checker.param_env
+        self.type_checker.infcx.param_env
     }
 
     fn register_predicates(
