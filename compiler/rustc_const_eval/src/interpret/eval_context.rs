@@ -113,7 +113,7 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
     }
 }
 
-/// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
+/// Test if it is valid for a MIR assignment to store a `src`-typed value in a `dest`-typed place.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
