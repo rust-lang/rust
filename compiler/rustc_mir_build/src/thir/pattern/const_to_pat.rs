@@ -122,7 +122,16 @@ impl<'tcx> ConstToPat<'tcx> {
             Ok(Ok(c)) => c,
             Err(ErrorHandled::Reported(_, _)) => {
                 // Let's tell the use where this failing const occurs.
-                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                let mut err =
+                    self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                // We've emitted an error on the original const, it would be redundant to complain
+                // on its use as well.
+                if let ty::ConstKind::Unevaluated(uv) = self.c.kind()
+                    && let hir::def::DefKind::Const | hir::def::DefKind::AssocConst =
+                        self.tcx.def_kind(uv.def)
+                {
+                    err.downgrade_to_delayed_bug();
+                }
                 return self.mk_err(err, ty);
             }
             Err(ErrorHandled::TooGeneric(_)) => {

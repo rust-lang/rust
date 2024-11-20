@@ -37,16 +37,14 @@ const U8_MUT3: &u8 = {
 
 pub fn test(x: &[u8; 1]) -> bool {
     match x {
-        SLICE_MUT => true,
-        //~^ ERROR could not evaluate constant pattern
+        SLICE_MUT => true, // ok, `const` error already emitted
         &[1..] => false,
     }
 }
 
 pub fn test2(x: &u8) -> bool {
     match x {
-        U8_MUT => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }
@@ -55,15 +53,13 @@ pub fn test2(x: &u8) -> bool {
 // the errors above otherwise stop compilation too early?
 pub fn test3(x: &u8) -> bool {
     match x {
-        U8_MUT2 => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT2 => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }
 pub fn test4(x: &u8) -> bool {
     match x {
-        U8_MUT3 => true,
-        //~^ ERROR could not evaluate constant pattern
+        U8_MUT3 => true, // ok, `const` error already emitted
         &(1..) => false,
     }
 }

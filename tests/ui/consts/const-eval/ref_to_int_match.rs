@@ -4,7 +4,7 @@ fn main() {
     let n: Int = 40;
     match n {
         0..=10 => {},
-        10..=BAR => {}, //~ ERROR could not evaluate constant pattern
+        10..=BAR => {}, // ok, `const` error already emitted
         _ => {},
     }
 }
