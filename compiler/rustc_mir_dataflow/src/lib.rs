@@ -39,7 +39,7 @@ pub mod value_analysis;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-pub struct MoveDataParamEnv<'tcx> {
+pub struct MoveDataTypingEnv<'tcx> {
     pub move_data: MoveData<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
 }
