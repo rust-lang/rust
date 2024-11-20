@@ -12,13 +12,13 @@ use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Variance,
+    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_type_ir::Upcast;
 
-use crate::util::{self, is_within_packed};
+use crate::util::is_within_packed;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -574,15 +574,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        // After borrowck subtyping should be fully explicit via
-        // `Subtype` projections.
-        let variance = if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-            Variance::Invariant
-        } else {
-            Variance::Covariant
-        };
-
-        crate::util::relate_types(self.tcx, self.typing_env, variance, src, dest)
+        crate::util::sub_types(self.tcx, self.typing_env, src, dest)
     }
 
     /// Check that the given predicate definitely holds in the param-env of this MIR body.
@@ -671,7 +663,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let fail_out_of_bounds = |this: &mut Self, location| {
                     this.fail(location, format!("Out of bounds field {f:?} for {parent_ty:?}"));
                 };
-                let check_equal = |this: &mut Self, location, f_ty| {
+                let check_assign_valid = |this: &mut Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
                             location,
@@ -682,20 +674,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 };
 
-                let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
-                    }
-                    kind => kind,
-                };
-
-                match kind {
+                match parent_ty.ty.kind() {
                     ty::Tuple(fields) => {
                         let Some(f_ty) = fields.get(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, *f_ty);
+                        check_assign_valid(self, location, *f_ty);
                     }
                     ty::Adt(adt_def, args) => {
                         // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
@@ -714,7 +699,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, args));
+                        check_assign_valid(self, location, field.ty(self.tcx, args));
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
@@ -722,7 +707,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, f_ty);
+                        check_assign_valid(self, location, f_ty);
                     }
                     ty::CoroutineClosure(_, args) => {
                         let args = args.as_coroutine_closure();
@@ -730,7 +715,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, f_ty);
+                        check_assign_valid(self, location, f_ty);
                     }
                     &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
@@ -785,27 +770,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             f_ty
                         };
 
-                        check_equal(self, location, f_ty);
+                        check_assign_valid(self, location, f_ty);
                     }
                     _ => {
                         self.fail(location, format!("{:?} does not have fields", parent_ty.ty));
                     }
-                }
-            }
-            ProjectionElem::Subtype(ty) => {
-                if !util::sub_types(
-                    self.tcx,
-                    self.typing_env,
-                    ty,
-                    place_ref.ty(&self.body.local_decls, self.tcx).ty,
-                ) {
-                    self.fail(
-                        location,
-                        format!(
-                            "Failed subtyping {ty:#?} and {:#?}",
-                            place_ref.ty(&self.body.local_decls, self.tcx).ty
-                        ),
-                    )
                 }
             }
             _ => {}

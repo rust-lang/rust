@@ -102,8 +102,8 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 variant = Some(*idx);
                 continue;
             }
-            // These do not affect anything, they just make sure we know the right type.
-            ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
+            // This does not affect anything, it just makes sure we know the right type.
+            ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
@@ -712,7 +712,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::OpaqueCast(..)
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. } => (),
                 }

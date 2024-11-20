@@ -68,7 +68,7 @@ impl<'tcx> PlaceTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, FieldIdx, T) -> Ty<'tcx>,
-        mut handle_opaque_cast_and_subtype: impl FnMut(&Self, T) -> Ty<'tcx>,
+        mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
@@ -105,12 +105,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
             ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
-            ProjectionElem::OpaqueCast(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
-            }
-            ProjectionElem::Subtype(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
-            }
+            ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer

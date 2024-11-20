@@ -708,16 +708,6 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    /// Used for `ProjectionElem::Subtype`, `ty` has to be monomorphized before
-    /// passed on.
-    pub(crate) fn place_transmute_type(
-        self,
-        fx: &mut FunctionCx<'_, '_, 'tcx>,
-        ty: Ty<'tcx>,
-    ) -> CPlace<'tcx> {
-        CPlace { inner: self.inner, layout: fx.layout_of(ty) }
-    }
-
     pub(crate) fn place_field(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,

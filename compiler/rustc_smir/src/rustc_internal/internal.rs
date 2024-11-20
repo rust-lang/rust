@@ -547,9 +547,6 @@ impl RustcInternal for ProjectionElem {
             ProjectionElem::OpaqueCast(ty) => {
                 rustc_middle::mir::PlaceElem::OpaqueCast(ty.internal(tables, tcx))
             }
-            ProjectionElem::Subtype(ty) => {
-                rustc_middle::mir::PlaceElem::Subtype(ty.internal(tables, tcx))
-            }
         }
     }
 }

@@ -471,7 +471,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         ProjectionElem::Subslice { from, to, from_end }
                     }
                     ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-                    ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
@@ -704,7 +703,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
         };
 
         Some(self.insert(Value::Projection(value, proj)))
@@ -922,7 +920,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
             ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
-            ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
         })
     }
 

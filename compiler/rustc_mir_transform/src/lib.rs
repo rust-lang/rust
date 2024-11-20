@@ -112,7 +112,6 @@ declare_passes! {
     mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
     mod add_retag : AddRetag;
-    mod add_subtyping_projections : Subtyper;
     mod check_alignment : CheckAlignment;
     mod check_const_item_mutation : CheckConstItemMutation;
     mod check_packed_ref : CheckPackedRef;
@@ -603,8 +602,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &add_call_guards::CriticalCallEdges,
         // Must be done before drop elaboration because we need to drop opaque types, too.
         &reveal_all::RevealAll,
-        // Calling this after reveal_all ensures that we don't deal with opaque types.
-        &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer
         // necessary as well as forcing any call in a non-unwinding

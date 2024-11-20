@@ -287,9 +287,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         // Validate topmost projection, then recurse.
         match elem {
             // Recurse directly.
-            ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subtype(_)
-            | ProjectionElem::Subslice { .. } => {}
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
 
             // Never recurse.
             ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {

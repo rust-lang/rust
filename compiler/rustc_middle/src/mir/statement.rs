@@ -59,7 +59,6 @@ impl<V, T> ProjectionElem<V, T> {
             Self::Field(_, _)
             | Self::Index(_)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _) => false,
@@ -73,7 +72,6 @@ impl<V, T> ProjectionElem<V, T> {
             Self::Deref | Self::Index(_) => false,
             Self::Field(_, _)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _) => true,
@@ -99,7 +97,6 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Field(_, _) => true,
             Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
-            | Self::Subtype(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
         }

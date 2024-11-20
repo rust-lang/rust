@@ -20,9 +20,8 @@ pub fn sub_types<'tcx>(
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
 ///
-/// When validating assignments, the variance should be `Covariant`. When checking
-/// during `MirPhase` >= `MirPhase::Runtime(RuntimePhase::Initial)` variance should be `Invariant`
-/// because we want to check for type equality.
+/// When validating assignments, the variance should be `Covariant` and
+/// `sub_types` should be used instead.
 pub fn relate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,

@@ -299,9 +299,7 @@ pub trait MirVisitor {
             | ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
             ProjectionElem::Field(_idx, ty) => self.visit_ty(ty, location),
             ProjectionElem::Index(local) => self.visit_local(local, ptx, location),
-            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => {
-                self.visit_ty(ty, location)
-            }
+            ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
         }
     }
 

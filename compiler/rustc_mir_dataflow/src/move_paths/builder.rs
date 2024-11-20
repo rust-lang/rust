@@ -226,11 +226,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 },
                 // `OpaqueCast`:Only transmutes the type, so no moves there.
                 // `Downcast`  :Only changes information about a `Place` without moving.
-                // `Subtype`   :Only transmutes the type, so moves.
                 // So it's safe to skip these.
-                ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Subtype(_)
-                | ProjectionElem::Downcast(_, _) => (),
+                ProjectionElem::OpaqueCast(_) | ProjectionElem::Downcast(_, _) => (),
             }
             let elem_ty = PlaceTy::from_ty(place_ty).projection_ty(tcx, elem).ty;
             if !(self.filter)(elem_ty) {

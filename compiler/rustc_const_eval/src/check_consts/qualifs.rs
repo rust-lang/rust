@@ -290,7 +290,6 @@ where
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Field(_, _)
             | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }

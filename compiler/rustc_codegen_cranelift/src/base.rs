@@ -981,7 +981,6 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::Subtype(ty) => cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty)),
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
