@@ -186,7 +186,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::AscribeUserType(..) => {}
         }
     }
 

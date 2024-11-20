@@ -20,9 +20,12 @@ Thir {
                 block: b0,
             },
             ty: (),
-            temp_lifetime: Some(
-                Node(2),
-            ),
+            temp_lifetime: TempLifetime {
+                temp_lifetime: Some(
+                    Node(2),
+                ),
+                backwards_incompatible: None,
+            },
             span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
         },
         Expr {
@@ -34,9 +37,12 @@ Thir {
                 value: e0,
             },
             ty: (),
-            temp_lifetime: Some(
-                Node(2),
-            ),
+            temp_lifetime: TempLifetime {
+                temp_lifetime: Some(
+                    Node(2),
+                ),
+                backwards_incompatible: None,
+            },
             span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
         },
     ],

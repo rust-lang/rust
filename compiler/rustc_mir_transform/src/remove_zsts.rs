@@ -125,6 +125,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Nop
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::ConstEvalCounter => None,
         };
         if let Some(place_for_ty) = place_for_ty

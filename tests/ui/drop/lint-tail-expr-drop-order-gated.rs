@@ -1,9 +1,10 @@
-// This test is to demonstrate that the lint is gated behind Edition and
-// is triggered only for Edition 2021 and before.
+// This test ensures that `tail_expr_drop_order` does not activate in case Edition 2024 is used
+// because this is a migration lint.
+// Only `cargo fix --edition 2024` shall activate this lint.
 
 //@ check-pass
-//@ edition: 2024
 //@ compile-flags: -Z unstable-options
+//@ edition: 2024
 
 #![deny(tail_expr_drop_order)]
 

@@ -172,8 +172,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 };
 
-                let temp =
-                    unpack!(block = this.as_temp(block, statement_scope, expr_id, Mutability::Not));
+                let temp = unpack!(
+                    block = this.as_temp(
+                        block,
+                        TempLifetime {
+                            temp_lifetime: statement_scope,
+                            backwards_incompatible: None
+                        },
+                        expr_id,
+                        Mutability::Not
+                    )
+                );
 
                 if let Some(span) = adjusted_span {
                     this.local_decls[temp].source_info.span = span;

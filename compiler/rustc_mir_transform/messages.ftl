@@ -25,6 +25,31 @@ mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspen
     .help = consider using a block (`{"{ ... }"}`) to shrink the value's scope, ending before the suspend point
 mir_transform_operation_will_panic = this operation will panic at runtime
 
+mir_transform_tail_expr_drop_order = relative drop order changing in Rust 2024
+    .temporaries = in Rust 2024, this temporary value will be dropped first
+    .observers = in Rust 2024, this local variable or temporary value will be dropped second
+    .note_dtors =
+        dropping the temporary value runs this custom `Drop` impl, which we could not prove to be side-effect free
+    .note_observer_dtors =
+        dropping the local runs this custom `Drop` impl, which we could not prove to be side-effect free
+    .drop_location =
+        now the temporary value is dropped here, before the local variables in the block or statement
+    .note_epilogue = most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+    .label_local_epilogue = {$is_dropped_first_edition_2024 ->
+        [true] up until Edition 2021 `{$name}` is dropped last but will be dropped earlier in Edition 2024
+        *[false] `{$name}` will be dropped later as of Edition 2024
+    }
+
+mir_transform_tail_expr_dtor = {$dtor_kind ->
+    [dyn] `{$name}` may invoke a custom destructor because it contains a trait object
+    *[concrete] `{$name}` invokes this custom destructor
+    }
+
+mir_transform_tail_expr_local = {$is_generated_name ->
+        [true] this value will be stored in a temporary; let us call it `{$name}`
+        *[false] `{$name}` calls a custom destructor
+    }
+
 mir_transform_unaligned_packed_ref = reference to packed field is unaligned
     .note = packed structs are only aligned by one byte, and many modern architectures penalize unaligned field accesses
     .note_ub = creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)

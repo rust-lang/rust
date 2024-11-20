@@ -583,6 +583,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)
                         | StatementKind::ConstEvalCounter
+                        | StatementKind::BackwardIncompatibleDropHint { .. }
                         | StatementKind::Nop => {}
                     }
                 }
