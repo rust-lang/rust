@@ -352,15 +352,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let mut autoderef = self.fcx.autoderef(self.span, self_ty);
-
-        // We don't need to gate this behind arbitrary self types
-        // per se, but it does make things a bit more gated.
-        if self.tcx.features().arbitrary_self_types()
-            || self.tcx.features().arbitrary_self_types_pointers()
-        {
-            autoderef = autoderef.use_receiver_trait();
-        }
+        let autoderef = self.fcx.autoderef(self.span, self_ty).use_receiver_trait();
 
         autoderef
             .include_raw_pointers()
@@ -540,24 +532,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.register_predicates(obligations);
             }
             Err(terr) => {
-                if self.tcx.features().arbitrary_self_types() {
-                    self.err_ctxt()
-                        .report_mismatched_types(
-                            &cause,
-                            self.param_env,
-                            method_self_ty,
-                            self_ty,
-                            terr,
-                        )
-                        .emit();
-                } else {
-                    // This has/will have errored in wfcheck, which we cannot depend on from here, as typeck on functions
-                    // may run before wfcheck if the function is used in const eval.
-                    self.dcx().span_delayed_bug(
-                        cause.span,
-                        format!("{self_ty} was a subtype of {method_self_ty} but now is not?"),
-                    );
-                }
+                self.err_ctxt()
+                    .report_mismatched_types(&cause, self.param_env, method_self_ty, self_ty, terr)
+                    .emit();
             }
         }
     }
