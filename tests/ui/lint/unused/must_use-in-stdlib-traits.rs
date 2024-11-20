@@ -1,5 +1,4 @@
 #![deny(unused_must_use)]
-#![feature(arbitrary_self_types)]
 
 use std::iter::Iterator;
 use std::future::Future;

@@ -47,13 +47,6 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
-#[lang = "legacy_receiver"]
-pub trait LegacyReceiver {}
-
-impl<T: ?Sized> LegacyReceiver for &T {}
-impl<T: ?Sized> LegacyReceiver for &mut T {}
-impl<T: ?Sized> LegacyReceiver for Box<T> {}
-
 #[lang = "copy"]
 pub unsafe trait Copy {}
 

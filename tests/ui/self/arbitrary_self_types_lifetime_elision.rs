@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(arbitrary_self_types)]
-
 #[derive(Clone)]
 struct SmartPtr<'a, T: ?Sized>(&'a T);
 

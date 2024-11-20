@@ -1,6 +1,5 @@
 //@ run-pass
 
-#![feature(arbitrary_self_types)]
 #![allow(dead_code)]
 
 // With arbitrary self types v2, we show an error if there are

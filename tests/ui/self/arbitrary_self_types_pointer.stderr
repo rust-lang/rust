@@ -1,5 +1,5 @@
 error[E0658]: `*const A` cannot be used as the type of `self` without the `arbitrary_self_types_pointers` feature
-  --> $DIR/arbitrary_self_types_pointer.rs:6:16
+  --> $DIR/arbitrary_self_types_pointer.rs:4:16
    |
 LL |     fn m(self: *const Self) {}
    |                ^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     fn m(self: *const Self) {}
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error[E0658]: `*const Self` cannot be used as the type of `self` without the `arbitrary_self_types_pointers` feature
-  --> $DIR/arbitrary_self_types_pointer.rs:11:17
+  --> $DIR/arbitrary_self_types_pointer.rs:9:17
    |
 LL |     fn bm(self: *const Self) {}
    |                 ^^^^^^^^^^^

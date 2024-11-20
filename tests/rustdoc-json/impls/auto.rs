@@ -4,9 +4,6 @@
 #[lang = "sized"]
 trait Sized {}
 
-#[lang = "legacy_receiver"]
-pub trait LegacyReceiver {}
-
 pub auto trait Bar {}
 
 /// has span

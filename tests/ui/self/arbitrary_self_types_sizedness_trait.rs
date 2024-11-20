@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 struct SmartPtr<'a, T: ?Sized>(&'a T);
 
 impl<T> std::ops::Receiver for SmartPtr<'_, T> {

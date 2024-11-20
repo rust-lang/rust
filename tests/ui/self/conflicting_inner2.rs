@@ -1,6 +1,4 @@
 //@ run-pass
-//@ revisions: default feature
-#![cfg_attr(feature, feature(arbitrary_self_types))]
 
 use std::pin::Pin;
 use std::ops::DerefMut;

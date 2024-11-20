@@ -1,0 +1,10 @@
+warning: the feature `arbitrary_self_types` has been stable since 1.84.0-dev and no longer requires an attribute to enable
+  --> $DIR/conflicting_inner2.rs:3:30
+   |
+LL | #![cfg_attr(feature, feature(arbitrary_self_types))]
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
+
+warning: 1 warning emitted
+

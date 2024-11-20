@@ -8,7 +8,7 @@
 //@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(arbitrary_self_types, no_core, lang_items)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
 #[lang = "sized"]
@@ -16,8 +16,6 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 impl<T: ?Sized> Copy for &T {}
-#[lang = "legacy_receiver"]
-trait LegacyReceiver {}
 #[lang = "dispatch_from_dyn"]
 trait DispatchFromDyn<T> {}
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}

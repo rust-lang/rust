@@ -1,5 +1,4 @@
 #![feature(arbitrary_self_types_pointers)]
-#![feature(arbitrary_self_types)]
 
 pub struct A;
 

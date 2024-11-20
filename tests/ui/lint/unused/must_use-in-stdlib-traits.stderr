@@ -1,5 +1,5 @@
 error: unused implementer of `Iterator` that must be used
-  --> $DIR/must_use-in-stdlib-traits.rs:42:4
+  --> $DIR/must_use-in-stdlib-traits.rs:41:4
    |
 LL |    iterator();
    |    ^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
 error: unused implementer of `Future` that must be used
-  --> $DIR/must_use-in-stdlib-traits.rs:43:4
+  --> $DIR/must_use-in-stdlib-traits.rs:42:4
    |
 LL |    future();
    |    ^^^^^^^^
@@ -20,7 +20,7 @@ LL |    future();
    = note: futures do nothing unless you `.await` or poll them
 
 error: unused implementer of `FnOnce` that must be used
-  --> $DIR/must_use-in-stdlib-traits.rs:44:4
+  --> $DIR/must_use-in-stdlib-traits.rs:43:4
    |
 LL |    square_fn_once();
    |    ^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |    square_fn_once();
    = note: closures are lazy and do nothing unless called
 
 error: unused implementer of `FnMut` that must be used
-  --> $DIR/must_use-in-stdlib-traits.rs:45:4
+  --> $DIR/must_use-in-stdlib-traits.rs:44:4
    |
 LL |    square_fn_mut();
    |    ^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL |    square_fn_mut();
    = note: closures are lazy and do nothing unless called
 
 error: unused implementer of `Fn` that must be used
-  --> $DIR/must_use-in-stdlib-traits.rs:46:4
+  --> $DIR/must_use-in-stdlib-traits.rs:45:4
    |
 LL |    square_fn();
    |    ^^^^^^^^^^^

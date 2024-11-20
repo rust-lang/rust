@@ -31,11 +31,6 @@ macro_rules! impl_marker_trait {
 #[lang = "sized"]
 pub trait Sized {}
 
-#[lang = "legacy_receiver"]
-pub trait LegacyReceiver {}
-impl<T: ?Sized> LegacyReceiver for &T {}
-impl<T: ?Sized> LegacyReceiver for &mut T {}
-
 #[lang = "copy"]
 pub trait Copy: Sized {}
 

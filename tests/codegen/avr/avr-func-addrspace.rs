@@ -9,7 +9,7 @@
 // It also validates that functions can be called through function pointers
 // through traits.
 
-#![feature(no_core, lang_items, intrinsics, unboxed_closures, arbitrary_self_types)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures)]
 #![crate_type = "lib"]
 #![no_core]
 
@@ -18,8 +18,6 @@ pub trait Sized {}
 #[lang = "copy"]
 pub trait Copy {}
 impl<T: ?Sized> Copy for *const T {}
-#[lang = "legacy_receiver"]
-pub trait LegacyReceiver {}
 #[lang = "tuple_trait"]
 pub trait Tuple {}
 

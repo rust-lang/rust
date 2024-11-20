@@ -4889,8 +4889,6 @@ declare_lint! {
     /// UB in safe code afterwards. For example:
     ///
     /// ```ignore (causes a warning)
-    /// #![feature(arbitrary_self_types)]
-    ///
     /// trait Trait {
     ///     fn f(self: *const Self)
     ///     where

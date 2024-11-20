@@ -8,8 +8,8 @@ use std::ops::Deref;
 struct Foo(u32);
 impl Foo {
     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
-        //~^ ERROR invalid generic `self` parameter type
-        //~| ERROR destructor of `R` cannot be evaluated at compile-time
+        //~^ ERROR destructor of `R` cannot be evaluated at compile-time
+        //~| ERROR invalid generic
         self.0
         //~^ ERROR cannot call conditionally-const method `<R as Deref>::deref` in constant function
     }
@@ -18,6 +18,7 @@ impl Foo {
 const FOO: () = {
     let foo = Foo(1);
     foo.get::<&Foo>();
+    //~^ ERROR mismatched types
 };
 
 const BAR: [(); {

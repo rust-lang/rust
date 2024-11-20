@@ -343,7 +343,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
 /// Indicates that a struct can be used as a method receiver.
 /// That is, a type can use this type as a type of `self`, like this:
-/// ```compile_fail
+/// ```
 /// # // This is currently compile_fail because the compiler-side parts
 /// # // of arbitrary_self_types are not implemented
 /// use std::ops::Receiver;

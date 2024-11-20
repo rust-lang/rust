@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `SmartPtr<'_, Self>`
-  --> $DIR/arbitrary_self_types_sizedness_trait.rs:12:16
+  --> $DIR/arbitrary_self_types_sizedness_trait.rs:10:16
    |
 LL |     fn m(self: SmartPtr<Self>) {}
    |                ^^^^^^^^^^^^^^
