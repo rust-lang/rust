@@ -248,32 +248,6 @@ where
         )
     }
 
-    fn consider_builtin_pointer_like_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution);
-        }
-
-        let cx = ecx.cx();
-        // But if there are inference variables, we have to wait until it's resolved.
-        if (goal.param_env, goal.predicate.self_ty()).has_non_region_infer() {
-            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-        }
-
-        if cx.layout_is_pointer_like(
-            ecx.typing_mode(goal.param_env),
-            goal.param_env,
-            goal.predicate.self_ty(),
-        ) {
-            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-        } else {
-            Err(NoSolution)
-        }
-    }
-
     fn consider_builtin_fn_ptr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

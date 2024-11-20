@@ -159,13 +159,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    /// A type is `PointerLike` if we can compute its layout, and that layout
-    /// matches the layout of `usize`.
-    fn consider_builtin_pointer_like_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
     /// A type is a `FnPtr` if it is of `FnPtr` type.
     fn consider_builtin_fn_ptr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
@@ -448,9 +441,6 @@ where
                         goal,
                         ty::ClosureKind::FnOnce,
                     )
-                }
-                Some(TraitSolverLangItem::PointerLike) => {
-                    G::consider_builtin_pointer_like_candidate(self, goal)
                 }
                 Some(TraitSolverLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)

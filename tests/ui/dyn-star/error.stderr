@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `{integer}: Foo` is not satisfied
+error[E0277]: the trait bound `usize: Foo` is not satisfied
   --> $DIR/error.rs:10:27
    |
 LL |     let dyn_i: dyn* Foo = i;
-   |                           ^ the trait `Foo` is not implemented for `{integer}`
+   |                           ^ the trait `Foo` is not implemented for `usize`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/error.rs:6:1

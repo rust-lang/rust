@@ -191,6 +191,8 @@ use core::error::{self, Error};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
+#[cfg(not(bootstrap))]
+use core::marker::PointerLike;
 use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
@@ -2131,3 +2133,7 @@ impl<E: Error> Error for Box<E> {
         Error::provide(&**self, request);
     }
 }
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+impl<T> PointerLike for Box<T> {}
