@@ -550,6 +550,9 @@ fn test_downgrade_observe() {
 }
 
 #[test]
+// FIXME: On macOS we use a provenance-incorrect implementation and Miri catches that issue.
+// See <https://github.com/rust-lang/rust/issues/121950> for details.
+#[cfg_attr(all(miri, target_os = "macos"), ignore)]
 fn test_downgrade_atomic() {
     const NEW_VALUE: i32 = -1;
 

@@ -535,14 +535,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         filter_fn: &impl Fn(Res) -> bool,
         ctxt: Option<SyntaxContext>,
     ) {
-        for (key, resolution) in self.resolutions(module).borrow().iter() {
-            if let Some(binding) = resolution.borrow().binding {
-                let res = binding.res();
-                if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
-                    names.push(TypoSuggestion::typo_from_ident(key.ident, res));
-                }
+        module.for_each_child(self, |_this, ident, _ns, binding| {
+            let res = binding.res();
+            if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == ident.span.ctxt()) {
+                names.push(TypoSuggestion::typo_from_ident(ident, res));
             }
-        }
+        });
     }
 
     /// Combines an error with provided span and emits it.

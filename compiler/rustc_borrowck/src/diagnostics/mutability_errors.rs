@@ -1242,7 +1242,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             .type_implements_trait_shallow(
                                 clone_trait,
                                 ty.peel_refs(),
-                                self.param_env,
+                                self.infcx.param_env,
                             )
                             .as_deref()
                         {
@@ -1279,7 +1279,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 let obligation = traits::Obligation::new(
                                     self.infcx.tcx,
                                     traits::ObligationCause::dummy(),
-                                    self.param_env,
+                                    self.infcx.param_env,
                                     trait_ref,
                                 );
                                 self.infcx.err_ctxt().suggest_derive(

@@ -1688,9 +1688,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         }
 
+        let normalized_ident = ident.normalize_to_macros_2_0();
         let mut outer_res = None;
         for rib in lifetime_rib_iter {
-            let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some((&outer, _)) = rib.bindings.get_key_value(&normalized_ident) {
                 outer_res = Some(outer);
                 break;

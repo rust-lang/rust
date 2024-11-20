@@ -698,7 +698,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dylib_lto, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
-    untracked!(hir_stats, true);
     untracked!(identify_regions, true);
     untracked!(incremental_info, true);
     untracked!(incremental_verify_ich, true);

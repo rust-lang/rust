@@ -60,7 +60,7 @@ impl<'tcx> UniverseInfo<'tcx> {
             UniverseInfo::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
                     &cause,
-                    mbcx.param_env,
+                    mbcx.infcx.param_env,
                     expected,
                     found,
                     TypeError::RegionsPlaceholderMismatch,
