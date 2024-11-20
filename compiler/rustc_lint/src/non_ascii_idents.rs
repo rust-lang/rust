@@ -205,7 +205,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     (IdentifierType::Not_NFKC, "Not_NFKC"),
                 ] {
                     let codepoints: Vec<_> =
-                        chars.extract_if(|(_, ty)| *ty == Some(id_ty)).collect();
+                        chars.extract_if(.., |(_, ty)| *ty == Some(id_ty)).collect();
                     if codepoints.is_empty() {
                         continue;
                     }
@@ -217,7 +217,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 }
 
                 let remaining = chars
-                    .extract_if(|(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
+                    .extract_if(.., |(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
                     .collect::<Vec<_>>();
                 if !remaining.is_empty() {
                     cx.emit_span_lint(UNCOMMON_CODEPOINTS, sp, IdentifierUncommonCodepoints {
