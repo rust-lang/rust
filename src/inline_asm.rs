@@ -238,7 +238,7 @@ pub(crate) fn codegen_naked_asm<'tcx>(
                     tcx,
                     span,
                     const_value,
-                    RevealAllLayoutCx(tcx).layout_of(cv.ty()),
+                    FullyMonomorphizedLayoutCx(tcx).layout_of(cv.ty()),
                 );
                 CInlineAsmOperand::Const { value }
             }
