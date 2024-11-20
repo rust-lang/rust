@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(derive_coerce_pointee, arbitrary_self_types)]
+#![feature(derive_coerce_pointee)]
 
 use std::marker::CoercePointee;
 

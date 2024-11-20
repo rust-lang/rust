@@ -1,5 +1,5 @@
 error[E0801]: invalid generic `self` parameter type: `R`
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:25:42
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:23:42
    |
 LL |     fn a<R: Receiver<Target=Self>>(self: R) -> u32 {
    |                                          ^
@@ -8,7 +8,7 @@ LL |     fn a<R: Receiver<Target=Self>>(self: R) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `R`
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:29:39
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:27:39
    |
 LL |     fn b<R: Deref<Target=Self>>(self: R) -> u32 {
    |                                       ^
@@ -17,7 +17,7 @@ LL |     fn b<R: Deref<Target=Self>>(self: R) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `impl Receiver<Target = Self>`
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:33:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:31:16
    |
 LL |     fn c(self: impl Receiver<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     fn c(self: impl Receiver<Target=Self>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `impl Deref<Target = Self>`
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:37:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:35:16
    |
 LL |     fn d(self: impl Deref<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,19 +35,19 @@ LL |     fn d(self: impl Deref<Target=Self>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0308]: mismatched types
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:51:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:49:16
    |
 LL |     assert_eq!(foo.a::<&Foo>(), 2);
    |                ^^^ expected `&Foo`, found `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:53:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:51:16
    |
 LL |     assert_eq!(foo.b::<&Foo>(), 1);
    |                ^^^ expected `&Foo`, found `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:60:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:58:16
    |
 LL |     assert_eq!(smart_ptr.a::<&Foo>(), 2);
    |                ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`
@@ -56,7 +56,7 @@ LL |     assert_eq!(smart_ptr.a::<&Foo>(), 2);
                  found struct `SmartPtr<'_, Foo, >`
 
 error[E0308]: mismatched types
-  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:62:16
+  --> $DIR/arbitrary-self-from-method-substs-with-receiver.rs:60:16
    |
 LL |     assert_eq!(smart_ptr.b::<&Foo>(), 1);
    |                ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`

@@ -1,17 +1,17 @@
 error[E0282]: type annotations needed
-  --> $DIR/call_method_unknown_referent.rs:20:31
+  --> $DIR/call_method_unknown_referent.rs:18:31
    |
 LL |     let _a: i32 = (ptr as &_).read();
    |                               ^^^^ cannot infer type
 
 error[E0282]: type annotations needed
-  --> $DIR/call_method_unknown_referent.rs:26:37
+  --> $DIR/call_method_unknown_referent.rs:24:37
    |
 LL |     let _b = (rc as std::rc::Rc<_>).read();
    |                                     ^^^^ cannot infer type
 
 error[E0599]: no method named `read` found for struct `SmartPtr` in the current scope
-  --> $DIR/call_method_unknown_referent.rs:46:35
+  --> $DIR/call_method_unknown_referent.rs:44:35
    |
 LL | struct SmartPtr<T>(T);
    | ------------------ method `read` not found for this struct
