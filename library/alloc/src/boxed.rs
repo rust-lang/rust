@@ -193,9 +193,11 @@ use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::marker::{PointerLike, Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
+#[cfg(bootstrap)]
+use core::ops::LegacyReceiver;
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
-    DerefPure, DispatchFromDyn, LegacyReceiver,
+    DerefPure, DispatchFromDyn,
 };
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull, Unique};
@@ -1959,6 +1961,7 @@ impl<T: ?Sized, A: Allocator> DerefMut for Box<T, A> {
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Box<T, A> {}
 
+#[cfg(bootstrap)]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 

@@ -60,6 +60,8 @@ declare_features! (
     (accepted, adx_target_feature, "1.61.0", Some(44839)),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
+    /// Allows inherent and trait methods with arbitrary self types.
+    (accepted, arbitrary_self_types, "CURRENT_RUSTC_VERSION", Some(44874)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `sym` operands in inline assembly.
