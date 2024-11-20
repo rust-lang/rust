@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `NonNull<A>`
-  --> $DIR/arbitrary_self_types_nonnull.rs:6:16
+  --> $DIR/arbitrary_self_types_nonnull.rs:4:16
    |
 LL |     fn m(self: std::ptr::NonNull<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     fn m(self: std::ptr::NonNull<Self>) {}
    = note: `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
 
 error[E0307]: invalid `self` parameter type: `&NonNull<A>`
-  --> $DIR/arbitrary_self_types_nonnull.rs:8:16
+  --> $DIR/arbitrary_self_types_nonnull.rs:6:16
    |
 LL |     fn n(self: &std::ptr::NonNull<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^^^^^^

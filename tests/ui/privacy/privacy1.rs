@@ -12,14 +12,9 @@ pub trait Deref {
     type Target;
 }
 
-#[lang="legacy_receiver"]
-pub trait LegacyReceiver: Deref {}
-
 impl<'a, T> Deref for &'a T {
     type Target = T;
 }
-
-impl<'a, T> LegacyReceiver for &'a T {}
 
 mod bar {
     // shouldn't bring in too much

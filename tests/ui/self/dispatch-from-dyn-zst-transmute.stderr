@@ -1,5 +1,5 @@
 error[E0378]: implementing the `DispatchFromDyn` trait requires multiple coercions
-  --> $DIR/dispatch-from-dyn-zst-transmute.rs:17:1
+  --> $DIR/dispatch-from-dyn-zst-transmute.rs:16:1
    |
 LL | / impl<'a, T, U> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T>
 LL | |

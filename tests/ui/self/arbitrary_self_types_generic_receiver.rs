@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 struct PtrA<T>(T);
 
 impl<T> core::ops::Receiver for PtrA<T> {

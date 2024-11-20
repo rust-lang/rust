@@ -1,4 +1,4 @@
-#![feature(arbitrary_self_types, coerce_unsized, dispatch_from_dyn, unsize)]
+#![feature(coerce_unsized, dispatch_from_dyn, unsize)]
 #![feature(unsized_locals, unsized_fn_params)]
 //~^ WARN the feature `unsized_locals` is incomplete
 
