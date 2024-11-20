@@ -1,4 +1,3 @@
-use rand::Rng as _;
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
@@ -408,36 +407,18 @@ fn unary_op_f32<'tcx>(
             let div = (Single::from_u128(1).value / op).value;
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
             // inaccuracy of RCP.
-            let res = apply_random_float_error(ecx, div, -12);
+            let res = math::apply_random_float_error(ecx, div, -12);
             interp_ok(Scalar::from_f32(res))
         }
         FloatUnaryOp::Rsqrt => {
-            let op = op.to_scalar().to_u32()?;
-            // FIXME using host floats
-            let sqrt = Single::from_bits(f32::from_bits(op).sqrt().to_bits().into());
-            let rsqrt = (Single::from_u128(1).value / sqrt).value;
+            let op = op.to_scalar().to_f32()?;
+            let rsqrt = (Single::from_u128(1).value / math::sqrt(op)).value;
             // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
             // inaccuracy of RSQRT.
-            let res = apply_random_float_error(ecx, rsqrt, -12);
+            let res = math::apply_random_float_error(ecx, rsqrt, -12);
             interp_ok(Scalar::from_f32(res))
         }
     }
-}
-
-/// Disturbes a floating-point result by a relative error on the order of (-2^scale, 2^scale).
-#[expect(clippy::arithmetic_side_effects)] // floating point arithmetic cannot panic
-fn apply_random_float_error<F: rustc_apfloat::Float>(
-    ecx: &mut crate::MiriInterpCx<'_>,
-    val: F,
-    err_scale: i32,
-) -> F {
-    let rng = ecx.machine.rng.get_mut();
-    // generates rand(0, 2^64) * 2^(scale - 64) = rand(0, 1) * 2^scale
-    let err = F::from_u128(rng.gen::<u64>().into()).value.scalbn(err_scale.strict_sub(64));
-    // give it a random sign
-    let err = if rng.gen::<bool>() { -err } else { err };
-    // multiple the value with (1+err)
-    (val * (F::from_u128(1).value + err).value).value
 }
 
 /// Performs `which` operation on the first component of `op` and copies
