@@ -1,4 +1,4 @@
-error: to use a constant of type `&[B]` in a pattern, the type must implement `PartialEq`
+error: constant of non-structural type `&[B]` in a pattern
   --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
    |
 LL | const A: &[B] = &[];

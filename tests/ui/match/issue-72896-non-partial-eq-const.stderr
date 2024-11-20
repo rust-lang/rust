@@ -1,4 +1,4 @@
-error: to use a constant of type `EnumSet<Enum8>` in a pattern, the type must implement `PartialEq`
+error: constant of non-structural type `EnumSet<Enum8>` in a pattern
   --> $DIR/issue-72896-non-partial-eq-const.rs:19:9
    |
 LL | const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };

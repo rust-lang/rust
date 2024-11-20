@@ -1,4 +1,4 @@
-error: to use a constant of type `Option<NoPartialEq>` in a pattern, the type must implement `PartialEq`
+error: constant of non-structural type `Option<NoPartialEq>` in a pattern
   --> $DIR/reject_non_partial_eq.rs:28:9
    |
 LL | const NO_PARTIAL_EQ_NONE: Option<NoPartialEq> = None;
