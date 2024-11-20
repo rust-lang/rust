@@ -171,10 +171,11 @@ impl<'tcx> ConstToPat<'tcx> {
                     ty::FnPtr(..) | ty::RawPtr(..) => {
                         self.tcx.dcx().create_err(PointerPattern { span: self.span })
                     }
-                    _ => self
-                        .tcx
-                        .dcx()
-                        .create_err(InvalidPattern { span: self.span, non_sm_ty: bad_ty }),
+                    _ => self.tcx.dcx().create_err(InvalidPattern {
+                        span: self.span,
+                        non_sm_ty: bad_ty,
+                        prefix: bad_ty.prefix_string(self.tcx).to_string(),
+                    }),
                 };
                 return self.mk_err(e, ty);
             }
@@ -373,7 +374,11 @@ impl<'tcx> ConstToPat<'tcx> {
                 )
             }
             _ => {
-                let err = InvalidPattern { span, non_sm_ty: ty };
+                let err = InvalidPattern {
+                    span,
+                    non_sm_ty: ty,
+                    prefix: ty.prefix_string(self.tcx).to_string(),
+                };
                 return Err(tcx.dcx().create_err(err));
             }
         };

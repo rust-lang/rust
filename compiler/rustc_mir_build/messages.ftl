@@ -152,7 +152,8 @@ mir_build_inline_assembly_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_interpreted_as_const = introduce a variable instead
 
-mir_build_invalid_pattern = `{$non_sm_ty}` cannot be used in patterns
+mir_build_invalid_pattern = {$prefix} `{$non_sm_ty}` cannot be used in patterns
+    .label = {$prefix} can't be used in patterns
 
 mir_build_irrefutable_let_patterns_if_let = irrefutable `if let` {$count ->
         [one] pattern
