@@ -210,13 +210,6 @@ where
         Err(NoSolution)
     }
 
-    fn consider_builtin_pointer_like_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("PointerLike is not const")
-    }
-
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

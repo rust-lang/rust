@@ -13,7 +13,7 @@ use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{self as ty, TypingMode, search_graph};
+use crate::{self as ty, search_graph};
 
 pub trait Interner:
     Sized
@@ -277,13 +277,6 @@ pub trait Interner:
     fn coroutine_is_async(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
-
-    fn layout_is_pointer_like(
-        self,
-        typing_mode: TypingMode<Self>,
-        param_env: Self::ParamEnv,
-        ty: Self::Ty,
-    ) -> bool;
 
     type UnsizingParams: Deref<Target = BitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;

@@ -465,7 +465,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
-            | PatKind::InlineConstant { subpattern, .. } => return self.lower_pat(subpattern),
+            | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;

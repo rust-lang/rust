@@ -144,12 +144,20 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         let mut targets = Vec::new();
         for arm in rest {
             let arm = &self.thir[*arm];
-            let PatKind::Constant { value } = arm.pattern.kind else {
-                return Err(ParseError {
-                    span: arm.pattern.span,
-                    item_description: format!("{:?}", arm.pattern.kind),
-                    expected: "constant pattern".to_string(),
-                });
+            let value = match arm.pattern.kind {
+                PatKind::Constant { value } => value,
+                PatKind::ExpandedConstant { ref subpattern, def_id: _, is_inline: false }
+                    if let PatKind::Constant { value } = subpattern.kind =>
+                {
+                    value
+                }
+                _ => {
+                    return Err(ParseError {
+                        span: arm.pattern.span,
+                        item_description: format!("{:?}", arm.pattern.kind),
+                        expected: "constant pattern".to_string(),
+                    });
+                }
             };
             values.push(value.eval_bits(self.tcx, self.typing_env));
             targets.push(self.parse_block(arm.body)?);

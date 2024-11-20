@@ -111,8 +111,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Tuple) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::PointerLike) {
-                self.assemble_candidate_for_pointer_like(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
                 self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
             } else {
@@ -1213,35 +1211,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
-        }
-    }
-
-    fn assemble_candidate_for_pointer_like(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        // The regions of a type don't affect the size of the type
-        let tcx = self.tcx();
-        let self_ty = tcx.instantiate_bound_regions_with_erased(obligation.predicate.self_ty());
-
-        // But if there are inference variables, we have to wait until it's resolved.
-        if (obligation.param_env, self_ty).has_non_region_infer() {
-            candidates.ambiguous = true;
-            return;
-        }
-
-        // We should erase regions from both the param-env and type, since both
-        // may have infer regions. Specifically, after canonicalizing and instantiating,
-        // early bound regions turn into region vars in both the new and old solver.
-        let key = self.infcx.pseudo_canonicalize_query(
-            tcx.erase_regions(obligation.param_env),
-            tcx.erase_regions(self_ty),
-        );
-        if let Ok(layout) = tcx.layout_of(key)
-            && layout.layout.is_pointer_like(&tcx.data_layout)
-        {
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
 

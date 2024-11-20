@@ -149,21 +149,30 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             None => Ok((None, None, None)),
             Some(expr) => {
                 let (kind, ascr, inline_const) = match self.lower_lit(expr) {
-                    PatKind::InlineConstant { subpattern, def } => {
-                        (subpattern.kind, None, Some(def))
+                    PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
+                        (subpattern.kind, None, def_id.as_local())
+                    }
+                    PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
+                        (subpattern.kind, None, None)
                     }
                     PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
                         (kind, Some(ascription), None)
                     }
                     kind => (kind, None, None),
                 };
-                let value = if let PatKind::Constant { value } = kind {
-                    value
-                } else {
-                    let msg = format!(
-                        "found bad range pattern endpoint `{expr:?}` outside of error recovery"
-                    );
-                    return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+                let value = match kind {
+                    PatKind::Constant { value } => value,
+                    PatKind::ExpandedConstant { subpattern, .. }
+                        if let PatKind::Constant { value } = subpattern.kind =>
+                    {
+                        value
+                    }
+                    _ => {
+                        let msg = format!(
+                            "found bad range pattern endpoint `{expr:?}` outside of error recovery"
+                        );
+                        return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+                    }
                 };
                 Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
             }
@@ -288,7 +297,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             };
         }
         for def in [lo_inline, hi_inline].into_iter().flatten() {
-            kind = PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
+            kind = PatKind::ExpandedConstant {
+                def_id: def.to_def_id(),
+                is_inline: true,
+                subpattern: Box::new(Pat { span, ty, kind }),
+            };
         }
         Ok(kind)
     }
@@ -562,7 +575,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
-        let pattern = self.const_to_pat(c, ty, id, span);
+        let subpattern = self.const_to_pat(c, ty, id, span);
+        let pattern = Box::new(Pat {
+            span,
+            ty,
+            kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
+        });
 
         if !is_associated_const {
             return pattern;
@@ -637,7 +655,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
-        PatKind::InlineConstant { subpattern, def: def_id }
+        PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
     }
 
     /// Converts literals, paths and negation of literals to patterns.

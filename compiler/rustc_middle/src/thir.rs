@@ -656,7 +656,7 @@ impl<'tcx> Pat<'tcx> {
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
             | DerefPattern { subpattern, .. }
-            | InlineConstant { subpattern, .. } => subpattern.walk_(it),
+            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -799,12 +799,17 @@ pub enum PatKind<'tcx> {
         value: mir::Const<'tcx>,
     },
 
-    /// Inline constant found while lowering a pattern.
-    InlineConstant {
-        /// [LocalDefId] of the constant, we need this so that we have a
+    /// Pattern obtained by converting a constant (inline or named) to its pattern
+    /// representation using `const_to_pat`.
+    ExpandedConstant {
+        /// [DefId] of the constant, we need this so that we have a
         /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants.
-        def: LocalDefId,
+        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
+        /// correspond to a local crate, it points at the `const` item.
+        def_id: DefId,
+        /// If `false`, then `def_id` points at a `const` item, otherwise it
+        /// corresponds to a local inline const.
+        is_inline: bool,
         /// If the inline constant is used in a range pattern, this subpattern
         /// represents the range (if both ends are inline constants, there will
         /// be multiple InlineConstant wrappers).
