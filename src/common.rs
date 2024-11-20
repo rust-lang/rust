@@ -103,7 +103,7 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a wide ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    if ty.is_sized(tcx, ty::ParamEnv::reveal_all()) {
+    if ty.is_sized(tcx, ty::TypingEnv::fully_monomorphized()) {
         return false;
     }
 

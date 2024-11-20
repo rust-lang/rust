@@ -744,7 +744,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let const_val = fx
                 .tcx
-                .const_eval_instance(ty::ParamEnv::reveal_all(), instance, source_info.span)
+                .const_eval_instance(
+                    ty::TypingEnv::fully_monomorphized(),
+                    instance,
+                    source_info.span,
+                )
                 .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
