@@ -590,16 +590,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        // if the const impl is derived using the `derive_const` attribute,
-        // then it would be "stable" at least for the impl.
-        // We gate usages of it using `feature(const_trait_impl)` anyways
-        // so there is no unstable leakage
-        if self.tcx.is_automatically_derived(def_id.to_def_id()) {
-            return;
-        }
-
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
-            || self.tcx.is_const_trait_impl(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
 
         // Reachable const fn must have a stability attribute.
         if is_const
