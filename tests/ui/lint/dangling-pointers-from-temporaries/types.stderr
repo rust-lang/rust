@@ -1,5 +1,5 @@
 error: a dangling pointer will be produced because the temporary `CString` will be dropped
-  --> $DIR/types.rs:20:26
+  --> $DIR/types.rs:21:26
    |
 LL |     declval::<CString>().as_ptr();
    |     -------------------- ^^^^^^ this pointer will immediately be invalid
@@ -15,7 +15,7 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a dangling pointer will be produced because the temporary `String` will be dropped
-  --> $DIR/types.rs:22:25
+  --> $DIR/types.rs:23:25
    |
 LL |     declval::<String>().as_ptr();
    |     ------------------- ^^^^^^ this pointer will immediately be invalid
@@ -26,7 +26,7 @@ LL |     declval::<String>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Vec<u8>` will be dropped
-  --> $DIR/types.rs:24:26
+  --> $DIR/types.rs:25:26
    |
 LL |     declval::<Vec<u8>>().as_ptr();
    |     -------------------- ^^^^^^ this pointer will immediately be invalid
@@ -37,7 +37,7 @@ LL |     declval::<Vec<u8>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<CString>` will be dropped
-  --> $DIR/types.rs:26:31
+  --> $DIR/types.rs:27:31
    |
 LL |     declval::<Box<CString>>().as_ptr();
    |     ------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -48,7 +48,7 @@ LL |     declval::<Box<CString>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<[u8]>` will be dropped
-  --> $DIR/types.rs:28:28
+  --> $DIR/types.rs:29:28
    |
 LL |     declval::<Box<[u8]>>().as_ptr();
    |     ---------------------- ^^^^^^ this pointer will immediately be invalid
@@ -59,7 +59,7 @@ LL |     declval::<Box<[u8]>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<str>` will be dropped
-  --> $DIR/types.rs:30:27
+  --> $DIR/types.rs:31:27
    |
 LL |     declval::<Box<str>>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -70,7 +70,7 @@ LL |     declval::<Box<str>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<CStr>` will be dropped
-  --> $DIR/types.rs:32:28
+  --> $DIR/types.rs:33:28
    |
 LL |     declval::<Box<CStr>>().as_ptr();
    |     ---------------------- ^^^^^^ this pointer will immediately be invalid
@@ -81,7 +81,7 @@ LL |     declval::<Box<CStr>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `[u8; 10]` will be dropped
-  --> $DIR/types.rs:34:27
+  --> $DIR/types.rs:35:27
    |
 LL |     declval::<[u8; 10]>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -92,7 +92,7 @@ LL |     declval::<[u8; 10]>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<[u8; 10]>` will be dropped
-  --> $DIR/types.rs:36:32
+  --> $DIR/types.rs:37:32
    |
 LL |     declval::<Box<[u8; 10]>>().as_ptr();
    |     -------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -103,7 +103,7 @@ LL |     declval::<Box<[u8; 10]>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<Vec<u8>>` will be dropped
-  --> $DIR/types.rs:38:31
+  --> $DIR/types.rs:39:31
    |
 LL |     declval::<Box<Vec<u8>>>().as_ptr();
    |     ------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -114,7 +114,7 @@ LL |     declval::<Box<Vec<u8>>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<String>` will be dropped
-  --> $DIR/types.rs:40:30
+  --> $DIR/types.rs:41:30
    |
 LL |     declval::<Box<String>>().as_ptr();
    |     ------------------------ ^^^^^^ this pointer will immediately be invalid
@@ -125,7 +125,7 @@ LL |     declval::<Box<String>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Box<Box<Box<Box<[u8]>>>>` will be dropped
-  --> $DIR/types.rs:42:43
+  --> $DIR/types.rs:43:43
    |
 LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
    |     ------------------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -136,7 +136,7 @@ LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Cell<u8>` will be dropped
-  --> $DIR/types.rs:44:27
+  --> $DIR/types.rs:45:27
    |
 LL |     declval::<Cell<u8>>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -147,7 +147,7 @@ LL |     declval::<Cell<u8>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `MaybeUninit<u8>` will be dropped
-  --> $DIR/types.rs:46:34
+  --> $DIR/types.rs:47:34
    |
 LL |     declval::<MaybeUninit<u8>>().as_ptr();
    |     ---------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -158,7 +158,7 @@ LL |     declval::<MaybeUninit<u8>>().as_ptr();
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
 error: a dangling pointer will be produced because the temporary `Vec<AsPtrFake>` will be dropped
-  --> $DIR/types.rs:48:33
+  --> $DIR/types.rs:49:33
    |
 LL |     declval::<Vec<AsPtrFake>>().as_ptr();
    |     --------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -168,5 +168,27 @@ LL |     declval::<Vec<AsPtrFake>>().as_ptr();
    = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<AsPtrFake>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
-error: aborting due to 15 previous errors
+error: a dangling pointer will be produced because the temporary `UnsafeCell<u8>` will be dropped
+  --> $DIR/types.rs:51:33
+   |
+LL |     declval::<UnsafeCell<u8>>().get();
+   |     --------------------------- ^^^ this pointer will immediately be invalid
+   |     |
+   |     this `UnsafeCell<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `get` the `UnsafeCell<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `SyncUnsafeCell<u8>` will be dropped
+  --> $DIR/types.rs:53:37
+   |
+LL |     declval::<SyncUnsafeCell<u8>>().get();
+   |     ------------------------------- ^^^ this pointer will immediately be invalid
+   |     |
+   |     this `SyncUnsafeCell<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `get` the `SyncUnsafeCell<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 17 previous errors
 

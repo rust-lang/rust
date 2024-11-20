@@ -3,15 +3,15 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
-use super::assembly::Candidate;
+use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
-use crate::solve::assembly::{self};
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution,
-    QueryResult,
+    QueryResult, assembly,
 };
 
 impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
@@ -142,7 +142,7 @@ where
             ty::ImplPolarity::Positive => {}
         };
 
-        if !cx.is_const_impl(impl_def_id) {
+        if !cx.impl_is_const(impl_def_id) {
             return Err(NoSolution);
         }
 
@@ -207,7 +207,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Copy/Clone is not yet const")
+        Err(NoSolution)
     }
 
     fn consider_builtin_pointer_like_candidate(
@@ -225,11 +225,48 @@ where
     }
 
     fn consider_builtin_fn_trait_candidates(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Fn* are not yet const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let (inputs_and_output, def_id, args) =
+            structural_traits::extract_fn_def_from_const_callable(cx, self_ty)?;
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
+            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+        });
+        let requirements = cx
+            .const_conditions(def_id)
+            .iter_instantiated(cx, args)
+            .map(|trait_ref| {
+                (
+                    GoalSource::ImplWhereBound,
+                    goal.with(cx, trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
+                )
+            })
+            .chain([(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))]);
+
+        let pred = inputs_and_output
+            .map_bound(|(inputs, _)| {
+                ty::TraitRef::new(cx, goal.predicate.def_id(), [
+                    goal.predicate.self_ty(),
+                    Ty::new_tup(cx, inputs.as_slice()),
+                ])
+            })
+            .to_host_effect_clause(cx, goal.predicate.constness);
+
+        Self::probe_and_consider_implied_clause(
+            ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            goal,
+            pred,
+            requirements,
+        )
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -314,7 +351,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Destruct is not const")
+        Err(NoSolution)
     }
 
     fn consider_builtin_transmute_candidate(

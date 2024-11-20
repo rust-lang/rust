@@ -633,6 +633,76 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     )
 }
 
+/// This duplicates `extract_tupled_inputs_and_output_from_callable` but needs
+/// to return different information (namely, the def id and args) so that we can
+/// create const conditions.
+///
+/// Doing so on all calls to `extract_tupled_inputs_and_output_from_callable`
+/// would be wasteful.
+pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+) -> Result<(ty::Binder<I, (I::FnInputTys, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
+    match self_ty.kind() {
+        ty::FnDef(def_id, args) => {
+            let sig = cx.fn_sig(def_id);
+            if sig.skip_binder().is_fn_trait_compatible()
+                && !cx.has_target_features(def_id)
+                && cx.fn_is_const(def_id)
+            {
+                Ok((
+                    sig.instantiate(cx, args).map_bound(|sig| (sig.inputs(), sig.output())),
+                    def_id,
+                    args,
+                ))
+            } else {
+                return Err(NoSolution);
+            }
+        }
+        // `FnPtr`s are not const for now.
+        ty::FnPtr(..) => {
+            return Err(NoSolution);
+        }
+        // `Closure`s are not const for now.
+        ty::Closure(..) => {
+            return Err(NoSolution);
+        }
+        // `CoroutineClosure`s are not const for now.
+        ty::CoroutineClosure(..) => {
+            return Err(NoSolution);
+        }
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::Dynamic(_, _, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(..)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Pat(_, _)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Placeholder(..)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::Error(_) => return Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    }
+}
+
 /// Assemble a list of predicates that would be present on a theoretical
 /// user impl for an object type. These predicates must be checked any time
 /// we assemble a built-in object candidate for an object type, since they

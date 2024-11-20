@@ -223,7 +223,8 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    fn is_const_impl(self, def_id: Self::DefId) -> bool;
+    fn impl_is_const(self, def_id: Self::DefId) -> bool;
+    fn fn_is_const(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,
         def_id: Self::DefId,
