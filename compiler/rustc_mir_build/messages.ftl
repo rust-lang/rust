@@ -273,7 +273,7 @@ mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type
     .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
     .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
-mir_build_non_partial_eq_match = constant of non-structural type `{$non_peq_ty}` in a pattern
+mir_build_non_partial_eq_match = constant of non-structural type `{$ty}` in a pattern
     .label = constant of non-structural type
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
@@ -322,9 +322,9 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
         *[other] them
     } into the body
 
-mir_build_type_not_structural = constant of non-structural type `{$non_sm_ty}` in a pattern
+mir_build_type_not_structural = constant of non-structural type `{$ty}` in a pattern
     .label = constant of non-structural type
-mir_build_type_not_structural_def = `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+mir_build_type_not_structural_def = `{$ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 mir_build_type_not_structural_more_info = see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 mir_build_type_not_structural_tip =
     the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details

@@ -6,6 +6,9 @@ LL | const A: &[B] = &[];
 ...
 LL |         A => (),
    |         ^ constant of non-structural type
+   |
+   = note: `&[B]` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: aborting due to 1 previous error
 

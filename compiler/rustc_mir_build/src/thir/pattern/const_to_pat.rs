@@ -190,7 +190,8 @@ impl<'tcx> ConstToPat<'tcx> {
         if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
             if !self.type_has_partial_eq_impl(ty) {
-                let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
+                let err = TypeNotPartialEq { span: self.span, ty };
+                // FIXME: visit every type in `ty` and if it doesn't derive `PartialEq`, mention it.
                 return self.mk_err(self.tcx.dcx().create_err(err), ty);
             }
         }
@@ -265,7 +266,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 });
                 let err = TypeNotStructural {
                     span,
-                    non_sm_ty: ty,
+                    ty,
                     ty_def_span,
                     manual_partialeq_impl_span,
                     manual_partialeq_impl_note: manual_partialeq_impl_span.is_none(),
