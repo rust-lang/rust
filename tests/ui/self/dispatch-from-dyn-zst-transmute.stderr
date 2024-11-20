@@ -1,5 +1,5 @@
 error[E0375]: implementing `DispatchFromDyn` does not allow multiple fields to be coerced
-  --> $DIR/dispatch-from-dyn-zst-transmute.rs:17:1
+  --> $DIR/dispatch-from-dyn-zst-transmute.rs:16:1
    |
 LL | / impl<'a, T, U> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T>
 LL | |
@@ -9,7 +9,7 @@ LL | |     U: ?Sized {}
    | |_____________^
    |
 note: the trait `DispatchFromDyn` may only be implemented when a single field is being coerced
-  --> $DIR/dispatch-from-dyn-zst-transmute.rs:13:5
+  --> $DIR/dispatch-from-dyn-zst-transmute.rs:12:5
    |
 LL |     token: IsSendToken<U>,
    |     ^^^^^^^^^^^^^^^^^^^^^

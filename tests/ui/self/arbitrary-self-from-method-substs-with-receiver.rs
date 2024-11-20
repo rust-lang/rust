@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 use std::ops::{Receiver, Deref};
 
 struct SmartPtr<'a, T: ?Sized>(&'a T);

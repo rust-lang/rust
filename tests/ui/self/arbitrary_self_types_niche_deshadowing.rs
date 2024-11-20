@@ -3,7 +3,6 @@
 #![allow(dead_code)]
 #![allow(incomplete_features)]
 
-#![feature(arbitrary_self_types)]
 #![feature(arbitrary_self_types_pointers)]
 #![feature(pin_ergonomics)]
 

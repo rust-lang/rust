@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/ref-self-multi.rs:18:56
+  --> $DIR/ref-self-multi.rs:17:56
    |
 LL |     fn ref_box_ref_Self(self: &Box<&Self>, f: &u32) -> &u32 {
    |                               -----------     ----     ^ expected named lifetime parameter
@@ -11,7 +11,7 @@ LL |     fn ref_box_ref_Self<'a>(self: &'a Box<&'a Self>, f: &'a u32) -> &'a u32
    |                        ++++        ++      ++            ++          ++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/ref-self-multi.rs:23:63
+  --> $DIR/ref-self-multi.rs:22:63
    |
 LL |     fn ref_wrap_ref_Self(self: &Wrap<&Self, u32>, f: &u32) -> &u32 {
    |                                -----------------     ----     ^ expected named lifetime parameter

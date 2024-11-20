@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `&dyn Bar`
-  --> $DIR/invalid-self-dyn-receiver.rs:10:22
+  --> $DIR/invalid-self-dyn-receiver.rs:8:22
    |
 LL |      fn method(self: &dyn Bar) {}
    |                      ^^^^^^^^

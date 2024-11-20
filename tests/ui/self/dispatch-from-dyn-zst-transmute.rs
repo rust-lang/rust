@@ -1,4 +1,3 @@
-#![feature(arbitrary_self_types)]
 #![feature(unsize)]
 #![feature(dispatch_from_dyn)]
 

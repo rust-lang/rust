@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(arbitrary_self_types)]
 #![allow(unused_allocation)]
 
 struct SmartPtr<T: ?Sized>(T);

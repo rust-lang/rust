@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(arbitrary_self_types)]
 
 // When probing for methods, we step forward through a chain of types. The first
 // few of those steps can be reached by jumping through the chain of Derefs or the

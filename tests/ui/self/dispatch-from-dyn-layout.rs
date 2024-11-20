@@ -4,7 +4,7 @@
 // Make sure that object safety checking doesn't freak out when
 // we have impossible-to-satisfy `DispatchFromDyn` predicates.
 
-#![feature(arbitrary_self_types, dispatch_from_dyn)]
+#![feature(dispatch_from_dyn)]
 
 use std::ops::{Deref, DispatchFromDyn};
 

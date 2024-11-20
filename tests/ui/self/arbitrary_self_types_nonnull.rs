@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 struct A;
 
 impl A {
