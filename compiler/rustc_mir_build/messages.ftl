@@ -84,6 +84,8 @@ mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
+mir_build_const_defined_here = constant defined here
+
 mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
 
 mir_build_const_pattern_depends_on_generic_parameter =

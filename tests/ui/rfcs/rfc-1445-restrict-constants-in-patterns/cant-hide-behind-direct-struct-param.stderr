@@ -1,6 +1,9 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/cant-hide-behind-direct-struct-param.rs:21:9
    |
+LL | const WRAP_DIRECT_PARAM: WrapParam<NoDerive> = WrapParam(NoDerive(0));
+   | -------------------------------------------- constant defined here
+...
 LL |         WRAP_DIRECT_PARAM => { panic!("WRAP_DIRECT_PARAM matched itself"); }
    |         ^^^^^^^^^^^^^^^^^
    |

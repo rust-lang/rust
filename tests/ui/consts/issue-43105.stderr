@@ -9,6 +9,9 @@ LL | const NUM: u8 = xyz();
 error: could not evaluate constant pattern
   --> $DIR/issue-43105.rs:8:9
    |
+LL | const NUM: u8 = xyz();
+   | ------------- constant defined here
+...
 LL |         NUM => unimplemented!(),
    |         ^^^
 

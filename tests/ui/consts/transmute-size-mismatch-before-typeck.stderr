@@ -12,6 +12,9 @@ error: could not evaluate constant pattern
    |
 LL |         ZST => {}
    |         ^^^
+...
+LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   | ---------------- constant defined here
 
 error: aborting due to 2 previous errors
 

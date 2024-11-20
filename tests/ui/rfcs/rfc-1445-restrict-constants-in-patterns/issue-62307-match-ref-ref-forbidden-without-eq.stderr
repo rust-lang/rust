@@ -1,6 +1,9 @@
 error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:29:9
    |
+LL |     const RR_B1: & & B = & & B(1);
+   |     ------------------ constant defined here
+...
 LL |         RR_B1 => { println!("CLAIM RR0: {:?} matches {:?}", RR_B1, RR_B0); }
    |         ^^^^^
    |
@@ -10,6 +13,9 @@ LL |         RR_B1 => { println!("CLAIM RR0: {:?} matches {:?}", RR_B1, RR_B0); 
 error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/issue-62307-match-ref-ref-forbidden-without-eq.rs:35:9
    |
+LL |     const RR_B1: & & B = & & B(1);
+   |     ------------------ constant defined here
+...
 LL |         RR_B1 => { println!("CLAIM RR1: {:?} matches {:?}", RR_B1, RR_B1); }
    |         ^^^^^
    |

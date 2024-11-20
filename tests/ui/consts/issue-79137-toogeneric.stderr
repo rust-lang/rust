@@ -1,6 +1,11 @@
 error[E0158]: constant pattern depends on a generic parameter
   --> $DIR/issue-79137-toogeneric.rs:12:43
    |
+LL | impl<T> GetVariantCount<T> {
+   | --------------------------
+LL |     pub const VALUE: usize = std::mem::variant_count::<T>();
+   |     ---------------------- constant defined here
+...
 LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

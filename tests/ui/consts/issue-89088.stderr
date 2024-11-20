@@ -1,6 +1,9 @@
 error: to use a constant of type `Cow<'_, str>` in a pattern, `Cow<'_, str>` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/issue-89088.rs:16:9
    |
+LL | const FOO: &A = &A::Field(Cow::Borrowed("foo"));
+   | ------------- constant defined here
+...
 LL |         FOO => todo!(),
    |         ^^^
    |

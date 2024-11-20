@@ -1,6 +1,9 @@
 error: to use a constant of type `&[O<B>]` in a pattern, the type must implement `PartialEq`
   --> $DIR/issue-65466.rs:14:9
    |
+LL | const C: &[O<B>] = &[O::None];
+   | ---------------- constant defined here
+...
 LL |         C => (),
    |         ^
 

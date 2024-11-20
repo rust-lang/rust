@@ -1,5 +1,6 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
+use rustc_errors::{Diag, PResult};
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -35,11 +36,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> Box<Pat<'tcx>> {
-        let mut convert = ConstToPat::new(self, id, span);
+        let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
-            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
+            ty::ConstKind::Value(_, val) => match convert.valtree_to_pat(val, ty) {
+                Ok(pat) => pat,
+                Err(err) => convert.mk_err(err, ty),
+            },
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
@@ -51,10 +55,12 @@ struct ConstToPat<'tcx> {
     span: Span,
 
     treat_byte_string_as_slice: bool,
+
+    c: ty::Const<'tcx>,
 }
 
 impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span) -> Self {
+    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
             tcx: pat_ctxt.tcx,
@@ -64,11 +70,32 @@ impl<'tcx> ConstToPat<'tcx> {
                 .typeck_results
                 .treat_byte_string_as_slice
                 .contains(&id.local_id),
+            c,
         }
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
         ty.is_structural_eq_shallow(self.tcx)
+    }
+
+    /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
+    fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+        if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
+            let def_kind = self.tcx.def_kind(uv.def);
+            if let hir::def::DefKind::AssocConst = def_kind
+                && let Some(def_id) = uv.def.as_local()
+            {
+                // Include the container item in the output.
+                err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
+            }
+            if let hir::def::DefKind::Const | hir::def::DefKind::AssocConst = def_kind {
+                err.span_label(
+                    self.tcx.def_span(uv.def),
+                    crate::fluent_generated::mir_build_const_defined_here,
+                );
+            }
+        }
+        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
     }
 
     fn unevaluated_to_pat(
@@ -77,7 +104,6 @@ impl<'tcx> ConstToPat<'tcx> {
         ty: Ty<'tcx>,
     ) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
-        let pat_from_kind = |kind| Box::new(Pat { span: self.span, ty, kind });
 
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
@@ -96,44 +122,46 @@ impl<'tcx> ConstToPat<'tcx> {
             Ok(Ok(c)) => c,
             Err(ErrorHandled::Reported(_, _)) => {
                 // Let's tell the use where this failing const occurs.
-                let e = self.tcx.dcx().emit_err(CouldNotEvalConstPattern { span: self.span });
-                return pat_from_kind(PatKind::Error(e));
+                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                return self.mk_err(err, ty);
             }
             Err(ErrorHandled::TooGeneric(_)) => {
                 let e = self
                     .tcx
                     .dcx()
-                    .emit_err(ConstPatternDependsOnGenericParameter { span: self.span });
-                return pat_from_kind(PatKind::Error(e));
+                    .create_err(ConstPatternDependsOnGenericParameter { span: self.span });
+                return self.mk_err(e, ty);
             }
             Ok(Err(bad_ty)) => {
                 // The pattern cannot be turned into a valtree.
                 let e = match bad_ty.kind() {
                     ty::Adt(def, ..) => {
                         assert!(def.is_union());
-                        self.tcx.dcx().emit_err(UnionPattern { span: self.span })
+                        self.tcx.dcx().create_err(UnionPattern { span: self.span })
                     }
                     ty::FnPtr(..) | ty::RawPtr(..) => {
-                        self.tcx.dcx().emit_err(PointerPattern { span: self.span })
+                        self.tcx.dcx().create_err(PointerPattern { span: self.span })
                     }
                     _ => self
                         .tcx
                         .dcx()
-                        .emit_err(InvalidPattern { span: self.span, non_sm_ty: bad_ty }),
+                        .create_err(InvalidPattern { span: self.span, non_sm_ty: bad_ty }),
                 };
-                return pat_from_kind(PatKind::Error(e));
+                return self.mk_err(e, ty);
             }
         };
 
         // Convert the valtree to a const.
-        let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
+        let inlined_const_as_pat = match self.valtree_to_pat(valtree, ty) {
+            Ok(pat) => pat,
+            Err(err) => self.mk_err(err, ty),
+        };
 
         if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
             if !self.type_has_partial_eq_impl(ty) {
                 let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
-                let e = self.tcx.dcx().emit_err(err);
-                return pat_from_kind(PatKind::Error(e));
+                return self.mk_err(self.tcx.dcx().create_err(err), ty);
             }
         }
 
@@ -175,14 +203,20 @@ impl<'tcx> ConstToPat<'tcx> {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
+                FieldPat {
+                    field,
+                    pattern: match self.valtree_to_pat(val, ty) {
+                        Ok(pat) => pat,
+                        Err(err) => self.mk_err(err, ty),
+                    },
+                }
             })
             .collect()
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     #[instrument(skip(self), level = "debug")]
-    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> PResult<'_, Box<Pat<'tcx>>> {
         let span = self.span;
         let tcx = self.tcx;
         let kind = match ty.kind() {
@@ -191,9 +225,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
-                let e = tcx.dcx().emit_err(err);
-                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Error(e)
+                return Err(tcx.dcx().create_err(err));
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
@@ -227,7 +259,10 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| match self.valtree_to_pat(*val, *elem_ty) {
+                        Ok(pat) => pat,
+                        Err(err) => self.mk_err(err, ty),
+                    })
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -236,7 +271,10 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| match self.valtree_to_pat(*val, *elem_ty) {
+                        Ok(pat) => pat,
+                        Err(err) => self.mk_err(err, ty),
+                    })
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -252,10 +290,9 @@ impl<'tcx> ConstToPat<'tcx> {
                 // deref pattern.
                 _ => {
                     if !pointee_ty.is_sized(tcx, self.typing_env) && !pointee_ty.is_slice() {
-                        let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
-                        let e = tcx.dcx().emit_err(err);
-                        // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                        PatKind::Error(e)
+                        return Err(tcx
+                            .dcx()
+                            .create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }));
                     } else {
                         // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                         // matching against references, you can only use byte string literals.
@@ -270,7 +307,10 @@ impl<'tcx> ConstToPat<'tcx> {
                             _ => *pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = self.valtree_to_pat(cv, pointee_ty);
+                        let subpattern = match self.valtree_to_pat(cv, pointee_ty) {
+                            Ok(pat) => pat,
+                            Err(err) => self.mk_err(err, ty),
+                        };
                         PatKind::Deref { subpattern }
                     }
                 }
@@ -286,8 +326,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 if is_nan {
                     // NaNs are not ever equal to anything so they make no sense as patterns.
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
-                    let e = tcx.dcx().emit_err(NaNPattern { span });
-                    PatKind::Error(e)
+                    return Err(tcx.dcx().create_err(NaNPattern { span }));
                 } else {
                     PatKind::Constant {
                         value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
@@ -306,12 +345,10 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };
-                let e = tcx.dcx().emit_err(err);
-                // We errored. Signal that in the pattern, so that follow up errors can be silenced.
-                PatKind::Error(e)
+                return Err(tcx.dcx().create_err(err));
             }
         };
 
-        Box::new(Pat { span, ty, kind })
+        Ok(Box::new(Pat { span, ty, kind }))
     }
 }

@@ -1,6 +1,9 @@
 error: to use a constant of type `S` in a pattern, `S` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/match_ice.rs:11:9
    |
+LL |     const C: &S = &S;
+   |     ----------- constant defined here
+LL |     match C {
 LL |         C => {}
    |         ^
    |

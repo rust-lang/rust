@@ -1,6 +1,9 @@
 error: to use a constant of type `MyType` in a pattern, `MyType` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/const-partial_eq-fallback-ice.rs:14:12
    |
+LL | const CONSTANT: &&MyType = &&MyType;
+   | ------------------------ constant defined here
+...
 LL |     if let CONSTANT = &&MyType {
    |            ^^^^^^^^
    |

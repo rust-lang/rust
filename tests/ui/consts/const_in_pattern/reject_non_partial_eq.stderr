@@ -1,6 +1,9 @@
 error: to use a constant of type `Option<NoPartialEq>` in a pattern, the type must implement `PartialEq`
   --> $DIR/reject_non_partial_eq.rs:28:9
    |
+LL | const NO_PARTIAL_EQ_NONE: Option<NoPartialEq> = None;
+   | --------------------------------------------- constant defined here
+...
 LL |         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
    |         ^^^^^^^^^^^^^^^^^^
 

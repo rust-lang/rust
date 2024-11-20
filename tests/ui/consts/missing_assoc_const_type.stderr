@@ -7,6 +7,11 @@ LL |     const FIRST:  = 10;
 error: could not evaluate constant pattern
   --> $DIR/missing_assoc_const_type.rs:19:9
    |
+LL | trait Range {
+   | -----------
+LL |     const FIRST: u8;
+   |     --------------- constant defined here
+...
 LL |         TwoDigits::FIRST..=TwoDigits::LAST => 0,
    |         ^^^^^^^^^^^^^^^^
 

@@ -12,6 +12,9 @@ error: could not evaluate constant pattern
    |
 LL |         10..=BAR => {},
    |              ^^^
+...
+LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
+   | -------------- constant defined here
 
 error: aborting due to 2 previous errors
 

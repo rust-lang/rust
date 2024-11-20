@@ -4,6 +4,11 @@ error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be ann
 LL |         consts::SOME => panic!(),
    |         ^^^^^^^^^^^^
    |
+  ::: $DIR/auxiliary/consts.rs:11:1
+   |
+LL | pub const SOME: Option<CustomEq> = Some(CustomEq);
+   | -------------------------------- constant defined here
+   |
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
@@ -12,6 +17,11 @@ error: to use a constant of type `CustomEq` in a pattern, `CustomEq` must be ann
    |
 LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/consts.rs:15:5
+   |
+LL |     const SOME: Option<CustomEq> = Some(CustomEq);
+   |     ---------------------------- constant defined here
    |
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details

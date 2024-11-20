@@ -1,6 +1,9 @@
 error: to use a constant of type `&[B]` in a pattern, the type must implement `PartialEq`
   --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
    |
+LL | const A: &[B] = &[];
+   | ------------- constant defined here
+...
 LL |         A => (),
    |         ^
 

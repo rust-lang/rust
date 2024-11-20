@@ -1,6 +1,8 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:40:36
    |
+LL |     const ENUM: Derive<NoDerive> = Derive::Some(NoDerive);
+   |     ---------------------------- constant defined here
 LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
    |                                    ^^^^
    |
@@ -10,6 +12,8 @@ LL |     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:46:28
    |
+LL |     const FIELD: OND = TrivialEq(Some(NoDerive)).0;
+   |     ---------------- constant defined here
 LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
    |                            ^^^^^
    |
@@ -19,6 +23,8 @@ LL |     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:53:27
    |
+LL |     const INDIRECT: OND = NO_DERIVE_SOME;
+   |     ------------------- constant defined here
 LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
    |                           ^^^^^^^^
    |
@@ -28,6 +34,8 @@ LL |     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops")
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:59:36
    |
+LL |     const TUPLE: (OND, OND) = (None, Some(NoDerive));
+   |     ----------------------- constant defined here
 LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
    |                                    ^^^^^
    |
@@ -37,6 +45,8 @@ LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoop
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:65:28
    |
+LL |     const TYPE_ASCRIPTION: OND = type_ascribe!(Some(NoDerive), OND);
+   |     -------------------------- constant defined here
 LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
    |
@@ -46,6 +56,8 @@ LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => p
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:71:36
    |
+LL |     const ARRAY: [OND; 2] = [None, Some(NoDerive)];
+   |     --------------------- constant defined here
 LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
    |                                    ^^^^^
    |
@@ -55,6 +67,8 @@ LL |     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoop
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:77:33
    |
+LL |     const REPEAT: [OND; 2] = [Some(NoDerive); 2];
+   |     ---------------------- constant defined here
 LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
    |                                 ^^^^^^
    |
@@ -64,6 +78,9 @@ LL |     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:84:28
    |
+LL |     trait Trait: Sized { const ASSOC: Option<Self>; }
+   |     ------------------   ------------------------- constant defined here
+LL |     impl Trait for NoDerive { const ASSOC: Option<NoDerive> = Some(NoDerive); }
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^
    |
@@ -73,6 +90,8 @@ LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => p
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:90:28
    |
+LL |     const BLOCK: OND = { NoDerive; Some(NoDerive) };
+   |     ---------------- constant defined here
 LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
    |                            ^^^^^
    |
@@ -82,6 +101,8 @@ LL |     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/reject_non_structural.rs:96:29
    |
+LL |     const ADDR_OF: &OND = &Some(NoDerive);
+   |     ------------------- constant defined here
 LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
    |                             ^^^^^^^
    |

@@ -1,6 +1,9 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/match-requires-both-partialeq-and-eq.rs:17:9
    |
+LL | const FOO: Foo = Foo { x: 0 };
+   | -------------- constant defined here
+...
 LL |         FOO => { }
    |         ^^^
    |

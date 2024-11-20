@@ -20,6 +20,11 @@ LL | pub struct Opcode2<S>(&'a S);
 error: could not evaluate constant pattern
   --> $DIR/ice-type-mismatch-when-copying-112824.rs:15:9
    |
+LL | impl Opcode2 {
+   | ------------
+LL |     pub const OP2: Opcode2 = Opcode2(Opcode(0x1));
+   |     ---------------------- constant defined here
+...
 LL |         Opcode2::OP2 => unimplemented!(),
    |         ^^^^^^^^^^^^
 

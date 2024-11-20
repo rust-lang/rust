@@ -7,6 +7,9 @@ LL | const NEG_NEG_128: i8 = -NEG_128;
 error: could not evaluate constant pattern
   --> $DIR/const-eval-overflow-2.rs:15:9
    |
+LL | const NEG_NEG_128: i8 = -NEG_128;
+   | --------------------- constant defined here
+...
 LL |         NEG_NEG_128 => println!("A"),
    |         ^^^^^^^^^^^
 

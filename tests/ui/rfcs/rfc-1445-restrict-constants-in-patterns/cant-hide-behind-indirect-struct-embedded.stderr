@@ -1,6 +1,9 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/cant-hide-behind-indirect-struct-embedded.rs:22:9
    |
+LL | const WRAP_INDIRECT_INLINE: & &WrapInline = & &WrapInline(NoDerive(0));
+   | ----------------------------------------- constant defined here
+...
 LL |         WRAP_INDIRECT_INLINE => { panic!("WRAP_INDIRECT_INLINE matched itself"); }
    |         ^^^^^^^^^^^^^^^^^^^^
    |

@@ -1,6 +1,9 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
   --> $DIR/cant-hide-behind-doubly-indirect-param.rs:22:9
    |
+LL | const WRAP_DOUBLY_INDIRECT_PARAM: & &WrapParam<NoDerive> = & &WrapParam(& & NoDerive(0));
+   | -------------------------------------------------------- constant defined here
+...
 LL |         WRAP_DOUBLY_INDIRECT_PARAM => { panic!("WRAP_DOUBLY_INDIRECT_PARAM matched itself"); }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

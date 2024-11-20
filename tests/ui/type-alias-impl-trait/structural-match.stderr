@@ -1,6 +1,9 @@
 error: `foo::Foo` cannot be used in patterns
   --> $DIR/structural-match.rs:18:9
    |
+LL | const VALUE: Foo = value();
+   | ---------------- constant defined here
+...
 LL |         VALUE => (),
    |         ^^^^^
 
