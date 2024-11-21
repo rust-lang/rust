@@ -455,11 +455,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
 
-                // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg(true) {
-                    // Add a definition for the in-band const def.
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
-                }
+                // Add a definition for the const argument as it was not created by the def collector as we
+                // require name resolution results in order to even know this was a const argument.
+                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
 
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {

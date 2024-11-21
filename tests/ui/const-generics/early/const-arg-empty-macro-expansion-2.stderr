@@ -1,0 +1,54 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:2:5
+   |
+LL |     Foo<
+   |     ^^^ not found in this scope
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:46
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                              ^^^ not found in this scope
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:46
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                              ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0422]: cannot find struct, variant or union type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:52
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                                    ^^^ not found in this scope
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:46
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                              ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:46
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                              ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/const-arg-empty-macro-expansion-2.rs:6:46
+   |
+LL |             thread_local! { pub static FOO : Foo = Foo { } ; }
+   |                                              ^^^ not found in this scope
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0412, E0422.
+For more information about an error, try `rustc --explain E0412`.
