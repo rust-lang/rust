@@ -7,7 +7,7 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 //@[edition2024] compile-flags: -Zunstable-options
-//@[edition2024] check-pass
+//@ check-pass
 
 // This checks how the expr fragment specifier works.
 macro_rules_edition_pm::make_edition_macro!{}
@@ -21,8 +21,7 @@ macro_rules_edition_pm::make_nested_edition_macro!{}
 make_inner!{}
 
 const _: () = {
-    assert!(edition_inner!(const {}) == 2024);
-    //[edition2021]~^ ERROR evaluation of constant value failed
+    assert!(edition_inner!(const {}) == 2021);
 };
 
 fn main() {}
