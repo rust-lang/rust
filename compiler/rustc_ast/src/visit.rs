@@ -1242,7 +1242,7 @@ pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) 
     match kind {
         AttrKind::Normal(normal) => {
             let NormalAttr { item, tokens: _ } = &**normal;
-            let AttrItem { unsafety: _, path, args, tokens: _ } = item;
+            let AttrItem { unsafety: _, path, args, tokens: _, span: _ } = item;
             try_visit!(visitor.visit_path(path, DUMMY_NODE_ID));
             try_visit!(walk_attr_args(visitor, args));
         }

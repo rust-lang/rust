@@ -17,8 +17,7 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
             raw_attr.clone(),
         ));
 
-        let start_span = parser.token.span;
-        let AttrItem { unsafety, path, args, tokens: _ } =
+        let AttrItem { unsafety, path, args, tokens: _, span } =
             match parser.parse_attr_item(ForceCollect::No) {
                 Ok(ai) => ai,
                 Err(err) => {
@@ -26,9 +25,8 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
                     continue;
                 }
             };
-        let end_span = parser.token.span;
         if parser.token != token::Eof {
-            psess.dcx().emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
+            psess.dcx().emit_err(errors::InvalidCrateAttr { span });
             continue;
         }
 
@@ -38,7 +36,7 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
             unsafety,
             path,
             args,
-            start_span.to(end_span),
+            span,
         ));
     }
 }

@@ -884,6 +884,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     path: normal.item.path.clone(),
                     args: self.lower_attr_args(&normal.item.args),
                     tokens: None,
+                    span: normal.item.span,
                 },
                 tokens: None,
             })),

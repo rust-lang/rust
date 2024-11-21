@@ -12,7 +12,7 @@ use rustc_session::errors::report_lit_error;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNSAFE_ATTR_OUTSIDE_UNSAFE};
 use rustc_session::parse::ParseSess;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::{errors, parse_in};
 
@@ -161,17 +161,7 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
     if safety == AttributeSafety::Unsafe {
         if let ast::Safety::Default = attr_item.unsafety {
             let path_span = attr_item.path.span;
-
-            // If the `attr_item`'s span is not from a macro, then just suggest
-            // wrapping it in `unsafe(...)`. Otherwise, we suggest putting the
-            // `unsafe(`, `)` right after and right before the opening and closing
-            // square bracket respectively.
-            let diag_span = if attr_item.span().can_be_used_for_suggestions() {
-                attr_item.span()
-            } else {
-                attr.span.with_lo(attr.span.lo() + BytePos(2)).with_hi(attr.span.hi() - BytePos(1))
-            };
-
+            let diag_span = attr_item.span;
             if attr.span.at_least_rust_2024() {
                 psess.dcx().emit_err(errors::UnsafeAttrOutsideUnsafe {
                     span: path_span,

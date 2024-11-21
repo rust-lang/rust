@@ -276,6 +276,7 @@ impl<'a> Parser<'a> {
 
         // Attr items don't have attributes.
         self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
+            let lo = this.token.span;
             let is_unsafe = this.eat_keyword(kw::Unsafe);
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
@@ -290,8 +291,9 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
+            let span = lo.to(this.prev_token.span);
             Ok((
-                ast::AttrItem { unsafety, path, args, tokens: None },
+                ast::AttrItem { unsafety, path, args, tokens: None, span },
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

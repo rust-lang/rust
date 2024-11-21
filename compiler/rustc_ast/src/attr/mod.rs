@@ -241,10 +241,6 @@ impl Attribute {
 }
 
 impl AttrItem {
-    pub fn span(&self) -> Span {
-        self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
-    }
-
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
@@ -633,7 +629,7 @@ pub fn mk_attr(
     args: AttrArgs,
     span: Span,
 ) -> Attribute {
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, tokens: None }, None, style, span)
+    mk_attr_from_item(g, AttrItem { unsafety, path, args, tokens: None, span }, None, style, span)
 }
 
 pub fn mk_attr_from_item(
