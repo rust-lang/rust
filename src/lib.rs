@@ -35,6 +35,7 @@ extern crate rustc_driver;
 
 use std::any::Any;
 use std::cell::{Cell, RefCell};
+use std::env;
 use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
@@ -249,6 +250,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 }
 
+/// Determine if the Cranelift ir verifier should run.
+///
+/// Returns true when `-Zverify-llvm-ir` is passed, the `CG_CLIF_ENABLE_VERIFIER` env var is set to
+/// 1 or when cg_clif is compiled with debug assertions enabled or false otherwise.
+fn enable_verifier(sess: &Session) -> bool {
+    sess.verify_llvm_ir()
+        || cfg!(debug_assertions)
+        || env::var("CG_CLIF_ENABLE_VERIFIER").as_deref() == Ok("1")
+}
+
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
     // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
     // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
@@ -258,15 +269,14 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     }
 }
 
-fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIsa + 'static> {
+fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
-    let enable_verifier =
-        if sess.verify_llvm_ir() || backend_config.enable_verifier { "true" } else { "false" };
+    let enable_verifier = if enable_verifier(sess) { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 

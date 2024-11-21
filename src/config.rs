@@ -42,14 +42,6 @@ pub struct BackendConfig {
     /// Defaults to the value of `CG_CLIF_JIT_ARGS`.
     pub jit_args: Vec<String>,
 
-    /// Enable the Cranelift ir verifier for all compilation passes. If not set it will only run
-    /// once before passing the clif ir to Cranelift for compilation.
-    ///
-    /// Defaults to true when the `CG_CLIF_ENABLE_VERIFIER` env var is set to 1 or when cg_clif is
-    /// compiled with debug assertions enabled or false otherwise. Can be set using
-    /// `-Cllvm-args=enable_verifier=...`.
-    pub enable_verifier: bool,
-
     /// Don't cache object files in the incremental cache. Useful during development of cg_clif
     /// to make it possible to use incremental mode for all analyses performed by rustc without
     /// caching object files when their content should have been changed by a change to cg_clif.
@@ -72,7 +64,6 @@ impl Default for BackendConfig {
                     }
                 }
             },
-            enable_verifier: cfg!(debug_assertions) || bool_env_var("CG_CLIF_ENABLE_VERIFIER"),
             disable_incr_cache: bool_env_var("CG_CLIF_DISABLE_INCR_CACHE"),
         }
     }
@@ -95,7 +86,6 @@ impl BackendConfig {
             if let Some((name, value)) = opt.split_once('=') {
                 match name {
                     "mode" => config.codegen_mode = value.parse()?,
-                    "enable_verifier" => config.enable_verifier = parse_bool(name, value)?,
                     "disable_incr_cache" => config.disable_incr_cache = parse_bool(name, value)?,
                     _ => return Err(format!("Unknown option `{}`", name)),
                 }

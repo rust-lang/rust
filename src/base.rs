@@ -14,9 +14,9 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
-use crate::BackendConfig;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
+use crate::enable_verifier;
 use crate::inline_asm::codegen_naked_asm;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
@@ -31,7 +31,6 @@ pub(crate) struct CodegenedFunction {
 
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    backend_config: &BackendConfig,
     cx: &mut crate::CodegenCx,
     type_dbg: &mut TypeDebugContext<'tcx>,
     cached_func: Function,
@@ -164,7 +163,7 @@ pub(crate) fn codegen_fn<'tcx>(
     }
 
     // Verify function
-    verify_func(tcx, backend_config, &clif_comments, &func);
+    verify_func(tcx, &clif_comments, &func);
 
     Some(CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx })
 }
@@ -266,13 +265,8 @@ pub(crate) fn compile_fn(
     });
 }
 
-fn verify_func(
-    tcx: TyCtxt<'_>,
-    backend_config: &BackendConfig,
-    writer: &crate::pretty_clif::CommentWriter,
-    func: &Function,
-) {
-    if !tcx.sess.verify_llvm_ir() && !backend_config.enable_verifier {
+fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+    if !enable_verifier(tcx.sess) {
         return;
     }
 

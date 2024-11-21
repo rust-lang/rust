@@ -322,12 +322,8 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-fn make_module(
-    sess: &Session,
-    backend_config: &BackendConfig,
-    name: String,
-) -> UnwindModule<ObjectModule> {
-    let isa = crate::build_isa(sess, backend_config);
+fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
+    let isa = crate::build_isa(sess);
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
@@ -488,8 +484,7 @@ fn reuse_workproduct_for_cgu(
 
 fn module_codegen(
     tcx: TyCtxt<'_>,
-    (backend_config, global_asm_config, cgu_name, token): (
-        BackendConfig,
+    (global_asm_config, cgu_name, token): (
         Arc<GlobalAsmConfig>,
         rustc_span::Symbol,
         ConcurrencyLimiterToken,
@@ -500,7 +495,7 @@ fn module_codegen(
             let cgu = tcx.codegen_unit(cgu_name);
             let mono_items = cgu.items_in_deterministic_order(tcx);
 
-            let mut module = make_module(tcx.sess, &backend_config, cgu_name.as_str().to_string());
+            let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
             let mut cx = crate::CodegenCx::new(
                 tcx,
@@ -516,7 +511,6 @@ fn module_codegen(
                     MonoItem::Fn(inst) => {
                         if let Some(codegened_function) = crate::base::codegen_fn(
                             tcx,
-                            &backend_config,
                             &mut cx,
                             &mut type_dbg,
                             Function::new(),
@@ -648,12 +642,7 @@ pub(crate) fn run_aot(
                 .with_task(
                     dep_node,
                     tcx,
-                    (
-                        backend_config.clone(),
-                        global_asm_config.clone(),
-                        cgu.name(),
-                        concurrency_limiter.acquire(tcx.dcx()),
-                    ),
+                    (global_asm_config.clone(), cgu.name(), concurrency_limiter.acquire(tcx.dcx())),
                     module_codegen,
                     Some(rustc_middle::dep_graph::hash_result),
                 )
@@ -667,7 +656,7 @@ pub(crate) fn run_aot(
         modules
     });
 
-    let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
+    let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
     let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     let allocator_module = if created_alloc_shim {

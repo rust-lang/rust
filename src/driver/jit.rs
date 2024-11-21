@@ -20,7 +20,6 @@ use crate::{BackendConfig, CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
-    backend_config: BackendConfig,
 }
 
 thread_local! {
@@ -60,14 +59,10 @@ impl UnsafeMessage {
     }
 }
 
-fn create_jit_module(
-    tcx: TyCtxt<'_>,
-    backend_config: &BackendConfig,
-    hotswap: bool,
-) -> (UnwindModule<JITModule>, CodegenCx) {
+fn create_jit_module(tcx: TyCtxt<'_>, hotswap: bool) -> (UnwindModule<JITModule>, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
 
-    let isa = crate::build_isa(tcx.sess, backend_config);
+    let isa = crate::build_isa(tcx.sess);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
@@ -91,11 +86,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
-    let (mut jit_module, mut cx) = create_jit_module(
-        tcx,
-        &backend_config,
-        matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
-    );
+    let (mut jit_module, mut cx) =
+        create_jit_module(tcx, matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(());
@@ -116,7 +108,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                     CodegenMode::Jit => {
                         codegen_and_compile_fn(
                             tcx,
-                            &backend_config,
                             &mut cx,
                             &mut cached_context,
                             &mut jit_module,
@@ -171,7 +162,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     LAZY_JIT_STATE.with(|lazy_jit_state| {
         let mut lazy_jit_state = lazy_jit_state.borrow_mut();
         assert!(lazy_jit_state.is_none());
-        *lazy_jit_state = Some(JitState { jit_module, backend_config });
+        *lazy_jit_state = Some(JitState { jit_module });
     });
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
@@ -207,7 +198,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    backend_config: &BackendConfig,
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
@@ -224,7 +214,6 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
         let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
         if let Some(codegened_func) = crate::base::codegen_fn(
             tcx,
-            &backend_config,
             cx,
             &mut TypeDebugContext::default(),
             cached_func,
@@ -286,14 +275,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
                 false,
                 Symbol::intern("dummy_cgu_name"),
             );
-            codegen_and_compile_fn(
-                tcx,
-                &lazy_jit_state.backend_config,
-                &mut cx,
-                &mut Context::new(),
-                jit_module,
-                instance,
-            );
+            codegen_and_compile_fn(tcx, &mut cx, &mut Context::new(), jit_module, instance);
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions();
