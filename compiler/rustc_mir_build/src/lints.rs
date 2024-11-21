@@ -7,9 +7,10 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
-use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, sym};
 
-use crate::errors::{RecursiveDefaultImpl, UnconditionalRecursion};
+use crate::errors::UnconditionalRecursion;
 
 pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     check_call_recursion(tcx, body);
@@ -31,21 +32,16 @@ fn check_call_recursion<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         check_recursion(tcx, body, CallRecursion { trait_args })
     }
 }
-use rustc_span::def_id::LocalDefId;
-use rustc_span::sym;
+
 fn is_default_impl<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    if tcx.def_kind(def_id) == DefKind::AssocFn {
-        // Check if this is a trait impl and get the defid of the trait if it is
-        if let Some(parent_def_id) = tcx.opt_parent(def_id.into()) {
-            if tcx.def_kind(parent_def_id) == (DefKind::Impl { of_trait: true }) {
-                if let Some(trait_def_id) = tcx.trait_id_of_impl(parent_def_id) {
-                    // check if it is a default impl
-                    if tcx.get_diagnostic_name(trait_def_id) == Some(sym::Default) {
-                        return true;
-                    }
-                }
-            }
-        }
+    // Check if this is a trait impl and get the defid of the trait if it is
+    if tcx.def_kind(def_id) == DefKind::AssocFn
+        && let Some(parent_def_id) = tcx.opt_parent(def_id.into())
+        && tcx.def_kind(parent_def_id) == (DefKind::Impl { of_trait: true })
+        && let Some(trait_def_id) = tcx.trait_id_of_impl(parent_def_id)
+    {
+        // check if it is a default impl
+        return tcx.get_diagnostic_name(trait_def_id) == Some(sym::Default);
     }
     false
 }
@@ -72,12 +68,10 @@ fn check_recursion<'tcx>(
 
         let sp = tcx.def_span(def_id);
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let default_impl_note =
-            { if is_default_impl(tcx, def_id) { Some(RecursiveDefaultImpl {}) } else { None } };
         tcx.emit_node_span_lint(UNCONDITIONAL_RECURSION, hir_id, sp, UnconditionalRecursion {
             span: sp,
             call_sites: vis.reachable_recursive_calls,
-            default_impl_note,
+            default_impl_note: is_default_impl(tcx, def_id).then(|| ()),
         });
     }
 }
