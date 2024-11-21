@@ -3685,6 +3685,8 @@ version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
  "rustc_span",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
