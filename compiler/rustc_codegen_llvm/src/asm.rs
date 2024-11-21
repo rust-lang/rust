@@ -678,7 +678,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::reg) => "r",
             S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             S390x(S390xInlineAsmRegClass::freg) => "f",
-            S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+            S390x(S390xInlineAsmRegClass::vreg) => "v",
+            S390x(S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
             Sparc(SparcInlineAsmRegClass::reg) => "r",
@@ -844,7 +845,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         S390x(S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr) => cx.type_i32(),
         S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
-        S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+        S390x(S390xInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),
+        S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
         Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),

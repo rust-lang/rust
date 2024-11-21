@@ -276,65 +276,29 @@ error: invalid register `f16`: unknown register
 LL |         asm!("", out("v16") _, out("f16") _);
    |                                ^^^^^^^^^^^^
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:71:18
-   |
-LL |         asm!("", in("v0") v); // requires vector
-   |                  ^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:73:18
-   |
-LL |         asm!("", out("v0") v); // requires vector
-   |                  ^^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:75:18
-   |
-LL |         asm!("", in("v0") x); // requires vector
-   |                  ^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:77:18
-   |
-LL |         asm!("", out("v0") x); // requires vector
-   |                  ^^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:79:18
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:79:27
    |
 LL |         asm!("", in("v0") b);
-   |                  ^^^^^^^^^^
+   |                           ^
+   |
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:82:18
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:82:28
    |
 LL |         asm!("", out("v0") b);
-   |                  ^^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:85:26
+   |                            ^
    |
-LL |         asm!("/* {} */", in(vreg) v); // requires vector
-   |                          ^^^^^^^^^^
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:87:26
-   |
-LL |         asm!("/* {} */", in(vreg) x); // requires vector
-   |                          ^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:89:26
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:89:35
    |
 LL |         asm!("/* {} */", in(vreg) b);
-   |                          ^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:92:26
+   |                                   ^
    |
-LL |         asm!("/* {} */", out(vreg) _); // requires vector
-   |                          ^^^^^^^^^^^
+   = note: register class `vreg` supports these types: i32, f32, i64, f64, i128, f128, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
 
 error: type `i32` cannot be used with this register class
   --> $DIR/bad-reg.rs:98:27
@@ -360,5 +324,5 @@ LL |         asm!("/* {} */", in(areg) x);
    |
    = note: register class `areg` supports these types: 
 
-error: aborting due to 54 previous errors
+error: aborting due to 47 previous errors
 

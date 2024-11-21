@@ -2137,6 +2137,7 @@ symbols! {
         vec_pop,
         vec_with_capacity,
         vecdeque_iter,
+        vector,
         version,
         vfp2,
         vis,
