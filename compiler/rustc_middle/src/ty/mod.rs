@@ -1625,16 +1625,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Whether the `def_id` is an associated type that was desugared from a
-    /// `#[const_trait]` or `impl_const`.
-    pub fn is_effects_desugared_assoc_ty(self, def_id: DefId) -> bool {
-        if let DefKind::AssocTy = self.def_kind(def_id) {
-            self.associated_item(def_id).is_effects_desugaring
-        } else {
-            false
-        }
-    }
-
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<FieldIdx> {
         variant.fields.iter_enumerated().find_map(|(i, field)| {
             self.hygienic_eq(ident, field.ident(self), variant.def_id).then_some(i)

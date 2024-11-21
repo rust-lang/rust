@@ -819,8 +819,7 @@ pub(super) fn check_specialization_validity<'tcx>(
     let result = opt_result.unwrap_or(Ok(()));
 
     if let Err(parent_impl) = result {
-        // FIXME(effects) the associated type from effects could be specialized
-        if !tcx.is_impl_trait_in_trait(impl_item) && !tcx.is_effects_desugared_assoc_ty(impl_item) {
+        if !tcx.is_impl_trait_in_trait(impl_item) {
             report_forbidden_specialization(tcx, impl_item, parent_impl);
         } else {
             tcx.dcx().delayed_bug(format!("parent item: {parent_impl:?} not marked as default"));

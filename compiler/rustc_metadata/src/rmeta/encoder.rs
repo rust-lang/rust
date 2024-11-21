@@ -1677,9 +1677,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_precise_capturing_args(def_id);
             }
         }
-        if item.is_effects_desugaring {
-            self.tables.is_effects_desugaring.set(def_id.index, true);
-        }
     }
 
     fn encode_precise_capturing_args(&mut self, def_id: DefId) {

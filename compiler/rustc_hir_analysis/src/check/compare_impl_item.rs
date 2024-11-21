@@ -2042,7 +2042,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // A synthetic impl Trait for RPITIT desugaring or assoc type for effects desugaring has no HIR,
     // which we currently use to get the span for an impl's associated type. Instead, for these,
     // use the def_span for the synthesized  associated type.
-    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() || impl_ty.is_effects_desugaring {
+    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
         tcx.def_span(impl_ty_def_id)
     } else {
         match tcx.hir_node_by_def_id(impl_ty_def_id) {
