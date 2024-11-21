@@ -293,6 +293,8 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
+        // Note: `edges` must be computed first because `drop_flag_effects_for_location` can change
+        // the result of `is_unwind_dead`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
             && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
