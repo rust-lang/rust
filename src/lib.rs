@@ -223,7 +223,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx.dcx().abort_if_errors();
         let config = self.config.borrow().clone().unwrap();
         match config.codegen_mode {
-            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
+            CodegenMode::Aot => driver::aot::run_aot(tcx, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
                 #[cfg(feature = "jit")]
                 driver::jit::run_jit(tcx, config);
@@ -242,11 +242,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let _timer = sess.timer("finish_ongoing_codegen");
 
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
-            sess,
-            outputs,
-            self.config.borrow().as_ref().unwrap(),
-        )
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }
 }
 

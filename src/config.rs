@@ -1,9 +1,4 @@
-use std::env;
 use std::str::FromStr;
-
-fn bool_env_var(key: &str) -> bool {
-    env::var(key).as_deref() == Ok("1")
-}
 
 /// The mode to use for compilation.
 #[derive(Copy, Clone, Debug)]
@@ -41,14 +36,6 @@ pub struct BackendConfig {
     ///
     /// Defaults to the value of `CG_CLIF_JIT_ARGS`.
     pub jit_args: Vec<String>,
-
-    /// Don't cache object files in the incremental cache. Useful during development of cg_clif
-    /// to make it possible to use incremental mode for all analyses performed by rustc without
-    /// caching object files when their content should have been changed by a change to cg_clif.
-    ///
-    /// Defaults to true when the `CG_CLIF_DISABLE_INCR_CACHE` env var is set to 1 or false
-    /// otherwise. Can be set using `-Cllvm-args=disable_incr_cache=...`.
-    pub disable_incr_cache: bool,
 }
 
 impl Default for BackendConfig {
@@ -64,7 +51,6 @@ impl Default for BackendConfig {
                     }
                 }
             },
-            disable_incr_cache: bool_env_var("CG_CLIF_DISABLE_INCR_CACHE"),
         }
     }
 }
@@ -72,10 +58,6 @@ impl Default for BackendConfig {
 impl BackendConfig {
     /// Parse the configuration passed in using `-Cllvm-args`.
     pub fn from_opts(opts: &[String]) -> Result<Self, String> {
-        fn parse_bool(name: &str, value: &str) -> Result<bool, String> {
-            value.parse().map_err(|_| format!("failed to parse value `{}` for {}", value, name))
-        }
-
         let mut config = BackendConfig::default();
         for opt in opts {
             if opt.starts_with("-import-instr-limit") {
@@ -86,7 +68,6 @@ impl BackendConfig {
             if let Some((name, value)) = opt.split_once('=') {
                 match name {
                     "mode" => config.codegen_mode = value.parse()?,
-                    "disable_incr_cache" => config.disable_incr_cache = parse_bool(name, value)?,
                     _ => return Err(format!("Unknown option `{}`", name)),
                 }
             } else {

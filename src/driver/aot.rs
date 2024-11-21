@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::env;
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -25,12 +26,15 @@ use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::Session;
 use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 
-use crate::BackendConfig;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
+
+fn disable_incr_cache() -> bool {
+    env::var("CG_CLIF_DISABLE_INCR_CACHE").as_deref() == Ok("1")
+}
 
 struct ModuleCodegenResult {
     module_regular: CompiledModule,
@@ -63,10 +67,10 @@ impl OngoingCodegen {
         self,
         sess: &Session,
         outputs: &OutputFilenames,
-        backend_config: &BackendConfig,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
         let mut modules = vec![];
+        let disable_incr_cache = disable_incr_cache();
 
         for module_codegen in self.modules {
             let module_codegen_result = match module_codegen {
@@ -87,7 +91,7 @@ impl OngoingCodegen {
             if let Some((work_product_id, work_product)) = existing_work_product {
                 work_products.insert(work_product_id, work_product);
             } else {
-                let work_product = if backend_config.disable_incr_cache {
+                let work_product = if disable_incr_cache {
                     None
                 } else if let Some(module_global_asm) = &module_global_asm {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
@@ -580,7 +584,6 @@ fn module_codegen(
 
 pub(crate) fn run_aot(
     tcx: TyCtxt<'_>,
-    backend_config: BackendConfig,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<OngoingCodegen> {
@@ -626,9 +629,10 @@ pub(crate) fn run_aot(
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
+    let disable_incr_cache = disable_incr_cache();
     let (todo_cgus, done_cgus) =
         cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
-            _ if backend_config.disable_incr_cache => true,
+            _ if disable_incr_cache => true,
             CguReuse::No => true,
             CguReuse::PreLto | CguReuse::PostLto => false,
         });
