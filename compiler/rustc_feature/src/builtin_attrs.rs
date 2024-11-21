@@ -838,7 +838,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
     ),
     rustc_attr!(
-        rustc_const_stable_intrinsic, Normal,
+        rustc_intrinsic_const_stable_indirect, Normal,
         template!(Word), WarnFollowing, EncodeCrossCrate::No, IMPL_DETAIL,
     ),
     gated!(
@@ -878,6 +878,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         lang, Normal, template!(NameValueStr: "name"), DuplicatesOk, EncodeCrossCrate::No, lang_items,
         "lang items are subject to change",
+    ),
+    rustc_attr!(
+        rustc_as_ptr, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "#[rustc_as_ptr] is used to mark functions returning pointers to their inner allocations."
     ),
     rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,

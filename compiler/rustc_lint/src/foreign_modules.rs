@@ -131,7 +131,7 @@ impl ClashingExternDeclarations {
         // Check that the declarations match.
         if !structurally_same_type(
             tcx,
-            tcx.param_env(this_fi.owner_id),
+            ty::TypingEnv::non_body_analysis(tcx, this_fi.owner_id),
             existing_decl_ty,
             this_decl_ty,
             types::CItemKind::Declaration,
@@ -205,18 +205,18 @@ fn get_relevant_span(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> Span {
 /// with the same members (as the declarations shouldn't clash).
 fn structurally_same_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
     ckind: types::CItemKind,
 ) -> bool {
     let mut seen_types = UnordSet::default();
-    let result = structurally_same_type_impl(&mut seen_types, tcx, param_env, a, b, ckind);
+    let result = structurally_same_type_impl(&mut seen_types, tcx, typing_env, a, b, ckind);
     if cfg!(debug_assertions) && result {
         // Sanity-check: must have same ABI, size and alignment.
         // `extern` blocks cannot be generic, so we'll always get a layout here.
-        let a_layout = tcx.layout_of(param_env.and(a)).unwrap();
-        let b_layout = tcx.layout_of(param_env.and(b)).unwrap();
+        let a_layout = tcx.layout_of(typing_env.as_query_input(a)).unwrap();
+        let b_layout = tcx.layout_of(typing_env.as_query_input(b)).unwrap();
         assert_eq!(a_layout.backend_repr, b_layout.backend_repr);
         assert_eq!(a_layout.size, b_layout.size);
         assert_eq!(a_layout.align, b_layout.align);
@@ -227,7 +227,7 @@ fn structurally_same_type<'tcx>(
 fn structurally_same_type_impl<'tcx>(
     seen_types: &mut UnordSet<(Ty<'tcx>, Ty<'tcx>)>,
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
     ckind: types::CItemKind,
@@ -303,7 +303,7 @@ fn structurally_same_type_impl<'tcx>(
                             structurally_same_type_impl(
                                 seen_types,
                                 tcx,
-                                param_env,
+                                typing_env,
                                 tcx.type_of(a_did).instantiate(tcx, a_gen_args),
                                 tcx.type_of(b_did).instantiate(tcx, b_gen_args),
                                 ckind,
@@ -315,23 +315,23 @@ fn structurally_same_type_impl<'tcx>(
                     // For arrays, we also check the length.
                     a_len == b_len
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
                         )
                 }
                 (Slice(a_ty), Slice(b_ty)) => {
-                    structurally_same_type_impl(seen_types, tcx, param_env, *a_ty, *b_ty, ckind)
+                    structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
                 }
                 (RawPtr(a_ty, a_mutbl), RawPtr(b_ty, b_mutbl)) => {
                     a_mutbl == b_mutbl
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
                         )
                 }
                 (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                     // For structural sameness, we don't need the region to be same.
                     a_mut == b_mut
                         && structurally_same_type_impl(
-                            seen_types, tcx, param_env, *a_ty, *b_ty, ckind,
+                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
                         )
                 }
                 (FnDef(..), FnDef(..)) => {
@@ -346,12 +346,12 @@ fn structurally_same_type_impl<'tcx>(
                     (a_sig.abi, a_sig.safety, a_sig.c_variadic)
                         == (b_sig.abi, b_sig.safety, b_sig.c_variadic)
                         && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                            structurally_same_type_impl(seen_types, tcx, param_env, *a, *b, ckind)
+                            structurally_same_type_impl(seen_types, tcx, typing_env, *a, *b, ckind)
                         })
                         && structurally_same_type_impl(
                             seen_types,
                             tcx,
-                            param_env,
+                            typing_env,
                             a_sig.output(),
                             b_sig.output(),
                             ckind,
@@ -379,14 +379,14 @@ fn structurally_same_type_impl<'tcx>(
                 // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                 // enum layout optimisation is being applied.
                 (Adt(..), _) if is_primitive_or_pointer(b) => {
-                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, param_env, a, ckind) {
+                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a, ckind) {
                         a_inner == b
                     } else {
                         false
                     }
                 }
                 (_, Adt(..)) if is_primitive_or_pointer(a) => {
-                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, param_env, b, ckind) {
+                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b, ckind) {
                         b_inner == a
                     } else {
                         false

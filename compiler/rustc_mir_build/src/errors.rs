@@ -528,7 +528,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
-            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
+            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.typing_env()) {
                 diag.note(fluent::mir_build_reference_note);
             }
         }
@@ -860,8 +860,10 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
+    #[label(mir_build_confused)]
+    pub(crate) interpreted_as_const: Option<Span>,
     #[subdiagnostic]
-    pub(crate) interpreted_as_const: Option<InterpretedAsConst>,
+    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConst>,
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
@@ -911,9 +913,9 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
 #[suggestion(
     mir_build_interpreted_as_const,
     code = "{variable}_var",
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
-#[label(mir_build_confused)]
 pub(crate) struct InterpretedAsConst {
     #[primary_span]
     pub(crate) span: Span,

@@ -48,7 +48,7 @@ struct AsyncDestructorCtorShimBuilder<'tcx> {
     self_ty: Option<Ty<'tcx>>,
     span: Span,
     source_info: SourceInfo,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 
     stack: Vec<Operand<'tcx>>,
     last_bb: BasicBlock,
@@ -86,14 +86,14 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
 
         // Usual case: noop() + unwind resume + return
         let mut bbs = IndexVec::with_capacity(3);
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
+        let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
         AsyncDestructorCtorShimBuilder {
             tcx,
             def_id,
             self_ty,
             span,
             source_info,
-            param_env,
+            typing_env,
 
             stack: Vec::with_capacity(Self::MAX_STACK_LEN),
             last_bb: bbs.push(BasicBlockData::new(None)),
@@ -422,7 +422,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                         statements: Vec::new(),
                         terminator: Some(Terminator {
                             source_info,
-                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.param_env) {
+                            kind: if self.locals[local].ty.needs_drop(self.tcx, self.typing_env) {
                                 TerminatorKind::Drop {
                                     place: local.into(),
                                     target: *top_cleanup_bb,

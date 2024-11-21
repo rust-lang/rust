@@ -139,7 +139,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
                 unpack!(
-                    block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut)
+                    block =
+                        this.as_temp(block, this.local_temp_lifetime(), source, Mutability::Mut)
                 );
 
                 // This is an optimization. If the expression was a call then we already have an
@@ -266,7 +267,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // that makes the call.
                     target: expr
                         .ty
-                        .is_inhabited_from(this.tcx, this.parent_module, this.param_env)
+                        .is_inhabited_from(
+                            this.tcx,
+                            this.parent_module,
+                            this.infcx.typing_env(this.param_env),
+                        )
                         .then_some(success),
                     call_source: if from_hir_call {
                         CallSource::Normal
@@ -317,7 +322,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let is_union = adt_def.is_union();
                 let active_field_index = is_union.then(|| fields[0].name);
 
-                let scope = this.local_scope();
+                let scope = this.local_temp_lifetime();
 
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
@@ -329,7 +334,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             unpack!(
                                 block = this.as_operand(
                                     block,
-                                    Some(scope),
+                                    scope,
                                     f.expr,
                                     LocalInfo::AggregateTemp,
                                     NeedsTemporary::Maybe,
@@ -544,15 +549,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             ExprKind::Yield { value } => {
-                let scope = this.local_scope();
+                let scope = this.local_temp_lifetime();
                 let value = unpack!(
-                    block = this.as_operand(
-                        block,
-                        Some(scope),
-                        value,
-                        LocalInfo::Boring,
-                        NeedsTemporary::No
-                    )
+                    block =
+                        this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(block, source_info, TerminatorKind::Yield {

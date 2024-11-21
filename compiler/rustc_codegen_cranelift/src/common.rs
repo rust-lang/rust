@@ -103,11 +103,11 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a wide ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    if ty.is_sized(tcx, ParamEnv::reveal_all()) {
+    if ty.is_sized(tcx, ty::TypingEnv::fully_monomorphized()) {
         return false;
     }
 
-    let tail = tcx.struct_tail_for_codegen(ty, ParamEnv::reveal_all());
+    let tail = tcx.struct_tail_for_codegen(ty, ty::TypingEnv::fully_monomorphized());
     match tail.kind() {
         ty::Foreign(..) => false,
         ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -339,9 +339,9 @@ impl<'tcx> rustc_abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> layout::HasParamEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx> layout::HasTypingEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 
@@ -358,7 +358,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -497,9 +497,9 @@ impl<'tcx> rustc_abi::HasDataLayout for RevealAllLayoutCx<'tcx> {
     }
 }
 
-impl<'tcx> layout::HasParamEnv<'tcx> for RevealAllLayoutCx<'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx> layout::HasTypingEnv<'tcx> for RevealAllLayoutCx<'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 

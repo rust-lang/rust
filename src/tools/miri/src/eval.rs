@@ -268,10 +268,14 @@ pub fn create_ecx<'tcx>(
     entry_type: EntryFnType,
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
-    let param_env = ty::ParamEnv::reveal_all();
-    let layout_cx = LayoutCx::new(tcx, param_env);
-    let mut ecx =
-        InterpCx::new(tcx, rustc_span::DUMMY_SP, param_env, MiriMachine::new(config, layout_cx));
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let layout_cx = LayoutCx::new(tcx, typing_env);
+    let mut ecx = InterpCx::new(
+        tcx,
+        rustc_span::DUMMY_SP,
+        typing_env,
+        MiriMachine::new(config, layout_cx)
+    );
 
     // Some parts of initialization require a full `InterpCx`.
     MiriMachine::late_init(&mut ecx, config, {
@@ -376,7 +380,7 @@ pub fn create_ecx<'tcx>(
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::try_resolve(
                 tcx,
-                ty::ParamEnv::reveal_all(),
+                typing_env,
                 start_id,
                 tcx.mk_args(&[ty::GenericArg::from(main_ret_ty)]),
             )

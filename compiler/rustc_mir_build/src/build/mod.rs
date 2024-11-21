@@ -148,6 +148,10 @@ struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    // FIXME(@lcnr): Why does this use an `infcx`, there should be
+    // no shared type inference going on here. I feel like it would
+    // clearer to manually construct one where necessary or to provide
+    // a nice API for non-type inference trait system checks.
     infcx: InferCtxt<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
@@ -230,6 +234,10 @@ struct Capture<'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.infcx.typing_env(self.param_env)
+    }
+
     fn is_bound_var_in_guard(&self, id: LocalVarId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }

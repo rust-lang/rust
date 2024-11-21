@@ -202,8 +202,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Increment the decision depth, in case we encounter boolean expressions
                 // further down.
                 this.mcdc_increment_depth_if_enabled();
-                let place =
-                    unpack!(block = this.as_temp(block, Some(temp_scope), expr_id, mutability));
+                let place = unpack!(
+                    block = this.as_temp(
+                        block,
+                        TempLifetime {
+                            temp_lifetime: Some(temp_scope),
+                            backwards_incompatible: None
+                        },
+                        expr_id,
+                        mutability
+                    )
+                );
                 this.mcdc_decrement_depth_if_enabled();
 
                 let operand = Operand::Move(Place::from(place));
@@ -917,7 +926,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
-            PatKind::InlineConstant { ref subpattern, .. } => {
+            PatKind::ExpandedConstant { ref subpattern, .. } => {
                 self.visit_primary_bindings(subpattern, pattern_user_ty, f)
             }
 

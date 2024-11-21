@@ -11,10 +11,9 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt,
-    Visibility,
+    self, AdtKind, CoroutineArgsExt, Instance, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
@@ -301,9 +300,8 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         .insert(unique_type_id, recursion_marker_type_di_node(cx));
 
     let fn_ty = unique_type_id.expect_ty();
-    let signature = cx
-        .tcx
-        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), fn_ty.fn_sig(cx.tcx));
+    let signature =
+        cx.tcx.normalize_erasing_late_bound_regions(cx.typing_env(), fn_ty.fn_sig(cx.tcx));
 
     let signature_di_nodes: SmallVec<_> = iter::once(
         // return type
@@ -1109,9 +1107,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    assert!(
-        up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
-    );
+    assert!(up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(cx.typing_env(), t)));
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_coroutine_ty);
@@ -1272,8 +1268,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let template_params: SmallVec<_> = iter::zip(args, names)
                 .filter_map(|(kind, name)| {
                     kind.as_type().map(|ty| {
-                        let actual_type =
-                            cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                        let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
                         unsafe {
@@ -1341,7 +1336,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
     if nested {
         return;
     }
-    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();

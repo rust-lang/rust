@@ -38,7 +38,8 @@ use rustc_middle::ty::fold::{
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid, TypingMode,
+    GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
+    TypeVisitable, TypingEnv, TypingMode,
 };
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
@@ -563,6 +564,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         let infcx = self.build(input.typing_mode);
         let (value, args) = infcx.instantiate_canonical(span, &input.canonical);
         (infcx, value, args)
+    }
+
+    pub fn build_with_typing_env(
+        mut self,
+        TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
+    ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
+        (self.build(typing_mode), param_env)
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
@@ -1276,6 +1284,42 @@ impl<'tcx> InferCtxt<'tcx> {
         debug!("create_next_universe {u:?}");
         self.universe.set(u);
         u
+    }
+
+    /// Extract [`ty::TypingMode`] of this inference context to get a `TypingEnv`
+    /// which contains the necessary information to use the trait system without
+    /// using canonicalization or carrying this inference context around.
+    pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
+        let typing_mode = match self.typing_mode(param_env) {
+            ty::TypingMode::Coherence => ty::TypingMode::Coherence,
+            // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
+            // to handle them without proper canonicalization. This means we may cause cycle
+            // errors and fail to reveal opaques while inside of bodies. We should rename this
+            // function and require explicit comments on all use-sites in the future.
+            ty::TypingMode::Analysis { defining_opaque_types: _ } => {
+                TypingMode::non_body_analysis()
+            }
+            ty::TypingMode::PostAnalysis => ty::TypingMode::PostAnalysis,
+        };
+        ty::TypingEnv { typing_mode, param_env }
+    }
+
+    /// Similar to [`Self::canonicalize_query`], except that it returns
+    /// a [`PseudoCanonicalInput`] and requires both the `value` and the
+    /// `param_env` to not contain any inference variables or placeholders.
+    pub fn pseudo_canonicalize_query<V>(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        value: V,
+    ) -> PseudoCanonicalInput<'tcx, V>
+    where
+        V: TypeVisitable<TyCtxt<'tcx>>,
+    {
+        debug_assert!(!value.has_infer());
+        debug_assert!(!value.has_placeholders());
+        debug_assert!(!param_env.has_infer());
+        debug_assert!(!param_env.has_placeholders());
+        self.typing_env(param_env).as_query_input(value)
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is

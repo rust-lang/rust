@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::InlineAsmMacro;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use crate::constant::ConstantCx;
@@ -666,7 +666,7 @@ fn codegen_stmt<'tcx>(
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
                                     fx.tcx,
-                                    ParamEnv::reveal_all(),
+                                    ty::TypingEnv::fully_monomorphized(),
                                     def_id,
                                     args,
                                 )
@@ -841,14 +841,18 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
                 Rvalue::NullaryOp(ref null_op, ty) => {
-                    assert!(lval.layout().ty.is_sized(fx.tcx, ParamEnv::reveal_all()));
+                    assert!(lval.layout().ty.is_sized(fx.tcx, fx.typing_env()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
                         NullOp::OffsetOf(fields) => fx
                             .tcx
-                            .offset_of_subfield(ParamEnv::reveal_all(), layout, fields.iter())
+                            .offset_of_subfield(
+                                ty::TypingEnv::fully_monomorphized(),
+                                layout,
+                                fields.iter(),
+                            )
                             .bytes(),
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
@@ -920,6 +924,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
         | StatementKind::PlaceMention(..)
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => unreachable!(),

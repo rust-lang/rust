@@ -97,16 +97,19 @@ LL |         if let Refutable::A = v3 { todo!() };
 error[E0005]: refutable pattern in local binding
   --> $DIR/bad-pattern.rs:19:13
    |
+LL |     const PAT: u32 = 0;
+   |     -------------- missing patterns are not covered because `PAT` is interpreted as a constant pattern, not a new variable
+...
 LL |         let PAT = v1;
-   |             ^^^
-   |             |
-   |             pattern `1_u32..=u32::MAX` not covered
-   |             missing patterns are not covered because `PAT` is interpreted as a constant pattern, not a new variable
-   |             help: introduce a variable instead: `PAT_var`
+   |             ^^^ pattern `1_u32..=u32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `u32`
+help: introduce a variable instead
+   |
+LL |         let PAT_var = v1;
+   |             ~~~~~~~
 
 error: aborting due to 7 previous errors
 

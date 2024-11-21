@@ -1448,6 +1448,9 @@ mod self_upper_keyword {}
 /// in a multithreaded context. As such, all accesses to mutable `static`s
 /// require an [`unsafe`] block.
 ///
+/// When possible, it's often better to use a non-mutable `static` with an
+/// interior mutable type such as [`Mutex`], [`OnceLock`], or an [atomic].
+///
 /// Despite their unsafety, mutable `static`s are necessary in many contexts:
 /// they can be used to represent global state shared by the whole program or in
 /// [`extern`] blocks to bind to variables from C libraries.
@@ -1468,7 +1471,10 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
+/// [`Mutex`]: sync::Mutex
+/// [`OnceLock`]: sync::OnceLock
 /// [`RefCell`]: cell::RefCell
+/// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
 mod static_keyword {}
 

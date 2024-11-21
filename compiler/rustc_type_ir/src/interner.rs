@@ -223,12 +223,13 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    fn is_const_impl(self, def_id: Self::DefId) -> bool;
+    fn impl_is_const(self, def_id: Self::DefId) -> bool;
+    fn fn_is_const(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
-    fn implied_const_bounds(
+    fn explicit_implied_const_bounds(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
@@ -276,8 +277,6 @@ pub trait Interner:
     fn coroutine_is_async(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
-
-    fn layout_is_pointer_like(self, param_env: Self::ParamEnv, ty: Self::Ty) -> bool;
 
     type UnsizingParams: Deref<Target = BitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;

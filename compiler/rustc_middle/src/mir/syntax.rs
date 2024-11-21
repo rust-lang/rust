@@ -20,7 +20,7 @@ use smallvec::SmallVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, TyCtxt, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -98,13 +98,6 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
-        }
-    }
-
-    pub fn param_env<'tcx>(&self, tcx: TyCtxt<'tcx>, body_def_id: DefId) -> ty::ParamEnv<'tcx> {
-        match self {
-            MirPhase::Built | MirPhase::Analysis(_) => tcx.param_env(body_def_id),
-            MirPhase::Runtime(_) => tcx.param_env_reveal_all_normalized(body_def_id),
         }
     }
 }
@@ -439,6 +432,18 @@ pub enum StatementKind<'tcx> {
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
+
+    /// Marker statement indicating where `place` would be dropped.
+    /// This is semantically equivalent to `Nop`, so codegen and MIRI should interpret this
+    /// statement as such.
+    /// The only use case of this statement is for linting in MIR to detect temporary lifetime
+    /// changes.
+    BackwardIncompatibleDropHint {
+        /// Place to drop
+        place: Box<Place<'tcx>>,
+        /// Reason for backward incompatibility
+        reason: BackwardIncompatibleDropReason,
+    },
 }
 
 impl StatementKind<'_> {
@@ -459,6 +464,7 @@ impl StatementKind<'_> {
             StatementKind::Intrinsic(..) => "Intrinsic",
             StatementKind::ConstEvalCounter => "ConstEvalCounter",
             StatementKind::Nop => "Nop",
+            StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
         }
     }
 }
@@ -902,6 +908,21 @@ pub enum TerminatorKind<'tcx> {
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
         unwind: UnwindAction,
     },
+}
+
+#[derive(
+    Clone,
+    Debug,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    PartialEq,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum BackwardIncompatibleDropReason {
+    Edition2024,
 }
 
 impl TerminatorKind<'_> {

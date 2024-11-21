@@ -13,7 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument, trace};
 
 pub(super) struct SsaLocals {
@@ -42,7 +42,7 @@ impl SsaLocals {
     pub(super) fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
@@ -80,7 +80,7 @@ impl SsaLocals {
         // have already been marked as non-SSA.
         debug!(?visitor.borrowed_locals);
         for local in visitor.borrowed_locals.iter() {
-            if !body.local_decls[local].ty.is_freeze(tcx, param_env) {
+            if !body.local_decls[local].ty.is_freeze(tcx, typing_env) {
                 visitor.assignments[local] = Set1::Many;
             }
         }

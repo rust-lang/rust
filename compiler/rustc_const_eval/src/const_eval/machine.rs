@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Span;
@@ -249,9 +249,10 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
+            // FIXME(@lcnr): why does this use an empty env if we've got a `param_env` right here.
             let new_instance = ty::Instance::expect_resolve(
                 *self.tcx,
-                ty::ParamEnv::reveal_all(),
+                ty::TypingEnv::fully_monomorphized(),
                 const_def_id,
                 instance.args,
                 self.cur_span(),
@@ -666,7 +667,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 .is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.
-            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.param_env);
+            let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env());
             let place = ecx.ref_to_mplace(val)?;
             let new_place = if is_immutable {
                 place.map_provenance(CtfeProvenance::as_immutable)

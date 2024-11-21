@@ -581,7 +581,7 @@ impl WriteInfo {
                     | Rvalue::RawPtr(_, _)
                     | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
-                    | Rvalue::CopyForDeref(_) => (),
+                    | Rvalue::CopyForDeref(_) => {}
                 }
             }
             // Retags are technically also reads, but reporting them as a write suffices
@@ -596,7 +596,8 @@ impl WriteInfo {
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::PlaceMention(_) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::PlaceMention(_) => {}
             StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }

@@ -10,7 +10,7 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
@@ -163,14 +163,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
@@ -1152,8 +1152,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     let tcx = bx.tcx();
-    let sig =
-        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
+    let sig = tcx.normalize_erasing_late_bound_regions(bx.typing_env(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
     // Sanity-check: all vector arguments must be immediates.
@@ -2187,7 +2186,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -2202,7 +2201,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,

@@ -777,7 +777,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let do_panic = !bx
                 .tcx()
-                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
                 .expect("expect to have layout during codegen");
 
             let layout = bx.layout_of(ty);
@@ -848,14 +848,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
                 Some(
-                    ty::Instance::expect_resolve(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        args,
-                        fn_span,
-                    )
-                    .polymorphize(bx.tcx()),
+                    ty::Instance::expect_resolve(bx.tcx(), bx.typing_env(), def_id, args, fn_span)
+                        .polymorphize(bx.tcx()),
                 ),
                 None,
             ),
@@ -1191,7 +1185,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
-                            ty::ParamEnv::reveal_all(),
+                            bx.typing_env(),
                             def_id,
                             args,
                         )

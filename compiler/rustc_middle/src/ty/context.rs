@@ -30,7 +30,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
@@ -230,7 +230,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
             DefKind::TyAlias => ty::AliasTermKind::WeakTy,
             DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
-            DefKind::AnonConst => ty::AliasTermKind::UnevaluatedConst,
+            DefKind::AnonConst | DefKind::Const | DefKind::Ctor(_, CtorKind::Const) => {
+                ty::AliasTermKind::UnevaluatedConst
+            }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -374,7 +376,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
-    fn is_const_impl(self, def_id: DefId) -> bool {
+    fn impl_is_const(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
+    fn fn_is_const(self, def_id: DefId) -> bool {
         self.is_conditionally_const(def_id)
     }
 
@@ -387,12 +393,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    fn implied_const_bounds(
+    fn explicit_implied_const_bounds(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
         ty::EarlyBinder::bind(
-            self.implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+            self.explicit_implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
         )
     }
 
@@ -596,11 +602,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.coroutine_is_async_gen(coroutine_def_id)
     }
 
-    fn layout_is_pointer_like(self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        self.layout_of(self.erase_regions(param_env.and(ty)))
-            .is_ok_and(|layout| layout.layout.is_pointer_like(&self.data_layout))
-    }
-
     type UnsizingParams = &'tcx rustc_index::bit_set::BitSet<u32>;
     fn unsizing_params_for_adt(self, adt_def_id: DefId) -> Self::UnsizingParams {
         self.unsizing_params_for_adt(adt_def_id)
@@ -674,7 +675,6 @@ bidirectional_lang_item_map! {
     Metadata,
     Option,
     PointeeTrait,
-    PointerLike,
     Poll,
     Sized,
     TransmuteTrait,

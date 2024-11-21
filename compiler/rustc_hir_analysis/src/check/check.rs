@@ -21,8 +21,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
 use rustc_middle::ty::{
-    AdtDef, GenericArgKind, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    AdtDef, GenericArgKind, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -91,38 +90,38 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         fn allowed_union_field<'tcx>(
             ty: Ty<'tcx>,
             tcx: TyCtxt<'tcx>,
-            param_env: ty::ParamEnv<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
         ) -> bool {
             // We don't just accept all !needs_drop fields, due to semver concerns.
             match ty.kind() {
                 ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
                 ty::Tuple(tys) => {
                     // allow tuples of allowed types
-                    tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env))
+                    tys.iter().all(|ty| allowed_union_field(ty, tcx, typing_env))
                 }
                 ty::Array(elem, _len) => {
                     // Like `Copy`, we do *not* special-case length 0.
-                    allowed_union_field(*elem, tcx, param_env)
+                    allowed_union_field(*elem, tcx, typing_env)
                 }
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
                     // also no need to report an error if the type is unresolved.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx, param_env)
+                        || ty.is_copy_modulo_regions(tcx, typing_env)
                         || ty.references_error()
                 }
             }
         }
 
-        let param_env = tcx.param_env(item_def_id);
+        let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
         for field in &def.non_enum_variant().fields {
-            let Ok(field_ty) = tcx.try_normalize_erasing_regions(param_env, field.ty(tcx, args))
+            let Ok(field_ty) = tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
             else {
                 tcx.dcx().span_delayed_bug(span, "could not normalize field type");
                 continue;
             };
 
-            if !allowed_union_field(field_ty, tcx, param_env) {
+            if !allowed_union_field(field_ty, tcx, typing_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
                     Some(Node::Field(field)) => (field.span, field.ty.span),
@@ -137,7 +136,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     note: (),
                 });
                 return false;
-            } else if field_ty.needs_drop(tcx, param_env) {
+            } else if field_ty.needs_drop(tcx, typing_env) {
                 // This should never happen. But we can get here e.g. in case of name resolution errors.
                 tcx.dcx()
                     .span_delayed_bug(span, "we should never accept maybe-dropping union fields");
@@ -158,7 +157,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id).instantiate_identity();
     let span = tcx.def_span(def_id);
-    let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
+    let layout = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))
@@ -237,7 +236,10 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 
         // And also look for cycle errors in the layout of coroutines.
         if let Err(&LayoutError::Cycle(guar)) =
-            tcx.layout_of(tcx.param_env(def_id).and(Ty::new_opaque(tcx, def_id.to_def_id(), args)))
+            tcx.layout_of(
+                ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                    .as_query_input(Ty::new_opaque(tcx, def_id.to_def_id(), args)),
+            )
         {
             return Err(guar);
         }
@@ -337,6 +339,8 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let misc_cause = ObligationCause::misc(span, def_id);
     // FIXME: We should just register the item bounds here, rather than equating.
+    // FIXME(const_trait_impl): When we do that, please make sure to also register
+    // the `~const` bounds.
     match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
         Ok(()) => {}
         Err(ty_err) => {
@@ -1307,8 +1311,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     // "known" respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
-        let param_env = tcx.param_env(field.did);
-        let layout = tcx.layout_of(param_env.and(ty));
+        let typing_env = ty::TypingEnv::non_body_analysis(tcx, field.did);
+        let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());

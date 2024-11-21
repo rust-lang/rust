@@ -388,7 +388,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return false;
         }
 
-        let infcx = tcx.infer_ctxt().build(self.body.typing_mode(tcx));
+        let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
         let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
         let body_id = self.body.source.def_id().expect_local();
@@ -398,11 +398,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 ty::BoundConstness::Const
             }
         };
-        let const_conditions = ocx.normalize(
-            &ObligationCause::misc(call_span, body_id),
-            self.param_env,
-            const_conditions,
-        );
+        let const_conditions =
+            ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, const_conditions);
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
             Obligation::new(
                 tcx,
@@ -411,7 +408,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     body_id,
                     ObligationCauseCode::WhereClause(callee, span),
                 ),
-                self.param_env,
+                param_env,
                 trait_ref.to_host_effect_clause(tcx, host_polarity),
             )
         }));
@@ -612,6 +609,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
     }
@@ -760,7 +758,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
                             // can be *directly* invoked from stable const code) does not always
-                            // have the `#[rustc_const_stable_intrinsic]` attribute (which controls
+                            // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls
                             // exposing an intrinsic indirectly); we accept this call anyway.
                         }
                     }

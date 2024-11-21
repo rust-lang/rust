@@ -1255,6 +1255,10 @@ impl Config {
             },
             out: PathBuf::from("build"),
 
+            // This is needed by codegen_ssa on macOS to ship `llvm-objcopy` aliased to
+            // `rust-objcopy` to workaround bad `strip`s on macOS.
+            llvm_tools_enabled: true,
+
             ..Default::default()
         }
     }

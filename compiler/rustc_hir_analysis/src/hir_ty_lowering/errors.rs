@@ -1106,7 +1106,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .collect::<String>()
             ),
             [(only, _)] => only.to_string(),
-            [] => "this type".to_string(),
+            [] => bug!("expected one segment to deny"),
         };
 
         let arg_spans: Vec<Span> = segments
@@ -1136,7 +1136,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "s",
             ),
             [only] => (only.to_string(), ""),
-            [] => unreachable!("expected at least one generic to prohibit"),
+            [] => bug!("expected at least one generic to prohibit"),
         };
         let last_span = *arg_spans.last().unwrap();
         let span: MultiSpan = arg_spans.into();

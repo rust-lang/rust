@@ -19,7 +19,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
@@ -40,22 +41,22 @@ pub(crate) fn provide(providers: &mut Providers) {
 #[instrument(skip(tcx, query), level = "debug")]
 fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let (param_env, ty) = query.into_parts();
+    let PseudoCanonicalInput { typing_env, value: ty } = query;
     debug!(?ty);
 
     // Optimization: We convert to RevealAll and convert opaque types in the where bounds
     // to their hidden types. This reduces overall uncached invocations of `layout_of` and
     // is thus a small performance improvement.
-    let param_env = param_env.with_reveal_all_normalized(tcx);
+    let typing_env = typing_env.with_reveal_all_normalized(tcx);
     let unnormalized_ty = ty;
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
+    let ty = match tcx.try_normalize_erasing_regions(typing_env, ty) {
         Ok(t) => t,
         Err(normalization_error) => {
             return Err(tcx
@@ -66,10 +67,10 @@ fn layout_of<'tcx>(
 
     if ty != unnormalized_ty {
         // Ensure this layout is also cached for the normalized type.
-        return tcx.layout_of(param_env.and(ty));
+        return tcx.layout_of(typing_env.as_query_input(ty));
     }
 
-    let cx = LayoutCx::new(tcx, param_env);
+    let cx = LayoutCx::new(tcx, typing_env);
 
     let layout = layout_of_uncached(&cx, ty)?;
     let layout = TyAndLayout { ty, layout };
@@ -104,7 +105,7 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if !field.ty.is_sized(cx.tcx(), cx.param_env) {
+            if !field.ty.is_sized(cx.tcx(), cx.typing_env) {
                 cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
@@ -152,7 +153,6 @@ fn layout_of_uncached<'tcx>(
     }
 
     let tcx = cx.tcx();
-    let param_env = cx.param_env;
     let dl = cx.data_layout();
     let scalar_unit = |value: Primitive| {
         let size = value.size(dl);
@@ -178,12 +178,12 @@ fn layout_of_uncached<'tcx>(
                     {
                         if let Some(start) = start {
                             scalar.valid_range_mut().start = start
-                                .try_to_bits(tcx, param_env)
+                                .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
                             let mut end = end
-                                .try_to_bits(tcx, param_env)
+                                .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
                                 end = end.wrapping_sub(1);
@@ -235,8 +235,8 @@ fn layout_of_uncached<'tcx>(
                 data_ptr.valid_range_mut().start = 1;
             }
 
-            let pointee = tcx.normalize_erasing_regions(param_env, pointee);
-            if pointee.is_sized(tcx, param_env) {
+            let pointee = tcx.normalize_erasing_regions(cx.typing_env, pointee);
+            if pointee.is_sized(tcx, cx.typing_env) {
                 return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
             }
 
@@ -247,7 +247,7 @@ fn layout_of_uncached<'tcx>(
             {
                 let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
                 let metadata_ty =
-                    match tcx.try_normalize_erasing_regions(param_env, pointee_metadata) {
+                    match tcx.try_normalize_erasing_regions(cx.typing_env, pointee_metadata) {
                         Ok(metadata_ty) => metadata_ty,
                         Err(mut err) => {
                             // Usually `<Ty as Pointee>::Metadata` can't be normalized because
@@ -259,7 +259,7 @@ fn layout_of_uncached<'tcx>(
                             // that is an alias, which is likely the cause of the normalization
                             // error.
                             match tcx.try_normalize_erasing_regions(
-                                param_env,
+                                cx.typing_env,
                                 tcx.struct_tail_raw(pointee, |ty| ty, || {}),
                             ) {
                                 Ok(_) => {}
@@ -283,7 +283,7 @@ fn layout_of_uncached<'tcx>(
 
                 metadata
             } else {
-                let unsized_part = tcx.struct_tail_for_codegen(pointee, param_env);
+                let unsized_part = tcx.struct_tail_for_codegen(pointee, cx.typing_env);
 
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
@@ -316,7 +316,7 @@ fn layout_of_uncached<'tcx>(
         // Arrays and slices.
         ty::Array(element, mut count) => {
             if count.has_aliases() {
-                count = tcx.normalize_erasing_regions(param_env, count);
+                count = tcx.normalize_erasing_regions(cx.typing_env, count);
                 if count.has_aliases() {
                     return Err(error(cx, LayoutError::Unknown(ty)));
                 }
@@ -331,7 +331,7 @@ fn layout_of_uncached<'tcx>(
                 .checked_mul(count, dl)
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
 
-            let abi = if count != 0 && ty.is_privately_uninhabited(tcx, param_env) {
+            let abi = if count != 0 && ty.is_privately_uninhabited(tcx, cx.typing_env) {
                 BackendRepr::Uninhabited
             } else {
                 BackendRepr::Memory { sized: true }
@@ -594,8 +594,8 @@ fn layout_of_uncached<'tcx>(
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let param_env = tcx.param_env(def.did());
-                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, param_env)
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
+                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
                 });
 
             let layout = cx
@@ -620,7 +620,7 @@ fn layout_of_uncached<'tcx>(
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
-                && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.param_env)
+                && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.typing_env)
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();
@@ -1024,7 +1024,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tc
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.
-    if layout.ty.has_non_region_param() || !cx.param_env.caller_bounds().is_empty() {
+    if layout.ty.has_non_region_param() || !cx.typing_env.param_env.caller_bounds().is_empty() {
         return;
     }
 

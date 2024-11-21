@@ -43,13 +43,10 @@ declare_lint! {
 }
 
 /// FIXME: false negatives (i.e. the lint is not emitted when it should be)
-/// 1. Method calls that are not checked for:
-///    - [`temporary_unsafe_cell.get()`][`core::cell::UnsafeCell::get()`]
-///    - [`temporary_sync_unsafe_cell.get()`][`core::cell::SyncUnsafeCell::get()`]
-/// 2. Ways to get a temporary that are not recognized:
+/// 1. Ways to get a temporary that are not recognized:
 ///    - `owning_temporary.field`
 ///    - `owning_temporary[index]`
-/// 3. No checks for ref-to-ptr conversions:
+/// 2. No checks for ref-to-ptr conversions:
 ///    - `&raw [mut] temporary`
 ///    - `&temporary as *(const|mut) _`
 ///    - `ptr::from_ref(&temporary)` and friends
@@ -133,10 +130,11 @@ impl DanglingPointerSearcher<'_, '_> {
 
 fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
-        && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
+        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
         && is_temporary_rvalue(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
-        && is_interesting(cx.tcx, ty)
+        && owns_allocation(cx.tcx, ty)
     {
         // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(
@@ -199,24 +197,25 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     }
 }
 
-// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>,
-// or any of the above in arbitrary many nested Box'es.
-fn is_interesting(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
+// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>, UnsafeCell,
+// SyncUnsafeCell, or any of the above in arbitrary many nested Box'es.
+fn owns_allocation(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
     if ty.is_array() {
         true
     } else if let Some(inner) = ty.boxed_ty() {
         inner.is_slice()
             || inner.is_str()
             || inner.ty_adt_def().is_some_and(|def| tcx.is_lang_item(def.did(), LangItem::CStr))
-            || is_interesting(tcx, inner)
+            || owns_allocation(tcx, inner)
     } else if let Some(def) = ty.ty_adt_def() {
-        for lang_item in [LangItem::String, LangItem::MaybeUninit] {
+        for lang_item in [LangItem::String, LangItem::MaybeUninit, LangItem::UnsafeCell] {
             if tcx.is_lang_item(def.did(), lang_item) {
                 return true;
             }
         }
-        tcx.get_diagnostic_name(def.did())
-            .is_some_and(|name| matches!(name, sym::cstring_type | sym::Vec | sym::Cell))
+        tcx.get_diagnostic_name(def.did()).is_some_and(|name| {
+            matches!(name, sym::cstring_type | sym::Vec | sym::Cell | sym::SyncUnsafeCell)
+        })
     } else {
         false
     }

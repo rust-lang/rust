@@ -247,7 +247,7 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             }
         }
         Constant { value: _ } => {}
-        InlineConstant { def: _, subpattern } => visitor.visit_pat(subpattern),
+        ExpandedConstant { def_id: _, is_inline: _, subpattern } => visitor.visit_pat(subpattern),
         Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix.iter() {

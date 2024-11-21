@@ -101,6 +101,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -3185,6 +3186,7 @@ declare_lint! {
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -4991,6 +4993,83 @@ declare_lint! {
     pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
     Warn,
     "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
+    /// that runs a custom `Drop` destructor.
+    /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
+    /// This lint detects those cases and provides you information on those values and their custom destructor implementations.
+    /// Your discretion on this information is required.
+    ///
+    /// ### Example
+    /// ```rust,edition2021
+    /// #![warn(tail_expr_drop_order)]
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// impl Drop for Droppy {
+    ///     fn drop(&mut self) {
+    ///         // This is a custom destructor and it induces side-effects that is observable
+    ///         // especially when the drop order at a tail expression changes.
+    ///         println!("loud drop {}", self.0);
+    ///     }
+    /// }
+    /// fn edition_2021() -> i32 {
+    ///     let another_droppy = Droppy(0);
+    ///     Droppy(1).get()
+    /// }
+    /// fn main() {
+    ///     edition_2021();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In tail expression of blocks or function bodies,
+    /// values of type with significant `Drop` implementation has an ill-specified drop order
+    /// before Edition 2024 so that they are dropped only after dropping local variables.
+    /// Edition 2024 introduces a new rule with drop orders for them,
+    /// so that they are dropped first before dropping local variables.
+    ///
+    /// A significant `Drop::drop` destructor here refers to an explicit, arbitrary
+    /// implementation of the `Drop` trait on the type, with exceptions including `Vec`,
+    /// `Box`, `Rc`, `BTreeMap` and `HashMap` that are marked by the compiler otherwise
+    /// so long that the generic types have no significant destructor recursively.
+    /// In other words, a type has a significant drop destructor when it has a `Drop` implementation
+    /// or its destructor invokes a significant destructor on a type.
+    /// Since we cannot completely reason about the change by just inspecting the existence of
+    /// a significant destructor, this lint remains only a suggestion and is set to `allow` by default.
+    ///
+    /// This lint only points out the issue with `Droppy`, which will be dropped before `another_droppy`
+    /// does in Edition 2024.
+    /// No fix will be proposed by this lint.
+    /// However, the most probable fix is to hoist `Droppy` into its own local variable binding.
+    /// ```rust
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// fn edition_2024() -> i32 {
+    ///     let value = Droppy(0);
+    ///     let another_droppy = Droppy(1);
+    ///     value.get()
+    /// }
+    /// ```
+    pub TAIL_EXPR_DROP_ORDER,
+    Allow,
+    "Detect and warn on significant change in drop order in tail expression location",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "issue #123739 <https://github.com/rust-lang/rust/issues/123739>",
+    };
 }
 
 declare_lint! {

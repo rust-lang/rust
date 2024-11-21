@@ -290,12 +290,7 @@ pub fn lint_level(
         let has_future_breakage = future_incompatible.map_or(
             // Default allow lints trigger too often for testing.
             sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
-            |incompat| {
-                matches!(
-                    incompat.reason,
-                    FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
-                )
-            },
+            |incompat| incompat.reason.has_future_breakage(),
         );
 
         // Convert lint level to error level.

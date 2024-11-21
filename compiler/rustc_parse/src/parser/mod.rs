@@ -641,9 +641,10 @@ impl<'a> Parser<'a> {
             return true;
         }
 
+        // Do an ASCII case-insensitive match, because all keywords are ASCII.
         if case == Case::Insensitive
             && let Some((ident, IdentIsRaw::No)) = self.token.ident()
-            && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
+            && ident.as_str().eq_ignore_ascii_case(kw.as_str())
         {
             true
         } else {

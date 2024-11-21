@@ -1,6 +1,6 @@
 use rustc_abi::{AddressSpace, Float, Integer};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, Reg};
 
@@ -41,7 +41,7 @@ pub trait BaseTypeCodegenMethods<'tcx>: BackendTypes {
 }
 
 pub trait DerivedTypeCodegenMethods<'tcx>:
-    BaseTypeCodegenMethods<'tcx> + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx>
+    BaseTypeCodegenMethods<'tcx> + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
 {
     fn type_int(&self) -> Self::Type {
         match &self.sess().target.c_int_width[..] {
@@ -74,24 +74,23 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
     }
 
     fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx(), ty::ParamEnv::reveal_all())
+        ty.needs_drop(self.tcx(), self.typing_env())
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx(), ty::ParamEnv::reveal_all())
+        ty.is_sized(self.tcx(), self.typing_env())
     }
 
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx(), ty::ParamEnv::reveal_all())
+        ty.is_freeze(self.tcx(), self.typing_env())
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        let param_env = ty::ParamEnv::reveal_all();
-        if ty.is_sized(self.tcx(), param_env) {
+        if ty.is_sized(self.tcx(), self.typing_env()) {
             return false;
         }
 
-        let tail = self.tcx().struct_tail_for_codegen(ty, param_env);
+        let tail = self.tcx().struct_tail_for_codegen(ty, self.typing_env());
         match tail.kind() {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -101,7 +100,10 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
 }
 
 impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
-    Self: BaseTypeCodegenMethods<'tcx> + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx>
+    Self: BaseTypeCodegenMethods<'tcx>
+        + MiscCodegenMethods<'tcx>
+        + HasTyCtxt<'tcx>
+        + HasTypingEnv<'tcx>
 {
 }
 

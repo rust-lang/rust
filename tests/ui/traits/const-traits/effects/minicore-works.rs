@@ -20,3 +20,9 @@ const fn test_op() {
     let _x = Add::add(1, 2);
     let _y = Custom + Custom;
 }
+
+const fn call_indirect<T: ~const Fn()>(t: &T) { t() }
+
+const fn call() {
+    call_indirect(&call);
+}

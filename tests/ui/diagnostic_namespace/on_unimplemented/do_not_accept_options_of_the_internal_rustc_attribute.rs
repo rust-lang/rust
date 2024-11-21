@@ -1,3 +1,7 @@
+//@ reference: attributes.diagnostic.on_unimplemented.format-parameters
+//@ reference: attributes.diagnostic.on_unimplemented.keys
+//@ reference: attributes.diagnostic.on_unimplemented.syntax
+//@ reference: attributes.diagnostic.on_unimplemented.invalid-formats
 #[diagnostic::on_unimplemented(
     on(_Self = "&str"),
     //~^WARN malformed `on_unimplemented` attribute

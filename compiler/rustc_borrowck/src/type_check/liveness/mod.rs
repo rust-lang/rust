@@ -32,14 +32,14 @@ pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &DenseLocationMap,
-    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     debug!("liveness::generate");
 
     let free_regions = regions_that_outlive_free_regions(
         typeck.infcx.num_region_vars(),
-        typeck.universal_regions,
+        &typeck.universal_regions,
         &typeck.constraints.outlives_constraints,
     );
     let (relevant_live_locals, boring_locals) =
@@ -107,7 +107,7 @@ fn regions_that_outlive_free_regions<'tcx>(
     let rev_region_graph = rev_constraint_graph.region_graph(constraint_set, fr_static);
 
     // Stack for the depth-first search. Start out with all the free regions.
-    let mut stack: Vec<_> = universal_regions.universal_regions().collect();
+    let mut stack: Vec<_> = universal_regions.universal_regions_iter().collect();
 
     // Set of all free regions, plus anything that outlives them. Initially
     // just contains the free regions.

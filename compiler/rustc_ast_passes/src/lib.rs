@@ -18,7 +18,6 @@
 pub mod ast_validation;
 mod errors;
 pub mod feature_gate;
-pub mod node_count;
 pub mod show_span;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

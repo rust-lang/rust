@@ -21,6 +21,7 @@
 #![feature(auto_traits)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
+#![feature(dropck_eyepatch)]
 #![feature(extend_one)]
 #![feature(file_buffered)]
 #![feature(hash_raw_entry)]
@@ -78,6 +79,7 @@ pub mod thinvec;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
+pub mod vec_cache;
 pub mod work_queue;
 
 mod atomic_ref;

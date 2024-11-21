@@ -12,8 +12,7 @@ use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-    Variance,
+    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -47,9 +46,10 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         if matches!(body.source.instance, InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..)) {
             return;
         }
+        debug_assert_eq!(self.mir_phase, body.phase);
         let def_id = body.source.def_id();
-        let mir_phase = self.mir_phase;
-        let param_env = mir_phase.param_env(tcx, def_id);
+        let mir_phase = body.phase;
+        let typing_env = body.typing_env(tcx);
         let can_unwind = if mir_phase <= MirPhase::Runtime(RuntimePhase::Initial) {
             // In this case `AbortUnwindingCalls` haven't yet been executed.
             true
@@ -86,7 +86,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         cfg_checker.check_cleanup_control_flow();
 
         // Also run the TypeChecker.
-        for (location, msg) in validate_types(tcx, self.mir_phase, param_env, body, body) {
+        for (location, msg) in validate_types(tcx, self.mir_phase, typing_env, body, body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -343,6 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
 
@@ -532,12 +533,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 pub(super) fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     body: &Body<'tcx>,
     caller_body: &Body<'tcx>,
 ) -> Vec<(Location, String)> {
     let mut type_checker =
-        TypeChecker { body, caller_body, tcx, param_env, mir_phase, failures: Vec::new() };
+        TypeChecker { body, caller_body, tcx, typing_env, mir_phase, failures: Vec::new() };
     type_checker.visit_body(body);
     type_checker.failures
 }
@@ -546,7 +547,7 @@ struct TypeChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     caller_body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     mir_phase: MirPhase,
     failures: Vec<(Location, String)>,
 }
@@ -582,14 +583,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Variance::Covariant
         };
 
-        crate::util::relate_types(
-            self.tcx,
-            self.body.typing_mode(self.tcx),
-            self.param_env,
-            variance,
-            src,
-            dest,
-        )
+        crate::util::relate_types(self.tcx, self.typing_env, variance, src, dest)
     }
 
     /// Check that the given predicate definitely holds in the param-env of this MIR body.
@@ -608,12 +602,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        let infcx = self.tcx.infer_ctxt().build(self.body.typing_mode(self.tcx));
+        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,
             ObligationCause::dummy(),
-            self.param_env,
+            param_env,
             pred,
         ));
         ocx.select_all_or_error().is_empty()
@@ -630,7 +624,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
-                if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
+                if !ty.is_copy_modulo_regions(self.tcx, self.typing_env) {
                     self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
                 }
             }
@@ -802,8 +796,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             ProjectionElem::Subtype(ty) => {
                 if !util::sub_types(
                     self.tcx,
-                    self.body.typing_mode(self.tcx),
-                    self.param_env,
+                    self.typing_env,
                     ty,
                     place_ref.ty(&self.body.local_decls, self.tcx).ty,
                 ) {
@@ -916,7 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert!(adt_def.is_union());
                     assert_eq!(idx, FIRST_VARIANT);
                     let dest_ty = self.tcx.normalize_erasing_regions(
-                        self.param_env,
+                        self.typing_env,
                         adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
                     if let [field] = fields.raw.as_slice() {
@@ -938,7 +931,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
                         let dest_ty = self
                             .tcx
-                            .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
+                            .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }
@@ -997,7 +990,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
 
                             // FIXME: check `Thin` instead of `Sized`
-                            if !in_pointee.is_sized(self.tcx, self.param_env) {
+                            if !in_pointee.is_sized(self.tcx, self.typing_env) {
                                 self.fail(location, "input pointer must be thin");
                             }
                         } else {
@@ -1012,7 +1005,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             if !self.mir_assign_valid_types(metadata_ty, self.tcx.types.usize) {
                                 self.fail(location, "slice metadata must be usize");
                             }
-                        } else if pointee_ty.is_sized(self.tcx, self.param_env) {
+                        } else if pointee_ty.is_sized(self.tcx, self.typing_env) {
                             if metadata_ty != self.tcx.types.unit {
                                 self.fail(location, "metadata for pointer-to-thin must be unit");
                             }
@@ -1301,8 +1294,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             if !self
                                 .tcx
-                                .normalize_erasing_regions(self.param_env, op_ty)
-                                .is_sized(self.tcx, self.param_env)
+                                .normalize_erasing_regions(self.typing_env, op_ty)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,
@@ -1311,8 +1304,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             }
                             if !self
                                 .tcx
-                                .normalize_erasing_regions(self.param_env, *target_type)
-                                .is_sized(self.tcx, self.param_env)
+                                .normalize_erasing_regions(self.typing_env, *target_type)
+                                .is_sized(self.tcx, self.typing_env)
                             {
                                 self.fail(
                                     location,
@@ -1353,7 +1346,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
+                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
                         }
                         ty::Adt(adt_def, args) => {
                             let Some(field) = adt_def.variant(variant).fields.get(field) else {
@@ -1362,7 +1355,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             };
 
                             let f_ty = field.ty(self.tcx, args);
-                            current_ty = self.tcx.normalize_erasing_regions(self.param_env, f_ty);
+                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
                         }
                         _ => {
                             self.fail(
@@ -1501,6 +1494,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
 

@@ -106,20 +106,24 @@ impl Qualif for HasMutInterior {
         // Instead we invoke an obligation context manually, and provide the opaque type inference settings
         // that allow the trait solver to just error out instead of cycling.
         let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, Some(cx.body.span));
-
+        // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
+        // typeck results without causing query cycles, we should use this here instead of defining
+        // opaque types.
+        let typing_env = ty::TypingEnv {
+            typing_mode: ty::TypingMode::analysis_in_body(
+                cx.tcx,
+                cx.body.source.def_id().expect_local(),
+            ),
+            param_env: cx.typing_env.param_env,
+        };
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(typing_env);
+        let ocx = ObligationCtxt::new(&infcx);
         let obligation = Obligation::new(
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
-            cx.param_env,
+            param_env,
             ty::TraitRef::new(cx.tcx, freeze_def_id, [ty::GenericArg::from(ty)]),
         );
-
-        // FIXME(#132279): This should eventually use the already defined hidden types.
-        let infcx = cx.tcx.infer_ctxt().build(ty::TypingMode::analysis_in_body(
-            cx.tcx,
-            cx.body.source.def_id().expect_local(),
-        ));
-        let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(obligation);
         let errors = ocx.select_all_or_error();
         !errors.is_empty()
@@ -156,7 +160,7 @@ impl Qualif for NeedsDrop {
     }
 
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(cx.tcx, cx.param_env)
+        ty.needs_drop(cx.tcx, cx.typing_env)
     }
 
     fn in_adt_inherently<'tcx>(

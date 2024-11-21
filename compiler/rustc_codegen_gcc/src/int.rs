@@ -5,7 +5,7 @@
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
-use rustc_middle::ty::{ParamEnv, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::Endian;
 use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 use rustc_target::spec;
@@ -380,7 +380,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let overflow_field = self.context.new_field(self.location, self.bool_type, "overflow");
 
         let ret_ty = Ty::new_tup(self.tcx, &[self.tcx.types.i128, self.tcx.types.bool]);
-        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ret_ty)).unwrap();
+        let layout = self
+            .tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ret_ty))
+            .unwrap();
 
         let arg_abi = ArgAbi { layout, mode: PassMode::Direct(ArgAttributes::new()) };
         let mut fn_abi = FnAbi {

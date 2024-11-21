@@ -864,7 +864,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let kind = call_kind(
                 self.infcx.tcx,
-                self.param_env,
+                self.infcx.typing_env(self.infcx.param_env),
                 method_did,
                 method_args,
                 *fn_span,
@@ -1160,7 +1160,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
                                 self.infcx,
-                                self.param_env,
+                                self.infcx.param_env,
                                 Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
                                 def_id,
                             ),
@@ -1224,7 +1224,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 BoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
                             )
-                            && self.infcx.can_eq(self.param_env, ty, self_ty)
+                            && self.infcx.can_eq(self.infcx.param_env, ty, self_ty)
                         {
                             err.subdiagnostic(CaptureReasonSuggest::FreshReborrow {
                                 span: move_span.shrink_to_hi(),
@@ -1258,7 +1258,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             if let Some(errors) = self.infcx.type_implements_trait_shallow(
                                 clone_trait,
                                 ty,
-                                self.param_env,
+                                self.infcx.param_env,
                             ) && !has_sugg
                             {
                                 let msg = match &errors[..] {

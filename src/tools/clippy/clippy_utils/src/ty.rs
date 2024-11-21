@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, UintTy, Upcast, VariantDef, VariantDiscr,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -38,7 +38,7 @@ pub use type_certainty::expr_type_is_certain;
 
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+    ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
 }
 
 /// This checks whether a given type is known to implement Debug.
@@ -226,7 +226,7 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, trait_id, None, args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(cx.tcx, cx.typing_env(), ty, trait_id, None, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -235,19 +235,19 @@ pub fn implements_trait<'tcx>(
 /// environment, used for checking const traits.
 pub fn implements_trait_with_env<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
     callee_id: Option<DefId>,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(tcx, param_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(tcx, typing_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait_from_env` but takes the arguments as an iterator.
 pub fn implements_trait_with_env_from_iter<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
     callee_id: Option<DefId>,
@@ -268,7 +268,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         return false;
     }
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     let args = args
         .into_iter()
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
@@ -467,7 +467,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if !seen.insert(ty) {
             return false;
         }
-        if !ty.has_significant_drop(cx.tcx, cx.param_env) {
+        if !ty.has_significant_drop(cx.tcx, cx.typing_env()) {
             false
         }
         // Check for std types which implement drop, but only for memory allocation.
@@ -575,8 +575,9 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 
 /// Checks if a given type looks safe to be uninitialized.
 pub fn is_uninit_value_valid_for_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    let typing_env = cx.typing_env().with_reveal_all_normalized(cx.tcx);
     cx.tcx
-        .check_validity_requirement((ValidityRequirement::Uninit, cx.param_env.and(ty)))
+        .check_validity_requirement((ValidityRequirement::Uninit, typing_env.as_query_input(ty)))
         .unwrap_or_else(|_| is_uninit_value_valid_for_ty_fallback(cx, ty))
 }
 
@@ -725,7 +726,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 _ => None,
             }
         },
-        ty::Alias(ty::Projection, proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
+        ty::Alias(ty::Projection, proj) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
             _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
         },
@@ -1111,12 +1112,12 @@ pub fn make_projection<'tcx>(
 /// succeeds as well as everything checked by `make_projection`.
 pub fn make_normalized_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     container_id: DefId,
     assoc_ty: Symbol,
     args: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> Option<Ty<'tcx>> {
-    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
         if let Some((i, arg)) = ty
             .args
@@ -1132,7 +1133,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, Ty::new_projection_from_args(tcx, ty.def_id, ty.args)) {
+        match tcx.try_normalize_erasing_regions(typing_env, Ty::new_projection_from_args(tcx, ty.def_id, ty.args)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1140,7 +1141,7 @@ pub fn make_normalized_projection<'tcx>(
             },
         }
     }
-    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, args)?)
+    helper(tcx, typing_env, make_projection(tcx, container_id, assoc_ty, args)?)
 }
 
 /// Helper to check if given type has inner mutability such as [`std::cell::Cell`] or
@@ -1238,12 +1239,12 @@ impl<'tcx> InteriorMut<'tcx> {
 
 pub fn make_normalized_projection_with_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     container_id: DefId,
     assoc_ty: Symbol,
     args: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> Option<Ty<'tcx>> {
-    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
         if let Some((i, arg)) = ty
             .args
@@ -1260,10 +1261,8 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             return None;
         }
         let cause = ObligationCause::dummy();
-        match tcx
-            .infer_ctxt()
-            .build(TypingMode::from_param_env(param_env))
-            .at(&cause, param_env)
+        let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+        match infcx.at(&cause, param_env)
             .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
         {
             Ok(ty) => Some(ty.value),
@@ -1273,20 +1272,13 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             },
         }
     }
-    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, args)?)
+    helper(tcx, typing_env, make_projection(tcx, container_id, assoc_ty, args)?)
 }
 
-pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let cause = ObligationCause::dummy();
-    match tcx
-        .infer_ctxt()
-        .build(TypingMode::from_param_env(param_env))
-        .at(&cause, param_env)
-        .query_normalize(ty)
-    {
-        Ok(ty) => ty.value,
-        Err(_) => ty,
-    }
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+    infcx.at(&cause, param_env).query_normalize(ty).map_or(ty, |ty| ty.value)
 }
 
 /// Checks if the type is `core::mem::ManuallyDrop<_>`
@@ -1300,7 +1292,7 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
         if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
             && implements_trait(cx, ty, deref_did, &[])
         {
-            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
+            make_normalized_projection(cx.tcx, cx.typing_env(), deref_did, sym::Target, [ty])
         } else {
             None
         }

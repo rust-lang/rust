@@ -7,8 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::traits::Reveal;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -31,7 +30,6 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     cid: GlobalId<'tcx>,
     body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
-    trace!(?ecx.param_env);
     let tcx = *ecx.tcx;
     assert!(
         cid.promoted.is_some()
@@ -126,14 +124,14 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
 pub(crate) fn mk_eval_cx_to_read_const_val<'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     can_access_mut_global: CanAccessMutGlobal,
 ) -> CompileTimeInterpCx<'tcx> {
-    debug!("mk_eval_cx: {:?}", param_env);
+    debug!("mk_eval_cx: {:?}", typing_env);
     InterpCx::new(
         tcx,
         root_span,
-        param_env,
+        typing_env,
         CompileTimeMachine::new(can_access_mut_global, CheckAlignment::No),
     )
 }
@@ -142,11 +140,11 @@ pub(crate) fn mk_eval_cx_to_read_const_val<'tcx>(
 /// Returns both the context and an `OpTy` that represents the constant.
 pub fn mk_eval_cx_for_const_val<'tcx>(
     tcx: TyCtxtAt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<(CompileTimeInterpCx<'tcx>, OpTy<'tcx>)> {
-    let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
+    let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, typing_env, CanAccessMutGlobal::No);
     // FIXME: is it a problem to discard the error here?
     let op = ecx.const_val_to_op(val, ty, None).discard_err()?;
     Some((ecx, op))
@@ -221,7 +219,7 @@ pub(super) fn op_to_const<'tcx>(
                 let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
-                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.param_env).kind(),
+                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.typing_env()).kind(),
                         ty::Str | ty::Slice(..),
                     ),
                     "`ConstValue::Slice` is for slice-tailed types only, but got {}",
@@ -245,7 +243,7 @@ pub(super) fn op_to_const<'tcx>(
 pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ConstValue<'tcx> {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
@@ -254,7 +252,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let ecx = mk_eval_cx_to_read_const_val(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
-        key.param_env,
+        key.typing_env,
         CanAccessMutGlobal::from(is_static),
     );
 
@@ -274,21 +272,16 @@ pub(crate) fn turn_into_const_value<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    // Const eval always happens in Reveal::All mode in order to be able to use the hidden types of
-    // opaque types. This is needed for trivial things like `size_of`, but also for using associated
-    // types that are not specified in the opaque type.
-    assert_eq!(key.param_env.reveal(), Reveal::All);
-
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceKind::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.param_env);
+        let ty = key.value.instance.ty(tcx, key.typing_env);
         let ty::FnDef(_, args) = ty.kind() else {
             bug!("intrinsic with type {:?}", ty);
         };
-        return eval_nullary_intrinsic(tcx, key.param_env, def_id, args).report_err().map_err(
+        return eval_nullary_intrinsic(tcx, key.typing_env, def_id, args).report_err().map_err(
             |error| {
                 let span = tcx.def_span(def_id);
 
@@ -315,7 +308,7 @@ pub fn eval_static_initializer_provider<'tcx>(
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
     let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
-    eval_in_interpreter(tcx, cid, ty::ParamEnv::reveal_all())
+    eval_in_interpreter(tcx, cid, ty::TypingEnv::fully_monomorphized())
 }
 
 pub trait InterpretationResult<'tcx> {
@@ -340,16 +333,14 @@ impl<'tcx> InterpretationResult<'tcx> for ConstAlloc<'tcx> {
 #[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+    key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
-    // Const eval always happens in Reveal::All mode in order to be able to use the hidden types of
-    // opaque types. This is needed for trivial things like `size_of`, but also for using associated
-    // types that are not specified in the opaque type.
-
-    assert_eq!(key.param_env.reveal(), Reveal::All);
+    // Const eval always happens in PostAnalysis mode . See the comment in
+    // `InterpCx::new` for more details.
+    debug_assert_eq!(key.typing_env.typing_mode, ty::TypingMode::PostAnalysis);
     if cfg!(debug_assertions) {
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
@@ -360,13 +351,13 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         trace!("const eval: {:?} ({})", key, instance);
     }
 
-    eval_in_interpreter(tcx, key.value, key.param_env)
+    eval_in_interpreter(tcx, key.value, key.typing_env)
 }
 
 fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     tcx: TyCtxt<'tcx>,
     cid: GlobalId<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
@@ -374,7 +365,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     let mut ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
-        param_env,
+        typing_env,
         // Statics (and promoteds inside statics) may access mutable global memory, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         // For consts however we want to ensure they behave "as if" they were evaluated at runtime,

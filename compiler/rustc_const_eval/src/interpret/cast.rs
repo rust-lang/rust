@@ -83,7 +83,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     ty::FnDef(def_id, args) => {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
-                            self.param_env,
+                            self.typing_env,
                             def_id,
                             args,
                         )
@@ -384,7 +384,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.param_env);
+            self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.typing_env);
 
         match (src_pointee_ty.kind(), dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {

@@ -102,7 +102,7 @@ where
 
     /// Assemble additional assumptions for an alias that are not included
     /// in the item bounds of the alias. For now, this is limited to the
-    /// `implied_const_bounds` for an associated type.
+    /// `explicit_implied_const_bounds` for an associated type.
     fn consider_additional_alias_assumptions(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -155,13 +155,6 @@ where
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
-    /// A type is `PointerLike` if we can compute its layout, and that layout
-    /// matches the layout of `usize`.
-    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
@@ -448,9 +441,6 @@ where
                         goal,
                         ty::ClosureKind::FnOnce,
                     )
-                }
-                Some(TraitSolverLangItem::PointerLike) => {
-                    G::consider_builtin_pointer_like_candidate(self, goal)
                 }
                 Some(TraitSolverLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)

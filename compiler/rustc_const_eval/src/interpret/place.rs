@@ -540,8 +540,7 @@ where
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
-                self.typing_mode(),
-                self.param_env,
+                self.typing_env,
                 self.layout_of(normalized_place_ty)?,
                 place.layout,
             ) {
@@ -871,13 +870,8 @@ where
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
-        let layout_compat = mir_assign_valid_types(
-            *self.tcx,
-            self.typing_mode(),
-            self.param_env,
-            src.layout(),
-            dest.layout(),
-        );
+        let layout_compat =
+            mir_assign_valid_types(*self.tcx, self.typing_env, src.layout(), dest.layout());
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),

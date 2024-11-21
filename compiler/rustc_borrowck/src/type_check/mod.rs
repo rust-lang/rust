@@ -118,17 +118,15 @@ mod relate_tys;
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    universal_regions: Rc<UniversalRegions<'tcx>>,
+    universal_regions: UniversalRegions<'tcx>,
     location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
     all_facts: &mut Option<AllFacts>,
-    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: Rc<DenseLocationMap>,
-    upvars: &[&ty::CapturedPlace<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
@@ -148,9 +146,9 @@ pub(crate) fn type_check<'a, 'tcx>(
         known_type_outlives_obligations,
     } = free_region_relations::create(
         infcx,
-        param_env,
+        infcx.param_env,
         implicit_region_bound,
-        Rc::clone(&universal_regions),
+        universal_regions,
         &mut constraints,
     );
 
@@ -158,29 +156,27 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     let mut checker = TypeChecker {
         infcx,
-        param_env,
         last_span: body.span,
         body,
         user_type_annotations: &body.user_type_annotations,
-        region_bound_pairs: &region_bound_pairs,
+        region_bound_pairs,
         known_type_outlives_obligations,
         implicit_region_bound,
         reported_errors: Default::default(),
-        universal_regions: &universal_regions,
+        universal_regions: &universal_region_relations.universal_regions,
         location_table,
         all_facts,
         borrow_set,
         constraints: &mut constraints,
-        upvars,
     };
 
     checker.check_user_type_annotations();
 
-    let mut verifier = TypeVerifier::new(&mut checker, promoted);
+    let mut verifier = TypeVerifier { cx: &mut checker, promoted, last_span: body.span };
     verifier.visit_body(body);
 
     checker.typeck_mir(body);
-    checker.equate_inputs_and_outputs(body, &universal_regions, &normalized_inputs_and_output);
+    checker.equate_inputs_and_outputs(body, &normalized_inputs_and_output);
     checker.check_signature_annotation(body);
 
     liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
@@ -467,13 +463,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(
-        cx: &'a mut TypeChecker<'b, 'tcx>,
-        promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
-    ) -> Self {
-        TypeVerifier { promoted, last_span: cx.body.span, cx }
-    }
-
     fn body(&self) -> &Body<'tcx> {
         self.cx.body
     }
@@ -837,14 +826,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
-    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
+    region_bound_pairs: RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
@@ -852,7 +840,6 @@ struct TypeChecker<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    upvars: &'a [&'a ty::CapturedPlace<'tcx>],
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -1025,10 +1012,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
             self.universal_regions,
-            self.region_bound_pairs,
+            &self.region_bound_pairs,
             self.implicit_region_bound,
-            self.param_env,
-            self.known_type_outlives_obligations,
+            self.infcx.param_env,
+            &self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
             category,
@@ -1265,6 +1252,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
             StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
@@ -1527,7 +1515,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // The signature in this call can reference region variables,
                 // so erase them before calling a query.
                 let output_ty = self.tcx().erase_regions(sig.output());
-                if !output_ty.is_privately_uninhabited(self.tcx(), self.param_env) {
+                if !output_ty.is_privately_uninhabited(
+                    self.tcx(),
+                    self.infcx.typing_env(self.infcx.param_env),
+                ) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1737,7 +1728,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let erased_ty = tcx.erase_regions(ty);
-        if !erased_ty.is_sized(tcx, self.param_env) {
+        // FIXME(#132279): Using `Ty::is_sized` causes us to incorrectly handle opaques here.
+        if !erased_ty.is_sized(tcx, self.infcx.typing_env(self.infcx.param_env)) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough
@@ -2629,8 +2621,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
+        let def = self.body.source.def_id().expect_local();
+        let upvars = tcx.closure_captures(def);
         let field =
-            path_utils::is_upvar_field_projection(tcx, self.upvars, borrowed_place.as_ref(), body);
+            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {
@@ -2785,10 +2779,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
-                self.region_bound_pairs,
+                &self.region_bound_pairs,
                 self.implicit_region_bound,
-                self.param_env,
-                self.known_type_outlives_obligations,
+                self.infcx.param_env,
+                &self.known_type_outlives_obligations,
                 locations,
                 self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.

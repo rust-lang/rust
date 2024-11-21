@@ -27,7 +27,7 @@ pub mod entry;
 mod errors;
 #[cfg(debug_assertions)]
 pub mod hir_id_validator;
-pub mod hir_stats;
+pub mod input_stats;
 mod lang_items;
 pub mod layout_test;
 mod lib_features;

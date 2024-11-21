@@ -1,12 +1,11 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
-use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::Reveal;
 use crate::{self as ty, Interner};
 
 /// The current typing mode of an inference context. We unfortunately have some
@@ -20,6 +19,7 @@ use crate::{self as ty, Interner};
 /// If neither of these functions are available, feel free to reach out to
 /// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
@@ -55,18 +55,6 @@ impl<I: Interner> TypingMode<I> {
     /// types defined by that body.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
-    }
-
-    /// FIXME(#132279): Using this function is questionable as the `param_env`
-    /// does not track `defining_opaque_types` and whether we're in coherence mode.
-    /// Many uses of this function should also use a not-yet implemented typing mode
-    /// which reveals already defined opaque types in the future. This function will
-    /// get completely removed at some point.
-    pub fn from_param_env(param_env: I::ParamEnv) -> TypingMode<I> {
-        match param_env.reveal() {
-            Reveal::UserFacing => TypingMode::non_body_analysis(),
-            Reveal::All => TypingMode::PostAnalysis,
-        }
     }
 }
 

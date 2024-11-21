@@ -105,8 +105,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.erase_regions(ty)
                 }
             };
-            InlineAsmCtxt::new_in_fn(self.tcx, self.param_env, get_operand_ty)
-                .check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new_in_fn(
+                self.tcx,
+                self.infcx.typing_env(self.param_env),
+                get_operand_ty,
+            )
+            .check_asm(asm, enclosing_id);
         }
     }
 

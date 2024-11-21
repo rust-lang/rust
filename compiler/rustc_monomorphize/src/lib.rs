@@ -35,7 +35,9 @@ fn custom_coerce_unsize_info<'tcx>(
         [source_ty, target_ty],
     );
 
-    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
+    match tcx
+        .codegen_select_candidate(ty::TypingEnv::fully_monomorphized().as_query_input(trait_ref))
+    {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {
             impl_def_id,
             ..

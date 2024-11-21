@@ -270,31 +270,31 @@ impl<'tcx> NonCopyConst<'tcx> {
             instance,
             promoted: None,
         };
-        let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, DUMMY_SP);
+        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
+        let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
+        let result = Self::const_eval_resolve(cx.tcx, cx.typing_env(), ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     pub fn const_eval_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::try_resolve(tcx, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(tcx, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId {
                     instance,
                     promoted: None,
                 };
-                tcx.const_eval_global_id_for_typeck(param_env, cid, span)
+                tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
             },
             Ok(None) => Err(ErrorHandled::TooGeneric(span)),
             Err(err) => Err(ErrorHandled::Reported(err.into(), span)),
@@ -321,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
             // Normalize assoc types because ones originated from generic params
             // bounded other traits could have their bound.
-            let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+            let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
             if self.interior_mut.is_interior_mut_ty(cx, normalized)
                 // When there's no default value, lint it only according to its type;
                 // in other words, lint consts whose value *could* be unfrozen, not definitely is.
@@ -361,12 +361,12 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                             .trait_item_def_id
                         && cx
                             .tcx
-                            .layout_of(cx.tcx.param_env(of_trait_def_id).and(
+                            .layout_of(ty::TypingEnv::post_analysis(cx.tcx, of_trait_def_id).as_query_input(
                                 // Normalize assoc types because ones originated from generic params
                                 // bounded other traits could have their bound at the trait defs;
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
-                                    cx.tcx.param_env(of_trait_def_id),
+                                    ty::TypingEnv::post_analysis(cx.tcx, of_trait_def_id),
                                     cx.tcx.type_of(of_assoc_item).instantiate_identity(),
                                 ),
                             ))
@@ -376,7 +376,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                             // similar to unknown layouts.
                             // e.g. `layout_of(...).is_err() || has_frozen_variant(...);`
                         && let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity()
-                        && let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty)
+                        && let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty)
                         && self.interior_mut.is_interior_mut_ty(cx, normalized)
                         && Self::is_value_unfrozen_poly(cx, *body_id, normalized)
                     {
@@ -386,7 +386,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 ItemKind::Impl(Impl { of_trait: None, .. }) => {
                     let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity();
                     // Normalize assoc types originated from generic params.
-                    let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+                    let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
 
                     if self.interior_mut.is_interior_mut_ty(cx, normalized)
                         && Self::is_value_unfrozen_poly(cx, *body_id, normalized)

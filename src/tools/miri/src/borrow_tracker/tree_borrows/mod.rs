@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, Size};
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 
@@ -132,8 +132,8 @@ impl<'tcx> NewPermission {
         kind: RetagKind,
         cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
-        let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
-        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
+        let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
+        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env());
         let is_protected = kind == RetagKind::FnEntry;
         // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
         // interior mutability and protectors interact poorly.
@@ -164,10 +164,10 @@ impl<'tcx> NewPermission {
         zero_size: bool,
     ) -> Option<Self> {
         let pointee = ty.builtin_deref(true).unwrap();
-        pointee.is_unpin(*cx.tcx, cx.param_env()).then_some(()).map(|()| {
+        pointee.is_unpin(*cx.tcx, cx.typing_env()).then_some(()).map(|()| {
             // Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
-            let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.param_env());
+            let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.typing_env());
             let protected = kind == RetagKind::FnEntry;
             let initial_state = Permission::new_reserved(ty_is_freeze, protected);
             Self {
@@ -521,7 +521,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Note: if we were to inline `new_reserved` below we would find out that
         // `ty_is_freeze` is eventually unused because it appears in a `ty_is_freeze || true`.
         // We are nevertheless including it here for clarity.
-        let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.param_env());
+        let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
         // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission {
             initial_state: Permission::new_reserved(ty_is_freeze, /* protected */ true),

@@ -206,12 +206,12 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
                 continue;
             },
             (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)), _)
-                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (true, false)
             },
             (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)))
-                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (false, true)
             },
@@ -244,7 +244,7 @@ enum ReducedTy<'tcx> {
 /// Reduce structs containing a single non-zero sized field to it's contained type.
 fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> {
     loop {
-        ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
+        ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty);
         return match *ty.kind() {
             ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => {
                 ReducedTy::TypeErasure { raw_ptr_only: false }
@@ -297,8 +297,8 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty)
-        && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty)
+        && let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
     {
         layout.layout.size().bytes() == 0
     } else {

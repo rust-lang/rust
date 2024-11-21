@@ -46,7 +46,7 @@ use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -78,7 +78,7 @@ pub fn provide(providers: &mut Providers) {
             predicates_of::explicit_supertraits_containing_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         const_conditions: predicates_of::const_conditions,
-        implied_const_bounds: predicates_of::implied_const_bounds,
+        explicit_implied_const_bounds: predicates_of::explicit_implied_const_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
@@ -88,6 +88,7 @@ pub fn provide(providers: &mut Providers) {
         coroutine_for_closure,
         opaque_ty_origin,
         rendered_precise_capturing_args,
+        const_param_default,
         ..*providers
     };
 }
@@ -339,6 +340,10 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.ensure().explicit_item_super_predicates(def_id);
         self.tcx.ensure().item_bounds(def_id);
         self.tcx.ensure().item_super_predicates(def_id);
+        if self.tcx.is_conditionally_const(def_id) {
+            self.tcx.ensure().explicit_implied_const_bounds(def_id);
+            self.tcx.ensure().const_conditions(def_id);
+        }
         intravisit::walk_opaque_ty(self, opaque);
     }
 
@@ -681,6 +686,10 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().generics_of(item.owner_id);
                 tcx.ensure().type_of(item.owner_id);
                 tcx.ensure().predicates_of(item.owner_id);
+                if tcx.is_conditionally_const(def_id) {
+                    tcx.ensure().explicit_implied_const_bounds(def_id);
+                    tcx.ensure().const_conditions(def_id);
+                }
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => {
                         tcx.ensure().codegen_fn_attrs(item.owner_id);
@@ -1789,4 +1798,24 @@ fn rendered_precise_capturing_args<'tcx>(
         }
         _ => None,
     })
+}
+
+fn const_param_default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let default_ct = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { default: Some(ct), .. },
+            ..
+        }) => ct,
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "`const_param_default` expected a generic parameter with a constant"
+        ),
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    // FIXME(const_generics): investigate which places do and don't need const ty feeding
+    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::No);
+    ty::EarlyBinder::bind(ct)
 }

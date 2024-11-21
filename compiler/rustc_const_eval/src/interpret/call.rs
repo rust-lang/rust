@@ -215,7 +215,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Even if `ty` is normalized, the search for the unsized tail will project
                 // to fields, which can yield non-normalized types. So we need to provide a
                 // normalization function.
-                let normalize = |ty| self.tcx.normalize_erasing_regions(self.param_env, ty);
+                let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
                 ty.ptr_metadata_ty(*self.tcx, normalize)
             };
             return interp_ok(meta_ty(caller) == meta_ty(callee));
@@ -662,7 +662,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
                     let receiver_tail =
-                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.param_env);
+                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.typing_env);
                     let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
@@ -704,7 +704,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     let concrete_method = Instance::expect_resolve_for_vtable(
                         tcx,
-                        self.param_env,
+                        self.typing_env,
                         def_id,
                         instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
                         self.cur_span(),

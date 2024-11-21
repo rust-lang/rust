@@ -178,9 +178,9 @@ pub enum InstanceKind<'tcx> {
 impl<'tcx> Instance<'tcx> {
     /// Returns the `Ty` corresponding to this `Instance`, with generic instantiations applied and
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.instantiate_and_normalize_erasing_regions(self.args, param_env, ty)
+        tcx.instantiate_and_normalize_erasing_regions(self.args, typing_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -519,7 +519,7 @@ impl<'tcx> Instance<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn try_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
@@ -537,17 +537,12 @@ impl<'tcx> Instance<'tcx> {
 
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-
-        // HACK(eddyb) erase regions in `args` first, so that `param_env.and(...)`
-        // below is more likely to ignore the bounds in scope (e.g. if the only
-        // generic parameters mentioned by `args` were lifetime ones).
-        let args = tcx.erase_regions(args);
-        tcx.resolve_instance_raw(tcx.erase_regions(param_env.and((def_id, args))))
+        tcx.resolve_instance_raw(tcx.erase_regions(typing_env.as_query_input((def_id, args))))
     }
 
     pub fn expect_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
         span: Span,
@@ -558,7 +553,7 @@ impl<'tcx> Instance<'tcx> {
         let span_or_local_def_span =
             || if span.is_dummy() && def_id.is_local() { tcx.def_span(def_id) } else { span };
 
-        match ty::Instance::try_resolve(tcx, param_env, def_id, args) {
+        match ty::Instance::try_resolve(tcx, typing_env, def_id, args) {
             Ok(Some(instance)) => instance,
             Ok(None) => {
                 let type_length = type_length(args);
@@ -600,7 +595,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_for_fn_ptr(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
@@ -608,7 +603,7 @@ impl<'tcx> Instance<'tcx> {
         // Use either `resolve_closure` or `resolve_for_vtable`
         assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::FnPtr);
-        Instance::try_resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
+        Instance::try_resolve(tcx, typing_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceKind::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -648,7 +643,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn expect_resolve_for_vtable(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
         span: Span,
@@ -664,7 +659,7 @@ impl<'tcx> Instance<'tcx> {
             return Instance { def: InstanceKind::VTableShim(def_id), args };
         }
 
-        let mut resolved = Instance::expect_resolve(tcx, param_env, def_id, args, span);
+        let mut resolved = Instance::expect_resolve(tcx, typing_env, def_id, args, span);
 
         let reason = tcx.sess.is_sanitizer_kcfi_enabled().then_some(ReifyReason::Vtable);
         match resolved.def {
@@ -743,7 +738,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
@@ -755,7 +750,7 @@ impl<'tcx> Instance<'tcx> {
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
             ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
@@ -883,16 +878,16 @@ impl<'tcx> Instance<'tcx> {
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         v: EarlyBinder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.instantiate_and_normalize_erasing_regions(args, param_env, v)
+            tcx.instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v.instantiate_identity())
+            tcx.normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
 
@@ -901,21 +896,21 @@ impl<'tcx> Instance<'tcx> {
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         v: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if let Some(args) = self.args_for_mir_body() {
-            tcx.try_instantiate_and_normalize_erasing_regions(args, param_env, v)
+            tcx.try_instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
             // We're using `instantiate_identity` as e.g.
             // `FnPtrShim` is separately generated for every
             // instantiation of the `FnDef`, so the MIR body
             // is already instantiated. Any generic parameters it
             // contains are generic parameters from the caller.
-            tcx.try_normalize_erasing_regions(param_env, v.instantiate_identity())
+            tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
 

@@ -39,7 +39,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingMode,
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingEnv,
     UserTypeAnnotationIndex,
 };
 
@@ -452,12 +452,14 @@ impl<'tcx> Body<'tcx> {
         self.basic_blocks.as_mut()
     }
 
-    pub fn typing_mode(&self, _tcx: TyCtxt<'tcx>) -> TypingMode<'tcx> {
+    pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         match self.phase {
-            // FIXME(#132279): the MIR is quite clearly inside of a body, so we
-            // should instead reveal opaques defined by that body here.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingMode::non_body_analysis(),
-            MirPhase::Runtime(_) => TypingMode::PostAnalysis,
+            // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
+            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
+                typing_mode: ty::TypingMode::non_body_analysis(),
+                param_env: tcx.param_env(self.source.def_id()),
+            },
+            MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
         }
     }
 
@@ -618,7 +620,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// If this basic block ends with a [`TerminatorKind::SwitchInt`] for which we can evaluate the
-    /// dimscriminant in monomorphization, we return the discriminant bits and the
+    /// discriminant in monomorphization, we return the discriminant bits and the
     /// [`SwitchTargets`], just so the caller doesn't also have to match on the terminator.
     fn try_const_mono_switchint<'a>(
         tcx: TyCtxt<'tcx>,
@@ -627,13 +629,15 @@ impl<'tcx> Body<'tcx> {
     ) -> Option<(u128, &'a SwitchTargets)> {
         // There are two places here we need to evaluate a constant.
         let eval_mono_const = |constant: &ConstOperand<'tcx>| {
-            let env = ty::ParamEnv::reveal_all();
+            // FIXME(#132279): what is this, why are we using an empty environment with
+            // `RevealAll` here.
+            let typing_env = ty::TypingEnv::fully_monomorphized();
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,
-                env,
+                typing_env,
                 crate::ty::EarlyBinder::bind(constant.const_),
             );
-            mono_literal.try_eval_bits(tcx, env)
+            mono_literal.try_eval_bits(tcx, typing_env)
         };
 
         let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {

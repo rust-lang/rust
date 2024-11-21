@@ -379,7 +379,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         for &const_ in body.required_consts() {
             let c =
                 self.instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
-            c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {
+            c.eval(*self.tcx, self.typing_env, const_.span).map_err(|err| {
                 err.emit_note(*self.tcx);
                 err
             })?;
@@ -596,13 +596,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(layout);
         }
 
-        let layout =
-            from_known_layout(self.tcx, self.typing_mode(), self.param_env, layout, || {
-                let local_ty = frame.body.local_decls[local].ty;
-                let local_ty =
-                    self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
-                self.layout_of(local_ty).into()
-            })?;
+        let layout = from_known_layout(self.tcx, self.typing_env, layout, || {
+            let local_ty = frame.body.local_decls[local].ty;
+            let local_ty =
+                self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+            self.layout_of(local_ty).into()
+        })?;
 
         // Layouts of locals are requested a lot, so we cache them.
         state.layout.set(Some(layout));

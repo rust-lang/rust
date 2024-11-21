@@ -18,7 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
@@ -65,7 +65,7 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     worklist: Vec<BasicBlock>,
     visited_blocks: BitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
@@ -169,25 +169,26 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for ConstPropagator<'_, 'tcx> {
     }
 }
 
-impl<'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'_, 'tcx> {
+impl<'tcx> ty::layout::HasTypingEnv<'tcx> for ConstPropagator<'_, 'tcx> {
     #[inline]
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 }
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
-        let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), param_env, DummyMachine);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let can_const_prop = CanConstProp::check(tcx, typing_env, body);
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 
         ConstPropagator {
             ecx,
             tcx,
-            param_env,
+            typing_env,
             worklist: vec![START_BLOCK],
             visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
             locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
@@ -260,7 +261,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `RevealAll` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
+        let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;
 
         self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
             .as_mplace_or_imm()
@@ -450,7 +451,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.has_param() {
             return None;
         }
-        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.param_env) {
+        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env) {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;
@@ -622,7 +623,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .tcx
-                        .offset_of_subfield(self.param_env, op_layout, fields.iter())
+                        .offset_of_subfield(self.typing_env, op_layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
                 };
@@ -873,7 +874,7 @@ impl CanConstProp {
     /// Returns true if `local` can be propagated
     fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         body: &Body<'tcx>,
     ) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
@@ -888,7 +889,7 @@ impl CanConstProp {
                 // variant of a union
                 *val = ConstPropMode::NoPropagation;
             } else {
-                match tcx.layout_of(param_env.and(ty)) {
+                match tcx.layout_of(typing_env.as_query_input(ty)) {
                     Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
                     // Either the layout fails to compute, then we can't use this local anyway
                     // or the local is too large, then we don't want to.

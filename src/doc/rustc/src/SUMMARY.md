@@ -72,6 +72,8 @@
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
     - [riscv64gc-unknown-linux-gnu](platform-support/riscv64gc-unknown-linux-gnu.md)
     - [riscv64gc-unknown-linux-musl](platform-support/riscv64gc-unknown-linux-musl.md)
+    - [s390x-unknown-linux-gnu](platform-support/s390x-unknown-linux-gnu.md)
+    - [s390x-unknown-linux-musl](platform-support/s390x-unknown-linux-musl.md)
     - [sparc-unknown-none-elf](./platform-support/sparc-unknown-none-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
     - [\*-nto-qnx-\*](platform-support/nto-qnx.md)

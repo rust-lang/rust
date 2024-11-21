@@ -7,7 +7,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
+    FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
@@ -26,11 +26,11 @@ pub(crate) fn provide(providers: &mut Providers) {
 // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
 // or should go through `FnAbi` instead, to avoid losing any
 // adjustments `fn_abi_of_instance` might be performing.
-#[tracing::instrument(level = "debug", skip(tcx, param_env))]
+#[tracing::instrument(level = "debug", skip(tcx, typing_env))]
 fn fn_sig_for_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 ) -> ty::PolyFnSig<'tcx> {
     if let InstanceKind::ThreadLocalShim(..) = instance.def {
         return ty::Binder::dummy(tcx.mk_fn_sig(
@@ -42,7 +42,7 @@ fn fn_sig_for_fn_abi<'tcx>(
         ));
     }
 
-    let ty = instance.ty(tcx, param_env);
+    let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(..) => {
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
@@ -56,7 +56,10 @@ fn fn_sig_for_fn_abi<'tcx>(
                 ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
                     .map_bound(|fn_sig| {
-                        tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
+                        tcx.normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_id),
+                            fn_sig,
+                        )
                     })
                     .instantiate(tcx, args),
                 _ => unreachable!(),
@@ -329,27 +332,26 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv
 
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+    query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
-    let (param_env, (sig, extra_args)) = query.into_parts();
-
-    let cx = LayoutCx::new(tcx, param_env);
+    let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
+    let cx = LayoutCx::new(tcx, typing_env);
     fn_abi_new_uncached(&cx, sig, extra_args, None, None, false)
 }
 
 fn fn_abi_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
+    query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
-    let (param_env, (instance, extra_args)) = query.into_parts();
+    let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
 
-    let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
+    let sig = fn_sig_for_fn_abi(tcx, instance, typing_env);
 
     let caller_location =
         instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
 
     fn_abi_new_uncached(
-        &LayoutCx::new(tcx, param_env),
+        &LayoutCx::new(tcx, typing_env),
         sig,
         extra_args,
         caller_location,
@@ -395,7 +397,7 @@ fn adjust_for_rust_scalar<'tcx>(
             Some(kind)
         } else if let Some(pointee) = drop_target_pointee {
             // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.param_env()) })
+            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env) })
         } else {
             None
         };
@@ -542,7 +544,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
-                let tail = tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
+                let tail = tcx.struct_tail_for_codegen(arg.layout.ty, cx.typing_env);
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
                     // Conceptually, unsized arguments must be copied around, which requires dynamically
@@ -573,7 +575,7 @@ fn fn_abi_new_uncached<'tcx>(
     force_thin_self_ptr: bool,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
-    let sig = tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
+    let sig = tcx.normalize_erasing_late_bound_regions(cx.typing_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
@@ -744,7 +746,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
 #[tracing::instrument(level = "debug", skip(cx))]
 fn make_thin_self_ptr<'tcx>(
-    cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
+    cx: &(impl HasTyCtxt<'tcx> + HasTypingEnv<'tcx>),
     layout: TyAndLayout<'tcx>,
 ) -> TyAndLayout<'tcx> {
     let tcx = cx.tcx();
@@ -784,6 +786,6 @@ fn make_thin_self_ptr<'tcx>(
 
         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing the `Result`
         // should always work because the type is always `*mut ()`.
-        ..tcx.layout_of(ty::ParamEnv::reveal_all().and(unit_ptr_ty)).unwrap()
+        ..tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(unit_ptr_ty)).unwrap()
     }
 }

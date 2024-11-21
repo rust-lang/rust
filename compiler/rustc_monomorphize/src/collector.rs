@@ -427,7 +427,7 @@ fn collect_items_rec<'tcx>(
                 let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else { bug!() };
                 // Nested statics have no type.
                 if !nested {
-                    let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+                    let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
                     visit_drop_use(tcx, ty, true, starting_item.span, &mut used_items);
                 }
 
@@ -636,7 +636,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         trace!("monomorphize: self.instance={:?}", self.instance);
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -647,12 +647,11 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         constant: &mir::ConstOperand<'tcx>,
     ) -> Option<mir::ConstValue<'tcx>> {
         let const_ = self.monomorphize(constant.const_);
-        let param_env = ty::ParamEnv::reveal_all();
         // Evaluate the constant. This makes const eval failure a collection-time error (rather than
         // a codegen-time error). rustc stops after collection if there was an error, so this
         // ensures codegen never has to worry about failing consts.
         // (codegen relies on this and ICEs will happen if this is violated.)
-        match const_.eval(self.tcx, param_env, constant.span) {
+        match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
             Ok(v) => Some(v),
             Err(ErrorHandled::TooGeneric(..)) => span_bug!(
                 constant.span,
@@ -863,9 +862,20 @@ fn visit_fn_use<'tcx>(
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
         let instance = if is_direct_call {
-            ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, source)
+            ty::Instance::expect_resolve(
+                tcx,
+                ty::TypingEnv::fully_monomorphized(),
+                def_id,
+                args,
+                source,
+            )
         } else {
-            match ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, args) {
+            match ty::Instance::resolve_for_fn_ptr(
+                tcx,
+                ty::TypingEnv::fully_monomorphized(),
+                def_id,
+                args,
+            ) {
                 Some(instance) => instance,
                 _ => bug!("failed to resolve instance for {ty}"),
             }
@@ -1024,12 +1034,12 @@ fn find_vtable_types_for_unsizing<'tcx>(
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        let param_env = ty::ParamEnv::reveal_all();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.tcx, param_env) {
+            if ty.is_sized(tcx.tcx, typing_env) {
                 return false;
             }
-            let tail = tcx.struct_tail_for_codegen(ty, param_env);
+            let tail = tcx.struct_tail_for_codegen(ty, typing_env);
             match tail.kind() {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -1039,7 +1049,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
-            tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, param_env)
+            tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, typing_env)
         }
     };
 
@@ -1270,8 +1280,13 @@ fn visit_mentioned_item<'tcx>(
     match *item {
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
-                let instance =
-                    Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args, span);
+                let instance = Instance::expect_resolve(
+                    tcx,
+                    ty::TypingEnv::fully_monomorphized(),
+                    def_id,
+                    args,
+                    span,
+                );
                 // `visit_instance_use` was written for "used" item collection but works just as well
                 // for "mentioned" item collection.
                 // We can set `is_direct_call`; that just means we'll skip a bunch of shims that anyway
@@ -1487,13 +1502,13 @@ impl<'v> RootCollector<'_, 'v> {
         // regions must appear in the argument
         // listing.
         let main_ret_ty = self.tcx.normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             main_ret_ty.no_bound_vars().unwrap(),
         );
 
         let start_instance = Instance::expect_resolve(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             start_def_id,
             self.tcx.mk_args(&[main_ret_ty.into()]),
             DUMMY_SP,
@@ -1551,8 +1566,8 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     }
 
-    let param_env = ty::ParamEnv::reveal_all();
-    let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let trait_ref = tcx.normalize_erasing_regions(typing_env, trait_ref);
     let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);
     for method in tcx.provided_trait_methods(trait_ref.def_id) {
         if overridden_methods.contains_key(&method.def_id) {
@@ -1567,7 +1582,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         // only has lifetime generic parameters. This is validated by calling
         // `own_requires_monomorphization` on both the impl and method.
         let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
-        let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args, DUMMY_SP);
+        let instance = ty::Instance::expect_resolve(tcx, typing_env, method.def_id, args, DUMMY_SP);
 
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
         if mono_item.node.is_instantiable(tcx) && tcx.should_codegen_locally(instance) {

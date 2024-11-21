@@ -13,9 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{
-    self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -94,12 +92,12 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         return false;
     }
 
-    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let typing_env = body.typing_env(tcx);
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
 
     let mut this = Inliner {
         tcx,
-        param_env,
+        typing_env,
         codegen_fn_attrs,
         history: Vec::new(),
         changed: false,
@@ -115,7 +113,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
     /// Stack of inlined instances.
@@ -201,7 +199,8 @@ impl<'tcx> Inliner<'tcx> {
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
         let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
         for arg in args {
-            if !arg.node.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.param_env) {
+            if !arg.node.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.typing_env)
+            {
                 // We do not allow inlining functions with unsized params. Inlining these functions
                 // could create unsized locals, which are unsound and being phased out.
                 return Err("Call has unsized argument");
@@ -219,7 +218,7 @@ impl<'tcx> Inliner<'tcx> {
 
         let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            self.param_env,
+            self.typing_env,
             ty::EarlyBinder::bind(callee_body.clone()),
         ) else {
             return Err("failed to normalize callee body");
@@ -230,7 +229,7 @@ impl<'tcx> Inliner<'tcx> {
         if !validate_types(
             self.tcx,
             MirPhase::Runtime(RuntimePhase::Optimized),
-            self.param_env,
+            self.typing_env,
             &callee_body,
             &caller_body,
         )
@@ -243,13 +242,7 @@ impl<'tcx> Inliner<'tcx> {
         // Normally, this shouldn't be required, but trait normalization failure can create a
         // validation ICE.
         let output_type = callee_body.return_ty();
-        if !util::sub_types(
-            self.tcx,
-            caller_body.typing_mode(self.tcx),
-            self.param_env,
-            output_type,
-            destination_ty,
-        ) {
+        if !util::sub_types(self.tcx, self.typing_env, output_type, destination_ty) {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
@@ -279,13 +272,7 @@ impl<'tcx> Inliner<'tcx> {
                 self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
             {
                 let input_type = callee_body.local_decls[input].ty;
-                if !util::sub_types(
-                    self.tcx,
-                    caller_body.typing_mode(self.tcx),
-                    self.param_env,
-                    input_type,
-                    arg_ty,
-                ) {
+                if !util::sub_types(self.tcx, self.typing_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize tuple argument type");
                 }
@@ -294,13 +281,7 @@ impl<'tcx> Inliner<'tcx> {
             for (arg, input) in args.iter().zip(callee_body.args_iter()) {
                 let input_type = callee_body.local_decls[input].ty;
                 let arg_ty = arg.node.ty(&caller_body.local_decls, self.tcx);
-                if !util::sub_types(
-                    self.tcx,
-                    caller_body.typing_mode(self.tcx),
-                    self.param_env,
-                    input_type,
-                    arg_ty,
-                ) {
+                if !util::sub_types(self.tcx, self.typing_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize argument type");
                 }
@@ -402,9 +383,10 @@ impl<'tcx> Inliner<'tcx> {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, args) = *func_ty.kind() {
                 // To resolve an instance its args have to be fully normalized.
-                let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
-                let callee =
-                    Instance::try_resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
+                let args = self.tcx.try_normalize_erasing_regions(self.typing_env, args).ok()?;
+                let callee = Instance::try_resolve(self.tcx, self.typing_env, def_id, args)
+                    .ok()
+                    .flatten()?;
 
                 if let InstanceKind::Virtual(..) | InstanceKind::Intrinsic(_) = callee.def {
                     return None;
@@ -528,7 +510,7 @@ impl<'tcx> Inliner<'tcx> {
         // FIXME: Give a bonus to functions with only a single caller
 
         let mut checker =
-            CostChecker::new(self.tcx, self.param_env, Some(callsite.callee), callee_body);
+            CostChecker::new(self.tcx, self.typing_env, Some(callsite.callee), callee_body);
 
         checker.add_function_level_costs();
 
@@ -552,7 +534,7 @@ impl<'tcx> Inliner<'tcx> {
                     self.tcx,
                     ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty),
                 );
-                if ty.needs_drop(tcx, self.param_env)
+                if ty.needs_drop(tcx, self.typing_env)
                     && let UnwindAction::Cleanup(unwind) = unwind
                 {
                     work_list.push(unwind);

@@ -611,11 +611,12 @@ pub fn try_evaluate_const<'tcx>(
             //
             // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
             // instead of having this logic here
-            let env = tcx.erase_regions(param_env).with_reveal_all_normalized(tcx);
+            let typing_env =
+                tcx.erase_regions(infcx.typing_env(param_env)).with_reveal_all_normalized(tcx);
             let erased_uv = tcx.erase_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;
-            match tcx.const_eval_resolve_for_typeck(env, erased_uv, DUMMY_SP) {
+            match tcx.const_eval_resolve_for_typeck(typing_env, erased_uv, DUMMY_SP) {
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,
@@ -697,8 +698,8 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 /// used during analysis.
 pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
     debug!("impossible_predicates(predicates={:?})", predicates);
-    let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
-    let param_env = ty::ParamEnv::reveal_all();
+    let (infcx, param_env) =
+        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {

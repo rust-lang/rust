@@ -448,7 +448,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         meta: MemPlaceMeta<M::Provenance>,
         pointee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
-        let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.param_env);
+        let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.typing_env);
         match tail.kind() {
             ty::Dynamic(data, _, ty::Dyn) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
@@ -568,7 +568,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         throw_validation_failure!(self.path, DanglingPtrUseAfterFree { ptr_kind });
                     };
                     let (size, _align) =
-                        global_alloc.size_and_align(*self.ecx.tcx, self.ecx.param_env);
+                        global_alloc.size_and_align(*self.ecx.tcx, self.ecx.typing_env);
 
                     if let GlobalAlloc::Static(did) = global_alloc {
                         let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
@@ -619,7 +619,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         };
                         // Determine what it actually points to.
                         let alloc_actual_mutbl =
-                            global_alloc.mutability(*self.ecx.tcx, self.ecx.param_env);
+                            global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
                         // Mutable pointer to immutable memory is no good.
                         if ptr_expected_mutbl == Mutability::Mut
                             && alloc_actual_mutbl == Mutability::Not
@@ -848,7 +848,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             if let Some(alloc_id) = mplace.ptr().provenance.and_then(|p| p.get_alloc_id()) {
                 let tcx = *self.ecx.tcx;
                 // Everything must be already interned.
-                let mutbl = tcx.global_alloc(alloc_id).mutability(tcx, self.ecx.param_env);
+                let mutbl = tcx.global_alloc(alloc_id).mutability(tcx, self.ecx.typing_env);
                 if let Some((_, alloc)) = self.ecx.memory.alloc_map.get(alloc_id) {
                     assert_eq!(alloc.mutability, mutbl);
                 }
@@ -955,7 +955,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     ) -> Cow<'e, RangeSet> {
         assert!(layout.ty.is_union());
         assert!(layout.is_sized(), "there are no unsized unions");
-        let layout_cx = LayoutCx::new(*ecx.tcx, ecx.param_env);
+        let layout_cx = LayoutCx::new(*ecx.tcx, ecx.typing_env);
         return M::cached_union_data_range(ecx, layout.ty, || {
             let mut out = RangeSet(Vec::new());
             union_data_range_uncached(&layout_cx, layout, Size::ZERO, &mut out);
@@ -1085,7 +1085,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     ) -> InterpResult<'tcx> {
         // Special check for CTFE validation, preventing `UnsafeCell` inside unions in immutable memory.
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
-            if !val.layout.is_zst() && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
+            if !val.layout.is_zst() && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.typing_env)
+            {
                 if !self.in_mutable_memory(val) {
                     throw_validation_failure!(self.path, UnsafeCellInImmutable);
                 }

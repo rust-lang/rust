@@ -82,7 +82,7 @@ impl UnnecessaryBoxReturns {
         // It's sometimes useful to return Box<T> if T is unsized, so don't lint those.
         // Also, don't lint if we know that T is very large, in which case returning
         // a Box<T> may be beneficial.
-        if boxed_ty.is_sized(cx.tcx, cx.param_env) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
+        if boxed_ty.is_sized(cx.tcx, cx.typing_env()) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_BOX_RETURNS,

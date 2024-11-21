@@ -17,7 +17,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::static_assert_size;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{
+    HasTyCtxt, HasTypingEnv, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
@@ -1127,7 +1129,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             };
             let info = ecx.get_alloc_info(alloc_id);
             let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
-            let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
+            let extern_decl_layout =
+                ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
             if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
                 throw_unsup_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \

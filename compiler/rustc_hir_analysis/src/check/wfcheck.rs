@@ -1126,7 +1126,7 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     assert!(!ty.has_infer());
-                    ty.needs_drop(tcx, tcx.param_env(item.owner_id))
+                    ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }
             };
             // All fields (except for possibly the last) should be sized.
@@ -1281,7 +1281,8 @@ fn check_item_type(
             UnsizedHandling::Forbid => true,
             UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
-                let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.param_env);
+                let tail =
+                    tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
                 !matches!(tail.kind(), ty::Foreign(_))
             }
         };

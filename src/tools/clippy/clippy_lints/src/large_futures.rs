@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
             && let ty = cx.typeck_results().expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
-            && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+            && let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
             && let size = layout.layout.size()
             && size >= Size::from_bytes(self.future_size_threshold)
         {

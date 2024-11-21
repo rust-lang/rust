@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_middle::bug;
-use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, PolyExistentialTraitRef, Ty, TyCtxt};
 
 use super::{SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -49,12 +49,15 @@ pub(super) enum UniqueTypeId<'tcx> {
 
 impl<'tcx> UniqueTypeId<'tcx> {
     pub(crate) fn for_ty(tcx: TyCtxt<'tcx>, t: Ty<'tcx>) -> Self {
-        assert_eq!(t, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t));
+        assert_eq!(t, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), t));
         UniqueTypeId::Ty(t, private::HiddenZst)
     }
 
     pub(crate) fn for_enum_variant_part(tcx: TyCtxt<'tcx>, enum_ty: Ty<'tcx>) -> Self {
-        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(
+            enum_ty,
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+        );
         UniqueTypeId::VariantPart(enum_ty, private::HiddenZst)
     }
 
@@ -63,7 +66,10 @@ impl<'tcx> UniqueTypeId<'tcx> {
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
     ) -> Self {
-        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(
+            enum_ty,
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+        );
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
     }
 
@@ -72,7 +78,10 @@ impl<'tcx> UniqueTypeId<'tcx> {
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
     ) -> Self {
-        assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        assert_eq!(
+            enum_ty,
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), enum_ty)
+        );
         UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
 
@@ -81,10 +90,13 @@ impl<'tcx> UniqueTypeId<'tcx> {
         self_type: Ty<'tcx>,
         implemented_trait: Option<PolyExistentialTraitRef<'tcx>>,
     ) -> Self {
-        assert_eq!(self_type, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), self_type));
+        assert_eq!(
+            self_type,
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), self_type)
+        );
         assert_eq!(
             implemented_trait,
-            tcx.normalize_erasing_regions(ParamEnv::reveal_all(), implemented_trait)
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), implemented_trait)
         );
         UniqueTypeId::VTableTy(self_type, implemented_trait, private::HiddenZst)
     }

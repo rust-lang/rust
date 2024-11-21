@@ -21,8 +21,8 @@ use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
@@ -119,7 +119,8 @@ pub fn validate_trivial_unsize<'tcx>(
 ) -> bool {
     match (source_data.principal(), target_data.principal()) {
         (Some(hr_source_principal), Some(hr_target_principal)) => {
-            let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
+            let (infcx, param_env) =
+                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
             infcx.enter_forall(hr_target_principal, |target_principal| {
@@ -130,7 +131,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 );
                 let Ok(()) = ocx.eq_trace(
                     &ObligationCause::dummy(),
-                    ty::ParamEnv::reveal_all(),
+                    param_env,
                     ToTrace::to_trace(
                         &ObligationCause::dummy(),
                         hr_target_principal,
@@ -165,7 +166,7 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.param_env());
+        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.typing_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
@@ -466,10 +467,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
-            main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty = cx
+            .tcx()
+            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -495,7 +495,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_instance = ty::Instance::expect_resolve(
                 cx.tcx(),
-                ty::ParamEnv::reveal_all(),
+                cx.typing_env(),
                 start_def_id,
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,

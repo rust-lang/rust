@@ -236,7 +236,21 @@ trigger_files = [
     "compiler",
 
     # Tests
+    "tests/assembly",
+    "tests/auxiliary",
+    "tests/codegen",
+    "tests/codegen-units",
+    "tests/COMPILER_TESTS.md",
+    "tests/coverage",
+    "tests/coverage-run-rustdoc",
+    "tests/crashes",
+    "tests/debuginfo",
+    "tests/incremental",
+    "tests/mir-opt",
+    "tests/pretty",
+    "tests/run-make",
     "tests/ui",
+    "tests/ui-fulldeps",
 ]
 exclude_labels = [
     "T-*",
@@ -353,21 +367,22 @@ trigger_files = [
 
 [autolabel."T-bootstrap"]
 trigger_files = [
-    "x.py",
-    "x",
-    "x.ps1",
+    "Cargo.toml",
+    "configure",
+    "config.example.toml",
     "src/bootstrap",
+    "src/build_helper",
     "src/tools/rust-installer",
     "src/tools/x",
-    "configure",
-    "Cargo.toml",
-    "config.example.toml",
     "src/stage0",
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
     "src/tools/libcxx-version",
     "src/tools/rustc-perf-wrapper",
+    "x.py",
+    "x",
+    "x.ps1"
 ]
 
 [autolabel."T-infra"]
@@ -886,7 +901,7 @@ message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, 
 message = "Changes to the code generated for builtin derived traits."
 cc = ["@nnethercote"]
 
-[mentions."tests/ui/stats/hir-stats.stderr"]
+[mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 

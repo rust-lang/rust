@@ -292,7 +292,7 @@ fn lint_wide_pointer<'tcx>(
             _ => return None,
         };
 
-        (!ty.is_sized(cx.tcx, cx.param_env))
+        (!ty.is_sized(cx.tcx, cx.typing_env()))
             .then(|| (refs, modifiers, matches!(ty.kind(), ty::Dynamic(_, _, ty::Dyn))))
     };
 
@@ -613,10 +613,11 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
-    let param_env = tcx.param_env(variant.def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
-        let is_1zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_1zst());
+        let is_1zst =
+            tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
     })
 }
@@ -624,11 +625,11 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
 /// Is type known to be non-null?
 fn ty_is_known_nonnull<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     mode: CItemKind,
 ) -> bool {
-    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
     match ty.kind() {
         ty::FnPtr(..) => true,
@@ -649,7 +650,7 @@ fn ty_is_known_nonnull<'tcx>(
             def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, param_env, field.ty(tcx, args), mode))
+                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args), mode))
         }
         _ => false,
     }
@@ -659,10 +660,10 @@ fn ty_is_known_nonnull<'tcx>(
 /// If the type passed in was not scalar, returns None.
 fn get_nullable_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
@@ -679,7 +680,7 @@ fn get_nullable_type<'tcx>(
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
             };
-            return get_nullable_type(tcx, param_env, inner_field_ty);
+            return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
         ty::Int(ty) => Ty::new_int(tcx, ty),
         ty::Uint(ty) => Ty::new_uint(tcx, ty),
@@ -708,10 +709,10 @@ fn get_nullable_type<'tcx>(
 /// - Does not have the `#[non_exhaustive]` attribute.
 fn is_niche_optimization_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> bool {
-    if tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| !layout.is_1zst()) {
+    if tcx.layout_of(typing_env.as_query_input(ty)).is_ok_and(|layout| !layout.is_1zst()) {
         return false;
     }
 
@@ -734,7 +735,7 @@ fn is_niche_optimization_candidate<'tcx>(
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
@@ -747,9 +748,9 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                     let ty1 = field1.ty(tcx, args);
                     let ty2 = field2.ty(tcx, args);
 
-                    if is_niche_optimization_candidate(tcx, param_env, ty1) {
+                    if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                         ty2
-                    } else if is_niche_optimization_candidate(tcx, param_env, ty2) {
+                    } else if is_niche_optimization_candidate(tcx, typing_env, ty2) {
                         ty1
                     } else {
                         return None;
@@ -760,20 +761,20 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             _ => return None,
         };
 
-        if !ty_is_known_nonnull(tcx, param_env, field_ty, ckind) {
+        if !ty_is_known_nonnull(tcx, typing_env, field_ty, ckind) {
             return None;
         }
 
         // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
         // If the computed size for the field and the enum are different, the nonnull optimization isn't
         // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, param_env).ok();
+        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
         if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
         // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_layout = tcx.layout_of(param_env.and(field_ty));
+        let field_ty_layout = tcx.layout_of(typing_env.as_query_input(field_ty));
         if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
             bug!("should be able to compute the layout of non-polymorphic type");
         }
@@ -784,10 +785,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 WrappingRange { start: 0, end }
                     if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                 {
-                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
                 }
                 WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(tcx, param_env, field_ty).unwrap());
+                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
                 }
                 WrappingRange { start, end } => {
                     unreachable!("Unhandled start and end range: ({}, {})", start, end)
@@ -825,7 +826,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let field_ty = self
             .cx
             .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, field_ty)
+            .try_normalize_erasing_regions(self.cx.typing_env(), field_ty)
             .unwrap_or(field_ty);
         self.check_type_for_ffi(acc, field_ty)
     }
@@ -903,7 +904,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if let Some(boxed) = ty.boxed_ty()
                     && matches!(self.mode, CItemKind::Definition)
                 {
-                    if boxed.is_sized(tcx, self.cx.param_env) {
+                    if boxed.is_sized(tcx, self.cx.typing_env()) {
                         return FfiSafe;
                     } else {
                         return FfiUnsafe {
@@ -988,7 +989,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         {
                             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
                             if let Some(ty) =
-                                repr_nullable_ptr(self.cx.tcx, self.cx.param_env, ty, self.mode)
+                                repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty, self.mode)
                             {
                                 return self.check_type_for_ffi(acc, ty);
                             }
@@ -1068,7 +1069,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::RawPtr(ty, _) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx, self.cx.param_env)
+                        && ty.is_sized(self.cx.tcx, self.cx.typing_env())
                 } =>
             {
                 FfiSafe
@@ -1196,7 +1197,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if let Some(ty) = self
             .cx
             .tcx
-            .try_normalize_erasing_regions(self.cx.param_env, ty)
+            .try_normalize_erasing_regions(self.cx.typing_env(), ty)
             .unwrap_or(ty)
             .visit_with(&mut ProhibitOpaqueTypes)
             .break_value()
@@ -1220,7 +1221,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.param_env, ty).unwrap_or(ty);
+        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
 
         // C doesn't really support passing arrays by value - the only way to pass an array by value
         // is through a struct. So, first test that the top level isn't an array, and then

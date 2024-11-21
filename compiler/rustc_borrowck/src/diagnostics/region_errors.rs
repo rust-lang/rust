@@ -952,7 +952,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             if let Ok(Some(instance)) = ty::Instance::try_resolve(
                 tcx,
-                self.param_env,
+                self.infcx.typing_env(self.infcx.param_env),
                 *fn_did,
                 self.infcx.resolve_vars_if_possible(args),
             ) {
@@ -1091,7 +1091,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             peeled_ty = ref_ty;
             count += 1;
         }
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, peeled_ty) {
+        if !self.infcx.type_is_copy_modulo_regions(self.infcx.param_env, peeled_ty) {
             return;
         }
 
@@ -1160,7 +1160,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(preds.iter().map(|(pred, span)| {
             trace!(?pred);
-            Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
+            Obligation::misc(tcx, span, self.mir_def_id(), self.infcx.param_env, pred)
         }));
 
         if ocx.select_all_or_error().is_empty() && count > 0 {

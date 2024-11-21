@@ -31,11 +31,9 @@ use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::nll::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
-use crate::region_infer::values::{
-    LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
-};
-use crate::type_check::Locations;
+use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
 use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
 
 mod dump_mir;
@@ -190,10 +188,6 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
-
-    /// Information about the universally quantified regions in scope
-    /// on this function.
-    universal_regions: Rc<UniversalRegions<'tcx>>,
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
@@ -399,20 +393,35 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
         var_infos: VarInfos,
-        universal_regions: Rc<UniversalRegions<'tcx>>,
-        placeholder_indices: Rc<PlaceholderIndices>,
+        constraints: MirTypeckRegionConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        mut outlives_constraints: OutlivesConstraintSet<'tcx>,
-        member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
-        universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
-        type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: LivenessValues,
         elements: Rc<DenseLocationMap>,
     ) -> Self {
-        debug!("universal_regions: {:#?}", universal_regions);
+        let universal_regions = &universal_region_relations.universal_regions;
+        let MirTypeckRegionConstraints {
+            placeholder_indices,
+            placeholder_index_to_region: _,
+            liveness_constraints,
+            mut outlives_constraints,
+            mut member_constraints,
+            universe_causes,
+            type_tests,
+        } = constraints;
+
+        debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
         debug!("placeholder_indices: {:#?}", placeholder_indices);
         debug!("type tests: {:#?}", type_tests);
+
+        if let Some(guar) = universal_region_relations.universal_regions.tainted_by_errors() {
+            // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
+            // outlives bounds that we may end up checking.
+            outlives_constraints = Default::default();
+            member_constraints = Default::default();
+
+            // Also taint the entire scope.
+            infcx.set_tainted_by_errors(guar);
+        }
 
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
@@ -438,7 +447,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let member_constraints =
-            Rc::new(member_constraints_in.into_mapped(|r| constraint_sccs.scc(r)));
+            Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
             var_infos,
@@ -453,7 +462,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             universe_causes,
             scc_values,
             type_tests,
-            universal_regions,
             universal_region_relations,
         };
 
@@ -518,7 +526,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn init_free_and_bound_regions(&mut self) {
         // Update the names (if any)
         // This iterator has unstable order but we collect it all into an IndexVec
-        for (external_name, variable) in self.universal_regions.named_universal_regions() {
+        for (external_name, variable) in
+            self.universal_region_relations.universal_regions.named_universal_regions_iter()
+        {
             debug!(
                 "init_free_and_bound_regions: region {:?} has external name {:?}",
                 variable, external_name
@@ -562,7 +572,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// (Panics if `r` is not a registered universal region.)
     pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        self.universal_regions.to_region_vid(r)
+        self.universal_regions().to_region_vid(r)
     }
 
     /// Returns an iterator over all the outlives constraints.
@@ -574,7 +584,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_, ()>) {
-        self.universal_regions.annotate(tcx, err)
+        self.universal_regions().annotate(tcx, err)
     }
 
     /// Returns `true` if the region `r` contains the point `p`.
@@ -686,7 +696,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if outlives_requirements.is_empty() {
             (None, errors_buffer)
         } else {
-            let num_external_vids = self.universal_regions.num_global_and_external_regions();
+            let num_external_vids = self.universal_regions().num_global_and_external_regions();
             (
                 Some(ClosureRegionRequirements { num_external_vids, outlives_requirements }),
                 errors_buffer,
@@ -989,7 +999,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // always be in the root universe.
         if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
             debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
-            let static_r = self.universal_regions.fr_static;
+            let static_r = self.universal_regions().fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: static_r,
@@ -1032,8 +1042,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // avoid potential non-determinism we approximate this by requiring
             // T: '1 and T: '2.
             for upper_bound in non_local_ub {
-                debug_assert!(self.universal_regions.is_universal_region(upper_bound));
-                debug_assert!(!self.universal_regions.is_local_free_region(upper_bound));
+                debug_assert!(self.universal_regions().is_universal_region(upper_bound));
+                debug_assert!(!self.universal_regions().is_local_free_region(upper_bound));
 
                 let requirement = ClosureOutlivesRequirement {
                     subject,
@@ -1101,7 +1111,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // To do so, we simply check every candidate `u_r` for equality.
             self.scc_values
                 .universal_regions_outlived_by(r_scc)
-                .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
+                .filter(|&u_r| !self.universal_regions().is_local_free_region(u_r))
                 .find(|&u_r| self.eval_equal(u_r, r_vid))
                 .map(|u_r| ty::Region::new_var(tcx, u_r))
                 // In case we could not find a named region to map to,
@@ -1139,9 +1149,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Find the smallest universal region that contains all other
         // universal regions within `region`.
-        let mut lub = self.universal_regions.fr_fn_body;
+        let mut lub = self.universal_regions().fr_fn_body;
         let r_scc = self.constraint_sccs.scc(r);
-        let static_r = self.universal_regions.fr_static;
+        let static_r = self.universal_regions().fr_static;
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
             debug!(?ur, ?lub, ?new_lub);
@@ -1288,12 +1298,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!(
             "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
-            self.universal_regions.is_universal_region(sup_region),
+            self.universal_regions().is_universal_region(sup_region),
         );
         debug!(
             "sub_region's value = {:?} universal={:?}",
             self.region_value_str(sub_region),
-            self.universal_regions.is_universal_region(sub_region),
+            self.universal_regions().is_universal_region(sub_region),
         );
 
         let sub_region_scc = self.constraint_sccs.scc(sub_region);
@@ -1308,7 +1318,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 by super `{sup_region_scc:?}`, promoting to static",
             );
 
-            return self.eval_outlives(sup_region, self.universal_regions.fr_static);
+            return self.eval_outlives(sup_region, self.universal_regions().fr_static);
         }
 
         // Both the `sub_region` and `sup_region` consist of the union
@@ -1332,7 +1342,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Now we have to compare all the points in the sub region and make
         // sure they exist in the sup region.
 
-        if self.universal_regions.is_universal_region(sup_region) {
+        if self.universal_regions().is_universal_region(sup_region) {
             // Micro-opt: universal regions contain all points.
             debug!("super is universal and hence contains all points");
             return true;
@@ -1736,7 +1746,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
         let result = {
             r == fr2 || {
-                fr2 == self.universal_regions.fr_static && self.cannot_name_placeholder(fr1, r)
+                fr2 == self.universal_regions().fr_static && self.cannot_name_placeholder(fr1, r)
             }
         };
         debug!("provides_universal_region: result = {:?}", result);
@@ -1837,7 +1847,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // A constraint like `'r: 'x` can come from our constraint
             // graph.
-            let fr_static = self.universal_regions.fr_static;
+            let fr_static = self.universal_regions().fr_static;
             let outgoing_edges_from_graph =
                 self.constraint_graph.outgoing_edges(r, &self.constraints, fr_static);
 
@@ -1952,7 +1962,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     pub(crate) fn universal_regions(&self) -> &UniversalRegions<'tcx> {
-        self.universal_regions.as_ref()
+        &self.universal_region_relations.universal_regions
     }
 
     /// Tries to find the best constraint to blame for the fact that
@@ -2212,7 +2222,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Access to the region graph, built from the outlives constraints.
     pub(crate) fn region_graph(&self) -> RegionGraph<'_, 'tcx, graph::Normal> {
-        self.constraint_graph.region_graph(&self.constraints, self.universal_regions.fr_static)
+        self.constraint_graph.region_graph(&self.constraints, self.universal_regions().fr_static)
     }
 
     /// Returns whether the given region is considered live at all points: whether it is a

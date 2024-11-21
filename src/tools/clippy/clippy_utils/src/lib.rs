@@ -116,8 +116,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, ParamEnv,
-    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy,
+    Ty, TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1631,7 +1631,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
     if let Some(Constant::Int(v)) =
-        ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(enclosing_body), cx.tcx.typeck(enclosing_body)).eval(e)
+        ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
     {
         return value == v;
     }
@@ -2712,9 +2712,17 @@ pub fn walk_to_expr_usage<'tcx, T>(
 pub enum DefinedTy<'tcx> {
     // Used for locals and closures defined within the function.
     Hir(&'tcx hir::Ty<'tcx>),
-    /// Used for function signatures, and constant and static values. This includes the `ParamEnv`
-    /// from the definition site.
-    Mir(ParamEnvAnd<'tcx, Binder<'tcx, Ty<'tcx>>>),
+    /// Used for function signatures, and constant and static values. The type is
+    /// in the context of its definition site. We also track the `def_id` of its
+    /// definition site.
+    /// 
+    /// WARNING: As the `ty` in in the scope of the definition, not of the function
+    /// using it, you must be very careful with how you use it. Using it in the wrong
+    /// scope easily results in ICEs. 
+    Mir {
+        def_site_def_id: Option<DefId>,
+        ty: Binder<'tcx, Ty<'tcx>>,
+    },
 }
 
 /// The context an expressions value is used in.
@@ -2833,10 +2841,10 @@ impl<'tcx> ExprUseNode<'tcx> {
     pub fn defined_ty(&self, cx: &LateContext<'tcx>) -> Option<DefinedTy<'tcx>> {
         match *self {
             Self::LetStmt(LetStmt { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
-            Self::ConstStatic(id) => Some(DefinedTy::Mir(
-                cx.param_env
-                    .and(Binder::dummy(cx.tcx.type_of(id).instantiate_identity())),
-            )),
+            Self::ConstStatic(id) => Some(DefinedTy::Mir {
+                def_site_def_id: Some(id.def_id.to_def_id()),
+                ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity()),
+        }),
             Self::Return(id) => {
                 if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
@@ -2848,9 +2856,8 @@ impl<'tcx> ExprUseNode<'tcx> {
                         FnRetTy::Return(ty) => Some(DefinedTy::Hir(ty)),
                     }
                 } else {
-                    Some(DefinedTy::Mir(
-                        cx.param_env.and(cx.tcx.fn_sig(id).instantiate_identity().output()),
-                    ))
+                    let ty = cx.tcx.fn_sig(id).instantiate_identity().output();
+                    Some(DefinedTy::Mir { def_site_def_id: Some(id.def_id.to_def_id()), ty })
                 }
             },
             Self::Field(field) => match get_parent_expr_for_hir(cx, field.hir_id) {
@@ -2866,12 +2873,9 @@ impl<'tcx> ExprUseNode<'tcx> {
                             .find(|f| f.name == field.ident.name)
                             .map(|f| (adt, f))
                     })
-                    .map(|(adt, field_def)| {
-                        DefinedTy::Mir(
-                            cx.tcx
-                                .param_env(adt.did())
-                                .and(Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity())),
-                        )
+                    .map(|(adt, field_def)| DefinedTy::Mir {
+                            def_site_def_id: Some(adt.did()),
+                            ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity()),
                     }),
                 _ => None,
             },
@@ -2880,17 +2884,19 @@ impl<'tcx> ExprUseNode<'tcx> {
                 let (hir_ty, ty) = sig.input_with_hir(i)?;
                 Some(match hir_ty {
                     Some(hir_ty) => DefinedTy::Hir(hir_ty),
-                    None => DefinedTy::Mir(
-                        sig.predicates_id()
-                            .map_or(ParamEnv::empty(), |id| cx.tcx.param_env(id))
-                            .and(ty),
-                    ),
+                    None => DefinedTy::Mir {
+                        def_site_def_id:  sig.predicates_id(),
+                        ty,
+                    }
                 })
             },
             Self::MethodArg(id, _, i) => {
                 let id = cx.typeck_results().type_dependent_def_id(id)?;
                 let sig = cx.tcx.fn_sig(id).skip_binder();
-                Some(DefinedTy::Mir(cx.tcx.param_env(id).and(sig.input(i))))
+                Some(DefinedTy::Mir {
+                    def_site_def_id: Some(id),
+                    ty: sig.input(i),
+                })
             },
             Self::LetStmt(_) | Self::FieldAccess(..) | Self::Callee | Self::Other | Self::AddrOf(..) => None,
         }

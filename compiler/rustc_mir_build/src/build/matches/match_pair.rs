@@ -162,7 +162,11 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 TestCase::Irrefutable { ascription: None, binding }
             }
 
-            PatKind::InlineConstant { subpattern: ref pattern, def, .. } => {
+            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
+                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
+                default_irrefutable()
+            }
+            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
                 // Apply a type ascription for the inline constant to the value at `match_pair.place`
                 let ascription = place.map(|source| {
                     let span = pattern.span;
@@ -173,7 +177,7 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                     })
                     .args;
                     let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
-                        def.to_def_id(),
+                        def_id,
                         ty::UserArgs { args, user_self_ty: None },
                     ));
                     let annotation = ty::CanonicalUserTypeAnnotation {
@@ -214,7 +218,7 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                         || !v
                             .inhabited_predicate(cx.tcx, adt_def)
                             .instantiate(cx.tcx, args)
-                            .apply_ignore_module(cx.tcx, cx.param_env)
+                            .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
