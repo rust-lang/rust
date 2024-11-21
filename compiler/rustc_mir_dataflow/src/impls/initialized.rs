@@ -40,6 +40,57 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
     }
 }
 
+impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+    ) -> Option<Self> {
+        let Some(discr) = discr.place() else { return None };
+
+        // Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt`
+        // is an enum discriminant.
+        //
+        // We expect such blocks to have a call to `discriminant` as their last statement like so:
+        // ```text
+        // ...
+        // _42 = discriminant(_1)
+        // SwitchInt(_42, ..)
+        // ```
+        // If the basic block matches this pattern, this function gathers the place corresponding
+        // to the enum (`_1` in the example above) as well as the discriminants.
+        let block_data = &body[block];
+        for statement in block_data.statements.iter().rev() {
+            match statement.kind {
+                mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(enum_place)))
+                    if lhs == discr =>
+                {
+                    match enum_place.ty(body, tcx).ty.kind() {
+                        ty::Adt(enum_def, _) => {
+                            return Some(MaybePlacesSwitchIntData {
+                                enum_place,
+                                discriminants: enum_def.discriminants(tcx).collect(),
+                                index: 0,
+                            });
+                        }
+
+                        // `Rvalue::Discriminant` is also used to get the active yield point for a
+                        // coroutine, but we do not need edge-specific effects in that case. This
+                        // may change in the future.
+                        ty::Coroutine(..) => break,
+
+                        t => bug!("`discriminant` called on unexpected type {:?}", t),
+                    }
+                }
+                mir::StatementKind::Coverage(_) => continue,
+                _ => break,
+            }
+        }
+        None
+    }
+}
+
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
 /// for a function.
@@ -364,15 +415,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             return None;
         }
 
-        discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr).map(
-                |(enum_place, enum_def)| MaybePlacesSwitchIntData {
-                    enum_place,
-                    discriminants: enum_def.discriminants(self.tcx).collect(),
-                    index: 0,
-                },
-            )
-        })
+        MaybePlacesSwitchIntData::new(self.tcx, self.body, block, discr)
     }
 
     fn apply_switch_int_edge_effect(
@@ -485,15 +528,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             return None;
         }
 
-        discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr).map(
-                |(enum_place, enum_def)| MaybePlacesSwitchIntData {
-                    enum_place,
-                    discriminants: enum_def.discriminants(self.tcx).collect(),
-                    index: 0,
-                },
-            )
-        })
+        MaybePlacesSwitchIntData::new(self.tcx, self.body, block, discr)
     }
 
     fn apply_switch_int_edge_effect(
@@ -600,46 +635,4 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
             state.gen_(*init_index);
         }
     }
-}
-
-/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
-/// an enum discriminant.
-///
-/// We expect such blocks to have a call to `discriminant` as their last statement like so:
-///
-/// ```text
-/// ...
-/// _42 = discriminant(_1)
-/// SwitchInt(_42, ..)
-/// ```
-///
-/// If the basic block matches this pattern, this function returns the place corresponding to the
-/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
-fn switch_on_enum_discriminant<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: mir::Place<'tcx>,
-) -> Option<(mir::Place<'tcx>, ty::AdtDef<'tcx>)> {
-    for statement in block.statements.iter().rev() {
-        match &statement.kind {
-            mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated)))
-                if *lhs == switch_on =>
-            {
-                match discriminated.ty(body, tcx).ty.kind() {
-                    ty::Adt(def, _) => return Some((*discriminated, *def)),
-
-                    // `Rvalue::Discriminant` is also used to get the active yield point for a
-                    // coroutine, but we do not need edge-specific effects in that case. This may
-                    // change in the future.
-                    ty::Coroutine(..) => return None,
-
-                    t => bug!("`discriminant` called on unexpected type {:?}", t),
-                }
-            }
-            mir::StatementKind::Coverage(_) => continue,
-            _ => return None,
-        }
-    }
-    None
 }
