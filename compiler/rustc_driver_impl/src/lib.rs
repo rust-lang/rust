@@ -51,6 +51,7 @@ use rustc_interface::{Linker, Queries, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
+use rustc_middle::ty::TyCtxt;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
     CG_OPTIONS, ErrorOutputType, Input, OutFileName, OutputType, UnstableOptions, Z_OPTIONS,
@@ -103,7 +104,7 @@ mod signal_handler {
 
 use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
-    RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead,
+    RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -431,6 +432,10 @@ fn run_compiler(
             // Make sure name resolution and macro expansion is run.
             queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering());
 
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                queries.global_ctxt()?.enter(|tcxt| dump_feature_usage_metrics(tcxt, metrics_dir));
+            }
+
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
@@ -473,6 +478,23 @@ fn run_compiler(
 
         Ok(())
     })
+}
+
+fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &PathBuf) {
+    let output_filenames = tcxt.output_filenames(());
+    let mut metrics_file_name = std::ffi::OsString::from("unstable_feature_usage_metrics-");
+    let mut metrics_path = output_filenames.with_directory_and_extension(metrics_dir, "json");
+    let metrics_file_stem =
+        metrics_path.file_name().expect("there should be a valid default output filename");
+    metrics_file_name.push(metrics_file_stem);
+    metrics_path.pop();
+    metrics_path.push(metrics_file_name);
+    if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
+        // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
+        // default metrics" to only produce a warning when metrics are enabled by default and emit
+        // an error only when the user manually enables metrics
+        tcxt.dcx().emit_err(UnstableFeatureUsage { error });
+    }
 }
 
 // Extract output directory and file from matches.

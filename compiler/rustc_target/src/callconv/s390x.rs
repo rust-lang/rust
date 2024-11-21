@@ -1,12 +1,16 @@
-// FIXME: The assumes we're using the non-vector ABI, i.e., compiling
-// for a pre-z13 machine or using -mno-vx.
+// Reference: ELF Application Binary Interface s390x Supplement
+// https://github.com/IBM/s390x-abi
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind};
+use crate::abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
+    let size = ret.layout.size;
+    if size.bits() <= 128 && matches!(ret.layout.backend_repr, BackendRepr::Vector { .. }) {
+        return;
+    }
+    if !ret.layout.is_aggregate() && size.bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect();
@@ -32,19 +36,25 @@ where
         }
         return;
     }
-    if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
+
+    let size = arg.layout.size;
+    if size.bits() <= 128 && arg.layout.is_single_vector_element(cx, size) {
+        arg.cast_to(Reg { kind: RegKind::Vector, size });
+        return;
+    }
+    if !arg.layout.is_aggregate() && size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;
     }
 
     if arg.layout.is_single_fp_element(cx) {
-        match arg.layout.size.bytes() {
+        match size.bytes() {
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),
             _ => arg.make_indirect(),
         }
     } else {
-        match arg.layout.size.bytes() {
+        match size.bytes() {
             1 => arg.cast_to(Reg::i8()),
             2 => arg.cast_to(Reg::i16()),
             4 => arg.cast_to(Reg::i32()),
