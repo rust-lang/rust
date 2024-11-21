@@ -15,6 +15,7 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
+#![feature(try_blocks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
@@ -564,71 +565,63 @@ fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, col
     }
 }
 
-/// If color is always or auto, print formatted & colorized markdown. If color is never or
-/// if formatted printing fails, print the raw text.
+/// If `color` is `always` or `auto`, try to print pretty (formatted & colorized) markdown. If
+/// that fails or `color` is `never`, print the raw markdown.
 ///
-/// Prefers a pager, falls back standard print
+/// Uses a pager if possible, falls back to stdout.
 fn show_md_content_with_pager(content: &str, color: ColorConfig) {
-    let mut fallback_to_println = false;
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
 
     let mut cmd = Command::new(&pager_name);
-    // FIXME: find if other pagers accept color options
-    let mut print_formatted = if pager_name == "less" {
-        cmd.arg("-R");
-        true
-    } else {
-        ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name)
+    if pager_name == "less" {
+        cmd.arg("-R"); // allows color escape sequences
+    }
+
+    let pretty_on_pager = match color {
+        ColorConfig::Auto => {
+            // Add other pagers that accept color escape sequences here.
+            ["less", "bat", "batcat", "delta"].iter().any(|v| *v == pager_name)
+        }
+        ColorConfig::Always => true,
+        ColorConfig::Never => false,
     };
 
-    if color == ColorConfig::Never {
-        print_formatted = false;
-    } else if color == ColorConfig::Always {
-        print_formatted = true;
-    }
+    // Try to prettify the raw markdown text. The result can be used by the pager or on stdout.
+    let pretty_data = {
+        let mdstream = markdown::MdStream::parse_str(content);
+        let bufwtr = markdown::create_stdout_bufwtr();
+        let mut mdbuf = bufwtr.buffer();
+        if mdstream.write_termcolor_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
+    };
 
-    let mdstream = markdown::MdStream::parse_str(content);
-    let bufwtr = markdown::create_stdout_bufwtr();
-    let mut mdbuf = bufwtr.buffer();
-    if mdstream.write_termcolor_buf(&mut mdbuf).is_err() {
-        print_formatted = false;
-    }
+    // Try to print via the pager, pretty output if possible.
+    let pager_res: Option<()> = try {
+        let mut pager = cmd.stdin(Stdio::piped()).spawn().ok()?;
 
-    if let Ok(mut pager) = cmd.stdin(Stdio::piped()).spawn() {
-        if let Some(pipe) = pager.stdin.as_mut() {
-            let res = if print_formatted {
-                pipe.write_all(mdbuf.as_slice())
-            } else {
-                pipe.write_all(content.as_bytes())
-            };
-
-            if res.is_err() {
-                fallback_to_println = true;
-            }
-        }
-
-        if pager.wait().is_err() {
-            fallback_to_println = true;
-        }
-    } else {
-        fallback_to_println = true;
-    }
-
-    // If pager fails for whatever reason, we should still print the content
-    // to standard output
-    if fallback_to_println {
-        let fmt_success = match color {
-            ColorConfig::Auto => io::stdout().is_terminal() && bufwtr.print(&mdbuf).is_ok(),
-            ColorConfig::Always => bufwtr.print(&mdbuf).is_ok(),
-            ColorConfig::Never => false,
+        let pager_stdin = pager.stdin.as_mut()?;
+        if pretty_on_pager && let Some((_, mdbuf)) = &pretty_data {
+            pager_stdin.write_all(mdbuf.as_slice()).ok()?;
+        } else {
+            pager_stdin.write_all(content.as_bytes()).ok()?;
         };
 
-        if !fmt_success {
-            safe_print!("{content}");
-        }
+        pager.wait().ok()?;
+    };
+    if pager_res.is_some() {
+        return;
     }
+
+    // The pager failed. Try to print pretty output to stdout.
+    if let Some((bufwtr, mdbuf)) = &pretty_data
+        && bufwtr.print(&mdbuf).is_ok()
+    {
+        return;
+    }
+
+    // Everything failed. Print the raw markdown text.
+    safe_print!("{content}");
 }
 
 fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
