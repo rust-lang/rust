@@ -16,7 +16,7 @@ use rustc_span::Symbol;
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::{BackendConfig, CodegenCx, CodegenMode};
+use crate::{CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
@@ -77,7 +77,7 @@ fn create_jit_module(tcx: TyCtxt<'_>, hotswap: bool) -> (UnwindModule<JITModule>
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<String>) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
     }
@@ -87,7 +87,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     }
 
     let (mut jit_module, mut cx) =
-        create_jit_module(tcx, matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
+        create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(());
@@ -103,7 +103,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
-                MonoItem::Fn(inst) => match backend_config.codegen_mode {
+                MonoItem::Fn(inst) => match codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
                         codegen_and_compile_fn(
@@ -144,7 +144,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     );
 
     let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
-        .chain(backend_config.jit_args.iter().map(|arg| &**arg))
+        .chain(jit_args.iter().map(|arg| &**arg))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
 
