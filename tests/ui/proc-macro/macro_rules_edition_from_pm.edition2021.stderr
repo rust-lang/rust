@@ -1,0 +1,11 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/macro_rules_edition_from_pm.rs:24:5
+   |
+LL |     assert!(edition_inner!(const {}) == 2024);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: edition_inner!(const {}) == 2024', $DIR/macro_rules_edition_from_pm.rs:24:5
+   |
+   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
