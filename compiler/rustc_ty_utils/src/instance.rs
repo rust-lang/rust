@@ -13,7 +13,7 @@ use rustc_span::sym;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
 use tracing::debug;
-use traits::{Reveal, translate_args};
+use traits::translate_args;
 
 use crate::errors::UnexpectedFnPtrAssociatedItem;
 
@@ -133,18 +133,6 @@ fn resolve_associated_item<'tcx>(
                     bug!("{:?} not found in {:?}", trait_item_id, impl_data.impl_def_id);
                 });
 
-            let typing_env = typing_env.with_reveal_all_normalized(tcx);
-            let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-            let args = rcvr_args.rebase_onto(tcx, trait_def_id, impl_data.args);
-            let args = translate_args(
-                &infcx,
-                param_env,
-                impl_data.impl_def_id,
-                args,
-                leaf_def.defining_node,
-            );
-            let args = infcx.tcx.erase_regions(args);
-
             // Since this is a trait item, we need to see if the item is either a trait default item
             // or a specialization because we can't resolve those unless we can `Reveal::All`.
             // NOTE: This should be kept in sync with the similar code in
@@ -157,15 +145,27 @@ fn resolve_associated_item<'tcx>(
                 // and the obligation is monomorphic, otherwise passes such as
                 // transmute checking and polymorphic MIR optimizations could
                 // get a result which isn't correct for all monomorphizations.
-                if param_env.reveal() == Reveal::All {
-                    !trait_ref.still_further_specializable()
-                } else {
-                    false
+                match typing_env.typing_mode {
+                    ty::TypingMode::Coherence
+                    | ty::TypingMode::Analysis { defining_opaque_types: _ } => false,
+                    ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
                 }
             };
             if !eligible {
                 return Ok(None);
             }
+
+            let typing_env = typing_env.with_reveal_all_normalized(tcx);
+            let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+            let args = rcvr_args.rebase_onto(tcx, trait_def_id, impl_data.args);
+            let args = translate_args(
+                &infcx,
+                param_env,
+                impl_data.impl_def_id,
+                args,
+                leaf_def.defining_node,
+            );
+            let args = infcx.tcx.erase_regions(args);
 
             // HACK: We may have overlapping `dyn Trait` built-in impls and
             // user-provided blanket impls. Detect that case here, and return

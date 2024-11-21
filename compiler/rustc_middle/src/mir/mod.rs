@@ -459,10 +459,7 @@ impl<'tcx> Body<'tcx> {
                 typing_mode: ty::TypingMode::non_body_analysis(),
                 param_env: tcx.param_env(self.source.def_id()),
             },
-            MirPhase::Runtime(_) => TypingEnv {
-                typing_mode: ty::TypingMode::PostAnalysis,
-                param_env: tcx.param_env_reveal_all_normalized(self.source.def_id()),
-            },
+            MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
         }
     }
 

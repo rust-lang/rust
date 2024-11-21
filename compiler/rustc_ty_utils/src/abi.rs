@@ -397,7 +397,7 @@ fn adjust_for_rust_scalar<'tcx>(
             Some(kind)
         } else if let Some(pointee) = drop_target_pointee {
             // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env.param_env) })
+            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env) })
         } else {
             None
         };

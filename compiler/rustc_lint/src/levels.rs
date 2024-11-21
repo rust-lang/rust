@@ -123,17 +123,19 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
     let dont_need_to_run: FxIndexSet<LintId> = store
         .get_lints()
         .into_iter()
+        .filter(|lint| {
+            // Lints that show up in future-compat reports must always be run.
+            let has_future_breakage =
+                lint.future_incompatible.is_some_and(|fut| fut.reason.has_future_breakage());
+            !has_future_breakage && !lint.eval_always
+        })
         .filter_map(|lint| {
-            if !lint.eval_always {
-                let lint_level = map.lint_level_id_at_node(tcx, LintId::of(lint), CRATE_HIR_ID);
-                if matches!(lint_level, (Level::Allow, ..))
-                    || (matches!(lint_level, (.., LintLevelSource::Default)))
-                        && lint.default_level(tcx.sess.edition()) == Level::Allow
-                {
-                    Some(LintId::of(lint))
-                } else {
-                    None
-                }
+            let lint_level = map.lint_level_id_at_node(tcx, LintId::of(lint), CRATE_HIR_ID);
+            if matches!(lint_level, (Level::Allow, ..))
+                || (matches!(lint_level, (.., LintLevelSource::Default)))
+                    && lint.default_level(tcx.sess.edition()) == Level::Allow
+            {
+                Some(LintId::of(lint))
             } else {
                 None
             }

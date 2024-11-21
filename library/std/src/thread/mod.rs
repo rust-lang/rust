@@ -188,6 +188,11 @@ mod current;
 pub use current::current;
 pub(crate) use current::{current_id, drop_current, set_current, try_current};
 
+mod spawnhook;
+
+#[unstable(feature = "thread_spawn_hook", issue = "132951")]
+pub use spawnhook::add_spawn_hook;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,6 +264,8 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // Skip running and inheriting the thread spawn hooks
+    no_hooks: bool,
 }
 
 impl Builder {
@@ -282,7 +289,7 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder { name: None, stack_size: None, no_hooks: false }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -335,6 +342,16 @@ impl Builder {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
+        self
+    }
+
+    /// Disables running and inheriting [spawn hooks](add_spawn_hook).
+    ///
+    /// Use this if the parent thread is in no way relevant for the child thread.
+    /// For example, when lazily spawning threads for a thread pool.
+    #[unstable(feature = "thread_spawn_hook", issue = "132951")]
+    pub fn no_hooks(mut self) -> Builder {
+        self.no_hooks = true;
         self
     }
 
@@ -460,7 +477,7 @@ impl Builder {
         F: Send,
         T: Send,
     {
-        let Builder { name, stack_size } = self;
+        let Builder { name, stack_size, no_hooks } = self;
 
         let stack_size = stack_size.unwrap_or_else(|| {
             static MIN: AtomicUsize = AtomicUsize::new(0);
@@ -485,6 +502,13 @@ impl Builder {
             Some(name) => Thread::new(id, name.into()),
             None => Thread::new_unnamed(id),
         };
+
+        let hooks = if no_hooks {
+            spawnhook::ChildSpawnHooks::default()
+        } else {
+            spawnhook::run_spawn_hooks(&my_thread)
+        };
+
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
@@ -493,9 +517,6 @@ impl Builder {
             _marker: PhantomData,
         });
         let their_packet = my_packet.clone();
-
-        let output_capture = crate::io::set_output_capture(None);
-        crate::io::set_output_capture(output_capture.clone());
 
         // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
         // See <https://github.com/rust-lang/rust/issues/101983> for more details.
@@ -534,10 +555,9 @@ impl Builder {
                 imp::Thread::set_name(name);
             }
 
-            crate::io::set_output_capture(output_capture);
-
             let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
                 crate::sys::backtrace::__rust_begin_short_backtrace(f)
             }));
             // SAFETY: `their_packet` as been built just above and moved by the

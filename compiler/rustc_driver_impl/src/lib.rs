@@ -577,7 +577,7 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     let mut cmd = Command::new(&pager_name);
     // FIXME: find if other pagers accept color options
     let mut print_formatted = if pager_name == "less" {
-        cmd.arg("-r");
+        cmd.arg("-R");
         true
     } else {
         ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name)

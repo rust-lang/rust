@@ -376,7 +376,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
-    fn is_const_impl(self, def_id: DefId) -> bool {
+    fn impl_is_const(self, def_id: DefId) -> bool {
+        self.is_conditionally_const(def_id)
+    }
+
+    fn fn_is_const(self, def_id: DefId) -> bool {
         self.is_conditionally_const(def_id)
     }
 
@@ -598,19 +602,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.coroutine_is_async_gen(coroutine_def_id)
     }
 
-    // We don't use `TypingEnv` here as it's only defined in `rustc_middle` and
-    // `rustc_next_trait_solver` shouldn't have to know about it.
-    fn layout_is_pointer_like(
-        self,
-        typing_mode: ty::TypingMode<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> bool {
-        let typing_env = ty::TypingEnv { typing_mode, param_env };
-        self.layout_of(self.erase_regions(typing_env).as_query_input(self.erase_regions(ty)))
-            .is_ok_and(|layout| layout.layout.is_pointer_like(&self.data_layout))
-    }
-
     type UnsizingParams = &'tcx rustc_index::bit_set::BitSet<u32>;
     fn unsizing_params_for_adt(self, adt_def_id: DefId) -> Self::UnsizingParams {
         self.unsizing_params_for_adt(adt_def_id)
@@ -684,7 +675,6 @@ bidirectional_lang_item_map! {
     Metadata,
     Option,
     PointeeTrait,
-    PointerLike,
     Poll,
     Sized,
     TransmuteTrait,

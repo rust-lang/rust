@@ -198,7 +198,7 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet)
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(adt, args) => {
-            tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
+            tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.typing_env())
                 || matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Rc | sym::Arc))
                     && args.types().any(|ty| is_mutable_ty(cx, ty, tys))
         },

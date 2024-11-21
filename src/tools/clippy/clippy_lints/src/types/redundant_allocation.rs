@@ -60,7 +60,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
             // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
             // is not run on locals.
             let ty = lower_ty(cx.tcx, hir_ty);
-            if ty.has_escaping_bound_vars() || !ty.is_sized(cx.tcx, cx.param_env) {
+            if ty.has_escaping_bound_vars() || !ty.is_sized(cx.tcx, cx.typing_env()) {
                 return false;
             }
             hir_ty.span

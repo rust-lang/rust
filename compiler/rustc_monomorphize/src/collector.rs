@@ -1036,7 +1036,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let typing_env = ty::TypingEnv::fully_monomorphized();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.tcx, typing_env.param_env) {
+            if ty.is_sized(tcx.tcx, typing_env) {
                 return false;
             }
             let tail = tcx.struct_tail_for_codegen(ty, typing_env);

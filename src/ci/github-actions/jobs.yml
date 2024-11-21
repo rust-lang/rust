@@ -465,7 +465,7 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-aarch64-msvc
     env:
@@ -477,7 +477,7 @@ auto:
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-i686-mingw
     env:

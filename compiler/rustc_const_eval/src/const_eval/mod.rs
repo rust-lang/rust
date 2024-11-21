@@ -38,8 +38,8 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
-    let param_env = ty::ParamEnv::reveal_all();
-    let (ecx, op) = mk_eval_cx_for_const_val(tcx, param_env, val, ty)?;
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let (ecx, op) = mk_eval_cx_for_const_val(tcx, typing_env, val, ty)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
@@ -76,10 +76,12 @@ pub fn tag_for_variant_provider<'tcx>(
 ) -> Option<ty::ScalarInt> {
     assert!(ty.is_enum());
 
+    // FIXME: This uses an empty `TypingEnv` even though
+    // it may be used by a generic CTFE.
     let ecx = InterpCx::new(
         tcx,
         ty.default_span(tcx),
-        ty::ParamEnv::reveal_all(),
+        ty::TypingEnv::fully_monomorphized(),
         crate::const_eval::DummyMachine,
     );
 

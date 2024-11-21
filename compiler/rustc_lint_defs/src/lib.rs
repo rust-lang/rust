@@ -466,6 +466,20 @@ impl FutureIncompatibilityReason {
             | FutureIncompatibilityReason::Custom(_) => None,
         }
     }
+
+    pub fn has_future_breakage(self) -> bool {
+        match self {
+            FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => true,
+
+            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
+            | FutureIncompatibilityReason::EditionError(_)
+            | FutureIncompatibilityReason::EditionSemanticsChange(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseError(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(_)
+            | FutureIncompatibilityReason::Custom(_) => false,
+        }
+    }
 }
 
 impl FutureIncompatibleInfo {

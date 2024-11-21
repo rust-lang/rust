@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    GenericPredicates, Instance, List, ParamEnv, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
+    GenericPredicates, Instance, List, ScalarInt, TyCtxt, TypeVisitableExt, ValTree,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -713,7 +713,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let instance = tables.instances[def];
         let tcx = tables.tcx;
         let result = tcx.const_eval_instance(
-            ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             instance,
             tcx.def_span(instance.def_id()),
         );

@@ -270,8 +270,8 @@ impl<'tcx> NonCopyConst<'tcx> {
             instance,
             promoted: None,
         };
-        let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, DUMMY_SP);
+        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
+        let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
@@ -294,7 +294,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                     instance,
                     promoted: None,
                 };
-                tcx.const_eval_global_id_for_typeck(typing_env.param_env, cid, span)
+                tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
             },
             Ok(None) => Err(ErrorHandled::TooGeneric(span)),
             Err(err) => Err(ErrorHandled::Reported(err.into(), span)),

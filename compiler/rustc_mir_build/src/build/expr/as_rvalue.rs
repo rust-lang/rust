@@ -33,14 +33,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_rvalue(block, Some(local_scope), expr_id)
+        self.as_rvalue(
+            block,
+            TempLifetime { temp_lifetime: Some(local_scope), backwards_incompatible: None },
+            expr_id,
+        )
     }
 
     /// Compile `expr`, yielding an rvalue.
     pub(crate) fn as_rvalue(
         &mut self,
         mut block: BasicBlock,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let this = self;
@@ -171,7 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     kind: StatementKind::StorageLive(result),
                 });
-                if let Some(scope) = scope {
+                if let Some(scope) = scope.temp_lifetime {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_drop_storage_and_value(expr_span, scope, result);
                 }
@@ -445,7 +449,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         block = this.limit_capture_mutability(
                                             upvar_expr.span,
                                             upvar_expr.ty,
-                                            scope,
+                                            scope.temp_lifetime,
                                             block,
                                             arg,
                                         )
@@ -705,7 +709,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         value: ExprId,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         outer_source_info: SourceInfo,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let this = self;

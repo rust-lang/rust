@@ -8,7 +8,7 @@ use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::sym;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::errors::NeedsDropOverflow;
 
@@ -23,7 +23,7 @@ fn needs_drop_raw<'tcx>(
     // needs drop.
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_dtor, false)
+    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_dtor, false, false)
         .filter(filter_array_elements(tcx, query.typing_env))
         .next()
         .is_some();
@@ -41,7 +41,7 @@ fn needs_async_drop_raw<'tcx>(
     // it needs async drop.
     let adt_has_async_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_async_dtor, false)
+    let res = drop_tys_helper(tcx, query.value, query.typing_env, adt_has_async_dtor, false, false)
         .filter(filter_array_elements(tcx, query.typing_env))
         .next()
         .is_some();
@@ -77,6 +77,7 @@ fn has_significant_drop_raw<'tcx>(
         query.typing_env,
         adt_consider_insignificant_dtor(tcx),
         true,
+        false,
     )
     .filter(filter_array_elements(tcx, query.typing_env))
     .next()
@@ -88,8 +89,8 @@ fn has_significant_drop_raw<'tcx>(
 struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    // Whether to reveal coroutine witnesses, this is set
-    // to `false` unless we compute `needs_drop` for a coroutine witness.
+    /// Whether to reveal coroutine witnesses, this is set
+    /// to `false` unless we compute `needs_drop` for a coroutine witness.
     reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
@@ -100,6 +101,9 @@ struct NeedsDropTypes<'tcx, F> {
     unchecked_tys: Vec<(Ty<'tcx>, usize)>,
     recursion_limit: Limit,
     adt_components: F,
+    /// Set this to true if an exhaustive list of types involved in
+    /// drop obligation is requested.
+    exhaustive: bool,
 }
 
 impl<'tcx, F> NeedsDropTypes<'tcx, F> {
@@ -107,6 +111,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
+        exhaustive: bool,
         adt_components: F,
     ) -> Self {
         let mut seen_tys = FxHashSet::default();
@@ -114,13 +119,21 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
         Self {
             tcx,
             typing_env,
-            reveal_coroutine_witnesses: false,
+            reveal_coroutine_witnesses: exhaustive,
             seen_tys,
             query_ty: ty,
             unchecked_tys: vec![(ty, 0)],
             recursion_limit: tcx.recursion_limit(),
             adt_components,
+            exhaustive,
         }
+    }
+
+    /// Called when `ty` is found to always require drop.
+    /// If the exhaustive flag is true, then `Ok(ty)` is returned like any other type.
+    /// Otherwise, `Err(AlwaysRequireDrop)` is returned, which will cause iteration to abort.
+    fn always_drop_component(&self, ty: Ty<'tcx>) -> NeedsDropResult<Ty<'tcx>> {
+        if self.exhaustive { Ok(ty) } else { Err(AlwaysRequiresDrop) }
     }
 }
 
@@ -131,19 +144,22 @@ where
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn next(&mut self) -> Option<NeedsDropResult<Ty<'tcx>>> {
         let tcx = self.tcx;
 
         while let Some((ty, level)) = self.unchecked_tys.pop() {
+            debug!(?ty, "needs_drop_components: inspect");
             if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
+                debug!("needs_drop_components: recursion limit exceeded");
                 tcx.dcx().emit_err(NeedsDropOverflow { query_ty: self.query_ty });
-                return Some(Err(AlwaysRequiresDrop));
+                return Some(self.always_drop_component(ty));
             }
 
             let components = match needs_drop_components(tcx, ty) {
-                Err(e) => return Some(Err(e)),
+                Err(AlwaysRequiresDrop) => return Some(self.always_drop_component(ty)),
                 Ok(components) => components,
             };
             debug!("needs_drop_components({:?}) = {:?}", ty, components);
@@ -171,7 +187,7 @@ where
                         if self.reveal_coroutine_witnesses {
                             queue_type(self, args.as_coroutine().witness());
                         } else {
-                            return Some(Err(AlwaysRequiresDrop));
+                            return Some(self.always_drop_component(ty));
                         }
                     }
                     ty::CoroutineWitness(def_id, args) => {
@@ -186,7 +202,7 @@ where
                         }
                     }
 
-                    _ if component.is_copy_modulo_regions(tcx, self.typing_env.param_env) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.typing_env) => {}
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {
@@ -205,7 +221,9 @@ where
                     // impl then check whether the field types need `Drop`.
                     ty::Adt(adt_def, args) => {
                         let tys = match (self.adt_components)(adt_def, args) {
-                            Err(e) => return Some(Err(e)),
+                            Err(AlwaysRequiresDrop) => {
+                                return Some(self.always_drop_component(ty));
+                            }
                             Ok(tys) => tys,
                         };
                         for required_ty in tys {
@@ -230,7 +248,8 @@ where
                     }
 
                     ty::Foreign(_) | ty::Dynamic(..) => {
-                        return Some(Err(AlwaysRequiresDrop));
+                        debug!("needs_drop_components: foreign or dynamic");
+                        return Some(self.always_drop_component(ty));
                     }
 
                     ty::Bool
@@ -280,6 +299,7 @@ fn drop_tys_helper<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     adt_has_dtor: impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType>,
     only_significant: bool,
+    exhaustive: bool,
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
     fn with_query_cache<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -343,7 +363,7 @@ fn drop_tys_helper<'tcx>(
         .map(|v| v.into_iter())
     };
 
-    NeedsDropTypes::new(tcx, typing_env, ty, adt_components)
+    NeedsDropTypes::new(tcx, typing_env, ty, exhaustive, adt_components)
 }
 
 fn adt_consider_insignificant_dtor<'tcx>(
@@ -384,6 +404,7 @@ fn adt_drop_tys<'tcx>(
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
         false,
+        false,
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
@@ -401,9 +422,29 @@ fn adt_significant_drop_tys(
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_consider_insignificant_dtor(tcx),
         true,
+        false,
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn list_significant_drop_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> &'tcx ty::List<Ty<'tcx>> {
+    tcx.mk_type_list(
+        &drop_tys_helper(
+            tcx,
+            ty.value,
+            ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: ty.param_env },
+            adt_consider_insignificant_dtor(tcx),
+            true,
+            true,
+        )
+        .filter_map(|res| res.ok())
+        .collect::<Vec<_>>(),
+    )
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -413,6 +454,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         has_significant_drop_raw,
         adt_drop_tys,
         adt_significant_drop_tys,
+        list_significant_drop_tys,
         ..*providers
     };
 }

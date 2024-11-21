@@ -22,7 +22,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::symbol::sym;
@@ -119,7 +119,8 @@ pub fn validate_trivial_unsize<'tcx>(
 ) -> bool {
     match (source_data.principal(), target_data.principal()) {
         (Some(hr_source_principal), Some(hr_target_principal)) => {
-            let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
+            let (infcx, param_env) =
+                tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
             infcx.enter_forall(hr_target_principal, |target_principal| {
@@ -130,7 +131,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 );
                 let Ok(()) = ocx.eq_trace(
                     &ObligationCause::dummy(),
-                    ty::ParamEnv::reveal_all(),
+                    param_env,
                     ToTrace::to_trace(
                         &ObligationCause::dummy(),
                         hr_target_principal,

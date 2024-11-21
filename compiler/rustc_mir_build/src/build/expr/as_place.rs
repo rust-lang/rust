@@ -6,7 +6,6 @@ use std::iter;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
-use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -598,7 +597,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         index: ExprId,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
-        temp_lifetime: Option<region::Scope>,
+        temp_lifetime: TempLifetime,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {

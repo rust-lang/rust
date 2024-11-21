@@ -330,6 +330,10 @@ pub trait MutVisitor: Sized {
     fn visit_capture_by(&mut self, capture_by: &mut CaptureBy) {
         walk_capture_by(self, capture_by)
     }
+
+    fn visit_fn_ret_ty(&mut self, fn_ret_ty: &mut FnRetTy) {
+        walk_fn_ret_ty(self, fn_ret_ty)
+    }
 }
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
@@ -609,7 +613,7 @@ fn walk_angle_bracketed_parameter_data<T: MutVisitor>(vis: &mut T, data: &mut An
 fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
     let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
     visit_thin_vec(inputs, |input| vis.visit_ty(input));
-    walk_fn_ret_ty(vis, output);
+    vis.visit_fn_ret_ty(output);
     vis.visit_span(span);
     vis.visit_span(inputs_span);
 }
@@ -911,7 +915,7 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
 fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
     let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-    walk_fn_ret_ty(vis, output);
+    vis.visit_fn_ret_ty(output);
 }
 
 fn walk_fn_ret_ty<T: MutVisitor>(vis: &mut T, fn_ret_ty: &mut FnRetTy) {

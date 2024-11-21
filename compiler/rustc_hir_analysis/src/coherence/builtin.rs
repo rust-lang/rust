@@ -37,22 +37,19 @@ pub(super) fn check_trait<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
     let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
-    let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
-    res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
-    res = res.and(checker.check(lang_items.const_param_ty_trait(), |checker| {
+    checker.check(lang_items.drop_trait(), visit_implementation_of_drop)?;
+    checker.check(lang_items.copy_trait(), visit_implementation_of_copy)?;
+    checker.check(lang_items.const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
-    }));
-    res = res.and(checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
+    })?;
+    checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
-    }));
-
-    res = res.and(
-        checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
-    );
-    res.and(
-        checker
-            .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn),
-    )
+    })?;
+    checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
+    checker
+        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
+    checker.check(lang_items.pointer_like(), visit_implementation_of_pointer_like)?;
+    Ok(())
 }
 
 struct Checker<'tcx> {
@@ -662,4 +659,64 @@ fn infringing_fields_error<'tcx>(
     );
 
     err.emit()
+}
+
+fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, checker.impl_def_id);
+    let impl_span = tcx.def_span(checker.impl_def_id);
+    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
+
+    // If an ADT is repr(transparent)...
+    if let ty::Adt(def, args) = *self_ty.kind()
+        && def.repr().transparent()
+    {
+        // FIXME(compiler-errors): This should and could be deduplicated into a query.
+        // Find the nontrivial field.
+        let adt_typing_env = ty::TypingEnv::non_body_analysis(tcx, def.did());
+        let nontrivial_field = def.all_fields().find(|field_def| {
+            let field_ty = tcx.type_of(field_def.did).instantiate_identity();
+            !tcx.layout_of(adt_typing_env.as_query_input(field_ty))
+                .is_ok_and(|layout| layout.layout.is_1zst())
+        });
+
+        if let Some(nontrivial_field) = nontrivial_field {
+            // Check that the nontrivial field implements `PointerLike`.
+            let nontrivial_field = nontrivial_field.ty(tcx, args);
+            let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+            let ocx = ObligationCtxt::new(&infcx);
+            ocx.register_bound(
+                ObligationCause::misc(impl_span, checker.impl_def_id),
+                param_env,
+                nontrivial_field,
+                tcx.lang_items().pointer_like().unwrap(),
+            );
+            // FIXME(dyn-star): We should regionck this implementation.
+            if ocx.select_all_or_error().is_empty() {
+                return Ok(());
+            }
+        }
+    }
+
+    let is_permitted_primitive = match *self_ty.kind() {
+        ty::Adt(def, _) => def.is_box(),
+        ty::Uint(..) | ty::Int(..) | ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
+        _ => false,
+    };
+
+    if is_permitted_primitive
+        && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(self_ty))
+        && layout.layout.is_pointer_like(&tcx.data_layout)
+    {
+        return Ok(());
+    }
+
+    Err(tcx
+        .dcx()
+        .struct_span_err(
+            impl_span,
+            "implementation must be applied to type that has the same ABI as a pointer, \
+            or is `repr(transparent)` and whose field is `PointerLike`",
+        )
+        .emit())
 }

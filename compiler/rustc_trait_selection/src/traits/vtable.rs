@@ -9,8 +9,7 @@ use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, TypingMode, Upcast,
-    VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };
 use rustc_span::{DUMMY_SP, Span, sym};
 use smallvec::{SmallVec, smallvec};
@@ -442,8 +441,8 @@ fn trait_refs_are_compatible<'tcx>(
         return false;
     }
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
-    let param_env = ty::ParamEnv::reveal_all();
+    let (infcx, param_env) =
+        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
     let ocx = ObligationCtxt::new(&infcx);
     let hr_source_principal =
         ocx.normalize(&ObligationCause::dummy(), param_env, hr_vtable_principal);
