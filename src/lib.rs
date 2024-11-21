@@ -34,7 +34,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::Cell;
 use std::env;
 use std::sync::Arc;
 
@@ -128,7 +127,7 @@ struct CodegenCx {
     output_filenames: Arc<OutputFilenames>,
     should_write_ir: bool,
     global_asm: String,
-    inline_asm_index: Cell<usize>,
+    inline_asm_index: usize,
     debug_context: Option<DebugContext>,
     cgu_name: Symbol,
 }
@@ -147,7 +146,7 @@ impl CodegenCx {
             output_filenames: tcx.output_filenames(()).clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
-            inline_asm_index: Cell::new(0),
+            inline_asm_index: 0,
             debug_context,
             cgu_name,
         }
