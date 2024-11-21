@@ -31,6 +31,7 @@ use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, edit_distance,
 };
+use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -45,50 +46,6 @@ use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::{Expectation, FnCtxt};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let tcx = self.tcx;
-        match ty.kind() {
-            // Not all of these (e.g., unsafe fns) implement `FnOnce`,
-            // so we look for these beforehand.
-            // FIXME(async_closures): These don't impl `FnOnce` by default.
-            ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(..) => true,
-            // If it's not a simple function, look for things which implement `FnOnce`.
-            _ => {
-                let Some(fn_once) = tcx.lang_items().fn_once_trait() else {
-                    return false;
-                };
-
-                // This conditional prevents us from asking to call errors and unresolved types.
-                // It might seem that we can use `predicate_must_hold_modulo_regions`,
-                // but since a Dummy binder is used to fill in the FnOnce trait's arguments,
-                // type resolution always gives a "maybe" here.
-                if self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
-                    info!("check deref {:?} error", ty);
-                    matches!(ty.kind(), ty::Error(_) | ty::Infer(_))
-                }) {
-                    return false;
-                }
-
-                self.autoderef(span, ty).silence_errors().any(|(ty, _)| {
-                    info!("check deref {:?} impl FnOnce", ty);
-                    self.probe(|_| {
-                        let trait_ref =
-                            ty::TraitRef::new(tcx, fn_once, [ty, self.next_ty_var(span)]);
-                        let poly_trait_ref = ty::Binder::dummy(trait_ref);
-                        let obligation = Obligation::misc(
-                            tcx,
-                            span,
-                            self.body_id,
-                            self.param_env,
-                            poly_trait_ref,
-                        );
-                        self.predicate_may_hold(&obligation)
-                    })
-                })
-            }
-        }
-    }
-
     fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
         self.autoderef(span, ty)
             .silence_errors()
@@ -2367,12 +2324,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
-                if self.is_fn_ty(field_ty, span) {
+                if let Some((what, _, _)) = self.extract_callable_info(field_ty) {
+                    let what = match what {
+                        DefIdOrName::DefId(def_id) => self.tcx.def_descr(def_id),
+                        DefIdOrName::Name(what) => what,
+                    };
                     let expr_span = expr.span.to(item_name.span);
                     err.multipart_suggestion(
                         format!(
-                            "to call the function stored in `{item_name}`, \
-                                         surround the field access with parentheses",
+                            "to call the {what} stored in `{item_name}`, \
+                            surround the field access with parentheses",
                         ),
                         vec![
                             (expr_span.shrink_to_lo(), '('.to_string()),
