@@ -523,7 +523,8 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             }
 
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
-            | StatementKind::Deinit(ref place) => {
+            | StatementKind::Deinit(ref place)
+            | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ } => {
                 self.visit_lhs(place, location);
             }
         }
@@ -560,6 +561,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
                     StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ }
                     | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
                     StatementKind::Nop => false,
                     _ => true,
@@ -585,6 +587,20 @@ struct LocalUpdater<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
+        if let StatementKind::BackwardIncompatibleDropHint { place, reason: _ } =
+            &mut statement.kind
+        {
+            self.visit_local(
+                &mut place.local,
+                PlaceContext::MutatingUse(MutatingUseContext::Store),
+                location,
+            );
+        } else {
+            self.super_statement(statement, location);
+        }
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {

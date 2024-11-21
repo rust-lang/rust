@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocKind, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind,
     GenericArgsRef, GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, UintTy, Upcast, VariantDef, VariantDiscr,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
@@ -38,7 +38,7 @@ pub use type_certainty::expr_type_is_certain;
 
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+    ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
 }
 
 /// This checks whether a given type is known to implement Debug.
@@ -226,7 +226,7 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, trait_id, None, args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(cx.tcx, cx.typing_env(), ty, trait_id, None, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -235,19 +235,19 @@ pub fn implements_trait<'tcx>(
 /// environment, used for checking const traits.
 pub fn implements_trait_with_env<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
     callee_id: Option<DefId>,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(tcx, param_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(tcx, typing_env, ty, trait_id, callee_id, args.iter().map(|&x| Some(x)))
 }
 
 /// Same as `implements_trait_from_env` but takes the arguments as an iterator.
 pub fn implements_trait_with_env_from_iter<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
     callee_id: Option<DefId>,
@@ -268,7 +268,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         return false;
     }
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::from_param_env(param_env));
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     let args = args
         .into_iter()
         .map(|arg| arg.into().unwrap_or_else(|| infcx.next_ty_var(DUMMY_SP).into()))
@@ -1239,12 +1239,12 @@ impl<'tcx> InteriorMut<'tcx> {
 
 pub fn make_normalized_projection_with_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     container_id: DefId,
     assoc_ty: Symbol,
     args: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> Option<Ty<'tcx>> {
-    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
         if let Some((i, arg)) = ty
             .args
@@ -1261,10 +1261,8 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             return None;
         }
         let cause = ObligationCause::dummy();
-        match tcx
-            .infer_ctxt()
-            .build(TypingMode::from_param_env(param_env))
-            .at(&cause, param_env)
+        let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+        match infcx.at(&cause, param_env)
             .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
         {
             Ok(ty) => Some(ty.value),
@@ -1274,20 +1272,13 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             },
         }
     }
-    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, args)?)
+    helper(tcx, typing_env, make_projection(tcx, container_id, assoc_ty, args)?)
 }
 
-pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let cause = ObligationCause::dummy();
-    match tcx
-        .infer_ctxt()
-        .build(TypingMode::from_param_env(param_env))
-        .at(&cause, param_env)
-        .query_normalize(ty)
-    {
-        Ok(ty) => ty.value,
-        Err(_) => ty,
-    }
+    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+    infcx.at(&cause, param_env).query_normalize(ty).map_or(ty, |ty| ty.value)
 }
 
 /// Checks if the type is `core::mem::ManuallyDrop<_>`

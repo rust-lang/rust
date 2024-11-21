@@ -190,8 +190,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
-                let param_env = ty::ParamEnv::reveal_all();
-                tcx.ensure().eval_to_const_value_raw(param_env.and(cid));
+                let typing_env = ty::TypingEnv::fully_monomorphized();
+                tcx.ensure().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }
             _ => (),
         }

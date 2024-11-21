@@ -1,10 +1,12 @@
+use std::assert_matches::debug_assert_matches;
+
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::at::ToTrace;
-use rustc_infer::traits::{ObligationCause, Reveal};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -36,8 +38,9 @@ pub struct InterpCx<'tcx, M: Machine<'tcx>> {
     /// we are evaluating (if this is CTFE).
     pub tcx: TyCtxtAt<'tcx>,
 
-    /// Bounds in scope for polymorphic evaluations.
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    /// The current context in case we're evaluating in a
+    /// polymorphic context. This always uses `ty::TypingMode::PostAnalysis`.
+    pub(super) typing_env: ty::TypingEnv<'tcx>,
 
     /// The virtual memory system.
     pub memory: Memory<'tcx, M>,
@@ -68,7 +71,7 @@ where
     M: Machine<'tcx>,
 {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        self.typing_env()
+        self.typing_env
     }
 }
 
@@ -189,23 +192,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         root_span: Span,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         machine: M,
     ) -> Self {
+        // Const eval always happens in post analysis mode in order to be able to use the hidden types of
+        // opaque types. This is needed for trivial things like `size_of`, but also for using associated
+        // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
+        // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
+        debug_assert_matches!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
-            param_env,
+            typing_env,
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
-    }
-
-    /// During CTFE we're always in `PostAnalysis` mode.
-    #[inline(always)]
-    pub fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        debug_assert_eq!(self.param_env.reveal(), Reveal::All);
-        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env }
     }
 
     /// Returns the span of the currently executed statement/terminator.
@@ -250,7 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.typing_env)
     }
 
     pub fn load_mir(
@@ -296,7 +297,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .instance
             .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
-                self.typing_env(),
+                self.typing_env,
                 ty::EarlyBinder::bind(value),
             )
             .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
@@ -309,9 +310,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         args: GenericArgsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def, args);
-        trace!("param_env: {:#?}", self.param_env);
+        trace!("typing_env: {:#?}", self.typing_env);
         trace!("args: {:#?}", args);
-        match ty::Instance::try_resolve(*self.tcx, self.typing_env(), def, args) {
+        match ty::Instance::try_resolve(*self.tcx, self.typing_env, def, args) {
             Ok(Some(instance)) => interp_ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
@@ -332,7 +333,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return true;
         }
         // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env());
+        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         let cause = ObligationCause::dummy_with_span(self.cur_span());
         // equate the two trait refs after normalization
@@ -564,10 +565,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let val = if self.tcx.is_static(gid.instance.def_id()) {
             let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
 
-            let ty = instance.ty(self.tcx.tcx, self.typing_env());
+            let ty = instance.ty(self.tcx.tcx, self.typing_env);
             mir::ConstAlloc { alloc_id, ty }
         } else {
-            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.param_env.and(gid)))?
+            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.typing_env.as_query_input(gid)))?
         };
         self.raw_const_to_mplace(val)
     }
@@ -579,7 +580,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         M::eval_mir_constant(self, *val, span, layout, |ecx, val, span, layout| {
-            let const_val = val.eval(*ecx.tcx, ecx.typing_env(), span).map_err(|err| {
+            let const_val = val.eval(*ecx.tcx, ecx.typing_env, span).map_err(|err| {
                 if M::ALL_CONSTS_ARE_PRECHECKED {
                     match err {
                         ErrorHandled::TooGeneric(..) => {},

@@ -82,7 +82,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         let mut finder = TOFinder {
             tcx,
             typing_env,
-            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env.param_env, DummyMachine),
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             body,
             arena,
             map: Map::new(tcx, body, Some(MAX_PLACES)),
@@ -352,6 +352,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => None,
         }
     }

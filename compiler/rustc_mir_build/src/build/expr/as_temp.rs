@@ -2,7 +2,6 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::HirId;
-use rustc_middle::middle::region;
 use rustc_middle::middle::region::{Scope, ScopeData};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -17,7 +16,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_temp(
         &mut self,
         block: BasicBlock,
-        temp_lifetime: Option<region::Scope>,
+        temp_lifetime: TempLifetime,
         expr_id: ExprId,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
@@ -31,7 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,
-        temp_lifetime: Option<region::Scope>,
+        temp_lifetime: TempLifetime,
         expr_id: ExprId,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
@@ -47,8 +46,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let expr_ty = expr.ty;
-        let deduplicate_temps =
-            this.fixed_temps_scope.is_some() && this.fixed_temps_scope == temp_lifetime;
+        let deduplicate_temps = this.fixed_temps_scope.is_some()
+            && this.fixed_temps_scope == temp_lifetime.temp_lifetime;
         let temp = if deduplicate_temps && let Some(temp_index) = this.fixed_temps.get(&expr_id) {
             *temp_index
         } else {
@@ -76,7 +75,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     LocalInfo::BlockTailTemp(tail_info)
                 }
 
-                _ if let Some(Scope { data: ScopeData::IfThenRescope, id }) = temp_lifetime => {
+                _ if let Some(Scope { data: ScopeData::IfThenRescope, id }) =
+                    temp_lifetime.temp_lifetime =>
+                {
                     LocalInfo::IfThenRescopeTemp {
                         if_then: HirId { owner: this.hir_id.owner, local_id: id },
                     }
@@ -117,7 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Anything with a shorter lifetime (e.g the `&foo()` in
                 // `bar(&foo())` or anything within a block will keep the
                 // regular drops just like runtime code.
-                if let Some(temp_lifetime) = temp_lifetime {
+                if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
                     this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Storage);
                 }
             }
@@ -125,8 +126,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = this.expr_into_dest(temp_place, block, expr_id).into_block();
 
-        if let Some(temp_lifetime) = temp_lifetime {
+        if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
             this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);
+        }
+
+        if let Some(backwards_incompatible) = temp_lifetime.backwards_incompatible {
+            this.schedule_backwards_incompatible_drop(expr_span, backwards_incompatible, temp);
         }
 
         block.and(temp)

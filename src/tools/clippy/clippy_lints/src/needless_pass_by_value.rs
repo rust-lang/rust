@@ -180,11 +180,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             if !is_self(arg)
                 && !ty.is_mutable_ptr()
                 && !is_copy(cx, ty)
-                && ty.is_sized(cx.tcx, cx.param_env)
+                && ty.is_sized(cx.tcx, cx.typing_env())
                 && !allowed_traits.iter().any(|&t| {
-                    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, t, None, [Option::<
-                        ty::GenericArg<'tcx>,
-                    >::None])
+                    implements_trait_with_env_from_iter(
+                        cx.tcx,
+                        cx.typing_env(),
+                        ty, 
+                        t,
+                        None,
+                        [None::<ty::GenericArg<'tcx>>]
+                    )
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait

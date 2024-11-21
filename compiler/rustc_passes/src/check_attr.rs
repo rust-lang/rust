@@ -162,6 +162,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_std_internal_symbol(attr, span, target)
                 }
                 [sym::naked, ..] => self.check_naked(hir_id, attr, span, target, attrs),
+                [sym::rustc_as_ptr, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 [sym::rustc_never_returns_null_ptr, ..] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }

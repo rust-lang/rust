@@ -273,7 +273,7 @@ pub fn create_ecx<'tcx>(
     let mut ecx = InterpCx::new(
         tcx,
         rustc_span::DUMMY_SP,
-        typing_env.param_env,
+        typing_env,
         MiriMachine::new(config, layout_cx),
     );
 

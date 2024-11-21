@@ -1214,7 +1214,8 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// assert_eq!(*r, 5);
     /// ```
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin_2", issue = "76654")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
         pin.__pointer
@@ -1503,7 +1504,8 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
     /// instead.
     #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin_2", issue = "76654")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
         pin.__pointer

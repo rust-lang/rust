@@ -28,8 +28,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
 
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        let ssa = SsaLocals::new(tcx, body, param_env);
+        let typing_env = body.typing_env(tcx);
+        let ssa = SsaLocals::new(tcx, body, typing_env);
 
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);

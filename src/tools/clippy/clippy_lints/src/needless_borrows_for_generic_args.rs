@@ -85,8 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             && use_cx.same_ctxt
             && !use_cx.is_ty_unified
             && let use_node = use_cx.use_node(cx)
-            && let Some(DefinedTy::Mir(ty)) = use_node.defined_ty(cx)
-            && let ty::Param(ty) = *ty.value.skip_binder().kind()
+            && let Some(DefinedTy::Mir { def_site_def_id: _, ty }) = use_node.defined_ty(cx)
+            && let ty::Param(param_ty) = *ty.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
                 ExprUseNode::MethodArg(hir_id, None, i) => cx
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                 fn_id,
                 cx.typeck_results().node_args(hir_id),
                 i,
-                ty,
+                param_ty,
                 expr,
                 &self.msrv,
             )

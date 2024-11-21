@@ -199,10 +199,7 @@ impl<'tcx> Inliner<'tcx> {
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
         let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
         for arg in args {
-            if !arg
-                .node
-                .ty(&caller_body.local_decls, self.tcx)
-                .is_sized(self.tcx, self.typing_env.param_env)
+            if !arg.node.ty(&caller_body.local_decls, self.tcx).is_sized(self.tcx, self.typing_env)
             {
                 // We do not allow inlining functions with unsized params. Inlining these functions
                 // could create unsized locals, which are unsound and being phased out.

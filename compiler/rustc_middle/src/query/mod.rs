@@ -1095,7 +1095,7 @@ rustc_queries! {
     /// Evaluates a constant and returns the computed allocation.
     ///
     /// **Do not use this** directly, use the `eval_to_const_value` or `eval_to_valtree` instead.
-    query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_allocation_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
             "const-evaluating + checking `{}`",
@@ -1121,7 +1121,7 @@ rustc_queries! {
     ///
     /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
     /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-    query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_const_value_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToConstValueResult<'tcx> {
         desc { |tcx|
             "simplifying constant for the type system `{}`",
@@ -1133,7 +1133,7 @@ rustc_queries! {
     /// Evaluate a constant and convert it to a type level constant or
     /// return `None` if that is not possible.
     query eval_to_valtree(
-        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
+        key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
         desc { "evaluating type-level constant" }
     }
@@ -1390,19 +1390,19 @@ rustc_queries! {
 
     /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
-    query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
     }
     /// Query backing `Ty::is_sized`.
-    query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
     }
     /// Query backing `Ty::is_freeze`.
-    query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_freeze_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
     /// Query backing `Ty::is_unpin`.
-    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_unpin_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
     /// Query backing `Ty::needs_drop`.
@@ -1445,6 +1445,28 @@ rustc_queries! {
     /// `Err(AlwaysRequiresDrop)` is returned.
     query adt_significant_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` has a significant destructor", tcx.def_path_str(def_id) }
+        cache_on_disk_if { false }
+    }
+
+    /// Returns a list of types which (a) have a potentially significant destructor
+    /// and (b) may be dropped as a result of dropping a value of some type `ty`
+    /// (in the given environment).
+    ///
+    /// The idea of "significant" drop is somewhat informal and is used only for
+    /// diagnostics and edition migrations. The idea is that a significant drop may have
+    /// some visible side-effect on execution; freeing memory is NOT considered a side-effect.
+    /// The rules are as follows:
+    /// * Type with no explicit drop impl do not have significant drop.
+    /// * Types with a drop impl are assumed to have significant drop unless they have a `#[rustc_insignificant_dtor]` annotation.
+    ///
+    /// Note that insignificant drop is a "shallow" property. A type like `Vec<LockGuard>` does not
+    /// have significant drop but the type `LockGuard` does, and so if `ty  = Vec<LockGuard>`
+    /// then the return value would be `&[LockGuard]`.
+    /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
+    /// because this query partially depends on that query.
+    /// Otherwise, there is a risk of query cycles.
+    query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
+        desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
         cache_on_disk_if { false }
     }
 

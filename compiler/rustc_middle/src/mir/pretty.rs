@@ -834,6 +834,11 @@ impl Debug for Statement<'_> {
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
+            BackwardIncompatibleDropHint { ref place, reason: _ } => {
+                // For now, we don't record the reason because there is only one use case,
+                // which is to report breaking change in drop order by Edition 2024
+                write!(fmt, "backward incompatible drop({place:?})")
+            }
         }
     }
 }
