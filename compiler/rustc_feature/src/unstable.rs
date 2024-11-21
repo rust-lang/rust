@@ -426,7 +426,7 @@ declare_features! (
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
-    /// Uwu
+    /// Allows using `~const Destruct` bounds and calling drop impls in const contexts.
     (unstable, const_destruct, "CURRENT_RUSTC_VERSION", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),

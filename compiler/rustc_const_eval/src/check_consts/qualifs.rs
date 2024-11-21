@@ -175,6 +175,11 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
+        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        if !ty.needs_drop(cx.tcx, cx.typing_env) {
+            return false;
+        }
+
         // We check that the type is `~const Destruct` since that will verify that
         // the type is both `~const Drop` (if a drop impl exists for the adt), *and*
         // that the components of this type are also `~const Destruct`. This
@@ -203,7 +208,7 @@ impl Qualif for NeedsNonConstDrop {
         // in its value since:
         // 1. The destructor may have `~const` bounds which are not present on the type.
         //   Someone needs to check that those are satisfied.
-        //   While this could be done instead satisfied by checking that the `~const Drop`
+        //   While this could be instead satisfied by checking that the `~const Drop`
         //   impl holds (i.e. replicating part of the `in_any_value_of_ty` logic above),
         //   even in this case, we have another problem, which is,
         // 2. The destructor may *modify* the operand being dropped, so even if we

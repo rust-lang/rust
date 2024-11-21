@@ -1,43 +1,3 @@
-error[E0658]: use of unstable library feature `const_destruct`
-  --> $DIR/const-drop-bound.rs:7:5
-   |
-LL | use std::marker::Destruct;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
-   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `const_destruct`
-  --> $DIR/const-drop-bound.rs:9:68
-   |
-LL | const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
-   |                                                                    ^^^^^^^^
-   |
-   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
-   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `const_destruct`
-  --> $DIR/const-drop-bound.rs:20:15
-   |
-LL |     T: ~const Destruct,
-   |               ^^^^^^^^
-   |
-   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
-   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: use of unstable library feature `const_destruct`
-  --> $DIR/const-drop-bound.rs:21:15
-   |
-LL |     E: ~const Destruct,
-   |               ^^^^^^^^
-   |
-   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
-   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-drop-bound.rs:9:61
    |
@@ -88,7 +48,6 @@ LL |         Err(_e) => None,
    |             |
    |             the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 11 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0493, E0658.
-For more information about an error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0493`.

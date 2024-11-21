@@ -12,7 +12,7 @@
     fundamental,
     marker_trait_attr,
     const_trait_impl,
-    const_destruct,
+    const_destruct
 )]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
@@ -450,7 +450,7 @@ pub trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
     where
-    Self: ~const Destruct,
+        Self: ~const Destruct,
     {
         *self = source.clone()
     }
