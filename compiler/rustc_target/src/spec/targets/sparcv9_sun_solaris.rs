@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "sparcv9-sun-solaris".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("SPARC Solaris 11, illumos".into()),
+            description: Some("SPARC Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
