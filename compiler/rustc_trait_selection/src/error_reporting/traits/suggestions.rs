@@ -1075,93 +1075,110 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
         // Autoderef is useful here because sometimes we box callables, etc.
         let Some((def_id_or_name, output, inputs)) =
-            (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| {
-                match *found.kind() {
-                    ty::FnPtr(sig_tys, _) => Some((
-                        DefIdOrName::Name("function pointer"),
-                        sig_tys.output(),
-                        sig_tys.inputs(),
-                    )),
-                    ty::FnDef(def_id, _) => {
-                        let fn_sig = found.fn_sig(self.tcx);
-                        Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
-                    }
-                    ty::Closure(def_id, args) => {
-                        let fn_sig = args.as_closure().sig();
-                        Some((
-                            DefIdOrName::DefId(def_id),
-                            fn_sig.output(),
-                            fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
-                        ))
-                    }
-                    ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                        self.tcx
-                            .item_super_predicates(def_id)
-                            .instantiate(self.tcx, args)
-                            .iter()
-                            .find_map(|pred| {
-                                if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && self.tcx.is_lang_item(proj.projection_term.def_id,LangItem::FnOnceOutput)
-                        // args tuple will always be args[1]
-                        && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
-                                {
-                                    Some((
-                                        DefIdOrName::DefId(def_id),
-                                        pred.kind().rebind(proj.term.expect_type()),
-                                        pred.kind().rebind(args.as_slice()),
-                                    ))
-                                } else {
-                                    None
-                                }
-                            })
-                    }
-                    ty::Dynamic(data, _, ty::Dyn) => {
-                        data.iter().find_map(|pred| {
-                            if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
+            (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| match *found.kind() {
+                ty::FnPtr(sig_tys, _) => Some((
+                    DefIdOrName::Name("function pointer"),
+                    sig_tys.output(),
+                    sig_tys.inputs(),
+                )),
+                ty::FnDef(def_id, _) => {
+                    let fn_sig = found.fn_sig(self.tcx);
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
+                }
+                ty::Closure(def_id, args) => {
+                    let fn_sig = args.as_closure().sig();
+                    Some((
+                        DefIdOrName::DefId(def_id),
+                        fn_sig.output(),
+                        fn_sig.inputs().map_bound(|inputs| inputs[0].tuple_fields().as_slice()),
+                    ))
+                }
+                ty::CoroutineClosure(def_id, args) => {
+                    let sig_parts = args.as_coroutine_closure().coroutine_closure_sig();
+                    Some((
+                        DefIdOrName::DefId(def_id),
+                        sig_parts.map_bound(|sig| {
+                            sig.to_coroutine(
+                                self.tcx,
+                                args.as_coroutine_closure().parent_args(),
+                                // Just use infer vars here, since we  don't really care
+                                // what these types are, just that we're returning a coroutine.
+                                self.next_ty_var(DUMMY_SP),
+                                self.tcx.coroutine_for_closure(def_id),
+                                self.next_ty_var(DUMMY_SP),
+                            )
+                        }),
+                        sig_parts.map_bound(|sig| sig.tupled_inputs_ty.tuple_fields().as_slice()),
+                    ))
+                }
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
+                    .tcx
+                    .item_super_predicates(def_id)
+                    .instantiate(self.tcx, args)
+                    .iter()
+                    .find_map(|pred| {
+                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
+                            && self
+                                .tcx
+                                .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
+                            // args tuple will always be args[1]
+                            && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
+                        {
+                            Some((
+                                DefIdOrName::DefId(def_id),
+                                pred.kind().rebind(proj.term.expect_type()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    }),
+                ty::Dynamic(data, _, ty::Dyn) => data.iter().find_map(|pred| {
+                    if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && self.tcx.is_lang_item(proj.def_id, LangItem::FnOnceOutput)
                         // for existential projection, args are shifted over by 1
                         && let ty::Tuple(args) = proj.args.type_at(0).kind()
-                            {
-                                Some((
-                                    DefIdOrName::Name("trait object"),
-                                    pred.rebind(proj.term.expect_type()),
-                                    pred.rebind(args.as_slice()),
-                                ))
-                            } else {
-                                None
-                            }
-                        })
+                    {
+                        Some((
+                            DefIdOrName::Name("trait object"),
+                            pred.rebind(proj.term.expect_type()),
+                            pred.rebind(args.as_slice()),
+                        ))
+                    } else {
+                        None
                     }
-                    ty::Param(param) => {
-                        let generics = self.tcx.generics_of(body_id);
-                        let name = if generics.count() > param.index as usize
-                            && let def = generics.param_at(param.index as usize, self.tcx)
-                            && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
-                            && def.name == param.name
+                }),
+                ty::Param(param) => {
+                    let generics = self.tcx.generics_of(body_id);
+                    let name = if generics.count() > param.index as usize
+                        && let def = generics.param_at(param.index as usize, self.tcx)
+                        && matches!(def.kind, ty::GenericParamDefKind::Type { .. })
+                        && def.name == param.name
+                    {
+                        DefIdOrName::DefId(def.def_id)
+                    } else {
+                        DefIdOrName::Name("type parameter")
+                    };
+                    param_env.caller_bounds().iter().find_map(|pred| {
+                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
+                            && self
+                                .tcx
+                                .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
+                            && proj.projection_term.self_ty() == found
+                            // args tuple will always be args[1]
+                            && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                         {
-                            DefIdOrName::DefId(def.def_id)
+                            Some((
+                                name,
+                                pred.kind().rebind(proj.term.expect_type()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
                         } else {
-                            DefIdOrName::Name("type parameter")
-                        };
-                        param_env.caller_bounds().iter().find_map(|pred| {
-                            if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
-                        && self.tcx.is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
-                        && proj.projection_term.self_ty() == found
-                        // args tuple will always be args[1]
-                        && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
-                            {
-                                Some((
-                                    name,
-                                    pred.kind().rebind(proj.term.expect_type()),
-                                    pred.kind().rebind(args.as_slice()),
-                                ))
-                            } else {
-                                None
-                            }
-                        })
-                    }
-                    _ => None,
+                            None
+                        }
+                    })
                 }
+                _ => None,
             })
         else {
             return None;
