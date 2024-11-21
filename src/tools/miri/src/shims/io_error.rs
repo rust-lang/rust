@@ -82,6 +82,10 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 // <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/windows/mod.rs>.
 const WINDOWS_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
+    // It's common for multiple error codes to map to the same io::ErrorKind. We have all for the
+    // forwards mapping; only the first one will be used for the backwards mapping.
+    // Slightly arbitrarily, we prefer non-WSA and the most generic sounding variant for backwards
+    // mapping.
     &[
         ("WSAEADDRINUSE", AddrInUse),
         ("WSAEADDRNOTAVAIL", AddrNotAvailable),
