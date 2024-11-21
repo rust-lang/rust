@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 /// The mode to use for compilation.
 #[derive(Copy, Clone, Debug)]
 pub enum CodegenMode {
@@ -9,19 +7,6 @@ pub enum CodegenMode {
     Jit,
     /// JIT compile and execute the crate, but only compile functions the first time they are used.
     JitLazy,
-}
-
-impl FromStr for CodegenMode {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aot" => Ok(CodegenMode::Aot),
-            "jit" => Ok(CodegenMode::Jit),
-            "jit-lazy" => Ok(CodegenMode::JitLazy),
-            _ => Err(format!("Unknown codegen mode `{}`", s)),
-        }
-    }
 }
 
 /// Configuration of cg_clif as passed in through `-Cllvm-args` and various env vars.
@@ -38,27 +23,20 @@ pub struct BackendConfig {
     pub jit_args: Vec<String>,
 }
 
-impl Default for BackendConfig {
-    fn default() -> Self {
-        BackendConfig {
-            codegen_mode: CodegenMode::Aot,
-            jit_args: {
-                match std::env::var("CG_CLIF_JIT_ARGS") {
-                    Ok(args) => args.split(' ').map(|arg| arg.to_string()).collect(),
-                    Err(std::env::VarError::NotPresent) => vec![],
-                    Err(std::env::VarError::NotUnicode(s)) => {
-                        panic!("CG_CLIF_JIT_ARGS not unicode: {:?}", s);
-                    }
-                }
-            },
-        }
-    }
-}
-
 impl BackendConfig {
     /// Parse the configuration passed in using `-Cllvm-args`.
     pub fn from_opts(opts: &[String]) -> Result<Self, String> {
-        let mut config = BackendConfig::default();
+        let mut config = BackendConfig {
+            codegen_mode: CodegenMode::Aot,
+            jit_args: match std::env::var("CG_CLIF_JIT_ARGS") {
+                Ok(args) => args.split(' ').map(|arg| arg.to_string()).collect(),
+                Err(std::env::VarError::NotPresent) => vec![],
+                Err(std::env::VarError::NotUnicode(s)) => {
+                    panic!("CG_CLIF_JIT_ARGS not unicode: {:?}", s);
+                }
+            },
+        };
+
         for opt in opts {
             if opt.starts_with("-import-instr-limit") {
                 // Silently ignore -import-instr-limit. It is set by rust's build system even when
@@ -67,7 +45,14 @@ impl BackendConfig {
             }
             if let Some((name, value)) = opt.split_once('=') {
                 match name {
-                    "mode" => config.codegen_mode = value.parse()?,
+                    "mode" => {
+                        config.codegen_mode = match value {
+                            "aot" => CodegenMode::Aot,
+                            "jit" => CodegenMode::Jit,
+                            "jit-lazy" => CodegenMode::JitLazy,
+                            _ => return Err(format!("Unknown codegen mode `{}`", value)),
+                        };
+                    }
                     _ => return Err(format!("Unknown option `{}`", name)),
                 }
             } else {
