@@ -540,6 +540,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 Some(cnum)
             }
             Err(err) => {
+                debug!("failed to resolve crate {} {:?}", name, dep_kind);
                 let missing_core =
                     self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
                 err.report(self.sess, span, missing_core);
@@ -588,6 +589,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             match self.load(&mut locator)? {
                 Some(res) => (res, None),
                 None => {
+                    info!("falling back to loading proc_macro");
                     dep_kind = CrateDepKind::MacrosOnly;
                     match self.load_proc_macro(&mut locator, path_kind, host_hash)? {
                         Some(res) => res,
@@ -599,6 +601,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
+                info!("library for `{}` was loaded previously", name);
                 // When `private_dep` is none, it indicates the directly dependent crate. If it is
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
@@ -613,6 +616,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
+                info!("register newly loaded library for `{}`", name);
                 self.register_crate(host_library, root, library, dep_kind, name, private_dep)
             }
             _ => panic!(),
@@ -696,7 +700,25 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacro], CrateError> {
         let sym_name = self.sess.generate_proc_macro_decls_symbol(stable_crate_id);
-        Ok(unsafe { *load_symbol_from_dylib::<*const &[ProcMacro]>(path, &sym_name)? })
+        debug!("trying to dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
+
+        unsafe {
+            let result = load_symbol_from_dylib::<*const &[ProcMacro]>(path, &sym_name);
+            match result {
+                Ok(result) => {
+                    debug!("loaded dlsym proc_macros {} for symbol `{}`", path.display(), sym_name);
+                    Ok(*result)
+                }
+                Err(err) => {
+                    debug!(
+                        "failed to dlsym proc_macros {} for symbol `{}`",
+                        path.display(),
+                        sym_name
+                    );
+                    Err(err.into())
+                }
+            }
+        }
     }
 
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
@@ -1141,6 +1163,29 @@ fn format_dlopen_err(e: &(dyn std::error::Error + 'static)) -> String {
     e.sources().map(|e| format!(": {e}")).collect()
 }
 
+fn attempt_load_dylib(path: &Path) -> Result<libloading::Library, libloading::Error> {
+    #[cfg(target_os = "aix")]
+    if let Some(ext) = path.extension()
+        && ext.eq("a")
+    {
+        // On AIX, we ship all libraries as .a big_af archive
+        // the expected format is lib<name>.a(libname.so) for the actual
+        // dynamic library
+        let library_name = path.file_stem().expect("expect a library name");
+        let mut archive_member = OsString::from("a(");
+        archive_member.push(library_name);
+        archive_member.push(".so)");
+        let new_path = path.with_extension(archive_member);
+
+        // On AIX, we need RTLD_MEMBER to dlopen an archived shared
+        let flags = libc::RTLD_LAZY | libc::RTLD_LOCAL | libc::RTLD_MEMBER;
+        return unsafe { libloading::os::unix::Library::open(Some(&new_path), flags) }
+            .map(|lib| lib.into());
+    }
+
+    unsafe { libloading::Library::new(&path) }
+}
+
 // On Windows the compiler would sometimes intermittently fail to open the
 // proc-macro DLL with `Error::LoadLibraryExW`. It is suspected that something in the
 // system still holds a lock on the file, so we retry a few times before calling it
@@ -1151,7 +1196,8 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
     let mut last_error = None;
 
     for attempt in 0..max_attempts {
-        match unsafe { libloading::Library::new(&path) } {
+        debug!("Attempt to load proc-macro `{}`.", path.display());
+        match attempt_load_dylib(path) {
             Ok(lib) => {
                 if attempt > 0 {
                     debug!(
@@ -1165,6 +1211,7 @@ fn load_dylib(path: &Path, max_attempts: usize) -> Result<libloading::Library, S
             Err(err) => {
                 // Only try to recover from this specific error.
                 if !matches!(err, libloading::Error::LoadLibraryExW { .. }) {
+                    debug!("Failed to load proc-macro `{}`. Not retrying", path.display());
                     let err = format_dlopen_err(&err);
                     // We include the path of the dylib in the error ourselves, so
                     // if it's in the error, we strip it.

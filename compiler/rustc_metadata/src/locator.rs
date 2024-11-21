@@ -847,7 +847,10 @@ fn get_metadata_section<'p>(
         )));
     };
     match blob.check_compatibility(cfg_version) {
-        Ok(()) => Ok(blob),
+        Ok(()) => {
+            debug!("metadata blob read okay");
+            Ok(blob)
+        }
         Err(None) => Err(MetadataError::LoadFailure(format!(
             "invalid metadata version found: {}",
             filename.display()
