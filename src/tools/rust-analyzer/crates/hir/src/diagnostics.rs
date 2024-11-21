@@ -15,7 +15,8 @@ use hir_expand::{name::Name, HirFileId, InFile};
 use hir_ty::{
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnosticKind,
+    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
+    TyLoweringDiagnosticKind,
 };
 use syntax::{
     ast::{self, HasGenericArgs},
@@ -402,7 +403,7 @@ pub struct InvalidCast {
 
 #[derive(Debug)]
 pub struct GenericArgsProhibited {
-    pub args: InFile<AstPtr<Either<ast::GenericArgList, ast::ParamList>>>,
+    pub args: InFile<AstPtr<Either<ast::GenericArgList, ast::ParenthesizedArgList>>>,
     pub reason: GenericArgsProhibitedReason,
 }
 
@@ -664,30 +665,38 @@ impl AnyDiagnostic {
                     InferenceTyDiagnosticSource::Body => &source_map.types,
                     InferenceTyDiagnosticSource::Signature => outer_types_source_map,
                 };
-                let source = match diag.source {
-                    Either::Left(type_ref_id) => {
-                        let Ok(source) = source_map.type_syntax(type_ref_id) else {
-                            stdx::never!("error on synthetic type syntax");
-                            return None;
-                        };
-                        source
-                    }
-                    Either::Right(source) => source,
+                Self::ty_diagnostic(diag, source_map, db)?
+            }
+        })
+    }
+
+    pub(crate) fn ty_diagnostic(
+        diag: &TyLoweringDiagnostic,
+        source_map: &TypesSourceMap,
+        db: &dyn HirDatabase,
+    ) -> Option<AnyDiagnostic> {
+        let source = match diag.source {
+            Either::Left(type_ref_id) => {
+                let Ok(source) = source_map.type_syntax(type_ref_id) else {
+                    stdx::never!("error on synthetic type syntax");
+                    return None;
                 };
-                let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
-                match diag.kind {
-                    TyLoweringDiagnosticKind::GenericArgsProhibited { segment, reason } => {
-                        let ast::Type::PathType(syntax) = syntax() else { return None };
-                        let segment = hir_segment_to_ast_segment(&syntax.path()?, segment)?;
-                        let args = if let Some(generics) = segment.generic_arg_list() {
-                            AstPtr::new(&generics).wrap_left()
-                        } else {
-                            AstPtr::new(&segment.param_list()?).wrap_right()
-                        };
-                        let args = source.with_value(args);
-                        GenericArgsProhibited { args, reason }.into()
-                    }
-                }
+                source
+            }
+            Either::Right(source) => source,
+        };
+        let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
+        Some(match diag.kind {
+            TyLoweringDiagnosticKind::GenericArgsProhibited { segment, reason } => {
+                let ast::Type::PathType(syntax) = syntax() else { return None };
+                let segment = hir_segment_to_ast_segment(&syntax.path()?, segment)?;
+                let args = if let Some(generics) = segment.generic_arg_list() {
+                    AstPtr::new(&generics).wrap_left()
+                } else {
+                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
+                };
+                let args = source.with_value(args);
+                GenericArgsProhibited { args, reason }.into()
             }
         })
     }

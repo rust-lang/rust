@@ -225,6 +225,11 @@ impl GenericParams {
     }
 
     #[inline]
+    pub fn no_predicates(&self) -> bool {
+        self.where_predicates.is_empty()
+    }
+
+    #[inline]
     pub fn where_predicates(&self) -> std::slice::Iter<'_, WherePredicate> {
         self.where_predicates.iter()
     }

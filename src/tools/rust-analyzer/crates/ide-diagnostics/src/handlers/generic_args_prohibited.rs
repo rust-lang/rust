@@ -68,6 +68,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::GenericArgsProhibited) -> Option
 
 #[cfg(test)]
 mod tests {
+    // This diagnostic was the first to be emitted in ty lowering, so the tests here also test
+    // diagnostics in ty lowering in general (which is why there are so many of them).
+
     use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
@@ -237,6 +240,203 @@ fn foo() {
 fn foo() {
     let _: bool;
 }"#,
+        );
+    }
+
+    #[test]
+    fn in_fields() {
+        check_diagnostics(
+            r#"
+struct A(bool<i32>);
+          // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+struct B { v: bool<(), 1> }
+               // ^^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+union C {
+    a: bool<i32>,
+        // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    b: i32<bool>,
+       // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+       }
+enum D {
+    A(bool<i32>),
+       // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    B { v: i32<bool> },
+           // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_generics() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub trait Trait {}
+}
+
+struct A<A: foo::<()>::Trait>(A)
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait;
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+union B<A: foo::<()>::Trait>
+           // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+{ a: A }
+enum C<A: foo::<()>::Trait>
+          // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+{}
+
+fn f<A: foo::<()>::Trait>()
+        // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+{}
+
+type D<A: foo::<()>::Trait> = A
+          // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait;
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+
+trait E<A: foo::<()>::Trait>
+           // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+{
+    fn f<B: foo::<()>::Trait>()
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+        where bool<i32>: foo::Trait
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    {}
+
+    type D<B: foo::<()>::Trait> = A
+              // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+        where bool<i32>: foo::Trait;
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+
+impl<A: foo::<()>::Trait> E for ()
+        // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    where bool<i32>: foo::Trait
+           // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+{
+    fn f<B: foo::<()>::Trait>()
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+        where bool<i32>: foo::Trait
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    {}
+
+    type D<B: foo::<()>::Trait> = A
+              // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+        where bool<i32>: foo::Trait;
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn assoc_items() {
+        check_diagnostics(
+            r#"
+struct Foo;
+
+trait Trait {
+    fn f() -> bool<i32> { true }
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    type T = i32<bool>;
+             // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+
+impl Trait for Foo {
+    fn f() -> bool<i32> { true }
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    type T = i32<bool>;
+             // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+
+impl Foo {
+    fn f() -> bool<i32> { true }
+               // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    type T = i32<bool>;
+             // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn const_param_ty() {
+        check_diagnostics(
+            r#"
+fn foo<
+    const A: bool<i32>,
+              // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    B,
+    C,
+    const D: bool<i32>,
+              // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+    const E: bool<i32>,
+              // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+>() {}
+        "#,
+        );
+    }
+
+    #[test]
+    fn generic_defaults() {
+        check_diagnostics(
+            r#"
+struct Foo<A = bool<i32>>(A);
+                // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+        "#,
+        );
+    }
+
+    #[test]
+    fn impl_self_ty() {
+        check_diagnostics(
+            r#"
+struct Foo<A>(A);
+trait Trait {}
+impl Foo<bool<i32>> {}
+          // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+impl Trait for Foo<bool<i32>> {}
+                    // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+        "#,
+        );
+    }
+
+    #[test]
+    fn impl_trait() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub trait Trait {}
+}
+impl foo::<()>::Trait for () {}
+     // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+        "#,
+        );
+    }
+
+    #[test]
+    fn type_alias() {
+        check_diagnostics(
+            r#"
+pub trait Trait {
+    type Assoc;
+}
+type T = bool<i32>;
+          // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
+impl Trait for () {
+    type Assoc = i32<bool>;
+                 // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
         );
     }
 }
