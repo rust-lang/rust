@@ -124,7 +124,7 @@ struct SourceCollector<'a, 'tcx> {
 
 impl DocVisitor<'_> for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
-        if !self.cx.include_sources {
+        if !self.cx.info.include_sources {
             return;
         }
 
@@ -146,7 +146,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(&filename, file_span) {
+            self.cx.info.include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
                     self.cx.shared.tcx.dcx().span_err(

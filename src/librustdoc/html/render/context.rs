@@ -49,10 +49,6 @@ pub(crate) struct Context<'tcx> {
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub(crate) dst: PathBuf,
-    /// A flag, which when `true`, will render pages which redirect to the
-    /// real location of an item. This is used to allow external links to
-    /// publicly reused items to redirect to the right location.
-    pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
     pub(super) deref_id_map: DefIdMap<String>,
@@ -64,14 +60,31 @@ pub(crate) struct Context<'tcx> {
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
     pub(crate) shared: Rc<SharedContext<'tcx>>,
+    /// Collection of all types with notable traits referenced in the current module.
+    pub(crate) types_with_notable_traits: FxIndexSet<clean::Type>,
+    /// Contains information that needs to be saved and reset after rendering an item which is
+    /// not a module.
+    pub(crate) info: ContextInfo,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct ContextInfo {
+    /// A flag, which when `true`, will render pages which redirect to the
+    /// real location of an item. This is used to allow external links to
+    /// publicly reused items to redirect to the right location.
+    pub(super) render_redirect_pages: bool,
     /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub(crate) include_sources: bool,
-    /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: FxIndexSet<clean::Type>,
     /// Field used during rendering, to know if we're inside an inlined item.
     pub(crate) is_inside_inlined_module: bool,
+}
+
+impl ContextInfo {
+    fn new(include_sources: bool) -> Self {
+        Self { render_redirect_pages: false, include_sources, is_inside_inlined_module: false }
+    }
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
@@ -174,14 +187,16 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
-        let mut render_redirect_pages = self.render_redirect_pages;
+        let mut render_redirect_pages = self.info.render_redirect_pages;
         // If the item is stripped but inlined, links won't point to the item so no need to generate
         // a file for it.
         if it.is_stripped()
             && let Some(def_id) = it.def_id()
             && def_id.is_local()
         {
-            if self.is_inside_inlined_module || self.shared.cache.inlined_items.contains(&def_id) {
+            if self.info.is_inside_inlined_module
+                || self.shared.cache.inlined_items.contains(&def_id)
+            {
                 // For now we're forced to generate a redirect page for stripped items until
                 // `record_extern_fqn` correctly points to external items.
                 render_redirect_pages = true;
@@ -441,6 +456,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = true;
+    type InfoType = ContextInfo;
 
     fn init(
         krate: clean::Crate,
@@ -562,13 +578,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let mut cx = Context {
             current: Vec::new(),
             dst,
-            render_redirect_pages: false,
             id_map,
             deref_id_map: Default::default(),
             shared: Rc::new(scx),
-            include_sources,
             types_with_notable_traits: FxIndexSet::default(),
-            is_inside_inlined_module: false,
+            info: ContextInfo::new(include_sources),
         };
 
         if emit_crate {
@@ -582,18 +596,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok((cx, krate))
     }
 
-    fn make_child_renderer(&self) -> Self {
-        Self {
-            current: self.current.clone(),
-            dst: self.dst.clone(),
-            render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: Default::default(),
-            id_map: IdMap::new(),
-            shared: Rc::clone(&self.shared),
-            include_sources: self.include_sources,
-            types_with_notable_traits: FxIndexSet::default(),
-            is_inside_inlined_module: self.is_inside_inlined_module,
-        }
+    fn make_child_renderer(&mut self) -> Self::InfoType {
+        self.deref_id_map.clear();
+        self.id_map.clear();
+        self.types_with_notable_traits.clear();
+        self.info
+    }
+
+    fn set_back_info(&mut self, info: Self::InfoType) {
+        self.info = info;
     }
 
     fn after_krate(&mut self) -> Result<(), Error> {
@@ -775,8 +786,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
+        if !self.info.render_redirect_pages {
+            self.info.render_redirect_pages = item.is_stripped();
         }
         let item_name = item.name.unwrap();
         self.dst.push(item_name.as_str());
@@ -793,19 +804,19 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 self.shared.fs.write(joint_dst, buf)?;
             }
         }
-        if !self.is_inside_inlined_module {
+        if !self.info.is_inside_inlined_module {
             if let Some(def_id) = item.def_id()
                 && self.cache().inlined_items.contains(&def_id)
             {
-                self.is_inside_inlined_module = true;
+                self.info.is_inside_inlined_module = true;
             }
         } else if !self.cache().document_hidden && item.is_doc_hidden() {
             // We're not inside an inlined module anymore since this one cannot be re-exported.
-            self.is_inside_inlined_module = false;
+            self.info.is_inside_inlined_module = false;
         }
 
         // Render sidebar-items.js used throughout this module.
-        if !self.render_redirect_pages {
+        if !self.info.render_redirect_pages {
             let (clean::StrippedItem(box clean::ModuleItem(ref module))
             | clean::ModuleItem(ref module)) = item.kind
             else {
@@ -836,8 +847,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
+        if !self.info.render_redirect_pages {
+            self.info.render_redirect_pages = item.is_stripped();
         }
 
         let buf = self.render_item(&item, false);
@@ -850,7 +861,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             let joint_dst = self.dst.join(file_name);
             self.shared.fs.write(joint_dst, buf)?;
 
-            if !self.render_redirect_pages {
+            if !self.info.render_redirect_pages {
                 self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);
             }
             // If the item is a macro, redirect from the old macro URL (with !)

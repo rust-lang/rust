@@ -104,7 +104,7 @@ pub(crate) fn write_shared(
             &cx.shared.style_files,
             cx.shared.layout.css_file_extension.as_deref(),
             &cx.shared.resource_suffix,
-            cx.include_sources,
+            cx.info.include_sources,
         )?;
         match &opt.index_page {
             Some(index_page) if opt.enable_index_page => {

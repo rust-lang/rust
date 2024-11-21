@@ -137,6 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = false;
+    type InfoType = ();
 
     fn init(
         krate: clean::Crate,
@@ -161,9 +162,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
-    fn make_child_renderer(&self) -> Self {
-        self.clone()
-    }
+    fn make_child_renderer(&mut self) -> Self::InfoType {}
+    fn set_back_info(&mut self, _info: Self::InfoType) {}
 
     /// Inserts an item into the index. This should be used rather than directly calling insert on
     /// the hashmap because certain items (traits and types) need to have their mappings for trait

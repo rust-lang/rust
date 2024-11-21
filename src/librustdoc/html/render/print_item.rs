@@ -223,7 +223,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     let src_href =
-        if cx.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
+        if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
     let path_components = if item.is_primitive() || item.is_keyword() {
         vec![]
