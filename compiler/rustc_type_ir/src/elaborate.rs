@@ -157,7 +157,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             }
             // `T: ~const Trait` implies `T: ~const Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
-                cx.implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
+                cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
                     elaboratable.child(
                         trait_ref
                             .to_host_effect_clause(cx, data.constness)
