@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     ast::{self, make, HasName, HasTypeBounds},
     syntax_editor::SyntaxMappingBuilder,
-    AstNode,
+    AstNode, SyntaxKind, SyntaxToken,
 };
 
 use super::SyntaxFactory;
@@ -150,5 +150,9 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn token(&self, kind: SyntaxKind) -> SyntaxToken {
+        make::token(kind)
     }
 }
