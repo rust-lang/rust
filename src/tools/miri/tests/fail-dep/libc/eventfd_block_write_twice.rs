@@ -14,7 +14,7 @@ use std::thread;
 // 2. Thread 2 blocks.
 // 3. Thread 3 unblocks both thread 1 and thread 2.
 // 4. Thread 1 writes u64::MAX.
-// 5. Thread 2's `write` deadlocked.
+// 5. Thread 2's `write` can never complete -> deadlocked.
 fn main() {
     // eventfd write will block when EFD_NONBLOCK flag is clear
     // and the addition caused counter to exceed u64::MAX - 1.
