@@ -114,7 +114,7 @@ declare_clippy_lint! {
     ///     let _ = FooStruct{};
     /// }
     /// ```
-    #[clippy::version = "pre 1.29.0"]
+    #[clippy::version = "1.83.0"]
     pub USED_UNDERSCORE_ITEMS,
     pedantic,
     "using a item which is prefixed with an underscore"
