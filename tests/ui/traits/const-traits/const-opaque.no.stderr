@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `(): const Foo` is not satisfied
+  --> $DIR/const-opaque.rs:31:18
+   |
+LL |     let opaque = bar(());
+   |                  ^^^^^^^
+
+error[E0277]: the trait bound `(): const Foo` is not satisfied
+  --> $DIR/const-opaque.rs:33:5
+   |
+LL |     opaque.method();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
