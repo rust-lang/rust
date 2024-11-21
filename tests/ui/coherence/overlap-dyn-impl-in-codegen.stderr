@@ -1,0 +1,19 @@
+error[E0277]: the size for values of type `dyn MyTrait<Target = u8>` cannot be known at compilation time
+  --> $DIR/overlap-dyn-impl-in-codegen.rs:13:15
+   |
+LL |     bug_run::<dyn MyTrait<Target = u8>>();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn MyTrait<Target = u8>`
+note: required by a bound in `bug_run`
+  --> $DIR/overlap-dyn-impl-in-codegen.rs:19:29
+   |
+LL | fn bug_run<T: ?Sized>()
+   |    ------- required by a bound in this function
+LL | where
+LL |     <T as MyTrait>::Target: Sized,
+   |                             ^^^^^ required by this bound in `bug_run`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

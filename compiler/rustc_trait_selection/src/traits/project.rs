@@ -817,7 +817,12 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id)
-        .filter(|bound| !tcx.trait_has_impl_which_may_shadow_dyn(bound.trait_def_id(tcx)))
+        .filter(|bound| {
+            !tcx.trait_has_impl_which_may_shadow_dyn((
+                bound.trait_def_id(tcx),
+                data.principal_def_id(),
+            ))
+        })
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
     assemble_candidates_from_predicates(

@@ -1,6 +1,6 @@
-//@ known-bug: #115435
 //@ edition:2021
 //@ compile-flags: -Copt-level=0
+
 trait MyTrait {
     type Target: ?Sized;
 }
@@ -11,6 +11,7 @@ impl<A: ?Sized> MyTrait for A {
 
 fn main() {
     bug_run::<dyn MyTrait<Target = u8>>();
+    //~^ ERROR the size for values of type
 }
 
 fn bug_run<T: ?Sized>()

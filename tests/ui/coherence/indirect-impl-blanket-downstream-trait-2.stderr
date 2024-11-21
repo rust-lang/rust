@@ -1,0 +1,47 @@
+error[E0271]: type mismatch resolving `<dyn Downstream as Trait>::Assoc == usize`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:36:10
+   |
+LL |     test(x); // This call used to segfault.
+   |     ---- ^ type mismatch resolving `<dyn Downstream as Trait>::Assoc == usize`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `usize`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:9:18
+   |
+LL |     type Assoc = &'static str;
+   |                  ^^^^^^^^^^^^
+note: required for `dyn Downstream` to implement `Other`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:14:9
+   |
+LL | impl<T> Other for T where T: ?Sized + Downstream + OnlyDyn {}
+   |         ^^^^^     ^                   ---------- unsatisfied trait bound introduced here
+   = note: associated types for the current `impl` cannot be restricted in `where` clauses
+note: required by a bound in `test`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:26:21
+   |
+LL | fn test<T: ?Sized + Other>(x: &T) {
+   |                     ^^^^^ required by this bound in `test`
+
+error[E0271]: type mismatch resolving `<dyn Downstream as Trait>::Assoc == usize`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:41:21
+   |
+LL |     impl_downstream(x);
+   |     --------------- ^ type mismatch resolving `<dyn Downstream as Trait>::Assoc == usize`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `usize`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:9:18
+   |
+LL |     type Assoc = &'static str;
+   |                  ^^^^^^^^^^^^
+note: required by a bound in `impl_downstream`
+  --> $DIR/indirect-impl-blanket-downstream-trait-2.rs:31:32
+   |
+LL | fn impl_downstream<T: ?Sized + Downstream>(x: &T) {}
+   |                                ^^^^^^^^^^ required by this bound in `impl_downstream`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

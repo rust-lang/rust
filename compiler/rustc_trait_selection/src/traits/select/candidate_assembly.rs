@@ -893,7 +893,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         })
                     })
                     .filter(|(_, trait_ref)| {
-                        !tcx.trait_has_impl_which_may_shadow_dyn(trait_ref.def_id())
+                        !tcx.trait_has_impl_which_may_shadow_dyn((
+                            trait_ref.def_id(),
+                            Some(principal_trait_ref.def_id()),
+                        ))
                     })
                     .map(|(idx, _)| ObjectCandidate(idx));
 

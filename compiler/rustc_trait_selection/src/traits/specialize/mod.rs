@@ -11,7 +11,7 @@
 
 pub mod specialization_graph;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::LangItem;
@@ -23,6 +23,8 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_session::lint::builtin::{COHERENCE_LEAK_CHECK, ORDER_DEPENDENT_TRAIT_OBJECTS};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
+use rustc_type_ir::elaborate;
+use rustc_type_ir::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_type_ir::solve::NoSolution;
 use specialization_graph::GraphExt;
 use tracing::{debug, instrument};
@@ -599,20 +601,72 @@ fn report_conflicting_impls<'tcx>(
 
 pub(super) fn trait_has_impl_which_may_shadow_dyn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
+    (target_trait_def_id, principal_def_id): (DefId, Option<DefId>),
 ) -> bool {
     // We only care about trait objects which have associated types.
     if !tcx
-        .associated_items(trait_def_id)
+        .associated_items(target_trait_def_id)
         .in_definition_order()
         .any(|item| item.kind == ty::AssocKind::Type)
     {
         return false;
     }
 
-    let mut has_impl = false;
-    tcx.for_each_impl(trait_def_id, |impl_def_id| {
-        if has_impl {
+    let target_self_ty =
+        principal_def_id.map_or(SimplifiedType::MarkerTraitObject, SimplifiedType::Trait);
+
+    let elaborated_supertraits =
+        principal_def_id.into_iter().flat_map(|def_id| tcx.supertrait_def_ids(def_id)).collect();
+
+    trait_has_impl_inner(
+        tcx,
+        target_trait_def_id,
+        target_self_ty,
+        &elaborated_supertraits,
+        &mut Default::default(),
+        false,
+    )
+}
+
+fn trait_has_impl_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    target_trait_def_id: DefId,
+    target_self_ty: SimplifiedType<DefId>,
+    elaborated_supertraits: &FxHashSet<DefId>,
+    seen_traits: &mut FxHashSet<DefId>,
+    for_nested_impl: bool,
+) -> bool {
+    if tcx.is_lang_item(target_trait_def_id, LangItem::Sized) {
+        return false;
+    }
+
+    // If we've encountered a trait in a cycle, then let's just
+    // consider it to be implemented defensively.
+    if !seen_traits.insert(target_trait_def_id) {
+        return true;
+    }
+    // Since we don't pass in the set of auto traits, and just the principal,
+    // consider all auto traits implemented.
+    if tcx.trait_is_auto(target_trait_def_id) {
+        return true;
+    }
+    // When checking the outermost call of this recursive function, we don't care
+    // about elaborated supertraits or built-in impls. This is intuitively because
+    // `dyn Trait: Trait` doesn't overlap with itself, and all built-in impls have
+    // `rustc_deny_explicit_impl(implement_via_object = true)`.
+    if for_nested_impl {
+        if elaborated_supertraits.contains(&target_trait_def_id) {
+            return true;
+        }
+        // Lazy heuristic that any lang item is potentially a built-in impl.
+        if tcx.as_lang_item(target_trait_def_id).is_some() {
+            return true;
+        }
+    }
+
+    let mut has_offending_impl = false;
+    tcx.for_each_impl(target_trait_def_id, |impl_def_id| {
+        if has_offending_impl {
             return;
         }
 
@@ -621,33 +675,51 @@ pub(super) fn trait_has_impl_which_may_shadow_dyn<'tcx>(
             .expect("impl must have trait ref")
             .instantiate_identity()
             .self_ty();
-        if self_ty.is_known_rigid() {
-            return;
-        }
 
-        let sized_trait = tcx.require_lang_item(LangItem::Sized, None);
-        if tcx
-            .param_env(impl_def_id)
-            .caller_bounds()
-            .iter()
-            .filter_map(|clause| clause.as_trait_clause())
-            .any(|bound| bound.def_id() == sized_trait && bound.self_ty().skip_binder() == self_ty)
+        if simplify_type(tcx, self_ty, TreatParams::InstantiateWithInfer)
+            .is_some_and(|simp| simp != target_self_ty)
         {
             return;
         }
 
-        if let ty::Alias(ty::Projection, alias_ty) = self_ty.kind()
-            && tcx
-                .item_super_predicates(alias_ty.def_id)
-                .iter_identity()
-                .filter_map(|clause| clause.as_trait_clause())
-                .any(|bound| bound.def_id() == sized_trait)
+        for (pred, _) in
+            elaborate::elaborate(tcx, tcx.predicates_of(impl_def_id).instantiate_identity(tcx))
         {
-            return;
+            if let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+                && trait_pred.self_ty() == self_ty
+                && !trait_has_impl_inner(
+                    tcx,
+                    trait_pred.def_id(),
+                    target_self_ty,
+                    elaborated_supertraits,
+                    seen_traits,
+                    true,
+                )
+            {
+                return;
+            }
         }
 
-        has_impl = true;
+        if let ty::Alias(ty::Projection, alias_ty) = self_ty.kind() {
+            for pred in tcx.item_super_predicates(alias_ty.def_id).iter_identity() {
+                if let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+                    && trait_pred.self_ty() == self_ty
+                    && !trait_has_impl_inner(
+                        tcx,
+                        trait_pred.def_id(),
+                        target_self_ty,
+                        elaborated_supertraits,
+                        seen_traits,
+                        false,
+                    )
+                {
+                    return;
+                }
+            }
+        }
+
+        has_offending_impl = true;
     });
 
-    has_impl
+    has_offending_impl
 }

@@ -1373,11 +1373,12 @@ rustc_queries! {
         desc { |tcx| "checking if trait `{}` is dyn-compatible", tcx.def_path_str(trait_id) }
     }
 
-    query trait_has_impl_which_may_shadow_dyn(trait_def_id: DefId) -> bool {
+    query trait_has_impl_which_may_shadow_dyn(key: (DefId, Option<DefId>)) -> bool {
         desc {
             |tcx| "checking if trait `{}` has an impl which may overlap with \
-            the built-in impl for trait objects",
-            tcx.def_path_str(trait_def_id)
+            the built-in impl for `dyn {}`",
+            tcx.def_path_str(key.0),
+            key.1.map_or(String::from("..."), |def_id| tcx.def_path_str(def_id)),
         }
     }
 
