@@ -34,7 +34,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::env;
 use std::sync::Arc;
 
@@ -155,7 +155,7 @@ impl CodegenCx {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: RefCell<Option<BackendConfig>>,
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -176,13 +176,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
             sess.dcx()
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
-        }
-
-        let mut config = self.config.borrow_mut();
-        if config.is_none() {
-            let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err));
-            *config = Some(new_config);
         }
     }
 
@@ -221,7 +214,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
         tcx.dcx().abort_if_errors();
-        let config = self.config.borrow().clone().unwrap();
+        let config = self.config.clone().unwrap_or_else(|| {
+            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
+        });
         match config.codegen_mode {
             CodegenMode::Aot => driver::aot::run_aot(tcx, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
@@ -369,5 +365,5 @@ fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: RefCell::new(None) })
+    Box::new(CraneliftCodegenBackend { config: None })
 }
