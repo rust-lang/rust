@@ -1478,9 +1478,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if segment_idx == 0 {
                     if name == kw::SelfLower {
                         let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
-                        module = Some(ModuleOrUniformRoot::Module(
-                            self.resolve_self(&mut ctxt, parent_scope.module),
-                        ));
+                        let self_mod = self.resolve_self(&mut ctxt, parent_scope.module);
+                        if let Some(res) = self_mod.res() {
+                            record_segment_res(self, res);
+                        }
+                        module = Some(ModuleOrUniformRoot::Module(self_mod));
                         continue;
                     }
                     if name == kw::PathRoot && ident.span.at_least_rust_2018() {
@@ -1497,7 +1499,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     if name == kw::PathRoot || name == kw::Crate || name == kw::DollarCrate {
                         // `::a::b`, `crate::a::b` or `$crate::a::b`
-                        module = Some(ModuleOrUniformRoot::Module(self.resolve_crate_root(ident)));
+                        let crate_root = self.resolve_crate_root(ident);
+                        if let Some(res) = crate_root.res() {
+                            record_segment_res(self, res);
+                        }
+                        module = Some(ModuleOrUniformRoot::Module(crate_root));
                         continue;
                     }
                 }
