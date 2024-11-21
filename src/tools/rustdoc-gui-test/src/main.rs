@@ -10,11 +10,16 @@ use config::Config;
 mod config;
 
 fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String> {
+    eprintln!("XXX(experimental): npm is `{:?}`", npm.display());
+
     let mut command = Command::new(&npm);
     command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
     }
+
+    eprintln!("XXX(experimental): npm cmd: {command:?}");
+
     let lines = match command.output() {
         Ok(output) => String::from_utf8_lossy(&output.stdout).into_owned(),
         Err(e) => {
