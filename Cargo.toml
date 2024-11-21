@@ -31,6 +31,7 @@ members = [
   "src/tools/miri",
   "src/tools/miri/cargo-miri",
   "src/tools/bsan/borrowtracker",
+  "src/tools/bsan/",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/jsondocck",
@@ -48,7 +49,7 @@ members = [
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
   "src/tools/rustc-perf-wrapper",
-  "src/tools/wasm-component-ld",
+  "src/tools/wasm-component-ld", "src/tools/bsan",
 ]
 
 exclude = [

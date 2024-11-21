@@ -1242,7 +1242,7 @@ fn supported_sanitizers(
     };
 
     match &*target.triple {
-        "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan", "bsan"]),
+        "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-apple-ios" => darwin_libs("ios", &["asan", "tsan"]),
         "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan"]),
         "aarch64-apple-ios-macabi" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
