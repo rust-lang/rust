@@ -1187,14 +1187,15 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Is this expr either `N`, or `{ N }`.
+    /// Could this expr be either `N`, or `{ N }`, where `N` is a const parameter.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
     /// `min_const_generics` as more complex expressions are not supported.
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self, strip_identity_block: bool) -> bool {
-        let this = if strip_identity_block { self.maybe_unwrap_block() } else { self };
+    /// This also does not consider macros, so it's only correct after macro-expansion.
+    pub fn is_potential_trivial_const_arg(&self) -> bool {
+        let this = self.maybe_unwrap_block();
 
         if let ExprKind::Path(None, path) = &this.kind
             && path.is_potential_trivial_const_arg()

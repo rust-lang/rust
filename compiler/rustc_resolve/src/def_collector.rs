@@ -12,19 +12,19 @@ use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
-use crate::{ImplTraitContext, InvocationParent, PendingAnonConstInfo, Resolver};
+use crate::{ImplTraitContext, InvocationParent, LazyAnonConstDefInfo, Resolver};
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_, '_>,
     fragment: &AstFragment,
     expansion: LocalExpnId,
 ) {
-    let InvocationParent { parent_def, pending_anon_const_info, impl_trait_context, in_attr } =
+    let InvocationParent { parent_def, lazy_anon_const_def_info, impl_trait_context, in_attr } =
         resolver.invocation_parents[&expansion];
     let mut visitor = DefCollector {
         resolver,
         parent_def,
-        pending_anon_const_info,
+        lazy_anon_const_def_info,
         expansion,
         impl_trait_context,
         in_attr,
@@ -41,8 +41,8 @@ struct DefCollector<'a, 'ra, 'tcx> {
     /// the anon const. That's because we lower some anon consts into `hir::ConstArgKind::Path`,
     /// which don't have defs.
     ///
-    /// See `Self::visit_anon_const()`.
-    pending_anon_const_info: Option<PendingAnonConstInfo>,
+    /// See `Self::handle_lazy_anon_const_def` for more details.
+    lazy_anon_const_def_info: Option<LazyAnonConstDefInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
     expansion: LocalExpnId,
@@ -57,6 +57,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         span: Span,
     ) -> LocalDefId {
         let parent_def = self.parent_def;
+        // When recursion into anon-consts, we must only create nested definitions
+        // after creating the `DefId` for the anon-const. See `handle_lazy_anon_const_def`
+        // for more details.
+        debug_assert_eq!(self.lazy_anon_const_def_info, None);
         debug!(
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
@@ -73,10 +77,86 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             .def_id()
     }
 
+    /// When lowering anonymous constants, we only actually create a definition
+    /// for it if it is non-trivial. Correctly handling this when macro's are
+    /// involved is difficult, so when a macro may cause an anon const to be
+    /// non-trivial, we use this function as we'd otherwise have to track this
+    /// exact same information somewhere else.
+    fn create_or_reuse_anon_const_def(
+        &mut self,
+        node_id: NodeId,
+        name: Symbol,
+        def_kind: DefKind,
+        span: Span,
+    ) -> LocalDefId {
+        debug_assert_eq!(def_kind, DefKind::AnonConst);
+        if let Some(def_id) = self.resolver.opt_local_def_id(node_id) {
+            debug_assert_eq!(
+                self.resolver.tcx.parent(def_id.to_def_id()),
+                self.parent_def.to_def_id(),
+                "reusing incorrect anon const defintion: {node_id:?} {span:?}"
+            );
+            def_id
+        } else {
+            self.create_def(node_id, name, def_kind, span)
+        }
+    }
+
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
         let orig_parent_def = mem::replace(&mut self.parent_def, parent_def);
         f(self);
         self.parent_def = orig_parent_def;
+    }
+
+    /// Trivial const arguments get directly lowered to `hir::ConstArgKind::Path` instead
+    /// of an anon-const. Because of this, we do not create a `DefId` for the anonymous
+    /// constant. To support macros as const arguments and especially to support macros
+    /// expanding to nothing, e.g. `foo<const N: usize>() -> [u8; { empty! {} N }]`, we
+    /// cannot eagerly know whether an AST-constant needs a `DefId`.
+    ///
+    /// See `tests/ui/const-generics/early/const_arg_trivial_macro_expansion-3-pass.rs`
+    /// for examples where this is relevant.
+    ///
+    /// We therefore only create `DefId` for the anon const lazily, either when we need
+    /// the `DefId` for a nested definition, or when we lower the AST-constant to a HIR
+    /// anon-const. We use [`DefCollector::create_or_reuse_anon_const_def`] to simplify
+    /// the tracking of whether a `DefId` has already been created.
+    ///
+    /// When recursing into anon-consts we set `lazy_anon_const_def_info` to `Some` and
+    /// use this function in all places could potentially create definitions. It then
+    /// lazily creates the `DefId` of the anon-const if it may be needed and the anon-const
+    /// is definitely non-trivial. The `lazy_anon_const_def_info` is also stored in the
+    /// [`InvocationParent`] when encountering any macros inside of the anon-const.
+    ///
+    /// There are two requirements here:
+    /// - the anon-const is definitely a trivial const-arg: we must not create a `DefId`.
+    /// - we encounter a nested definition inside of the anon-const: we must create a `DefId`
+    ///   for the anon-const and provide it as a parent to the nested definition.
+    ///
+    /// The first requirement is handled by only creating the `DefId` for the anon-const
+    /// when encountering something that's definitely not a trivial const-arg. We make sure
+    /// the second requirement is satisfied by asserting that the `lazy_anon_const_def_info`
+    /// is `None` whenever we create a new definition.
+    fn handle_lazy_anon_const_def(
+        &mut self,
+        is_potential_trivial_const_arg: impl FnOnce() -> bool,
+        f: impl FnOnce(&mut Self),
+    ) {
+        if let Some(def_info) = self.lazy_anon_const_def_info
+            && !is_potential_trivial_const_arg()
+        {
+            self.lazy_anon_const_def_info = None;
+            let parent = self.create_or_reuse_anon_const_def(
+                def_info.id,
+                kw::Empty,
+                DefKind::AnonConst,
+                def_info.span,
+            );
+            self.with_parent(parent, f);
+            self.lazy_anon_const_def_info = Some(def_info);
+        } else {
+            f(self)
+        }
     }
 
     fn with_impl_trait<F: FnOnce(&mut Self)>(
@@ -110,60 +190,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let pending_anon_const_info = self.pending_anon_const_info.take();
         let old_parent = self.resolver.invocation_parents.insert(id, InvocationParent {
             parent_def: self.parent_def,
-            pending_anon_const_info,
+            lazy_anon_const_def_info: self.lazy_anon_const_def_info,
             impl_trait_context: self.impl_trait_context,
             in_attr: self.in_attr,
         });
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
-    }
-
-    /// Determines whether the const argument `AnonConst` is a simple macro call, optionally
-    /// surrounded with braces.
-    ///
-    /// If this const argument *is* a trivial macro call then the id for the macro call is
-    /// returned along with the information required to build the anon const's def if
-    /// the macro call expands to a non-trivial expression.
-    fn is_const_arg_trivial_macro_expansion(
-        &self,
-        anon_const: &'a AnonConst,
-    ) -> Option<(PendingAnonConstInfo, NodeId)> {
-        anon_const.value.optionally_braced_mac_call(false).map(|(block_was_stripped, id)| {
-            (
-                PendingAnonConstInfo {
-                    id: anon_const.id,
-                    span: anon_const.value.span,
-                    block_was_stripped,
-                },
-                id,
-            )
-        })
-    }
-
-    /// Determines whether the expression `const_arg_sub_expr` is a simple macro call, sometimes
-    /// surrounded with braces if a set of braces has not already been entered. This is required
-    /// as `{ N }` is treated as equivalent to a bare parameter `N` whereas `{{ N }}` is treated as
-    /// a real block expression and is lowered to an anonymous constant which is not allowed to use
-    /// generic parameters.
-    ///
-    /// If this expression is a trivial macro call then the id for the macro call is
-    /// returned along with the information required to build the anon const's def if
-    /// the macro call expands to a non-trivial expression.
-    fn is_const_arg_sub_expr_trivial_macro_expansion(
-        &self,
-        const_arg_sub_expr: &'a Expr,
-    ) -> Option<(PendingAnonConstInfo, NodeId)> {
-        let pending_anon = self.pending_anon_const_info.unwrap_or_else(||
-            panic!("Checking expr is trivial macro call without having entered anon const: `{const_arg_sub_expr:?}`"),
-        );
-
-        const_arg_sub_expr.optionally_braced_mac_call(pending_anon.block_was_stripped).map(
-            |(block_was_stripped, id)| {
-                (PendingAnonConstInfo { block_was_stripped, ..pending_anon }, id)
-            },
-        )
     }
 }
 
@@ -375,81 +408,6 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
-        // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
-        // may accidentally identify a construction of a unit struct as a param and not create a
-        // def. we'll then create a def later in ast lowering in this case. the parent of nested
-        // items will be messed up, but that's ok because there can't be any if we're just looking
-        // for bare idents.
-
-        if let Some((pending_anon, macro_invoc)) =
-            self.is_const_arg_trivial_macro_expansion(constant)
-        {
-            self.pending_anon_const_info = Some(pending_anon);
-            return self.visit_macro_invoc(macro_invoc);
-        } else if constant.value.is_potential_trivial_const_arg(true) {
-            return visit::walk_anon_const(self, constant);
-        }
-
-        let def = self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
-        self.with_parent(def, |this| visit::walk_anon_const(this, constant));
-    }
-
-    fn visit_expr(&mut self, expr: &'a Expr) {
-        // If we're visiting the expression of a const argument that was a macro call then
-        // check if it is *still* unknown whether it is a trivial const arg or not. If so
-        // recurse into the macro call and delay creating the anon const def until expansion.
-        if self.pending_anon_const_info.is_some()
-            && let Some((pending_anon, macro_invoc)) =
-                self.is_const_arg_sub_expr_trivial_macro_expansion(expr)
-        {
-            self.pending_anon_const_info = Some(pending_anon);
-            return self.visit_macro_invoc(macro_invoc);
-        }
-
-        // See self.pending_anon_const_info for explanation
-        let parent_def = self
-            .pending_anon_const_info
-            .take()
-            // If we already stripped away a set of braces then do not do it again when determining
-            // if the macro expanded to a trivial const arg. This arises in cases such as:
-            // `Foo<{ bar!() }>` where `bar!()` expands to `{ N }`. This should not be considered a
-            // trivial const argument even though `{ N }` by itself *is*.
-            .filter(|pending_anon| {
-                !expr.is_potential_trivial_const_arg(!pending_anon.block_was_stripped)
-            })
-            .map(|pending_anon| {
-                self.create_def(pending_anon.id, kw::Empty, DefKind::AnonConst, pending_anon.span)
-            })
-            .unwrap_or(self.parent_def);
-
-        self.with_parent(parent_def, |this| {
-            let parent_def = match expr.kind {
-                ExprKind::MacCall(..) => return this.visit_macro_invoc(expr.id),
-                ExprKind::Closure(..) | ExprKind::Gen(..) => {
-                    this.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
-                }
-                ExprKind::ConstBlock(ref constant) => {
-                    for attr in &expr.attrs {
-                        visit::walk_attribute(this, attr);
-                    }
-                    let def = this.create_def(
-                        constant.id,
-                        kw::Empty,
-                        DefKind::InlineConst,
-                        constant.value.span,
-                    );
-                    this.with_parent(def, |this| visit::walk_anon_const(this, constant));
-                    return;
-                }
-                _ => this.parent_def,
-            };
-
-            this.with_parent(parent_def, |this| visit::walk_expr(this, expr))
-        })
-    }
-
     fn visit_ty(&mut self, ty: &'a Ty) {
         match &ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
@@ -477,11 +435,59 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
+    fn visit_anon_const(&mut self, constant: &'a AnonConst) {
+        // Handling anon-consts is quite subtle, see `Self::handle_lazy_anon_const_def`.
+        self.lazy_anon_const_def_info =
+            Some(LazyAnonConstDefInfo { id: constant.id, span: constant.value.span });
+        visit::walk_anon_const(self, constant);
+        self.lazy_anon_const_def_info = None;
+    }
+
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        self.handle_lazy_anon_const_def(
+            || match &expr.kind {
+                ExprKind::Block(_, None) => true,
+                _ => expr.is_potential_trivial_const_arg(),
+            },
+            |this| {
+                let parent_def = match expr.kind {
+                    ExprKind::MacCall(..) => return this.visit_macro_invoc(expr.id),
+                    ExprKind::Closure(..) | ExprKind::Gen(..) => {
+                        this.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
+                    }
+                    ExprKind::ConstBlock(ref constant) => {
+                        for attr in &expr.attrs {
+                            visit::walk_attribute(this, attr);
+                        }
+                        let def = this.create_def(
+                            constant.id,
+                            kw::Empty,
+                            DefKind::InlineConst,
+                            constant.value.span,
+                        );
+                        this.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                        return;
+                    }
+                    _ => this.parent_def,
+                };
+
+                this.with_parent(parent_def, |this| visit::walk_expr(this, expr))
+            },
+        )
+    }
+
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
-        match stmt.kind {
-            StmtKind::MacCall(..) => self.visit_macro_invoc(stmt.id),
-            _ => visit::walk_stmt(self, stmt),
-        }
+        self.handle_lazy_anon_const_def(
+            || match &stmt.kind {
+                StmtKind::Expr(expr) => expr.is_potential_trivial_const_arg(),
+                StmtKind::MacCall(_) => true,
+                _ => false,
+            },
+            |this| match stmt.kind {
+                StmtKind::MacCall(..) => this.visit_macro_invoc(stmt.id),
+                _ => visit::walk_stmt(this, stmt),
+            },
+        )
     }
 
     fn visit_arm(&mut self, arm: &'a Arm) {

@@ -174,7 +174,7 @@ impl<'ra> ParentScope<'ra> {
 #[derive(Copy, Debug, Clone)]
 struct InvocationParent {
     parent_def: LocalDefId,
-    pending_anon_const_info: Option<PendingAnonConstInfo>,
+    lazy_anon_const_def_info: Option<LazyAnonConstDefInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
 }
@@ -182,19 +182,16 @@ struct InvocationParent {
 impl InvocationParent {
     const ROOT: Self = Self {
         parent_def: CRATE_DEF_ID,
-        pending_anon_const_info: None,
+        lazy_anon_const_def_info: None,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
     };
 }
 
-#[derive(Copy, Debug, Clone)]
-struct PendingAnonConstInfo {
-    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
-    // around the argument. We track whether we have stripped an outter brace so that
-    // if a macro expands to a braced expression *and* the macro was itself inside of
-    // some braces then we can consider it to be a non-trivial const argument.
-    block_was_stripped: bool,
+/// The information necessary to lazily create the `DefId` for a non-trivial
+/// anonymous constant. See `DefCollector::handle_lazy_anon_const_def` for more details.
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+struct LazyAnonConstDefInfo {
     id: NodeId,
     span: Span,
 }

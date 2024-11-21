@@ -509,6 +509,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         def_id
     }
 
+    // HACK: See `DefCollector::handle_lazy_anon_const_def` for why this is necessary.
+    fn create_or_reuse_anon_const_def(
+        &mut self,
+        parent: LocalDefId,
+        node_id: ast::NodeId,
+        name: Symbol,
+        def_kind: DefKind,
+        span: Span,
+    ) -> LocalDefId {
+        debug_assert_eq!(def_kind, DefKind::AnonConst);
+        if let Some(def_id) = self.opt_local_def_id(node_id) {
+            def_id
+        } else {
+            self.create_def(parent, node_id, name, def_kind, span)
+        }
+    }
+
     fn next_node_id(&mut self) -> NodeId {
         let start = self.resolver.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
@@ -2181,19 +2198,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
     fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        if c.value.is_potential_trivial_const_arg(true) {
-            // HACK(min_generic_const_args): see DefCollector::visit_anon_const
-            // Over there, we guess if this is a bare param and only create a def if
-            // we think it's not. However we may can guess wrong (see there for example)
-            // in which case we have to create the def here.
-            self.create_def(
-                self.current_def_id_parent,
-                c.id,
-                kw::Empty,
-                DefKind::AnonConst,
-                c.value.span,
-            );
-        }
+        self.create_or_reuse_anon_const_def(
+            self.current_def_id_parent,
+            c.id,
+            kw::Empty,
+            DefKind::AnonConst,
+            c.value.span,
+        );
 
         self.arena.alloc(self.with_new_scopes(c.value.span, |this| {
             let def_id = this.local_def_id(c.id);

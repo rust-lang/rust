@@ -456,7 +456,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg(true) {
+                if !arg.is_potential_trivial_const_arg() {
                     // Add a definition for the in-band const def.
                     self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }

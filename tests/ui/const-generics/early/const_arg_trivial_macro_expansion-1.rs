@@ -85,6 +85,14 @@ macro_rules! braced_braced_expr {
     () => {{ braced_expr!() }};
 }
 
+macro_rules! closure {
+    () => { |()| () };
+}
+
+macro_rules! empty {
+    () => {};
+}
+
 #[rustfmt::skip]
 mod array_paren_call {
     // Arrays where the expanded result is a `Res::Err`
@@ -128,6 +136,14 @@ mod array_paren_call {
     fn array_33() -> [(); braced_expr!()] { loop {} }
     fn array_34() -> [(); { unbraced_expr!() }] { loop {} }
     fn array_35() -> [(); { braced_expr!() }] { loop {} }
+
+    // Arrays whose expanded form contains a nested definition
+    fn array_36() -> [(); closure!()] { loop {} }
+    fn array_37() -> [(); { closure!() }] { loop {} }
+
+    // Arrays whose macro expansion is empty
+    fn array_38() -> [(); empty!()] { loop {} }
+    fn array_39() -> [(); { empty!() }] { loop {} }
 }
 
 #[rustfmt::skip]
@@ -173,6 +189,14 @@ mod array_brace_call {
     fn array_33() -> [(); braced_expr!{}] { loop {} }
     fn array_34() -> [(); { unbraced_expr!{} }] { loop {} }
     fn array_35() -> [(); { braced_expr!{} }] { loop {} }
+
+    // Arrays whose expanded form contains a nested definition
+    fn array_36() -> [(); closure!{}] { loop {} }
+    fn array_37() -> [(); { closure!{} }] { loop {} }
+
+    // Arrays whose macro expansion is empty
+    fn array_38() -> [(); empty!{}] { loop {} }
+    fn array_39() -> [(); { empty!{} }] { loop {} }
 }
 
 #[rustfmt::skip]
@@ -218,6 +242,14 @@ mod array_square_call {
     fn array_33() -> [(); braced_expr![]] { loop {} }
     fn array_34() -> [(); { unbraced_expr![] }] { loop {} }
     fn array_35() -> [(); { braced_expr![] }] { loop {} }
+
+    // Arrays whose expanded form contains a nested definition
+    fn array_36() -> [(); closure![]] { loop {} }
+    fn array_37() -> [(); { closure![] }] { loop {} }
+
+    // Arrays whose macro expansion is empty
+    fn array_38() -> [(); empty![]] { loop {} }
+    fn array_39() -> [(); { empty![] }] { loop {} }
 }
 
 struct Foo<const N: usize>;
@@ -255,18 +287,26 @@ mod adt_paren_call {
     fn adt_23<const ident: usize>() -> Foo<{ braced_ident!() }> { loop {} }
 
     // An ADT where the expanded result is a complex expr
-    fn array_24() -> Foo<unbraced_unbraced_expr!()> { loop {} }
-    fn array_25() -> Foo<braced_unbraced_expr!()> { loop {} }
-    fn array_26() -> Foo<unbraced_braced_expr!()> { loop {} }
-    fn array_27() -> Foo<braced_braced_expr!()> { loop {} }
-    fn array_28() -> Foo<{ unbraced_unbraced_expr!() }> { loop {} }
-    fn array_29() -> Foo<{ braced_unbraced_expr!() }> { loop {} }
-    fn array_30() -> Foo<{ unbraced_braced_expr!() }> { loop {} }
-    fn array_31() -> Foo<{ braced_braced_expr!() }> { loop {} }
-    fn array_32() -> Foo<unbraced_expr!()> { loop {} }
-    fn array_33() -> Foo<braced_expr!()> { loop {} }
-    fn array_34() -> Foo<{ unbraced_expr!() }> { loop {} }
-    fn array_35() -> Foo<{ braced_expr!() }> { loop {} }
+    fn adt_24() -> Foo<unbraced_unbraced_expr!()> { loop {} }
+    fn adt_25() -> Foo<braced_unbraced_expr!()> { loop {} }
+    fn adt_26() -> Foo<unbraced_braced_expr!()> { loop {} }
+    fn adt_27() -> Foo<braced_braced_expr!()> { loop {} }
+    fn adt_28() -> Foo<{ unbraced_unbraced_expr!() }> { loop {} }
+    fn adt_29() -> Foo<{ braced_unbraced_expr!() }> { loop {} }
+    fn adt_30() -> Foo<{ unbraced_braced_expr!() }> { loop {} }
+    fn adt_31() -> Foo<{ braced_braced_expr!() }> { loop {} }
+    fn adt_32() -> Foo<unbraced_expr!()> { loop {} }
+    fn adt_33() -> Foo<braced_expr!()> { loop {} }
+    fn adt_34() -> Foo<{ unbraced_expr!() }> { loop {} }
+    fn adt_35() -> Foo<{ braced_expr!() }> { loop {} }
+
+    // An ADT whose expanded form contains a nested definition
+    fn adt_36() -> Foo<closure!()> { loop {} }
+    fn adt_37() -> Foo<{ closure!() }> { loop {} }
+
+    // An ADT whose macro expansion is empty
+    fn adt_38() -> Foo<empty!()> { loop {} }
+    fn adt_39() -> Foo<{ empty!() }> { loop {} }
 }
 
 #[rustfmt::skip]
@@ -302,18 +342,26 @@ mod adt_brace_call {
     fn adt_23<const ident: usize>() -> Foo<{ braced_ident!{} }> { loop {} }
 
     // An ADT where the expanded result is a complex expr
-    fn array_24() -> Foo<unbraced_unbraced_expr!{}> { loop {} }
-    fn array_25() -> Foo<braced_unbraced_expr!{}> { loop {} }
-    fn array_26() -> Foo<unbraced_braced_expr!{}> { loop {} }
-    fn array_27() -> Foo<braced_braced_expr!{}> { loop {} }
-    fn array_28() -> Foo<{ unbraced_unbraced_expr!{} }> { loop {} }
-    fn array_29() -> Foo<{ braced_unbraced_expr!{} }> { loop {} }
-    fn array_30() -> Foo<{ unbraced_braced_expr!{} }> { loop {} }
-    fn array_31() -> Foo<{ braced_braced_expr!{} }> { loop {} }
-    fn array_32() -> Foo<unbraced_expr!{}> { loop {} }
-    fn array_33() -> Foo<braced_expr!{}> { loop {} }
-    fn array_34() -> Foo<{ unbraced_expr!{} }> { loop {} }
-    fn array_35() -> Foo<{ braced_expr!{} }> { loop {} }
+    fn adt_24() -> Foo<unbraced_unbraced_expr!{}> { loop {} }
+    fn adt_25() -> Foo<braced_unbraced_expr!{}> { loop {} }
+    fn adt_26() -> Foo<unbraced_braced_expr!{}> { loop {} }
+    fn adt_27() -> Foo<braced_braced_expr!{}> { loop {} }
+    fn adt_28() -> Foo<{ unbraced_unbraced_expr!{} }> { loop {} }
+    fn adt_29() -> Foo<{ braced_unbraced_expr!{} }> { loop {} }
+    fn adt_30() -> Foo<{ unbraced_braced_expr!{} }> { loop {} }
+    fn adt_31() -> Foo<{ braced_braced_expr!{} }> { loop {} }
+    fn adt_32() -> Foo<unbraced_expr!{}> { loop {} }
+    fn adt_33() -> Foo<braced_expr!{}> { loop {} }
+    fn adt_34() -> Foo<{ unbraced_expr!{} }> { loop {} }
+    fn adt_35() -> Foo<{ braced_expr!{} }> { loop {} }
+
+    // An ADT whose expanded form contains a nested definition
+    fn adt_36() -> Foo<closure!{}> { loop {} }
+    fn adt_37() -> Foo<{ closure!{} }> { loop {} }
+
+    // An ADT whose macro expansion is empty
+    fn adt_38() -> Foo<empty!{}> { loop {} }
+    fn adt_39() -> Foo<{ empty!{} }> { loop {} }
 }
 
 #[rustfmt::skip]
@@ -349,18 +397,185 @@ mod adt_square_call {
     fn adt_23<const ident: usize>() -> Foo<{ braced_ident![] }> { loop {} }
 
     // An ADT where the expanded result is a complex expr
-    fn array_24() -> Foo<unbraced_unbraced_expr![]> { loop {} }
-    fn array_25() -> Foo<braced_unbraced_expr![]> { loop {} }
-    fn array_26() -> Foo<unbraced_braced_expr![]> { loop {} }
-    fn array_27() -> Foo<braced_braced_expr![]> { loop {} }
-    fn array_28() -> Foo<{ unbraced_unbraced_expr![] }> { loop {} }
-    fn array_29() -> Foo<{ braced_unbraced_expr![] }> { loop {} }
-    fn array_30() -> Foo<{ unbraced_braced_expr![] }> { loop {} }
-    fn array_31() -> Foo<{ braced_braced_expr![] }> { loop {} }
-    fn array_32() -> Foo<unbraced_expr![]> { loop {} }
-    fn array_33() -> Foo<braced_expr![]> { loop {} }
-    fn array_34() -> Foo<{ unbraced_expr![] }> { loop {} }
-    fn array_35() -> Foo<{ braced_expr![] }> { loop {} }
+    fn adt_24() -> Foo<unbraced_unbraced_expr![]> { loop {} }
+    fn adt_25() -> Foo<braced_unbraced_expr![]> { loop {} }
+    fn adt_26() -> Foo<unbraced_braced_expr![]> { loop {} }
+    fn adt_27() -> Foo<braced_braced_expr![]> { loop {} }
+    fn adt_28() -> Foo<{ unbraced_unbraced_expr![] }> { loop {} }
+    fn adt_29() -> Foo<{ braced_unbraced_expr![] }> { loop {} }
+    fn adt_30() -> Foo<{ unbraced_braced_expr![] }> { loop {} }
+    fn adt_31() -> Foo<{ braced_braced_expr![] }> { loop {} }
+    fn adt_32() -> Foo<unbraced_expr![]> { loop {} }
+    fn adt_33() -> Foo<braced_expr![]> { loop {} }
+    fn adt_34() -> Foo<{ unbraced_expr![] }> { loop {} }
+    fn adt_35() -> Foo<{ braced_expr![] }> { loop {} }
+
+    // An ADT whose expanded form contains a nested definition
+    fn adt_36() -> Foo<closure![]> { loop {} }
+    fn adt_37() -> Foo<{ closure![] }> { loop {} }
+
+    // An ADT whose macro expansion is empty
+    fn adt_38() -> Foo<empty![]> { loop {} }
+    fn adt_39() -> Foo<{ empty![] }> { loop {} }
+}
+
+#[rustfmt::skip]
+mod repeat_paren_call {
+    // A repeat expr where the expanded result is a `Res::Err`
+    fn repeat_0() { [(); unbraced_unbraced_ident!()]; }
+    fn repeat_1() { [(); braced_unbraced_ident!()]; }
+    fn repeat_2() { [(); unbraced_braced_ident!()]; }
+    fn repeat_3() { [(); braced_braced_ident!()]; }
+    fn repeat_4() { [(); { unbraced_unbraced_ident!() }]; }
+    fn repeat_5() { [(); { braced_unbraced_ident!() }]; }
+    fn repeat_6() { [(); { unbraced_braced_ident!() }]; }
+    fn repeat_7() { [(); { braced_braced_ident!() }]; }
+    fn repeat_8() { [(); unbraced_ident!()]; }
+    fn repeat_9() { [(); braced_ident!()]; }
+    fn repeat_10() { [(); { unbraced_ident!() }]; }
+    fn repeat_11() { [(); { braced_ident!() }]; }
+
+    // A repeat expr where the expanded result is a `Res::ConstParam`
+    fn repeat_12<const ident: usize>() { [(); unbraced_unbraced_ident!()]; }
+    fn repeat_13<const ident: usize>() { [(); braced_unbraced_ident!()]; }
+    fn repeat_14<const ident: usize>() { [(); unbraced_braced_ident!()]; }
+    fn repeat_15<const ident: usize>() { [(); braced_braced_ident!()]; }
+    fn repeat_16<const ident: usize>() { [(); { unbraced_unbraced_ident!() }]; }
+    fn repeat_17<const ident: usize>() { [(); { braced_unbraced_ident!() }]; }
+    fn repeat_18<const ident: usize>() { [(); { unbraced_braced_ident!() }]; }
+    fn repeat_19<const ident: usize>() { [(); { braced_braced_ident!() }]; }
+    fn repeat_20<const ident: usize>() { [(); unbraced_ident!()]; }
+    fn repeat_21<const ident: usize>() { [(); braced_ident!()]; }
+    fn repeat_22<const ident: usize>() { [(); { unbraced_ident!() }]; }
+    fn repeat_23<const ident: usize>() { [(); { braced_ident!() }]; }
+
+    // A repeat expr where the expanded result is a complex expr
+    fn repeat_24() { [(); unbraced_unbraced_expr!()]; }
+    fn repeat_25() { [(); braced_unbraced_expr!()]; }
+    fn repeat_26() { [(); unbraced_braced_expr!()]; }
+    fn repeat_27() { [(); braced_braced_expr!()]; }
+    fn repeat_28() { [(); { unbraced_unbraced_expr!() }]; }
+    fn repeat_29() { [(); { braced_unbraced_expr!() }]; }
+    fn repeat_30() { [(); { unbraced_braced_expr!() }]; }
+    fn repeat_31() { [(); { braced_braced_expr!() }]; }
+    fn repeat_32() { [(); unbraced_expr!()]; }
+    fn repeat_33() { [(); braced_expr!()]; }
+    fn repeat_34() { [(); { unbraced_expr!() }]; }
+    fn repeat_35() { [(); { braced_expr!() }]; }
+
+    // A repeat expr whose expanded form contains a nested definition
+    fn repeat_36() { [(); closure!()] }
+    fn repeat_37() { [(); { closure!() }] }
+
+    // A repeat expr whose macro expansion is empty
+    fn repeat_38() { [(); empty!()] }
+    fn repeat_39() { [(); { empty!() }] }
+}
+
+#[rustfmt::skip]
+mod repeat_brace_call {
+    // A repeat expr where the expanded result is a `Res::Err`
+    fn repeat_0() { [(); unbraced_unbraced_ident!{}]; }
+    fn repeat_1() { [(); braced_unbraced_ident!{}]; }
+    fn repeat_2() { [(); unbraced_braced_ident!{}]; }
+    fn repeat_3() { [(); braced_braced_ident!{}]; }
+    fn repeat_4() { [(); { unbraced_unbraced_ident!{} }]; }
+    fn repeat_5() { [(); { braced_unbraced_ident!{} }]; }
+    fn repeat_6() { [(); { unbraced_braced_ident!{} }]; }
+    fn repeat_7() { [(); { braced_braced_ident!{} }]; }
+    fn repeat_8() { [(); unbraced_ident!{}]; }
+    fn repeat_9() { [(); braced_ident!{}]; }
+    fn repeat_10() { [(); { unbraced_ident!{} }]; }
+    fn repeat_11() { [(); { braced_ident!{} }]; }
+
+    // A repeat expr where the expanded result is a `Res::ConstParam`
+    fn repeat_12<const ident: usize>() { [(); unbraced_unbraced_ident!{}]; }
+    fn repeat_13<const ident: usize>() { [(); braced_unbraced_ident!{}]; }
+    fn repeat_14<const ident: usize>() { [(); unbraced_braced_ident!{}]; }
+    fn repeat_15<const ident: usize>() { [(); braced_braced_ident!{}]; }
+    fn repeat_16<const ident: usize>() { [(); { unbraced_unbraced_ident!{} }]; }
+    fn repeat_17<const ident: usize>() { [(); { braced_unbraced_ident!{} }]; }
+    fn repeat_18<const ident: usize>() { [(); { unbraced_braced_ident!{} }]; }
+    fn repeat_19<const ident: usize>() { [(); { braced_braced_ident!{} }]; }
+    fn repeat_20<const ident: usize>() { [(); unbraced_ident!{}]; }
+    fn repeat_21<const ident: usize>() { [(); braced_ident!{}]; }
+    fn repeat_22<const ident: usize>() { [(); { unbraced_ident!{} }]; }
+    fn repeat_23<const ident: usize>() { [(); { braced_ident!{} }]; }
+
+    // A repeat expr where the expanded result is a complex expr
+    fn repeat_24() { [(); unbraced_unbraced_expr!{}]; }
+    fn repeat_25() { [(); braced_unbraced_expr!{}]; }
+    fn repeat_26() { [(); unbraced_braced_expr!{}]; }
+    fn repeat_27() { [(); braced_braced_expr!{}]; }
+    fn repeat_28() { [(); { unbraced_unbraced_expr!{} }]; }
+    fn repeat_29() { [(); { braced_unbraced_expr!{} }]; }
+    fn repeat_30() { [(); { unbraced_braced_expr!{} }]; }
+    fn repeat_31() { [(); { braced_braced_expr!{} }]; }
+    fn repeat_32() { [(); unbraced_expr!{}]; }
+    fn repeat_33() { [(); braced_expr!{}]; }
+    fn repeat_34() { [(); { unbraced_expr!{} }]; }
+    fn repeat_35() { [(); { braced_expr!{} }]; }
+
+    // A repeat expr whose expanded form contains a nested definition
+    fn repeat_36() { [(); closure!{}] }
+    fn repeat_37() { [(); { closure!{} }] }
+
+    // A repeat expr whose macro expansion is empty
+    fn repeat_38() { [(); empty!{}] }
+    fn repeat_39() { [(); { empty!{} }] }
+}
+
+#[rustfmt::skip]
+mod repeat_square_call {
+    // A repeat expr where the expanded result is a `Res::Err`
+    fn repeat_0() { [(); unbraced_unbraced_ident![]]; }
+    fn repeat_1() { [(); braced_unbraced_ident![]]; }
+    fn repeat_2() { [(); unbraced_braced_ident![]]; }
+    fn repeat_3() { [(); braced_braced_ident![]]; }
+    fn repeat_4() { [(); { unbraced_unbraced_ident![] }]; }
+    fn repeat_5() { [(); { braced_unbraced_ident![] }]; }
+    fn repeat_6() { [(); { unbraced_braced_ident![] }]; }
+    fn repeat_7() { [(); { braced_braced_ident![] }]; }
+    fn repeat_8() { [(); unbraced_ident![]]; }
+    fn repeat_9() { [(); braced_ident![]]; }
+    fn repeat_10() { [(); { unbraced_ident![] }]; }
+    fn repeat_11() { [(); { braced_ident![] }]; }
+
+    // A repeat expr where the expanded result is a `Res::ConstParam`
+    fn repeat_12<const ident: usize>() { [(); unbraced_unbraced_ident![]]; }
+    fn repeat_13<const ident: usize>() { [(); braced_unbraced_ident![]]; }
+    fn repeat_14<const ident: usize>() { [(); unbraced_braced_ident![]]; }
+    fn repeat_15<const ident: usize>() { [(); braced_braced_ident![]]; }
+    fn repeat_16<const ident: usize>() { [(); { unbraced_unbraced_ident![] }]; }
+    fn repeat_17<const ident: usize>() { [(); { braced_unbraced_ident![] }]; }
+    fn repeat_18<const ident: usize>() { [(); { unbraced_braced_ident![] }]; }
+    fn repeat_19<const ident: usize>() { [(); { braced_braced_ident![] }]; }
+    fn repeat_20<const ident: usize>() { [(); unbraced_ident![]]; }
+    fn repeat_21<const ident: usize>() { [(); braced_ident![]]; }
+    fn repeat_22<const ident: usize>() { [(); { unbraced_ident![] }]; }
+    fn repeat_23<const ident: usize>() { [(); { braced_ident![] }]; }
+
+    // A repeat expr where the expanded result is a complex expr
+    fn repeat_24() { [(); unbraced_unbraced_expr![]]; }
+    fn repeat_25() { [(); braced_unbraced_expr![]]; }
+    fn repeat_26() { [(); unbraced_braced_expr![]]; }
+    fn repeat_27() { [(); braced_braced_expr![]]; }
+    fn repeat_28() { [(); { unbraced_unbraced_expr![] }]; }
+    fn repeat_29() { [(); { braced_unbraced_expr![] }]; }
+    fn repeat_30() { [(); { unbraced_braced_expr![] }]; }
+    fn repeat_31() { [(); { braced_braced_expr![] }]; }
+    fn repeat_32() { [(); unbraced_expr![]]; }
+    fn repeat_33() { [(); braced_expr![]]; }
+    fn repeat_34() { [(); { unbraced_expr![] }]; }
+    fn repeat_35() { [(); { braced_expr![] }]; }
+
+    // A repeat expr whose expanded form contains a nested definition
+    fn repeat_36() { [(); closure![]] }
+    fn repeat_37() { [(); { closure![] }] }
+
+    // A repeat expr whose macro expansion is empty
+    fn repeat_38() { [(); empty![]] }
+    fn repeat_39() { [(); { empty![] }] }
 }
 
 fn main() {}
