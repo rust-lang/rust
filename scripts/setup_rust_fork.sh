@@ -35,13 +35,14 @@ full-bootstrap = true
 local-rebuild = true
 
 [rust]
+download-rustc = false
 codegen-backends = ["cranelift"]
 deny-warnings = false
 verbose-tests = false
 # The cg_clif sysroot doesn't contain llvm tools and unless llvm_tools is
 # disabled bootstrap will crash trying to copy llvm tools for the bootstrap
 # compiler.
-llvm_tools = false
+llvm-tools = false
 
 EOF
 popd
