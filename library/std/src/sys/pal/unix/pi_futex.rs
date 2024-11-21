@@ -1,9 +1,14 @@
 #[cfg(any(target_os = "linux", target_os = "android"))]
 mod linux {
+    use crate::cell::Cell;
     use crate::ops::Deref;
     use crate::sync::atomic::AtomicU32;
     use crate::sys::cvt;
-    use crate::{io, ptr};
+    use crate::{io, ptr, thread_local};
+
+    thread_local! {
+        static TID: Cell<u32> = Cell::new(0);
+    }
 
     pub type State = u32;
 
@@ -27,7 +32,14 @@ mod linux {
     }
 
     pub fn locked() -> State {
-        (unsafe { libc::gettid() }) as _
+        let tid = TID.get();
+        if tid == 0 {
+            let tid = (unsafe { libc::gettid() }) as u32;
+            TID.set(tid);
+            tid
+        } else {
+            tid
+        }
     }
 
     pub fn is_contended(futex_val: State) -> bool {
@@ -75,11 +87,16 @@ pub use linux::*;
 
 #[cfg(target_os = "freebsd")]
 mod freebsd {
+    use crate::cell::Cell;
     use crate::mem::transmute;
     use crate::ops::Deref;
     use crate::sync::atomic::AtomicU32;
     use crate::sys::cvt;
-    use crate::{io, ptr};
+    use crate::{io, ptr, thread_local};
+
+    thread_local! {
+        static TID: Cell<u32> = Cell::new(0);
+    }
 
     pub type State = u32;
 
@@ -125,9 +142,16 @@ mod freebsd {
     }
 
     pub fn locked() -> State {
-        let mut tid: libc::c_long = 0;
-        let _ = unsafe { libc::thr_self(ptr::from_mut(&mut tid)) };
-        tid as _
+        let tid = TID.get();
+        if tid == 0 {
+            let mut tid: libc::c_long = 0;
+            let _ = unsafe { libc::thr_self(ptr::from_mut(&mut tid)) };
+            let tid = tid as u32;
+            TID.set(tid);
+            tid
+        } else {
+            tid
+        }
     }
 
     pub fn is_contended(futex_val: State) -> bool {
