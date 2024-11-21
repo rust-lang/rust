@@ -443,9 +443,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    /// When after several dereferencing, the reference satisfies the trait
-    /// bound. This function provides dereference suggestion for this
-    /// specific situation.
+    /// Provide a suggestion to dereference arguments to functions and binary operators, if that
+    /// would satisfy trait bounds.
     pub(super) fn suggest_dereferences(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -459,127 +458,100 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
         {
             // Suggest dereferencing the argument to a function/method call if possible
+
+            // Get the root obligation, since the leaf obligation we have may be unhelpful (#87437)
             let mut real_trait_pred = trait_pred;
             while let Some((parent_code, parent_trait_pred)) = code.parent() {
                 code = parent_code;
                 if let Some(parent_trait_pred) = parent_trait_pred {
                     real_trait_pred = parent_trait_pred;
                 }
+            }
 
-                // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
-                // `ReBound`, and we don't particularly care about the regions.
-                let real_ty =
-                    self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
+            // `ReBound`, and we don't particularly care about the regions.
+            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
+                return false;
+            }
 
-                if self.can_eq(obligation.param_env, real_ty, arg_ty)
-                    && let ty::Ref(region, base_ty, mutbl) = *real_ty.kind()
+            // Potentially, we'll want to place our dereferences under a `&`. We don't try this for
+            // `&mut`, since we can't be sure users will get the side-effects they want from it.
+            // If this doesn't work, we'll try removing the `&` in `suggest_remove_reference`.
+            // FIXME(dianne): this misses the case where users need both to deref and remove `&`s.
+            // This method could be combined with `TypeErrCtxt::suggest_remove_reference` to handle
+            // that, similar to what `FnCtxt::suggest_deref_or_ref` does.
+            let (is_under_ref, base_ty, span) = match expr.kind {
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, subexpr)
+                    if let &ty::Ref(region, base_ty, hir::Mutability::Not) = real_ty.kind() =>
                 {
-                    let autoderef = (self.autoderef_steps)(base_ty);
-                    if let Some(steps) =
-                        autoderef.into_iter().enumerate().find_map(|(steps, (ty, obligations))| {
-                            // Re-add the `&`
-                            let ty = Ty::new_ref(self.tcx, region, ty, mutbl);
-
-                            // Remapping bound vars here
-                            let real_trait_pred_and_ty = real_trait_pred
-                                .map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                            let obligation = self.mk_trait_obligation_with_new_self_ty(
-                                obligation.param_env,
-                                real_trait_pred_and_ty,
-                            );
-                            let may_hold = obligations
-                                .iter()
-                                .chain([&obligation])
-                                .all(|obligation| self.predicate_may_hold(obligation))
-                                .then_some(steps);
-
-                            may_hold
-                        })
-                    {
-                        if steps > 0 {
-                            // Don't care about `&mut` because `DerefMut` is used less
-                            // often and user will not expect that an autoderef happens.
-                            if let hir::Node::Expr(hir::Expr {
-                                kind:
-                                    hir::ExprKind::AddrOf(
-                                        hir::BorrowKind::Ref,
-                                        hir::Mutability::Not,
-                                        expr,
-                                    ),
-                                ..
-                            }) = self.tcx.hir_node(*arg_hir_id)
-                            {
-                                let derefs = "*".repeat(steps);
-                                err.span_suggestion_verbose(
-                                    expr.span.shrink_to_lo(),
-                                    "consider dereferencing here",
-                                    derefs,
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
-                        }
-                    } else if real_trait_pred != trait_pred {
-                        // This branch addresses #87437.
-
-                        let span = obligation.cause.span;
-                        // Remapping bound vars here
-                        let real_trait_pred_and_base_ty = real_trait_pred
-                            .map_bound(|inner_trait_pred| (inner_trait_pred, base_ty));
-                        let obligation = self.mk_trait_obligation_with_new_self_ty(
-                            obligation.param_env,
-                            real_trait_pred_and_base_ty,
-                        );
-                        let sized_obligation = Obligation::new(
-                            self.tcx,
-                            obligation.cause.clone(),
-                            obligation.param_env,
-                            ty::TraitRef::new(
-                                self.tcx,
-                                self.tcx.require_lang_item(
-                                    hir::LangItem::Sized,
-                                    Some(obligation.cause.span),
-                                ),
-                                [base_ty],
-                            ),
-                        );
-                        if self.predicate_may_hold(&obligation)
-                            && self.predicate_must_hold_modulo_regions(&sized_obligation)
-                            // Do not suggest * if it is already a reference,
-                            // will suggest removing the borrow instead in that case.
-                            && !matches!(expr.kind, hir::ExprKind::AddrOf(..))
-                        {
-                            let call_node = self.tcx.hir_node(*call_hir_id);
-                            let msg = "consider dereferencing here";
-                            let is_receiver = matches!(
-                                call_node,
-                                Node::Expr(hir::Expr {
-                                    kind: hir::ExprKind::MethodCall(_, receiver_expr, ..),
-                                    ..
-                                })
-                                if receiver_expr.hir_id == *arg_hir_id
-                            );
-                            if is_receiver {
-                                err.multipart_suggestion_verbose(
-                                    msg,
-                                    vec![
-                                        (span.shrink_to_lo(), "(*".to_string()),
-                                        (span.shrink_to_hi(), ")".to_string()),
-                                    ],
-                                    Applicability::MachineApplicable,
-                                )
-                            } else {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    msg,
-                                    '*',
-                                    Applicability::MachineApplicable,
-                                )
-                            };
-                            return true;
-                        }
-                    }
+                    (Some(region), base_ty, subexpr.span)
                 }
+                // Don't suggest `*&mut`, etc.
+                hir::ExprKind::AddrOf(..) => return false,
+                _ => (None, real_ty, obligation.cause.span),
+            };
+
+            let autoderef = (self.autoderef_steps)(base_ty);
+            let mut is_boxed = base_ty.is_box();
+            if let Some(steps) = autoderef.into_iter().position(|(mut ty, obligations)| {
+                // Ensure one of the following for dereferencing to be valid: we're passing by
+                // reference, `ty` is `Copy`, or we're moving out of a (potentially nested) `Box`.
+                let can_deref = is_under_ref.is_some()
+                    || self.type_is_copy_modulo_regions(obligation.param_env, ty)
+                    || ty.is_numeric() // for inference vars (presumably but not provably `Copy`)
+                    || is_boxed && self.type_is_sized_modulo_regions(obligation.param_env, ty);
+                is_boxed &= ty.is_box();
+
+                // Re-add the `&` if necessary
+                if let Some(region) = is_under_ref {
+                    ty = Ty::new_ref(self.tcx, region, ty, hir::Mutability::Not);
+                }
+
+                // Remapping bound vars here
+                let real_trait_pred_and_ty =
+                    real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
+                let obligation = self.mk_trait_obligation_with_new_self_ty(
+                    obligation.param_env,
+                    real_trait_pred_and_ty,
+                );
+
+                can_deref
+                    && obligations
+                        .iter()
+                        .chain([&obligation])
+                        .all(|obligation| self.predicate_may_hold(obligation))
+            }) && steps > 0
+            {
+                let derefs = "*".repeat(steps);
+                let msg = "consider dereferencing here";
+                let call_node = self.tcx.hir_node(*call_hir_id);
+                let is_receiver = matches!(
+                    call_node,
+                    Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::MethodCall(_, receiver_expr, ..),
+                        ..
+                    })
+                    if receiver_expr.hir_id == *arg_hir_id
+                );
+                if is_receiver {
+                    err.multipart_suggestion_verbose(
+                        msg,
+                        vec![
+                            (span.shrink_to_lo(), format!("({derefs}")),
+                            (span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    )
+                } else {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        msg,
+                        derefs,
+                        Applicability::MachineApplicable,
+                    )
+                };
+                return true;
             }
         } else if let (
             ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id: Some(rhs_hir_id), .. },
