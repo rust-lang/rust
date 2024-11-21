@@ -93,3 +93,12 @@ struct_span_code_err!(...)
 For an example of a PR adding an error code, see [#76143].
 
 [#76143]: https://github.com/rust-lang/rust/pull/76143
+
+## Running error code doctests
+
+To test the examples added in `rustc_error_codes/src/error_codes`, run the
+error index generator using:
+
+```
+./x test ./src/tools/error_index_generator
+```
