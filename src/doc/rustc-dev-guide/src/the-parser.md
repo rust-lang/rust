@@ -6,7 +6,7 @@ This happens in two stages: Lexing and Parsing.
 
   1. _Lexing_ takes strings and turns them into streams of [tokens]. For
   example, `foo.bar + buz` would be turned into the tokens `foo`, `.`, `bar`,
-  `+`, and `buz`.
+  `+`, and `buz`. This is implemented in [`rustc_lexer`][lexer].
 
 [tokens]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/token/index.html
 [lexer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
@@ -14,16 +14,31 @@ This happens in two stages: Lexing and Parsing.
   2. _Parsing_ takes streams of tokens and turns them into a structured form
   which is easier for the compiler to work with, usually called an [*Abstract
   Syntax Tree* (AST)][ast] . 
-  
-  
-An AST mirrors the structure of a Rust program in memory, using a `Span` to
+
+## The AST
+
+The AST mirrors the structure of a Rust program in memory, using a `Span` to
 link a particular AST node back to its source text. The AST is defined in
 [`rustc_ast`][rustc_ast], along with some definitions for tokens and token
 streams, data structures/traits for mutating ASTs, and shared definitions for
 other AST-related parts of the compiler (like the lexer and
 macro-expansion).
 
-The lexer is developed in [`rustc_lexer`][lexer].
+Every node in the AST has its own [`NodeId`], including top-level items
+such as structs, but also individual statements and expressions. A [`NodeId`]
+is an identifier number that uniquely identifies an AST node within a crate.
+
+However, because they are absolute within a crate, adding or removing a single
+node in the AST causes all the subsequent [`NodeId`]s to change. This renders
+[`NodeId`]s pretty much useless for incremental compilation, where you want as
+few things as possible to change.
+
+[`NodeId`]s are used in all the `rustc` bits that operate directly on the AST,
+like macro expansion and name resolution (more on these over the next couple chapters).
+
+[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
+
+## Parsing
 
 The parser is defined in [`rustc_parse`][rustc_parse], along with a
 high-level interface to the lexer and some validation routines that run after

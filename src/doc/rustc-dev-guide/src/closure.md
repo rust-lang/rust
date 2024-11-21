@@ -1,4 +1,4 @@
-# Closure Expansion in rustc
+# Closure Capture Inference
 
 This section describes how rustc handles closures. Closures in Rust are
 effectively "desugared" into structs that contain the values they use (or

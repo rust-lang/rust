@@ -96,10 +96,6 @@
 # Source Code Representation
 
 - [Prologue](./part-3-intro.md)
-- [Command-line arguments](./cli.md)
-- [rustc_driver and rustc_interface](./rustc-driver/intro.md)
-    - [Example: Type checking](./rustc-driver/interacting-with-the-ast.md)
-    - [Example: Getting diagnostics](./rustc-driver/getting-diagnostics.md)
 - [Syntax and the AST](./syntax-intro.md)
     - [Lexing and Parsing](./the-parser.md)
     - [Macro expansion](./macro-expansion.md)
@@ -118,9 +114,21 @@
     - [MIR construction](./mir/construction.md)
     - [MIR visitor and traversal](./mir/visitor.md)
     - [MIR queries and passes: getting the MIR](./mir/passes.md)
-- [Identifiers in the Compiler](./identifiers.md)
-- [Closure expansion](./closure.md)
 - [Inline assembly](./asm.md)
+
+# Supporting Infrastructure
+
+- [Command-line arguments](./cli.md)
+- [rustc_driver and rustc_interface](./rustc-driver/intro.md)
+    - [Example: Type checking](./rustc-driver/interacting-with-the-ast.md)
+    - [Example: Getting diagnostics](./rustc-driver/getting-diagnostics.md)
+- [Errors and Lints](diagnostics.md)
+    - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
+    - [Translation](./diagnostics/translation.md)
+    - [`LintStore`](./diagnostics/lintstore.md)
+    - [Error codes](./diagnostics/error-codes.md)
+    - [Diagnostic items](./diagnostics/diagnostic-items.md)
+    - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
 
 # Analysis
 
@@ -190,13 +198,7 @@
         - [Closure constraints](./borrow_check/region_inference/closure_constraints.md)
         - [Error reporting](./borrow_check/region_inference/error_reporting.md)
     - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
-- [Errors and Lints](diagnostics.md)
-    - [Diagnostic and subdiagnostic structs](./diagnostics/diagnostic-structs.md)
-    - [Translation](./diagnostics/translation.md)
-    - [`LintStore`](./diagnostics/lintstore.md)
-    - [Error codes](./diagnostics/error-codes.md)
-    - [Diagnostic items](./diagnostics/diagnostic-items.md)
-    - [`ErrorGuaranteed`](./diagnostics/error-guaranteed.md)
+- [Closure capture inference](./closure.md)
 - [Async closures/"coroutine-closures"](coroutine-closures.md)
 
 # MIR to Binaries

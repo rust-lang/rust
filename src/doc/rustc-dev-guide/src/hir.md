@@ -78,18 +78,40 @@ the compiler a chance to observe that you accessed the data for
 
 ## Identifiers in the HIR
 
-There are a bunch of different identifiers to refer to other nodes or definitions
-in the HIR. In short:
-- A [`DefId`] refers to a *definition* in any crate.
-- A [`LocalDefId`] refers to a *definition* in the currently compiled crate.
-- A [`HirId`] refers to *any node* in the HIR.
+The HIR uses a bunch of different identifiers that coexist and serve different purposes.
 
-For more detailed information, check out the [chapter on identifiers][ids].
+- A [`DefId`], as the name suggests, identifies a particular definition, or top-level
+  item, in a given crate. It is composed of two parts: a [`CrateNum`] which identifies
+  the crate the definition comes from, and a [`DefIndex`] which identifies the definition
+  within the crate. Unlike [`HirId`]s, there isn't a [`DefId`] for every expression, which
+  makes them more stable across compilations.
+
+- A [`LocalDefId`] is basically a [`DefId`] that is known to come from the current crate.
+  This allows us to drop the [`CrateNum`] part, and use the type system to ensure that
+  only local definitions are passed to functions that expect a local definition.
+
+- A [`HirId`] uniquely identifies a node in the HIR of the current crate. It is composed
+  of two parts: an `owner` and a `local_id` that is unique within the `owner`. This
+  combination makes for more stable values which are helpful for incremental compilation.
+  Unlike [`DefId`]s, a [`HirId`] can refer to [fine-grained entities][Node] like expressions,
+  but stays local to the current crate.
+
+- A [`BodyId`] identifies a HIR [`Body`] in the current crate. It is currently only
+  a wrapper around a [`HirId`]. For more info about HIR bodies, please refer to the
+  [HIR chapter][hir-bodies].
+
+These identifiers can be converted into one another through the [HIR map][map].
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
 [`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
-[ids]: ./identifiers.md#in-the-hir
+[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.BodyId.html
+[`CrateNum`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.CrateNum.html
+[`DefIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefIndex.html
+[`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
+[hir-map]: ./hir.md#the-hir-map
+[hir-bodies]: ./hir.md#hir-bodies
+[map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html
 
 ## The HIR Map
 
