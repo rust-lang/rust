@@ -1270,8 +1270,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         sym::cold_path => {
-            // This is a no-op. The intrinsic is just a hint to the optimizer.
-            // We still have an impl here to avoid it being turned into a call.
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         }
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
