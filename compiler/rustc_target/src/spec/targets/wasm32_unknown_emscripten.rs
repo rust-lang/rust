@@ -5,7 +5,8 @@ use crate::spec::{
 pub(crate) fn target() -> Target {
     // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
     let pre_link_args = LinkArgs::new();
-    let post_link_args = TargetOptions::link_args(LinkerFlavor::EmCc, &["-sABORTING_MALLOC=0"]);
+    let post_link_args =
+        TargetOptions::link_args(LinkerFlavor::EmCc, &["-sABORTING_MALLOC=0", "-sWASM_BIGINT"]);
 
     let opts = TargetOptions {
         os: "emscripten".into(),
