@@ -1,3 +1,17 @@
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:23:7
+   |
+LL | const SNAKE_CASE: &str = "zzzzzzzz";
+   |       ^^^^^^^^^^
+   |
+note: should be placed before `ZNAKE_CASE`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:22:7
+   |
+LL | const ZNAKE_CASE: &str = "123";
+   |       ^^^^^^^^^^
+   = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
+
 error: incorrect ordering of items (module item groupings specify another order)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:26:14
    |
@@ -9,8 +23,28 @@ note: should be placed before `SNAKE_CASE`
    |
 LL | const SNAKE_CASE: &str = "zzzzzzzz";
    |       ^^^^^^^^^^
-   = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:71:1
+   |
+LL | / impl CloneSelf for StructOrdered {
+LL | |
+LL | |     fn clone_self(&self) -> Self {
+LL | |         Self {
+...  |
+LL | | }
+   | |_^
+   |
+note: should be placed before the following item
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:61:1
+   |
+LL | / impl Default for StructOrdered {
+LL | |     fn default() -> Self {
+LL | |         Self {
+LL | |             a: true,
+...  |
+LL | | }
+   | |_^
 
 error: incorrect ordering of items (module item groupings specify another order)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:149:7
@@ -23,6 +57,23 @@ note: should be placed before `TraitUnorderedItemKinds`
    |
 LL | trait TraitUnorderedItemKinds {
    |       ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:167:1
+   |
+LL | impl BasicEmptyTrait for StructOrdered {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: should be placed before the following item
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:152:1
+   |
+LL | / impl TraitUnordered for StructUnordered {
+LL | |     const A: bool = false;
+LL | |     const C: bool = false;
+LL | |     const B: bool = false;
+...  |
+LL | | }
+   | |_^
 
 error: incorrect ordering of items (module item groupings specify another order)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:188:5
@@ -47,6 +98,18 @@ note: should be placed before `ZisShouldBeBeforeZeMainFn`
    |
 LL | struct ZisShouldBeBeforeZeMainFn;
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:14:11
+   |
+LL |     const AFTER: i8 = 0;
+   |           ^^^^^
+   |
+note: should be placed before `BEFORE`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:12:11
+   |
+LL |     const BEFORE: i8 = 0;
+   |           ^^^^^^
 
 error: incorrect ordering of items (must be alphabetically ordered)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:44:5
@@ -156,5 +219,17 @@ note: should be placed before `SomeType`
 LL |     type SomeType = ();
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:191:11
+   |
+LL |     const A: i8 = 1;
+   |           ^
+   |
+note: should be placed before `C`
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:190:11
+   |
+LL |     const C: i8 = 0;
+   |           ^
+
+error: aborting due to 18 previous errors
 
