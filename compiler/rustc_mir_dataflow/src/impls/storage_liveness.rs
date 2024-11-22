@@ -28,10 +28,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, on_entry: &mut Self::Domain) {
-        assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
-        for local in self.always_live_locals.iter() {
-            on_entry.insert(local);
-        }
+        on_entry.union(&*self.always_live_locals);
 
         for arg in body.args_iter() {
             on_entry.insert(arg);
