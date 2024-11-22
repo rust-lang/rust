@@ -2,7 +2,7 @@
 
 use std::ops::Deref;
 
-//@ hasraw search-index.js Foo
+//@ hasraw search.index/name/*.js Foo
 pub use private::Foo;
 
 mod private {
@@ -20,7 +20,7 @@ mod private {
 pub struct Bar;
 
 impl Deref for Bar {
-    //@ !hasraw search-index.js Target
+    //@ !hasraw search.index/name/*.js Target
     type Target = Bar;
     fn deref(&self) -> &Bar { self }
 }

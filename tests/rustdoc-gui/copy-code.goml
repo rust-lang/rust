@@ -12,7 +12,7 @@ define-function: (
         assert-count: (".example-wrap .copy-button", 1)
         // We now ensure it's only displayed when the example is hovered.
         assert-css: (".example-wrap .copy-button", { "visibility": "visible" })
-        move-cursor-to: ".search-input"
+        move-cursor-to: "rustdoc-toolbar #search-button"
         assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
         // Checking that the copy button has the same size as the "copy path" button.
         compare-elements-size: (

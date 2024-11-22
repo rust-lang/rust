@@ -23,10 +23,10 @@
 //@ !has sierra/struct.Sierra.html
 //@ !has tango/trait.Tango.html
 //@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
-//@ hasraw search-index.js 'Quebec'
-//@ hasraw search-index.js 'Romeo'
-//@ hasraw search-index.js 'Sierra'
-//@ hasraw search-index.js 'Tango'
+//@ hasraw search.index/name/*.js 'Quebec'
+//@ hasraw search.index/name/*.js 'Romeo'
+//@ hasraw search.index/name/*.js 'Sierra'
+//@ hasraw search.index/name/*.js 'Tango'
 //@ has type.impl/sierra/struct.Sierra.js
 //@ hasraw type.impl/sierra/struct.Sierra.js 'Tango'
 //@ hasraw type.impl/sierra/struct.Sierra.js 'Romeo'

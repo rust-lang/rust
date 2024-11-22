@@ -1,24 +1,12 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy */
-/* global MAIN_ID, getVar, getSettingsButton, getHelpButton, nonnull */
+/* global MAIN_ID, getVar, nonnull */
 
 "use strict";
 
 (function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
-
-    /**
-     * @param {Element} elem
-     * @param {EventTarget|null} target
-     */
-    function elemContainsTarget(elem, target) {
-        if (target instanceof Node) {
-            return elem.contains(target);
-        } else {
-            return false;
-        }
-    }
 
     /**
      * @overload {"theme"|"preferred-dark-theme"|"preferred-light-theme"}
@@ -305,10 +293,12 @@
             }
         } else {
             el.setAttribute("tabindex", "-1");
-            const settingsBtn = getSettingsButton();
-            if (settingsBtn !== null) {
-                settingsBtn.appendChild(el);
-            }
+            onEachLazy(document.querySelectorAll(".settings-menu"), menu => {
+                if (menu.offsetWidth !== 0) {
+                    menu.appendChild(el);
+                    return true;
+                }
+            });
         }
         return el;
     }
@@ -317,6 +307,15 @@
 
     function displaySettings() {
         settingsMenu.style.display = "";
+        onEachLazy(document.querySelectorAll(".settings-menu"), menu => {
+            if (menu.offsetWidth !== 0) {
+                if (!menu.contains(settingsMenu) && settingsMenu.parentElement) {
+                    settingsMenu.parentElement.removeChild(settingsMenu);
+                    menu.appendChild(settingsMenu);
+                }
+                return true;
+            }
+        });
         onEachLazy(settingsMenu.querySelectorAll("input[type='checkbox']"), el => {
             const val = getSettingValue(el.id);
             const checked = val === "true";
@@ -330,40 +329,37 @@
      * @param {FocusEvent} event
      */
     function settingsBlurHandler(event) {
-        const helpBtn = getHelpButton();
-        const settingsBtn = getSettingsButton();
-        const helpUnfocused = helpBtn === null ||
-              (!helpBtn.contains(document.activeElement) &&
-               !elemContainsTarget(helpBtn, event.relatedTarget));
-        const settingsUnfocused = settingsBtn === null ||
-              (!settingsBtn.contains(document.activeElement) &&
-               !elemContainsTarget(settingsBtn, event.relatedTarget));
-        if (helpUnfocused && settingsUnfocused) {
+        const isInPopover = onEachLazy(
+            document.querySelectorAll(".settings-menu, .help-menu"),
+            menu => {
+                return menu.contains(document.activeElement) || menu.contains(event.relatedTarget);
+            },
+        );
+        if (!isInPopover) {
             window.hidePopoverMenus();
         }
     }
 
     if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
-        // These elements must exist, as (outside of the settings page)
-        // `settings.js` is only loaded after the settings button is clicked.
-        const settingsButton = nonnull(getSettingsButton());
         const settingsMenu = nonnull(document.getElementById("settings"));
-        settingsButton.onclick = event => {
-            if (elemContainsTarget(settingsMenu, event.target)) {
-                return;
-            }
-            event.preventDefault();
-            const shouldDisplaySettings = settingsMenu.style.display === "none";
+        onEachLazy(document.querySelectorAll(".settings-menu"), settingsButton => {
+            /** @param {MouseEvent} event */
+            settingsButton.querySelector("a").onclick = event => {
+                if (!(event.target instanceof Element) || settingsMenu.contains(event.target)) {
+                    return;
+                }
+                event.preventDefault();
+                const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hideAllModals(false);
-            if (shouldDisplaySettings) {
-                displaySettings();
-            }
-        };
-        settingsButton.onblur = settingsBlurHandler;
-        // the settings button should always have a link in it
-        nonnull(settingsButton.querySelector("a")).onblur = settingsBlurHandler;
+                window.hideAllModals(false);
+                if (shouldDisplaySettings) {
+                    displaySettings();
+                }
+            };
+            settingsButton.onblur = settingsBlurHandler;
+            settingsButton.querySelector("a").onblur = settingsBlurHandler;
+        });
         onEachLazy(settingsMenu.querySelectorAll("input"), el => {
             el.onblur = settingsBlurHandler;
         });
@@ -377,6 +373,8 @@
         if (!isSettingsPage) {
             displaySettings();
         }
-        removeClass(getSettingsButton(), "rotate");
+        onEachLazy(document.querySelectorAll(".settings-menu"), settingsButton => {
+            removeClass(settingsButton, "rotate");
+        });
     }, 0);
 })();
