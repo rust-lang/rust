@@ -1,4 +1,4 @@
-name: bsan-stage1
+name: build
 on: workflow_dispatch
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
             rustup component add llvm-tools-preview
       - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
-      - name: BSAN
+      - name: BSan
         run: ./x.py build bsan --config --stage 1 src/bootstrap/defaults/config.bsan.toml
   build-macos:
     runs-on: macos-latest
@@ -34,7 +34,9 @@ jobs:
       - name: Install dependencies
         run: |
             brew install ninja
+      - name: setup upstream remote
+        run: src/ci/scripts/setup-upstream-remote.sh
       - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
-      - name: BSAN
+      - name: BSan
         run: ./x.py build bsan --stage 1 --config src/bootstrap/defaults/config.bsan.toml
