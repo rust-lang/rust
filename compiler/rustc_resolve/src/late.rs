@@ -4794,20 +4794,27 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let res = self.r.resolve_rustdoc_path(path.as_str(), *ns, self.parent_scope);
                 if let Some(res) = res
                     && let Some(def_id) = res.opt_def_id()
-                    && !def_id.is_local()
-                    && self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
-                    && matches!(
-                        self.r.tcx.sess.opts.resolve_doc_links,
-                        ResolveDocLinks::ExportedMetadata
-                    )
+                    && self.is_invalid_proc_macro_item_for_doc(def_id)
                 {
-                    // Encoding foreign def ids in proc macro crate metadata will ICE.
+                    // Encoding def ids in proc macro crate metadata will ICE,
+                    // because it will only store proc macros for it.
                     return None;
                 }
                 res
             });
         self.r.doc_link_resolutions = doc_link_resolutions;
         res
+    }
+
+    fn is_invalid_proc_macro_item_for_doc(&self, did: DefId) -> bool {
+        if !matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata)
+            || !self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
+        {
+            return false;
+        }
+        let Some(local_did) = did.as_local() else { return true };
+        let Some(node_id) = self.r.def_id_to_node_id.get(local_did) else { return true };
+        !self.r.proc_macros.contains(node_id)
     }
 
     fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {
@@ -4872,14 +4879,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .traits_in_scope(None, &self.parent_scope, SyntaxContext::root(), None)
                         .into_iter()
                         .filter_map(|tr| {
-                            if !tr.def_id.is_local()
-                                && self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
-                                && matches!(
-                                    self.r.tcx.sess.opts.resolve_doc_links,
-                                    ResolveDocLinks::ExportedMetadata
-                                )
-                            {
-                                // Encoding foreign def ids in proc macro crate metadata will ICE.
+                            if self.is_invalid_proc_macro_item_for_doc(tr.def_id) {
+                                // Encoding def ids in proc macro crate metadata will ICE.
+                                // because it will only store proc macros for it.
                                 return None;
                             }
                             Some(tr.def_id)
