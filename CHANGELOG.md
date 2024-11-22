@@ -41,11 +41,11 @@ Current stable, released 2024-11-28
 
 * Moved [`ref_option`] to `pedantic` (From `nursery`)
   [#13469](https://github.com/rust-lang/rust-clippy/pull/13469)
-* Moved [`manual_c_str_literals`] to `complexity` (From `pedantic` now warn-by-default)
+* Moved [`manual_c_str_literals`] to `complexity` (From `pedantic`, now warn-by-default)
   [#13263](https://github.com/rust-lang/rust-clippy/pull/13263)
-* Moved [`empty_line_after_doc_comments`] to `suspicious` (From `nursery` now warn-by-default)
+* Moved [`empty_line_after_doc_comments`] to `suspicious` (From `nursery`, now warn-by-default)
   [#13091](https://github.com/rust-lang/rust-clippy/pull/13091)
-* Moved [`empty_line_after_outer_attr`] to `suspicious` (From `nursery` now warn-by-default)
+* Moved [`empty_line_after_outer_attr`] to `suspicious` (From `nursery`, now warn-by-default)
   [#13091](https://github.com/rust-lang/rust-clippy/pull/13091)
 
 ### Enhancements
