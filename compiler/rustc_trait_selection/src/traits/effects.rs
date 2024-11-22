@@ -27,6 +27,11 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         );
     }
 
+    // Force ambiguity for infer self ty.
+    if obligation.predicate.self_ty().is_ty_var() {
+        return Err(EvaluationFailure::Ambiguous);
+    }
+
     match evaluate_host_effect_from_bounds(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
