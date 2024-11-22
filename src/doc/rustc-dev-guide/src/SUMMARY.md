@@ -142,7 +142,6 @@
     - [`EarlyBinder` and instantiating parameters](./ty_module/early_binder.md)
     - [`Binder` and Higher ranked regions](./ty_module/binders.md)
     - [Instantiating binders](./ty_module/instantiating_binders.md)
-    - [Constants in the type system](./constants.md)
 - [`TypeFolder` and `TypeFoldable`](./ty-fold.md)
 - [Parameter Environments](./param_env/param_env_summary.md)
     - [What is it?](./param_env/param_env_what_is_it.md)
