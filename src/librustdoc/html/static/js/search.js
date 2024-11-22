@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue, getVar */
+/* global addClass, getNakedUrl, getSettingValue, getVar, nonnull */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
 "use strict";
@@ -1451,11 +1451,10 @@ class NameTrie {
 
 class DocSearch {
     /**
-     * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
      * @param {string} rootPath
      * @param {rustdoc.SearchState} searchState
      */
-    constructor(rawSearchIndex, rootPath, searchState) {
+    constructor(rootPath, searchState) {
         /**
          * @type {Map<String, RoaringBitmap>}
          */
@@ -1587,7 +1586,7 @@ class DocSearch {
         /**
          *  @type {Array<rustdoc.Row>}
          */
-        this.searchIndex = this.buildIndex(rawSearchIndex);
+        this.searchIndex = [];
     }
 
     /**
@@ -1913,9 +1912,9 @@ class DocSearch {
      * Convert raw search index into in-memory search index.
      *
      * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
-     * @returns {rustdoc.Row[]}
+     * @returns {Promise<rustdoc.Row[]>}
      */
-    buildIndex(rawSearchIndex) {
+    async buildIndex(rawSearchIndex) {
         /**
          * Convert from RawFunctionSearchType to FunctionSearchType.
          *
@@ -2181,7 +2180,21 @@ class DocSearch {
                 paths[i] = { ty, name, path, exactPath, unboxFlag };
             }
 
-            // Convert `item*` into an object form, and construct word indices.
+            // Throttlers are used to yield to the JavaScript event loop
+            // while this is being built.
+            // They're generated up-front to avoid the "nesting level"
+            // limit that limits our speed to 4ms per tick.
+            // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html
+            const throttlers = [];
+            len = itemTypes.length;
+            for (let i = 0; i < len; ++i) {
+                if ((i & 0xFF) === 0) { // 256 - 1
+                    throttlers.push(new Promise(resolve => {
+                        setTimeout(resolve, 0);
+                    }));
+                }
+            }
+            // convert `item*` into an object form, and construct word indices.
             //
             // Before any analysis is performed, let's gather the search terms to
             // search against apart from the rest of the data. This is a quick
@@ -2193,6 +2206,9 @@ class DocSearch {
             let lastName = "";
             let lastWord = "";
             for (let i = 0; i < len; ++i) {
+                if ((i & 0xFF) === 0) { // 256 - 1
+                    await throttlers[i >> 8];
+                }
                 const bitIndex = i + 1;
                 if (descIndex >= descShard.len &&
                     // @ts-expect-error
@@ -4794,6 +4810,7 @@ function focusSearchResult() {
  * @param {Array<?>}    array   - The search results for this tab
  * @param {rustdoc.ParsedQuery<rustdoc.QueryElement>} query
  * @param {boolean}     display - True if this is the active tab
+ * @returns {Promise<Node>}
  */
 async function addTab(array, query, display) {
     const extraClass = display ? " active" : "";
@@ -4909,7 +4926,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     } else if (query.error === null) {
         const dlroChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
         output.className = "search-failed" + extraClass;
-        output.innerHTML = "No results :(<br/>" +
+        if (query.userQuery === "") {
+            output.innerHTML = "Example searches:<ul>" +
+                "<li><a href=\"" + getNakedUrl() + "?search=std::vec\">std::vec</a></li>" +
+                "<li><a href=\"" + getNakedUrl() + "?search=u32+->+bool\">u32 -> bool</a></li>" +
+                "<li><a href=\"" + getNakedUrl() + "?search=Option<T>,+(T+->+U)+->+Option<U>\">" +
+                    "Option&lt;T>, (T -> U) -> Option&lt;U></a></li>" +
+                "</ul>";
+        } else {
+            output.innerHTML = "No results :(<br/>" +
             "Try on <a href=\"https://duckduckgo.com/?q=" +
             encodeURIComponent("rust " + query.userQuery) +
             "\">DuckDuckGo</a>?<br/><br/>" +
@@ -4922,6 +4947,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             "introductions to language features and the language itself.</li><li><a " +
             "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
             " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
+        }
     }
     return output;
 }
@@ -4950,6 +4976,9 @@ function makeTabHeader(tabNb, text, nbElems) {
  */
 async function showResults(results, go_to_first, filterCrates) {
     const search = searchState.outputElement();
+    if (!search) {
+        return;
+    }
     if (go_to_first || (results.others.length === 1
         && getSettingValue("go-to-only-result") === "true")
     ) {
@@ -4975,9 +5004,9 @@ async function showResults(results, go_to_first, filterCrates) {
         elem.click();
         return;
     }
-    if (results.query === undefined) {
-        // @ts-expect-error
-        results.query = DocSearch.parseQuery(searchState.input.value);
+    const inputElement = window.searchState.inputElement();
+    if (results.query === undefined && inputElement) {
+        results.query = DocSearch.parseQuery(inputElement.value);
     }
 
     currentResults = results.query.userQuery;
@@ -5000,16 +5029,16 @@ async function showResults(results, go_to_first, filterCrates) {
 
     let crates = "";
     if (rawSearchIndex.size > 1) {
-        crates = "<div class=\"sub-heading\"> in&nbsp;<div id=\"crate-search-div\">" +
+        crates = "&nbsp;in&nbsp;<div id=\"crate-search-div\">" +
             "<select id=\"crate-search\"><option value=\"all crates\">all crates</option>";
         for (const c of rawSearchIndex.keys()) {
             crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
         }
-        crates += "</select></div></div>";
+        crates += "</select></div>";
     }
+    nonnull(document.querySelector(".search-switcher")).innerHTML = `Search results${crates}`;
 
-    let output = `<div class="main-heading">\
-        <h1 class="search-results-title">Results</h1>${crates}</div>`;
+    let output = "";
     if (results.query.error !== null) {
         const error = results.query.error;
         // @ts-expect-error
@@ -5072,22 +5101,21 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_in_args);
     resultsElem.appendChild(ret_returned);
 
-    // @ts-expect-error
     search.innerHTML = output;
-    if (searchState.rustdocToolbar) {
-        // @ts-expect-error
-        search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
+    if (window.searchState.rustdocToolbar) {
+        nonnull(
+            nonnull(window.searchState.containerElement())
+                .querySelector(".main-heading"),
+        ).appendChild(window.searchState.rustdocToolbar);
     }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);
     }
-    // @ts-expect-error
     search.appendChild(resultsElem);
     // Reset focused elements.
-    searchState.showResults(search);
-    // @ts-expect-error
-    const elems = document.getElementById("search-tabs").childNodes;
+    window.searchState.showResults();
+    const elems = nonnull(document.getElementById("search-tabs")).childNodes;
     // @ts-expect-error
     searchState.focusedByTab = [];
     let i = 0;
@@ -5103,11 +5131,15 @@ async function showResults(results, go_to_first, filterCrates) {
 
 // @ts-expect-error
 function updateSearchHistory(url) {
+    const btn = document.querySelector("#search-button a");
+    if (btn instanceof HTMLAnchorElement) {
+        btn.href = url;
+    }
     if (!browserSupportsHistoryApi()) {
         return;
     }
     const params = searchState.getQueryStringParams();
-    if (!history.state && !params.search) {
+    if (!history.state && params.search === undefined) {
         history.pushState(null, "", url);
     } else {
         history.replaceState(null, "", url);
@@ -5120,8 +5152,7 @@ function updateSearchHistory(url) {
  * @param {boolean} [forced]
  */
 async function search(forced) {
-    // @ts-expect-error
-    const query = DocSearch.parseQuery(searchState.input.value.trim());
+    const query = DocSearch.parseQuery(nonnull(window.searchState.inputElement()).value.trim());
     let filterCrates = getFilterCrates();
 
     // @ts-expect-error
@@ -5169,16 +5200,14 @@ function onSearchSubmit(e) {
 }
 
 function putBackSearch() {
-    const search_input = searchState.input;
-    if (!searchState.input) {
+    const search_input = window.searchState.inputElement();
+    if (!search_input) {
         return;
     }
-    // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
-                // @ts-expect-error
                 buildUrl(search_input.value, getFilterCrates()));
         }
         document.title = searchState.title;
@@ -5192,30 +5221,26 @@ function registerSearchEvents() {
     // but only if the input bar is empty. This avoid the obnoxious issue
     // where you start trying to do a search, and the index loads, and
     // suddenly your search is gone!
-    // @ts-expect-error
-    if (searchState.input.value === "") {
-        // @ts-expect-error
-        searchState.input.value = params.search || "";
+    const inputElement = nonnull(window.searchState.inputElement());
+    if (inputElement.value === "") {
+        inputElement.value = params.search || "";
     }
 
     const searchAfter500ms = () => {
         searchState.clearInputTimeout();
-        // @ts-expect-error
-        if (searchState.input.value.length === 0) {
-            searchState.hideResults();
+        const inputElement = window.searchState.inputElement();
+        if (inputElement && inputElement.value.length === 0) {
+            window.searchState.hideResults();
         } else {
-            // @ts-ignore
-            searchState.timeout = setTimeout(search, 500);
+            window.searchState.timeout = setTimeout(search, 500);
         }
     };
-    // @ts-expect-error
-    searchState.input.onkeyup = searchAfter500ms;
-    // @ts-expect-error
-    searchState.input.oninput = searchAfter500ms;
-    // @ts-expect-error
-    document.getElementsByClassName("search-form")[0].onsubmit = onSearchSubmit;
-    // @ts-expect-error
-    searchState.input.onchange = e => {
+    inputElement.onkeyup = searchAfter500ms;
+    inputElement.oninput = searchAfter500ms;
+    if (inputElement.form) {
+        inputElement.form.onsubmit = onSearchSubmit;
+    }
+    inputElement.onchange = e => {
         if (e.target !== document.activeElement) {
             // To prevent doing anything when it's from a blur event.
             return;
@@ -5227,11 +5252,12 @@ function registerSearchEvents() {
         // change, though.
         setTimeout(search, 0);
     };
-    // @ts-expect-error
-    searchState.input.onpaste = searchState.input.onchange;
+    inputElement.onpaste = inputElement.onchange;
 
     // @ts-expect-error
-    searchState.outputElement().addEventListener("keydown", e => {
+    nonnull(searchState.outputElement()).addEventListener("keydown",
+        /** @param {KeyboardEvent} e */
+        e => {
         // We only handle unmodified keystrokes here. We don't want to interfere with,
         // for instance, alt-left and alt-right for history navigation.
         if (e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
@@ -5271,88 +5297,23 @@ function registerSearchEvents() {
         }
     });
 
-    // @ts-expect-error
-    searchState.input.addEventListener("keydown", e => {
+    inputElement.addEventListener("keydown", e => {
         if (e.which === 40) { // down
             focusSearchResult();
             e.preventDefault();
         }
     });
 
-    // @ts-expect-error
-    searchState.input.addEventListener("focus", () => {
+    inputElement.addEventListener("focus", () => {
         putBackSearch();
     });
-
-    // @ts-expect-error
-    searchState.input.addEventListener("blur", () => {
-        if (window.searchState.input) {
-            window.searchState.input.placeholder = window.searchState.origPlaceholder;
-        }
-    });
-
-    // Push and pop states are used to add search results to the browser
-    // history.
-    if (browserSupportsHistoryApi()) {
-        // Store the previous <title> so we can revert back to it later.
-        const previousTitle = document.title;
-
-        window.addEventListener("popstate", e => {
-            const params = searchState.getQueryStringParams();
-            // Revert to the previous title manually since the History
-            // API ignores the title parameter.
-            document.title = previousTitle;
-            // When browsing forward to search results the previous
-            // search will be repeated, so the currentResults are
-            // cleared to ensure the search is successful.
-            currentResults = null;
-            // Synchronize search bar with query string state and
-            // perform the search. This will empty the bar if there's
-            // nothing there, which lets you really go back to a
-            // previous state with nothing in the bar.
-            if (params.search && params.search.length > 0) {
-                // @ts-expect-error
-                searchState.input.value = params.search;
-                // Some browsers fire "onpopstate" for every page load
-                // (Chrome), while others fire the event only when actually
-                // popping a state (Firefox), which is why search() is
-                // called both here and at the end of the startSearch()
-                // function.
-                e.preventDefault();
-                search();
-            } else {
-                // @ts-expect-error
-                searchState.input.value = "";
-                // When browsing back from search results the main page
-                // visibility must be reset.
-                searchState.hideResults();
-            }
-        });
-    }
-
-    // This is required in firefox to avoid this problem: Navigating to a search result
-    // with the keyboard, hitting enter, and then hitting back would take you back to
-    // the doc page, rather than the search that should overlay it.
-    // This was an interaction between the back-forward cache and our handlers
-    // that try to sync state between the URL and the search input. To work around it,
-    // do a small amount of re-init on page show.
-    window.onpageshow = () => {
-        const qSearch = searchState.getQueryStringParams().search;
-        // @ts-expect-error
-        if (searchState.input.value === "" && qSearch) {
-            // @ts-expect-error
-            searchState.input.value = qSearch;
-        }
-        search();
-    };
 }
 
 // @ts-expect-error
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.
-        // @ts-expect-error
-        const query = searchState.input.value.trim();
+        const query = nonnull(window.searchState.inputElement()).value.trim();
         updateSearchHistory(buildUrl(query, null));
     }
     // In case you "cut" the entry from the search input, then change the crate filter
@@ -5360,6 +5321,49 @@ function updateCrate(ev) {
     // the filter. To prevent this, we need to remove the previous results.
     currentResults = null;
     search(true);
+}
+
+/**
+ * @param {Map<string, rustdoc.RawSearchIndexCrate>} searchIndx
+ */
+async function initSearch(searchIndx) {
+    if (ROOT_PATH === null) {
+        return;
+    }
+    rawSearchIndex = searchIndx;
+    if (typeof window !== "undefined") {
+        docSearch = new DocSearch(ROOT_PATH, window.searchState);
+        docSearch.searchIndex = await docSearch.buildIndex(rawSearchIndex);
+        registerSearchEvents();
+        // If there's a search term in the URL, execute the search now.
+        if (window.searchState.getQueryStringParams().search !== undefined) {
+            search();
+        }
+    } else if (typeof exports !== "undefined") {
+        // @ts-ignore
+        docSearch = new DocSearch(ROOT_PATH, searchState);
+        docSearch.searchIndex = await docSearch.buildIndex(rawSearchIndex);
+        exports.docSearch = docSearch;
+        exports.parseQuery = DocSearch.parseQuery;
+    }
+}
+
+if (typeof exports !== "undefined") {
+    exports.initSearch = initSearch;
+}
+
+if (typeof window !== "undefined") {
+    // @ts-expect-error
+    window.initSearch = initSearch;
+    // @ts-expect-error
+    if (window.searchIndex !== undefined) {
+        // @ts-expect-error
+        initSearch(window.searchIndex);
+    }
+} else {
+    // Running in Node, not a browser. Run initSearch just to produce the
+    // exports.
+    initSearch(new Map());
 }
 
 // Parts of this code are based on Lucene, which is licensed under the

@@ -95,29 +95,28 @@ declare namespace rustdoc {
     interface SearchState {
         rustdocToolbar: HTMLElement|null;
         loadingText: string;
-        input: HTMLInputElement|null;
+        inputElement: function(): HTMLInputElement|null;
+        containerElement: function(): Element|null;
         title: string;
         titleBeforeSearch: string;
-        timeout: number|null;
+        timeout: ReturnType<typeof setTimeout>|null;
         currentTab: number;
         focusedByTab: [number|null, number|null, number|null];
         clearInputTimeout: function;
-        outputElement(): HTMLElement|null;
-        focus();
-        defocus();
-        // note: an optional param is not the same as
-        // a nullable/undef-able param.
-        showResults(elem?: HTMLElement|null);
-        removeQueryParameters();
-        hideResults();
-        getQueryStringParams(): Object.<any, string>;
-        origPlaceholder: string;
+        outputElement: function(): Element|null;
+        focus: function();
+        defocus: function();
+        toggle: function();
+        showResults: function();
+        removeQueryParameters: function();
+        hideResults: function();
+        getQueryStringParams: function(): Object.<any, string>;
         setup: function();
         setLoadingSearch();
         descShards: Map<string, SearchDescShard[]>;
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
-        loadedDescShard(string, number, string);
-        isDisplayed(): boolean,
+        loadedDescShard: function(string, number, string);
+        isDisplayed: function(): boolean;
     }
 
     interface SearchDescShard {

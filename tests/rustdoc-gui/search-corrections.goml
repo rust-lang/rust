@@ -3,6 +3,8 @@
 // Checks that the search tab result tell the user about corrections
 // First, try a search-by-name
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 // Intentionally wrong spelling of "NotableStructWithLongName"
 write-into: (".search-input", "NotableStructWithLongNamr")
 // To be SURE that the search will be run.
@@ -40,6 +42,8 @@ assert-text: (
 
 // Now, explicit return values
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 // Intentionally wrong spelling of "NotableStructWithLongName"
 write-into: (".search-input", "-> NotableStructWithLongNamr")
 // To be SURE that the search will be run.
@@ -57,6 +61,8 @@ assert-text: (
 
 // Now, generic correction
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 // Intentionally wrong spelling of "NotableStructWithLongName"
 write-into: (".search-input", "NotableStructWithLongNamr, NotableStructWithLongNamr")
 // To be SURE that the search will be run.
@@ -74,6 +80,8 @@ assert-text: (
 
 // Now, generic correction plus error
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 // Intentionally wrong spelling of "NotableStructWithLongName"
 write-into: (".search-input", "Foo<NotableStructWithLongNamr>,y")
 // To be SURE that the search will be run.
@@ -90,6 +98,8 @@ assert-text: (
 )
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#search-button"
+wait-for: ".search-input"
 // Intentionally wrong spelling of "NotableStructWithLongName"
 write-into: (".search-input", "generic:NotableStructWithLongNamr<x>,y")
 // To be SURE that the search will be run.
