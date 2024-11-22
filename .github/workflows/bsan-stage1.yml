@@ -20,8 +20,10 @@ jobs:
         run: |
             sudo apt-get install ninja-build
             rustup component add llvm-tools-preview
-      - name: Build
+      - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+      - name: BSAN
+        run: ./x.py build bsan --config --stage 1 src/bootstrap/defaults/config.bsan.toml
   build-macos:
     runs-on: macos-latest
     name: Build (macOS)
@@ -32,5 +34,7 @@ jobs:
       - name: Install dependencies
         run: |
             brew install ninja
-      - name: Build
+      - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+      - name: BSAN
+        run: ./x.py build bsan --stage 1 --config src/bootstrap/defaults/config.bsan.toml

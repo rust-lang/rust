@@ -123,7 +123,13 @@ impl Step for Bsan {
     type Output = Option<SanitizerRuntime>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("bsan")
+        let builder = run.builder;
+        run.alias("bsan").default_condition(
+            builder
+                .config
+                .tools
+                .as_ref()
+                .map_or(true, |tools| tools.iter().any(|tool| tool == "bsan")))
     }
 
     fn make_run(run: RunConfig<'_>) {
