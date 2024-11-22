@@ -65,17 +65,17 @@ pub(crate) fn write_shared(
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    let SerializedSearchIndex { index, desc } = build_index(krate, &mut cx.shared.cache, tcx);
-    write_search_desc(cx, krate, &desc)?; // does not need to be merged
+    let search_index =
+        build_index(krate, &mut cx.shared.cache, tcx, &cx.dst, &cx.shared.resource_suffix)?;
 
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
-        version: CrateInfoVersion::V1,
+        version: CrateInfoVersion::V2,
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
-        search_index_js: SearchIndexPart::get(index, &cx.shared.resource_suffix)?,
+        search_index,
         all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
         crates_index: CratesIndexPart::get(crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
@@ -141,7 +141,7 @@ pub(crate) fn write_not_crate_specific(
     resource_suffix: &str,
     include_sources: bool,
 ) -> Result<(), Error> {
-    write_rendered_cross_crate_info(crates, dst, opt, include_sources)?;
+    write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_static_files(dst, opt, style_files, css_file_extension, resource_suffix)?;
     Ok(())
 }
@@ -151,13 +151,18 @@ fn write_rendered_cross_crate_info(
     dst: &Path,
     opt: &RenderOptions,
     include_sources: bool,
+    resource_suffix: &str,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
     if opt.should_emit_crate() {
         if include_sources {
             write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
         }
-        write_rendered_cci::<SearchIndexPart, _>(SearchIndexPart::blank, dst, crates, m)?;
+        crates
+            .iter()
+            .fold(SerializedSearchIndex::default(), |a, b| a.union(&b.search_index))
+            .sort()
+            .write_to(dst, resource_suffix)?;
         write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, crates, m)?;
     }
     write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, crates, m)?;
@@ -215,38 +220,12 @@ fn write_static_files(
     Ok(())
 }
 
-/// Write the search description shards to disk
-fn write_search_desc(
-    cx: &mut Context<'_>,
-    krate: &Crate,
-    search_desc: &[(usize, String)],
-) -> Result<(), Error> {
-    let crate_name = krate.name(cx.tcx()).to_string();
-    let encoded_crate_name = OrderedJson::serialize(&crate_name).unwrap();
-    let path = PathBuf::from_iter([&cx.dst, Path::new("search.desc"), Path::new(&crate_name)]);
-    if path.exists() {
-        try_err!(fs::remove_dir_all(&path), &path);
-    }
-    for (i, (_, part)) in search_desc.iter().enumerate() {
-        let filename = static_files::suffix_path(
-            &format!("{crate_name}-desc-{i}-.js"),
-            &cx.shared.resource_suffix,
-        );
-        let path = path.join(filename);
-        let part = OrderedJson::serialize(part).unwrap();
-        let part = format!("searchState.loadedDescShard({encoded_crate_name}, {i}, {part})");
-        create_parents(&path)?;
-        try_err!(fs::write(&path, part), &path);
-    }
-    Ok(())
-}
-
 /// Contains pre-rendered contents to insert into the CCI template
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct CrateInfo {
     version: CrateInfoVersion,
     src_files_js: PartsAndLocations<SourcesPart>,
-    search_index_js: PartsAndLocations<SearchIndexPart>,
+    search_index: SerializedSearchIndex,
     all_crates: PartsAndLocations<AllCratesPart>,
     crates_index: PartsAndLocations<CratesIndexPart>,
     trait_impl: PartsAndLocations<TraitAliasPart>,
@@ -277,7 +256,7 @@ impl CrateInfo {
 /// to provide better diagnostics about including an invalid file.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum CrateInfoVersion {
-    V1,
+    V2,
 }
 
 /// Paths (relative to the doc root) and their pre-merge contents
@@ -329,36 +308,6 @@ trait CciPart: Sized + fmt::Display + DeserializeOwned + 'static {
     /// Identifies the file format of the cross-crate information
     type FileFormat: sorted_template::FileFormat;
     fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self>;
-}
-
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct SearchIndex;
-type SearchIndexPart = Part<SearchIndex, EscapedJson>;
-impl CciPart for SearchIndexPart {
-    type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
-        &crate_info.search_index_js
-    }
-}
-
-impl SearchIndexPart {
-    fn blank() -> SortedTemplate<<Self as CciPart>::FileFormat> {
-        SortedTemplate::from_before_after(
-            r"var searchIndex = new Map(JSON.parse('[",
-            r"]'));
-if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
-else if (window.initSearch) window.initSearch(searchIndex);",
-        )
-    }
-
-    fn get(
-        search_index: OrderedJson,
-        resource_suffix: &str,
-    ) -> Result<PartsAndLocations<Self>, Error> {
-        let path = suffix_path("search-index.js", resource_suffix);
-        let search_index = EscapedJson::from(search_index);
-        Ok(PartsAndLocations::with(path, search_index))
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -426,6 +375,7 @@ impl CratesIndexPart {
     fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
+            short_title: "Crates",
             css_class: "mod sys",
             root_path: "./",
             static_root_path: cx.shared.static_root_path.as_deref(),

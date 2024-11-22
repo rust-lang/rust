@@ -4811,6 +4811,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "smallvec",
+ "stringdex",
  "tempfile",
  "threadpool",
  "tracing",
@@ -5222,6 +5223,15 @@ dependencies = [
  "phf_shared 0.11.3",
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "stringdex"
+version = "0.0.1-alpha2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e41326d1a9d50044cda62652768736b37f0933bdf2c44a10d044c7f559a9c81b"
+dependencies = [
+ "stacker",
 ]
 
 [[package]]

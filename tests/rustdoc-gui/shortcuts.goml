@@ -8,9 +8,9 @@ press-key: "Escape"
 assert-false: "input.search-input:focus"
 // We now check for the help popup.
 press-key: "?"
-assert-css: ("#help-button .popover", {"display": "block"})
+assert-css: ("rustdoc-toolbar .help-menu .popover", {"display": "block"})
 press-key: "Escape"
-assert-css: ("#help-button .popover", {"display": "none"})
+assert-false: "rustdoc-toolbar .help-menu .popover"
 // Checking doc collapse and expand.
 // It should be displaying a "-":
 assert-text: ("#toggle-all-docs", "Summary")
