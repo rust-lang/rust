@@ -1,5 +1,4 @@
 //@ run-pass
-//@ compile-flags: -Zunstable-options
 //@ edition:2024
 //@ aux-build:reserved-guarded-strings-macro-2021.rs
 

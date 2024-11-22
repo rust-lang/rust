@@ -4,7 +4,7 @@ error: `async` trait bounds are only allowed in Rust 2018 or later
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                ^^^^^
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: `async` trait bounds are only allowed in Rust 2018 or later
@@ -13,7 +13,7 @@ error: `async` trait bounds are only allowed in Rust 2018 or later
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                                    ^^^^^
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0658]: async closures are unstable

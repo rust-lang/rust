@@ -6,7 +6,7 @@ LL |     s#[c"owned_box"]
    |
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected item, found `"owned_box"`

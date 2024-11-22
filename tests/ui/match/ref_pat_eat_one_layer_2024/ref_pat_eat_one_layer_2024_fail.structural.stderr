@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:9:17
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:8:17
    |
 LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
    |                 ^^^^^^^^^^^^^    --------------- this expression has type `&Option<&Option<{integer}>>`
@@ -10,7 +10,7 @@ LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:12:23
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:11:23
    |
 LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
    |                       ^^^^^^     ------------------- this expression has type `&Option<&mut Option<{integer}>>`
@@ -21,7 +21,7 @@ LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:16:27
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:15:27
    |
 LL |         let _: &mut u32 = x;
    |                --------   ^ types differ in mutability
@@ -32,7 +32,7 @@ LL |         let _: &mut u32 = x;
                       found reference `&{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:19:23
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:18:23
    |
 LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
    |                       ^^^^^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
@@ -43,7 +43,7 @@ LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:22:29
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:21:29
    |
 LL |     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
    |                             ^^^^^^       ------------------------- this expression has type `&Option<Option<&mut Option<{integer}>>>`
@@ -54,7 +54,7 @@ LL |     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:25:17
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:24:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
@@ -65,7 +65,7 @@ LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:28:17
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:27:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
@@ -76,7 +76,7 @@ LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:32:9
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:31:9
    |
 LL |     let &mut _ = &&0;
    |         ^^^^^^   --- this expression has type `&&{integer}`
@@ -87,7 +87,7 @@ LL |     let &mut _ = &&0;
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:35:9
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:34:9
    |
 LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
    |         ^^^^^^   ----------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&{integer}`
@@ -98,7 +98,7 @@ LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:46:9
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:45:9
    |
 LL |     let &mut _ = &&mut 0;
    |         ^^^^^^   ------- this expression has type `&&mut {integer}`
@@ -109,7 +109,7 @@ LL |     let &mut _ = &&mut 0;
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:49:9
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:48:9
    |
 LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
    |         ^^^^^^   --------------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&mut {integer}`
@@ -120,7 +120,7 @@ LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:52:14
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:51:14
    |
 LL |     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
    |              ^^^^^^^^^^^^^^^^   -------------------------- this expression has type `&mut &&&&mut &&&mut &mut {integer}`
@@ -131,7 +131,7 @@ LL |     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
            found mutable reference `&mut _`
 
 error[E0308]: mismatched types
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:55:17
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:54:17
    |
 LL |     if let Some(&mut _) = &mut Some(&0) {
    |                 ^^^^^^    ------------- this expression has type `&mut Option<&{integer}>`
@@ -142,7 +142,7 @@ LL |     if let Some(&mut _) = &mut Some(&0) {
            found mutable reference `&mut _`
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:61:13
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:60:13
    |
 LL |     let Foo(mut a) = &Foo(0);
    |             ^^^^
@@ -152,7 +152,7 @@ LL |     let Foo(mut a) = &Foo(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:65:13
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:64:13
    |
 LL |     let Foo(mut a) = &mut Foo(0);
    |             ^^^^
@@ -162,14 +162,14 @@ LL |     let Foo(mut a) = &mut Foo(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0277]: the trait bound `&_: main::Ref` is not satisfied
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:83:14
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:82:14
    |
 LL |     let &_ = generic();
    |              ^^^^^^^^^ the trait `main::Ref` is not implemented for `&_`
    |
    = help: the trait `main::Ref` is implemented for `&'static mut [(); 0]`
 note: required by a bound in `generic`
-  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:69:19
+  --> $DIR/ref_pat_eat_one_layer_2024_fail.rs:68:19
    |
 LL |     fn generic<R: Ref>() -> R {
    |                   ^^^ required by this bound in `generic`

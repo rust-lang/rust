@@ -25,7 +25,7 @@ Options:
         --edition 2015|2018|2021|2024
                         Specify which edition of the compiler to use when
                         compiling code. The default is 2015 and the latest
-                        stable edition is 2021.
+                        stable edition is 2024.
         --emit [asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]
                         Comma separated list of types of output for the
                         compiler to emit

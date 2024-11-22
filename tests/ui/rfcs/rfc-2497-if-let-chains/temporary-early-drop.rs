@@ -1,5 +1,5 @@
 // issue-103476
-//@ compile-flags: -Zlint-mir -Zunstable-options
+//@ compile-flags: -Zlint-mir
 //@ edition: 2024
 //@ check-pass
 

@@ -1,6 +1,7 @@
 // This test ensures that the 2024 edition merged doctest will not use `#[allow(unused)]`.
 
-//@ compile-flags:--test -Zunstable-options --edition 2024
+//@ edition: 2024
+//@ compile-flags:--test
 //@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ failure-status: 101

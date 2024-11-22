@@ -33,7 +33,7 @@ pub const EDITION_NAME_LIST: &str = "2015|2018|2021|2024";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
-pub const LATEST_STABLE_EDITION: Edition = Edition::Edition2021;
+pub const LATEST_STABLE_EDITION: Edition = Edition::Edition2024;
 
 impl fmt::Display for Edition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -62,7 +62,7 @@ impl Edition {
             Edition::Edition2015 => true,
             Edition::Edition2018 => true,
             Edition::Edition2021 => true,
-            Edition::Edition2024 => false,
+            Edition::Edition2024 => true,
         }
     }
 
