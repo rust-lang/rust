@@ -732,20 +732,20 @@ impl<'tcx> MiriMachine<'tcx> {
     }
 
     pub(crate) fn late_init(
-        this: &mut MiriInterpCx<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         config: &MiriConfig,
         on_main_stack_empty: StackEmptyCallback<'tcx>,
     ) -> InterpResult<'tcx> {
-        EnvVars::init(this, config)?;
-        MiriMachine::init_extern_statics(this)?;
-        ThreadManager::init(this, on_main_stack_empty);
+        EnvVars::init(ecx, config)?;
+        MiriMachine::init_extern_statics(ecx)?;
+        ThreadManager::init(ecx, on_main_stack_empty);
         interp_ok(())
     }
 
-    pub(crate) fn add_extern_static(this: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
+    pub(crate) fn add_extern_static(ecx: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
         // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
-        this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
+        ecx.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }
 
     pub(crate) fn communicate(&self) -> bool {

@@ -113,6 +113,11 @@ impl ThreadId {
         self.0
     }
 
+    /// Create a new thread id from a `u32` without checking if this thread exists.
+    pub fn new_unchecked(id: u32) -> Self {
+        Self(id)
+    }
+
     pub const MAIN_THREAD: ThreadId = ThreadId(0);
 }
 
@@ -141,7 +146,7 @@ pub enum BlockReason {
     /// Waiting for time to pass.
     Sleep,
     /// Blocked on a mutex.
-    Mutex(MutexId),
+    Mutex,
     /// Blocked on a condition variable.
     Condvar(CondvarId),
     /// Blocked on a reader-writer lock.
@@ -152,6 +157,8 @@ pub enum BlockReason {
     InitOnce(InitOnceId),
     /// Blocked on epoll.
     Epoll,
+    /// Blocked on eventfd.
+    Eventfd,
 }
 
 /// The state of a thread.

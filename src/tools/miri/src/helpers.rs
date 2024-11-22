@@ -116,8 +116,7 @@ pub fn resolve_path<'tcx>(
 /// Gets the layout of a type at a path.
 #[track_caller]
 pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLayout<'tcx> {
-    let ty = resolve_path(cx.tcx(), path, Namespace::TypeNS)
-        .ty(cx.tcx(), cx.typing_env());
+    let ty = resolve_path(cx.tcx(), path, Namespace::TypeNS).ty(cx.tcx(), cx.typing_env());
     cx.layout_of(ty).to_result().ok().unwrap()
 }
 
@@ -1009,7 +1008,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
 
         fn float_to_int_inner<'tcx, F: rustc_apfloat::Float>(
-            this: &MiriInterpCx<'tcx>,
+            ecx: &MiriInterpCx<'tcx>,
             src: F,
             cast_to: TyAndLayout<'tcx>,
             round: rustc_apfloat::Round,
@@ -1029,7 +1028,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Nothing else
                 _ =>
                     span_bug!(
-                        this.cur_span(),
+                        ecx.cur_span(),
                         "attempted float-to-int conversion with non-int output type {}",
                         cast_to.ty,
                     ),

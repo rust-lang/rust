@@ -20,10 +20,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
     // We only use the first 4 bytes for the id.
 
-    fn init_once_get_data(
-        &mut self,
+    fn init_once_get_data<'a>(
+        &'a mut self,
         init_once_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, WindowsInitOnce> {
+    ) -> InterpResult<'tcx, &'a WindowsInitOnce>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
 
         let init_once = this.deref_pointer(init_once_ptr)?;
