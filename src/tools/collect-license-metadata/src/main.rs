@@ -17,6 +17,11 @@ fn main() -> Result<(), Error> {
     let reuse_exe: PathBuf = std::env::var_os("REUSE_EXE").expect("Missing REUSE_EXE").into();
     let dest: PathBuf = std::env::var_os("DEST").expect("Missing DEST").into();
 
+    if dest.exists() {
+        println!("{} exists, skipping REUSE data collection", dest.display());
+        return Ok(());
+    }
+
     let mut interner = LicensesInterner::new();
     let paths = crate::reuse::collect(&reuse_exe, &mut interner)?;
 
