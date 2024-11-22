@@ -10,7 +10,7 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::Span;
 use tracing::{info_span, instrument, trace};
 
