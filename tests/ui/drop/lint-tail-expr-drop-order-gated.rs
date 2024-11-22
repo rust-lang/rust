@@ -3,7 +3,6 @@
 // Only `cargo fix --edition 2024` shall activate this lint.
 
 //@ check-pass
-//@ compile-flags: -Z unstable-options
 //@ edition: 2024
 
 #![deny(tail_expr_drop_order)]

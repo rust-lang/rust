@@ -1,5 +1,5 @@
 warning[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe block
-  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:10:5
+  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:9:5
    |
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
@@ -7,7 +7,7 @@ LL |     unsf();
    = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
-  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:9:1
+  --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:8:1
    |
 LL | unsafe fn foo() {
    | ^^^^^^^^^^^^^^^

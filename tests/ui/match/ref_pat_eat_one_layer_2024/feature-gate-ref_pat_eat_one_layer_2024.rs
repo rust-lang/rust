@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 // gate-test-ref_pat_eat_one_layer_2024_structural
 
 pub fn main() {

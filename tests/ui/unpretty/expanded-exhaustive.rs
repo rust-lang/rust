@@ -1,4 +1,4 @@
-//@ compile-flags: -Zunpretty=expanded -Zunstable-options
+//@ compile-flags: -Zunpretty=expanded
 //@ edition:2024
 //@ check-pass
 

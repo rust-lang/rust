@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Z unstable-options
 
 #![feature(gen_blocks)]
 #![feature(async_closure)]

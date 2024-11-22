@@ -1,5 +1,5 @@
 // Test for issue #132429
-//@compile-flags: -Zunstable-options --edition=2024
+//@ edition: 2024
 //@check-pass
 
 use std::future::Future;
