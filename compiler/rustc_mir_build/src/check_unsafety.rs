@@ -537,8 +537,45 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
                 }
             }
-            ExprKind::InlineAsm { .. } => {
+            ExprKind::InlineAsm(box InlineAsmExpr {
+                asm_macro: _,
+                ref operands,
+                template: _,
+                options: _,
+                line_spans: _,
+            }) => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
+
+                // For inline asm, do not use `walk_expr`, since we want to handle the label block
+                // specially.
+                for op in &**operands {
+                    use rustc_middle::thir::InlineAsmOperand::*;
+                    match op {
+                        In { expr, reg: _ }
+                        | Out { expr: Some(expr), reg: _, late: _ }
+                        | InOut { expr, reg: _, late: _ } => self.visit_expr(&self.thir()[*expr]),
+                        SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
+                            self.visit_expr(&self.thir()[*in_expr]);
+                            if let Some(out_expr) = out_expr {
+                                self.visit_expr(&self.thir()[*out_expr]);
+                            }
+                        }
+                        Out { expr: None, reg: _, late: _ }
+                        | Const { value: _, span: _ }
+                        | SymFn { value: _, span: _ }
+                        | SymStatic { def_id: _ } => {}
+                        Label { block } => {
+                            // Label blocks are safe context.
+                            // `asm!()` is forced to be wrapped inside unsafe. If there's no special
+                            // treatment, the label blocks would also always be unsafe with no way
+                            // of opting out.
+                            self.in_safety_context(SafetyContext::Safe, |this| {
+                                visit::walk_block(this, &this.thir()[*block])
+                            });
+                        }
+                    }
+                }
+                return;
             }
             ExprKind::Adt(box AdtExpr {
                 adt_def,

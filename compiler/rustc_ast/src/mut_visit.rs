@@ -104,8 +104,16 @@ pub trait MutVisitor: Sized {
         walk_use_tree(self, use_tree);
     }
 
+    fn visit_foreign_item(&mut self, ni: &mut P<ForeignItem>) {
+        walk_item(self, ni);
+    }
+
     fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-        walk_flat_map_item(self, ni)
+        walk_flat_map_foreign_item(self, ni)
+    }
+
+    fn visit_item(&mut self, i: &mut P<Item>) {
+        walk_item(self, i);
     }
 
     fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -116,8 +124,16 @@ pub trait MutVisitor: Sized {
         walk_fn_header(self, header);
     }
 
+    fn visit_field_def(&mut self, fd: &mut FieldDef) {
+        walk_field_def(self, fd);
+    }
+
     fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
         walk_flat_map_field_def(self, fd)
+    }
+
+    fn visit_assoc_item(&mut self, i: &mut P<AssocItem>, ctxt: AssocCtxt) {
+        walk_assoc_item(self, i, ctxt)
     }
 
     fn flat_map_assoc_item(
@@ -151,6 +167,10 @@ pub trait MutVisitor: Sized {
 
     fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
         walk_flat_map_stmt(self, s)
+    }
+
+    fn visit_arm(&mut self, arm: &mut Arm) {
+        walk_arm(self, arm);
     }
 
     fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
@@ -197,6 +217,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_foreign_mod(&mut self, nm: &mut ForeignMod) {
         walk_foreign_mod(self, nm);
+    }
+
+    fn visit_variant(&mut self, v: &mut Variant) {
+        walk_variant(self, v);
     }
 
     fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
@@ -251,6 +275,10 @@ pub trait MutVisitor: Sized {
         walk_attribute(self, at);
     }
 
+    fn visit_param(&mut self, param: &mut Param) {
+        walk_param(self, param);
+    }
+
     fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
         walk_flat_map_param(self, param)
     }
@@ -271,6 +299,10 @@ pub trait MutVisitor: Sized {
         walk_variant_data(self, vdata);
     }
 
+    fn visit_generic_param(&mut self, param: &mut GenericParam) {
+        walk_generic_param(self, param)
+    }
+
     fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
         walk_flat_map_generic_param(self, param)
     }
@@ -285,6 +317,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_mt(&mut self, mt: &mut MutTy) {
         walk_mt(self, mt);
+    }
+
+    fn visit_expr_field(&mut self, f: &mut ExprField) {
+        walk_expr_field(self, f);
     }
 
     fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
@@ -309,6 +345,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_span(&mut self, _sp: &mut Span) {
         // Do nothing.
+    }
+
+    fn visit_pat_field(&mut self, fp: &mut PatField) {
+        walk_pat_field(self, fp)
     }
 
     fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
@@ -429,16 +469,20 @@ pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &
     vis.visit_span(close);
 }
 
-pub fn walk_flat_map_pat_field<T: MutVisitor>(
-    vis: &mut T,
-    mut fp: PatField,
-) -> SmallVec<[PatField; 1]> {
-    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+pub fn walk_pat_field<T: MutVisitor>(vis: &mut T, fp: &mut PatField) {
+    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
     vis.visit_pat(pat);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_pat_field<T: MutVisitor>(
+    vis: &mut T,
+    mut fp: PatField,
+) -> SmallVec<[PatField; 1]> {
+    vis.visit_pat_field(&mut fp);
     smallvec![fp]
 }
 
@@ -459,14 +503,18 @@ fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
+pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     visit_opt(body, |body| vis.visit_expr(body));
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
+    vis.visit_arm(&mut arm);
     smallvec![arm]
 }
 
@@ -543,11 +591,8 @@ fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
-pub fn walk_flat_map_variant<T: MutVisitor>(
-    visitor: &mut T,
-    mut variant: Variant,
-) -> SmallVec<[Variant; 1]> {
-    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
+pub fn walk_variant<T: MutVisitor>(visitor: &mut T, variant: &mut Variant) {
+    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
@@ -555,6 +600,13 @@ pub fn walk_flat_map_variant<T: MutVisitor>(
     visitor.visit_variant_data(data);
     visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_variant<T: MutVisitor>(
+    vis: &mut T,
+    mut variant: Variant,
+) -> SmallVec<[Variant; 1]> {
+    vis.visit_variant(&mut variant);
     smallvec![variant]
 }
 
@@ -685,13 +737,17 @@ fn walk_meta_item<T: MutVisitor>(vis: &mut T, mi: &mut MetaItem) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
-    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
+pub fn walk_param<T: MutVisitor>(vis: &mut T, param: &mut Param) {
+    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
+    vis.visit_param(&mut param);
     smallvec![param]
 }
 
@@ -950,11 +1006,8 @@ fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCaptu
     }
 }
 
-pub fn walk_flat_map_generic_param<T: MutVisitor>(
-    vis: &mut T,
-    mut param: GenericParam,
-) -> SmallVec<[GenericParam; 1]> {
-    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
+pub fn walk_generic_param<T: MutVisitor>(vis: &mut T, param: &mut GenericParam) {
+    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
@@ -972,6 +1025,13 @@ pub fn walk_flat_map_generic_param<T: MutVisitor>(
     if let Some(colon_span) = colon_span {
         vis.visit_span(colon_span);
     }
+}
+
+pub fn walk_flat_map_generic_param<T: MutVisitor>(
+    vis: &mut T,
+    mut param: GenericParam,
+) -> SmallVec<[GenericParam; 1]> {
+    vis.visit_generic_param(&mut param);
     smallvec![param]
 }
 
@@ -1054,30 +1114,38 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_field_def<T: MutVisitor>(
-    visitor: &mut T,
-    mut fd: FieldDef,
-) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_field_def<T: MutVisitor>(
+    vis: &mut T,
+    mut fd: FieldDef,
+) -> SmallVec<[FieldDef; 1]> {
+    vis.visit_field_def(&mut fd);
     smallvec![fd]
+}
+
+pub fn walk_expr_field<T: MutVisitor>(vis: &mut T, f: &mut ExprField) {
+    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
+    vis.visit_id(id);
+    visit_attrs(vis, attrs);
+    vis.visit_ident(ident);
+    vis.visit_expr(expr);
+    vis.visit_span(span);
 }
 
 pub fn walk_flat_map_expr_field<T: MutVisitor>(
     vis: &mut T,
     mut f: ExprField,
 ) -> SmallVec<[ExprField; 1]> {
-    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    vis.visit_ident(ident);
-    vis.visit_expr(expr);
-    vis.visit_span(span);
+    vis.visit_expr_field(&mut f);
     smallvec![f]
 }
 
@@ -1331,18 +1399,19 @@ pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
     vis.visit_span(inject_use_span);
 }
 
-pub fn walk_flat_map_item<K: WalkItemKind<Ctxt = ()>>(
-    visitor: &mut impl MutVisitor,
-    item: P<Item<K>>,
-) -> SmallVec<[P<Item<K>>; 1]> {
-    walk_flat_map_assoc_item(visitor, item, ())
+pub fn walk_item(visitor: &mut impl MutVisitor, item: &mut P<Item<impl WalkItemKind<Ctxt = ()>>>) {
+    walk_item_ctxt(visitor, item, ())
 }
 
-pub fn walk_flat_map_assoc_item<K: WalkItemKind>(
+pub fn walk_assoc_item(visitor: &mut impl MutVisitor, item: &mut P<AssocItem>, ctxt: AssocCtxt) {
+    walk_item_ctxt(visitor, item, ctxt)
+}
+
+fn walk_item_ctxt<K: WalkItemKind>(
     visitor: &mut impl MutVisitor,
-    mut item: P<Item<K>>,
+    item: &mut P<Item<K>>,
     ctxt: K::Ctxt,
-) -> SmallVec<[P<Item<K>>; 1]> {
+) {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
@@ -1351,6 +1420,27 @@ pub fn walk_flat_map_assoc_item<K: WalkItemKind>(
     kind.walk(*span, *id, ident, vis, ctxt, visitor);
     visit_lazy_tts(visitor, tokens);
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_item(vis: &mut impl MutVisitor, mut item: P<Item>) -> SmallVec<[P<Item>; 1]> {
+    vis.visit_item(&mut item);
+    smallvec![item]
+}
+
+pub fn walk_flat_map_foreign_item(
+    vis: &mut impl MutVisitor,
+    mut item: P<ForeignItem>,
+) -> SmallVec<[P<ForeignItem>; 1]> {
+    vis.visit_foreign_item(&mut item);
+    smallvec![item]
+}
+
+pub fn walk_flat_map_assoc_item(
+    vis: &mut impl MutVisitor,
+    mut item: P<AssocItem>,
+    ctxt: AssocCtxt,
+) -> SmallVec<[P<AssocItem>; 1]> {
+    vis.visit_assoc_item(&mut item, ctxt);
     smallvec![item]
 }
 

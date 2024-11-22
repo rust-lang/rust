@@ -574,9 +574,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // unexpected region errors.
         goals.push(Goal::new(tcx, param_env, ty::ClauseKind::WellFormed(hidden_ty.into())));
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
-        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
-            let predicate = predicate.fold_with(&mut BottomUpFolder {
+        let replace_opaques_in = |clause: ty::Clause<'tcx>, goals: &mut Vec<_>| {
+            clause.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
@@ -612,11 +611,31 @@ impl<'tcx> InferCtxt<'tcx> {
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
-            });
+            })
+        };
+
+        let item_bounds = tcx.explicit_item_bounds(def_id);
+        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+            let predicate = replace_opaques_in(predicate, goals);
 
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
             goals.push(Goal::new(self.tcx, param_env, predicate));
+        }
+
+        // If this opaque is being defined and it's conditionally const,
+        if self.tcx.is_conditionally_const(def_id) {
+            let item_bounds = tcx.explicit_implied_const_bounds(def_id);
+            for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+                let predicate = replace_opaques_in(
+                    predicate.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe),
+                    goals,
+                );
+
+                // Require that the predicate holds for the concrete type.
+                debug!(?predicate);
+                goals.push(Goal::new(self.tcx, param_env, predicate));
+            }
         }
     }
 }

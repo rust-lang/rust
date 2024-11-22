@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use rustc_macros::{Diagnostic, Subdiagnostic};
 
 #[derive(Diagnostic)]
@@ -93,3 +95,9 @@ pub(crate) struct IceFlags {
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_exclude_cargo_defaults)]
 pub(crate) struct IceExcludeCargoDefaults;
+
+#[derive(Diagnostic)]
+#[diag(driver_impl_unstable_feature_usage)]
+pub(crate) struct UnstableFeatureUsage {
+    pub error: Box<dyn Error>,
+}

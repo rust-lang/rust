@@ -777,6 +777,16 @@ fn link_natively(
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
     let self_contained_components = self_contained_components(sess, crate_type);
+
+    // On AIX, we ship all libraries as .a big_af archive
+    // the expected format is lib<name>.a(libname.so) for the actual
+    // dynamic library. So we link to a temporary .so file to be archived
+    // at the final out_filename location
+    let should_archive = crate_type != CrateType::Executable && sess.target.is_like_aix;
+    let archive_member =
+        should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
+    let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
+
     let mut cmd = linker_with_args(
         &linker_path,
         flavor,
@@ -784,7 +794,7 @@ fn link_natively(
         archive_builder_builder,
         crate_type,
         tmpdir,
-        out_filename,
+        temp_filename,
         codegen_results,
         self_contained_components,
     )?;
@@ -1156,6 +1166,12 @@ fn link_natively(
             }
             Strip::None => {}
         }
+    }
+
+    if should_archive {
+        let mut ab = archive_builder_builder.new_archive_builder(sess);
+        ab.add_file(temp_filename);
+        ab.build(out_filename);
     }
 
     Ok(())

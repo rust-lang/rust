@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use itertools::Itertools;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
     Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
@@ -21,6 +22,7 @@ use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
+use tracing::debug;
 
 use super::apple;
 
@@ -53,6 +55,7 @@ fn load_metadata_with(
 
 impl MetadataLoader for DefaultMetadataLoader {
     fn get_rlib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting rlib metadata for {}", path.display());
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -77,8 +80,26 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting dylib metadata for {}", path.display());
         if target.is_like_aix {
-            load_metadata_with(path, |data| get_metadata_xcoff(path, data))
+            load_metadata_with(path, |data| {
+                let archive = object::read::archive::ArchiveFile::parse(&*data).map_err(|e| {
+                    format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                })?;
+
+                match archive.members().exactly_one() {
+                    Ok(lib) => {
+                        let lib = lib.map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        let data = lib.data(data).map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        get_metadata_xcoff(path, data)
+                    }
+                    Err(e) => Err(format!("failed to parse aix dylib '{}': {}", path.display(), e)),
+                }
+            })
         } else {
             load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
         }
