@@ -1457,7 +1457,7 @@ impl Step for CodegenBackend {
         }
         let mut files = files.into_iter().filter(|f| {
             let filename = f.file_name().unwrap().to_str().unwrap();
-            is_dylib(filename) && filename.contains("rustc_codegen_")
+            is_dylib(f) && filename.contains("rustc_codegen_")
         });
         let codegen_backend = match files.next() {
             Some(f) => f,
@@ -1936,7 +1936,7 @@ impl Step for Assemble {
             let filename = f.file_name().into_string().unwrap();
 
             let is_proc_macro = proc_macros.contains(&filename);
-            let is_dylib_or_debug = is_dylib(&filename) || is_debug_info(&filename);
+            let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
             // If we link statically to stdlib, do not copy the libstd dynamic library file
             // FIXME: Also do this for Windows once incremental post-optimization stage0 tests
@@ -2089,7 +2089,7 @@ pub fn run_cargo(
             if filename.ends_with(".lib")
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
-                || is_dylib(&filename)
+                || is_dylib(Path::new(&*filename))
             {
                 // Always keep native libraries, rust dylibs and debuginfo
                 keep = true;
@@ -2189,7 +2189,7 @@ pub fn run_cargo(
             Some(triple) => triple.0.to_str().unwrap(),
             None => panic!("no output generated for {prefix:?} {extension:?}"),
         };
-        if is_dylib(path_to_add) {
+        if is_dylib(Path::new(path_to_add)) {
             let candidate = format!("{path_to_add}.lib");
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {

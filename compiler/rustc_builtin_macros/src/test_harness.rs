@@ -1,6 +1,6 @@
 // Code that generates a test runner to run all the tests in a crate
 
-use std::{iter, mem};
+use std::mem;
 
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
@@ -19,7 +19,7 @@ use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::symbol::{Ident, Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::PanicStrategy;
-use smallvec::{SmallVec, smallvec};
+use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -129,8 +129,9 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         c.items.push(mk_main(&mut self.cx));
     }
 
-    fn flat_map_item(&mut self, mut i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        let item = &mut *i;
+    fn visit_item(&mut self, item: &mut P<ast::Item>) {
+        let item = &mut **item;
+
         if let Some(name) = get_test_name(&item) {
             debug!("this is a test item");
 
@@ -158,7 +159,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             // But in those cases, we emit a lint to warn the user of these missing tests.
             walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
-        smallvec![i]
     }
 }
 
@@ -198,40 +198,30 @@ struct EntryPointCleaner<'a> {
 }
 
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
-    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+    fn visit_item(&mut self, item: &mut P<ast::Item>) {
         self.depth += 1;
-        let item = walk_flat_map_item(self, i).expect_one("noop did something");
+        ast::mut_visit::walk_item(self, item);
         self.depth -= 1;
 
         // Remove any #[rustc_main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let item = match entry_point_type(&item, self.depth == 0) {
+        match entry_point_type(&item, self.depth == 0) {
             EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
-                item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
-                    let allow_dead_code = attr::mk_attr_nested_word(
-                        &self.sess.psess.attr_id_generator,
-                        ast::AttrStyle::Outer,
-                        ast::Safety::Default,
-                        sym::allow,
-                        sym::dead_code,
-                        self.def_site,
-                    );
-                    let attrs = attrs
-                        .into_iter()
-                        .filter(|attr| {
-                            !attr.has_name(sym::rustc_main) && !attr.has_name(sym::start)
-                        })
-                        .chain(iter::once(allow_dead_code))
-                        .collect();
-
-                    ast::Item { id, ident, attrs, kind, vis, span, tokens }
-                })
+                let allow_dead_code = attr::mk_attr_nested_word(
+                    &self.sess.psess.attr_id_generator,
+                    ast::AttrStyle::Outer,
+                    ast::Safety::Default,
+                    sym::allow,
+                    sym::dead_code,
+                    self.def_site,
+                );
+                item.attrs
+                    .retain(|attr| !attr.has_name(sym::rustc_main) && !attr.has_name(sym::start));
+                item.attrs.push(allow_dead_code);
             }
-            EntryPointType::None | EntryPointType::OtherMain => item,
+            EntryPointType::None | EntryPointType::OtherMain => {}
         };
-
-        smallvec![item]
     }
 }
 
@@ -292,7 +282,7 @@ fn generate_test_harness(
 /// Most of the Ident have the usual def-site hygiene for the AST pass. The
 /// exception is the `test_const`s. These have a syntax context that has two
 /// opaque marks: one from the expansion of `test` or `test_case`, and one
-/// generated  in `TestHarnessGenerator::flat_map_item`. When resolving this
+/// generated  in `TestHarnessGenerator::visit_item`. When resolving this
 /// identifier after failing to find a matching identifier in the root module
 /// we remove the outer mark, and try resolving at its def-site, which will
 /// then resolve to `test_const`.

@@ -11,6 +11,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, str};
 
 use build_helper::util::fail;
+use object::read::archive::ArchiveFile;
 
 use crate::LldMode;
 use crate::core::builder::Builder;
@@ -53,8 +54,27 @@ pub fn exe(name: &str, target: TargetSelection) -> String {
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
-pub fn is_dylib(name: &str) -> bool {
-    name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll")
+pub fn is_dylib(path: &Path) -> bool {
+    path.extension().and_then(|ext| ext.to_str()).map_or(false, |ext| {
+        ext == "dylib" || ext == "so" || ext == "dll" || (ext == "a" && is_aix_shared_archive(path))
+    })
+}
+
+fn is_aix_shared_archive(path: &Path) -> bool {
+    // FIXME(#133268): reading the entire file as &[u8] into memory seems excessive
+    // look into either mmap it or use the ReadCache
+    let data = match fs::read(path) {
+        Ok(data) => data,
+        Err(_) => return false,
+    };
+    let file = match ArchiveFile::parse(&*data) {
+        Ok(file) => file,
+        Err(_) => return false,
+    };
+
+    file.members()
+        .filter_map(Result::ok)
+        .any(|entry| String::from_utf8_lossy(entry.name()).contains(".so"))
 }
 
 /// Returns `true` if the file name given looks like a debug info file

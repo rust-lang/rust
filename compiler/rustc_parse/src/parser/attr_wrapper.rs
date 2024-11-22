@@ -510,8 +510,8 @@ fn make_attr_token_stream(
             FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
                 let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
                 let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
-                assert_eq!(
-                    open_delim, delim,
+                assert!(
+                    open_delim.eq_ignoring_invisible_origin(&delim),
                     "Mismatched open/close delims: open={open_delim:?} close={span:?}"
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);

@@ -2110,7 +2110,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     _ => bug!("unexpected parent item of associated item: {parent_def_id:?}"),
                 }
             }
-            DefKind::Closure | DefKind::OpaqueTy => {
+            DefKind::OpaqueTy => match self.opaque_ty_origin(def_id) {
+                hir::OpaqueTyOrigin::FnReturn { parent, .. } => self.is_conditionally_const(parent),
+                hir::OpaqueTyOrigin::AsyncFn { .. } => false,
+                // FIXME(const_trait_impl): ATPITs could be conditionally const?
+                hir::OpaqueTyOrigin::TyAlias { .. } => false,
+            },
+            DefKind::Closure => {
                 // Closures and RPITs will eventually have const conditions
                 // for `~const` bounds.
                 false

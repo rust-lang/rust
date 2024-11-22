@@ -1965,9 +1965,9 @@ checksum = "baff4b617f7df3d896f97fe922b64817f6cd9a756bb81d40f8883f2f66dcb401"
 
 [[package]]
 name = "libc"
-version = "0.2.161"
+version = "0.2.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9489c2807c139ffd9c1794f4af0ebe86a828db53ecdc7fea2111d0fed085d1"
+checksum = "433bfe06b8c75da9b2e3fbea6e5329ff87748f0b144ef75306e674c3f6f7c13f"
 
 [[package]]
 name = "libdbus-sys"
@@ -3685,6 +3685,8 @@ version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
  "rustc_span",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3988,6 +3990,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.6.0",
+ "libc",
  "libloading",
  "odht",
  "rustc_abi",

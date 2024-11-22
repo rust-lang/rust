@@ -1,5 +1,7 @@
 //! List of the unstable feature gates.
 
+use std::path::PathBuf;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -650,6 +652,54 @@ declare_features! (
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
 );
+
+impl Features {
+    pub fn dump_feature_usage_metrics(
+        &self,
+        metrics_path: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(serde::Serialize)]
+        struct LibFeature {
+            symbol: String,
+        }
+
+        #[derive(serde::Serialize)]
+        struct LangFeature {
+            symbol: String,
+            since: Option<String>,
+        }
+
+        #[derive(serde::Serialize)]
+        struct FeatureUsage {
+            lib_features: Vec<LibFeature>,
+            lang_features: Vec<LangFeature>,
+        }
+
+        let metrics_file = std::fs::File::create(metrics_path)?;
+        let metrics_file = std::io::BufWriter::new(metrics_file);
+
+        let lib_features = self
+            .enabled_lib_features
+            .iter()
+            .map(|EnabledLibFeature { gate_name, .. }| LibFeature { symbol: gate_name.to_string() })
+            .collect();
+
+        let lang_features = self
+            .enabled_lang_features
+            .iter()
+            .map(|EnabledLangFeature { gate_name, stable_since, .. }| LangFeature {
+                symbol: gate_name.to_string(),
+                since: stable_since.map(|since| since.to_string()),
+            })
+            .collect();
+
+        let feature_usage = FeatureUsage { lib_features, lang_features };
+
+        serde_json::to_writer(metrics_file, &feature_usage)?;
+
+        Ok(())
+    }
+}
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.

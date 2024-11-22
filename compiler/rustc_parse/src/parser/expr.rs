@@ -49,7 +49,7 @@ pub(super) enum DestructuredFloat {
     /// 1.2 | 1.2e3
     MiddleDot(Symbol, Span, Span, Symbol, Span),
     /// Invalid
-    Error(ErrorGuaranteed),
+    Error,
 }
 
 impl<'a> Parser<'a> {
@@ -1005,7 +1005,7 @@ impl<'a> Parser<'a> {
                             self.mk_expr_tuple_field_access(lo, ident1_span, base, sym1, None);
                         self.mk_expr_tuple_field_access(lo, ident2_span, base1, sym2, suffix)
                     }
-                    DestructuredFloat::Error(_) => base,
+                    DestructuredFloat::Error => base,
                 })
             }
             _ => {
@@ -1015,7 +1015,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_unexpected_after_dot(&self) -> ErrorGuaranteed {
+    fn error_unexpected_after_dot(&self) {
         let actual = pprust::token_to_string(&self.token);
         let span = self.token.span;
         let sm = self.psess.source_map();
@@ -1025,7 +1025,7 @@ impl<'a> Parser<'a> {
             }
             _ => (span, actual),
         };
-        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual })
+        self.dcx().emit_err(errors::UnexpectedTokenAfterDot { span, actual });
     }
 
     /// We need an identifier or integer, but the next token is a float.
@@ -1111,8 +1111,8 @@ impl<'a> Parser<'a> {
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
-                let guar = self.error_unexpected_after_dot();
-                DestructuredFloat::Error(guar)
+                self.error_unexpected_after_dot();
+                DestructuredFloat::Error
             }
             _ => panic!("unexpected components in a float token: {components:?}"),
         }
@@ -1178,7 +1178,7 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, Ident::new(symbol2, span2));
                                 fields.insert(start_idx, Ident::new(symbol1, span1));
                             }
-                            DestructuredFloat::Error(_) => {
+                            DestructuredFloat::Error => {
                                 trailing_dot = None;
                                 fields.insert(start_idx, Ident::new(symbol, self.prev_token.span));
                             }
@@ -3591,11 +3591,19 @@ impl<'a> Parser<'a> {
                         && !self.token.is_reserved_ident()
                         && self.look_ahead(1, |t| {
                             AssocOp::from_token(t).is_some()
-                                || matches!(t.kind, token::OpenDelim(_))
+                                || matches!(
+                                    t.kind,
+                                    token::OpenDelim(
+                                        Delimiter::Parenthesis
+                                            | Delimiter::Bracket
+                                            | Delimiter::Brace
+                                    )
+                                )
                                 || *t == token::Dot
                         })
                     {
-                        // Looks like they tried to write a shorthand, complex expression.
+                        // Looks like they tried to write a shorthand, complex expression,
+                        // E.g.: `n + m`, `f(a)`, `a[i]`, `S { x: 3 }`, or `x.y`.
                         e.span_suggestion_verbose(
                             self.token.span.shrink_to_lo(),
                             "try naming a field",

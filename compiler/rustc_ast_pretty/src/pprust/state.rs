@@ -942,9 +942,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::CloseDelim(Delimiter::Bracket) => "]".into(),
             token::OpenDelim(Delimiter::Brace) => "{".into(),
             token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
-                "".into()
-            }
+            token::OpenDelim(Delimiter::Invisible(_))
+            | token::CloseDelim(Delimiter::Invisible(_)) => "".into(),
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
