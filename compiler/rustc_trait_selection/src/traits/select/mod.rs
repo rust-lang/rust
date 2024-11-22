@@ -2487,10 +2487,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
         let trait_ref = impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args);
-        if trait_ref.references_error() {
-            return Err(());
-        }
-
         debug!(?impl_trait_header);
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
