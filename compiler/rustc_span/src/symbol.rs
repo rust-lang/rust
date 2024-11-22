@@ -1725,7 +1725,6 @@ symbols! {
         rustc_partition_reused,
         rustc_pass_by_value,
         rustc_peek,
-        rustc_peek_definite_init,
         rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
