@@ -29,8 +29,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-            brew install ninja-build
+            brew install ninja
       - name: Build
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
