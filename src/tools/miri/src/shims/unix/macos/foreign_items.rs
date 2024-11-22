@@ -2,6 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
 use super::sync::EvalContextExt as _;
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -165,6 +166,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read_target_usize(thread)?;
                 let stack_size = Scalar::from_uint(this.machine.stack_size, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
+            }
+
+            "sysconf" => {
+                let [val] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.sysconf(val)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Threading
