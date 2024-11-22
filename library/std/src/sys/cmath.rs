@@ -26,6 +26,7 @@ extern "C" {
     pub fn tgamma(n: f64) -> f64;
     pub fn tgammaf(n: f32) -> f32;
     pub fn lgamma_r(n: f64, s: &mut i32) -> f64;
+    #[cfg(not(target_os = "aix"))]
     pub fn lgammaf_r(n: f32, s: &mut i32) -> f32;
 
     pub fn acosf128(n: f128) -> f128;
@@ -56,13 +57,20 @@ extern "C" {
     }}
 }
 
+// On AIX, we don't have lgammaf_r only the f64 version, so we can
+// use the f64 version lgamma_r
+#[cfg(target_os = "aix")]
+pub unsafe fn lgammaf_r(n: f32, s: &mut i32) -> f32 {
+    lgamma_r(n.into(), s) as f32
+}
+
 // On 32-bit x86 MSVC these functions aren't defined, so we just define shims
 // which promote everything to f64, perform the calculation, and then demote
 // back to f32. While not precisely correct should be "correct enough" for now.
 cfg_if::cfg_if! {
 if #[cfg(all(target_os = "windows", target_env = "msvc", target_arch = "x86"))] {
     #[inline]
-    pub unsafe fn acosf(n: f32) -> f32 {
+   pub unsafe fn acosf(n: f32) -> f32 {
         f64::acos(n as f64) as f32
     }
 
