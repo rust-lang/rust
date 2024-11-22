@@ -12,7 +12,7 @@
 #![allow(unused)]
 
 use std::intrinsics::mir::*;
-use std::marker::Freeze;
+use std::marker::{Freeze, PhantomData};
 use std::mem::transmute;
 
 struct S<T>(T);
@@ -933,6 +933,20 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: _0 = const ();
 }
 
+unsafe fn aggregate_struct_then_transmute(id: u16) {
+    // CHECK: opaque::<u16>(copy _1)
+    let a = MyId(id);
+    opaque(std::intrinsics::transmute::<_, u16>(a));
+
+    // GVN can't do this yet because it doesn't know which field is the ZST,
+    // but future changes might enable it.
+    // CHECK: [[AGG:_.+]] = TypedId::<String>(copy _1, const PhantomData::<String>);
+    // CHECK: [[INT:_.+]] = copy [[AGG]] as u16 (Transmute);
+    // CHECK: opaque::<u16>(move [[INT]])
+    let b = TypedId::<String>(id, PhantomData);
+    opaque(std::intrinsics::transmute::<_, u16>(b));
+}
+
 // Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
 unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     // CHECK-LABEL: fn cast_pointer_then_transmute
@@ -944,6 +958,28 @@ unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     // CHECK: [[TEMP2:_.+]] = copy _2 as *const () (PtrToPtr);
     // CHECK: = move [[TEMP2]] as usize (Transmute);
     let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
+}
+
+unsafe fn transmute_then_cast_pointer(addr: usize, fat: *mut [u8]) {
+    // CHECK-LABEL: fn transmute_then_cast_pointer
+
+    // This is roughly what `NonNull::dangling` does
+    // CHECK: [[CPTR:_.+]] = copy _1 as *const u8 (Transmute);
+    // CHECK: takes_const_ptr::<u8>(move [[CPTR]])
+    let p: *mut u8 = std::intrinsics::transmute(addr);
+    takes_const_ptr(p);
+
+    // This cast is fat-to-thin, so can't be merged with the transmute
+    // CHECK: [[FAT:_.+]] = move {{.+}} as *const [i32] (Transmute);
+    // CHECK: [[THIN:_.+]] = copy [[FAT]] as *const i32 (PtrToPtr);
+    // CHECK: takes_const_ptr::<i32>(move [[THIN]])
+    let q = std::intrinsics::transmute::<&mut [i32], *const [i32]>(&mut [1, 2, 3]);
+    takes_const_ptr(q as *const i32);
+
+    // CHECK: [[TPTR:_.+]] = copy _2 as *const u8 (PtrToPtr);
+    // CHECK: takes_const_ptr::<u8>(move [[TPTR]])
+    let w = std::intrinsics::transmute::<*mut [u8], *const [u8]>(fat);
+    takes_const_ptr(w as *const u8);
 }
 
 #[custom_mir(dialect = "analysis")]
@@ -1002,6 +1038,16 @@ fn identity<T>(x: T) -> T {
     x
 }
 
+#[inline(never)]
+fn takes_const_ptr<T>(_: *const T) {}
+
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_end(55555)]
+struct MyId(u16);
+
+#[repr(transparent)]
+struct TypedId<T>(u16, PhantomData<T>);
+
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
 // EMIT_MIR gvn.repeated_index.GVN.diff
@@ -1034,5 +1080,7 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.dedup_multiple_bounds_checks_lengths.GVN.diff
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
+// EMIT_MIR gvn.aggregate_struct_then_transmute.GVN.diff
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
+// EMIT_MIR gvn.transmute_then_cast_pointer.GVN.diff
 // EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff

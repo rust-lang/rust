@@ -1,0 +1,81 @@
+- // MIR for `aggregate_struct_then_transmute` before GVN
++ // MIR for `aggregate_struct_then_transmute` after GVN
+  
+  fn aggregate_struct_then_transmute(_1: u16) -> () {
+      debug id => _1;
+      let mut _0: ();
+      let _2: MyId;
+      let mut _3: u16;
+      let _4: ();
+      let mut _5: u16;
+      let mut _6: MyId;
+      let mut _8: u16;
+      let mut _9: std::marker::PhantomData<std::string::String>;
+      let _10: ();
+      let mut _11: u16;
+      let mut _12: TypedId<std::string::String>;
+      scope 1 {
+          debug a => _2;
+          let _7: TypedId<std::string::String>;
+          scope 2 {
+              debug b => _7;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = MyId(move _3);
++         _2 = MyId(copy _1);
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = move _2;
+-         _5 = move _6 as u16 (Transmute);
++         _6 = copy _2;
++         _5 = copy _1;
+          StorageDead(_6);
+-         _4 = opaque::<u16>(move _5) -> [return: bb1, unwind continue];
++         _4 = opaque::<u16>(copy _1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+-         StorageLive(_7);
++         nop;
+          StorageLive(_8);
+          _8 = copy _1;
+          StorageLive(_9);
+-         _9 = PhantomData::<String>;
+-         _7 = TypedId::<String>(move _8, move _9);
++         _9 = const PhantomData::<String>;
++         _7 = TypedId::<String>(copy _1, const PhantomData::<String>);
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+-         _12 = move _7;
+-         _11 = move _12 as u16 (Transmute);
++         _12 = copy _7;
++         _11 = copy _7 as u16 (Transmute);
+          StorageDead(_12);
+          _10 = opaque::<u16>(move _11) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_11);
+          StorageDead(_10);
+          _0 = const ();
+-         StorageDead(_7);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

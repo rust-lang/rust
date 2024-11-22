@@ -1368,7 +1368,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut was_updated = false;
 
-        // If that cast just casts away the metadata again,
+        // Transmuting `*const T` <=> `*mut T` is just a pointer cast,
+        // which we might be able to merge with other ones later.
+        if let Transmute = kind
+            && let ty::RawPtr(from_pointee, _) = from.kind()
+            && let ty::RawPtr(to_pointee, _) = to.kind()
+            && from_pointee == to_pointee
+        {
+            *kind = PtrToPtr;
+            was_updated = true;
+        }
+
+        // If a cast just casts away the metadata again, then we can get it by
+        // casting the original thin pointer passed to `from_raw_parts`
         if let PtrToPtr = kind
             && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
                 self.get(value)
@@ -1397,6 +1409,28 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        // Aggregate-then-Transmute can just transmute the original field value,
+        // so long as the type is transparent over only that one single field.
+        if let Transmute = kind
+            && let Value::Aggregate(
+                AggregateTy::Def(aggregate_did, aggregate_args),
+                FIRST_VARIANT,
+                field_values,
+            ) = self.get(value)
+            && let [single_field_value] = **field_values
+            && let adt = self.tcx.adt_def(aggregate_did)
+            && adt.is_struct()
+            && adt.repr().transparent()
+        {
+            let field_ty = adt.non_enum_variant().single_field().ty(self.tcx, aggregate_args);
+            from = field_ty;
+            value = single_field_value;
+            was_updated = true;
+            if field_ty == to {
+                return Some(single_field_value);
+            }
+        }
+
         // PtrToPtr-then-Transmute can just transmute the original, so long as the
         // PtrToPtr didn't change metadata (and thus the size of the pointer)
         if let Transmute = kind
@@ -1408,6 +1442,26 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             } = *self.get(value)
             && self.pointers_have_same_metadata(inner_from, inner_to)
         {
+            from = inner_from;
+            value = inner_value;
+            was_updated = true;
+            if inner_from == to {
+                return Some(inner_value);
+            }
+        }
+
+        // PtrToPtr-then-Transmute can just transmute the original, so long as the
+        // PtrToPtr didn't change metadata (and thus the size of the pointer)
+        if let PtrToPtr = kind
+            && let Value::Cast {
+                kind: Transmute,
+                value: inner_value,
+                from: inner_from,
+                to: _inner_to,
+            } = *self.get(value)
+            && self.pointers_have_same_metadata(from, to)
+        {
+            *kind = Transmute;
             from = inner_from;
             value = inner_value;
             was_updated = true;
