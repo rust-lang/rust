@@ -1670,13 +1670,6 @@ pub(crate) struct ProcMacroBadSig {
     pub kind: ProcMacroKind,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_skipping_const_checks)]
-pub(crate) struct SkippingConstChecks {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(passes_unreachable_due_to_uninhabited)]
 pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {

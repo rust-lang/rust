@@ -180,8 +180,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     };
                 }
 
-                let mut err = match kind {
-                    CallDesugaringKind::ForLoopIntoIter => {
+                // Don't point at the trait if this is a desugaring...
+                // FIXME(const_trait_impl): we could perhaps do this for `Iterator`.
+                match kind {
+                    CallDesugaringKind::ForLoopIntoIter | CallDesugaringKind::ForLoopNext => {
                         error!(NonConstForLoopIntoIter)
                     }
                     CallDesugaringKind::QuestionBranch => {
@@ -196,10 +198,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     CallDesugaringKind::Await => {
                         error!(NonConstAwait)
                     }
-                };
-
-                diag_trait(&mut err, self_ty, kind.trait_def_id(tcx));
-                err
+                }
             }
             CallKind::FnCall { fn_trait_id, self_ty } => {
                 let note = match self_ty.kind() {
