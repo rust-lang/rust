@@ -539,7 +539,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     )?;
                     if is_updated {
                         // Edge-triggered notification only notify one thread even if there are
-                        // multiple threads block on the same epfd.
+                        // multiple threads blocked on the same epfd.
 
                         // This unwrap can never fail because if the current epoll instance were
                         // closed, the upgrade of weak_epoll_interest

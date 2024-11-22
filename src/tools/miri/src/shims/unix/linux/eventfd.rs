@@ -211,10 +211,10 @@ fn eventfd_write<'tcx>(
                 eventfd.clock.borrow_mut().join(clock);
             });
 
-            // When this function is called, the addition is guaranteed to not exceed u64::MAX - 1.
+            // Store new counter value.
             eventfd.counter.set(new_count);
 
-            // When any of the event happened, we check and update the status of all supported event
+            // The state changed; we check and update the status of all supported event
             // types for current file description.
             ecx.check_and_update_readiness(&eventfd_ref)?;
 
@@ -228,10 +228,11 @@ fn eventfd_write<'tcx>(
                 ecx.unblock_thread(thread_id, BlockReason::Eventfd)?;
             }
 
-            // Return how many bytes we wrote.
+            // Return how many bytes we consumed from the user-provided buffer.
             return ecx.write_int(buf_place.layout.size.bytes(), dest);
         }
         None | Some(u64::MAX) => {
+            // We can't update the state, so we have to block.
             if eventfd.is_nonblock {
                 return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
             }
@@ -251,6 +252,7 @@ fn eventfd_write<'tcx>(
                         weak_eventfd: WeakFileDescriptionRef,
                     }
                     @unblock = |this| {
+                        // When we get unblocked, try again.
                         eventfd_write(num, buf_place, &dest, weak_eventfd, this)
                     }
                 ),
@@ -276,9 +278,10 @@ fn eventfd_read<'tcx>(
     // an eventfd file description.
     let eventfd = eventfd_ref.downcast::<Event>().unwrap();
 
-    // Block when counter == 0.
+    // Set counter to 0, get old value.
     let counter = eventfd.counter.replace(0);
 
+    // Block when counter == 0.
     if counter == 0 {
         if eventfd.is_nonblock {
             return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
@@ -297,6 +300,7 @@ fn eventfd_read<'tcx>(
                     weak_eventfd: WeakFileDescriptionRef,
                 }
                 @unblock = |this| {
+                    // When we get unblocked, try again.
                     eventfd_read(buf_place, &dest, weak_eventfd, this)
                 }
             ),
@@ -305,10 +309,10 @@ fn eventfd_read<'tcx>(
         // Synchronize with all prior `write` calls to this FD.
         ecx.acquire_clock(&eventfd.clock.borrow());
 
-        // Give old counter value to userspace, and set counter value to 0.
+        // Return old counter value into user-space buffer.
         ecx.write_int(counter, &buf_place)?;
 
-        // When any of the events happened, we check and update the status of all supported event
+        // The state changed; we check and update the status of all supported event
         // types for current file description.
         ecx.check_and_update_readiness(&eventfd_ref)?;
 
@@ -322,7 +326,7 @@ fn eventfd_read<'tcx>(
             ecx.unblock_thread(thread_id, BlockReason::Eventfd)?;
         }
 
-        // Tell userspace how many bytes we read.
+        // Tell userspace how many bytes we put into the buffer.
         return ecx.write_int(buf_place.layout.size.bytes(), dest);
     }
     interp_ok(())
