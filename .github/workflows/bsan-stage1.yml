@@ -2,7 +2,6 @@ name: bsan-stage1
 on: workflow_dispatch
 permissions:
   contents: read
-  id-token: read
 defaults:
   run:
     shell: bash
