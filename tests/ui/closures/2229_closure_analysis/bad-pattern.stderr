@@ -5,7 +5,7 @@ LL |         let 0 = v1;
    |             ^ pattern `1_u32..=u32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u32`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
@@ -23,7 +23,7 @@ LL |         let (0 | 1) = v1;
    |              ^^^^^ pattern `2_u32..=u32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u32`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
@@ -37,7 +37,7 @@ LL |         let 1.. = v1;
    |             ^^^ pattern `0_u32` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u32`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
@@ -51,7 +51,7 @@ LL |         let [0, 0, 0, 0] = v2;
    |             ^^^^^^^^^^^^ pattern `[1_u32..=u32::MAX, _, _, _]` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `[u32; 4]`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
@@ -65,7 +65,7 @@ LL |         let [0] = v4;
    |             ^^^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `&[u32]`
 help: you might want to use `if let` to ignore the variants that aren't matched
    |
@@ -79,7 +79,7 @@ LL |         let Refutable::A = v3;
    |             ^^^^^^^^^^^^ pattern `Refutable::B` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Refutable` defined here
   --> $DIR/bad-pattern.rs:4:6
    |
@@ -104,7 +104,7 @@ LL |         let PAT = v1;
    |             ^^^ pattern `1_u32..=u32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u32`
 help: introduce a variable instead
    |
