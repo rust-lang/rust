@@ -398,7 +398,7 @@ async function runChecks(testFile, doSearch, parseQuery, getCorrections) {
  *   `parseQuery` function exported from the search module; and `getCorrections`, which runs
  *   a search but returns type name corrections instead of results.
  */
-function loadSearchJS(doc_folder, resource_suffix) {
+async function loadSearchJS(doc_folder, resource_suffix) {
     const searchIndexJs = path.join(doc_folder, "search-index" + resource_suffix + ".js");
     const searchIndex = require(searchIndexJs);
 
@@ -433,7 +433,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
     const staticFiles = path.join(doc_folder, "static.files");
     const searchJs = fs.readdirSync(staticFiles).find(f => f.match(/search.*\.js$/));
     const searchModule = require(path.join(staticFiles, searchJs));
-    searchModule.initSearch(searchIndex.searchIndex);
+    await searchModule.initSearch(searchIndex.searchIndex);
     const docSearch = searchModule.docSearch;
     return {
         doSearch: async function(queryStr, filterCrate, currentCrate) {
@@ -549,7 +549,7 @@ async function main(argv) {
         return 1;
     }
 
-    const parseAndSearch = loadSearchJS(
+    const parseAndSearch = await loadSearchJS(
         opts["doc_folder"],
         opts["resource_suffix"],
     );

@@ -2,10 +2,10 @@
 // current content displayed.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // First, we check that the search results are hidden when the Escape key is pressed.
+click: "#search-button"
+wait-for: "#search .search-switcher" // The search element is empty before the first search
 write-into: (".search-input", "test")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-wait-for: "#search h1" // The search element is empty before the first search
+press-key: "Enter"
 // Check that the currently displayed element is search.
 wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})
@@ -17,8 +17,8 @@ assert-false: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content"})
 assert-document-property: ({"URL": "index.html"}, [ENDS_WITH])
 
-// Check that focusing the search input brings back the search results
-focus: ".search-input"
+// Check that clicking the search button brings back the search results
+click: "#search-button"
 wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})
 assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)

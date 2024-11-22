@@ -5,6 +5,8 @@
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the inherent impl
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "ZyxwvutMethodDisambiguation -> bool")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -25,6 +27,8 @@ assert: "section:target"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This should link to the trait impl
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "ZyxwvutMethodDisambiguation, usize -> usize")
 // To be SURE that the search will be run.
 press-key: 'Enter'

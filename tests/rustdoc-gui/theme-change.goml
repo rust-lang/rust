@@ -7,7 +7,7 @@ store-value: (background_light, "white")
 store-value: (background_dark, "#353535")
 store-value: (background_ayu, "#0f1419")
 
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#theme-ayu"
 click: "#theme-ayu"
 // should be the ayu theme so let's check the color.
@@ -75,7 +75,7 @@ store-value: (background_dark, "#353535")
 store-value: (background_ayu, "#0f1419")
 store-value: (background_custom_theme, "red")
 
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#theme-ayu"
 click: "#theme-ayu"
 // should be the ayu theme so let's check the color.

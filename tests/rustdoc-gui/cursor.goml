@@ -8,6 +8,8 @@ assert-css: ("#toggle-all-docs", {"cursor": "pointer"})
 assert-css: ("#copy-path", {"cursor": "pointer"})
 
 // the search tabs
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'

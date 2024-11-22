@@ -9,7 +9,7 @@ define-function: (
     [theme, filter],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: ("#settings-menu > a::before", {
+        assert-css: ("rustdoc-toolbar .settings-menu > a::before", {
             "filter": |filter|,
             "width": "18px",
             "height": "18px",

@@ -2,6 +2,8 @@
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
+click: "#search-button"
+wait-for: ".search-input"
 write-into: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
@@ -31,7 +33,8 @@ assert-property: ("#crate-search", {"value": "lib2"})
 // crate filtering.
 press-key: "Escape"
 wait-for-css: ("#main-content", {"display": "block"})
-focus: ".search-input"
+click: "#search-button"
+wait-for: ".search-input"
 wait-for-css: ("#main-content", {"display": "none"})
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
@@ -56,8 +59,7 @@ assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"
 
 // Checking that the text for the "title" is correct (the "all crates" comes from the "<select>").
-assert-text: (".search-results-title", "Results", STARTS_WITH)
-assert-text: (".search-results-title + .sub-heading", " in all crates", STARTS_WITH)
+assert-text: (".search-switcher", "Search results in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
@@ -72,7 +74,7 @@ assert-css: ("#crate-search", {
 })
 
 // We now check the dark theme.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 click: "#theme-dark"
 wait-for-css: ("#crate-search", {
