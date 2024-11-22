@@ -58,9 +58,13 @@ pub fn get_metadata_and_notices(
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
     let mut output = get_metadata(cargo, root_path, manifest_paths)?;
 
-    // Now do a cargo-vendor and grab everything
-    println!("Vendoring deps into {}...", vendor_path.display());
-    run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
+    if vendor_path.exists() {
+        println!("{} exists, skipping `cargo vendor` call", vendor_path.display());
+    } else {
+        // Now do a cargo-vendor and grab everything
+        println!("{} missing, running `cargo vendor` to populate it", vendor_path.display());
+        run_cargo_vendor(cargo, &vendor_path, manifest_paths)?;
+    }
 
     // Now for each dependency we found, go and grab any important looking files
     for (package, metadata) in output.iter_mut() {
