@@ -14,18 +14,21 @@ use rustc_abi::Size;
 
 use crate::*;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum MacOsUnfairLock {
     Poisoned,
-    Active { id: MutexId },
+    Active { mutex_ref: MutexRef },
 }
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn os_unfair_lock_get_data(
-        &mut self,
+    fn os_unfair_lock_get_data<'a>(
+        &'a mut self,
         lock_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, MacOsUnfairLock> {
+    ) -> InterpResult<'tcx, &'a MacOsUnfairLock>
+    where
+        'tcx: 'a,
+    {
         let this = self.eval_context_mut();
         let lock = this.deref_pointer(lock_ptr)?;
         this.lazy_sync_get_data(
@@ -42,8 +45,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interp_ok(MacOsUnfairLock::Poisoned)
             },
             |ecx| {
-                let id = ecx.machine.sync.mutex_create();
-                interp_ok(MacOsUnfairLock::Active { id })
+                let mutex_ref = ecx.machine.sync.mutex_create();
+                interp_ok(MacOsUnfairLock::Active { mutex_ref })
             },
         )
     }
@@ -54,7 +57,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_lock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { id } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
             // Trying to get a poisoned lock. Just block forever...
             this.block_thread(
                 BlockReason::Sleep,
@@ -68,18 +71,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
             return interp_ok(());
         };
+        let mutex_ref = mutex_ref.clone();
 
-        if this.mutex_is_locked(id) {
-            if this.mutex_get_owner(id) == this.active_thread() {
+        if this.mutex_is_locked(&mutex_ref) {
+            if this.mutex_get_owner(&mutex_ref) == this.active_thread() {
                 // Matching the current macOS implementation: abort on reentrant locking.
                 throw_machine_stop!(TerminationInfo::Abort(
                     "attempted to lock an os_unfair_lock that is already locked by the current thread".to_owned()
                 ));
             }
 
-            this.mutex_enqueue_and_block(id, None);
+            this.mutex_enqueue_and_block(&mutex_ref, None);
         } else {
-            this.mutex_lock(id);
+            this.mutex_lock(&mutex_ref);
         }
 
         interp_ok(())
@@ -92,18 +96,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { id } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
             // Trying to get a poisoned lock. That never works.
             this.write_scalar(Scalar::from_bool(false), dest)?;
             return interp_ok(());
         };
+        let mutex_ref = mutex_ref.clone();
 
-        if this.mutex_is_locked(id) {
+        if this.mutex_is_locked(&mutex_ref) {
             // Contrary to the blocking lock function, this does not check for
             // reentrancy.
             this.write_scalar(Scalar::from_bool(false), dest)?;
         } else {
-            this.mutex_lock(id);
+            this.mutex_lock(&mutex_ref);
             this.write_scalar(Scalar::from_bool(true), dest)?;
         }
 
@@ -113,15 +118,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_unlock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { id } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
             // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
             throw_machine_stop!(TerminationInfo::Abort(
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
             ));
         };
+        let mutex_ref = mutex_ref.clone();
 
         // Now, unlock.
-        if this.mutex_unlock(id)?.is_none() {
+        if this.mutex_unlock(&mutex_ref)?.is_none() {
             // Matching the current macOS implementation: abort.
             throw_machine_stop!(TerminationInfo::Abort(
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
@@ -130,7 +136,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the lock is not locked by anyone now, it went quer.
         // Reset to zero so that it can be moved and initialized again for the next phase.
-        if !this.mutex_is_locked(id) {
+        if !this.mutex_is_locked(&mutex_ref) {
             let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
@@ -141,13 +147,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_assert_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { id } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
             // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
         };
-        if !this.mutex_is_locked(id) || this.mutex_get_owner(id) != this.active_thread() {
+        let mutex_ref = mutex_ref.clone();
+
+        if !this.mutex_is_locked(&mutex_ref)
+            || this.mutex_get_owner(&mutex_ref) != this.active_thread()
+        {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
@@ -161,11 +171,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_assert_not_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { id } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
             // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
             return interp_ok(());
         };
-        if this.mutex_is_locked(id) && this.mutex_get_owner(id) == this.active_thread() {
+        let mutex_ref = mutex_ref.clone();
+
+        if this.mutex_is_locked(&mutex_ref)
+            && this.mutex_get_owner(&mutex_ref) == this.active_thread()
+        {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_not_owner on an os_unfair_lock owned by the current thread".to_owned()
             ));
@@ -173,7 +187,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the lock is not locked by anyone now, it went quer.
         // Reset to zero so that it can be moved and initialized again for the next phase.
-        if !this.mutex_is_locked(id) {
+        if !this.mutex_is_locked(&mutex_ref) {
             let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }

@@ -176,7 +176,7 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// thread. If the spawned thread panics, [`join`] will return an [`Err`] containing
     /// the panic payload.
     ///
-    /// If the join handle is dropped, the spawned thread will implicitly joined at the
+    /// If the join handle is dropped, the spawned thread will be implicitly joined at the
     /// end of the scope. In that case, if the spawned thread panics, [`scope`] will
     /// panic after all threads are joined.
     ///

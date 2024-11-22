@@ -104,42 +104,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
                                 span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
-                            // Using host floats (but it's fine, these operations do not have guaranteed precision).
+                            // Using host floats except for sqrt (but it's fine, these operations do not
+                            // have guaranteed precision).
                             match float_ty {
                                 FloatTy::F16 => unimplemented!("f16_f128"),
                                 FloatTy::F32 => {
                                     let f = op.to_scalar().to_f32()?;
-                                    let f_host = f.to_host();
                                     let res = match host_op {
-                                        "fsqrt" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
-                                        "fsin" => f_host.sin(),
-                                        "fcos" => f_host.cos(),
-                                        "fexp" => f_host.exp(),
-                                        "fexp2" => f_host.exp2(),
-                                        "flog" => f_host.ln(),
-                                        "flog2" => f_host.log2(),
-                                        "flog10" => f_host.log10(),
+                                        "fsqrt" => math::sqrt(f),
+                                        "fsin" => f.to_host().sin().to_soft(),
+                                        "fcos" => f.to_host().cos().to_soft(),
+                                        "fexp" => f.to_host().exp().to_soft(),
+                                        "fexp2" => f.to_host().exp2().to_soft(),
+                                        "flog" => f.to_host().ln().to_soft(),
+                                        "flog2" => f.to_host().log2().to_soft(),
+                                        "flog10" => f.to_host().log10().to_soft(),
                                         _ => bug!(),
                                     };
-                                    let res = res.to_soft();
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from(res)
                                 }
                                 FloatTy::F64 => {
                                     let f = op.to_scalar().to_f64()?;
-                                    let f_host = f.to_host();
                                     let res = match host_op {
-                                        "fsqrt" => f_host.sqrt(),
-                                        "fsin" => f_host.sin(),
-                                        "fcos" => f_host.cos(),
-                                        "fexp" => f_host.exp(),
-                                        "fexp2" => f_host.exp2(),
-                                        "flog" => f_host.ln(),
-                                        "flog2" => f_host.log2(),
-                                        "flog10" => f_host.log10(),
+                                        "fsqrt" => math::sqrt(f),
+                                        "fsin" => f.to_host().sin().to_soft(),
+                                        "fcos" => f.to_host().cos().to_soft(),
+                                        "fexp" => f.to_host().exp().to_soft(),
+                                        "fexp2" => f.to_host().exp2().to_soft(),
+                                        "flog" => f.to_host().ln().to_soft(),
+                                        "flog2" => f.to_host().log2().to_soft(),
+                                        "flog10" => f.to_host().log10().to_soft(),
                                         _ => bug!(),
                                     };
-                                    let res = res.to_soft();
                                     let res = this.adjust_nan(res, &[f]);
                                     Scalar::from(res)
                                 }

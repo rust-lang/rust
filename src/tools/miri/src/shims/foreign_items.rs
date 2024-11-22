@@ -496,14 +496,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Rust allocation
             "__rust_alloc" | "miri_alloc" => {
-                let default = |this: &mut MiriInterpCx<'tcx>| {
+                let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
-                    let [size, align] = this.check_shim(abi, ExternAbi::Rust, link_name, args)?;
-                    let size = this.read_target_usize(size)?;
-                    let align = this.read_target_usize(align)?;
+                    let [size, align] = ecx.check_shim(abi, ExternAbi::Rust, link_name, args)?;
+                    let size = ecx.read_target_usize(size)?;
+                    let align = ecx.read_target_usize(align)?;
 
-                    this.check_rustc_alloc_request(size, align)?;
+                    ecx.check_rustc_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
                         "__rust_alloc" => MiriMemoryKind::Rust,
@@ -511,13 +511,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         _ => unreachable!(),
                     };
 
-                    let ptr = this.allocate_ptr(
+                    let ptr = ecx.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         memory_kind.into(),
                     )?;
 
-                    this.write_pointer(ptr, dest)
+                    ecx.write_pointer(ptr, dest)
                 };
 
                 match link_name.as_str() {
@@ -555,14 +555,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
             }
             "__rust_dealloc" | "miri_dealloc" => {
-                let default = |this: &mut MiriInterpCx<'tcx>| {
+                let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
                     let [ptr, old_size, align] =
-                        this.check_shim(abi, ExternAbi::Rust, link_name, args)?;
-                    let ptr = this.read_pointer(ptr)?;
-                    let old_size = this.read_target_usize(old_size)?;
-                    let align = this.read_target_usize(align)?;
+                        ecx.check_shim(abi, ExternAbi::Rust, link_name, args)?;
+                    let ptr = ecx.read_pointer(ptr)?;
+                    let old_size = ecx.read_target_usize(old_size)?;
+                    let align = ecx.read_target_usize(align)?;
 
                     let memory_kind = match link_name.as_str() {
                         "__rust_dealloc" => MiriMemoryKind::Rust,
@@ -571,7 +571,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
 
                     // No need to check old_size/align; we anyway check that they match the allocation.
-                    this.deallocate_ptr(
+                    ecx.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
                         memory_kind.into(),

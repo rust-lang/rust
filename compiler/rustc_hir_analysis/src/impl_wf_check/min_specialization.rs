@@ -70,6 +70,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -210,13 +211,7 @@ fn get_impl_args(
         impl1_def_id.to_def_id(),
         impl1_args,
         impl2_node,
-        |_, span| {
-            traits::ObligationCause::new(
-                impl1_span,
-                impl1_def_id,
-                traits::ObligationCauseCode::WhereClause(impl2_node.def_id(), span),
-            )
-        },
+        &ObligationCause::misc(impl1_span, impl1_def_id),
     );
 
     let errors = ocx.select_all_or_error();
