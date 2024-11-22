@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+#[derive(Default)]
 struct FooDefault<'a> {
     a: bool,
     b: i32,
@@ -17,32 +18,10 @@ struct FooDefault<'a> {
     l: &'a [i32],
 }
 
-impl std::default::Default for FooDefault<'_> {
-    fn default() -> Self {
-        Self {
-            a: false,
-            b: 0,
-            c: 0u64,
-            d: vec![],
-            e: Default::default(),
-            f: FooND2::default(),
-            g: HashMap::new(),
-            h: (0, vec![]),
-            i: [vec![], vec![], vec![]],
-            j: [0; 5],
-            k: None,
-            l: &[],
-        }
-    }
-}
 
+#[derive(Default)]
 struct TupleDefault(bool, i32, u64);
 
-impl std::default::Default for TupleDefault {
-    fn default() -> Self {
-        Self(false, 0, 0u64)
-    }
-}
 
 struct FooND1 {
     a: bool,
@@ -88,13 +67,9 @@ impl Default for FooNDVec {
     }
 }
 
+#[derive(Default)]
 struct StrDefault<'a>(&'a str);
 
-impl Default for StrDefault<'_> {
-    fn default() -> Self {
-        Self("")
-    }
-}
 
 #[derive(Default)]
 struct AlreadyDerived(i32, bool);
@@ -115,12 +90,8 @@ macro_rules! mac {
 
 mac!(0);
 
+#[derive(Default)]
 struct Y(u32);
-impl Default for Y {
-    fn default() -> Self {
-        Self(mac!())
-    }
-}
 
 struct RustIssue26925<T> {
     a: Option<T>,
@@ -151,23 +122,15 @@ impl<T: Default> Default for SpecializedImpl<T, T> {
     }
 }
 
+#[derive(Default)]
 struct WithoutSelfCurly {
     a: bool,
 }
 
-impl Default for WithoutSelfCurly {
-    fn default() -> Self {
-        WithoutSelfCurly { a: false }
-    }
-}
 
+#[derive(Default)]
 struct WithoutSelfParan(bool);
 
-impl Default for WithoutSelfParan {
-    fn default() -> Self {
-        WithoutSelfParan(false)
-    }
-}
 
 // https://github.com/rust-lang/rust-clippy/issues/7655
 
@@ -209,15 +172,11 @@ impl Default for Color2 {
     }
 }
 
+#[derive(Default)]
 pub struct RepeatDefault1 {
     a: [i8; 32],
 }
 
-impl Default for RepeatDefault1 {
-    fn default() -> Self {
-        RepeatDefault1 { a: [0; 32] }
-    }
-}
 
 pub struct RepeatDefault2 {
     a: [i8; 33],
@@ -242,16 +201,13 @@ impl Default for IntOrString {
     }
 }
 
+#[derive(Default)]
 pub enum SimpleEnum {
     Foo,
+    #[default]
     Bar,
 }
 
-impl Default for SimpleEnum {
-    fn default() -> Self {
-        SimpleEnum::Bar
-    }
-}
 
 pub enum NonExhaustiveEnum {
     Foo,
