@@ -20,6 +20,8 @@ jobs:
         run: |
             sudo apt-get install ninja-build
             rustup component add llvm-tools-preview
+      - name: Upstream
+        run: src/ci/scripts/setup-upstream-remote.sh
       - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
       - name: BSan
@@ -34,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
             brew install ninja
-      - name: setup upstream remote
+      - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
