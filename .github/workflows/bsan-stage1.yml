@@ -1,30 +1,34 @@
-name: bsan-stage1
-on: workflow_dispatch
-permissions:
-  contents: read
-defaults:
-  run:
-    shell: bash
-concurrency:
-  group: "sync"
-  cancel-in-progress: true
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+---
+    name: bsan-stage1
+    on: workflow_dispatch
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    concurrency:
+      group: sync
+      cancel-in-progress: true
+    jobs:
+      build:
+        runs-on: ${{ matrix.os }}
         strategy:
-            matrix:
-                os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install LLVM
-        run: |
-          sudo apt-get install llvm
-      - name: Install ninja
-        run: sudo apt-get install ninja-build
-      - name: Install cargo binutils
-        run: |
-          rustup component add llvm-tools-preview
-      - name: Build
-        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+          matrix:
+            os:
+              - ubuntu-latest
+              - macos-latest
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              fetch-depth: 0
+          - name: Install LLVM
+            run: |
+              sudo apt-get install llvm
+          - name: Install ninja
+            run: sudo apt-get install ninja-build
+          - name: Install cargo binutils
+            run: |
+              rustup component add llvm-tools-preview
+          - name: Build
+            run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
+    
