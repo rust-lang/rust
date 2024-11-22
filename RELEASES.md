@@ -5,15 +5,15 @@ Version 1.83.0 (2024-11-28)
 
 Language
 --------
+- [Stabilize `&mut`, `*mut`, `&Cell`, and `*const Cell` in const.](https://github.com/rust-lang/rust/pull/129195)
+- [Allow creating references to statics in `const` initializers.](https://github.com/rust-lang/rust/pull/129759)
 - [Implement raw lifetimes and labels (`'r#ident`).](https://github.com/rust-lang/rust/pull/126452)
-- [The `non_local_definitions` lint now fires on less code and warns by default.](https://github.com/rust-lang/rust/pull/127117)
 - [Define behavior when atomic and non-atomic reads race.](https://github.com/rust-lang/rust/pull/128778)
 - [Non-exhaustive structs may now be empty.](https://github.com/rust-lang/rust/pull/128934)
-- [Stabilize `&mut`, `*mut`, `&Cell`, and `*const Cell` in const.](https://github.com/rust-lang/rust/pull/129195)
 - [Disallow implicit coercions from places of type `!`](https://github.com/rust-lang/rust/pull/129392)
 - [`const extern` functions can now be defined for other calling conventions.](https://github.com/rust-lang/rust/pull/129753)
-- [Allow creating references to statics in `const` initializers.](https://github.com/rust-lang/rust/pull/129759)
 - [Stabilize `expr_2021` macro fragment specifier in all editions.](https://github.com/rust-lang/rust/pull/129972)
+- [The `non_local_definitions` lint now fires on less code and warns by default.](https://github.com/rust-lang/rust/pull/127117)
 
 
 <a id="1.83.0-Compiler"></a>
