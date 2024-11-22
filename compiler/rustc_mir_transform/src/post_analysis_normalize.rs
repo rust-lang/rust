@@ -1,5 +1,6 @@
-//! Normalizes MIR in TypingMode::PostAnalysis mode, most notably revealing
-//! its opaques.
+//! Normalizes MIR in `TypingMode::PostAnalysis`` mode, most notably revealing
+//! its opaques. We also only normalize specializable associated items once in
+//! `PostAnalysis` mode.
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;

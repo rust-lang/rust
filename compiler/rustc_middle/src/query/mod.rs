@@ -1375,8 +1375,9 @@ rustc_queries! {
     /// type-checking etc, and it does not normalize specializable
     /// associated types.
     ///
-    /// You should pretty much only use this if an `infcx` is available,
-    /// otherwise use a `TypingEnv`.
+    /// You should almost certainly not use this. If you already have an InferCtxt, then
+    /// you should also probably have a `ParamEnv` from when it was built. If you don't,
+    /// then you should take a `TypingEnv` to ensure that you handle opaque types correctly.
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
