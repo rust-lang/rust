@@ -1,5 +1,9 @@
 # Early and Late Bound Parameter Implementation Nuances
 
+> Note: this chapter makes reference to information discussed later on in the [representing types][ch_representing_types] chapter. Specifically, it uses concise notation to represent some more complex kinds of types that have not yet been discussed, such as inference variables.
+
+[ch_representing_types]: ../ty.md
+
 Understanding this page likely requires a rudimentary understanding of higher ranked
 trait bounds/`for<'a>`and also what types such as `dyn for<'a> Trait<'a>` and
  `for<'a> fn(&'a u32)` mean. Reading [the nomincon chapter](https://doc.rust-lang.org/nomicon/hrtb.html)
@@ -41,13 +45,13 @@ fn foo_late<'a, T>(_: &'a u32, _: T) {}
 fn accepts_hr_func<F: for<'a> Fn(&'a u32, u32)>(_: F) {}
 
 fn main() {
-    // doesn't work, the substituted bound is `for<'a> FnDef<'?0>: Fn(&'a u32, u32)`
+    // doesn't work, the instantiated bound is `for<'a> FnDef<'?0>: Fn(&'a u32, u32)`
     // `foo_early` only implements `for<'a> FnDef<'a>: Fn(&'a u32, u32)`- the lifetime
     // of the borrow in the function argument must be the same as the lifetime
     // on the `FnDef`.
     accepts_hr_func(foo_early);
 
-    // works, the substituted bound is `for<'a> FnDef: Fn(&'a u32, u32)`
+    // works, the instantiated bound is `for<'a> FnDef: Fn(&'a u32, u32)`
     accepts_hr_func(foo_late);
 }
 

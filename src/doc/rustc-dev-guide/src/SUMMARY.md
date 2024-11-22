@@ -134,10 +134,8 @@
 
 - [Prologue](./part-4-intro.md)
 - [Generic parameter definitions](./generic_parameters_summary.md)
-    - [What is `ty::Generics`](./what_is_ty_generics.md)
-    - [Early vs Late bound parameters](./early-late-bound-params/early-late-bound-summary.md)
-        - [Implementation nuances of early/late bound parameters](./early-late-bound-params/early-late-bound-implementation-nuances.md)
-        - [Interactions with turbofishing](./early-late-bound-params/turbofishing-and-early-late-bound.md)
+    - [Implementation nuances of early/late bound parameters](./early-late-bound-params/early-late-bound-implementation-nuances.md)
+    - [Interactions with turbofishing](./early-late-bound-params/turbofishing-and-early-late-bound.md)
 - [The `ty` module: representing types](./ty.md)
     - [ADTs and Generic Arguments](./ty_module/generic_arguments.md)
     - [Parameter types/consts/regions](./ty_module/param_ty_const_regions.md)

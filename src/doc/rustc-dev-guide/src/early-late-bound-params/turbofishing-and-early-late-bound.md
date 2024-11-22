@@ -1,5 +1,9 @@
 # Turbofishing's interactions with early/late bound parameters
 
+> Note: this chapter makes reference to information discussed later on in the [representing types][ch_representing_types] chapter. Specifically, it uses concise notation to represent some more complex kinds of types that have not yet been discussed, such as inference variables.
+
+[ch_representing_types]: ../ty.md
+
 The early/late bound parameter distinction on functions introduces some complications
 when providing generic arguments to functions. This document discusses what those are
 and how they might interact with future changes to make more things late bound.
@@ -36,7 +40,7 @@ fn main() {
 ```
 
 The justification for this is that late bound parameters are not present on the
-`FnDef` so the arguments to late bound parameters can't be present in the substs
+`FnDef` so the arguments to late bound parameters can't be present in the generic arguments
 for the type. i.e. the `late` function in the above code snippet would not have
 any generic parameters on the `FnDef` zst:
 ```rust
@@ -52,7 +56,7 @@ The cause for some situations giving future compat lints and others giving hard 
 is a little arbitrary but explainable:
 - It's always a hard error for method calls
 - It's only a hard error on paths to free functions if there is no unambiguous way to
-create the substs for the fndef from the lifetime arguments. (i.e. the amount of
+create the generic arguments for the fndef from the lifetime arguments. (i.e. the amount of
 lifetimes provided must be exactly equal to the amount of early bound lifetimes or
 else it's a hard error)
 
@@ -107,8 +111,9 @@ fn late<'a, 'b>(_: &'a (), _: &'b ()) {}
 fn accepts_fn(_: impl for<'a> Fn(&'a (), &'static ())) {}
 
 fn main() {
-    // a naive implementation would have a `ReInfer` as the subst for `'a` parameter
-    // no longer allowing the FnDef to satisfy the `for<'a> Fn(&'a ()` bound
+    // a naive implementation would have an inference variable as
+    // the argument to the `'a` parameter no longer allowing the `FnDef`
+    // to satisfy the bound `for<'a> Fn(&'a ())`
     let f = late::<'_, 'static>;
     accepts_fn(f);
 }
