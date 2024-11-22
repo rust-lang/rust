@@ -85,7 +85,10 @@ fn main() -> Result<(), Error> {
 fn check_file_contents(path: &Path, new_contents: &str) -> Result<(), Error> {
     let orig_contents = std::fs::read_to_string(&path)?;
     if orig_contents != new_contents {
-        anyhow::bail!("File {} is out of date", path.display());
+        anyhow::bail!(
+            "File {} is out of date. Run `x run tools/generate-copyright` to regenerate it.",
+            path.display()
+        );
     } else {
         println!("File {} is OK", path.display());
     }
