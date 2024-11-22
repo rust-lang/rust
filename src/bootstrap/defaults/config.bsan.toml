@@ -20,7 +20,6 @@ tools = [
 ]
 
 [rust]
-incremental = true
 channel = "nightly"
 
 [llvm]

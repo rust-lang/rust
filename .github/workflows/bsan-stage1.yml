@@ -1,0 +1,28 @@
+name: bsan-stage1
+on: workflow_dispatch
+permissions:
+  contents: read
+  id-token: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: "sync"
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install LLVM
+        run: |
+          sudo apt-get install llvm
+      - name: Install ninja
+        run: sudo apt-get install ninja-build
+      - name: Install cargo binutils
+        run: |
+          rustup component add llvm-tools-preview
+      - name: Build
+        run: ./x.py build --config src/bootstrap/defaults/config.bsan.toml
