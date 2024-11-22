@@ -45,7 +45,7 @@ pub struct PackageMetadata {
 
 /// Use `cargo metadata` and `cargo vendor` to get a list of dependencies and their license data.
 ///
-/// This will involve running `cargo vendor` into `${BUILD}/vendor` so we can
+/// This will involve running `cargo vendor` into `vendor_path` so we can
 /// grab the license files.
 ///
 /// Any dependency with a path beginning with `root_path` is ignored, as we
