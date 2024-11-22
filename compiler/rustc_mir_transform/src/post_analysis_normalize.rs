@@ -1,4 +1,4 @@
-//! Normalizes MIR in `TypingMode::PostAnalysis`` mode, most notably revealing
+//! Normalizes MIR in `TypingMode::PostAnalysis` mode, most notably revealing
 //! its opaques. We also only normalize specializable associated items once in
 //! `PostAnalysis` mode.
 

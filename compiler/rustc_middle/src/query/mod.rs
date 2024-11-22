@@ -1467,7 +1467,7 @@ rustc_queries! {
     /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
     /// because this query partially depends on that query.
     /// Otherwise, there is a risk of query cycles.
-    query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
+    query list_significant_drop_tys(ty: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
         desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
         cache_on_disk_if { false }
     }

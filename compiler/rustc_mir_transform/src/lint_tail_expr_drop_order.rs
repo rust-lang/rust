@@ -216,22 +216,17 @@ fn true_significant_drop_ty<'tcx>(
 
 /// Returns the list of types with a "potentially sigificant" that may be dropped
 /// by dropping a value of type `ty`.
-#[instrument(level = "debug", skip(tcx, param_env))]
+#[instrument(level = "debug", skip(tcx, typing_env))]
 fn extract_component_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
     ty_seen: &mut UnordSet<Ty<'tcx>>,
 ) -> SmallVec<[Ty<'tcx>; 4]> {
     // Droppiness does not depend on regions, so let us erase them.
-    let ty = tcx
-        .try_normalize_erasing_regions(
-            ty::TypingEnv { param_env, typing_mode: ty::TypingMode::PostAnalysis },
-            ty,
-        )
-        .unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
-    let tys = tcx.list_significant_drop_tys(param_env.and(ty));
+    let tys = tcx.list_significant_drop_tys(typing_env.as_query_input(ty));
     debug!(?ty, "components");
     let mut out_tys = smallvec![];
     for ty in tys {
@@ -239,7 +234,7 @@ fn extract_component_raw<'tcx>(
             // Some types can be further opened up because the drop is simply delegated
             for ty in tys {
                 if ty_seen.insert(ty) {
-                    out_tys.extend(extract_component_raw(tcx, param_env, ty, ty_seen));
+                    out_tys.extend(extract_component_raw(tcx, typing_env, ty, ty_seen));
                 }
             }
         } else {
@@ -251,13 +246,13 @@ fn extract_component_raw<'tcx>(
     out_tys
 }
 
-#[instrument(level = "debug", skip(tcx, param_env))]
+#[instrument(level = "debug", skip(tcx, typing_env))]
 fn extract_component_with_significant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> SmallVec<[Ty<'tcx>; 4]> {
-    let mut tys = extract_component_raw(tcx, param_env, ty, &mut Default::default());
+    let mut tys = extract_component_raw(tcx, typing_env, ty, &mut Default::default());
     let mut deduplicate = FxHashSet::default();
     tys.retain(|oty| deduplicate.insert(*oty));
     tys.into_iter().collect()
@@ -359,7 +354,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     // We group them per-block because they tend to scheduled in the same drop ladder block.
     let mut bid_per_block = IndexMap::default();
     let mut bid_places = UnordSet::new();
-    let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
     let mut ty_dropped_components = UnordMap::default();
     for (block, data) in body.basic_blocks.iter_enumerated() {
         for (statement_index, stmt) in data.statements.iter().enumerate() {
@@ -367,7 +362,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                 let ty = place.ty(body, tcx).ty;
                 if ty_dropped_components
                     .entry(ty)
-                    .or_insert_with(|| extract_component_with_significant_dtor(tcx, param_env, ty))
+                    .or_insert_with(|| extract_component_with_significant_dtor(tcx, typing_env, ty))
                     .is_empty()
                 {
                     continue;
@@ -479,7 +474,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
                 if ty_dropped_components
                     .entry(observer_ty)
                     .or_insert_with(|| {
-                        extract_component_with_significant_dtor(tcx, param_env, observer_ty)
+                        extract_component_with_significant_dtor(tcx, typing_env, observer_ty)
                     })
                     .is_empty()
                 {
@@ -575,7 +570,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
             let name = name.as_str();
 
             let mut seen_dyn = false;
-            let destructors = extract_component_with_significant_dtor(tcx, param_env, observer_ty)
+            let destructors = extract_component_with_significant_dtor(tcx, typing_env, observer_ty)
                 .into_iter()
                 .filter_map(|ty| {
                     if let Some(span) = ty_dtor_span(tcx, ty) {
