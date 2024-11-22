@@ -60,7 +60,12 @@ fn main() -> Result<(), Error> {
         dependencies: collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Git stores text files with \n, but this file may contain \r\n in files
+    // copied from dependencies. Normalise them before we write them out, for
+    // consistency.
+    let output = output.replace("\r\n", "\n");
     if only_check_existing {
+        std::fs::write(&out_dir.join("temp.html"), &output)?;
         check_file_contents(&dest_file, &output)?;
     } else {
         std::fs::write(&dest_file, &output)?;
@@ -72,6 +77,8 @@ fn main() -> Result<(), Error> {
         dependencies: library_collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Normalise line endings, as above.
+    let output = output.replace("\r\n", "\n");
     if only_check_existing {
         check_file_contents(&libstd_dest_file, &output)?;
     } else {
