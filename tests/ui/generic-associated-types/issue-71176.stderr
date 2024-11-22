@@ -80,7 +80,24 @@ LL |     type A<'a>;
    = help: consider moving `A` to another trait
    = help: only type `()` implements the trait, consider using it directly instead
 
-error: aborting due to 5 previous errors
+error[E0038]: the trait `Provider` cannot be made into an object
+  --> $DIR/issue-71176.rs:19:16
+   |
+LL |         inner: Box::new(()),
+   |                ^^^^^^^^^^^^ `Provider` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-71176.rs:2:10
+   |
+LL | trait Provider {
+   |       -------- this trait cannot be made into an object...
+LL |     type A<'a>;
+   |          ^ ...because it contains the generic associated type `A`
+   = help: consider moving `A` to another trait
+   = help: only type `()` implements the trait, consider using it directly instead
+   = note: required for the cast from `Box<()>` to `Box<(dyn Provider<A<'_> = _> + 'static), {type error}>`
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0038, E0107.
 For more information about an error, try `rustc --explain E0038`.

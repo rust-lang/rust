@@ -14,26 +14,6 @@ LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
    |      |
    |      help: consider changing this type parameter to a const parameter: `const K: u8`
 
-error[E0277]: the trait bound `KeyHolder<0>: SubsetExcept<_>` is not satisfied
-  --> $DIR/kind_mismatch.rs:22:45
-   |
-LL |     let map: KeyHolder<0> = remove_key::<_, _>();
-   |                                             ^ the trait `ContainsKey<0>` is not implemented for `KeyHolder<0>`
-   |
-note: required for `KeyHolder<0>` to implement `SubsetExcept<_>`
-  --> $DIR/kind_mismatch.rs:15:28
-   |
-LL | impl<P, T: ContainsKey<0>> SubsetExcept<P> for T {}
-   |            --------------  ^^^^^^^^^^^^^^^     ^
-   |            |
-   |            unsatisfied trait bound introduced here
-note: required by a bound in `remove_key`
-  --> $DIR/kind_mismatch.rs:17:25
-   |
-LL | pub fn remove_key<K, S: SubsetExcept<K>>() -> S {
-   |                         ^^^^^^^^^^^^^^^ required by this bound in `remove_key`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0277, E0747.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0747`.
