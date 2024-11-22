@@ -108,19 +108,25 @@ pub(super) struct ThreadClockSet {
     fence_acquire: VClock,
 
     /// The last timestamp of happens-before relations that
-    /// have been released by this thread by a fence.
+    /// have been released by this thread by a release fence.
     fence_release: VClock,
 
     /// Timestamps of the last SC fence performed by each
-    /// thread, updated when this thread performs an SC fence
+    /// thread, updated when this thread performs an SC fence.
+    /// This is never acquired into the thread's clock, it
+    /// just limits which old writes can be seen in weak memory emulation.
     pub(super) fence_seqcst: VClock,
 
     /// Timestamps of the last SC write performed by each
-    /// thread, updated when this thread performs an SC fence
+    /// thread, updated when this thread performs an SC fence.
+    /// This is never acquired into the thread's clock, it
+    /// just limits which old writes can be seen in weak memory emulation.
     pub(super) write_seqcst: VClock,
 
     /// Timestamps of the last SC fence performed by each
-    /// thread, updated when this thread performs an SC read
+    /// thread, updated when this thread performs an SC read.
+    /// This is never acquired into the thread's clock, it
+    /// just limits which old writes can be seen in weak memory emulation.
     pub(super) read_seqcst: VClock,
 }
 

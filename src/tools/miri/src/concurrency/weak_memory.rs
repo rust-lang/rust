@@ -15,6 +15,10 @@
 //! Specifically, if an SC load reads from an atomic store of any ordering, then a later SC load cannot read from
 //! an earlier store in the location's modification order. This is to prevent creating a backwards S edge from the second
 //! load to the first, as a result of C++20's coherence-ordered before rules.
+//! (This seems to rule out behaviors that were actually permitted by the RC11 model that C++20
+//! intended to copy (https://plv.mpi-sws.org/scfix/paper.pdf); a change was introduced when
+//! translating the math to English. According to Viktor Vafeiadis, this difference is harmless. So
+//! we stick to what the standard says, and allow fewer behaviors.)
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
 //! `std::atomic<T>` API). It is therefore possible for this implementation to generate behaviours never observable when the
@@ -138,6 +142,7 @@ struct StoreElement {
 
     /// The timestamp of the storing thread when it performed the store
     timestamp: VTimestamp,
+
     /// The value of this store. `None` means uninitialized.
     // FIXME: Currently, we cannot represent partial initialization.
     val: Option<Scalar>,
@@ -356,9 +361,9 @@ impl<'tcx> StoreBuffer {
                     false
                 } else if is_seqcst && store_elem.load_info.borrow().sc_loaded {
                     // The current SC load cannot read-before a store that an earlier SC load has observed.
-                    // See https://github.com/rust-lang/miri/issues/2301#issuecomment-1222720427
+                    // See https://github.com/rust-lang/miri/issues/2301#issuecomment-1222720427.
                     // Consequences of C++20 §31.4 [atomics.order] paragraph 3.1, 3.3 (coherence-ordered before)
-                    // and 4.1 (coherence-ordered before between SC makes global total order S)
+                    // and 4.1 (coherence-ordered before between SC makes global total order S).
                     false
                 } else {
                     true
