@@ -10,7 +10,10 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,4 +27,4 @@ jobs:
         run: |
           rustup component add llvm-tools-preview
       - name: Build
-        run: ./x.py build --config src/bootstrap/defaults/config.bsan.toml
+        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
