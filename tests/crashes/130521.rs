@@ -6,7 +6,7 @@ struct Vtable(dyn Cap);
 trait Cap<'a> {}
 
 union Transmute {
-    t: u64,
+    t: u128,
     u: &'static Vtable,
 }
 
