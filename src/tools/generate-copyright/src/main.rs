@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::Error;
+use anyhow::{Context, Error};
 use rinja::Template;
 
 mod cargo_metadata;
@@ -15,7 +15,7 @@ mod cargo_metadata;
 fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let libstd_dest_file = env_path("DEST_LIBSTD")?;
-    let check_existing = env_str("CHECK")? == "1";
+    let only_check_existing = env_str("ONLY_CHECK")? == "1";
 
     let out_dir = env_path("OUT_DIR")?;
     let cargo = env_path("CARGO")?;
@@ -60,7 +60,7 @@ fn main() -> Result<(), Error> {
         dependencies: collected_cargo_metadata,
     };
     let output = template.render()?;
-    if check_existing {
+    if only_check_existing {
         check_file_contents(&dest_file, &output)?;
     } else {
         std::fs::write(&dest_file, &output)?;
@@ -72,7 +72,7 @@ fn main() -> Result<(), Error> {
         dependencies: library_collected_cargo_metadata,
     };
     let output = template.render()?;
-    if check_existing {
+    if only_check_existing {
         check_file_contents(&libstd_dest_file, &output)?;
     } else {
         std::fs::write(&libstd_dest_file, &output)?;
@@ -83,7 +83,12 @@ fn main() -> Result<(), Error> {
 
 /// Check two files have the same contents
 fn check_file_contents(path: &Path, new_contents: &str) -> Result<(), Error> {
-    let orig_contents = std::fs::read_to_string(&path)?;
+    let orig_contents = std::fs::read_to_string(&path).with_context(|| {
+        format!(
+            "File {} failed to read. Run `x run tools/generate-copyright` to regenerate it.",
+            path.display()
+        )
+    })?;
     if orig_contents != new_contents {
         anyhow::bail!(
             "File {} is out of date. Run `x run tools/generate-copyright` to regenerate it.",

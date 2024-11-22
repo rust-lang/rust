@@ -3631,15 +3631,15 @@ impl Step for GenerateCopyright {
         let license_metadata =
             builder.ensure(crate::core::build_steps::run::CollectLicenseMetadata);
 
-        let dest = builder.out.join("COPYRIGHT.html");
-        let dest_libstd = builder.out.join("COPYRIGHT-library.html");
+        let dest = builder.src.join("COPYRIGHT.html");
+        let dest_libstd = builder.src.join("COPYRIGHT-library.html");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
-        cmd.env("CHECK", "1");
+        cmd.env("ONLY_CHECK", "1");
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
     }

@@ -219,7 +219,7 @@ impl Step for GenerateCopyright {
         cmd.env("DEST", &dest);
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
-        cmd.env("CHECK", "0");
+        cmd.env("ONLY_CHECK", "0");
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
