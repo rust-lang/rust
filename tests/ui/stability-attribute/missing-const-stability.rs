@@ -27,7 +27,7 @@ pub trait Bar {
 }
 #[stable(feature = "stable", since = "1.0.0")]
 impl const Bar for Foo {
-    //~^ ERROR implementation has missing const stability attribute
+    // ok because all users must enable `const_trait_impl`
     fn fun() {}
 }
 
