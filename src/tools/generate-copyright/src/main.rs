@@ -10,10 +10,13 @@ mod cargo_metadata;
 ///
 /// You should probably let `bootstrap` execute this program instead of running it directly.
 ///
-/// Run `x.py run generate-copyright`
+/// Run `x.py run generate-copyright` to make the files, or
+/// `x.py test generate-copyright` to check the existing files.
 fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let libstd_dest_file = env_path("DEST_LIBSTD")?;
+    let check_existing = env_str("CHECK")? == "1";
+
     let out_dir = env_path("OUT_DIR")?;
     let cargo = env_path("CARGO")?;
     let license_metadata = env_path("LICENSE_METADATA")?;
@@ -57,7 +60,11 @@ fn main() -> Result<(), Error> {
         dependencies: collected_cargo_metadata,
     };
     let output = template.render()?;
-    std::fs::write(&dest_file, output)?;
+    if check_existing {
+        check_file_contents(&dest_file, &output)?;
+    } else {
+        std::fs::write(&dest_file, &output)?;
+    }
 
     // Output libstd subset file
     let template = LibraryCopyrightTemplate {
@@ -65,8 +72,23 @@ fn main() -> Result<(), Error> {
         dependencies: library_collected_cargo_metadata,
     };
     let output = template.render()?;
-    std::fs::write(&libstd_dest_file, output)?;
+    if check_existing {
+        check_file_contents(&libstd_dest_file, &output)?;
+    } else {
+        std::fs::write(&libstd_dest_file, &output)?;
+    }
 
+    Ok(())
+}
+
+/// Check two files have the same contents
+fn check_file_contents(path: &Path, new_contents: &str) -> Result<(), Error> {
+    let orig_contents = std::fs::read_to_string(&path)?;
+    if orig_contents != new_contents {
+        anyhow::bail!("File {} is out of date", path.display());
+    } else {
+        println!("File {} is OK", path.display());
+    }
     Ok(())
 }
 
@@ -185,4 +207,9 @@ fn env_path(var: &str) -> Result<PathBuf, Error> {
     } else {
         anyhow::bail!("missing environment variable {var}")
     }
+}
+
+/// Grab an environment variable as a String, or fail nicely.
+fn env_str(var: &str) -> Result<String, Error> {
+    std::env::var(var).map_err(|_| anyhow::anyhow!("missing environment variable {var}"))
 }

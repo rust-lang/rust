@@ -197,7 +197,7 @@ impl Step for CollectLicenseMetadata {
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
-    type Output = PathBuf;
+    type Output = (PathBuf, PathBuf);
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -211,18 +211,19 @@ impl Step for GenerateCopyright {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let license_metadata = builder.ensure(CollectLicenseMetadata);
 
-        let dest = builder.out.join("COPYRIGHT.html");
-        let dest_libstd = builder.out.join("COPYRIGHT-library.html");
+        let dest = builder.src.join("COPYRIGHT.html");
+        let dest_libstd = builder.src.join("COPYRIGHT-library.html");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
+        cmd.env("CHECK", "0");
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
-        dest
+        (dest, dest_libstd)
     }
 }
 

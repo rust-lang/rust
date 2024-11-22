@@ -67,4 +67,6 @@ ENV SCRIPT \
            es-check es2019 ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/tools/rustdoc-js/.eslintrc.js ../src/tools/rustdoc-js/tester.js && \
-           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js
+           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js && \
+           # Check our COPYRIGHT files are still OK
+           python3 ../x.py test generate-copyright
