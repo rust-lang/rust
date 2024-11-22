@@ -5,15 +5,14 @@ Version 1.83.0 (2024-11-28)
 
 Language
 --------
-- [The `non_local_definitions` lint now uses a syntactic heuristic instead of type system based analysis](https://github.com/rust-lang/rust/pull/127117)
-- [atomics: allow atomic and non-atomic reads to race](https://github.com/rust-lang/rust/pull/128778)
-- [Non-exhaustive structs may be empty](https://github.com/rust-lang/rust/pull/128934/)
-- [Check WF of source type's signature on fn pointer cast](https://github.com/rust-lang/rust/pull/129021)
-- [Use equality when resolving type dependent paths](https://github.com/rust-lang/rust/pull/129073)
-- [Stabilize `&mut` (and `*mut`) as well as `&Cell` (and `*const Cell`) in const](https://github.com/rust-lang/rust/pull/129195)
+- [Implement raw lifetimes and labels (`'r#ident`).](https://github.com/rust-lang/rust/pull/126452)
+- [The `non_local_definitions` lint now fires on less code and warns by default.](https://github.com/rust-lang/rust/pull/127117)
+- [Define behavior when atomic and non-atomic reads race.](https://github.com/rust-lang/rust/pull/128778)
+- [Non-exhaustive structs may now be empty.](https://github.com/rust-lang/rust/pull/128934)
+- [Stabilize `&mut`, `*mut`, `&Cell`, and `*const Cell` in const.](https://github.com/rust-lang/rust/pull/129195)
 - [Disallow implicit coercions from places of type `!`](https://github.com/rust-lang/rust/pull/129392)
 - [`const extern` functions can now be defined for other calling conventions.](https://github.com/rust-lang/rust/pull/129753)
-- [Allow creating references to statics in `const` initializers](https://github.com/rust-lang/rust/pull/129759)
+- [Allow creating references to statics in `const` initializers.](https://github.com/rust-lang/rust/pull/129759)
 - [Stabilize `expr_2021` macro fragment specifier in all editions.](https://github.com/rust-lang/rust/pull/129972)
 
 
@@ -21,17 +20,16 @@ Language
 
 Compiler
 --------
-- [Implement raw lifetimes and labels (`'r#ident`)](https://github.com/rust-lang/rust/pull/126452/)
-- [Add `armv7-rtems-eabihf` tier 3 target.](https://github.com/rust-lang/rust/pull/127021)
-- [Add `aarch64_unknown_nto_qnx700` tier 3 target - QNX 7.0 support for `aarch64le`](https://github.com/rust-lang/rust/pull/127897)
-- [Add `x86_64-unknown-hurd-gnu` tier 3 target.](https://github.com/rust-lang/rust/pull/128345)
-- [Deprecate unsound `-Csoft-float` flag](https://github.com/rust-lang/rust/pull/129897)
-- [Fix a soundness bug where rustc wouldn't detect unconstrained higher-ranked lifetimes in a `dyn Trait`'s associated types that occur due to supertraits.](https://github.com/rust-lang/rust/pull/130367)
-- [Add `x86_64-unknown-trusty` tier 3 target.](https://github.com/rust-lang/rust/pull/130453)
-- [Add `riscv32-wrs-vxworks` and `riscv64-wrs-vxworks` tier 3 targets.](https://github.com/rust-lang/rust/pull/130549)
-- [Add `riscv32{e|em|emc}-unknown-none-elf` tier 3 targets.](https://github.com/rust-lang/rust/pull/130555)
-- [Add `arm64e-apple-tvos` tier 3 target.](https://github.com/rust-lang/rust/pull/130614)
-- [Add `loongarch64-unknown-linux-ohos` tier 3 target.](https://github.com/rust-lang/rust/pull/130750)
+- [Deprecate unsound `-Csoft-float` flag.](https://github.com/rust-lang/rust/pull/129897)
+- Add many new tier 3 targets:
+    - [`aarch64_unknown_nto_qnx700`](https://github.com/rust-lang/rust/pull/127897)
+    - [`arm64e-apple-tvos`](https://github.com/rust-lang/rust/pull/130614)
+    - [`armv7-rtems-eabihf`](https://github.com/rust-lang/rust/pull/127021)
+    - [`loongarch64-unknown-linux-ohos`](https://github.com/rust-lang/rust/pull/130750)
+    - [`riscv32-wrs-vxworks` and `riscv64-wrs-vxworks`](https://github.com/rust-lang/rust/pull/130549)
+    - [`riscv32{e|em|emc}-unknown-none-elf`](https://github.com/rust-lang/rust/pull/130555)
+    - [`x86_64-unknown-hurd-gnu`](https://github.com/rust-lang/rust/pull/128345)
+    - [`x86_64-unknown-trusty`](https://github.com/rust-lang/rust/pull/130453)
 
 Refer to Rust's [platform support page][platform-support-doc]
 for more information on Rust's tiered platform support.
@@ -41,13 +39,11 @@ for more information on Rust's tiered platform support.
 
 Libraries
 ---------
-- [Tracking Issue for `waker_getters`](https://github.com/rust-lang/rust/issues/96992/)
 - [Implement `PartialEq` for `ExitCode`.](https://github.com/rust-lang/rust/pull/127633)
 - [Document that `catch_unwind` can deal with foreign exceptions without UB, although the exact behavior is unspecified.](https://github.com/rust-lang/rust/pull/128321)
 - [Implement `Default` for `HashMap`/`HashSet` iterators that don't already have it.](https://github.com/rust-lang/rust/pull/128711)
 - [Bump Unicode to version 16.0.0.](https://github.com/rust-lang/rust/pull/130183)
 - [Change documentation of `ptr::add`/`sub` to not claim equivalence with `offset`.](https://github.com/rust-lang/rust/pull/130229).
-- [Stabilize `const_slice_from_raw_parts_mut`](https://github.com/rust-lang/rust/pull/130403/)
 
 
 <a id="1.83.0-Stabilized-APIs"></a>
@@ -196,8 +192,10 @@ Rustdoc
 Compatibility Notes
 -------------------
 - [Warn against function pointers using unsupported ABI strings.](https://github.com/rust-lang/rust/pull/128784)
+- [Check well-formedness of the source type's signature in fn pointer casts.](https://github.com/rust-lang/rust/pull/129021) This partly closes a soundness hole that comes when casting a function item to function pointer
+- [Use equality instead of subtyping when resolving type dependent paths.](https://github.com/rust-lang/rust/pull/129073)
 - Linking on macOS now correctly includes Rust's default deployment target. Due to a linker bug, you might have to pass `MACOSX_DEPLOYMENT_TARGET` or fix your `#[link]` attributes to point to the correct frameworks. See <https://github.com/rust-lang/rust/pull/129369>.
-- [Rust will now correctly raise an error for `repr(Rust)` written on non-`struct`/`enum`/`union` items, since it previous did not have any effect](https://github.com/rust-lang/rust/pull/129422)
+- [Rust will now correctly raise an error for `repr(Rust)` written on non-`struct`/`enum`/`union` items, since it previous did not have any effect.](https://github.com/rust-lang/rust/pull/129422)
 - The future incompatibility lint `deprecated_cfg_attr_crate_type_name` [has been made into a hard error](https://github.com/rust-lang/rust/pull/129670). It was used to deny usage of `#![crate_type]` and `#![crate_name]` attributes in `#![cfg_attr]`, which required a hack in the compiler to be able to change the used crate type and crate name after cfg expansion.
   Users can use `--crate-type` instead of `#![cfg_attr(..., crate_type = "...")]` and `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]` when running `rustc`/`cargo rustc` on the command line.
   Use of those two attributes outside of `#![cfg_attr]` continue to be fully supported.
@@ -223,11 +221,12 @@ Compatibility Notes
     To sanitize this, users must explicitly supply `--remap-path-prefix=<path to rust-src>=foo` or not have the `rust-src` component installed.
  - The allow-by-default `missing_docs` lint used to disable itself when invoked through `rustc --test`/`cargo test`, resulting in `#[expect(missing_docs)]` emitting false positives due to the expectation being wrongly unfulfilled. This behavior [has now been removed](https://github.com/rust-lang/rust/pull/130025), which allows `#[expect(missing_docs)]` to be fulfilled in all scenarios, but will also report new `missing_docs` diagnostics for publicly reachable `#[cfg(test)]` items, [integration test](https://doc.rust-lang.org/cargo/reference/cargo-targets.html#integration-tests) crate-level documentation, and publicly reachable items in integration tests.
 - [The `armv8r-none-eabihf` target now uses the Armv8-R required set of floating-point features.](https://github.com/rust-lang/rust/pull/130295)
+- [Fix a soundness bug where rustc wouldn't detect unconstrained higher-ranked lifetimes in a `dyn Trait`'s associated types that occur due to supertraits.](https://github.com/rust-lang/rust/pull/130367)
 - [Update the minimum external LLVM version to 18.](https://github.com/rust-lang/rust/pull/130487)
 - [Remove `aarch64-fuchsia` and `x86_64-fuchsia` target aliases in favor of `aarch64-unknown-fuchsia` and `x86_64-unknown-fuchsia` respectively.](https://github.com/rust-lang/rust/pull/130657)
-- [The ABI-level exception class of a Rust panic is now encoded with native-endian bytes,
-  so it is legible in hex dumps.](https://github.com/rust-lang/rust/pull/130897)
+- [The ABI-level exception class of a Rust panic is now encoded with native-endian bytes, so it is legible in hex dumps.](https://github.com/rust-lang/rust/pull/130897)
 - [Visual Studio 2013 is no longer supported for MSVC targets.](https://github.com/rust-lang/rust/pull/131070)
+- [The sysroot no longer contains the `std` dynamic library in its top-level `lib/` dir.](https://github.com/rust-lang/rust/pull/131188)
 
 
 Version 1.82.0 (2024-10-17)
