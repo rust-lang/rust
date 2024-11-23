@@ -92,11 +92,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
+
+        // We don't support >1 principal
         if regular_traits.len() > 1 {
-            let _ = self.report_trait_object_addition_traits_error(&regular_traits);
-        } else if regular_traits.is_empty() && auto_traits.is_empty() {
-            let reported = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
-            return Ty::new_error(tcx, reported);
+            let guar = self.report_trait_object_addition_traits_error(&regular_traits);
+            return Ty::new_error(tcx, guar);
+        }
+        // We  don't support empty trait objects.
+        if regular_traits.is_empty() && auto_traits.is_empty() {
+            let guar = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
+            return Ty::new_error(tcx, guar);
         }
 
         // Check that there are no gross dyn-compatibility violations;
