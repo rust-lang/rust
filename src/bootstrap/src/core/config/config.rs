@@ -2786,8 +2786,12 @@ impl Config {
 
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
-            None => self.rust_info.is_managed_git_subrepository(),
-            Some(StringOrBool::Bool(false)) => return None,
+            // Globally default for `download-rustc` to `false`, because some contributors don't use
+            // profiles for reasons such as:
+            // - They need to seemlessly switch between compiler/library work.
+            // - They don't want to use compiler profile because they need to override too many
+            //   things and it's easier to not use a profile.
+            None | Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
             Some(StringOrBool::String(s)) if s == "if-unchanged" => {
                 if !self.rust_info.is_managed_git_subrepository() {

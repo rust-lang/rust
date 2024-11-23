@@ -3,6 +3,9 @@
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
+# Most commonly, tools contributors do not need to modify the compiler, so
+# downloading a CI rustc is a good default for tools profile.
+download-rustc = "if-unchanged"
 
 [build]
 # Document with the in-tree rustdoc by default, since `download-rustc` makes it quick to compile.

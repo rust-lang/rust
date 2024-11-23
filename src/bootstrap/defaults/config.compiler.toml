@@ -19,6 +19,9 @@ lto = "off"
 # Forces frame pointers to be used with `-Cforce-frame-pointers`.
 # This can be helpful for profiling at a small performance cost.
 frame-pointers = true
+# Compiler contributors often want to build rustc even without any changes to
+# e.g. check that it builds locally and check the baseline behavior of a
+# compiler built from latest `master` commit.
 download-rustc = false
 
 [llvm]
