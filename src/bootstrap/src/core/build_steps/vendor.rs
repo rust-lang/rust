@@ -20,6 +20,7 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
         ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
         ("src/tools/rustc-perf/Cargo.toml", vec!["src/tools/rustc-perf"]),
         ("src/tools/opt-dist/Cargo.toml", vec![]),
+        ("src/doc/book/packages/trpl/Cargo.toml", vec![]),
     ]
     .into_iter()
     .map(|(path, submodules)| (builder.src.join(path), submodules))

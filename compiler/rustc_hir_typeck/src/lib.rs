@@ -364,7 +364,7 @@ fn report_unexpected_variant_res(
         .with_code(err_code);
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
-            let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
+            let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
             err.with_span_label(span, "`fn` calls are not allowed in patterns")
                 .with_help(format!("for more information, visit {patterns_url}"))
         }

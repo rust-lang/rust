@@ -31,6 +31,20 @@ fn main() {
                               (Defaults to the current directory when omitted)")
     .value_parser(clap::value_parser!(PathBuf));
 
+    // Note: we don't parse this into a `PathBuf` because it is comma separated
+    // strings *and* we will ultimately pass it into `MDBook::test()`, which
+    // accepts `Vec<&str>`. Although it is a bit annoying that `-l/--lang` and
+    // `-L/--library-path` are so close, this is the same set of arguments we
+    // would pass when invoking mdbook on the CLI, so making them match when
+    // invoking rustbook makes for good consistency.
+    let library_path_arg = arg!(
+        -L --"library-path" <PATHS>
+        "A comma-separated list of directories to add to the crate search\n\
+        path when building tests"
+    )
+    .required(false)
+    .value_parser(parse_library_paths);
+
     let matches = Command::new("rustbook")
         .about("Build a book with mdBook")
         .author("Steve Klabnik <steve@steveklabnik.com>")
@@ -48,11 +62,12 @@ fn main() {
         .subcommand(
             Command::new("test")
                 .about("Tests that a book's Rust code samples compile")
-                .arg(dir_arg),
+                .arg(dir_arg)
+                .arg(library_path_arg),
         )
         .get_matches();
 
-    // Check which subcomamnd the user ran...
+    // Check which subcommand the user ran...
     match matches.subcommand() {
         Some(("build", sub_matches)) => {
             if let Err(e) = build(sub_matches) {
@@ -113,8 +128,12 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
 
 fn test(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
+    let library_paths = args
+        .try_get_one::<Vec<String>>("library-path")?
+        .map(|v| v.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
+        .unwrap_or_default();
     let mut book = load_book(&book_dir)?;
-    book.test(vec![])
+    book.test(library_paths)
 }
 
 fn get_book_dir(args: &ArgMatches) -> PathBuf {
@@ -132,6 +151,10 @@ fn load_book(book_dir: &Path) -> Result3<MDBook> {
     Ok(book)
 }
 
+fn parse_library_paths(input: &str) -> Result<Vec<String>, String> {
+    Ok(input.split(",").map(String::from).collect())
+}
+
 fn handle_error(error: mdbook::errors::Error) -> ! {
     eprintln!("Error: {}", error);
 
@@ -139,5 +162,5 @@ fn handle_error(error: mdbook::errors::Error) -> ! {
         eprintln!("\tCaused By: {}", cause);
     }
 
-    ::std::process::exit(101);
+    std::process::exit(101);
 }
