@@ -358,7 +358,7 @@ fn build_options<O: Default>(
 
 #[allow(non_upper_case_globals)]
 mod desc {
-    pub(crate) const parse_no_flag: &str = "no value";
+    pub(crate) const parse_no_value: &str = "no value";
     pub(crate) const parse_bool: &str =
         "one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`";
     pub(crate) const parse_opt_bool: &str = parse_bool;
@@ -462,14 +462,18 @@ pub mod parse {
     pub(crate) use super::*;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
-    /// This is for boolean options that don't take a value and start with
-    /// `no-`. This style of option is deprecated.
-    pub(crate) fn parse_no_flag(slot: &mut bool, v: Option<&str>) -> bool {
+    /// This is for boolean options that don't take a value, and are true simply
+    /// by existing on the command-line.
+    ///
+    /// This style of option is deprecated, and is mainly used by old options
+    /// beginning with `no-`.
+    pub(crate) fn parse_no_value(slot: &mut bool, v: Option<&str>) -> bool {
         match v {
             None => {
                 *slot = true;
                 true
             }
+            // Trying to specify a value is always forbidden.
             Some(_) => false,
         }
     }
@@ -1609,16 +1613,16 @@ options! {
         "perform LLVM link-time optimizations"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "metadata to mangle symbol names with"),
-    no_prepopulate_passes: bool = (false, parse_no_flag, [TRACKED],
+    no_prepopulate_passes: bool = (false, parse_no_value, [TRACKED],
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    no_stack_check: bool = (false, parse_no_flag, [UNTRACKED],
+    no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
         "this option is deprecated and does nothing"),
-    no_vectorize_loops: bool = (false, parse_no_flag, [TRACKED],
+    no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
-    no_vectorize_slp: bool = (false, parse_no_flag, [TRACKED],
+    no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
         "disable LLVM's SLP vectorization pass"),
     opt_level: String = ("0".to_string(), parse_string, [TRACKED],
         "optimization level (0-3, s, or z; default: 0)"),
@@ -1915,25 +1919,25 @@ options! {
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
         "the directory the NLL facts are dumped into (default: `nll-facts`)"),
-    no_analysis: bool = (false, parse_no_flag, [UNTRACKED],
+    no_analysis: bool = (false, parse_no_value, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
-    no_codegen: bool = (false, parse_no_flag, [TRACKED_NO_CRATE_HASH],
+    no_codegen: bool = (false, parse_no_value, [TRACKED_NO_CRATE_HASH],
         "run all passes except codegen; no output"),
-    no_generate_arange_section: bool = (false, parse_no_flag, [TRACKED],
+    no_generate_arange_section: bool = (false, parse_no_value, [TRACKED],
         "omit DWARF address ranges that give faster lookups"),
     no_implied_bounds_compat: bool = (false, parse_bool, [TRACKED],
         "disable the compatibility version of the `implied_bounds_ty` query"),
-    no_jump_tables: bool = (false, parse_no_flag, [TRACKED],
+    no_jump_tables: bool = (false, parse_no_value, [TRACKED],
         "disable the jump tables and lookup tables that can be generated from a switch case lowering"),
-    no_leak_check: bool = (false, parse_no_flag, [UNTRACKED],
+    no_leak_check: bool = (false, parse_no_value, [UNTRACKED],
         "disable the 'leak check' for subtyping; unsound, but useful for tests"),
-    no_link: bool = (false, parse_no_flag, [TRACKED],
+    no_link: bool = (false, parse_no_value, [TRACKED],
         "compile without linking"),
-    no_parallel_backend: bool = (false, parse_no_flag, [UNTRACKED],
+    no_parallel_backend: bool = (false, parse_no_value, [UNTRACKED],
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
-    no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
+    no_profiler_runtime: bool = (false, parse_no_value, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
-    no_trait_vptr: bool = (false, parse_no_flag, [TRACKED],
+    no_trait_vptr: bool = (false, parse_no_value, [TRACKED],
         "disable generation of trait vptr in vtable for upcasting"),
     no_unique_section_names: bool = (false, parse_bool, [TRACKED],
         "do not use unique names for text and data sections when -Z function-sections is used"),
@@ -1991,7 +1995,7 @@ options! {
     proc_macro_execution_strategy: ProcMacroExecutionStrategy = (ProcMacroExecutionStrategy::SameThread,
         parse_proc_macro_execution_strategy, [UNTRACKED],
         "how to run proc-macro code (default: same-thread)"),
-    profile_closures: bool = (false, parse_no_flag, [UNTRACKED],
+    profile_closures: bool = (false, parse_no_value, [UNTRACKED],
         "profile size of closures"),
     profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
@@ -2165,8 +2169,14 @@ written to standard error output)"),
         "enable unsound and buggy MIR optimizations (default: no)"),
     /// This name is kind of confusing: Most unstable options enable something themselves, while
     /// this just allows "normal" options to be feature-gated.
+    ///
+    /// The main check for `-Zunstable-options` takes place separately from the
+    /// usual parsing of `-Z` options (see [`crate::config::nightly_options`]),
+    /// so this boolean value is mostly used for enabling unstable _values_ of
+    /// stable options. That separate check doesn't handle boolean values, so
+    /// to avoid an inconsistent state we also forbid them here.
     #[rustc_lint_opt_deny_field_access("use `Session::unstable_options` instead of this field")]
-    unstable_options: bool = (false, parse_bool, [UNTRACKED],
+    unstable_options: bool = (false, parse_no_value, [UNTRACKED],
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use legacy .ctors section for initializers rather than .init_array"),

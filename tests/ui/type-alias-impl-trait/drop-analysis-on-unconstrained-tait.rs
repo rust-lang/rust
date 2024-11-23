@@ -1,8 +1,11 @@
-//@ known-bug: #130956
+// Regression test for #130956
+
+#![feature(type_alias_impl_trait)]
 
 mod impl_trait_mod {
     use super::*;
     pub type OpaqueBlock = impl Trait;
+    //~^ ERROR unconstrained opaque type
     pub type OpaqueIf = impl Trait;
 
     pub struct BlockWrapper(OpaqueBlock);
