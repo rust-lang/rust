@@ -85,6 +85,9 @@ pub(crate) mod guard {
         } else if #[cfg(target_os = "windows")] {
             mod windows;
             pub(crate) use windows::enable;
+        } else if #[cfg(all(target_os = "wasi"))] {
+            mod wasi;
+            pub(crate) use wasi::enable;
         } else if #[cfg(any(
             target_family = "wasm",
             target_os = "uefi",
