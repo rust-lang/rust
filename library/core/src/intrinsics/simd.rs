@@ -612,6 +612,16 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
 
+    /// Computes `(x*y) + z` for each element, with unspecified rounding.
+    ///
+    /// This may be equivalent to `simd_fma`, or it may relax to rounding each
+    /// operation if that's more efficient.
+    ///
+    /// `T` must be a vector of floats.
+    #[cfg(not(bootstrap))]
+    #[rustc_nounwind]
+    pub fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
+
     // Computes the sine of each element.
     ///
     /// `T` must be a vector of floats.
