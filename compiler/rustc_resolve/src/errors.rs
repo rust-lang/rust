@@ -666,6 +666,22 @@ pub(crate) struct MacroSuggMovePosition {
 }
 
 #[derive(Subdiagnostic)]
+pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_attr)]
+    Attr {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label(resolve_macro_cannot_use_as_derive)]
+    Derive {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Subdiagnostic)]
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]

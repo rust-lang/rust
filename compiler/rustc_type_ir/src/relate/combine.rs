@@ -123,9 +123,7 @@ where
         }
 
         // All other cases of inference are errors
-        (ty::Infer(_), _) | (_, ty::Infer(_)) => {
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
-        }
+        (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
         (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
             assert!(!infcx.next_trait_solver());

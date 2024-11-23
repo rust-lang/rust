@@ -92,7 +92,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
         b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         b_v.dedup();
         if a_v.len() != b_v.len() {
-            return Err(TypeError::ExistentialMismatch(ExpectedFound::new(true, a, b)));
+            return Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b)));
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
@@ -112,7 +112,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
                     ty::ExistentialPredicate::AutoTrait(a),
                     ty::ExistentialPredicate::AutoTrait(b),
                 ) if a == b => Ok(ep_a.rebind(ty::ExistentialPredicate::AutoTrait(a))),
-                _ => Err(TypeError::ExistentialMismatch(ExpectedFound::new(true, a, b))),
+                _ => Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b))),
             }
         });
         tcx.mk_poly_existential_predicates_from_iter(v)

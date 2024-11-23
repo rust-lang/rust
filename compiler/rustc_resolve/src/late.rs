@@ -3940,12 +3940,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             Res::SelfCtor(_) => {
                 // We resolve `Self` in pattern position as an ident sometimes during recovery,
-                // so delay a bug instead of ICEing. (Note: is this no longer true? We now ICE. If
-                // this triggers, please convert to a delayed bug and add a test.)
-                self.r.dcx().span_bug(
+                // so delay a bug instead of ICEing.
+                self.r.dcx().span_delayed_bug(
                     ident.span,
                     "unexpected `SelfCtor` in pattern, expected identifier"
                 );
+                None
             }
             _ => span_bug!(
                 ident.span,

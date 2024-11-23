@@ -264,14 +264,14 @@ fn fulfillment_error_for_no_solution<'tcx>(
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
-            let expected_found = ExpectedFound::new(true, a, b);
+            let expected_found = ExpectedFound::new(a, b);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Coerce(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
                 obligation.predicate.kind().rebind((pred.a, pred.b)),
             );
-            let expected_found = ExpectedFound::new(false, a, b);
+            let expected_found = ExpectedFound::new(b, a);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
         ty::PredicateKind::Clause(_)
