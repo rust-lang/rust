@@ -257,8 +257,14 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
+resolve_macro_cannot_use_as_attr =
+    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+
+resolve_macro_cannot_use_as_derive =
+     `{$ident}` exists, but a declarative macro cannot be used as a derive macro
+
 resolve_macro_defined_later =
-    a macro with the same name exists, but it appears later at here
+    a macro with the same name exists, but it appears later
 
 resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments =
     macro-expanded `extern crate` items cannot shadow names passed with `--extern`
