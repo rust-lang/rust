@@ -4,6 +4,7 @@
 
 #![feature(avx512_target_feature)]
 #![feature(portable_simd)]
+#![feature(target_feature_11)]
 #![allow(improper_ctypes_definitions)]
 
 use std::arch::x86_64::*;
@@ -50,6 +51,14 @@ unsafe fn test() {
     as_f64x8(arg);
 }
 
+#[target_feature(enable = "avx")]
+unsafe fn in_closure() -> impl FnOnce() -> __m256 {
+    #[inline(always)] // this disables target-feature inheritance
+    || g()
+    //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+    //~| WARNING this was previously accepted by the compiler
+}
+
 fn main() {
     unsafe {
         f(g());
@@ -77,5 +86,9 @@ fn main() {
         //~| WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
         //~| WARNING this was previously accepted by the compiler
         //~| WARNING this was previously accepted by the compiler
+    }
+
+    unsafe {
+        in_closure()();
     }
 }
