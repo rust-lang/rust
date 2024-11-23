@@ -1040,6 +1040,7 @@ fn lower_variant(
             did: f.def_id.to_def_id(),
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
+            safety: f.safety,
         })
         .collect();
     let recovered = match def {

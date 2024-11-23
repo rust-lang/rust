@@ -34,9 +34,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
-use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::{LangItem, Safety};
 use rustc_index::IndexVec;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
@@ -1365,6 +1365,11 @@ impl VariantDef {
     pub fn tail(&self) -> &FieldDef {
         self.tail_opt().expect("expected unsized ADT to have a tail field")
     }
+
+    /// Returns whether this variant has unsafe fields.
+    pub fn has_unsafe_fields(&self) -> bool {
+        self.fields.iter().any(|x| x.safety == Safety::Unsafe)
+    }
 }
 
 impl PartialEq for VariantDef {
@@ -1447,6 +1452,7 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility<DefId>,
+    pub safety: hir::Safety,
 }
 
 impl PartialEq for FieldDef {
@@ -1459,15 +1465,16 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, safety: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, safety: _ } = other;
 
         let res = lhs_did == rhs_did;
 
         // Double check that implicit assumption detailed above.
         if cfg!(debug_assertions) && res {
-            let deep = self.name == other.name && self.vis == other.vis;
+            let deep =
+                self.name == other.name && self.vis == other.vis && self.safety == other.safety;
             assert!(deep, "FieldDef for the same def-id has differing data");
         }
 
@@ -1487,7 +1494,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _ } = &self;
+        let Self { did, name: _, vis: _, safety: _ } = &self;
 
         did.hash(s)
     }

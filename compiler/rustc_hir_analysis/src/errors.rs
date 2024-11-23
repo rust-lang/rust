@@ -735,6 +735,17 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_unsafe_field, code = E0740)]
+pub(crate) struct InvalidUnsafeField {
+    #[primary_span]
+    pub field_span: Span,
+    #[subdiagnostic]
+    pub sugg: InvalidUnsafeFieldSuggestion,
+    #[note]
+    pub note: (),
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
@@ -749,6 +760,18 @@ pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
 pub(crate) struct InvalidUnionFieldSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
+    pub lo: Span,
+    #[suggestion_part(code = ">")]
+    pub hi: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_analysis_invalid_unsafe_field_sugg,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct InvalidUnsafeFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
     pub lo: Span,
     #[suggestion_part(code = ">")]

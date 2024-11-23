@@ -2087,6 +2087,7 @@ symbols! {
         unsafe_cell,
         unsafe_cell_raw_get,
         unsafe_extern_blocks,
+        unsafe_fields,
         unsafe_no_drop_flag,
         unsafe_pin_internals,
         unsize,

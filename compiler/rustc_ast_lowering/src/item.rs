@@ -724,6 +724,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             vis_span: self.lower_span(f.vis.span),
             ty,
+            safety: self.lower_safety(f.safety, hir::Safety::Safe),
         }
     }
 
