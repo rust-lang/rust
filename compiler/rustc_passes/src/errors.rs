@@ -1846,3 +1846,14 @@ pub(crate) struct AttrCrateLevelOnlySugg {
     #[primary_span]
     pub attr: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_no_sanitize)]
+pub(crate) struct NoSanitize<'a> {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+    pub accepted_kind: &'a str,
+    pub attr_str: &'a str,
+}

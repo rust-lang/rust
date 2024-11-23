@@ -470,6 +470,8 @@ impl<'ll> CodegenCx<'ll, '_> {
                 base::set_link_section(g, attrs);
             }
 
+            base::set_variable_sanitizer_attrs(g, attrs);
+
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
                 // `USED` and `USED_LINKER` can't be used together.
                 assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
