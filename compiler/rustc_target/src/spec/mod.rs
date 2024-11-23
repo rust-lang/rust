@@ -34,6 +34,8 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
+// ignore-tidy-filelength
+
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -2593,6 +2595,18 @@ impl TargetOptions {
                 .collect();
         }
     }
+
+    pub(crate) fn has_neg_feature(&self, search_feature: &str) -> bool {
+        self.features.split(',').any(|f| {
+            if let Some(f) = f.strip_prefix('-')
+                && f == search_feature
+            {
+                true
+            } else {
+                false
+            }
+        })
+    }
 }
 
 impl Default for TargetOptions {
@@ -3106,6 +3120,15 @@ impl Target {
                 assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e")
             }
             _ => {}
+        }
+
+        // Check that aarch64 hardfloat targets do not disable neon or fp-armv8 (which are
+        // on-by-default).
+        if self.arch == "aarch64" && self.abi != "softfloat" {
+            check!(
+                !self.has_neg_feature("neon") && !self.has_neg_feature("fp-armv8"),
+                "aarch64 hardfloat targets must not disable the `neon` or `fp-armv8` target features"
+            );
         }
 
         Ok(())
