@@ -2591,6 +2591,7 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
+    /// * The entire file name if the path is a directory;
     /// * The entire file name if the file name begins with `.` and has no other `.`s within;
     /// * Otherwise, the portion of the file name before the final `.`
     ///
@@ -2603,6 +2604,13 @@ impl Path {
     /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
     /// ```
     ///
+    /// if the path is a directory, the function will always return the complete filename
+    /// ```no_run
+    /// use std::path::Path;
+    ///
+    /// assert_eq!("2024.11.23_directory", Path::new("2024.11.23_directory").file_stem().unwrap());
+    /// ```
+    ///
     /// # See Also
     /// This method is similar to [`Path::file_prefix`], which extracts the portion of the file name
     /// before the *first* `.`
@@ -2612,7 +2620,11 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn file_stem(&self) -> Option<&OsStr> {
-        self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
+        if self.is_dir() {
+            self.file_name()
+        } else {
+            self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
+        }
     }
 
     /// Extracts the prefix of [`self.file_name`].
