@@ -579,7 +579,8 @@ impl<T, const N: usize> [T; N] {
     /// Returns a mutable slice containing the entire array. Equivalent to
     /// `&mut s[..]`.
     #[stable(feature = "array_as_slice", since = "1.57.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_array_as_mut_slice", issue = "133333")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
 
