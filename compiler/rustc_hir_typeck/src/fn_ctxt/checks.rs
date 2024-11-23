@@ -729,7 +729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let can_coerce = self.may_coerce(arg_ty, coerced_ty);
             if !can_coerce {
                 return Compatibility::Incompatible(Some(ty::error::TypeError::Sorts(
-                    ty::error::ExpectedFound::new(true, coerced_ty, arg_ty),
+                    ty::error::ExpectedFound::new(coerced_ty, arg_ty),
                 )));
             }
 
@@ -758,7 +758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 expected_ty
             };
-            TypeTrace::types(&self.misc(span), true, mismatched_ty, provided_ty)
+            TypeTrace::types(&self.misc(span), mismatched_ty, provided_ty)
         };
 
         // The algorithm here is inspired by levenshtein distance and longest common subsequence.

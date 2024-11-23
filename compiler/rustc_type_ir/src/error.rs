@@ -12,12 +12,8 @@ pub struct ExpectedFound<T> {
 }
 
 impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
+    pub fn new(expected: T, found: T) -> Self {
+        ExpectedFound { expected, found }
     }
 }
 
