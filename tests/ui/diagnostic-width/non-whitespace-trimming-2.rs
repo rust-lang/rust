@@ -1,5 +1,5 @@
 //@ revisions: ascii unicode
-//@[unicode] compile-flags: -Zunstable-options=yes --error-format=human-unicode
+//@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode
 // ignore-tidy-linelength
 
 fn main() {
