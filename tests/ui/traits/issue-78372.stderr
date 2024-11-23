@@ -55,24 +55,6 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/issue-78372.rs:12:17
-   |
-LL |     fn foo(self: Smaht<Self, T>);
-   |                  -------------- help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
-...
-LL | impl Marker for dyn Foo {}
-   |                 ^^^^^^^ `Foo` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-78372.rs:9:18
-   |
-LL | trait Foo: X<u32> {}
-   |       --- this trait cannot be made into an object...
-LL | trait X<T> {
-LL |     fn foo(self: Smaht<Self, T>);
-   |                  ^^^^^^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
-
 error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
   --> $DIR/issue-78372.rs:9:18
    |
@@ -88,7 +70,7 @@ error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0038, E0307, E0378, E0412, E0658.
-For more information about an error, try `rustc --explain E0038`.
+Some errors have detailed explanations: E0307, E0378, E0412, E0658.
+For more information about an error, try `rustc --explain E0307`.
