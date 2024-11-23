@@ -1792,12 +1792,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn suggest_specify_actual_length(
         &self,
-        terr: TypeError<'_>,
-        trace: &TypeTrace<'_>,
+        terr: TypeError<'tcx>,
+        trace: &TypeTrace<'tcx>,
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
         let hir = self.tcx.hir();
-        let TypeError::FixedArraySize(sz) = terr else {
+        let TypeError::ArraySize(sz) = terr else {
             return None;
         };
         let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_id) {
@@ -1838,9 +1838,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let Some(tykind) = tykind
             && let hir::TyKind::Array(_, length) = tykind
             && let hir::ArrayLen::Body(ct) = length
+            && let Some((scalar, ty)) = sz.found.try_to_scalar()
+            && ty == self.tcx.types.usize
         {
             let span = ct.span();
-            Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found })
+            Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
+                span,
+                length: scalar.to_target_usize(&self.tcx).unwrap(),
+            })
         } else {
             None
         }
