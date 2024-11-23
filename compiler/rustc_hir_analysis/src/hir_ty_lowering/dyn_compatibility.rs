@@ -126,7 +126,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         for (base_trait_ref, original_span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.upcast(tcx);
-            for ClauseWithSupertraitSpan { pred, original_span, supertrait_span } in
+            for ClauseWithSupertraitSpan { pred, supertrait_span } in
                 traits::elaborate(tcx, [ClauseWithSupertraitSpan::new(base_pred, original_span)])
                     .filter_only_self()
             {
