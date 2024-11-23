@@ -174,6 +174,7 @@
 #![feature(const_is_char_boundary)]
 #![feature(const_precise_live_drops)]
 #![feature(const_str_split_at)]
+#![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
