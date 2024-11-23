@@ -550,11 +550,15 @@ impl OsString {
         OsStr::from_inner_mut(self.inner.leak())
     }
 
-    /// Provides plumbing to core `Vec::truncate`.
-    /// More well behaving alternative to allowing outer types
-    /// full mutable access to the core `Vec`.
+    /// Truncate the the `OsString` to the specified length.
+    ///
+    /// # Panics
+    /// Panics if `len` does not lie on a valid `OsStr` boundary
+    /// (as described in [`OsStr::slice_encoded_bytes`]).
     #[inline]
-    pub(crate) fn truncate(&mut self, len: usize) {
+    #[unstable(feature = "os_string_truncate", issue = "133262")]
+    pub fn truncate(&mut self, len: usize) {
+        self.as_os_str().inner.check_public_boundary(len);
         self.inner.truncate(len);
     }
 
