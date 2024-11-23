@@ -1,9 +1,8 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
@@ -11,7 +10,7 @@ use rustc_middle::ty::{
     self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
 use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
@@ -128,8 +127,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut associated_types: FxIndexMap<Span, FxIndexSet<DefId>> = FxIndexMap::default();
+        let mut needed_associated_types = FxIndexSet::default();
 
+        let principal_span = regular_traits.first().map_or(DUMMY_SP, |info| info.bottom().1);
         let regular_traits_refs_spans = trait_bounds
             .into_iter()
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
@@ -146,11 +146,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
-                        associated_types.entry(original_span).or_default().extend(
+                        needed_associated_types.extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
                                 .filter(|item| !item.is_impl_trait_in_trait())
+                                // If the associated type has a `where Self: Sized` bound,
+                                // we do not need to constrain the associated type.
+                                .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                                 .map(|item| item.def_id),
                         );
                     }
@@ -201,26 +204,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
         // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
         // corresponding `Projection` clause
-        for def_ids in associated_types.values_mut() {
-            for (projection_bound, span) in &projection_bounds {
-                let def_id = projection_bound.item_def_id();
-                def_ids.swap_remove(&def_id);
-                if tcx.generics_require_sized_self(def_id) {
-                    tcx.emit_node_span_lint(
-                        UNUSED_ASSOCIATED_TYPE_BOUNDS,
-                        hir_id,
-                        *span,
-                        crate::errors::UnusedAssociatedTypeBounds { span: *span },
-                    );
-                }
+        for (projection_bound, span) in &projection_bounds {
+            let def_id = projection_bound.item_def_id();
+            needed_associated_types.swap_remove(&def_id);
+            if tcx.generics_require_sized_self(def_id) {
+                tcx.emit_node_span_lint(
+                    UNUSED_ASSOCIATED_TYPE_BOUNDS,
+                    hir_id,
+                    *span,
+                    crate::errors::UnusedAssociatedTypeBounds { span: *span },
+                );
             }
-            // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
-            // type in the `dyn Trait`.
-            def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
         if let Err(guar) = self.check_for_required_assoc_tys(
-            associated_types,
+            principal_span,
+            needed_associated_types,
             potential_assoc_types,
             hir_trait_bounds,
         ) {
