@@ -190,16 +190,20 @@ impl<'tcx> Instance<'tcx> {
     /// This method already takes into account the global `-Zshare-generics`
     /// setting, always returning `None` if `share-generics` is off.
     pub fn upstream_monomorphization(&self, tcx: TyCtxt<'tcx>) -> Option<CrateNum> {
-        // If we are not in share generics mode, we don't link to upstream
-        // monomorphizations but always instantiate our own internal versions
-        // instead.
-        if !tcx.sess.opts.share_generics() {
-            return None;
-        }
-
         // If this is an item that is defined in the local crate, no upstream
         // crate can know about it/provide a monomorphization.
         if self.def_id().is_local() {
+            return None;
+        }
+
+        // If we are not in share generics mode, we don't link to upstream
+        // monomorphizations but always instantiate our own internal versions
+        // instead.
+        if !tcx.sess.opts.share_generics()
+            // However, if the def_id is marked inline(never), then it's fine to just reuse the
+            // upstream monomorphization.
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr::InlineAttr::Never
+        {
             return None;
         }
 
