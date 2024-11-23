@@ -369,9 +369,11 @@ pub struct ChunkedBitSet<T> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Chunk {
     /// A chunk that is all zeros; we don't represent the zeros explicitly.
+    /// The `ChunkSize` is always non-zero.
     Zeros(ChunkSize),
 
     /// A chunk that is all ones; we don't represent the ones explicitly.
+    /// `ChunkSize` is always non-zero.
     Ones(ChunkSize),
 
     /// A chunk that has a mix of zeros and ones, which are represented
@@ -384,8 +386,10 @@ enum Chunk {
     /// words are always be zero, as are any excess bits in the final in-use
     /// word.
     ///
-    /// The second field is the count of 1s set in the chunk, and must satisfy
-    /// `0 < count < chunk_domain_size`.
+    /// The first `ChunkSize` field is always non-zero.
+    ///
+    /// The second `ChunkSize` field is the count of 1s set in the chunk, and
+    /// must satisfy `0 < count < chunk_domain_size`.
     ///
     /// The words are within an `Rc` because it's surprisingly common to
     /// duplicate an entire chunk, e.g. in `ChunkedBitSet::clone_from()`, or
@@ -461,7 +465,7 @@ impl<T: Idx> ChunkedBitSet<T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.chunks.iter().all(|chunk| matches!(chunk, Chunk::Zeros(..) | Chunk::Ones(0)))
+        self.chunks.iter().all(|chunk| matches!(chunk, Chunk::Zeros(..)))
     }
 
     /// Returns `true` if `self` contains `elem`.
@@ -1005,7 +1009,7 @@ impl Chunk {
     }
 
     fn new(chunk_domain_size: usize, is_empty: bool) -> Self {
-        debug_assert!(chunk_domain_size <= CHUNK_BITS);
+        debug_assert!(0 < chunk_domain_size && chunk_domain_size <= CHUNK_BITS);
         let chunk_domain_size = chunk_domain_size as ChunkSize;
         if is_empty { Zeros(chunk_domain_size) } else { Ones(chunk_domain_size) }
     }
