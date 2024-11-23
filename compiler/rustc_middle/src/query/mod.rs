@@ -2311,10 +2311,13 @@ rustc_queries! {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 
-    query compare_impl_const(
-        key: (LocalDefId, DefId)
-    ) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0) }
+    /// This takes the def-id of an associated item from a impl of a trait,
+    /// and checks its validity against the trait item it corresponds to.
+    ///
+    /// Any other def id will ICE.
+    query compare_impl_item(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx| "checking assoc item `{}` is compatible with trait definition", tcx.def_path_str(key) }
+        ensure_forwards_result_if_red
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {

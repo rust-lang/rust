@@ -35,6 +35,24 @@ use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
 mod refine;
 
+/// Call the query `tcx.compare_impl_item()` directly instead.
+pub(super) fn compare_impl_item(
+    tcx: TyCtxt<'_>,
+    impl_item_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    let impl_item = tcx.associated_item(impl_item_def_id);
+    let trait_item = tcx.associated_item(impl_item.trait_item_def_id.unwrap());
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_item.container_id(tcx)).unwrap().instantiate_identity();
+    debug!(?impl_trait_ref);
+
+    match impl_item.kind {
+        ty::AssocKind::Fn => compare_impl_method(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Type => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
+        ty::AssocKind::Const => compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref),
+    }
+}
+
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
 ///
@@ -44,22 +62,21 @@ mod refine;
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 #[instrument(level = "debug", skip(tcx))]
-pub(super) fn compare_impl_method<'tcx>(
+fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
-) {
-    let _: Result<_, ErrorGuaranteed> = try {
-        check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
-        compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
-        refine::check_refining_return_position_impl_trait_in_trait(
-            tcx,
-            impl_m,
-            trait_m,
-            impl_trait_ref,
-        );
-    };
+) -> Result<(), ErrorGuaranteed> {
+    check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
+    compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
+    refine::check_refining_return_position_impl_trait_in_trait(
+        tcx,
+        impl_m,
+        trait_m,
+        impl_trait_ref,
+    );
+    Ok(())
 }
 
 /// Checks a bunch of different properties of the impl/trait methods for
@@ -1721,17 +1738,12 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-/// Use `tcx.compare_impl_const` instead
-pub(super) fn compare_impl_const_raw(
-    tcx: TyCtxt<'_>,
-    (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
+fn compare_impl_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_const_item: ty::AssocItem,
+    trait_const_item: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_const_item = tcx.associated_item(impl_const_item_def);
-    let trait_const_item = tcx.associated_item(trait_const_item_def);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(impl_const_item.container_id(tcx)).unwrap().instantiate_identity();
-    debug!(?impl_trait_ref);
-
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
@@ -1862,19 +1874,17 @@ fn compare_const_predicate_entailment<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx))]
-pub(super) fn compare_impl_ty<'tcx>(
+fn compare_impl_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: ty::AssocItem,
     trait_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
-) {
-    let _: Result<(), ErrorGuaranteed> = try {
-        compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
-        compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
-        check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
-        compare_type_predicate_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
-        check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)?;
-    };
+) -> Result<(), ErrorGuaranteed> {
+    compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
+    compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
+    check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
+    compare_type_predicate_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
+    check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)
 }
 
 /// The equivalent of [compare_method_predicate_entailment], but for associated types

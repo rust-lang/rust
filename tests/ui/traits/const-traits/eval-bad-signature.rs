@@ -1,4 +1,4 @@
-//@ known-bug: #112623
+// Make sure we don't ICE when evaluating a trait whose impl has a bad signature.
 
 #![feature(const_trait_impl)]
 
@@ -15,6 +15,7 @@ struct FortyTwo;
 
 impl const Value for FortyTwo {
     fn value() -> i64 {
+        //~^ ERROR method `value` has an incompatible type for trait
         42
     }
 }
