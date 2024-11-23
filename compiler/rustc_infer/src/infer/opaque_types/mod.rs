@@ -177,7 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
+            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
         }
     }
 

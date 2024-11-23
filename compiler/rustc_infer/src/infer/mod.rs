@@ -1478,39 +1478,29 @@ impl<'tcx> TypeTrace<'tcx> {
         self.cause.span
     }
 
-    pub fn types(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-    ) -> TypeTrace<'tcx> {
+    pub fn types(cause: &ObligationCause<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a.into(), b.into())),
         }
     }
 
     pub fn trait_refs(
         cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
         a: ty::TraitRef<'tcx>,
         b: ty::TraitRef<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace {
-            cause: cause.clone(),
-            values: ValuePairs::TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
-        }
+        TypeTrace { cause: cause.clone(), values: ValuePairs::TraitRefs(ExpectedFound::new(a, b)) }
     }
 
     pub fn consts(
         cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a.into(), b.into())),
         }
     }
 }
