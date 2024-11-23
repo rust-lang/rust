@@ -68,6 +68,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         throw_unsup_format!("unimplemented sysconf name: {}", name)
     }
 
+    fn strerror_r(
+        &mut self,
+        errnum: &OpTy<'tcx>,
+        buf: &OpTy<'tcx>,
+        buflen: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let errnum = this.read_scalar(errnum)?;
+        let buf = this.read_pointer(buf)?;
+        let buflen = this.read_target_usize(buflen)?;
+        let error = this.try_errnum_to_io_error(errnum)?;
+        let formatted = match error {
+            Some(err) => format!("{err}"),
+            None => format!("<unknown errnum in strerror_r: {errnum}>"),
+        };
+        let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
+        if complete {
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            interp_ok(Scalar::from_i32(this.eval_libc_i32("ERANGE")))
+        }
+    }
+
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -110,6 +134,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "getpid" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false}, link_name, args)?;
                 let result = this.getpid()?;
+                this.write_scalar(result, dest)?;
+            }
+
+            "sysconf" => {
+                let [val] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.sysconf(val)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -724,21 +755,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }
-            "strerror_r" | "__xpg_strerror_r" => {
-                let [errnum, buf, buflen] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let errnum = this.read_scalar(errnum)?;
-                let buf = this.read_pointer(buf)?;
-                let buflen = this.read_target_usize(buflen)?;
-
-                let error = this.try_errnum_to_io_error(errnum)?;
-                let formatted = match error {
-                    Some(err) => format!("{err}"),
-                    None => format!("<unknown errnum in strerror_r: {errnum}>"),
-                };
-                let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
-                let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE") };
-                this.write_int(ret, dest)?;
-            }
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, macOS, FreeBSD and Solaris/Illumos.
@@ -766,6 +782,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_null(dest)?;
                 }
             }
+
+            "strerror_r" => {
+                let [errnum, buf, buflen] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.strerror_r(errnum, buf, buflen)?;
+                this.write_scalar(result, dest)?;
+            }
+
             "getrandom" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, FreeBSD and Solaris/Illumos.

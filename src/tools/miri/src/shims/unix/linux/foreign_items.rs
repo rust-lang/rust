@@ -125,14 +125,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
-            // Querying system information
-            "sysconf" => {
-                let [val] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.sysconf(val)?;
-                this.write_scalar(result, dest)?;
-            }
-
             // Dynamically invoked syscalls
             "syscall" => {
                 syscall(this, link_name, abi, args, dest)?;
@@ -151,6 +143,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let ptr = this.mremap(old_address, old_size, new_size, flags)?;
                 this.write_scalar(ptr, dest)?;
+            }
+            "__xpg_strerror_r" => {
+                let [errnum, buf, buflen] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.strerror_r(errnum, buf, buflen)?;
+                this.write_scalar(result, dest)?;
             }
             "__errno_location" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
