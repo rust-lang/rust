@@ -23,6 +23,8 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "\u{1}mcount".into(),
             has_thumb_interworking: true,
+            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+            crt_static_default: true,
             ..base::linux_musl::opts()
         },
     }

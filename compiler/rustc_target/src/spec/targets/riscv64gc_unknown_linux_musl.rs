@@ -21,7 +21,6 @@ pub(crate) fn target() -> Target {
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
-            crt_static_default: false,
             ..base::linux_musl::opts()
         },
     }
