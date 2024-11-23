@@ -172,3 +172,12 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Protected => llvm::Visibility::Protected,
     }
 }
+
+pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
+    if attrs.no_sanitize.contains(SanitizerSet::ADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
+    }
+    if attrs.no_sanitize.contains(SanitizerSet::HWADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
+    }
+}
