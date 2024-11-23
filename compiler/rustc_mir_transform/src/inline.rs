@@ -268,6 +268,10 @@ impl<'tcx> Inliner<'tcx> {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
+            if arg_tuple_tys.len() + self_arg_ty.map_or(0, |_| 1) != callee_body.args_iter().len() {
+                return Err("arg arity mismatch");
+            }
+
             for (arg_ty, input) in
                 self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
             {
@@ -278,6 +282,10 @@ impl<'tcx> Inliner<'tcx> {
                 }
             }
         } else {
+            if args.len() != callee_body.args_iter().len() {
+                return Err("arg arity mismatch");
+            }
+
             for (arg, input) in args.iter().zip(callee_body.args_iter()) {
                 let input_type = callee_body.local_decls[input].ty;
                 let arg_ty = arg.node.ty(&caller_body.local_decls, self.tcx);

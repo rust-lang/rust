@@ -1,0 +1,11 @@
+error[E0185]: method `default` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/inline-wrong-args.rs:6:5
+   |
+LL |     fn default(&self) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
+   |
+   = note: `default` from trait: `fn() -> Self`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0185`.
