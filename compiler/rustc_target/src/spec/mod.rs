@@ -34,6 +34,8 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
+// ignore-tidy-filelength
+
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
@@ -42,6 +44,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -1605,13 +1608,11 @@ macro_rules! supported_targets {
 
         #[cfg(test)]
         mod tests {
-            mod tests_impl;
-
             // Cannot put this into a separate file without duplication, make an exception.
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(crate::spec::targets::$module::target());
+                    crate::spec::targets::$module::target().test_target()
                 }
             )+
         }
@@ -1996,6 +1997,14 @@ impl TargetWarnings {
         }
         warnings
     }
+}
+
+/// For the [`Target::check_consistency`] function, determines whether the given target is a builtin or a JSON
+/// target.
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum TargetKind {
+    Json,
+    Builtin,
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -2846,6 +2855,357 @@ impl Target {
         self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
+    /// Check some basic consistency of the current target. For JSON targets we are less strict;
+    /// some of these checks are more guidelines than strict rules.
+    fn check_consistency(&self, kind: TargetKind) -> Result<(), String> {
+        macro_rules! check {
+            ($b:expr, $($msg:tt)*) => {
+                if !$b {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_eq {
+            ($left:expr, $right:expr, $($msg:tt)*) => {
+                if ($left) != ($right) {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_ne {
+            ($left:expr, $right:expr, $($msg:tt)*) => {
+                if ($left) == ($right) {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_matches {
+            ($left:expr, $right:pat, $($msg:tt)*) => {
+                if !matches!($left, $right) {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+
+        check_eq!(
+            self.is_like_osx,
+            self.vendor == "apple",
+            "`is_like_osx` must be set if and only if `vendor` is `apple`"
+        );
+        check_eq!(
+            self.is_like_solaris,
+            self.os == "solaris" || self.os == "illumos",
+            "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
+        );
+        check_eq!(
+            self.is_like_windows,
+            self.os == "windows" || self.os == "uefi",
+            "`is_like_windows` must be set if and only if `os` is `windows` or `uefi`"
+        );
+        check_eq!(
+            self.is_like_wasm,
+            self.arch == "wasm32" || self.arch == "wasm64",
+            "`is_like_wasm` must be set if and only if `arch` is `wasm32` or `wasm64`"
+        );
+        if self.is_like_msvc {
+            check!(self.is_like_windows, "if `is_like_msvc` is set, `is_like_windows` must be set");
+        }
+        if self.os == "emscripten" {
+            check!(self.is_like_wasm, "the `emcscripten` os only makes sense on wasm-like targets");
+        }
+
+        // Check that default linker flavor is compatible with some other key properties.
+        check_eq!(
+            self.is_like_osx,
+            matches!(self.linker_flavor, LinkerFlavor::Darwin(..)),
+            "`linker_flavor` must be `darwin` if and only if `is_like_osx` is set"
+        );
+        check_eq!(
+            self.is_like_msvc,
+            matches!(self.linker_flavor, LinkerFlavor::Msvc(..)),
+            "`linker_flavor` must be `msvc` if and only if `is_like_msvc` is set"
+        );
+        check_eq!(
+            self.is_like_wasm && self.os != "emscripten",
+            matches!(self.linker_flavor, LinkerFlavor::WasmLld(..)),
+            "`linker_flavor` must be `wasm-lld` if and only if `is_like_wasm` is set and the `os` is not `emscripten`",
+        );
+        check_eq!(
+            self.os == "emscripten",
+            matches!(self.linker_flavor, LinkerFlavor::EmCc),
+            "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
+        );
+        check_eq!(
+            self.arch == "bpf",
+            matches!(self.linker_flavor, LinkerFlavor::Bpf),
+            "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
+        );
+        check_eq!(
+            self.arch == "nvptx64",
+            matches!(self.linker_flavor, LinkerFlavor::Ptx),
+            "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
+        );
+
+        for args in [
+            &self.pre_link_args,
+            &self.late_link_args,
+            &self.late_link_args_dynamic,
+            &self.late_link_args_static,
+            &self.post_link_args,
+        ] {
+            for (&flavor, flavor_args) in args {
+                check!(!flavor_args.is_empty(), "linker flavor args must not be empty");
+                // Check that flavors mentioned in link args are compatible with the default flavor.
+                match self.linker_flavor {
+                    LinkerFlavor::Gnu(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Gnu(..),
+                            "mixing GNU and non-GNU linker flavors"
+                        );
+                    }
+                    LinkerFlavor::Darwin(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Darwin(..),
+                            "mixing Darwin and non-Darwin linker flavors"
+                        )
+                    }
+                    LinkerFlavor::WasmLld(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::WasmLld(..),
+                            "mixing wasm and non-wasm linker flavors"
+                        )
+                    }
+                    LinkerFlavor::Unix(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Unix(..),
+                            "mixing unix and non-unix linker flavors"
+                        );
+                    }
+                    LinkerFlavor::Msvc(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Msvc(..),
+                            "mixing MSVC and non-MSVC linker flavors"
+                        );
+                    }
+                    LinkerFlavor::EmCc
+                    | LinkerFlavor::Bpf
+                    | LinkerFlavor::Ptx
+                    | LinkerFlavor::Llbc => {
+                        check_eq!(flavor, self.linker_flavor, "mixing different linker flavors")
+                    }
+                }
+
+                // Check that link args for cc and non-cc versions of flavors are consistent.
+                let check_noncc = |noncc_flavor| -> Result<(), String> {
+                    if let Some(noncc_args) = args.get(&noncc_flavor) {
+                        for arg in flavor_args {
+                            if let Some(suffix) = arg.strip_prefix("-Wl,") {
+                                check!(
+                                    noncc_args.iter().any(|a| a == suffix),
+                                    " link args for cc and non-cc versions of flavors are not consistent"
+                                );
+                            }
+                        }
+                    }
+                    Ok(())
+                };
+
+                match self.linker_flavor {
+                    LinkerFlavor::Gnu(Cc::Yes, lld) => check_noncc(LinkerFlavor::Gnu(Cc::No, lld))?,
+                    LinkerFlavor::WasmLld(Cc::Yes) => check_noncc(LinkerFlavor::WasmLld(Cc::No))?,
+                    LinkerFlavor::Unix(Cc::Yes) => check_noncc(LinkerFlavor::Unix(Cc::No))?,
+                    _ => {}
+                }
+            }
+
+            // Check that link args for lld and non-lld versions of flavors are consistent.
+            for cc in [Cc::No, Cc::Yes] {
+                check_eq!(
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::Yes)),
+                    "link args for lld and non-lld versions of flavors are not consistent",
+                );
+                check_eq!(
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::Yes)),
+                    "link args for lld and non-lld versions of flavors are not consistent",
+                );
+            }
+            check_eq!(
+                args.get(&LinkerFlavor::Msvc(Lld::No)),
+                args.get(&LinkerFlavor::Msvc(Lld::Yes)),
+                "link args for lld and non-lld versions of flavors are not consistent",
+            );
+        }
+
+        if self.link_self_contained.is_disabled() {
+            check!(
+                self.pre_link_objects_self_contained.is_empty()
+                    && self.post_link_objects_self_contained.is_empty(),
+                "if `link_self_contained` is disabled, then `pre_link_objects_self_contained` and `post_link_objects_self_contained` must be empty",
+            );
+        }
+
+        // If your target really needs to deviate from the rules below,
+        // except it and document the reasons.
+        // Keep the default "unknown" vendor instead.
+        check_ne!(self.vendor, "", "`vendor` cannot be empty");
+        check_ne!(self.os, "", "`os` cannot be empty");
+        if !self.can_use_os_unknown() {
+            // Keep the default "none" for bare metal targets instead.
+            check_ne!(
+                self.os,
+                "unknown",
+                "`unknown` os can only be used on particular targets; use `none` for bare-metal targets"
+            );
+        }
+
+        // Check dynamic linking stuff.
+        // We skip this for JSON targets since otherwise, our default values would fail this test.
+        // These checks are not critical for correctness, but more like default guidelines.
+        // FIXME (https://github.com/rust-lang/rust/issues/133459): do we want to change the JSON
+        // target defaults so that they pass these checks?
+        if kind == TargetKind::Builtin {
+            // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
+            // hexagon: when targeting QuRT, that OS can load dynamic libraries.
+            // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
+            if self.os == "none"
+                && (self.arch != "bpf"
+                    && self.arch != "hexagon"
+                    && self.arch != "wasm32"
+                    && self.arch != "wasm64")
+            {
+                check!(
+                    !self.dynamic_linking,
+                    "dynamic linking is not supported on this OS/architecture"
+                );
+            }
+            if self.only_cdylib
+                || self.crt_static_allows_dylibs
+                || !self.late_link_args_dynamic.is_empty()
+            {
+                check!(
+                    self.dynamic_linking,
+                    "dynamic linking must be allowed when `only_cdylib` or `crt_static_allows_dylibs` or `late_link_args_dynamic` are set"
+                );
+            }
+            // Apparently PIC was slow on wasm at some point, see comments in wasm_base.rs
+            if self.dynamic_linking && !self.is_like_wasm {
+                check_eq!(
+                    self.relocation_model,
+                    RelocModel::Pic,
+                    "targets that support dynamic linking must use the `pic` relocation model"
+                );
+            }
+            if self.position_independent_executables {
+                check_eq!(
+                    self.relocation_model,
+                    RelocModel::Pic,
+                    "targets that support position-independent executables must use the `pic` relocation model"
+                );
+            }
+            // The UEFI targets do not support dynamic linking but still require PIC (#101377).
+            if self.relocation_model == RelocModel::Pic && (self.os != "uefi") {
+                check!(
+                    self.dynamic_linking || self.position_independent_executables,
+                    "when the relocation model is `pic`, the target must support dynamic linking or use position-independent executables. \
+                Set the relocation model to `static` to avoid this requirement"
+                );
+            }
+            if self.static_position_independent_executables {
+                check!(
+                    self.position_independent_executables,
+                    "if `static_position_independent_executables` is set, then `position_independent_executables` must be set"
+                );
+            }
+            if self.position_independent_executables {
+                check!(
+                    self.executables,
+                    "if `position_independent_executables` is set then `executables` must be set"
+                );
+            }
+        }
+
+        // Check crt static stuff
+        if self.crt_static_default || self.crt_static_allows_dylibs {
+            check!(
+                self.crt_static_respected,
+                "static CRT can be enabled but `crt_static_respected` is not set"
+            );
+        }
+
+        // Check that RISC-V targets always specify which ABI they use.
+        match &*self.arch {
+            "riscv32" => {
+                check_matches!(
+                    &*self.llvm_abiname,
+                    "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
+                    "invalid RISC-V ABI name"
+                );
+            }
+            "riscv64" => {
+                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                check_matches!(
+                    &*self.llvm_abiname,
+                    "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e",
+                    "invalid RISC-V ABI name"
+                );
+            }
+            _ => {}
+        }
+
+        // Check that the given target-features string makes some basic sense.
+        if !self.features.is_empty() {
+            let mut features_enabled = FxHashSet::default();
+            let mut features_disabled = FxHashSet::default();
+            for feat in self.features.split(',') {
+                if let Some(feat) = feat.strip_prefix("+") {
+                    features_enabled.insert(feat);
+                    if features_disabled.contains(feat) {
+                        return Err(format!(
+                            "target feature `{feat}` is both enabled and disabled"
+                        ));
+                    }
+                } else if let Some(feat) = feat.strip_prefix("-") {
+                    features_disabled.insert(feat);
+                    if features_enabled.contains(feat) {
+                        return Err(format!(
+                            "target feature `{feat}` is both enabled and disabled"
+                        ));
+                    }
+                } else {
+                    return Err(format!(
+                        "target feature `{feat}` is invalid, must start with `+` or `-`"
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Test target self-consistency and JSON encoding/decoding roundtrip.
+    #[cfg(test)]
+    fn test_target(mut self) {
+        let recycled_target = Target::from_json(self.to_json()).map(|(j, _)| j);
+        self.update_to_cli();
+        self.check_consistency(TargetKind::Builtin).unwrap();
+        assert_eq!(recycled_target, Ok(self));
+    }
+
+    // Add your target to the whitelist if it has `std` library
+    // and you certainly want "unknown" for the OS name.
+    fn can_use_os_unknown(&self) -> bool {
+        self.llvm_target == "wasm32-unknown-unknown"
+            || self.llvm_target == "wasm64-unknown-unknown"
+            || (self.env == "sgx" && self.vendor == "fortanix")
+    }
+
     /// Loads a target descriptor from a JSON object.
     pub fn from_json(obj: Json) -> Result<(Target, TargetWarnings), String> {
         // While ugly, this code must remain this way to retain
@@ -3452,6 +3812,7 @@ impl Target {
         key!(supports_xray, bool);
 
         base.update_from_cli();
+        base.check_consistency(TargetKind::Json)?;
 
         // Each field should have been read using `Json::remove` so any keys remaining are unused.
         let remaining_keys = obj.keys();
