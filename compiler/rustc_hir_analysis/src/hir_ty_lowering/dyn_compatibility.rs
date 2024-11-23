@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -62,6 +62,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
+        let mut uwu = FxHashMap::default();
+
         for (pred, span) in bounds.clauses() {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
@@ -71,6 +73,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 ty::ClauseKind::Projection(proj) => {
                     projection_bounds.push((bound_pred.rebind(proj), span));
+                    uwu.insert(proj.def_id(), (bound_pred.rebind(proj.term), span));
                 }
                 ty::ClauseKind::TypeOutlives(_) => {
                     // Do nothing, we deal with regions separately
@@ -174,6 +177,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         if !references_self {
                             // Include projections defined on supertraits.
                             projection_bounds.push((pred, original_span));
+                        }
+
+                        if !references_self
+                            && let Some(&(user_written, span)) = uwu.get(&pred.projection_def_id())
+                        {
+                            let user_written = tcx.anonymize_bound_vars(user_written);
+                            let elaborated =
+                                tcx.anonymize_bound_vars(pred.map_bound(|pred| pred.term));
+                            if user_written != elaborated {
+                                self.dcx().span_err(
+                                    span,
+                                    format!("expected {user_written}, found {elaborated}"),
+                                );
+                            }
                         }
 
                         self.check_elaborated_projection_mentions_input_lifetimes(

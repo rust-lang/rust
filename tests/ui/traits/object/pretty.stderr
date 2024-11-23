@@ -1,3 +1,15 @@
+error: expected u16, found u8
+  --> $DIR/pretty.rs:28:34
+   |
+LL | fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x }
+   |                                  ^^^^^^^^^^^
+
+error: expected &'a u8, found for<'a> &'a u8
+  --> $DIR/pretty.rs:36:62
+   |
+LL | fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x }
+   |                                                              ^^^^^^^^^^^^
+
 warning: unnecessary associated type bound for dyn-incompatible associated type
   --> $DIR/pretty.rs:41:35
    |
@@ -161,6 +173,6 @@ LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
    = note: expected unit type `()`
               found reference `&dyn HasGat<u8, Assoc<bool> = ()>`
 
-error: aborting due to 14 previous errors; 1 warning emitted
+error: aborting due to 16 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

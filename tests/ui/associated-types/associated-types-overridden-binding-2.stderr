@@ -1,3 +1,9 @@
+error: expected u32, found i32
+  --> $DIR/associated-types-overridden-binding-2.rs:6:29
+   |
+LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
+   |                             ^^^^^^^^^^
+
 error[E0271]: expected `IntoIter<u32>` to be an iterator that yields `i32`, but it yields `u32`
   --> $DIR/associated-types-overridden-binding-2.rs:6:43
    |
@@ -6,6 +12,6 @@ LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
    |
    = note: required for the cast from `&std::vec::IntoIter<u32>` to `&dyn Iterator<Item = u32, Item = i32>`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0271`.
