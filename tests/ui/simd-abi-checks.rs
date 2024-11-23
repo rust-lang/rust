@@ -4,7 +4,7 @@
 
 #![feature(avx512_target_feature)]
 #![feature(portable_simd)]
-#![feature(target_feature_11)]
+#![feature(target_feature_11, simd_ffi)]
 #![allow(improper_ctypes_definitions)]
 
 use std::arch::x86_64::*;
@@ -91,4 +91,20 @@ fn main() {
     unsafe {
         in_closure()();
     }
+
+    unsafe {
+        #[expect(improper_ctypes)]
+        extern "C" {
+            fn some_extern() -> __m256;
+        }
+        some_extern();
+        //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+        //~| WARNING this was previously accepted by the compiler
+    }
+}
+
+#[no_mangle]
+#[target_feature(enable = "avx")]
+fn some_extern() -> __m256 {
+    todo!()
 }
