@@ -143,6 +143,13 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let bx = self;
 
+        // Due to LocalCopy instantiation or MIR inlining, coverage statements
+        // can end up in a crate that isn't doing coverage instrumentation.
+        // When that happens, we currently just discard those statements, so
+        // the corresponding code will be undercounted.
+        // FIXME(Zalathar): Find a better solution for mixed-coverage builds.
+        let Some(coverage_cx) = &bx.cx.coverage_cx else { return };
+
         let Some(function_coverage_info) =
             bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
         else {
@@ -150,12 +157,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        // FIXME(#132395): Unwrapping `coverage_cx` here has led to ICEs in the
-        // wild, so keep this early-return until we understand why.
-        let mut coverage_map = match bx.coverage_cx {
-            Some(ref cx) => cx.function_coverage_map.borrow_mut(),
-            None => return,
-        };
+        let mut coverage_map = coverage_cx.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
             .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
@@ -197,8 +199,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
                 drop(coverage_map);
-                let cond_bitmap = bx
-                    .coverage_cx()
+                let cond_bitmap = coverage_cx
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                     .expect("mcdc cond bitmap should have been allocated for updating");
                 let cond_index = bx.const_i32(index as i32);
@@ -206,9 +207,11 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             }
             CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
                 drop(coverage_map);
-                let cond_bitmap = bx.coverage_cx()
-                                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
-                                    .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
+                let cond_bitmap =
+                    coverage_cx.try_get_mcdc_condition_bitmap(&instance, decision_depth).expect(
+                        "mcdc cond bitmap should have been allocated for merging \
+                        into the global bitmap",
+                    );
                 assert!(
                     bitmap_idx as usize <= function_coverage_info.mcdc_bitmap_bits,
                     "bitmap index of the decision out of range"
