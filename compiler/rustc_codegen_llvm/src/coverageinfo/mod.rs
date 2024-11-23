@@ -21,8 +21,8 @@ mod llvm_cov;
 pub(crate) mod map_data;
 mod mapgen;
 
-/// A context object for maintaining all state needed by the coverageinfo module.
-pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
+/// Extra per-CGU context/state needed for coverage instrumentation.
+pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
@@ -32,7 +32,7 @@ pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
     covfun_section_name: OnceCell<CString>,
 }
 
-impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
+impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
         Self {
             function_coverage_map: Default::default(),
