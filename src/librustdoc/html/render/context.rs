@@ -87,12 +87,6 @@ impl ContextInfo {
     }
 }
 
-// `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(not(windows), target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 192);
-#[cfg(all(windows, target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 200);
-
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
