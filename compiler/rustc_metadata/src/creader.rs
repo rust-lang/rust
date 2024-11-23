@@ -800,9 +800,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if self.sess.opts.unstable_opts.no_profiler_runtime
-            || !(self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled())
-        {
+        let needs_profiler_runtime =
+            self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled();
+        if !needs_profiler_runtime || self.sess.opts.unstable_opts.no_profiler_runtime {
             return;
         }
 
