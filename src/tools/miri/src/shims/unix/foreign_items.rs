@@ -58,6 +58,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
             ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size())),
+            // Miri doesn't have a fixed limit on FDs, but we may be limited in terms of how
+            // many *host* FDs we can open. Just use some arbitrary, pretty big value;
+            // this can be adjusted if it causes problems.
+            // The spec imposes a minimum of `_POSIX_OPEN_MAX` (20).
+            ("_SC_OPEN_MAX", |this| Scalar::from_int(2_i32.pow(16), this.pointer_size())),
         ];
         for &(sysconf_name, value) in sysconfs {
             let sysconf_name = this.eval_libc_i32(sysconf_name);
