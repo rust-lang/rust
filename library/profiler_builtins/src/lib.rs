@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![allow(unused_features)]
 #![feature(profiler_runtime)]
 #![feature(staged_api)]
 // tidy-alphabetical-end
