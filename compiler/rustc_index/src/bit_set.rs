@@ -383,8 +383,7 @@ enum Chunk {
     /// turns out to be both simpler and have better performance than
     /// allocating the minimum number of words, largely because we avoid having
     /// to store the length, which would make this type larger. These excess
-    /// words are always be zero, as are any excess bits in the final in-use
-    /// word.
+    /// words are always zero, as are any excess bits in the final in-use word.
     ///
     /// The first `ChunkSize` field is always non-zero.
     ///
@@ -465,7 +464,7 @@ impl<T: Idx> ChunkedBitSet<T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.chunks.iter().all(|chunk| matches!(chunk, Chunk::Zeros(..)))
+        self.chunks.iter().all(|chunk| matches!(chunk, Zeros(..)))
     }
 
     /// Returns `true` if `self` contains `elem`.
@@ -855,7 +854,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for BitSet<T> {
                 words = &mut words[..CHUNK_WORDS];
             }
             match chunk {
-                Chunk::Zeros(..) => {
+                Zeros(..) => {
                     for word in words {
                         if *word != 0 {
                             changed = true;
@@ -863,8 +862,8 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for BitSet<T> {
                         }
                     }
                 }
-                Chunk::Ones(..) => (),
-                Chunk::Mixed(_, _, data) => {
+                Ones(..) => (),
+                Mixed(_, _, data) => {
                     for (i, word) in words.iter_mut().enumerate() {
                         let new_val = *word & data[i];
                         if new_val != *word {
@@ -902,22 +901,22 @@ impl<T> Clone for ChunkedBitSet<T> {
 
 pub struct ChunkedBitIter<'a, T: Idx> {
     index: usize,
-    bitset: &'a ChunkedBitSet<T>,
+    bit_set: &'a ChunkedBitSet<T>,
 }
 
 impl<'a, T: Idx> ChunkedBitIter<'a, T> {
     #[inline]
-    fn new(bitset: &'a ChunkedBitSet<T>) -> ChunkedBitIter<'a, T> {
-        ChunkedBitIter { index: 0, bitset }
+    fn new(bit_set: &'a ChunkedBitSet<T>) -> ChunkedBitIter<'a, T> {
+        ChunkedBitIter { index: 0, bit_set }
     }
 }
 
 impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
-        while self.index < self.bitset.domain_size() {
+        while self.index < self.bit_set.domain_size() {
             let elem = T::new(self.index);
-            let chunk = &self.bitset.chunks[chunk_index(elem)];
+            let chunk = &self.bit_set.chunks[chunk_index(elem)];
             match &chunk {
                 Zeros(chunk_domain_size) => {
                     self.index += *chunk_domain_size as usize;
@@ -954,17 +953,17 @@ impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
             init = f(init, item);
         }
         let start_chunk = self.index / CHUNK_BITS;
-        let chunks = &self.bitset.chunks[start_chunk..];
+        let chunks = &self.bit_set.chunks[start_chunk..];
         for (i, chunk) in chunks.iter().enumerate() {
             let base = (start_chunk + i) * CHUNK_BITS;
             match chunk {
-                Chunk::Zeros(_) => (),
-                Chunk::Ones(limit) => {
+                Zeros(_) => (),
+                Ones(limit) => {
                     for j in 0..(*limit as usize) {
                         init = f(init, T::new(base + j));
                     }
                 }
-                Chunk::Mixed(_, _, words) => {
+                Mixed(_, _, words) => {
                     init = BitIter::new(&**words).fold(init, |val, mut item: T| {
                         item.increment_by(base);
                         f(val, item)
@@ -1302,15 +1301,13 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
                 // Get the position of the next set bit in the current word,
                 // then clear the bit.
                 let bit_pos = self.word.trailing_zeros() as usize;
-                let bit = 1 << bit_pos;
-                self.word ^= bit;
+                self.word ^= 1 << bit_pos;
                 return Some(T::new(bit_pos + self.offset));
             }
 
             // Move onto the next word. `wrapping_add()` is needed to handle
             // the degenerate initial value given to `offset` in `new()`.
-            let word = self.iter.next()?;
-            self.word = *word;
+            self.word = *self.iter.next()?;
             self.offset = self.offset.wrapping_add(WORD_BITS);
         }
     }
