@@ -1672,45 +1672,6 @@ pub fn needs_drop_components_with_async<'tcx>(
     }
 }
 
-pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
-        ty::Bool
-        | ty::Char
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Infer(ty::IntVar(_))
-        | ty::Infer(ty::FloatVar(_))
-        | ty::Str
-        | ty::RawPtr(_, _)
-        | ty::Ref(..)
-        | ty::FnDef(..)
-        | ty::FnPtr(..)
-        | ty::Never
-        | ty::Foreign(_) => true,
-
-        ty::Alias(..)
-        | ty::Dynamic(..)
-        | ty::Error(_)
-        | ty::Bound(..)
-        | ty::Param(_)
-        | ty::Placeholder(_)
-        | ty::Infer(_) => false,
-
-        // Not trivial because they have components, and instead of looking inside,
-        // we'll just perform trait selection.
-        ty::Closure(..)
-        | ty::CoroutineClosure(..)
-        | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
-        | ty::Adt(..) => false,
-
-        ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => is_trivially_const_drop(ty),
-
-        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
-    }
-}
-
 /// Does the equivalent of
 /// ```ignore (illustrative)
 /// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();

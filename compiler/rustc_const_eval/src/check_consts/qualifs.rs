@@ -170,11 +170,6 @@ impl Qualif for NeedsNonConstDrop {
 
     #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::is_trivially_const_drop(ty) {
-            return false;
-        }
-
         // If this doesn't need drop at all, then don't select `~const Destruct`.
         if !ty.needs_drop(cx.tcx, cx.typing_env) {
             return false;
