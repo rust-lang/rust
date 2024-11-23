@@ -10,7 +10,6 @@ union ReprRustUnion {
     a: u128,
 }
 
-#[cfg_attr(test, test)]
 fn test_size_contains_each_type() {
     assert!(core::mem::size_of::<i32>() <= core::mem::size_of::<ReprRustUnion>());
     assert!(core::mem::size_of::<[u32; 4]>() <= core::mem::size_of::<ReprRustUnion>());
@@ -18,7 +17,6 @@ fn test_size_contains_each_type() {
     assert!(core::mem::size_of::<u128>() <= core::mem::size_of::<ReprRustUnion>());
 }
 
-#[cfg_attr(test, test)]
 fn test_size_contains_all_fields() {
     assert!(
         (core::mem::offset_of!(ReprRustUnion, x) + core::mem::size_of::<i32>())
@@ -38,15 +36,10 @@ fn test_size_contains_all_fields() {
     );
 }
 
-#[cfg_attr(test, test)]
 fn test_size_modulo_align() {
-    assert_eq!(
-        core::mem::size_of::<ReprRustUnion>() % core::mem::align_of::<ReprRustUnion>(),
-        0
-    );
+    assert_eq!(core::mem::size_of::<ReprRustUnion>() % core::mem::align_of::<ReprRustUnion>(), 0);
 }
 
-#[cfg(not(test))]
 fn main() {
     test_size_contains_each_type();
     test_size_contains_all_fields();

@@ -16,7 +16,6 @@ union ReprRustUnion {
     b: Overaligned,
 }
 
-#[cfg_attr(test, test)]
 fn test_alignment_contains_all_fields() {
     assert!(core::mem::align_of::<ReprRustUnion>() >= core::mem::align_of::<i32>());
     assert!(core::mem::align_of::<ReprRustUnion>() >= core::mem::align_of::<[u32; 4]>());
@@ -25,7 +24,6 @@ fn test_alignment_contains_all_fields() {
     assert!(core::mem::align_of::<ReprRustUnion>() >= core::mem::align_of::<Overaligned>());
 }
 
-#[cfg(not(test))]
 fn main() {
     test_alignment_contains_all_fields();
 }

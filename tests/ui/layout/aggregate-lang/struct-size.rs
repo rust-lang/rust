@@ -10,7 +10,6 @@ struct ReprRustStruct {
     a: u128,
 }
 
-#[cfg_attr(test, test)]
 fn test_size_contains_all_types() {
     assert!(
         core::mem::size_of::<ReprRustStruct>()
@@ -21,7 +20,6 @@ fn test_size_contains_all_types() {
     );
 }
 
-#[cfg_attr(test, test)]
 fn test_size_contains_all_fields() {
     assert!(
         (core::mem::offset_of!(ReprRustStruct, x) + core::mem::size_of::<i32>())
@@ -41,15 +39,10 @@ fn test_size_contains_all_fields() {
     );
 }
 
-#[cfg_attr(test, test)]
 fn test_size_modulo_align() {
-    assert_eq!(
-        core::mem::size_of::<ReprRustStruct>() % core::mem::align_of::<ReprRustStruct>(),
-        0
-    );
+    assert_eq!(core::mem::size_of::<ReprRustStruct>() % core::mem::align_of::<ReprRustStruct>(), 0);
 }
 
-#[cfg(not(test))]
 fn main() {
     test_size_contains_all_fields();
     test_size_contains_all_types();

@@ -36,7 +36,6 @@ fn test_non_overlapping(a: &(usize, usize), b: &(usize, usize)) {
     assert!((a.1 <= b.0) || (b.1 <= a.0));
 }
 
-#[cfg_attr(test, test)]
 fn test_fields_non_overlapping() {
     let fields = [
         span_of!(ReprRustStruct, x),
@@ -62,31 +61,17 @@ fn test_fields_non_overlapping() {
     test_non_overlapping(&fields[3], &fields[4]);
 }
 
-#[cfg_attr(test, test)]
 fn test_fields_aligned() {
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustStruct, x) % (core::mem::align_of::<i32>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustStruct, y) % (core::mem::align_of::<[u32; 4]>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustStruct, z) % (core::mem::align_of::<f32>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustStruct, a) % (core::mem::align_of::<u128>())),
-        0
-    );
+    assert_eq!((core::mem::offset_of!(ReprRustStruct, x) % (core::mem::align_of::<i32>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustStruct, y) % (core::mem::align_of::<[u32; 4]>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustStruct, z) % (core::mem::align_of::<f32>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustStruct, a) % (core::mem::align_of::<u128>())), 0);
     assert_eq!(
         (core::mem::offset_of!(ReprRustStruct, b) % (core::mem::align_of::<Overaligned>())),
         0
     );
 }
 
-#[cfg(not(test))]
 fn main() {
     test_fields_non_overlapping();
     test_fields_aligned();

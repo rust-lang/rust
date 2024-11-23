@@ -16,31 +16,17 @@ union ReprRustUnion {
     b: Overaligned,
 }
 
-#[cfg_attr(test, test)]
 fn test_fields_aligned() {
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustUnion, x) % (core::mem::align_of::<i32>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustUnion, y) % (core::mem::align_of::<[u32; 4]>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustUnion, z) % (core::mem::align_of::<f32>())),
-        0
-    );
-    assert_eq!(
-        (core::mem::offset_of!(ReprRustUnion, a) % (core::mem::align_of::<u128>())),
-        0
-    );
+    assert_eq!((core::mem::offset_of!(ReprRustUnion, x) % (core::mem::align_of::<i32>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustUnion, y) % (core::mem::align_of::<[u32; 4]>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustUnion, z) % (core::mem::align_of::<f32>())), 0);
+    assert_eq!((core::mem::offset_of!(ReprRustUnion, a) % (core::mem::align_of::<u128>())), 0);
     assert_eq!(
         (core::mem::offset_of!(ReprRustUnion, b) % (core::mem::align_of::<Overaligned>())),
         0
     );
 }
 
-#[cfg(not(test))]
 fn main() {
     test_fields_aligned();
 }
