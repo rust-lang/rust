@@ -225,11 +225,17 @@ pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool 
     tcx.features().specialization() || tcx.features().min_specialization()
 }
 
-/// Is `impl1` a specialization of `impl2`?
+/// Is `specializing_impl_def_id` a specialization of `parent_impl_def_id`?
 ///
-/// Specialization is determined by the sets of types to which the impls apply;
-/// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
-/// to.
+/// For every type that could apply to `specializing_impl_def_id`, we prove that
+/// the `parent_impl_def_id` also applies (i.e. it has a valid impl header and
+/// its where-clauses hold).
+///
+/// For the purposes of const traits, we also check that the specializing
+/// impl is not more restrictive than the parent impl. That is, if the
+/// `parent_impl_def_id` is a const impl (conditionally based off of some `~const`
+/// bounds), then `specializing_impl_def_id` must also be const for the same
+/// set of types.
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn specializes(
     tcx: TyCtxt<'_>,
@@ -339,8 +345,14 @@ pub(super) fn specializes(
         return false;
     }
 
-    // If the parent impl is const, then the specializing impl must be const.
+    // If the parent impl is const, then the specializing impl must be const,
+    // and it must not be *more restrictive* than the parent impl (that is,
+    // it cannot be const in fewer cases than the parent impl).
     if tcx.is_conditionally_const(parent_impl_def_id) {
+        if !tcx.is_conditionally_const(specializing_impl_def_id) {
+            return false;
+        }
+
         let const_conditions = ocx.normalize(
             cause,
             param_env,

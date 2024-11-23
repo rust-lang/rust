@@ -66,7 +66,6 @@
 //! on traits with methods can.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -134,7 +133,6 @@ fn check_always_applicable(
         unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
     };
 
-    res = res.and(check_constness(tcx, impl1_def_id, impl2_node, span));
     res = res.and(check_static_lifetimes(tcx, &parent_args, span));
     res = res.and(check_duplicate_params(tcx, impl1_args, parent_args, span));
     res = res.and(check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span));
@@ -153,30 +151,6 @@ fn check_has_items(
     {
         let base_impl_span = tcx.def_span(impl2_id);
         return Err(tcx.dcx().emit_err(errors::EmptySpecialization { span, base_impl_span }));
-    }
-    Ok(())
-}
-
-/// Check that the specializing impl `impl1` is at least as const as the base
-/// impl `impl2`
-fn check_constness(
-    tcx: TyCtxt<'_>,
-    impl1_def_id: LocalDefId,
-    impl2_node: Node,
-    span: Span,
-) -> Result<(), ErrorGuaranteed> {
-    if impl2_node.is_from_trait() {
-        // This isn't a specialization
-        return Ok(());
-    }
-
-    let impl1_constness = tcx.constness(impl1_def_id.to_def_id());
-    let impl2_constness = tcx.constness(impl2_node.def_id());
-
-    if let hir::Constness::Const = impl2_constness {
-        if let hir::Constness::NotConst = impl1_constness {
-            return Err(tcx.dcx().emit_err(errors::ConstSpecialize { span }));
-        }
     }
     Ok(())
 }
