@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pin-reborrow-const-as-mut.rs:14:9
+  --> $DIR/reborrow-const-as-mut.rs:14:9
    |
 LL |     foo(x);
    |     --- ^ types differ in mutability
@@ -9,7 +9,7 @@ LL |     foo(x);
    = note: expected struct `Pin<&mut Foo>`
               found struct `Pin<&Foo>`
 note: function defined here
-  --> $DIR/pin-reborrow-const-as-mut.rs:10:4
+  --> $DIR/reborrow-const-as-mut.rs:10:4
    |
 LL | fn foo(_: Pin<&mut Foo>) {
    |    ^^^ ----------------
