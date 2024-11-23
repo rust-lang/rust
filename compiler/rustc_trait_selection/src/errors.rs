@@ -1499,6 +1499,12 @@ pub struct FnConsiderCasting {
 }
 
 #[derive(Subdiagnostic)]
+#[help(trait_selection_fn_consider_casting_both)]
+pub struct FnConsiderCastingBoth<'a> {
+    pub sig: Binder<'a, FnSig<'a>>,
+}
+
+#[derive(Subdiagnostic)]
 pub enum SuggestAccessingField<'a> {
     #[suggestion(
         trait_selection_suggest_accessing_field,

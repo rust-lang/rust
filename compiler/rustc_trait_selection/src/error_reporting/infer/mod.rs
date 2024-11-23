@@ -1661,7 +1661,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
-                self.suggest_function_pointers(cause, span, &exp_found, diag);
+                self.suggest_function_pointers(cause, span, &exp_found, terr, diag);
                 self.suggest_turning_stmt_into_expr(cause, &exp_found, diag);
             }
         }

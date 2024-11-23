@@ -1969,6 +1969,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             StringPart::highlighted(exp_found.found.to_string()),
                             StringPart::normal("`"),
                         ]);
+                        self.suggest_function_pointers_impl(None, &exp_found, err);
                     }
 
                     true
