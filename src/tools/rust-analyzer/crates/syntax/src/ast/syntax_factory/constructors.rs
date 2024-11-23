@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     ast::{self, make, HasName, HasTypeBounds},
     syntax_editor::SyntaxMappingBuilder,
-    AstNode, SyntaxKind, SyntaxToken,
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
 use super::SyntaxFactory;
@@ -167,6 +167,32 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn token_tree(
+        &self,
+        delimiter: SyntaxKind,
+        tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+    ) -> ast::TokenTree {
+        let tt: Vec<_> = tt.into_iter().collect();
+        let input: Vec<_> = tt.iter().cloned().filter_map(only_nodes).collect();
+
+        let ast = make::token_tree(delimiter, tt).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(
+                input.into_iter(),
+                ast.token_trees_and_tokens().filter_map(only_nodes),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        return ast;
+
+        fn only_nodes(element: NodeOrToken<ast::TokenTree, SyntaxToken>) -> Option<SyntaxNode> {
+            element.as_node().map(|it| it.syntax().clone())
+        }
     }
 
     pub fn token(&self, kind: SyntaxKind) -> SyntaxToken {
