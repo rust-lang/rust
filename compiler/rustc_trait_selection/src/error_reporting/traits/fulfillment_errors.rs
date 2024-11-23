@@ -725,7 +725,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     &obligation.cause,
                     None,
                     None,
-                    TypeError::Sorts(ty::error::ExpectedFound::new(true, expected_ty, ct_ty)),
+                    TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
                     false,
                 );
                 diag
@@ -1449,7 +1449,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 secondary_span,
                 values.map(|(_, normalized_ty, expected_ty)| {
                     obligation.param_env.and(infer::ValuePairs::Terms(ExpectedFound::new(
-                        true,
                         expected_ty,
                         normalized_ty,
                     )))
@@ -2755,7 +2754,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (obligation.cause.clone(), terr)
         };
         self.report_and_explain_type_error(
-            TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            TypeTrace::trait_refs(&cause, expected_trait_ref, found_trait_ref),
             obligation.param_env,
             terr,
         )
@@ -2846,7 +2845,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if Some(expected_trait_ref.def_id) != self.tcx.lang_items().coroutine_trait() && not_tupled
         {
             return Ok(self.report_and_explain_type_error(
-                TypeTrace::trait_refs(&obligation.cause, true, expected_trait_ref, found_trait_ref),
+                TypeTrace::trait_refs(&obligation.cause, expected_trait_ref, found_trait_ref),
                 obligation.param_env,
                 ty::error::TypeError::Mismatch,
             ));

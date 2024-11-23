@@ -152,7 +152,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
         self.report_and_explain_type_error(
-            TypeTrace::types(cause, true, expected, actual),
+            TypeTrace::types(cause, expected, actual),
             param_env,
             err,
         )
@@ -167,7 +167,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
         self.report_and_explain_type_error(
-            TypeTrace::consts(cause, true, expected, actual),
+            TypeTrace::consts(cause, expected, actual),
             param_env,
             err,
         )
