@@ -80,14 +80,14 @@ impl<'tcx> ConstToPat<'tcx> {
         let pat_from_kind = |kind| Box::new(Pat { span: self.span, ty, kind });
 
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
-        // not run yet. However, CTFE itself uses `Reveal::All` unconditionally even during
-        // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821). As a
-        // result we always use a revealed env when resolving the instance to evaluate.
+        // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
+        // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+        // As a result we always use a revealed env when resolving the instance to evaluate.
         //
-        // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
+        // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
         // instead of having this logic here
         let typing_env =
-            self.tcx.erase_regions(self.typing_env).with_reveal_all_normalized(self.tcx);
+            self.tcx.erase_regions(self.typing_env).with_post_analysis_normalized(self.tcx);
         let uv = self.tcx.erase_regions(uv);
 
         // try to resolve e.g. associated constants to their definition on an impl, and then

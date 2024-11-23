@@ -8,7 +8,6 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::Reveal;
 use rustc_lint::Level;
 use rustc_middle::bug;
 use rustc_middle::middle::limits::get_limit_size;
@@ -43,7 +42,8 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        param_env: tcx.param_env(def_id),
+        // FIXME(#132279): We're in a body, should handle opaques.
+        typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
         lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
@@ -90,7 +90,7 @@ enum LetSource {
 
 struct MatchVisitor<'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     thir: &'p Thir<'tcx>,
     lint_level: HirId,
@@ -196,15 +196,6 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
-    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        // FIXME(#132279): We're in a body, should handle opaques.
-        debug_assert_eq!(self.param_env.reveal(), Reveal::UserFacing);
-        ty::TypingEnv {
-            typing_mode: ty::TypingMode::non_body_analysis(),
-            param_env: self.param_env,
-        }
-    }
-
     #[instrument(level = "trace", skip(self, f))]
     fn with_let_source(&mut self, let_source: LetSource, f: impl FnOnce(&mut Self)) {
         let old_let_source = self.let_source;
@@ -395,7 +386,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         PatCtxt {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
-            param_env: self.param_env,
+            typing_env: self.typing_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             dropless_arena: self.dropless_arena,
             match_lint_level: self.lint_level,
@@ -749,8 +740,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 .variant(*variant_index)
                 .inhabited_predicate(self.tcx, *adt)
                 .instantiate(self.tcx, args);
-            variant_inhabited.apply(self.tcx, cx.typing_env(), cx.module)
-                && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env())
+            variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
         } else {
             false
         };
@@ -789,7 +780,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
         return;
     };
 
-    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.typing_env());
+    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.typing_env);
 
     let sess = cx.tcx.sess;
 
@@ -1054,7 +1045,7 @@ fn find_fallback_pattern_typo<'tcx>(
         let mut inaccessible = vec![];
         let mut imported = vec![];
         let mut imported_spans = vec![];
-        let infcx = cx.tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis());
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
         let parent = cx.tcx.hir().get_parent_item(hir_id);
 
         for item in cx.tcx.hir_crate_items(()).free_items() {
@@ -1067,7 +1058,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 };
                 for res in &path.res {
                     if let Res::Def(DefKind::Const, id) = res
-                        && infcx.can_eq(cx.param_env, ty, cx.tcx.type_of(id).instantiate_identity())
+                        && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
                     {
                         if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
                             // The original const is accessible, suggest using it directly.
@@ -1088,11 +1079,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 }
             }
             if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
-                && infcx.can_eq(
-                    cx.param_env,
-                    ty,
-                    cx.tcx.type_of(item.owner_id).instantiate_identity(),
-                )
+                && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
             {
                 // Look for local consts.
                 let item_name = cx.tcx.item_name(item.owner_id.into());
@@ -1311,7 +1298,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     }
 
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.typing_env()) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.typing_env) {
             err.note("references are always considered inhabited");
         }
     }

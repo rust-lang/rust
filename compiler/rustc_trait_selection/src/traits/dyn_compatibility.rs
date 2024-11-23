@@ -707,7 +707,7 @@ fn receiver_is_dispatchable<'tcx>(
         let caller_bounds =
             param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds), param_env.reveal())
+        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>

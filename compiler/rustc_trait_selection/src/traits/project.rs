@@ -10,7 +10,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
-pub use rustc_middle::traits::Reveal;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -975,7 +974,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // and the obligation is monomorphic, otherwise passes such as
                     // transmute checking and polymorphic MIR optimizations could
                     // get a result which isn't correct for all monomorphizations.
-                    match selcx.infcx.typing_mode(obligation.param_env) {
+                    match selcx.infcx.typing_mode() {
                         TypingMode::Coherence | TypingMode::Analysis { .. } => {
                             debug!(
                                 assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),

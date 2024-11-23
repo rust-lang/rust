@@ -42,7 +42,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                         tcx,
                                         op_sp,
                                         const_value,
-                                        RevealAllLayoutCx(tcx).layout_of(ty),
+                                        FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
                                     );
                                     global_asm.push_str(&string);
                                 }

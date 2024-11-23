@@ -423,7 +423,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal());
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -470,8 +470,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
-    let outlives_env =
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env), unnormalized_env.reveal());
+    let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
     let Ok(outlives_predicates) =
         do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
     else {
@@ -484,7 +483,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), unnormalized_env.reveal())
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
 #[derive(Debug)]
@@ -604,15 +603,15 @@ pub fn try_evaluate_const<'tcx>(
             };
             let uv = ty::UnevaluatedConst::new(uv.def, args);
 
-            // It's not *technically* correct to be revealing opaque types here as we could still be
-            // before borrowchecking. However, CTFE itself uses `Reveal::All` unconditionally even during
-            // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821). As a result we
-            // always use a revealed env when resolving the instance to evaluate.
+            // It's not *technically* correct to be revealing opaque types here as borrowcheck has
+            // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
+            // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+            // As a result we always use a revealed env when resolving the instance to evaluate.
             //
-            // FIXME: `const_eval_resolve_for_typeck` should probably just set the env to `Reveal::All`
+            // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
             // instead of having this logic here
             let typing_env =
-                tcx.erase_regions(infcx.typing_env(param_env)).with_reveal_all_normalized(tcx);
+                tcx.erase_regions(infcx.typing_env(param_env)).with_post_analysis_normalized(tcx);
             let erased_uv = tcx.erase_regions(uv);
 
             use rustc_middle::mir::interpret::ErrorHandled;

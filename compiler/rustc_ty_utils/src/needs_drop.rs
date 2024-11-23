@@ -431,13 +431,13 @@ fn adt_significant_drop_tys(
 #[instrument(level = "debug", skip(tcx), ret)]
 fn list_significant_drop_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> &'tcx ty::List<Ty<'tcx>> {
     tcx.mk_type_list(
         &drop_tys_helper(
             tcx,
-            ty.value,
-            ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: ty.param_env },
+            key.value,
+            key.typing_env,
             adt_consider_insignificant_dtor(tcx),
             true,
             true,
