@@ -8,7 +8,8 @@ use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{
-    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable, Upcast,
+    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
@@ -101,6 +102,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // We  don't support empty trait objects.
         if regular_traits.is_empty() && auto_traits.is_empty() {
             let guar = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
+            return Ty::new_error(tcx, guar);
+        }
+        // Don't create a dyn trait if we have errors in the principal.
+        if let Err(guar) = trait_bounds.error_reported() {
             return Ty::new_error(tcx, guar);
         }
 
