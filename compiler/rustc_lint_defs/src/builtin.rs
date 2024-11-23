@@ -5173,7 +5173,7 @@ declare_lint! {
     Warn,
     "this function call or definition uses a vector type which is not enabled",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
     };
 }
