@@ -1,6 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -110,6 +111,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let cpus = this.deref_pointer(cpus)?;
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
                 this.write_null(dest)?;
+            }
+
+            "sysconf" | "__sysconf_xpg7" => {
+                let [val] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.sysconf(val)?;
+                this.write_scalar(result, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

@@ -39,6 +39,35 @@ pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    // Querying system information
+    fn sysconf(&mut self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let name = this.read_scalar(val)?.to_i32()?;
+        // FIXME: Which of these are POSIX, and which are GNU/Linux?
+        // At least the names seem to all also exist on macOS.
+        let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar)] = &[
+            ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
+            ("_SC_PAGE_SIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
+            ("_SC_NPROCESSORS_CONF", |this| {
+                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
+            }),
+            ("_SC_NPROCESSORS_ONLN", |this| {
+                Scalar::from_int(this.machine.num_cpus, this.pointer_size())
+            }),
+            // 512 seems to be a reasonable default. The value is not critical, in
+            // the sense that getpwuid_r takes and checks the buffer length.
+            ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size())),
+        ];
+        for &(sysconf_name, value) in sysconfs {
+            let sysconf_name = this.eval_libc_i32(sysconf_name);
+            if sysconf_name == name {
+                return interp_ok(value(this));
+            }
+        }
+        throw_unsup_format!("unimplemented sysconf name: {}", name)
+    }
+
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
@@ -390,35 +419,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
-                }
-            }
-
-            // Querying system information
-            "sysconf" => {
-                let [name] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let name = this.read_scalar(name)?.to_i32()?;
-                // FIXME: Which of these are POSIX, and which are GNU/Linux?
-                // At least the names seem to all also exist on macOS.
-                let sysconfs: &[(&str, fn(&MiriInterpCx<'_>) -> Scalar)] = &[
-                    ("_SC_PAGESIZE", |this| Scalar::from_int(this.machine.page_size, this.pointer_size())),
-                    ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
-                    ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(this.machine.num_cpus, this.pointer_size())),
-                    // 512 seems to be a reasonable default. The value is not critical, in
-                    // the sense that getpwuid_r takes and checks the buffer length.
-                    ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size()))
-                ];
-                let mut result = None;
-                for &(sysconf_name, value) in sysconfs {
-                    let sysconf_name = this.eval_libc_i32(sysconf_name);
-                    if sysconf_name == name {
-                        result = Some(value(this));
-                        break;
-                    }
-                }
-                if let Some(result) = result {
-                    this.write_scalar(result, dest)?;
-                } else {
-                    throw_unsup_format!("unimplemented sysconf name: {}", name)
                 }
             }
 

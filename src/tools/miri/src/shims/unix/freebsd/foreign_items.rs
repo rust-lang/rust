@@ -1,6 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -72,6 +73,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirp, entry, result] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
+                this.write_scalar(result, dest)?;
+            }
+
+            // Querying system information
+            "sysconf" => {
+                let [val] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.sysconf(val)?;
                 this.write_scalar(result, dest)?;
             }
 

@@ -6,6 +6,7 @@ use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -121,6 +122,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "gettid" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_gettid()?;
+                this.write_scalar(result, dest)?;
+            }
+
+            // Querying system information
+            "sysconf" => {
+                let [val] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.sysconf(val)?;
                 this.write_scalar(result, dest)?;
             }
 
