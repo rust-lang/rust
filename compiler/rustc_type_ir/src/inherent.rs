@@ -11,7 +11,7 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::Reveal;
+use crate::solve::{AdtDestructorKind, Reveal};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -537,6 +537,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
+
+    fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {

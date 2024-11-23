@@ -411,7 +411,7 @@ pub struct LiveDrop<'tcx> {
     pub kind: ConstContext,
     pub dropped_ty: Ty<'tcx>,
     #[label(const_eval_dropped_at_label)]
-    pub dropped_at: Option<Span>,
+    pub dropped_at: Span,
 }
 
 #[derive(Diagnostic)]
