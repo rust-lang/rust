@@ -145,16 +145,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                        let pred = bound_predicate.rebind(pred);
+                        // FIXME(negative_bounds): Handle this correctly...
+                        let trait_ref =
+                            tcx.anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
                         needed_associated_types.extend(
-                            tcx.associated_items(pred.def_id())
+                            tcx.associated_items(trait_ref.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,
                                 // we do not need to constrain the associated type.
                                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-                                .map(|item| item.def_id),
+                                .map(|item| (item.def_id, trait_ref)),
                         );
                     }
                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
@@ -206,7 +208,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // corresponding `Projection` clause
         for (projection_bound, span) in &projection_bounds {
             let def_id = projection_bound.item_def_id();
-            needed_associated_types.swap_remove(&def_id);
+            let trait_ref = tcx.anonymize_bound_vars(
+                projection_bound.map_bound(|p| p.projection_term.trait_ref(tcx)),
+            );
+            needed_associated_types.swap_remove(&(def_id, trait_ref));
             if tcx.generics_require_sized_self(def_id) {
                 tcx.emit_node_span_lint(
                     UNUSED_ASSOCIATED_TYPE_BOUNDS,

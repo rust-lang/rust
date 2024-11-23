@@ -723,7 +723,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn check_for_required_assoc_tys(
         &self,
         principal_span: Span,
-        missing_assoc_types: FxIndexSet<DefId>,
+        missing_assoc_types: FxIndexSet<(DefId, ty::PolyTraitRef<'tcx>)>,
         potential_assoc_types: Vec<usize>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) -> Result<(), ErrorGuaranteed> {
@@ -732,27 +732,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let tcx = self.tcx();
-        let missing_assoc_types: Vec<_> =
-            missing_assoc_types.into_iter().map(|def_id| tcx.associated_item(def_id)).collect();
-        let mut names: FxIndexMap<String, Vec<Symbol>> = Default::default();
+        // FIXME: This logic needs some more care w.r.t handling of conflicts
+        let missing_assoc_types: Vec<_> = missing_assoc_types
+            .into_iter()
+            .map(|(def_id, trait_ref)| (tcx.associated_item(def_id), trait_ref))
+            .collect();
+        let mut names: FxIndexMap<_, Vec<Symbol>> = Default::default();
         let mut names_len = 0;
 
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
         // `issue-22560.rs`.
         let mut dyn_compatibility_violations = Ok(());
-        for assoc_item in &missing_assoc_types {
-            let trait_def_id = assoc_item.container_id(tcx);
-            names.entry(tcx.def_path_str(trait_def_id)).or_default().push(assoc_item.name);
+        for (assoc_item, trait_ref) in &missing_assoc_types {
+            names.entry(trait_ref).or_default().push(assoc_item.name);
             names_len += 1;
 
             let violations =
-                dyn_compatibility_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
+                dyn_compatibility_violations_for_assoc_item(tcx, trait_ref.def_id(), *assoc_item);
             if !violations.is_empty() {
                 dyn_compatibility_violations = Err(report_dyn_incompatibility(
                     tcx,
                     principal_span,
                     None,
-                    trait_def_id,
+                    trait_ref.def_id(),
                     &violations,
                 )
                 .emit());
@@ -803,6 +805,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .into_iter()
             .map(|(trait_, mut assocs)| {
                 assocs.sort();
+                let trait_ = trait_.print_trait_sugared();
                 format!("{} in `{trait_}`", match &assocs[..] {
                     [] => String::new(),
                     [only] => format!("`{only}`"),
@@ -830,19 +833,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut already_has_generics_args_suggestion = false;
 
         let mut names: UnordMap<_, usize> = Default::default();
-        for item in &missing_assoc_types {
+        for (item, _) in &missing_assoc_types {
             types_count += 1;
             *names.entry(item.name).or_insert(0) += 1;
         }
         let mut dupes = false;
         let mut shadows = false;
-        for item in &missing_assoc_types {
+        for (item, trait_ref) in &missing_assoc_types {
             let prefix = if names[&item.name] > 1 {
-                let trait_def_id = item.container_id(tcx);
+                let trait_def_id = trait_ref.def_id();
                 dupes = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
             } else if bound_names.get(&item.name).is_some_and(|x| *x != item) {
-                let trait_def_id = item.container_id(tcx);
+                let trait_def_id = trait_ref.def_id();
                 shadows = true;
                 format!("{}::", tcx.def_path_str(trait_def_id))
             } else {
@@ -881,8 +884,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else if let (Ok(snippet), false, false) =
             (tcx.sess.source_map().span_to_snippet(principal_span), dupes, shadows)
         {
-            let types: Vec<_> =
-                missing_assoc_types.iter().map(|item| format!("{} = Type", item.name)).collect();
+            let types: Vec<_> = missing_assoc_types
+                .iter()
+                .map(|(item, _)| format!("{} = Type", item.name))
+                .collect();
             let code = if snippet.ends_with('>') {
                 // The user wrote `Trait<'a>` or similar and we don't have a type we can
                 // suggest, but at least we can clue them to the correct syntax
@@ -914,15 +919,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if suggestions.len() != 1 || already_has_generics_args_suggestion {
             // We don't need this label if there's an inline suggestion, show otherwise.
             let mut names: FxIndexMap<_, usize> = FxIndexMap::default();
-            for item in &missing_assoc_types {
+            for (item, _) in &missing_assoc_types {
                 types_count += 1;
                 *names.entry(item.name).or_insert(0) += 1;
             }
             let mut label = vec![];
-            for item in &missing_assoc_types {
+            for (item, trait_ref) in &missing_assoc_types {
                 let postfix = if names[&item.name] > 1 {
-                    let trait_def_id = item.container_id(tcx);
-                    format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
+                    format!(" (from trait `{}`)", trait_ref.print_trait_sugared())
                 } else {
                     String::new()
                 };
