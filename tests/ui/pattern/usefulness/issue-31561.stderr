@@ -5,7 +5,7 @@ LL |     let Thing::Foo(y) = Thing::Foo(1);
    |         ^^^^^^^^^^^^^ patterns `Thing::Bar` and `Thing::Baz` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Thing` defined here
   --> $DIR/issue-31561.rs:1:6
    |

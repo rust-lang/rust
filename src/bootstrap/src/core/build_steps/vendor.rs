@@ -17,6 +17,7 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<PathBuf> {
         "src/tools/rustbook/Cargo.toml",
         "src/tools/rustc-perf/Cargo.toml",
         "src/tools/opt-dist/Cargo.toml",
+        "src/doc/book/packages/trpl/Cargo.toml",
     ] {
         paths.push(builder.src.join(p));
     }

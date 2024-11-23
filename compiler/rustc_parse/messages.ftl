@@ -827,7 +827,7 @@ parse_unexpected_expr_in_pat =
     }, found an expression
 
     .label = not a pattern
-    .note = arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+    .note = arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 parse_unexpected_expr_in_pat_const_sugg = consider extracting the expression into a `const`
 
