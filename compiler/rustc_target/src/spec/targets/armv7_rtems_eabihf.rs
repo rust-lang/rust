@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker: None,
             relocation_model: RelocModel::Static,
-            panic_strategy: PanicStrategy::Abort,
+            panic_strategy: PanicStrategy::Unwind,
             features: "+thumb2,+neon,+vfp3".into(),
             max_atomic_width: Some(64),
             emit_debug_gdb_scripts: false,
