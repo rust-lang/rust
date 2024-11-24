@@ -174,9 +174,6 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//!   - [`thread::scope()`]
-//!   - [`sync::mpmc`]
-//!   - [`sync::mpsc`]
 //! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
 //!
 //!
