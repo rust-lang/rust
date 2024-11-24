@@ -94,71 +94,82 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
         }
 
-        let (expr, qpath) = match self.tcx.hir_node(hir_id) {
-            hir::Node::Expr(expr) => {
-                if self.closure_span_overlaps_error(error, expr.span) {
+        match self.tcx.hir_node(hir_id) {
+            hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(qpath), span, .. }) => {
+                if self.closure_span_overlaps_error(error, span) {
                     return false;
                 }
-                let qpath =
-                    if let hir::ExprKind::Path(qpath) = expr.kind { Some(qpath) } else { None };
 
-                (Some(&expr.kind), qpath)
-            }
-            hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => (None, Some(*qpath)),
-            _ => return false,
-        };
+                if let Some(param) = predicate_self_type_to_point_at
+                    && self.point_at_path_if_possible(error, def_id, param, &qpath)
+                {
+                    return true;
+                }
 
-        if let Some(qpath) = qpath {
-            // Prefer pointing at the turbofished arg that corresponds to the
-            // self type of the failing predicate over anything else.
-            if let Some(param) = predicate_self_type_to_point_at
-                && self.point_at_path_if_possible(error, def_id, param, &qpath)
-            {
-                return true;
-            }
+                if let hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Call(callee, args),
+                    hir_id: call_hir_id,
+                    span: call_span,
+                    ..
+                }) = self.tcx.parent_hir_node(hir_id)
+                    && callee.hir_id == hir_id
+                {
+                    if self.closure_span_overlaps_error(error, *call_span) {
+                        return false;
+                    }
 
-            if let hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Call(callee, args),
-                hir_id: call_hir_id,
-                span: call_span,
-                ..
-            }) = self.tcx.parent_hir_node(hir_id)
-                && callee.hir_id == hir_id
-            {
-                if self.closure_span_overlaps_error(error, *call_span) {
-                    return false;
+                    for param in
+                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                            .into_iter()
+                            .flatten()
+                    {
+                        if self.blame_specific_arg_if_possible(
+                            error,
+                            def_id,
+                            param,
+                            *call_hir_id,
+                            callee.span,
+                            None,
+                            args,
+                        ) {
+                            return true;
+                        }
+                    }
                 }
 
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
                 {
-                    if self.blame_specific_arg_if_possible(
-                        error,
-                        def_id,
-                        param,
-                        *call_hir_id,
-                        callee.span,
-                        None,
-                        args,
-                    ) {
+                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
                         return true;
                     }
                 }
             }
-
-            for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => {
+                for param in [
+                    predicate_self_type_to_point_at,
+                    param_to_point_at,
+                    fallback_param_to_point_at,
+                    self_param_to_point_at,
+                ]
                 .into_iter()
                 .flatten()
-            {
-                if self.point_at_path_if_possible(error, def_id, param, &qpath) {
-                    return true;
+                {
+                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
+                        return true;
+                    }
                 }
             }
-        }
+            hir::Node::Expr(&hir::Expr {
+                kind: hir::ExprKind::MethodCall(segment, receiver, args, ..),
+                span,
+                ..
+            }) => {
+                if self.closure_span_overlaps_error(error, span) {
+                    return false;
+                }
 
-        match expr {
-            Some(hir::ExprKind::MethodCall(segment, receiver, args, ..)) => {
                 if let Some(param) = predicate_self_type_to_point_at
                     && self.point_at_generic_if_possible(error, def_id, param, segment)
                 {
@@ -208,7 +219,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            Some(hir::ExprKind::Struct(qpath, fields, ..)) => {
+            hir::Node::Expr(&hir::Expr {
+                kind: hir::ExprKind::Struct(qpath, fields, ..),
+                span,
+                ..
+            }) => {
+                if self.closure_span_overlaps_error(error, span) {
+                    return false;
+                }
+
                 if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
                     self.typeck_results.borrow().qpath_res(qpath, hir_id)
                 {
