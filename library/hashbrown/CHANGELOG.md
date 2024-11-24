@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.15.2] - 2024-11-14
+
+### Added
+
+- Marked `const fn` constructors as `rustc_const_stable_indirect` when built as
+  part of the standard library. (#586)
+
 ## [v0.15.1] - 2024-11-03
 
 This release removes the `borsh` feature introduced in 0.15.0 because it was
@@ -531,7 +538,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.15.2...HEAD
+[v0.15.2]: https://github.com/rust-lang/hashbrown/compare/v0.15.1...v0.15.2
 [v0.15.1]: https://github.com/rust-lang/hashbrown/compare/v0.15.0...v0.15.1
 [v0.15.0]: https://github.com/rust-lang/hashbrown/compare/v0.14.5...v0.15.0
 [v0.14.5]: https://github.com/rust-lang/hashbrown/compare/v0.14.4...v0.14.5
