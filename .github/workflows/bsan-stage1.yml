@@ -25,7 +25,7 @@ jobs:
       - name: Stage 1
         run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.toml
       - name: BSan
-        run: ./x.py build bsan --config --stage 1 src/bootstrap/defaults/config.bsan.toml
+        run: ./x.py build bsan --stage 1 --config src/bootstrap/defaults/config.bsan.toml
   build-macos:
     runs-on: macos-latest
     name: Build (macOS)
