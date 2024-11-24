@@ -4267,7 +4267,11 @@ pub const fn minnumf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::min`]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
@@ -4284,7 +4288,11 @@ pub const fn minnumf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::min`]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn minnumf64(_x: f64, _y: f64) -> f64 {
@@ -4335,7 +4343,11 @@ pub const fn maxnumf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::max`]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
@@ -4352,7 +4364,11 @@ pub const fn maxnumf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::max`]
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn maxnumf64(_x: f64, _y: f64) -> f64 {
@@ -4393,7 +4409,11 @@ pub const unsafe fn fabsf16(_x: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf32(_x: f32) -> f32 {
@@ -4405,7 +4425,11 @@ pub const unsafe fn fabsf32(_x: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn fabsf64(_x: f64) -> f64 {
@@ -4441,7 +4465,11 @@ pub const unsafe fn copysignf16(_x: f16, _y: f16) -> f16 {
 /// The stabilized version of this intrinsic is
 /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
@@ -4452,7 +4480,11 @@ pub const unsafe fn copysignf32(_x: f32, _y: f32) -> f32 {
 /// The stabilized version of this intrinsic is
 /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
 #[rustc_nounwind]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_float_methods", issue = "130843"))]
+#[cfg_attr(
+    bootstrap,
+    rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")
+)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_const_stable_indirect)]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const unsafe fn copysignf64(_x: f64, _y: f64) -> f64 {
