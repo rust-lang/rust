@@ -215,6 +215,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "pp-exact",
     "pretty-compare-only",
     "pretty-mode",
+    "proc-macro",
     "reference",
     "regex-error-pattern",
     "remap-src-base",
