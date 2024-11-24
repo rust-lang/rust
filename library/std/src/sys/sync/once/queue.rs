@@ -93,7 +93,7 @@ const QUEUE_MASK: usize = !STATE_MASK;
 // use interior mutability.
 #[repr(align(4))] // Ensure the two lower bits are free to use as state bits.
 struct Waiter {
-    thread: Cell<Option<Thread>>,
+    thread: Thread,
     signaled: AtomicBool,
     next: Cell<*const Waiter>,
 }
@@ -238,7 +238,7 @@ fn wait(
     return_on_poisoned: bool,
 ) -> StateAndQueue {
     let node = &Waiter {
-        thread: Cell::new(Some(thread::current())),
+        thread: thread::current_or_unnamed(),
         signaled: AtomicBool::new(false),
         next: Cell::new(ptr::null()),
     };
@@ -277,7 +277,8 @@ fn wait(
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
             // an `unpark` just before on an unparked thread it does not park.
-            thread::park();
+            // SAFETY: we retrieved this handle on the current thread above.
+            unsafe { node.thread.park() }
         }
 
         return state_and_queue.load(Acquire);
@@ -309,7 +310,7 @@ impl Drop for WaiterQueue<'_> {
             let mut queue = to_queue(current);
             while !queue.is_null() {
                 let next = (*queue).next.get();
-                let thread = (*queue).thread.take().unwrap();
+                let thread = (*queue).thread.clone();
                 (*queue).signaled.store(true, Release);
                 thread.unpark();
                 queue = next;

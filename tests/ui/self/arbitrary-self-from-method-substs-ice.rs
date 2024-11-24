@@ -11,7 +11,7 @@ impl Foo {
         //~^ ERROR invalid generic `self` parameter type
         //~| ERROR destructor of `R` cannot be evaluated at compile-time
         self.0
-        //~^ ERROR cannot call non-const fn `<R as Deref>::deref` in constant function
+        //~^ ERROR cannot call conditionally-const method `<R as Deref>::deref` in constant function
     }
 }
 

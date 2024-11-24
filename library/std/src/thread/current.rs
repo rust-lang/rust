@@ -165,6 +165,23 @@ pub(crate) fn try_current() -> Option<Thread> {
     }
 }
 
+/// Gets a handle to the thread that invokes it. If the handle stored in thread-
+/// local storage was already destroyed, this creates a new unnamed temporary
+/// handle to allow thread parking in nearly all situations.
+pub(crate) fn current_or_unnamed() -> Thread {
+    let current = CURRENT.get();
+    if current > DESTROYED {
+        unsafe {
+            let current = ManuallyDrop::new(Thread::from_raw(current));
+            (*current).clone()
+        }
+    } else if current == DESTROYED {
+        Thread::new_unnamed(id::get_or_init())
+    } else {
+        init_current(current)
+    }
+}
+
 /// Gets a handle to the thread that invokes it.
 ///
 /// # Examples
