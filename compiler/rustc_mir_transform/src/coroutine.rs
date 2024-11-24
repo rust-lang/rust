@@ -697,8 +697,7 @@ fn locals_live_across_suspend_points<'tcx>(
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
-            live_locals.union(liveness.get());
+            let mut live_locals = liveness.get().clone();
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
