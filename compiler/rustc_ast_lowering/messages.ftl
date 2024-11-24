@@ -152,6 +152,8 @@ ast_lowering_register2 = register `{$reg2_name}`
 
 ast_lowering_register_class_only_clobber =
     register class `{$reg_class_name}` can only be used as a clobber, not as an input or output
+ast_lowering_register_class_only_clobber_stable =
+    register class `{$reg_class_name}` can only be used as a clobber in stable
 
 ast_lowering_register_conflict =
     register `{$reg1_name}` conflicts with register `{$reg2_name}`

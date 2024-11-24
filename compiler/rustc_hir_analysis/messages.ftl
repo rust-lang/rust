@@ -424,6 +424,9 @@ hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
+hir_analysis_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
+
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
 hir_analysis_return_type_notation_equality_bound =

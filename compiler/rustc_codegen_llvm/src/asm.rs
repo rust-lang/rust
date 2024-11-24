@@ -45,7 +45,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
-                        for &(_, feature) in reg_class.supported_types(asm_arch) {
+                        for &(_, feature) in reg_class.supported_types(asm_arch, true) {
                             if let Some(feature) = feature {
                                 if self
                                     .tcx
@@ -85,7 +85,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         }
                         continue;
                     } else if !is_target_supported(reg.reg_class())
-                        || reg.reg_class().is_clobber_only(asm_arch)
+                        || reg.reg_class().is_clobber_only(asm_arch, true)
                     {
                         // We turn discarded outputs into clobber constraints
                         // if the target feature needed by the register class is

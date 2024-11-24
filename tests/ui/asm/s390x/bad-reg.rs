@@ -1,13 +1,16 @@
 //@ add-core-stubs
 //@ needs-asm-support
-//@ revisions: s390x s390x_vector
+//@ revisions: s390x s390x_vector s390x_vector_stable
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
 //@[s390x_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
 //@[s390x_vector] needs-llvm-components: systemz
+//@[s390x_vector_stable] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
+//@[s390x_vector_stable] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
 #![feature(no_core, rustc_attrs, repr_simd)]
+#![cfg_attr(not(s390x_vector_stable), feature(asm_experimental_reg))]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -68,29 +71,48 @@ fn f() {
 
         // vreg
         asm!("", out("v0") _); // always ok
-        asm!("", in("v0") v); // requires vector
+        asm!("", in("v0") v); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", out("v0") v); // requires vector
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("", out("v0") v); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", in("v0") x); // requires vector
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("", in("v0") x); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("", out("v0") x); // requires vector
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
+        asm!("", out("v0") x); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
         asm!("", in("v0") b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
         asm!("", out("v0") b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
-        asm!("/* {} */", in(vreg) v); // requires vector
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
+        asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
-        asm!("/* {} */", in(vreg) x); // requires vector
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
         asm!("/* {} */", in(vreg) b);
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
         //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
-        asm!("/* {} */", out(vreg) _); // requires vector
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
+        asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
         //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
 
         // Clobber-only registers
         // areg

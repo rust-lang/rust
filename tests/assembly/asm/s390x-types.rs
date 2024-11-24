@@ -7,6 +7,7 @@
 //@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, f128)]
+#![cfg_attr(s390x_vector, feature(asm_experimental_reg))]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
