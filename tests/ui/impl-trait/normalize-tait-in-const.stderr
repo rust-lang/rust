@@ -13,10 +13,18 @@ LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruc
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `for<'a, 'b> fn(&'a foo::Alias<'b>) {foo}: const Destruct` is not satisfied
-  --> $DIR/normalize-tait-in-const.rs:33:5
+  --> $DIR/normalize-tait-in-const.rs:33:19
    |
 LL |     with_positive(foo);
-   |     ^^^^^^^^^^^^^^^^^^
+   |     ------------- ^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `with_positive`
+  --> $DIR/normalize-tait-in-const.rs:26:62
+   |
+LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
+   |                                                              ^^^^^^ required by this bound in `with_positive`
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/normalize-tait-in-const.rs:27:5

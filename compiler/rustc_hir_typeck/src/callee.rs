@@ -4,7 +4,7 @@ use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
@@ -428,7 +428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
-                self.enforce_context_effects(call_expr.span, def_id, args);
+                self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
@@ -837,6 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
+        call_hir_id: Option<HirId>,
         span: Span,
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
@@ -867,10 +868,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
             // FIXME(const_trait_impl): Use this span with a better cause code.
-            for (cond, _) in q.instantiate(self.tcx, callee_args) {
+            for (idx, (cond, pred_span)) in
+                q.instantiate(self.tcx, callee_args).into_iter().enumerate()
+            {
+                let cause = self.cause(
+                    span,
+                    if let Some(hir_id) = call_hir_id {
+                        ObligationCauseCode::HostEffectInExpr(callee_did, pred_span, hir_id, idx)
+                    } else {
+                        ObligationCauseCode::WhereClause(callee_did, pred_span)
+                    },
+                );
                 self.register_predicate(Obligation::new(
                     self.tcx,
-                    self.misc(span),
+                    cause,
                     self.param_env,
                     cond.to_host_effect_clause(self.tcx, host),
                 ));

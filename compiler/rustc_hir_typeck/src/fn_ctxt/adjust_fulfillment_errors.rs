@@ -11,32 +11,65 @@ use rustc_trait_selection::traits;
 
 use crate::FnCtxt;
 
+enum ClauseFlavor {
+    /// Predicate comes from `predicates_of`.
+    Where,
+    /// Predicate comes from `const_conditions`.
+    Const,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn adjust_fulfillment_error_for_expr_obligation(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx) =
-            *error.obligation.cause.code().peel_derives()
-        else {
-            return false;
+        let (def_id, hir_id, idx, flavor) = match *error.obligation.cause.code().peel_derives() {
+            ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx) => {
+                (def_id, hir_id, idx, ClauseFlavor::Where)
+            }
+            ObligationCauseCode::HostEffectInExpr(def_id, _, hir_id, idx) => {
+                (def_id, hir_id, idx, ClauseFlavor::Const)
+            }
+            _ => return false,
         };
 
-        let Some(uninstantiated_pred) = self
-            .tcx
-            .predicates_of(def_id)
-            .instantiate_identity(self.tcx)
-            .predicates
-            .into_iter()
-            .nth(idx)
-        else {
-            return false;
+        let uninstantiated_pred = match flavor {
+            ClauseFlavor::Where => {
+                if let Some(pred) = self
+                    .tcx
+                    .predicates_of(def_id)
+                    .instantiate_identity(self.tcx)
+                    .predicates
+                    .into_iter()
+                    .nth(idx)
+                {
+                    pred
+                } else {
+                    return false;
+                }
+            }
+            ClauseFlavor::Const => {
+                if let Some((pred, _)) = self
+                    .tcx
+                    .const_conditions(def_id)
+                    .instantiate_identity(self.tcx)
+                    .into_iter()
+                    .nth(idx)
+                {
+                    pred.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe)
+                } else {
+                    return false;
+                }
+            }
         };
 
         let generics = self.tcx.generics_of(def_id);
         let (predicate_args, predicate_self_type_to_point_at) =
             match uninstantiated_pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
+                    (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
+                }
+                ty::ClauseKind::HostEffect(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
                 ty::ClauseKind::Projection(pred) => (pred.projection_term.args.to_vec(), None),
@@ -95,6 +128,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         match self.tcx.hir_node(hir_id) {
+            hir::Node::Expr(&hir::Expr {
+                kind:
+                    hir::ExprKind::Call(
+                        hir::Expr { kind: hir::ExprKind::Path(qpath), span: callee_span, .. },
+                        args,
+                    ),
+                span,
+                ..
+            }) => {
+                if self.closure_span_overlaps_error(error, span) {
+                    return false;
+                }
+
+                if let Some(param) = predicate_self_type_to_point_at
+                    && self.point_at_path_if_possible(error, def_id, param, &qpath)
+                {
+                    return true;
+                }
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
+                {
+                    if self.blame_specific_arg_if_possible(
+                        error,
+                        def_id,
+                        param,
+                        hir_id,
+                        *callee_span,
+                        None,
+                        args,
+                    ) {
+                        return true;
+                    }
+                }
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
+                {
+                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
+                        return true;
+                    }
+                }
+            }
             hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(qpath), span, .. }) => {
                 if self.closure_span_overlaps_error(error, span) {
                     return false;
@@ -544,7 +622,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Result<&'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>> {
         match obligation_cause_code {
-            traits::ObligationCauseCode::WhereClauseInExpr(_, _, _, _) => {
+            traits::ObligationCauseCode::WhereClauseInExpr(_, _, _, _)
+            | ObligationCauseCode::HostEffectInExpr(..) => {
                 // This is the "root"; we assume that the `expr` is already pointing here.
                 // Therefore, we return `Ok` so that this `expr` can be refined further.
                 Ok(expr)
