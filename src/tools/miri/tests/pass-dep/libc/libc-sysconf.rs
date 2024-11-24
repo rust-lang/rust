@@ -9,6 +9,8 @@ fn test_sysconfbasic() {
         // note that in reality it can return -1 (no hard limit) on some platforms.
         let gwmax = libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX);
         assert!(gwmax >= 512);
+        let omax = libc::sysconf(libc::_SC_OPEN_MAX);
+        assert_eq!(omax, 65536);
     }
 }
 
