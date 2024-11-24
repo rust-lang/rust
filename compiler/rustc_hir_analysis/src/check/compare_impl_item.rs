@@ -702,8 +702,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve((ty, args)) {
-            Ok((ty, args)) => {
+        match infcx.fully_resolve(ty) {
+            Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
@@ -883,33 +883,27 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         self.tcx
     }
 
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = *t.kind() {
-            let mut mapped_args = Vec::with_capacity(args.len());
-            for (arg, v) in std::iter::zip(args, self.tcx.variances_of(def_id)) {
-                mapped_args.push(match (arg.unpack(), v) {
-                    // Skip uncaptured opaque args
-                    (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
-                    _ => arg.try_fold_with(self)?,
-                });
-            }
-            Ok(Ty::new_opaque(self.tcx, def_id, self.tcx.mk_args(&mapped_args)))
-        } else {
-            t.try_super_fold_with(self)
-        }
-    }
-
     fn try_fold_region(
         &mut self,
         region: ty::Region<'tcx>,
     ) -> Result<ty::Region<'tcx>, Self::Error> {
         match region.kind() {
-            // Remap late-bound regions from the function.
+            // Never remap bound regions or `'static`
+            ty::ReBound(..) | ty::ReStatic | ty::ReError(_) => return Ok(region),
+            // We always remap liberated late-bound regions from the function.
             ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyParam(ebr) if ebr.index as usize >= self.num_impl_args => {}
-            _ => return Ok(region),
+            ty::ReEarlyParam(ebr) => {
+                if ebr.index as usize >= self.num_impl_args {
+                    // Remap
+                } else {
+                    return Ok(region);
+                }
+            }
+            ty::ReVar(_) | ty::RePlaceholder(_) | ty::ReErased => unreachable!(
+                "should not have leaked vars or placeholders into hidden type of RPITIT"
+            ),
         }
 
         let e = if let Some(id_region) = self.map.get(&region) {
