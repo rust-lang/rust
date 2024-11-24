@@ -339,9 +339,9 @@ impl Rewrite for Pat {
                         .max_width_error(shape.width, self.span)?,
                 )
                 .map(|inner_pat| format!("({})", inner_pat)),
-            PatKind::Err(_) => Err(RewriteError::Unknown),
+            PatKind::Guard(..) => Ok(context.snippet(self.span).to_string()),
             PatKind::Deref(_) => Err(RewriteError::Unknown),
-            PatKind::Guard(..) => Err(RewriteError::Unknown),
+            PatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }
