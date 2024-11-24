@@ -107,4 +107,22 @@ impl SyntaxFactory {
 
         ast
     }
+
+    pub fn turbofish_generic_arg_list(
+        &self,
+        args: impl IntoIterator<Item = ast::GenericArg> + Clone,
+    ) -> ast::GenericArgList {
+        let ast = make::turbofish_generic_arg_list(args.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(
+                args.into_iter().map(|arg| arg.syntax().clone()),
+                ast.generic_args().map(|arg| arg.syntax().clone()),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
 }
