@@ -183,15 +183,7 @@ fn verbatim_args<L: Linker + ?Sized>(
 }
 /// Add underlying linker arguments to C compiler command, by wrapping them in
 /// `-Wl` or `-Xlinker`.
-fn convert_link_args_to_cc_args(
-    cmd: &mut Command,
-    args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>,
-) {
-    let args = args.into_iter();
-    if args.len() == 0 {
-        return;
-    }
-
+fn convert_link_args_to_cc_args(cmd: &mut Command, args: impl IntoIterator<Item: AsRef<OsStr>>) {
     let mut combined_arg = OsString::from("-Wl");
     for arg in args {
         // If the argument itself contains a comma, we need to emit it
@@ -220,10 +212,7 @@ fn convert_link_args_to_cc_args(
 }
 /// Arguments for the underlying linker.
 /// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
-fn link_args<L: Linker + ?Sized>(
-    l: &mut L,
-    args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>,
-) -> &mut L {
+fn link_args<L: Linker + ?Sized>(l: &mut L, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut L {
     if !l.is_cc() {
         verbatim_args(l, args);
     } else {
@@ -257,7 +246,7 @@ macro_rules! generate_arg_methods {
                 verbatim_args(self, iter::once(arg))
             }
             #[allow(unused)]
-            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
+            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 link_args(self, args)
             }
             #[allow(unused)]
