@@ -95,7 +95,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
+use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {

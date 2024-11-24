@@ -14,9 +14,9 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
-use crate::build::expr::category::Category;
-use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
+use crate::builder::ForGuard::{OutsideGuard, RefWithinGuard};
+use crate::builder::expr::category::Category;
+use crate::builder::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 
 /// The "outermost" place that holds this value.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -68,7 +68,7 @@ pub(crate) enum PlaceBase {
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone, Debug, PartialEq)]
-pub(in crate::build) struct PlaceBuilder<'tcx> {
+pub(in crate::builder) struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
 }
@@ -249,7 +249,7 @@ fn strip_prefix<'a, 'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    pub(in crate::build) fn to_place(&self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
+    pub(in crate::builder) fn to_place(&self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
         self.try_to_place(cx).unwrap_or_else(|| match self.base {
             PlaceBase::Local(local) => span_bug!(
                 cx.local_decls[local].source_info.span,
@@ -265,7 +265,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     }
 
     /// Creates a `Place` or returns `None` if an upvar cannot be resolved
-    pub(in crate::build) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
+    pub(in crate::builder) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
         let resolved = self.resolve_upvar(cx);
         let builder = resolved.as_ref().unwrap_or(self);
         let PlaceBase::Local(local) = builder.base else { return None };
@@ -283,7 +283,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// not captured. This can happen because the final mir that will be
     /// generated doesn't require a read for this place. Failures will only
     /// happen inside closures.
-    pub(in crate::build) fn resolve_upvar(
+    pub(in crate::builder) fn resolve_upvar(
         &self,
         cx: &Builder<'_, 'tcx>,
     ) -> Option<PlaceBuilder<'tcx>> {

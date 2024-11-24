@@ -5,7 +5,7 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use tracing::trace;
 
-use crate::build::parse_float_into_scalar;
+use crate::builder::parse_float_into_scalar;
 
 pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,

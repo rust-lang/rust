@@ -16,9 +16,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
+use crate::builder::expr::as_place::PlaceBase;
+use crate::builder::expr::category::{Category, RvalueFunc};
+use crate::builder::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an rvalue suitable for use until the end of the current

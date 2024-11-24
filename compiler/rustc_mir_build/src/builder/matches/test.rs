@@ -20,8 +20,8 @@ use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use crate::build::Builder;
-use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::builder::Builder;
+use crate::builder::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.

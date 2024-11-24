@@ -4,9 +4,9 @@ use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use tracing::debug;
 
-use crate::build::Builder;
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
+use crate::builder::Builder;
+use crate::builder::expr::as_place::PlaceBase;
+use crate::builder::matches::{Binding, Candidate, FlatPat, MatchPairTree, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to

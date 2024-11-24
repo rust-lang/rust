@@ -18,10 +18,10 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use tracing::{debug, instrument};
 
-use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
-use crate::build::{
+use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
+use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::scope::DropKind;
+use crate::builder::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
 };
 

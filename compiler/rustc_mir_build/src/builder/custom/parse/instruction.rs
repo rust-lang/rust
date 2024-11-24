@@ -9,8 +9,8 @@ use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
 use super::{PResult, ParseCtxt, parse_by_kind};
-use crate::build::custom::ParseError;
-use crate::build::expr::as_constant::as_constant_inner;
+use crate::builder::custom::ParseError;
+use crate::builder::expr::as_constant::as_constant_inner;
 
 impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     pub(crate) fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {

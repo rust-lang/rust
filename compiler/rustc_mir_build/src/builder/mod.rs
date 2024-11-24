@@ -23,8 +23,8 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
 use super::lints;
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
+use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::scope::DropKind;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,

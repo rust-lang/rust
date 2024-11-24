@@ -4,8 +4,8 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::build::expr::category::Category;
-use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
+use crate::builder::expr::category::Category;
+use crate::builder::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Construct a temporary lifetime restricted to just the local scope

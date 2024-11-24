@@ -4,7 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
-use crate::build::CFG;
+use crate::builder::CFG;
 
 impl<'tcx> CFG<'tcx> {
     pub(crate) fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {

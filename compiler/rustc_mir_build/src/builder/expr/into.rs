@@ -13,9 +13,9 @@ use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument};
 
-use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::matches::DeclareLetBindings;
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
+use crate::builder::expr::category::{Category, RvalueFunc};
+use crate::builder::matches::DeclareLetBindings;
+use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which

@@ -2,9 +2,9 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
-use crate::build::Builder;
-use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
-use crate::build::matches::{FlatPat, MatchPairTree, TestCase};
+use crate::builder::Builder;
+use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::builder::matches::{FlatPat, MatchPairTree, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds and returns [`MatchPairTree`] subtrees, one for each pattern in
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
     /// Recursively builds a match pair tree for the given pattern and its
     /// subpatterns.
-    pub(in crate::build) fn for_pattern(
+    pub(in crate::builder) fn for_pattern(
         mut place_builder: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,

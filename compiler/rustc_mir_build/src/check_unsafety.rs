@@ -18,7 +18,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
 
-use crate::build::ExprCategory;
+use crate::builder::ExprCategory;
 use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {

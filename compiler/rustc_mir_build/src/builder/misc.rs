@@ -7,7 +7,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
-use crate::build::Builder;
+use crate::builder::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
