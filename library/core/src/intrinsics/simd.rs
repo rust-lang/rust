@@ -612,10 +612,14 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
 
-    /// Computes `(x*y) + z` for each element, with unspecified rounding.
+    /// Computes `(x*y) + z` for each element, non-deterministically executing either
+    /// a fused multiply-add or two operations with rounding of the intermediate result.
     ///
-    /// This may be equivalent to `simd_fma`, or it may relax to rounding each
-    /// operation if that's more efficient.
+    /// The operation is fused if the code generator determines that target instruction
+    /// set has support for a fused operation, and that the fused operation is more efficient
+    /// than the equivalent, separate pair of mul and add instructions. It is unspecified
+    /// whether or not a fused operation is selected, and that may depend on optimization
+    /// level and context, for example.
     ///
     /// `T` must be a vector of floats.
     #[cfg(not(bootstrap))]
