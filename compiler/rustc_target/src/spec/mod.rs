@@ -2615,6 +2615,18 @@ impl TargetOptions {
             }
         })
     }
+
+    pub(crate) fn has_neg_feature(&self, search_feature: &str) -> bool {
+        self.features.split(',').any(|f| {
+            if let Some(f) = f.strip_prefix('-')
+                && f == search_feature
+            {
+                true
+            } else {
+                false
+            }
+        })
+    }
 }
 
 impl Default for TargetOptions {

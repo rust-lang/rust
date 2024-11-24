@@ -290,6 +290,7 @@ const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("flagm", STABLE, &[]),
     // FEAT_FLAGM2
     ("flagm2", unstable(sym::aarch64_unstable_target_feature), &[]),
+    ("fp-armv8", Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`" }, &[]),
     // FEAT_FP16
     // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
     ("fp16", STABLE, &["neon"]),
@@ -325,7 +326,28 @@ const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // FEAT_MTE & FEAT_MTE2
     ("mte", STABLE, &[]),
     // FEAT_AdvSimd & FEAT_FP
-    ("neon", STABLE, &[]),
+    (
+        "neon",
+        Stability::Stable {
+            allow_toggle: |target, enable| {
+                if target.abi == "softfloat" {
+                    // `neon` has no ABI implications for softfloat targets, we can allow this.
+                    Ok(())
+                } else if enable
+                    && !target.has_neg_feature("fp-armv8")
+                    && !target.has_neg_feature("neon")
+                {
+                    // neon is enabled by default, and has not been disabled, so enabling it again
+                    // is redundant and we can permit it. Forbidding this would be a breaking change
+                    // since this feature is stable.
+                    Ok(())
+                } else {
+                    Err("unsound on hard-float targets because it changes float ABI")
+                }
+            },
+        },
+        &[],
+    ),
     // FEAT_PAUTH (address authentication)
     ("paca", STABLE, &[]),
     // FEAT_PAUTH (generic authentication)
