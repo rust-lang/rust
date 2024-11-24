@@ -404,11 +404,10 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
     // FIXME(const_trait_impl, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
     fn is_ty_const_destruct_unused<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-        // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::is_trivially_const_drop(ty) {
-            return true;
+        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        if !ty.needs_drop(tcx, body.typing_env(tcx)) {
+            return false;
         }
-
 
         let (infcx, param_env) =
             tcx.infer_ctxt().build_with_typing_env(body.typing_env(tcx));
