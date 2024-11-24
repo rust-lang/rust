@@ -2,7 +2,6 @@ use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
 use crate::shims::unix::android::thread::prctl;
-use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::linux::syscall::syscall;
 use crate::*;
 
@@ -21,14 +20,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
-            // Querying system information
-            "sysconf" => {
-                let [val] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.sysconf(val)?;
-                this.write_scalar(result, dest)?;
-            }
-
             // Miscellaneous
             "__errno" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;

@@ -113,7 +113,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
 
-            "sysconf" | "__sysconf_xpg7" => {
+            "__sysconf_xpg7" => {
                 let [val] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let result = this.sysconf(val)?;
