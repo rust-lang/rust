@@ -262,6 +262,104 @@ enum AccessType {
     AtomicRmw,
 }
 
+/// Per-byte vector clock metadata for data-race detection.
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct MemoryCellClocks {
+    /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
+    /// a full `VClock` here, it's always a single thread and nothing synchronizes, so the effective
+    /// clock is all-0 except for the thread that did the write.
+    write: (VectorIdx, VTimestamp),
+
+    /// The type of operation that the write index represents,
+    /// either newly allocated memory, a non-atomic write or
+    /// a deallocation of memory.
+    write_type: NaWriteType,
+
+    /// The vector-clock of all non-atomic reads that happened since the last non-atomic write
+    /// (i.e., we join together the "singleton" clocks corresponding to each read). It is reset to
+    /// zero on each write operation.
+    read: VClock,
+
+    /// Atomic access, acquire, release sequence tracking clocks.
+    /// For non-atomic memory this value is set to None.
+    /// For atomic memory, each byte carries this information.
+    atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
+}
+
+/// Extra metadata associated with a thread.
+#[derive(Debug, Clone, Default)]
+struct ThreadExtraState {
+    /// The current vector index in use by the
+    /// thread currently, this is set to None
+    /// after the vector index has been re-used
+    /// and hence the value will never need to be
+    /// read during data-race reporting.
+    vector_index: Option<VectorIdx>,
+
+    /// Thread termination vector clock, this
+    /// is set on thread termination and is used
+    /// for joining on threads since the vector_index
+    /// may be re-used when the join operation occurs.
+    termination_vector_clock: Option<VClock>,
+}
+
+/// Global data-race detection state, contains the currently
+/// executing thread as well as the vector-clocks associated
+/// with each of the threads.
+// FIXME: it is probably better to have one large RefCell, than to have so many small ones.
+#[derive(Debug, Clone)]
+pub struct GlobalState {
+    /// Set to true once the first additional
+    /// thread has launched, due to the dependency
+    /// between before and after a thread launch.
+    /// Any data-races must be recorded after this
+    /// so concurrent execution can ignore recording
+    /// any data-races.
+    multi_threaded: Cell<bool>,
+
+    /// A flag to mark we are currently performing
+    /// a data race free action (such as atomic access)
+    /// to suppress the race detector
+    ongoing_action_data_race_free: Cell<bool>,
+
+    /// Mapping of a vector index to a known set of thread
+    /// clocks, this is not directly mapping from a thread id
+    /// since it may refer to multiple threads.
+    vector_clocks: RefCell<IndexVec<VectorIdx, ThreadClockSet>>,
+
+    /// Mapping of a given vector index to the current thread
+    /// that the execution is representing, this may change
+    /// if a vector index is re-assigned to a new thread.
+    vector_info: RefCell<IndexVec<VectorIdx, ThreadId>>,
+
+    /// The mapping of a given thread to associated thread metadata.
+    thread_info: RefCell<IndexVec<ThreadId, ThreadExtraState>>,
+
+    /// Potential vector indices that could be re-used on thread creation
+    /// values are inserted here on after the thread has terminated and
+    /// been joined with, and hence may potentially become free
+    /// for use as the index for a new thread.
+    /// Elements in this set may still require the vector index to
+    /// report data-races, and can only be re-used after all
+    /// active vector-clocks catch up with the threads timestamp.
+    reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
+
+    /// The timestamp of last SC fence performed by each thread
+    last_sc_fence: RefCell<VClock>,
+
+    /// The timestamp of last SC write performed by each thread
+    last_sc_write: RefCell<VClock>,
+
+    /// Track when an outdated (weak memory) load happens.
+    pub track_outdated_loads: bool,
+}
+
+impl VisitProvenance for GlobalState {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // We don't have any tags.
+    }
+}
+
 impl AccessType {
     fn description(self, ty: Option<Ty<'_>>, size: Option<Size>) -> String {
         let mut msg = String::new();
@@ -313,30 +411,6 @@ impl AccessType {
             AccessType::NaRead(NaReadType::Retag) | AccessType::NaWrite(NaWriteType::Retag)
         )
     }
-}
-
-/// Per-byte vector clock metadata for data-race detection.
-#[derive(Clone, PartialEq, Eq, Debug)]
-struct MemoryCellClocks {
-    /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
-    /// a full `VClock` here, it's always a single thread and nothing synchronizes, so the effective
-    /// clock is all-0 except for the thread that did the write.
-    write: (VectorIdx, VTimestamp),
-
-    /// The type of operation that the write index represents,
-    /// either newly allocated memory, a non-atomic write or
-    /// a deallocation of memory.
-    write_type: NaWriteType,
-
-    /// The vector-clock of all non-atomic reads that happened since the last non-atomic write
-    /// (i.e., we join together the "singleton" clocks corresponding to each read). It is reset to
-    /// zero on each write operation.
-    read: VClock,
-
-    /// Atomic access, acquire, release sequence tracking clocks.
-    /// For non-atomic memory this value is set to None.
-    /// For atomic memory, each byte carries this information.
-    atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
 }
 
 impl AtomicMemoryCellClocks {
@@ -1466,80 +1540,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         interp_ok(())
-    }
-}
-
-/// Extra metadata associated with a thread.
-#[derive(Debug, Clone, Default)]
-struct ThreadExtraState {
-    /// The current vector index in use by the
-    /// thread currently, this is set to None
-    /// after the vector index has been re-used
-    /// and hence the value will never need to be
-    /// read during data-race reporting.
-    vector_index: Option<VectorIdx>,
-
-    /// Thread termination vector clock, this
-    /// is set on thread termination and is used
-    /// for joining on threads since the vector_index
-    /// may be re-used when the join operation occurs.
-    termination_vector_clock: Option<VClock>,
-}
-
-/// Global data-race detection state, contains the currently
-/// executing thread as well as the vector-clocks associated
-/// with each of the threads.
-// FIXME: it is probably better to have one large RefCell, than to have so many small ones.
-#[derive(Debug, Clone)]
-pub struct GlobalState {
-    /// Set to true once the first additional
-    /// thread has launched, due to the dependency
-    /// between before and after a thread launch.
-    /// Any data-races must be recorded after this
-    /// so concurrent execution can ignore recording
-    /// any data-races.
-    multi_threaded: Cell<bool>,
-
-    /// A flag to mark we are currently performing
-    /// a data race free action (such as atomic access)
-    /// to suppress the race detector
-    ongoing_action_data_race_free: Cell<bool>,
-
-    /// Mapping of a vector index to a known set of thread
-    /// clocks, this is not directly mapping from a thread id
-    /// since it may refer to multiple threads.
-    vector_clocks: RefCell<IndexVec<VectorIdx, ThreadClockSet>>,
-
-    /// Mapping of a given vector index to the current thread
-    /// that the execution is representing, this may change
-    /// if a vector index is re-assigned to a new thread.
-    vector_info: RefCell<IndexVec<VectorIdx, ThreadId>>,
-
-    /// The mapping of a given thread to associated thread metadata.
-    thread_info: RefCell<IndexVec<ThreadId, ThreadExtraState>>,
-
-    /// Potential vector indices that could be re-used on thread creation
-    /// values are inserted here on after the thread has terminated and
-    /// been joined with, and hence may potentially become free
-    /// for use as the index for a new thread.
-    /// Elements in this set may still require the vector index to
-    /// report data-races, and can only be re-used after all
-    /// active vector-clocks catch up with the threads timestamp.
-    reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
-
-    /// The timestamp of last SC fence performed by each thread
-    last_sc_fence: RefCell<VClock>,
-
-    /// The timestamp of last SC write performed by each thread
-    last_sc_write: RefCell<VClock>,
-
-    /// Track when an outdated (weak memory) load happens.
-    pub track_outdated_loads: bool,
-}
-
-impl VisitProvenance for GlobalState {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // We don't have any tags.
     }
 }
 
