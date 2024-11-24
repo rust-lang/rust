@@ -186,7 +186,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             // `clobber_abi` can add lots of clobbers that are not supported by the target,
                             // such as AVX-512 registers, so we just ignore unsupported registers
                             let is_target_supported =
-                                reg.reg_class().supported_types(asm_arch).iter().any(
+                                reg.reg_class().supported_types(asm_arch, true).iter().any(
                                     |&(_, feature)| {
                                         if let Some(feature) = feature {
                                             self.tcx
