@@ -20,7 +20,7 @@ pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
 /// `Toggleability` is the type storing whether (un)stable features can be toggled:
 /// this is initially a function since it can depend on `Target`, but for stable hashing
 /// it needs to be something hashable to we have to make the type generic.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Stability<Toggleability> {
     /// This target feature is stable, it can be used in `#[target_feature]` and
     /// `#[cfg(target_feature)]`.
@@ -44,11 +44,21 @@ pub enum Stability<Toggleability> {
     Forbidden { reason: &'static str },
 }
 
-/// `Stability` where `allow_toggle` has not been computed yet.
 /// Returns `Ok` if the toggle is allowed, `Err` with an explanation of not.
-pub type StabilityUncomputed = Stability<fn(&Target) -> Result<(), &'static str>>;
+/// The `bool` indicates whether the feature is being enabled (`true`) or disabled.
+pub type AllowToggleUncomputed = fn(&Target, bool) -> Result<(), &'static str>;
+
+/// The computed result of whether a feature can be enabled/disabled on the current target.
+#[derive(Debug, Clone)]
+pub struct AllowToggleComputed {
+    enable: Result<(), &'static str>,
+    disable: Result<(), &'static str>,
+}
+
+/// `Stability` where `allow_toggle` has not been computed yet.
+pub type StabilityUncomputed = Stability<AllowToggleUncomputed>;
 /// `Stability` where `allow_toggle` has already been computed.
-pub type StabilityComputed = Stability<Result<(), &'static str>>;
+pub type StabilityComputed = Stability<AllowToggleComputed>;
 
 impl<CTX, Toggleability: HashStable<CTX>> HashStable<CTX> for Stability<Toggleability> {
     #[inline]
@@ -69,11 +79,20 @@ impl<CTX, Toggleability: HashStable<CTX>> HashStable<CTX> for Stability<Toggleab
     }
 }
 
+impl<CTX> HashStable<CTX> for AllowToggleComputed {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        let AllowToggleComputed { enable, disable } = self;
+        enable.hash_stable(hcx, hasher);
+        disable.hash_stable(hcx, hasher);
+    }
+}
+
 impl<Toggleability> Stability<Toggleability> {
     /// Returns whether the feature can be used in `cfg(target_feature)` ever.
     /// (It might still be nightly-only even if this returns `true`, so make sure to also check
     /// `requires_nightly`.)
-    pub fn in_cfg(self) -> bool {
+    pub fn in_cfg(&self) -> bool {
         !matches!(self, Stability::Forbidden { .. })
     }
 
@@ -85,24 +104,37 @@ impl<Toggleability> Stability<Toggleability> {
     /// Before calling this, ensure the feature is even permitted for this use:
     /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
     /// - for `cfg(target_feature)`, check `in_cfg`
-    pub fn requires_nightly(self) -> Option<Symbol> {
+    pub fn requires_nightly(&self) -> Option<Symbol> {
         match self {
-            Stability::Unstable { nightly_feature, .. } => Some(nightly_feature),
-            Stability::Stable { .. } => None,
-            Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
+            &Stability::Unstable { nightly_feature, .. } => Some(nightly_feature),
+            &Stability::Stable { .. } => None,
+            &Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
         }
     }
 }
 
 impl StabilityUncomputed {
-    pub fn compute_toggleability(self, target: &Target) -> StabilityComputed {
+    pub fn compute_toggleability(&self, target: &Target) -> StabilityComputed {
+        use Stability::*;
+        let compute = |f: AllowToggleUncomputed| AllowToggleComputed {
+            enable: f(target, true),
+            disable: f(target, false),
+        };
+        match self {
+            &Stable { allow_toggle } => Stable { allow_toggle: compute(allow_toggle) },
+            &Unstable { nightly_feature, allow_toggle } => {
+                Unstable { nightly_feature, allow_toggle: compute(allow_toggle) }
+            }
+            &Forbidden { reason } => Forbidden { reason },
+        }
+    }
+
+    pub fn toggle_allowed(&self, target: &Target, enable: bool) -> Result<(), &'static str> {
         use Stability::*;
         match self {
-            Stable { allow_toggle } => Stable { allow_toggle: allow_toggle(target) },
-            Unstable { nightly_feature, allow_toggle } => {
-                Unstable { nightly_feature, allow_toggle: allow_toggle(target) }
-            }
-            Forbidden { reason } => Forbidden { reason },
+            &Stable { allow_toggle } => allow_toggle(target, enable),
+            &Unstable { allow_toggle, .. } => allow_toggle(target, enable),
+            &Forbidden { reason } => Err(reason),
         }
     }
 }
@@ -111,19 +143,20 @@ impl StabilityComputed {
     /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
     /// (It might still be nightly-only even if this returns `true`, so make sure to also check
     /// `requires_nightly`.)
-    pub fn allow_toggle(self) -> Result<(), &'static str> {
-        match self {
+    pub fn toggle_allowed(&self, enable: bool) -> Result<(), &'static str> {
+        let allow_toggle = match self {
             Stability::Stable { allow_toggle } => allow_toggle,
             Stability::Unstable { allow_toggle, .. } => allow_toggle,
-            Stability::Forbidden { reason } => Err(reason),
-        }
+            Stability::Forbidden { reason } => return Err(reason),
+        };
+        if enable { allow_toggle.enable } else { allow_toggle.disable }
     }
 }
 
 // Constructors for the list below, defaulting to "always allow toggle".
-const STABLE: StabilityUncomputed = Stability::Stable { allow_toggle: |_target| Ok(()) };
+const STABLE: StabilityUncomputed = Stability::Stable { allow_toggle: |_target, _enable| Ok(()) };
 const fn unstable(nightly_feature: Symbol) -> StabilityUncomputed {
-    Stability::Unstable { nightly_feature, allow_toggle: |_target| Ok(()) }
+    Stability::Unstable { nightly_feature, allow_toggle: |_target, _enable| Ok(()) }
 }
 
 // Here we list target features that rustc "understands": they can be used in `#[target_feature]`
@@ -184,7 +217,7 @@ const ARM_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
         "fpregs",
         Stability::Unstable {
             nightly_feature: sym::arm_target_feature,
-            allow_toggle: |target: &Target| {
+            allow_toggle: |target: &Target, _enable| {
                 // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
                 // `fpregs` isn't needed so changing it cannot affect the ABI.
                 if target.has_feature("soft-float") {
@@ -481,7 +514,7 @@ const X86_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
         "x87",
         Stability::Unstable {
             nightly_feature: sym::x87_target_feature,
-            allow_toggle: |target: &Target| {
+            allow_toggle: |target: &Target, _enable| {
                 // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
                 // `fpregs` isn't needed so changing it cannot affect the ABI.
                 if target.has_feature("soft-float") {
