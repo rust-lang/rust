@@ -544,6 +544,8 @@ declare_clippy_lint! {
     /// Also, if any of these non-source code file is updated, it will trigger a
     /// recompilation.
     ///
+    /// ### Known problems
+    ///
     /// Excluding this will currently result in the file being left out if
     /// the item's docs are inlined from another crate. This may be fixed in a
     /// future version of rustdoc.
