@@ -539,10 +539,14 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks if included files in doc comments are included only for `cfg(doc)`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// These files are not useful for compilation but will still be included.
     /// Also, if any of these non-source code file is updated, it will trigger a
     /// recompilation.
+    ///
+    /// Excluding this will currently result in the file being left out if
+    /// the item's docs are inlined from another crate. This may be fixed in a
+    /// future version of rustdoc.
     ///
     /// ### Example
     /// ```ignore
@@ -554,7 +558,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.84.0"]
     pub DOC_INCLUDE_WITHOUT_CFG,
-    pedantic,
+    restriction,
     "check if files included in documentation are behind `cfg(doc)`"
 }
 
