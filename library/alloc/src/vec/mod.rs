@@ -3183,6 +3183,57 @@ pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
 
+/// # Safety
+///
+/// `elem` must be the result of some const expression.
+#[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "vec_of_const_expr", issue = "none")]
+#[track_caller]
+pub unsafe fn from_const_elem<T>(elem: T, n: usize) -> Vec<T> {
+    // SAFETY: Caller has guaranteed `elem` being the result of some const expression.
+    unsafe { from_const_elem_in(elem, n, Global) }
+}
+
+/// # Safety
+///
+/// `elem` must be the result of some const expression.
+#[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "vec_of_const_expr", issue = "none")]
+#[track_caller]
+unsafe fn from_const_elem_in<T, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+    /// # Safety
+    ///
+    /// `value` must points to a valid `T` value that is the result of some const expression.
+    unsafe fn fill_const_value<T>(buffer: &mut [MaybeUninit<T>], value: *const T) {
+        for target in buffer {
+            // SAFETY: If `value` is the result of some const expression, we can make as many
+            // copies as needed.
+            unsafe { target.write(ptr::read(value)) };
+        }
+    }
+
+    // Avoid calling the destructor of `elem`.
+    let elem = ManuallyDrop::new(elem);
+    let elem_ptr = ptr::from_ref(&*elem);
+    let mut result = Vec::<T, A>::with_capacity_in(n, alloc);
+    let buffer_ptr = result.as_mut_ptr().cast::<MaybeUninit<T>>();
+
+    // SAFETY: `with_capacity_in` makes sure the capacity is at least `n`, so we can make a buffer
+    // of length `n` out of it.
+    let buffer = unsafe { slice::from_raw_parts_mut(buffer_ptr, n) };
+
+    // SAFETY: Caller has guaranteed `elem` being the result of some const expression.
+    unsafe { fill_const_value(buffer, elem_ptr) };
+
+    // SAFETY: We have initialized exactly `n` values at the start of the buffer, so we are safe to
+    // set the length accordingly.
+    unsafe { result.set_len(n) };
+
+    result
+}
+
 #[cfg(not(no_global_oom_handling))]
 trait ExtendFromWithinSpec {
     /// # Safety

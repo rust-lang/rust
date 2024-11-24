@@ -36,6 +36,7 @@
 #![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(drain_keep_rest)]
 #![feature(local_waker)]
+#![feature(vec_of_const_expr)]
 #![feature(vec_pop_if)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]

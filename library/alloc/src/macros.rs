@@ -43,6 +43,10 @@ macro_rules! vec {
     () => (
         $crate::vec::Vec::new()
     );
+    (const $elem:block; $n:expr) => (
+        // SAFETY: The `const` keyword asserts the value being the result of a const expression.
+        unsafe { $crate::vec::from_const_elem(const $elem, $n) }
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );

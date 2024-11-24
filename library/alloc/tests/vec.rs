@@ -2312,6 +2312,28 @@ fn test_vec_macro_repeat() {
 }
 
 #[test]
+fn test_vec_macro_repeat_const() {
+    #[derive(Eq, PartialEq, Debug)]
+    struct Item {
+        x: u64,
+        y: u32, // Paddings are added to test the uninitialized bytes case.
+    }
+
+    impl Clone for Item {
+        fn clone(&self) -> Self {
+            panic!("no clone should be called");
+        }
+    }
+
+    const ITEM: Item = Item { x: 2, y: 3 };
+
+    assert_eq!(vec![const { ITEM }; 0], vec![ITEM; 0]);
+    assert_eq!(vec![const { ITEM }; 1], vec![ITEM]);
+    assert_eq!(vec![const { ITEM }; 2], vec![ITEM, ITEM]);
+    assert_eq!(vec![const { ITEM }; 3], vec![ITEM, ITEM, ITEM]);
+}
+
+#[test]
 fn test_vec_swap() {
     let mut a: Vec<isize> = vec![0, 1, 2, 3, 4, 5, 6];
     a.swap(2, 4);
