@@ -3205,11 +3205,13 @@ pub unsafe fn from_const_elem<T>(elem: T, n: usize) -> Vec<T> {
 unsafe fn from_const_elem_in<T, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     /// # Safety
     ///
-    /// `value` must points to a valid `T` value that is the result of some const expression.
+    /// `value` must point to a valid `T` value that is the result of some const expression.
     unsafe fn fill_const_value<T>(buffer: &mut [MaybeUninit<T>], value: *const T) {
         for target in buffer {
-            // SAFETY: If `value` is the result of some const expression, we can make as many
-            // copies as needed.
+            // SAFETY: The current compiler implementation guarantees that if `value` points to a
+            // value that is the result of some const expression, we can make as many copies as
+            // needed safely by duplicating its byte representation. Code outside of the standard
+            // library should not rely on this fact.
             unsafe { target.write(ptr::read(value)) };
         }
     }
