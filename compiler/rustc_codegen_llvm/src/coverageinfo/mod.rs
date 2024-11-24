@@ -157,27 +157,28 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        let mut coverage_map = coverage_cx.function_coverage_map.borrow_mut();
-        let func_coverage = coverage_map
-            .entry(instance)
-            .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
+        // Mark the instance as used in this CGU, for coverage purposes.
+        // This includes functions that were not partitioned into this CGU,
+        // but were MIR-inlined into one of this CGU's functions.
+        coverage_cx.function_coverage_map.borrow_mut().entry(instance).or_insert_with(|| {
+            FunctionCoverageCollector::new(
+                instance,
+                function_coverage_info,
+                bx.tcx.coverage_ids_info(instance.def),
+            )
+        });
 
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::CounterIncrement { id } => {
-                func_coverage.mark_counter_id_seen(id);
-                // We need to explicitly drop the `RefMut` before calling into
-                // `instrprof_increment`, as that needs an exclusive borrow.
-                drop(coverage_map);
-
                 // The number of counters passed to `llvm.instrprof.increment` might
                 // be smaller than the number originally inserted by the instrumentor,
                 // if some high-numbered counters were removed by MIR optimizations.
                 // If so, LLVM's profiler runtime will use fewer physical counters.
                 let num_counters =
-                    bx.tcx().coverage_ids_info(instance.def).max_counter_id.as_u32() + 1;
+                    bx.tcx().coverage_ids_info(instance.def).num_counters_after_mir_opts();
                 assert!(
                     num_counters as usize <= function_coverage_info.num_counters,
                     "num_counters disagreement: query says {num_counters} but function info only has {}",
@@ -194,11 +195,11 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::ExpressionUsed { id } => {
-                func_coverage.mark_expression_id_seen(id);
+            CoverageKind::ExpressionUsed { id: _ } => {
+                // Expression-used statements are markers that are handled by
+                // `coverage_ids_info`, so there's nothing to codegen here.
             }
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
-                drop(coverage_map);
                 let cond_bitmap = coverage_cx
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                     .expect("mcdc cond bitmap should have been allocated for updating");
@@ -206,7 +207,6 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 bx.mcdc_condbitmap_update(cond_index, cond_bitmap);
             }
             CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
-                drop(coverage_map);
                 let cond_bitmap =
                     coverage_cx.try_get_mcdc_condition_bitmap(&instance, decision_depth).expect(
                         "mcdc cond bitmap should have been allocated for merging \
