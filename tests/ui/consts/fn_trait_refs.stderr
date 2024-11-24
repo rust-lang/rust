@@ -17,12 +17,6 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    |        ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:14:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
@@ -39,24 +33,10 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:14:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:21:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:27
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:21:8
@@ -71,14 +51,6 @@ error: `~const` can only be applied to `#[const_trait]` traits
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |        ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:21:27
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -111,12 +83,6 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    |        ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:35:8
    |
 LL |     T: ~const Fn<()> + ~const Destruct,
@@ -133,24 +99,10 @@ LL |     T: ~const Fn<()> + ~const Destruct,
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:35:24
-   |
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:49:8
    |
 LL |     T: ~const FnMut<()> + ~const Destruct,
    |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:27
-   |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/fn_trait_refs.rs:49:8
@@ -168,29 +120,35 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/fn_trait_refs.rs:49:27
+error[E0277]: the trait bound `fn() -> i32 {one}: const Destruct` is not satisfied
+  --> $DIR/fn_trait_refs.rs:70:24
    |
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL |         let test_one = test_fn(one);
+   |                        ^^^^^^^^^^^^
 
-error[E0015]: cannot call non-const operator in constants
-  --> $DIR/fn_trait_refs.rs:71:17
+error[E0277]: the trait bound `fn() -> i32 {two}: const Destruct` is not satisfied
+  --> $DIR/fn_trait_refs.rs:73:24
    |
-LL |         assert!(test_one == (1, 1, 1));
-   |                 ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+LL |         let test_two = test_fn_mut(two);
+   |                        ^^^^^^^^^^^^^^^^
 
-error[E0015]: cannot call non-const operator in constants
-  --> $DIR/fn_trait_refs.rs:74:17
+error[E0277]: the trait bound `&T: ~const Destruct` is not satisfied
+  --> $DIR/fn_trait_refs.rs:39:9
    |
-LL |         assert!(test_two == (2, 2));
-   |                 ^^^^^^^^^^^^^^^^^^
+LL |         tester_fn(&f),
+   |         ^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&T: ~const Destruct` is not satisfied
+  --> $DIR/fn_trait_refs.rs:41:9
    |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+LL |         tester_fn_mut(&f),
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&mut T: ~const Destruct` is not satisfied
+  --> $DIR/fn_trait_refs.rs:53:9
+   |
+LL |         tester_fn_mut(&mut f),
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:16:5
@@ -204,15 +162,6 @@ help: consider further restricting this bound
 LL |     T: ~const Fn<()> + ~const Destruct + ~const Fn(),
    |                                        +++++++++++++
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:12:23
-   |
-LL | const fn tester_fn<T>(f: T) -> T::Output
-   |                       ^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
-
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:23:5
    |
@@ -224,15 +173,6 @@ help: consider further restricting this bound
    |
 LL |     T: ~const FnMut<()> + ~const Destruct + ~const FnMut(),
    |                                           ++++++++++++++++
-
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:19:27
-   |
-LL | const fn tester_fn_mut<T>(mut f: T) -> T::Output
-   |                           ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:30:5
@@ -246,25 +186,7 @@ help: consider further restricting this bound
 LL |     T: ~const FnOnce<()> + ~const FnOnce(),
    |                          +++++++++++++++++
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:33:21
-   |
-LL | const fn test_fn<T>(mut f: T) -> (T::Output, T::Output, T::Output)
-   |                     ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
+error: aborting due to 25 previous errors
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/fn_trait_refs.rs:47:25
-   |
-LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
-   |                         ^^^^^ the destructor for this type cannot be evaluated in constant functions
-...
-LL | }
-   | - value is dropped here
-
-error: aborting due to 34 previous errors
-
-Some errors have detailed explanations: E0015, E0493, E0635.
+Some errors have detailed explanations: E0015, E0277, E0635.
 For more information about an error, try `rustc --explain E0015`.
