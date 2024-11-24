@@ -613,6 +613,18 @@ impl<T: Idx> ChunkedBitSet<T> {
         }
     }
 
+    fn chunk_iter(&self, chunk_index: usize) -> ChunkIter<'_> {
+        match self.chunks.get(chunk_index) {
+            Some(Zeros(_chunk_domain_size)) => ChunkIter::Zeros,
+            Some(Ones(chunk_domain_size)) => ChunkIter::Ones(0..*chunk_domain_size as usize),
+            Some(Mixed(chunk_domain_size, _, ref words)) => {
+                let num_words = num_words(*chunk_domain_size as usize);
+                ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
+            }
+            None => ChunkIter::Finished,
+        }
+    }
+
     bit_relations_inherent_impls! {}
 }
 
@@ -900,78 +912,44 @@ impl<T> Clone for ChunkedBitSet<T> {
 }
 
 pub struct ChunkedBitIter<'a, T: Idx> {
-    index: usize,
     bit_set: &'a ChunkedBitSet<T>,
+
+    // The index of the current chunk.
+    chunk_index: usize,
+
+    // The sub-iterator for the current chunk.
+    chunk_iter: ChunkIter<'a>,
 }
 
 impl<'a, T: Idx> ChunkedBitIter<'a, T> {
     #[inline]
     fn new(bit_set: &'a ChunkedBitSet<T>) -> ChunkedBitIter<'a, T> {
-        ChunkedBitIter { index: 0, bit_set }
+        ChunkedBitIter { bit_set, chunk_index: 0, chunk_iter: bit_set.chunk_iter(0) }
     }
 }
 
 impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
     type Item = T;
-    fn next(&mut self) -> Option<T> {
-        while self.index < self.bit_set.domain_size() {
-            let elem = T::new(self.index);
-            let chunk = &self.bit_set.chunks[chunk_index(elem)];
-            match &chunk {
-                Zeros(chunk_domain_size) => {
-                    self.index += *chunk_domain_size as usize;
-                }
-                Ones(_chunk_domain_size) => {
-                    self.index += 1;
-                    return Some(elem);
-                }
-                Mixed(_chunk_domain_size, _, words) => loop {
-                    let elem = T::new(self.index);
-                    self.index += 1;
-                    let (word_index, mask) = chunk_word_index_and_mask(elem);
-                    if (words[word_index] & mask) != 0 {
-                        return Some(elem);
-                    }
-                    if self.index % CHUNK_BITS == 0 {
-                        break;
-                    }
-                },
-            }
-        }
-        None
-    }
 
-    fn fold<B, F>(mut self, mut init: B, mut f: F) -> B
-    where
-        F: FnMut(B, Self::Item) -> B,
-    {
-        // If `next` has already been called, we may not be at the start of a chunk, so we first
-        // advance the iterator to the start of the next chunk, before proceeding in chunk sized
-        // steps.
-        while self.index % CHUNK_BITS != 0 {
-            let Some(item) = self.next() else { return init };
-            init = f(init, item);
-        }
-        let start_chunk = self.index / CHUNK_BITS;
-        let chunks = &self.bit_set.chunks[start_chunk..];
-        for (i, chunk) in chunks.iter().enumerate() {
-            let base = (start_chunk + i) * CHUNK_BITS;
-            match chunk {
-                Zeros(_) => (),
-                Ones(limit) => {
-                    for j in 0..(*limit as usize) {
-                        init = f(init, T::new(base + j));
+    fn next(&mut self) -> Option<T> {
+        loop {
+            match &mut self.chunk_iter {
+                ChunkIter::Zeros => {}
+                ChunkIter::Ones(iter) => {
+                    if let Some(next) = iter.next() {
+                        return Some(T::new(next + self.chunk_index * CHUNK_BITS));
                     }
                 }
-                Mixed(_, _, words) => {
-                    init = BitIter::new(&**words).fold(init, |val, mut item: T| {
-                        item.increment_by(base);
-                        f(val, item)
-                    });
+                ChunkIter::Mixed(iter) => {
+                    if let Some(next) = iter.next() {
+                        return Some(T::new(next + self.chunk_index * CHUNK_BITS));
+                    }
                 }
+                ChunkIter::Finished => return None,
             }
+            self.chunk_index += 1;
+            self.chunk_iter = self.bit_set.chunk_iter(self.chunk_index);
         }
-        init
     }
 }
 
@@ -1021,6 +999,13 @@ impl Chunk {
             Mixed(_, count, _) => count as usize,
         }
     }
+}
+
+enum ChunkIter<'a> {
+    Zeros,
+    Ones(Range<usize>),
+    Mixed(BitIter<'a, usize>),
+    Finished,
 }
 
 // Applies a function to mutate a bitset, and returns true if any
