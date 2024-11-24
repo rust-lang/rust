@@ -343,7 +343,8 @@ pub fn check(path: &Path, bad: &mut bool) {
         let filename = file.file_name().unwrap().to_string_lossy();
 
         let is_style_file = filename.ends_with(".css");
-        let under_rustfmt = filename.ends_with(".rs") &&
+        let is_rust_file = filename.ends_with(".rs");
+        let under_rustfmt = is_rust_file &&
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
             !file.ancestors().any(|a| {
@@ -485,6 +486,21 @@ pub fn check(path: &Path, bad: &mut bool) {
                     err("Don't use magic numbers that spell things (consider 0x12345678)");
                 }
             }
+
+            // Forbid `mod build;` and `mod build {`, because they imply the
+            // possible existence of a source directory named "build" that would
+            // be ignored by our blanket .gitignore rule for `build/`.
+            // (Bear in mind that some tools don't support negated .gitignore rules.)
+            // This also has the side-effect of forbidding `build.rs` files that
+            // aren't build scripts.
+            if is_rust_file
+                && !trimmed.starts_with("//")
+                && static_regex!(r"\bmod\s+build\s*[;{]").is_match(trimmed)
+            {
+                err("modules named `build` can cause problems for git-adjacent tools; \
+                    use a different name (e.g. `builder`)");
+            }
+
             // for now we just check libcore
             if trimmed.contains("unsafe {")
                 && !trimmed.starts_with("//")

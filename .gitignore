@@ -46,8 +46,11 @@ no_llvm_build
 /inst/
 /llvm/
 /mingw-build/
+# Ignore all "build" directories, in the root and in subdirectories.
+# This makes it a bad idea to have Rust modules named "build", so there is a
+# tidy rule prohibiting that. Try to avoid adding exceptions to this, because
+# some tools don't properly handle negative .gitignore rules.
 build/
-!/compiler/rustc_mir_build/src/build/
 /build-rust-analyzer/
 /dist/
 /unicode-downloads
