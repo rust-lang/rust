@@ -523,8 +523,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &misc_cause,
         param_env,
-        tcx.liberate_late_bound_regions(
-            impl_m.def_id,
+        infcx.instantiate_binder_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );
@@ -536,10 +537,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_def_id);
-    let unnormalized_trait_sig = infcx
-        .instantiate_binder_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
+    let unnormalized_trait_sig = tcx
+        .liberate_late_bound_regions(
+            impl_m.def_id,
             tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
         )
         .fold_with(&mut collector);
