@@ -1,3 +1,5 @@
+mod spans;
+
 use std::ffi::CString;
 use std::iter;
 
@@ -201,7 +203,7 @@ rustc_index::newtype_index! {
     /// An index into a function's list of global file IDs. That underlying list
     /// of local-to-global mappings will be embedded in the function's record in
     /// the `__llvm_covfun` linker section.
-    pub(crate) struct LocalFileId {}
+    struct LocalFileId {}
 }
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
@@ -244,10 +246,12 @@ fn encode_mappings_for_function(
     global_file_table: &GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
-    let counter_regions = function_coverage.counter_regions();
-    if counter_regions.is_empty() {
+    let mapping_spans = function_coverage.mapping_spans();
+    if mapping_spans.is_empty() {
         return Vec::new();
     }
+
+    let fn_cov_info = function_coverage.function_coverage_info;
 
     let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
 
@@ -258,7 +262,9 @@ fn encode_mappings_for_function(
     let mut mcdc_decision_regions = vec![];
 
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
+    let file_name = span_file_name(tcx, fn_cov_info.body_span);
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
     // Look up the global file ID for that filename.
     let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
@@ -267,11 +273,15 @@ fn encode_mappings_for_function(
     let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
     debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
-    // For each counter/region pair in this function+file, convert it to a
+    let make_cov_span = |span| {
+        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    };
+
+    // For each coverage mapping span in this function+file, convert it to a
     // form suitable for FFI.
-    for (mapping_kind, region) in counter_regions {
-        debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-        let cov_span = ffi::CoverageSpan::from_source_region(local_file_id, region);
+    for (mapping_kind, span) in mapping_spans {
+        debug!("Adding counter {mapping_kind:?} to map for {span:?}");
+        let Some(cov_span) = make_cov_span(span) else { continue };
         match mapping_kind {
             MappingKind::Code(term) => {
                 code_regions

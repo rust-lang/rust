@@ -603,8 +603,8 @@ fn write_function_coverage_info(
     for (id, expression) in expressions.iter_enumerated() {
         writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
     }
-    for coverage::Mapping { kind, source_region } in mappings {
-        writeln!(w, "{INDENT}coverage {kind:?} => {source_region:?};")?;
+    for coverage::Mapping { kind, span } in mappings {
+        writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
     }
     writeln!(w)?;
 
