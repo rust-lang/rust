@@ -1,14 +1,14 @@
 mod spans;
 
 use std::ffi::CString;
-use std::iter;
+use std::sync::Arc;
 
 use itertools::Itertools as _;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::MappingKind;
@@ -17,7 +17,7 @@ use rustc_middle::{bug, mir};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
-use rustc_span::{Span, Symbol};
+use rustc_span::{SourceFile, StableSourceFileId};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
@@ -74,11 +74,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
         .collect::<Vec<_>>();
 
-    let all_file_names = function_coverage_entries
+    let all_files = function_coverage_entries
         .iter()
         .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
-        .map(|span| span_file_name(tcx, span));
-    let global_file_table = GlobalFileTable::new(all_file_names);
+        .map(|span| tcx.sess.source_map().lookup_source_file(span.lo()));
+    let global_file_table = GlobalFileTable::new(all_files);
 
     // Encode all filenames referenced by coverage mappings in this CGU.
     let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
@@ -143,29 +143,34 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 }
 
-/// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
+/// Maps "global" (per-CGU) file ID numbers to their underlying source files.
 struct GlobalFileTable {
-    /// This "raw" table doesn't include the working dir, so a filename's
+    /// This "raw" table doesn't include the working dir, so a file's
     /// global ID is its index in this set **plus one**.
-    raw_file_table: FxIndexSet<Symbol>,
+    raw_file_table: FxIndexMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
 impl GlobalFileTable {
-    fn new(all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
-        // Collect all of the filenames into a set. Filenames usually come in
-        // contiguous runs, so we can dedup adjacent ones to save work.
-        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<FxIndexSet<Symbol>>();
+    fn new(all_files: impl IntoIterator<Item = Arc<SourceFile>>) -> Self {
+        // Collect all of the files into a set. Files usually come in contiguous
+        // runs, so we can dedup adjacent ones to save work.
+        let mut raw_file_table = all_files
+            .into_iter()
+            .dedup_by(|a, b| a.stable_id == b.stable_id)
+            .map(|f| (f.stable_id, f))
+            .collect::<FxIndexMap<StableSourceFileId, Arc<SourceFile>>>();
 
-        // Sort the file table by its actual string values, not the arbitrary
-        // ordering of its symbols.
-        raw_file_table.sort_unstable_by(|a, b| a.as_str().cmp(b.as_str()));
+        // Sort the file table by its underlying filenames.
+        raw_file_table.sort_unstable_by(|_, a, _, b| {
+            Ord::cmp(&a.name, &b.name).then_with(|| Ord::cmp(&a.stable_id, &b.stable_id))
+        });
 
         Self { raw_file_table }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> GlobalFileId {
-        let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
-            bug!("file name not found in prepared global file table: {file_name}");
+    fn global_file_id_for_file(&self, file: &SourceFile) -> GlobalFileId {
+        let raw_id = self.raw_file_table.get_index_of(&file.stable_id).unwrap_or_else(|| {
+            bug!("file not found in prepared global file table: {:?}", file.name);
         });
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
@@ -173,24 +178,27 @@ impl GlobalFileTable {
     }
 
     fn make_filenames_buffer(&self, tcx: TyCtxt<'_>) -> Vec<u8> {
+        let mut table = Vec::with_capacity(self.raw_file_table.len() + 1);
+
         // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
         // requires setting the first filename to the compilation directory.
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::RemapFileNameExt;
-        use rustc_session::config::RemapPathScopeComponents;
-        let working_dir: &str = &tcx
-            .sess
-            .opts
-            .working_dir
-            .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
-            .to_string_lossy();
+        table.push(
+            tcx.sess
+                .opts
+                .working_dir
+                .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+                .to_string_lossy(),
+        );
 
-        // Insert the working dir at index 0, before the other filenames.
-        let filenames =
-            iter::once(working_dir).chain(self.raw_file_table.iter().map(Symbol::as_str));
-        llvm_cov::write_filenames_to_buffer(filenames)
+        // Add the regular entries after the base directory.
+        table.extend(self.raw_file_table.values().map(|file| {
+            file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy()
+        }));
+
+        llvm_cov::write_filenames_to_buffer(table.iter().map(|f| f.as_ref()))
     }
 }
 
@@ -229,13 +237,6 @@ impl VirtualFileMapping {
     }
 }
 
-fn span_file_name(tcx: TyCtxt<'_>, span: Span) -> Symbol {
-    let source_file = tcx.sess.source_map().lookup_source_file(span.lo());
-    let name =
-        source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy();
-    Symbol::intern(&name)
-}
-
 /// Using the expressions and counter regions collected for a single function,
 /// generate the variable-sized payload of its corresponding `__llvm_covfun`
 /// entry. The payload is returned as a vector of bytes.
@@ -262,16 +263,14 @@ fn encode_mappings_for_function(
     let mut mcdc_decision_regions = vec![];
 
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, fn_cov_info.body_span);
     let source_map = tcx.sess.source_map();
     let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
-    // Look up the global file ID for that filename.
-    let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Look up the global file ID for that file.
+    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
 
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
-    debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
     let make_cov_span = |span| {
         spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
