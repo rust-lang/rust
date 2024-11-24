@@ -2334,6 +2334,41 @@ fn test_vec_macro_repeat_const() {
 }
 
 #[test]
+fn test_vec_macro_repeat_const_drop_behavior() {
+    thread_local! { static DROP_COUNT: Cell<usize> = const { Cell::new(0) } };
+
+    fn with_drop_count_scope(count: usize, f: impl FnOnce()) {
+        struct RestoreOldDropCount(usize);
+
+        impl Drop for RestoreOldDropCount {
+            fn drop(&mut self) {
+                DROP_COUNT.set(self.0);
+            }
+        }
+
+        let _restore_old_drop_count = RestoreOldDropCount(DROP_COUNT.replace(count));
+
+        f();
+    }
+
+    struct DropCounter;
+
+    impl Drop for DropCounter {
+        fn drop(&mut self) {
+            DROP_COUNT.set(DROP_COUNT.get().checked_add(1).unwrap());
+        }
+    }
+
+    for n in 0..10 {
+        with_drop_count_scope(0, || {
+            _ = vec![const { DropCounter }; n];
+
+            assert_eq!(DROP_COUNT.get(), n);
+        });
+    }
+}
+
+#[test]
 fn test_vec_swap() {
     let mut a: Vec<isize> = vec![0, 1, 2, 3, 4, 5, 6];
     a.swap(2, 4);
