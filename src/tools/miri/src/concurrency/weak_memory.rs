@@ -11,14 +11,17 @@
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows (<https://github.com/rust-lang/miri/issues/2301>).
 //!
-//! A modification is made to the paper's model to partially address C++20 changes.
-//! Specifically, if an SC load reads from an atomic store of any ordering, then a later SC load cannot read from
-//! an earlier store in the location's modification order. This is to prevent creating a backwards S edge from the second
-//! load to the first, as a result of C++20's coherence-ordered before rules.
-//! (This seems to rule out behaviors that were actually permitted by the RC11 model that C++20
-//! intended to copy (https://plv.mpi-sws.org/scfix/paper.pdf); a change was introduced when
-//! translating the math to English. According to Viktor Vafeiadis, this difference is harmless. So
-//! we stick to what the standard says, and allow fewer behaviors.)
+//! Modifications are made to the paper's model to address C++20 changes:
+//! - If an SC load reads from an atomic store of any ordering, then a later SC load cannot read
+//!   from an earlier store in the location's modification order. This is to prevent creating a
+//!   backwards S edge from the second load to the first, as a result of C++20's coherence-ordered
+//!   before rules. (This seems to rule out behaviors that were actually permitted by the RC11 model
+//!   that C++20 intended to copy (<https://plv.mpi-sws.org/scfix/paper.pdf>); a change was
+//!   introduced when translating the math to English. According to Viktor Vafeiadis, this
+//!   difference is harmless. So we stick to what the standard says, and allow fewer behaviors.)
+//! - SC fences are treated like AcqRel RMWs to a global clock, to ensure they induce enough
+//!   synchronization with the surrounding accesses. This rules out legal behavior, but it is really
+//!   hard to be more precise here.
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
 //! `std::atomic<T>` API). It is therefore possible for this implementation to generate behaviours never observable when the
@@ -339,11 +342,6 @@ impl<'tcx> StoreBuffer {
                     // CoRR: if there was a load from this store which happened-before the current load,
                     // then we cannot read-from anything earlier in modification order.
                     // C++20 §6.9.2.2 [intro.races] paragraph 16
-                    false
-                } else if store_elem.timestamp <= clocks.fence_seqcst[store_elem.store_index] {
-                    // The current load, which may be sequenced-after an SC fence, cannot read-before
-                    // the last store sequenced-before an SC fence in another thread.
-                    // C++17 §32.4 [atomics.order] paragraph 6
                     false
                 } else if store_elem.timestamp <= clocks.write_seqcst[store_elem.store_index]
                     && store_elem.is_seqcst

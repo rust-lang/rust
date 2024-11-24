@@ -111,12 +111,6 @@ pub(super) struct ThreadClockSet {
     /// have been released by this thread by a release fence.
     fence_release: VClock,
 
-    /// Timestamps of the last SC fence performed by each
-    /// thread, updated when this thread performs an SC fence.
-    /// This is never acquired into the thread's clock, it
-    /// just limits which old writes can be seen in weak memory emulation.
-    pub(super) fence_seqcst: VClock,
-
     /// Timestamps of the last SC write performed by each
     /// thread, updated when this thread performs an SC fence.
     /// This is never acquired into the thread's clock, it
@@ -344,11 +338,13 @@ pub struct GlobalState {
     /// active vector-clocks catch up with the threads timestamp.
     reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
 
-    /// The timestamp of last SC fence performed by each thread
+    /// We make SC fences act like RMWs on a global location.
+    /// To implement that, they all release and acquire into this clock.
     last_sc_fence: RefCell<VClock>,
 
-    /// The timestamp of last SC write performed by each thread
-    last_sc_write: RefCell<VClock>,
+    /// The timestamp of last SC write performed by each thread.
+    /// Threads only update their own index here!
+    last_sc_write_per_thread: RefCell<VClock>,
 
     /// Track when an outdated (weak memory) load happens.
     pub track_outdated_loads: bool,
@@ -883,9 +879,17 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                         clocks.apply_release_fence();
                     }
                     if atomic == AtomicFenceOrd::SeqCst {
-                        data_race.last_sc_fence.borrow_mut().set_at_index(&clocks.clock, index);
-                        clocks.fence_seqcst.join(&data_race.last_sc_fence.borrow());
-                        clocks.write_seqcst.join(&data_race.last_sc_write.borrow());
+                        // Behave like an RMW on the global fence location. This takes full care of
+                        // all the SC fence requirements, including C++17 §32.4 [atomics.order]
+                        // paragraph 6 (which would limit what future reads can see). It also rules
+                        // out many legal behaviors, but we don't currently have a model that would
+                        // be more precise.
+                        let mut sc_fence_clock = data_race.last_sc_fence.borrow_mut();
+                        sc_fence_clock.join(&clocks.clock);
+                        clocks.clock.join(&sc_fence_clock);
+                        // Also establish some sort of order with the last SC write that happened, globally
+                        // (but this is only respected by future reads).
+                        clocks.write_seqcst.join(&data_race.last_sc_write_per_thread.borrow());
                     }
 
                     // Increment timestamp in case of release semantics.
@@ -1555,7 +1559,7 @@ impl GlobalState {
             thread_info: RefCell::new(IndexVec::new()),
             reuse_candidates: RefCell::new(FxHashSet::default()),
             last_sc_fence: RefCell::new(VClock::default()),
-            last_sc_write: RefCell::new(VClock::default()),
+            last_sc_write_per_thread: RefCell::new(VClock::default()),
             track_outdated_loads: config.track_outdated_loads,
         };
 
@@ -1857,7 +1861,7 @@ impl GlobalState {
     // SC ATOMIC STORE rule in the paper.
     pub(super) fn sc_write(&self, thread_mgr: &ThreadManager<'_>) {
         let (index, clocks) = self.active_thread_state(thread_mgr);
-        self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
+        self.last_sc_write_per_thread.borrow_mut().set_at_index(&clocks.clock, index);
     }
 
     // SC ATOMIC READ rule in the paper.
