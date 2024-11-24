@@ -1296,7 +1296,7 @@ impl clean::Impl {
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
-                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx).to_string())?;
+                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx))?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, "&gt;")?;
                     }

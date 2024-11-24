@@ -724,8 +724,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib = self.tcx.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
-        if !any_non_rlib {
+        let only_rlib = self.tcx.crate_types().iter().all(|ct| *ct == CrateType::Rlib);
+        if only_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
         }

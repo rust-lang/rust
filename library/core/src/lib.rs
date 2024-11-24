@@ -118,7 +118,6 @@
 #![feature(const_black_box)]
 #![feature(const_eq_ignore_ascii_case)]
 #![feature(const_eval_select)]
-#![feature(const_float_methods)]
 #![feature(const_heap)]
 #![feature(const_nonnull_new)]
 #![feature(const_ptr_sub_ptr)]
