@@ -103,15 +103,8 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
             encode_mappings_for_function(tcx, &global_file_table, &function_coverage);
 
         if coverage_mapping_buffer.is_empty() {
-            if function_coverage.is_used() {
-                bug!(
-                    "A used function should have had coverage mapping data but did not: {}",
-                    mangled_function_name
-                );
-            } else {
-                debug!("unused function had no coverage mapping data: {}", mangled_function_name);
-                continue;
-            }
+            debug!("function has no mappings to embed; skipping");
+            continue;
         }
 
         if !is_used {
