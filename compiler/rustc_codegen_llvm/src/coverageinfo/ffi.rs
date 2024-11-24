@@ -156,7 +156,7 @@ impl CoverageSpan {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct CodeRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) counter: Counter,
 }
 
@@ -164,7 +164,7 @@ pub(crate) struct CodeRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct BranchRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) true_counter: Counter,
     pub(crate) false_counter: Counter,
 }
@@ -173,7 +173,7 @@ pub(crate) struct BranchRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct MCDCBranchRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) true_counter: Counter,
     pub(crate) false_counter: Counter,
     pub(crate) mcdc_branch_params: mcdc::BranchParameters,
@@ -183,6 +183,6 @@ pub(crate) struct MCDCBranchRegion {
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub(crate) struct MCDCDecisionRegion {
-    pub(crate) span: CoverageSpan,
+    pub(crate) cov_span: CoverageSpan,
     pub(crate) mcdc_decision_params: mcdc::DecisionParameters,
 }
