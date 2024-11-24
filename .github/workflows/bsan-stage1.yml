@@ -1,5 +1,13 @@
 name: build
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - bsan
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
 permissions:
   contents: read
 defaults:
