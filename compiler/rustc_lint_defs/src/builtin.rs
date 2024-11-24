@@ -5188,10 +5188,14 @@ declare_lint! {
     ///
     /// ```rust,edition2021,compile_fail
     /// #![deny(inline_always_closure_in_target_feature_function)]
+    /// #![feature(target_feature_11)]
     ///
     /// #[target_feature(enable = "avx")]
     /// fn example() {
-    ///     let closure = #[inline(always)] || {};
+    ///     let closure = {
+    ///         #[inline(always)] move || {}
+    ///     };
+    ///     closure()
     /// }
     ///
     /// ```

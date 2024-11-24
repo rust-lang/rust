@@ -590,14 +590,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             && !tcx.codegen_fn_attrs(owner_id).target_features.is_empty()
         {
             if codegen_fn_attrs.inline == InlineAttr::Always {
-                if let Some(inline_span) = inline_span {
-                    tcx.emit_node_span_lint(
-                        lint::builtin::INLINE_ALWAYS_CLOSURE_IN_TARGET_FEATURE_FUNCTION,
-                        rustc_hir::CRATE_HIR_ID,
-                        inline_span,
-                        errors::InlineAlwaysClosureInTargetFeatureFunction,
-                    );
-                }
+                // Do *not* inherit target features here, that could be unsound.
+                tcx.emit_node_span_lint(
+                    lint::builtin::INLINE_ALWAYS_CLOSURE_IN_TARGET_FEATURE_FUNCTION,
+                    rustc_hir::CRATE_HIR_ID,
+                    inline_span.unwrap_or(tcx.def_span(did)),
+                    errors::InlineAlwaysClosureInTargetFeatureFunction,
+                );
             } else {
                 codegen_fn_attrs
                     .target_features
