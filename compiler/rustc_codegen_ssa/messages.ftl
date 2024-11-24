@@ -82,6 +82,11 @@ codegen_ssa_incorrect_cgu_reuse_type =
     *[other] {""}
     }`{$expected_reuse}`
 
+codegen_ssa_inline_always_closure_in_target_feature_function =
+  cannot use `#[inline(always)]` with `#[target_feature]`
+  .note = `#[target_feature]` will not be applied to this closure and may result in unpredictable code generation
+  .help = consider using `#[inline]` instead
+
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
 codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`

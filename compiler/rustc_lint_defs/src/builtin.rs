@@ -52,6 +52,7 @@ declare_lint_pass! {
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        INLINE_ALWAYS_CLOSURE_IN_TARGET_FEATURE_FUNCTION,
         INLINE_NO_SANITIZE,
         INVALID_DOC_ATTRIBUTES,
         INVALID_MACRO_EXPORT_ARGUMENTS,
@@ -5175,5 +5176,40 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+    };
+}
+
+declare_lint! {
+    /// The `inline_always_closure_in_target_feature_function` lint detects using
+    /// the `#[inline(always)]` attribute on closures within functions marked with
+    /// the `#[target_feature(enable = "...")]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021,compile_fail
+    /// #![deny(inline_always_closure_in_target_feature_function)]
+    ///
+    /// #[target_feature(enable = "avx")]
+    /// fn example() {
+    ///     let closure = #[inline(always)] || {};
+    /// }
+    ///
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust previously did not apply a function's target features to closures
+    /// within it.
+    /// The `#[inline(always)]` attribute is incompatible with target features
+    /// due to the possibility of target feature mismatches.
+    /// The `#[inline]` attribute may be used instead.
+    pub INLINE_ALWAYS_CLOSURE_IN_TARGET_FEATURE_FUNCTION,
+    Warn,
+    "detect closures marked #[inline(always)] inside functions marked #[target_feature]",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reference: "issue #108655 <https://github.com/rust-lang/rust/issues/108655>",
     };
 }

@@ -10,7 +10,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_span::{Span, Symbol};
@@ -1092,6 +1092,12 @@ pub struct TargetFeatureDisableOrEnable<'a> {
     pub span: Option<Span>,
     pub missing_features: Option<MissingFeatures>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_inline_always_closure_in_target_feature_function)]
+#[note]
+#[help]
+pub struct InlineAlwaysClosureInTargetFeatureFunction;
 
 #[derive(Subdiagnostic)]
 #[help(codegen_ssa_missing_features)]

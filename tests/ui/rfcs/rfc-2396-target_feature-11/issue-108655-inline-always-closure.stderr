@@ -1,0 +1,25 @@
+warning: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/issue-108655-inline-always-closure.rs:26:9
+   |
+LL |         #[inline(always)]
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #108655 <https://github.com/rust-lang/rust/issues/108655>
+   = note: `#[target_feature]` will not be applied to this closure and may result in unpredictable code generation
+   = help: consider using `#[inline]` instead
+   = note: `#[warn(inline_always_closure_in_target_feature_function)]` on by default
+
+warning: cannot use `#[inline(always)]` with `#[target_feature]`
+  --> $DIR/issue-108655-inline-always-closure.rs:38:17
+   |
+LL |                 #[inline(always)]
+   |                 ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #108655 <https://github.com/rust-lang/rust/issues/108655>
+   = note: `#[target_feature]` will not be applied to this closure and may result in unpredictable code generation
+   = help: consider using `#[inline]` instead
+
+warning: 2 warnings emitted
+

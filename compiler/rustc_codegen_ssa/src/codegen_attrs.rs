@@ -584,15 +584,25 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // its parent function, which effectively inherits the features anyway. Boxing this closure
     // would result in this closure being compiled without the inherited target features, but this
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
-    if tcx.features().target_feature_11()
-        && tcx.is_closure_like(did.to_def_id())
-        && codegen_fn_attrs.inline != InlineAttr::Always
-    {
+    if tcx.features().target_feature_11() && tcx.is_closure_like(did.to_def_id()) {
         let owner_id = tcx.parent(did.to_def_id());
-        if tcx.def_kind(owner_id).has_codegen_attrs() {
-            codegen_fn_attrs
-                .target_features
-                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+        if tcx.def_kind(owner_id).has_codegen_attrs()
+            && !tcx.codegen_fn_attrs(owner_id).target_features.is_empty()
+        {
+            if codegen_fn_attrs.inline == InlineAttr::Always {
+                if let Some(inline_span) = inline_span {
+                    tcx.emit_node_span_lint(
+                        lint::builtin::INLINE_ALWAYS_CLOSURE_IN_TARGET_FEATURE_FUNCTION,
+                        rustc_hir::CRATE_HIR_ID,
+                        inline_span,
+                        errors::InlineAlwaysClosureInTargetFeatureFunction,
+                    );
+                }
+            } else {
+                codegen_fn_attrs
+                    .target_features
+                    .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+            }
         }
     }
 
