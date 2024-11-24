@@ -2776,7 +2776,7 @@ impl<'a> Parser<'a> {
         };
         // Try to parse the pattern `for ($PAT) in $EXPR`.
         let pat = match (
-            self.parse_pat_no_top_guard(
+            self.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
@@ -3313,39 +3313,33 @@ impl<'a> Parser<'a> {
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
-            // Detect and recover from `($pat if $cond) => $arm`.
             let left = self.token.span;
-            match self.parse_pat_no_top_guard(
+            let pat = self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
                 CommaRecoveryMode::EitherTupleOrPipe,
-            ) {
-                Ok(pat) => Ok((pat, self.parse_match_arm_guard()?)),
-                Err(err)
-                    if let prev_sp = self.prev_token.span
-                        && let true = self.eat_keyword(kw::If) =>
-                {
-                    // We know for certain we've found `($pat if` so far.
-                    let mut cond = match self.parse_match_guard_condition() {
-                        Ok(cond) => cond,
-                        Err(cond_err) => {
-                            cond_err.cancel();
-                            return Err(err);
-                        }
-                    };
-                    err.cancel();
-                    CondChecker::new(self).visit_expr(&mut cond);
-                    self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
-                    self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
-                    let right = self.prev_token.span;
-                    self.dcx().emit_err(errors::ParenthesesInMatchPat {
-                        span: vec![left, right],
-                        sugg: errors::ParenthesesInMatchPatSugg { left, right },
-                    });
-                    Ok((self.mk_pat(left.to(prev_sp), ast::PatKind::Wild), Some(cond)))
-                }
-                Err(err) => Err(err),
+            )?;
+            if let ast::PatKind::Paren(subpat) = &pat.kind
+                && let ast::PatKind::Guard(..) = &subpat.kind
+            {
+                // Detect and recover from `($pat if $cond) => $arm`.
+                // FIXME(guard_patterns): convert this to a normal guard instead
+                let span = pat.span;
+                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
+                    unreachable!()
+                };
+                self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
+                CondChecker::new(self).visit_expr(&mut cond);
+                let right = self.prev_token.span;
+                self.dcx().emit_err(errors::ParenthesesInMatchPat {
+                    span: vec![left, right],
+                    sugg: errors::ParenthesesInMatchPatSugg { left, right },
+                });
+                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(cond)))
+            } else {
+                Ok((pat, self.parse_match_arm_guard()?))
             }
         } else {
             // Regular parser flow:
