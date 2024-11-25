@@ -23,9 +23,8 @@ macro_rules! check_cfg_feature {
         $(cfg!(target_feature = $target_feature_lit);)*
     };
     ($feature:tt, $feature_lit:tt, without cfg check: $feature_cfg_check:literal) => {
-        // FIXME: Enable once rust-lang/rust#132577 hit's nightly
-        // #[expect(unexpected_cfgs, reason = $feature_lit)]
-        // { cfg!(target_feature = $feature_lit) }
+        #[expect(unexpected_cfgs, reason = $feature_lit)]
+        { cfg!(target_feature = $feature_lit) }
     };
 }
 
