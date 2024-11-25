@@ -3,8 +3,8 @@
 
 //@ run-fail
 //@ needs-unwind
-//@ error-pattern: thread 'main' panicked
-//@ error-pattern: `async fn` resumed after panicking
+//@ check-run-results: thread 'main' panicked
+//@ check-run-results: `async fn` resumed after panicking
 //@ edition:2018
 
 #![feature(coroutines, coroutine_trait)]

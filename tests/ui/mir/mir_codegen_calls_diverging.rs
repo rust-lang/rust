@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:diverging_fn called
+//@ check-run-results:diverging_fn called
 //@ ignore-emscripten no processes
 
 fn diverging_fn() -> ! {

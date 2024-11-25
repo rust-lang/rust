@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:woe
+//@ check-run-results:woe
 //@ ignore-emscripten no processes
 
 fn f(a: isize) {

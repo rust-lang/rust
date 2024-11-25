@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:overflow
+//@ check-run-results:overflow
 
 use std::time::{Duration, Instant};
 

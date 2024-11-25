@@ -1,7 +1,7 @@
 //@ run-fail
-//@ error-pattern:converging_fn called
-//@ error-pattern:0 dropped
-//@ error-pattern:exit
+//@ check-run-results:converging_fn called
+//@ check-run-results:0 dropped
+//@ check-run-results:exit
 //@ ignore-emscripten no processes
 
 struct Droppable(u8);

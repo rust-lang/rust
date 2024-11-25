@@ -1,0 +1,5 @@
+thread 'owned name' panicked at $DIR/panic-task-name-owned.rs:12:25:
+test
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at $DIR/panic-task-name-owned.rs:17:22:
+called `Result::unwrap()` on an `Err` value: Any { .. }

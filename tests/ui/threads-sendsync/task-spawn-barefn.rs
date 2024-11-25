@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:Ensure that the child thread runs by panicking
+//@ check-run-results:Ensure that the child thread runs by panicking
 //@ needs-threads
 
 use std::thread;

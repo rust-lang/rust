@@ -2,7 +2,7 @@
 // properly.
 
 //@ run-fail
-//@ error-pattern:should be a positive integer
+//@ check-run-results:should be a positive integer
 //@ compile-flags: --test
 //@ exec-env:RUST_TEST_THREADS=foo
 //@ needs-threads

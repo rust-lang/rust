@@ -3,7 +3,7 @@
 #![allow(non_fmt_panics)]
 
 //@ run-fail
-//@ error-pattern:wooooo
+//@ check-run-results:wooooo
 //@ ignore-emscripten no processes
 
 fn main() {

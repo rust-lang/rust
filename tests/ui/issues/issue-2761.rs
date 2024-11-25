@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:custom message
+//@ check-run-results:custom message
 //@ ignore-emscripten no processes
 
 fn main() {
