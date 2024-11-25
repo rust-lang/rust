@@ -1225,7 +1225,7 @@ impl From<&OsStr> for Box<OsStr> {
     }
 }
 
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl From<&mut OsStr> for Box<OsStr> {
     /// Copies the string into a newly allocated <code>[Box]&lt;[OsStr]&gt;</code>.
     #[inline]
@@ -1305,7 +1305,7 @@ impl From<&OsStr> for Arc<OsStr> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut OsStr> for Arc<OsStr> {
     /// Copies the string into a newly allocated <code>[Arc]&lt;[OsStr]&gt;</code>.
     #[inline]
@@ -1335,7 +1335,7 @@ impl From<&OsStr> for Rc<OsStr> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut OsStr> for Rc<OsStr> {
     /// Copies the string into a newly allocated <code>[Rc]&lt;[OsStr]&gt;</code>.
     #[inline]

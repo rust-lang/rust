@@ -1186,7 +1186,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
     #[inline(always)]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn new(pointer: Ptr) -> Pin<Ptr> {
         // SAFETY: the value pointed to is `Unpin`, and so has no requirements
@@ -1215,7 +1215,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     /// ```
     #[inline(always)]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
         pin.__pointer
@@ -1352,7 +1352,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// [`pin` module docs]: self
     #[lang = "new_unchecked"]
     #[inline(always)]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
         Pin { __pointer: pointer }
@@ -1423,7 +1423,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// move in the future, and this method does not enable the pointee to move. "Malicious"
     /// implementations of `Ptr::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
-    #[stable(feature = "pin_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
     pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
@@ -1505,7 +1505,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// instead.
     #[inline(always)]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
         pin.__pointer
@@ -1561,7 +1561,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
     #[must_use]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn get_ref(self) -> &'a T {
         self.__pointer
@@ -1572,7 +1572,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Converts this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
         Pin { __pointer: self.__pointer }
@@ -1590,7 +1590,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn get_mut(self) -> &'a mut T
     where
         T: Unpin,
@@ -1611,7 +1611,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[inline(always)]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.__pointer
     }
@@ -1654,7 +1654,7 @@ impl<T: ?Sized> Pin<&'static T> {
     /// This is safe because `T` is borrowed immutably for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_ref(r: &'static T) -> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
@@ -1668,7 +1668,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
     /// This is safe because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
     #[stable(feature = "pin_static_ref", since = "1.61.0")]
-    #[rustc_const_stable(feature = "const_pin", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
         // SAFETY: The 'static borrow guarantees the data will not be
         // moved/invalidated until it gets dropped (which is never).
