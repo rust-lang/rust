@@ -453,6 +453,11 @@ impl<T: Idx> ChunkedBitSet<T> {
         ChunkedBitSet::new(domain_size, /* is_empty */ false)
     }
 
+    pub fn clear(&mut self) {
+        let domain_size = self.domain_size();
+        *self = ChunkedBitSet::new_empty(domain_size);
+    }
+
     #[cfg(test)]
     fn chunks(&self) -> &[Chunk] {
         &self.chunks
@@ -1883,7 +1888,7 @@ impl<R: Idx, C: Idx> fmt::Debug for BitMatrix<R, C> {
 /// sparse representation.
 ///
 /// Initially, every row has no explicit representation. If any bit within a
-/// row is set, the entire row is instantiated as `Some(<HybridBitSet>)`.
+/// row is set, the entire row is instantiated as `Some(<ChunkedBitSet>)`.
 /// Furthermore, any previously uninstantiated rows prior to it will be
 /// instantiated as `None`. Those prior rows may themselves become fully
 /// instantiated later on if any of their bits are set.
@@ -1897,7 +1902,7 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, Option<HybridBitSet<C>>>,
+    rows: IndexVec<R, Option<ChunkedBitSet<C>>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
@@ -1906,10 +1911,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut HybridBitSet<C> {
-        // Instantiate any missing rows up to and including row `row` with an empty HybridBitSet.
-        // Then replace row `row` with a full HybridBitSet if necessary.
-        self.rows.get_or_insert_with(row, || HybridBitSet::new_empty(self.num_columns))
+    fn ensure_row(&mut self, row: R) -> &mut ChunkedBitSet<C> {
+        // Instantiate any missing rows up to and including row `row` with an empty ChunkedBitSet.
+        // Then replace row `row` with a full ChunkedBitSet if necessary.
+        self.rows.get_or_insert_with(row, || ChunkedBitSet::new_empty(self.num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -1983,17 +1988,17 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
-    pub fn row(&self, row: R) -> Option<&HybridBitSet<C>> {
+    pub fn row(&self, row: R) -> Option<&ChunkedBitSet<C>> {
         self.rows.get(row)?.as_ref()
     }
 
     /// Intersects `row` with `set`. `set` can be either `BitSet` or
-    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.
     pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        HybridBitSet<C>: BitRelations<Set>,
+        ChunkedBitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.intersect(set),
@@ -2002,12 +2007,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     /// Subtracts `set` from `row`. `set` can be either `BitSet` or
-    /// `HybridBitSet`. Has no effect if `row` does not exist.
+    /// `ChunkedBitSet`. Has no effect if `row` does not exist.
     ///
     /// Returns true if the row was changed.
     pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        HybridBitSet<C>: BitRelations<Set>,
+        ChunkedBitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.subtract(set),
@@ -2016,12 +2021,12 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     /// Unions `row` with `set`. `set` can be either `BitSet` or
-    /// `HybridBitSet`.
+    /// `ChunkedBitSet`.
     ///
     /// Returns true if the row was changed.
     pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        HybridBitSet<C>: BitRelations<Set>,
+        ChunkedBitSet<C>: BitRelations<Set>,
     {
         self.ensure_row(row).union(set)
     }
