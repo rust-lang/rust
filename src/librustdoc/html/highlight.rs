@@ -181,6 +181,9 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
             // current parent tag is not the same as our pending content.
             let close_tag = if self.pending_elems.len() > 1
                 && let Some(current_class) = current_class
+                // `PreludeTy` can never include more than an ident so it should not generate
+                // a wrapping `span`.
+                && !matches!(current_class, Class::PreludeTy(_))
             {
                 Some(enter_span(self.out, current_class, &self.href_context))
             } else {
@@ -333,7 +336,7 @@ enum Class {
     /// `Ident` isn't rendered in the HTML but we still need it for the `Span` it contains.
     Ident(Span),
     Lifetime,
-    PreludeTy,
+    PreludeTy(Span),
     PreludeVal,
     QuestionMark,
     Decoration(&'static str),
@@ -381,7 +384,7 @@ impl Class {
             Class::Bool => "bool-val",
             Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
-            Class::PreludeTy => "prelude-ty",
+            Class::PreludeTy(_) => "prelude-ty",
             Class::PreludeVal => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
@@ -392,7 +395,7 @@ impl Class {
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<Span> {
         match self {
-            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) => Some(sp),
+            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) | Self::PreludeTy(sp) => Some(sp),
             Self::Comment
             | Self::DocComment
             | Self::Attribute
@@ -403,7 +406,6 @@ impl Class {
             | Self::Number
             | Self::Bool
             | Self::Lifetime
-            | Self::PreludeTy
             | Self::PreludeVal
             | Self::QuestionMark
             | Self::Decoration(_) => None,
@@ -411,6 +413,7 @@ impl Class {
     }
 }
 
+#[derive(Debug)]
 enum Highlight<'a> {
     Token { text: &'a str, class: Option<Class> },
     EnterSpan { class: Class },
@@ -847,7 +850,7 @@ impl<'src> Classifier<'src> {
             }
             TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
-                    "Option" | "Result" => Class::PreludeTy,
+                    "Option" | "Result" => Class::PreludeTy(self.new_span(before, text)),
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
                     // "union" is a weak keyword and is only considered as a keyword when declaring
                     // a union type.
