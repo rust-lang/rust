@@ -733,7 +733,7 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 
-/// Counts how many elements of the slices are equal as per `eq_fn`.
+/// Counts how many elements at the beginning of the slices are equal as per `eq_fn`.
 pub fn count_eq<X: Sized>(
     left: &mut dyn Iterator<Item = X>,
     right: &mut dyn Iterator<Item = X>,
