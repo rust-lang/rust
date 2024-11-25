@@ -3820,7 +3820,6 @@ dependencies = [
 name = "rustc_index"
 version = "0.0.0"
 dependencies = [
- "arrayvec",
  "rustc_index_macros",
  "rustc_macros",
  "rustc_serialize",
