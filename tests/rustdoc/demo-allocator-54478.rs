@@ -40,6 +40,7 @@
 //! }
 //!
 //! fn main() {
+//!     drop(String::from("An allocation"));
 //!     assert!(unsafe { HIT });
 //! }
 //! ```
