@@ -608,6 +608,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             if self.cx.sess.opts.incremental.is_some() {
                 for (invoc, _) in invocations.iter_mut() {
                     let expn_id = invoc.expansion_data.id;
+                    // When lowering anon-consts, we may end up with spans whose
+                    // parent is the containing item instead of the anon-const itself.
+                    // See `DefCollector::handle_lazy_anon_const_def` for more details.
+                    //
+                    // FIXME(lcnr): I believe that this shouldn't cause any issues wrt to
+                    // incremental compilation, but am not 100% confident.
                     let parent_def = self.cx.resolver.invocation_parent(expn_id);
                     let span = invoc.span_mut();
                     *span = span.with_parent(Some(parent_def));
