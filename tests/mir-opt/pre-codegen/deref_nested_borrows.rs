@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/130853>
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 fn src(x: &&u8) -> bool {
