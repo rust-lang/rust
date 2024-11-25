@@ -117,18 +117,6 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    /// Why do we need this in addition to [`Self::current_hir_id_owner`]?
-    ///
-    /// Currently (as of June 2024), anonymous constants are not HIR owners; however,
-    /// they do get their own DefIds. Some of these DefIds have to be created during
-    /// AST lowering, rather than def collection, because we can't tell until after
-    /// name resolution whether an anonymous constant will end up instead being a
-    /// [`hir::ConstArgKind::Path`]. However, to compute which generics are
-    /// available to an anonymous constant nested inside another, we need to make
-    /// sure that the parent is recorded as the parent anon const, not the enclosing
-    /// item. So we need to track parent defs differently from HIR owners, since they
-    /// will be finer-grained in the case of anon consts.
-    current_def_id_parent: LocalDefId,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
@@ -161,7 +149,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attrs: SortedMap::default(),
             children: Vec::default(),
             current_hir_id_owner: hir::CRATE_OWNER_ID,
-            current_def_id_parent: CRATE_DEF_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
             #[cfg(debug_assertions)]
@@ -565,7 +552,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert_eq!(_old, None);
         }
 
-        let item = self.with_def_id_parent(def_id, f);
+        let item = f(self);
         debug_assert_eq!(def_id, item.def_id().def_id);
         // `f` should have consumed all the elements in these vectors when constructing `item`.
         debug_assert!(self.impl_trait_defs.is_empty());
@@ -588,13 +575,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &def_id));
         self.children.push((def_id, hir::MaybeOwner::Owner(info)));
-    }
-
-    fn with_def_id_parent<T>(&mut self, parent: LocalDefId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let current_def_id_parent = std::mem::replace(&mut self.current_def_id_parent, parent);
-        let result = f(self);
-        self.current_def_id_parent = current_def_id_parent;
-        result
     }
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
@@ -773,7 +753,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+                    self.current_hir_id_owner.def_id,
                     param,
                     kw::UnderscoreLifetime,
                     DefKind::LifetimeParam,
@@ -1466,17 +1446,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_hir_id = self.lower_node_id(opaque_ty_node_id);
         debug!(?opaque_ty_def_id, ?opaque_ty_hir_id);
 
-        let opaque_ty_def = self.with_def_id_parent(opaque_ty_def_id, |this| {
-            let bounds = lower_item_bounds(this);
-            let opaque_ty_def = hir::OpaqueTy {
-                hir_id: opaque_ty_hir_id,
-                def_id: opaque_ty_def_id,
-                bounds,
-                origin,
-                span: this.lower_span(opaque_ty_span),
-            };
-            this.arena.alloc(opaque_ty_def)
-        });
+        let bounds = lower_item_bounds(self);
+        let opaque_ty_def = hir::OpaqueTy {
+            hir_id: opaque_ty_hir_id,
+            def_id: opaque_ty_def_id,
+            bounds,
+            origin,
+            span: self.lower_span(opaque_ty_span),
+        };
+        let opaque_ty_def = self.arena.alloc(opaque_ty_def);
 
         hir::TyKind::OpaqueDef(opaque_ty_def)
     }
@@ -2084,7 +2062,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             // Construct an AnonConst where the expr is the "ty"'s path.
 
-            let parent_def_id = self.current_def_id_parent;
+            let parent_def_id = self.current_hir_id_owner.def_id;
             let node_id = self.next_node_id();
             let span = self.lower_span(span);
 
@@ -2108,9 +2086,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.arena.alloc(hir::AnonConst {
                     def_id,
                     hir_id,
-                    body: this.with_def_id_parent(def_id, |this| {
-                        this.lower_const_body(path_expr.span, Some(&path_expr))
-                    }),
+                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                     span,
                 })
             });
@@ -2178,9 +2154,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AnonConst {
                 def_id,
                 hir_id,
-                body: this.with_def_id_parent(def_id, |this| {
-                    this.lower_const_body(c.value.span, Some(&c.value))
-                }),
+                body: this.lower_const_body(c.value.span, Some(&c.value)),
                 span: this.lower_span(c.value.span),
             }
         }))

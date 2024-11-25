@@ -222,7 +222,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             };
 
                             // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_def_id_parent;
+                            let parent_def_id = self.current_hir_id_owner.def_id;
                             let node_id = self.next_node_id();
                             self.create_def(
                                 parent_def_id,
