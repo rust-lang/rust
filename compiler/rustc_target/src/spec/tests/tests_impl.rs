@@ -19,6 +19,9 @@ impl Target {
         if self.is_like_msvc {
             assert!(self.is_like_windows);
         }
+        if self.os == "emscripten" {
+            assert!(self.is_like_wasm);
+        }
 
         // Check that default linker flavor is compatible with some other key properties.
         assert_eq!(self.is_like_osx, matches!(self.linker_flavor, LinkerFlavor::Darwin(..)));
@@ -137,7 +140,7 @@ impl Target {
             assert!(self.dynamic_linking);
         }
         // Apparently PIC was slow on wasm at some point, see comments in wasm_base.rs
-        if self.dynamic_linking && !(self.is_like_wasm && self.os != "emscripten") {
+        if self.dynamic_linking && !self.is_like_wasm {
             assert_eq!(self.relocation_model, RelocModel::Pic);
         }
         if self.position_independent_executables {
