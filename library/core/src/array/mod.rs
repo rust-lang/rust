@@ -154,6 +154,39 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
 }
 
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`.
+/// Succeeds if `slice.len() == N`.
+///
+/// # Example
+///
+/// ```
+/// #![feature(array_try_from_slice)]
+///
+/// use core::array;
+///
+/// let data = array::try_from_slice(&[255, 127, 63, 31]).unwrap();
+///
+/// let value = u32::from_le_bytes(data);
+/// assert_eq!(value, 0x1F3F7FFF);
+/// ```
+#[inline]
+#[unstable(feature = "array_try_from_slice", issue = "133440")]
+#[rustc_const_unstable(feature = "array_try_from_slice", issue = "133440")]
+pub const fn try_from_slice<T, const N: usize>(slice: &[T]) -> Result<[T; N], TryFromSliceError>
+where
+    T: Copy,
+{
+    if slice.len() == N {
+        let ptr = slice.as_ptr() as *const [T; N];
+
+        // SAFETY: The underlying array of a slice can be reinterpreted as an actual array `[T; N]` if `N` is not greater than the slice's length.
+        let me = unsafe { *ptr };
+        Ok(me)
+    } else {
+        Err(TryFromSliceError(()))
+    }
+}
+
 /// The error type returned when a conversion from a slice to an array fails.
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_allowed_through_unstable_modules]
@@ -214,8 +247,8 @@ impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     }
 }
 
-/// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
-/// `slice.len() == N`.
+/// Tries to create an array `[T; N]` by copying from a slice `&[T]`.
+/// Succeeds if `slice.len() == N`.
 ///
 /// ```
 /// let bytes: [u8; 3] = [1, 0, 2];
@@ -235,7 +268,7 @@ where
 
     #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
-        <&Self>::try_from(slice).copied()
+        try_from_slice(slice)
     }
 }
 
@@ -260,7 +293,7 @@ where
 
     #[inline]
     fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
-        <Self>::try_from(&*slice)
+        try_from_slice(slice)
     }
 }
 
