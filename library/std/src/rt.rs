@@ -110,7 +110,7 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // handle does not match the current ID, we should attempt to use the
     // current thread ID here instead of unconditionally creating a new
     // one. Also see #130210.
-    let thread = unsafe { Thread::new_main(thread::current_id()) };
+    let thread = Thread::new_main(thread::current_id());
     if let Err(_thread) = thread::set_current(thread) {
         // `thread::current` will create a new handle if none has been set yet.
         // Thus, if someone uses it before main, this call will fail. That's a
