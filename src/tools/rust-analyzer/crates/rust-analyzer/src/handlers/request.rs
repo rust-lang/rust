@@ -1056,36 +1056,33 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    if !resolve_data.imports.is_empty() {
-        let additional_edits = snap
-            .analysis
-            .resolve_completion_edits(
-                &snap.config.completion(Some(source_root)),
-                FilePosition { file_id, offset },
-                resolve_data
-                    .imports
-                    .into_iter()
-                    .map(|import| (import.full_import_path, import.imported_name)),
-            )?
-            .into_iter()
-            .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-            .collect::<Vec<_>>();
+    let additional_edits = snap
+        .analysis
+        .resolve_completion_edits(
+            &snap.config.completion(Some(source_root)),
+            FilePosition { file_id, offset },
+            resolve_data
+                .imports
+                .into_iter()
+                .map(|import| (import.full_import_path, import.imported_name)),
+        )?
+        .into_iter()
+        .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
+        .collect::<Vec<_>>();
 
-        if !all_edits_are_disjoint(&original_completion, &additional_edits) {
-            return Err(LspError::new(
-                ErrorCode::InternalError as i32,
-                "Import edit overlaps with the original completion edits, this is not LSP-compliant"
-                    .into(),
-            )
-            .into());
-        }
+    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
+        return Err(LspError::new(
+            ErrorCode::InternalError as i32,
+            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                .into(),
+        )
+        .into());
+    }
 
-        if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut()
-        {
-            original_additional_edits.extend(additional_edits)
-        } else {
-            original_completion.additional_text_edits = Some(additional_edits);
-        }
+    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
+        original_additional_edits.extend(additional_edits)
+    } else {
+        original_completion.additional_text_edits = Some(additional_edits);
     }
 
     Ok(original_completion)

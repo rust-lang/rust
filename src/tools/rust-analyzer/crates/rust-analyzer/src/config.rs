@@ -1423,6 +1423,7 @@ impl Config {
                 resolve_tags: client_capability_fields.contains("tags"),
                 resolve_detail: client_capability_fields.contains("detail"),
                 resolve_documentation: client_capability_fields.contains("documentation"),
+                resolve_sort_text: client_capability_fields.contains("sortText"),
                 resolve_filter_text: client_capability_fields.contains("filterText"),
                 resolve_text_edit: client_capability_fields.contains("textEdit"),
                 resolve_command: client_capability_fields.contains("command"),

@@ -275,23 +275,14 @@ fn completion_item(
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
+    let lookup = item.lookup().to_owned();
 
     let mut additional_text_edits = Vec::new();
     let mut something_to_resolve = false;
 
-    let filter_text = if fields_to_resolve.resolve_filter_text {
-        something_to_resolve = !item.lookup().is_empty();
-        None
-    } else {
-        Some(item.lookup().to_owned())
-    };
-
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
-    let text_edit = if fields_to_resolve.resolve_text_edit {
-        something_to_resolve = true;
-        None
-    } else {
+    let text_edit = {
         let mut text_edit = None;
         let source_range = item.source_range;
         for indel in item.text_edit {
@@ -314,49 +305,25 @@ fn completion_item(
                 additional_text_edits.push(text_edit);
             }
         }
-        Some(text_edit.unwrap())
+        text_edit.unwrap()
     };
 
     let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
-    let tags = if fields_to_resolve.resolve_tags {
-        something_to_resolve = item.deprecated;
-        None
-    } else {
-        item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED])
-    };
+    let tags = item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
     let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
-        if fields_to_resolve.resolve_command {
-            something_to_resolve = true;
-            Some(command::trigger_parameter_hints())
-        } else {
-            None
-        }
+        Some(command::trigger_parameter_hints())
     } else {
         None
-    };
-
-    let detail = if fields_to_resolve.resolve_detail {
-        something_to_resolve = item.detail.is_some();
-        None
-    } else {
-        item.detail
-    };
-
-    let documentation = if fields_to_resolve.resolve_documentation {
-        something_to_resolve = item.documentation.is_some();
-        None
-    } else {
-        item.documentation.map(documentation)
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
         label: item.label.to_string(),
-        detail,
-        filter_text,
+        detail: item.detail,
+        filter_text: Some(lookup),
         kind: Some(completion_item_kind(item.kind)),
-        text_edit,
+        text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
-        documentation,
+        documentation: item.documentation.map(documentation),
         deprecated: Some(item.deprecated),
         tags,
         command,
@@ -365,40 +332,34 @@ fn completion_item(
     };
 
     if config.completion_label_details_support() {
-        if fields_to_resolve.resolve_label_details {
-            something_to_resolve = true;
-        } else {
-            lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-                detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: lsp_item.detail.clone(),
-            });
-        }
+        lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
+            detail: item.label_detail.as_ref().map(ToString::to_string),
+            description: lsp_item.detail.clone(),
+        });
     } else if let Some(label_detail) = item.label_detail {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    let imports =
-        if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
-            item.import_to_add
-                .into_iter()
-                .map(|(import_path, import_name)| lsp_ext::CompletionImport {
-                    full_import_path: import_path,
-                    imported_name: import_name,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-    if something_to_resolve || !imports.is_empty() {
-        let data = lsp_ext::CompletionResolveData {
-            position: tdpp.clone(),
-            imports,
-            version,
-            completion_trigger_character,
-        };
-        lsp_item.data = Some(to_value(data).unwrap());
+    if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+        let imports = item
+            .import_to_add
+            .into_iter()
+            .map(|(import_path, import_name)| lsp_ext::CompletionImport {
+                full_import_path: import_path,
+                imported_name: import_name,
+            })
+            .collect::<Vec<_>>();
+        if !imports.is_empty() {
+            let data = lsp_ext::CompletionResolveData {
+                position: tdpp.clone(),
+                imports,
+                version,
+                completion_trigger_character,
+            };
+            lsp_item.data = Some(to_value(data).unwrap());
+        }
     }
 
     if let Some((label, indel, relevance)) = ref_match {
