@@ -8,10 +8,11 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fs::OpenOptions;
 use std::io::Write;
 use std::process::Command;
 use std::str::FromStr;
+
+use fs_err::OpenOptions;
 
 #[cfg(test)]
 mod tests;

@@ -3,13 +3,13 @@ mod cargo;
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
+use std::env;
 use std::fmt::{Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::time::{Duration, Instant};
-use std::{env, fs};
 
 use clap::ValueEnum;
 
@@ -1196,8 +1196,8 @@ impl<'a> Builder<'a> {
                     builder.verbose(|| {
                         println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
                     });
-                    let _ = fs::remove_dir_all(&sysroot);
-                    t!(fs::create_dir_all(&sysroot));
+                    let _ = fs_err::remove_dir_all(&sysroot);
+                    t!(fs_err::create_dir_all(&sysroot));
                 }
 
                 if self.compiler.stage == 0 {
@@ -1302,7 +1302,7 @@ impl<'a> Builder<'a> {
 
     /// Gets the paths to all of the compiler's codegen backends.
     fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
-        fs::read_dir(self.sysroot_codegen_backends(compiler))
+        fs_err::read_dir(self.sysroot_codegen_backends(compiler))
             .into_iter()
             .flatten()
             .filter_map(Result::ok)

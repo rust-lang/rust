@@ -627,7 +627,7 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
     let current = if !path.exists() {
         String::new()
     } else {
-        std::fs::read_to_string(path).unwrap_or_else(|_| {
+        fs_err::read_to_string(path).unwrap_or_else(|_| {
             eprintln!("couldn't read {}", path.display());
             crate::exit!(1)
         })

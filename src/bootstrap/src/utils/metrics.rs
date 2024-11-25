@@ -5,7 +5,6 @@
 //! away whenever the `build.metrics` config option is not set to `true`.
 
 use std::cell::RefCell;
-use std::fs::File;
 use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -13,6 +12,7 @@ use build_helper::metrics::{
     JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
     TestOutcome, TestSuite, TestSuiteMetadata,
 };
+use fs_err::File;
 use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
 use crate::Build;
@@ -176,7 +176,7 @@ impl BuildMetrics {
 
         // Some of our CI builds consist of multiple independent CI invocations. Ensure all the
         // previous invocations are still present in the resulting file.
-        let mut invocations = match std::fs::read(&dest) {
+        let mut invocations = match fs_err::read(&dest) {
             Ok(contents) => {
                 // We first parse just the format_version field to have the check succeed even if
                 // the rest of the contents are not valid anymore.
@@ -210,7 +210,7 @@ impl BuildMetrics {
 
         let json = JsonRoot { format_version: CURRENT_FORMAT_VERSION, system_stats, invocations };
 
-        t!(std::fs::create_dir_all(dest.parent().unwrap()));
+        t!(fs_err::create_dir_all(dest.parent().unwrap()));
         let mut file = BufWriter::new(t!(File::create(&dest)));
         t!(serde_json::to_writer(&mut file, &json));
     }

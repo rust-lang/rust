@@ -270,7 +270,7 @@ fn make_win_dist(
 
     // Copy runtime dlls next to rustc.exe
     let rust_bin_dir = rust_root.join("bin/");
-    fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
+    fs_err::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
     for src in &rustc_dlls {
         builder.copy_link_to_folder(src, &rust_bin_dir);
     }
@@ -278,7 +278,7 @@ fn make_win_dist(
     if builder.config.lld_enabled {
         // rust-lld.exe also needs runtime dlls
         let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
-        fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
+        fs_err::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
         for src in &rustc_dlls {
             builder.copy_link_to_folder(src, &rust_target_bin_dir);
         }
@@ -287,7 +287,7 @@ fn make_win_dist(
     //Copy platform tools to platform-specific bin directory
     let plat_target_bin_self_contained_dir =
         plat_root.join("lib/rustlib").join(target).join("bin/self-contained");
-    fs::create_dir_all(&plat_target_bin_self_contained_dir)
+    fs_err::create_dir_all(&plat_target_bin_self_contained_dir)
         .expect("creating plat_target_bin_self_contained_dir failed");
     for src in target_tools {
         builder.copy_link_to_folder(&src, &plat_target_bin_self_contained_dir);
@@ -304,7 +304,7 @@ fn make_win_dist(
     //Copy platform libs to platform-specific lib directory
     let plat_target_lib_self_contained_dir =
         plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
-    fs::create_dir_all(&plat_target_lib_self_contained_dir)
+    fs_err::create_dir_all(&plat_target_lib_self_contained_dir)
         .expect("creating plat_target_lib_self_contained_dir failed");
     for src in target_libs {
         builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
@@ -402,7 +402,7 @@ impl Step for Rustc {
             let src = builder.sysroot(compiler);
 
             // Copy rustc binary
-            t!(fs::create_dir_all(image.join("bin")));
+            t!(fs_err::create_dir_all(image.join("bin")));
             builder.cp_link_r(&src.join("bin"), &image.join("bin"));
 
             // If enabled, copy rustdoc binary
@@ -452,7 +452,7 @@ impl Step for Rustc {
             maybe_install_llvm_runtime(builder, host, image);
 
             let dst_dir = image.join("lib/rustlib").join(host).join("bin");
-            t!(fs::create_dir_all(&dst_dir));
+            t!(fs_err::create_dir_all(&dst_dir));
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
@@ -461,7 +461,7 @@ impl Step for Rustc {
                 builder.copy_link(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
                 let self_contained_lld_dst_dir = dst_dir.join("gcc-ld");
-                t!(fs::create_dir(&self_contained_lld_dst_dir));
+                t!(fs_err::create_dir(&self_contained_lld_dst_dir));
                 for name in crate::LLD_FILE_NAMES {
                     let exe_name = exe(name, compiler.host);
                     builder.copy_link(
@@ -485,7 +485,7 @@ impl Step for Rustc {
             }
 
             // Man pages
-            t!(fs::create_dir_all(image.join("share/man/man1")));
+            t!(fs_err::create_dir_all(image.join("share/man/man1")));
             let man_src = builder.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
 
@@ -494,10 +494,10 @@ impl Step for Rustc {
             for file_entry in builder.read_dir(&man_src) {
                 let page_src = file_entry.path();
                 let page_dst = man_dst.join(file_entry.file_name());
-                let src_text = t!(std::fs::read_to_string(&page_src));
+                let src_text = t!(fs_err::read_to_string(&page_src));
                 let new_text = src_text.replace("<INSERT VERSION HERE>", &builder.version);
-                t!(std::fs::write(&page_dst, &new_text));
-                t!(fs::copy(&page_src, &page_dst));
+                t!(fs_err::write(&page_dst, &new_text));
+                t!(fs_err::copy(&page_src, &page_dst));
             }
 
             // Debugger scripts
@@ -533,7 +533,7 @@ impl Step for DebuggerScripts {
         let host = self.host;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
-        t!(fs::create_dir_all(&dst));
+        t!(fs_err::create_dir_all(&dst));
         let cp_debugger_script = |file: &str| {
             builder.install(&builder.src.join("src/etc/").join(file), &dst, 0o644);
         };
@@ -594,7 +594,7 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
             continue;
         }
 
-        let data = t!(fs::read(&path));
+        let data = t!(fs_err::read(&path));
         let data = data.as_slice();
         let archive = t!(ArchiveFile::parse(data));
         for member in archive.members() {
@@ -618,8 +618,8 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
-    t!(fs::create_dir_all(&dst));
-    t!(fs::create_dir_all(&self_contained_dst));
+    t!(fs_err::create_dir_all(&dst));
+    t!(fs_err::create_dir_all(&self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
             builder.copy_link(&path, &self_contained_dst.join(path.file_name().unwrap()));
@@ -784,10 +784,10 @@ impl Step for Analysis {
             .join("save-analysis");
 
         // Write a file indicating that this component has been removed.
-        t!(std::fs::create_dir_all(&src));
+        t!(fs_err::create_dir_all(&src));
         let mut removed = src.clone();
         removed.push("removed.json");
-        let mut f = t!(std::fs::File::create(removed));
+        let mut f = t!(fs_err::File::create(removed));
         t!(write!(f, r#"{{ "warning": "The `rust-analysis` component has been removed." }}"#));
 
         let mut tarball = Tarball::new(builder, "rust-analysis", &target.triple);
@@ -887,7 +887,7 @@ fn copy_src_dirs(
     // Copy the directories using our filter
     for item in src_dirs {
         let dst = &dst_dir.join(item);
-        t!(fs::create_dir_all(dst));
+        t!(fs_err::create_dir_all(dst));
         builder
             .cp_link_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
@@ -1008,7 +1008,7 @@ impl Step for PlainSourceTarball {
         // Create the files containing git info, to ensure --version outputs the same.
         let write_git_info = |info: Option<&Info>, path: &Path| {
             if let Some(info) = info {
-                t!(std::fs::create_dir_all(path));
+                t!(fs_err::create_dir_all(path));
                 channel::write_commit_hash_file(path, &info.sha);
                 channel::write_commit_info_file(path, info);
             }
@@ -1064,7 +1064,7 @@ impl Step for PlainSourceTarball {
         {
             if entry.path().is_dir() && entry.path().file_name() == Some(OsStr::new("__pycache__"))
             {
-                t!(fs::remove_dir_all(entry.path()));
+                t!(fs_err::remove_dir_all(entry.path()));
             }
         }
 
@@ -1379,7 +1379,7 @@ impl Step for CodegenBackend {
 
         let backend_name = format!("rustc_codegen_{}", backend);
         let mut found_backend = false;
-        for backend in fs::read_dir(&backends_src).unwrap() {
+        for backend in fs_err::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
             if file_name.to_str().unwrap().contains(&backend_name) {
                 tarball.add_file(backends_src.join(file_name), &backends_dst, 0o644);
@@ -1556,21 +1556,21 @@ impl Step for Extended {
         }
 
         let xform = |p: &Path| {
-            let mut contents = t!(fs::read_to_string(p));
+            let mut contents = t!(fs_err::read_to_string(p));
             for tool in &["miri", "rust-docs"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
             }
             let ret = tmp.join(p.file_name().unwrap());
-            t!(fs::write(&ret, &contents));
+            t!(fs_err::write(&ret, &contents));
             ret
         };
 
         if target.contains("apple-darwin") {
             builder.info("building pkg installer");
             let pkg = tmp.join("pkg");
-            let _ = fs::remove_dir_all(&pkg);
+            let _ = fs_err::remove_dir_all(&pkg);
 
             let pkgbuild = |component: &str| {
                 let mut cmd = command("pkgbuild");
@@ -1634,7 +1634,7 @@ impl Step for Extended {
 
         if target.is_windows() {
             let exe = tmp.join("exe");
-            let _ = fs::remove_dir_all(&exe);
+            let _ = fs_err::remove_dir_all(&exe);
 
             let prepare = |name: &str| {
                 builder.create_dir(&exe.join(name));
@@ -2007,7 +2007,7 @@ fn install_llvm_file(
     if source.is_symlink() {
         // If we have a symlink like libLLVM-18.so -> libLLVM.so.18.1, install the target of the
         // symlink, which is what will actually get loaded at runtime.
-        builder.install(&t!(fs::canonicalize(source)), destination, 0o644);
+        builder.install(&t!(fs_err::canonicalize(source)), destination, 0o644);
 
         let full_dest = destination.join(source.file_name().unwrap());
         if install_symlink {
@@ -2018,13 +2018,13 @@ fn install_llvm_file(
             // Otherwise, replace the symlink with an equivalent linker script. This is used when
             // projects like miri link against librustc_driver.so. We don't use a symlink, as
             // these are not allowed inside rustup components.
-            let link = t!(fs::read_link(source));
+            let link = t!(fs_err::read_link(source));
             let mut linker_script = t!(fs::File::create(full_dest));
             t!(write!(linker_script, "INPUT({})\n", link.display()));
 
             // We also want the linker script to have the same mtime as the source, otherwise it
             // can trigger rebuilds.
-            let meta = t!(fs::metadata(source));
+            let meta = t!(fs_err::metadata(source));
             if let Ok(mtime) = meta.modified() {
                 t!(linker_script.set_modified(mtime));
             }
@@ -2342,7 +2342,7 @@ impl Step for RustDev {
         let dst_libdir = tarball.image_dir().join("lib");
         maybe_install_llvm(builder, target, &dst_libdir, true);
         let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
-        t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
+        t!(fs_err::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
         // Copy the `compiler-rt` source, so that `library/profiler_builtins`
         // can potentially use it to build the profiler runtime without needing

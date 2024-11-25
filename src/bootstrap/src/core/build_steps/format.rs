@@ -82,7 +82,7 @@ fn update_rustfmt_version(build: &Builder<'_>) {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return;
     };
-    t!(std::fs::write(stamp_file, version))
+    t!(fs_err::write(stamp_file, version))
 }
 
 /// Returns the Rust files modified between the `merge-base` of HEAD and
@@ -144,7 +144,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         eprintln!("fmt error: This may happen in distributed tarballs.");
         return;
     }
-    let rustfmt_config = t!(std::fs::read_to_string(&rustfmt_config));
+    let rustfmt_config = t!(fs_err::read_to_string(&rustfmt_config));
     let rustfmt_config: RustfmtConfig = t!(toml::from_str(&rustfmt_config));
     let mut override_builder = ignore::overrides::OverrideBuilder::new(&build.src);
     for ignore in rustfmt_config.ignore {

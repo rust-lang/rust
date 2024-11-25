@@ -220,7 +220,7 @@ impl Step for Std {
                 .join("bin");
             if src_sysroot_bin.exists() {
                 let target_sysroot_bin = builder.sysroot_target_bindir(compiler, target);
-                t!(fs::create_dir_all(&target_sysroot_bin));
+                t!(fs_err::create_dir_all(&target_sysroot_bin));
                 builder.cp_link_r(&src_sysroot_bin, &target_sysroot_bin);
             }
         }
@@ -348,7 +348,7 @@ fn copy_self_contained_objects(
 ) -> Vec<(PathBuf, DependencyType)> {
     let libdir_self_contained =
         builder.sysroot_target_libdir(*compiler, target).join("self-contained");
-    t!(fs::create_dir_all(&libdir_self_contained));
+    t!(fs_err::create_dir_all(&libdir_self_contained));
     let mut target_deps = vec![];
 
     // Copies the libc and CRT objects.
@@ -678,12 +678,12 @@ impl Step for StdLink {
             let host = compiler.host;
             let stage0_bin_dir = builder.out.join(host).join("stage0/bin");
             let sysroot_bin_dir = sysroot.join("bin");
-            t!(fs::create_dir_all(&sysroot_bin_dir));
+            t!(fs_err::create_dir_all(&sysroot_bin_dir));
             builder.cp_link_r(&stage0_bin_dir, &sysroot_bin_dir);
 
             // Copy all files from stage0/lib to stage0-sysroot/lib
             let stage0_lib_dir = builder.out.join(host).join("stage0/lib");
-            if let Ok(files) = fs::read_dir(stage0_lib_dir) {
+            if let Ok(files) = fs_err::read_dir(stage0_lib_dir) {
                 for file in files {
                     let file = t!(file);
                     let path = file.path();
@@ -696,7 +696,7 @@ impl Step for StdLink {
 
             // Copy codegen-backends from stage0
             let sysroot_codegen_backends = builder.sysroot_codegen_backends(compiler);
-            t!(fs::create_dir_all(&sysroot_codegen_backends));
+            t!(fs_err::create_dir_all(&sysroot_codegen_backends));
             let stage0_codegen_backends = builder
                 .out
                 .join(host)
@@ -802,7 +802,7 @@ impl Step for StartupObjects {
         let src_dir = &builder.src.join("library").join("rtstartup");
         let dst_dir = &builder.native_dir(target).join("rtstartup");
         let sysroot_dir = &builder.sysroot_target_libdir(for_compiler, target);
-        t!(fs::create_dir_all(dst_dir));
+        t!(fs_err::create_dir_all(dst_dir));
 
         for file in &["rsbegin", "rsend"] {
             let src_file = &src_dir.join(file.to_string() + ".rs");
@@ -839,7 +839,7 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
         let src = ci_rustc_dir.join(&file);
         let dst = sysroot.join(file);
         if src.is_dir() {
-            t!(fs::create_dir_all(dst));
+            t!(fs_err::create_dir_all(dst));
         } else {
             builder.copy_link(&src, &dst);
         }
@@ -1472,7 +1472,7 @@ impl Step for CodegenBackend {
         }
         let stamp = codegen_backend_stamp(builder, compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(fs::write(stamp, codegen_backend));
+        t!(fs_err::write(stamp, codegen_backend));
     }
 }
 
@@ -1498,7 +1498,7 @@ fn copy_codegen_backends_to_sysroot(
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let dst = builder.sysroot_codegen_backends(target_compiler);
-    t!(fs::create_dir_all(&dst), dst);
+    t!(fs_err::create_dir_all(&dst), dst);
 
     if builder.config.dry_run() {
         return;
@@ -1510,7 +1510,7 @@ fn copy_codegen_backends_to_sysroot(
         }
 
         let stamp = codegen_backend_stamp(builder, compiler, target, backend);
-        let dylib = t!(fs::read_to_string(&stamp));
+        let dylib = t!(fs_err::read_to_string(&stamp));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
         // change `librustc_codegen_cranelift-xxxxxx.so` to
@@ -1612,8 +1612,8 @@ impl Step for Sysroot {
 
         builder
             .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
-        let _ = fs::remove_dir_all(&sysroot);
-        t!(fs::create_dir_all(&sysroot));
+        let _ = fs_err::remove_dir_all(&sysroot);
+        t!(fs_err::create_dir_all(&sysroot));
 
         // In some cases(see https://github.com/rust-lang/rust/issues/109314), when the stage0
         // compiler relies on more recent version of LLVM than the beta compiler, it may not
@@ -1637,7 +1637,7 @@ impl Step for Sysroot {
                 if stage != compiler.stage {
                     let dir = sysroot_dir(stage);
                     if !dir.ends_with("ci-rustc-sysroot") {
-                        let _ = fs::remove_dir_all(dir);
+                        let _ = fs_err::remove_dir_all(dir);
                     }
                 }
             }
@@ -1695,7 +1695,7 @@ impl Step for Sysroot {
         // and also for translating the virtual `/rustc/$hash` back to the real
         // directory (for running tests with `rust.remap-debuginfo = true`).
         let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
-        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
+        t!(fs_err::create_dir_all(&sysroot_lib_rustlib_src));
         let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
         if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
             eprintln!(
@@ -1716,7 +1716,7 @@ impl Step for Sysroot {
         // rustc-src component is already part of CI rustc's sysroot
         if !builder.download_rustc() {
             let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
-            t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+            t!(fs_err::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
             let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
             if let Err(e) =
                 symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
@@ -1779,7 +1779,7 @@ impl Step for Assemble {
         // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
         let libdir = builder.sysroot_target_libdir(target_compiler, target_compiler.host);
         let libdir_bin = libdir.parent().unwrap().join("bin");
-        t!(fs::create_dir_all(&libdir_bin));
+        t!(fs_err::create_dir_all(&libdir_bin));
 
         if builder.config.llvm_enabled(target_compiler.host) {
             let llvm::LlvmResult { llvm_config, .. } =
@@ -1930,7 +1930,7 @@ impl Step for Assemble {
 
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
-        t!(fs::create_dir_all(&rustc_libdir));
+        t!(fs_err::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_target_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
@@ -1963,7 +1963,7 @@ impl Step for Assemble {
             let dst_exe = exe("rust-lld", target_compiler.host);
             builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
             let self_contained_lld_dir = libdir_bin.join("gcc-ld");
-            t!(fs::create_dir_all(&self_contained_lld_dir));
+            t!(fs_err::create_dir_all(&self_contained_lld_dir));
             let lld_wrapper_exe = builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 compiler: build_compiler,
                 target: target_compiler.host,
@@ -2016,7 +2016,7 @@ impl Step for Assemble {
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
         let rustc = out_dir.join(exe("rustc-main", host));
         let bindir = sysroot.join("bin");
-        t!(fs::create_dir_all(bindir));
+        t!(fs_err::create_dir_all(bindir));
         let compiler = builder.rustc(target_compiler);
         builder.copy_link(&rustc, &compiler);
 
@@ -2035,9 +2035,9 @@ pub fn add_to_sysroot(
     stamp: &Path,
 ) {
     let self_contained_dst = &sysroot_dst.join("self-contained");
-    t!(fs::create_dir_all(sysroot_dst));
-    t!(fs::create_dir_all(sysroot_host_dst));
-    t!(fs::create_dir_all(self_contained_dst));
+    t!(fs_err::create_dir_all(sysroot_dst));
+    t!(fs_err::create_dir_all(sysroot_host_dst));
+    t!(fs_err::create_dir_all(self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         let dst = match dependency_type {
             DependencyType::Host => sysroot_host_dst,
@@ -2211,7 +2211,7 @@ pub fn run_cargo(
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
     }
-    t!(fs::write(stamp, &new_contents));
+    t!(fs_err::write(stamp, &new_contents));
     deps.into_iter().map(|(d, _)| d).collect()
 }
 

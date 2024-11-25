@@ -5,8 +5,9 @@
 //! `package_vers`, and otherwise indicating to the compiler what it should
 //! print out as part of its version information.
 
-use std::fs;
 use std::path::Path;
+
+use fs_err;
 
 use super::helpers;
 use crate::Build;
@@ -128,7 +129,7 @@ impl GitInfo {
 /// Read the commit information from the `git-commit-info` file given the
 /// project root.
 pub fn read_commit_info_file(root: &Path) -> Option<Info> {
-    if let Ok(contents) = fs::read_to_string(root.join("git-commit-info")) {
+    if let Ok(contents) = fs_err::read_to_string(root.join("git-commit-info")) {
         let mut lines = contents.lines();
         let sha = lines.next();
         let short_sha = lines.next();
@@ -151,10 +152,10 @@ pub fn read_commit_info_file(root: &Path) -> Option<Info> {
 /// root.
 pub fn write_commit_info_file(root: &Path, info: &Info) {
     let commit_info = format!("{}\n{}\n{}\n", info.sha, info.short_sha, info.commit_date);
-    t!(fs::write(root.join("git-commit-info"), commit_info));
+    t!(fs_err::write(root.join("git-commit-info"), commit_info));
 }
 
 /// Write the commit hash to the `git-commit-hash` file given the project root.
 pub fn write_commit_hash_file(root: &Path, sha: &str) {
-    t!(fs::write(root.join("git-commit-hash"), sha));
+    t!(fs_err::write(root.join("git-commit-hash"), sha));
 }

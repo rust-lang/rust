@@ -11,7 +11,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
 use std::str::FromStr;
-use std::{fmt, fs, io};
+use std::{fmt, io};
 
 use sha2::Digest;
 
@@ -131,7 +131,7 @@ impl Step for Profile {
                 "Do you wish to override the existing configuration (which will allow the setup process to continue)?: [y/N]",
             ) {
                 Ok(Some(PromptResult::Yes)) => {
-                    t!(fs::remove_file(path));
+                    t!(fs_err::remove_file(path));
                 }
                 _ => {
                     println!("Exiting.");
@@ -221,7 +221,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     change-id = {latest_change_id}\n"
     );
 
-    t!(fs::write(path, settings));
+    t!(fs_err::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
@@ -277,7 +277,7 @@ fn rustup_installed(builder: &Builder<'_>) -> bool {
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
-    match fs::create_dir(stage_path) {
+    match fs_err::create_dir(stage_path) {
         Ok(_) => true,
         Err(_) => Path::new(&stage_path).exists(),
     }
@@ -346,12 +346,12 @@ fn try_link_toolchain(builder: &Builder<'_>, stage_path: &str) -> bool {
 fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
     let pathbuf = PathBuf::from(stage_path);
 
-    if fs::create_dir_all(pathbuf.join("lib")).is_err() {
+    if fs_err::create_dir_all(pathbuf.join("lib")).is_err() {
         return false;
     };
 
     let pathbuf = pathbuf.join("bin");
-    if fs::create_dir_all(&pathbuf).is_err() {
+    if fs_err::create_dir_all(&pathbuf).is_err() {
         return false;
     };
 
@@ -501,10 +501,10 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     }
     if !hooks_dir.exists() {
         // We need to (try to) create the hooks directory first.
-        let _ = fs::create_dir(hooks_dir);
+        let _ = fs_err::create_dir(hooks_dir);
     }
     let src = config.src.join("src").join("etc").join("pre-push.sh");
-    match fs::hard_link(src, &dst) {
+    match fs_err::hard_link(src, &dst) {
         Err(e) => {
             eprintln!(
                 "ERROR: could not create hook {}: do you already have the git hook installed?\n{}",
@@ -674,7 +674,7 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
     // If Some(false), is not a previous version (i.e. user modified)
     // If it's up to date we can just skip this
     let mut mismatched_settings = None;
-    if let Ok(current) = fs::read_to_string(&settings_path) {
+    if let Ok(current) = fs_err::read_to_string(&settings_path) {
         let mut hasher = sha2::Sha256::new();
         hasher.update(&current);
         let hash = hex_encode(hasher.finalize().as_slice());
@@ -712,7 +712,7 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
     if should_create {
         let settings_folder_path = config.src.join(editor.settings_folder());
         if !settings_folder_path.exists() {
-            fs::create_dir(settings_folder_path)?;
+            fs_err::create_dir(settings_folder_path)?;
         }
         let verb = match mismatched_settings {
             // exists but outdated, we can replace this
@@ -726,12 +726,12 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
                     settings_path.file_name().unwrap().to_str().unwrap(),
                     backup.file_name().unwrap().to_str().unwrap(),
                 );
-                fs::copy(&settings_path, &backup)?;
+                fs_err::copy(&settings_path, &backup)?;
                 "Updated"
             }
             _ => "Created",
         };
-        fs::write(&settings_path, editor.settings_template())?;
+        fs_err::write(&settings_path, editor.settings_template())?;
         println!("{verb} `{}`", settings_filename);
     } else {
         println!("\n{}", editor.settings_template());

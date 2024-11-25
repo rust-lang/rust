@@ -49,10 +49,10 @@ fn create_synthetic_target(
 
     let name = format!("{base}-synthetic-{suffix}");
     let path = builder.out.join("synthetic-target-specs").join(format!("{name}.json"));
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs_err::create_dir_all(path.parent().unwrap()).unwrap();
 
     if builder.config.dry_run() {
-        std::fs::write(&path, b"dry run\n").unwrap();
+        fs_err::write(&path, b"dry run\n").unwrap();
         return TargetSelection::create_synthetic(&name, path.to_str().unwrap());
     }
 
@@ -73,6 +73,6 @@ fn create_synthetic_target(
 
     customize(spec_map);
 
-    std::fs::write(&path, serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
+    fs_err::write(&path, serde_json::to_vec_pretty(&spec).unwrap()).unwrap();
     TargetSelection::create_synthetic(&name, path.to_str().unwrap())
 }

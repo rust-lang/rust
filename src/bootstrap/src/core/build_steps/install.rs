@@ -3,8 +3,8 @@
 //! This module is responsible for installing the standard library,
 //! compiler, and documentation.
 
+use std::env;
 use std::path::{Component, Path, PathBuf};
-use std::{env, fs};
 
 use crate::core::build_steps::dist;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
@@ -44,9 +44,9 @@ fn sanitize_sh(path: &Path) -> String {
 
 fn is_dir_writable_for_user(dir: &Path) -> bool {
     let tmp = dir.join(".tmp");
-    match fs::create_dir_all(&tmp) {
+    match fs_err::create_dir_all(&tmp) {
         Ok(_) => {
-            fs::remove_dir_all(tmp).unwrap();
+            fs_err::remove_dir_all(tmp).unwrap();
             true
         }
         Err(e) => {
@@ -99,7 +99,7 @@ fn install_sh(
     let bindir = prefix.join(&builder.config.bindir); // Default in config.rs
 
     let empty_dir = builder.out.join("tmp/empty_dir");
-    t!(fs::create_dir_all(&empty_dir));
+    t!(fs_err::create_dir_all(&empty_dir));
 
     let mut cmd = command(SHELL);
     cmd.current_dir(&empty_dir)
@@ -113,7 +113,7 @@ fn install_sh(
         .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir)))
         .arg("--disable-ldconfig");
     cmd.run(builder);
-    t!(fs::remove_dir_all(&empty_dir));
+    t!(fs_err::remove_dir_all(&empty_dir));
 }
 
 fn default_path(config: &Option<PathBuf>, default: &str) -> PathBuf {
@@ -140,7 +140,7 @@ fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf) -> String {
 
     // The installation command is not executed from the current directory, but from a temporary
     // directory. To prevent relative paths from breaking this converts relative paths to absolute
-    // paths. std::fs::canonicalize is not used as that requires the path to actually be present.
+    // paths. fs_err::canonicalize is not used as that requires the path to actually be present.
     if path.is_relative() {
         path = std::env::current_dir().expect("failed to get the current directory").join(path);
         assert!(path.is_absolute(), "could not make the path relative");

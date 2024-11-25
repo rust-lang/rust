@@ -255,7 +255,7 @@ macro_rules! generate_completions {
     ( $( ( $shell:ident, $filename:expr ) ),* ) => {
         $(
             if let Some(comp) = get_completion($shell, &$filename) {
-                std::fs::write(&$filename, comp).expect(&format!("writing {} completion", stringify!($shell)));
+                fs_err::write(&$filename, comp).expect(&format!("writing {} completion", stringify!($shell)));
             }
         )*
     };

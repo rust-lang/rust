@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 use std::env;
-use std::fs::{File, remove_file};
 use std::io::Write;
 use std::path::Path;
 
 use clap::CommandFactory;
+use fs_err::{File, remove_file};
 use serde::Deserialize;
 
 use super::flags::Flags;
@@ -227,7 +227,7 @@ fn profile_user_dist() {
                 "profile = \"user\"".to_owned()
             } else {
                 assert!(file.ends_with("config.dist.toml"));
-                std::fs::read_to_string(file).unwrap()
+                fs_err::read_to_string(file).unwrap()
             };
 
         toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
-use std::{cmp, env, fs};
+use std::{cmp, env};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
@@ -1281,7 +1281,7 @@ impl Config {
     #[cfg(not(test))]
     pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
-            t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+            t!(fs_err::read_to_string(file), format!("config file {} not found", file.display()));
         // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
         // TomlConfig and sub types to be monomorphized 5x by toml.
         toml::from_str(&contents)
@@ -1404,7 +1404,7 @@ impl Config {
             toml_path = config.src.join(toml_path);
         }
 
-        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+        let file_content = t!(fs_err::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
@@ -1598,7 +1598,7 @@ impl Config {
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run() {
             let dir = config.out.join("tmp-dry-run");
-            t!(fs::create_dir_all(&dir));
+            t!(fs_err::create_dir_all(&dir));
             config.out = dir;
         }
 
@@ -2358,8 +2358,8 @@ impl Config {
                 self.read_file_by_commit(&PathBuf::from("src/version"), commit).trim().to_owned();
             (channel, version)
         } else {
-            let channel = fs::read_to_string(self.src.join("src/ci/channel"));
-            let version = fs::read_to_string(self.src.join("src/version"));
+            let channel = fs_err::read_to_string(self.src.join("src/ci/channel"));
+            let version = fs_err::read_to_string(self.src.join("src/version"));
             match (channel, version) {
                 (Ok(channel), Ok(version)) => {
                     (channel.trim().to_owned(), version.trim().to_owned())
@@ -2442,7 +2442,7 @@ impl Config {
                 self.maybe_download_ci_llvm();
                 let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
-                    std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                    fs_err::read_to_string(ci_llvm.join("link-type.txt")),
                     format!("CI llvm missing: {}", ci_llvm.display())
                 );
                 link_type == "dynamic"
@@ -2788,7 +2788,7 @@ impl Config {
             semver::Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
                 .unwrap();
         let source_version = semver::Version::parse(
-            fs::read_to_string(self.src.join("src/version")).unwrap().trim(),
+            fs_err::read_to_string(self.src.join("src/version")).unwrap().trim(),
         )
         .unwrap();
         if !(source_version == stage0_version

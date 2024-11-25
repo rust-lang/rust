@@ -11,12 +11,12 @@
 use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
+use fs_err::{self, File};
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
@@ -314,7 +314,7 @@ impl Step for Llvm {
         let _guard = builder.msg_unstaged(Kind::Build, "LLVM", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join(root));
@@ -941,7 +941,7 @@ impl Step for Enzyme {
         builder.info(&format!("Building Enzyme for {}", target));
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         builder
             .config
@@ -1022,7 +1022,7 @@ impl Step for Lld {
 
         let _guard = builder.msg_unstaged(Kind::Build, "LLD", target);
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
         let mut ldflags = LdFlags::default();
@@ -1179,7 +1179,7 @@ impl Step for Sanitizers {
             suppressed_compiler_flag_prefixes,
         );
 
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
 
         for runtime in &runtimes {
@@ -1313,7 +1313,7 @@ impl Step for CrtBeginEnd {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "crtbegin.o and crtend.o", self.target);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         let mut cfg = cc::Build::new();
 
@@ -1343,8 +1343,8 @@ impl Step for CrtBeginEnd {
         for obj in objs {
             let base_name = unhashed_basename(&obj);
             assert!(base_name == "crtbegin" || base_name == "crtend");
-            t!(fs::copy(&obj, out_dir.join(format!("{}S.o", base_name))));
-            t!(fs::rename(&obj, out_dir.join(format!("{}.o", base_name))));
+            t!(fs_err::copy(&obj, out_dir.join(format!("{}S.o", base_name))));
+            t!(fs_err::rename(&obj, out_dir.join(format!("{}.o", base_name))));
         }
 
         out_dir
@@ -1386,7 +1386,7 @@ impl Step for Libunwind {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "libunwind.a", self.target);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         let mut cc_cfg = cc::Build::new();
         let mut cpp_cfg = cc::Build::new();
@@ -1493,7 +1493,7 @@ impl Step for Libunwind {
 
         // FIXME: https://github.com/alexcrichton/cc-rs/issues/545#issuecomment-679242845
         let mut count = 0;
-        for entry in fs::read_dir(&out_dir).unwrap() {
+        for entry in fs_err::read_dir(&out_dir).unwrap() {
             let file = entry.unwrap().path().canonicalize().unwrap();
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
                 // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".

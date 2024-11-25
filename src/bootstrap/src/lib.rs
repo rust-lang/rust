@@ -19,15 +19,15 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::{env, io, str};
+use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
+use fs_err::{self, File};
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
@@ -353,8 +353,7 @@ impl Build {
             );
         };
 
-        let version = std::fs::read_to_string(src.join("src").join("version"))
-            .expect("failed to read src/version");
+        let version = fs_err::read_to_string(src.join("src").join("version")).unwrap();
         let version = version.trim();
 
         let mut bootstrap_out = std::env::current_exe()
@@ -469,15 +468,15 @@ impl Build {
 
         // Create symbolic link to use host sysroot from a consistent path (e.g., in the rust-analyzer config file).
         let build_triple = build.out.join(build.build);
-        t!(fs::create_dir_all(&build_triple));
+        t!(fs_err::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if host.is_symlink() {
             // Left over from a previous build; overwrite it.
             // This matters if `build.build` has changed between invocations.
             #[cfg(windows)]
-            t!(fs::remove_dir(&host));
+            t!(fs_err::remove_dir(&host));
             #[cfg(not(windows))]
-            t!(fs::remove_file(&host));
+            t!(fs_err::remove_file(&host));
         }
         t!(
             symlink_dir(&build.config, &build_triple, &host),
@@ -633,12 +632,12 @@ impl Build {
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
             self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
+            let _ = fs_err::remove_dir_all(dir);
             cleared = true;
         } else if stamp.exists() {
             return cleared;
         }
-        t!(fs::create_dir_all(dir));
+        t!(fs_err::create_dir_all(dir));
         t!(File::create(stamp));
         cleared
     }
@@ -716,7 +715,7 @@ impl Build {
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
         let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
         out
     }
 
@@ -1508,7 +1507,7 @@ Executed at: {executed_at}"#,
 
     fn beta_prerelease_version(&self) -> u32 {
         fn extract_beta_rev_from_file<P: AsRef<Path>>(version_file: P) -> Option<String> {
-            let version = fs::read_to_string(version_file).ok()?;
+            let version = fs_err::read_to_string(version_file).ok()?;
 
             helpers::extract_beta_rev(&version)
         }
@@ -1591,7 +1590,7 @@ Executed at: {executed_at}"#,
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
         let toml_file_name = self.src.join(format!("src/tools/{package}/Cargo.toml"));
-        let toml = t!(fs::read_to_string(toml_file_name));
+        let toml = t!(fs_err::read_to_string(toml_file_name));
         for line in toml.lines() {
             if let Some(stripped) =
                 line.strip_prefix("version = \"").and_then(|s| s.strip_suffix('"'))
@@ -1662,7 +1661,7 @@ Executed at: {executed_at}"#,
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs_err::read(stamp), &stamp);
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
@@ -1697,33 +1696,33 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
-        if let Err(e) = fs::remove_file(dst) {
+        if let Err(e) = fs_err::remove_file(dst) {
             if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
                 // if removing the file fails, attempt to rename it instead.
                 let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
+                let _ = fs_err::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
             }
         }
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
-                src = t!(fs::canonicalize(src));
+                src = t!(fs_err::canonicalize(src));
             } else {
-                let link = t!(fs::read_link(src));
+                let link = t!(fs_err::read_link(src));
                 t!(self.symlink_file(link, dst));
                 return;
             }
         }
-        if let Ok(()) = fs::hard_link(&src, dst) {
+        if let Ok(()) = fs_err::hard_link(&src, dst) {
             // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
             // but if that fails just fall back to a slow `copy` operation.
         } else {
-            if let Err(e) = fs::copy(&src, dst) {
+            if let Err(e) = fs_err::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
-            t!(fs::set_permissions(dst, metadata.permissions()));
+            t!(fs_err::set_permissions(dst, metadata.permissions()));
 
             // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
             // file access time to change.
@@ -1746,7 +1745,7 @@ Executed at: {executed_at}"#,
             let name = path.file_name().unwrap();
             let dst = dst.join(name);
             if t!(f.file_type()).is_dir() {
-                t!(fs::create_dir_all(&dst));
+                t!(fs_err::create_dir_all(&dst));
                 self.cp_link_r(&path, &dst);
             } else {
                 self.copy_link(&path, &dst);
@@ -1780,11 +1779,11 @@ Executed at: {executed_at}"#,
             // Only copy file or directory if the filter function returns true
             if filter(&relative) {
                 if t!(f.file_type()).is_dir() {
-                    let _ = fs::remove_dir_all(&dst);
+                    let _ = fs_err::remove_dir_all(&dst);
                     self.create_dir(&dst);
                     self.cp_link_filtered_recurse(&path, &dst, &relative, filter);
                 } else {
-                    let _ = fs::remove_file(&dst);
+                    let _ = fs_err::remove_file(&dst);
                     self.copy_link(&path, &dst);
                 }
             }
@@ -1803,7 +1802,7 @@ Executed at: {executed_at}"#,
         }
         let dst = dstdir.join(src.file_name().unwrap());
         self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
-        t!(fs::create_dir_all(dstdir));
+        t!(fs_err::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());
         }
@@ -1815,25 +1814,25 @@ Executed at: {executed_at}"#,
         if self.config.dry_run() {
             return String::new();
         }
-        t!(fs::read_to_string(path))
+        t!(fs_err::read_to_string(path))
     }
 
     fn create_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
-        t!(fs::create_dir_all(dir))
+        t!(fs_err::create_dir_all(dir))
     }
 
     fn remove_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
-        t!(fs::remove_dir_all(dir))
+        t!(fs_err::remove_dir_all(dir))
     }
 
-    fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
-        let iter = match fs::read_dir(dir) {
+    fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs_err::DirEntry> {
+        let iter = match fs_err::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run() => return vec![].into_iter(),
             Err(err) => panic!("could not read dir {dir:?}: {err:?}"),
@@ -1845,7 +1844,7 @@ Executed at: {executed_at}"#,
         #[cfg(unix)]
         use std::os::unix::fs::symlink as symlink_file;
         #[cfg(windows)]
-        use std::os::windows::fs::symlink_file;
+        use std::os::windows::fs_err::symlink_file;
         if !self.config.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
@@ -1921,7 +1920,7 @@ to download LLVM rather than building it.
 #[cfg(unix)]
 fn chmod(path: &Path, perms: u32) {
     use std::os::unix::fs::*;
-    t!(fs::set_permissions(path, fs::Permissions::from_mode(perms)));
+    t!(fs_err::set_permissions(path, fs::Permissions::from_mode(perms)));
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
@@ -2004,10 +2003,10 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
     if !initialized {
         // clear old dumps
         if dump_path.exists() {
-            t!(fs::remove_dir_all(&dump_path));
+            t!(fs_err::remove_dir_all(&dump_path));
         }
 
-        t!(fs::create_dir_all(&dump_path));
+        t!(fs_err::create_dir_all(&dump_path));
 
         t!(INITIALIZED.set(true));
     }

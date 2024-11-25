@@ -44,6 +44,7 @@ build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 clap_complete = "4.4"
 fd-lock = "4.0"
+fs-err = "3.0"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"

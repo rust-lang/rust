@@ -39,7 +39,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let dir = Path::new(env!("OUT_DIR"))
         .join("tmp-rustbuild-tests")
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
-    t!(fs::create_dir_all(&dir));
+    t!(fs_err::create_dir_all(&dir));
     config.out = dir;
     config.build = TargetSelection::from_user(TEST_TRIPLE_1);
     config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
@@ -137,7 +137,7 @@ fn check_missing_paths_for_x_test_tests() {
     let (_, tests_remap_paths) =
         PATH_REMAP.iter().find(|(target_path, _)| *target_path == "tests").unwrap();
 
-    let tests_dir = fs::read_dir(build.src.join("tests")).unwrap();
+    let tests_dir = fs_err::read_dir(build.src.join("tests")).unwrap();
     for dir in tests_dir {
         let path = dir.unwrap().path();
 
@@ -217,7 +217,7 @@ fn ci_rustc_if_unchanged_logic() {
     let builder = Builder::new(&build);
 
     if config.out.exists() {
-        fs::remove_dir_all(&config.out).unwrap();
+        fs_err::remove_dir_all(&config.out).unwrap();
     }
 
     builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);

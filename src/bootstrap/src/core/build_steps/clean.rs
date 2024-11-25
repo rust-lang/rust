@@ -5,9 +5,10 @@
 //! `build/cache` directory (download cache) or the `build/$target/llvm`
 //! directory unless the `--all` flag is present.
 
-use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
+
+use fs_err;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, crate_description};
 use crate::utils::helpers::t;
@@ -181,7 +182,7 @@ fn rm_rf(path: &Path) {
         }
         Ok(metadata) => {
             if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
-                do_op(path, "remove file", |p| match fs::remove_file(p) {
+                do_op(path, "remove file", |p| match fs_err::remove_file(p) {
                     #[cfg(windows)]
                     Err(e)
                         if e.kind() == std::io::ErrorKind::PermissionDenied
@@ -197,11 +198,11 @@ fn rm_rf(path: &Path) {
                 return;
             }
 
-            for file in t!(fs::read_dir(path)) {
+            for file in t!(fs_err::read_dir(path)) {
                 rm_rf(&t!(file).path());
             }
 
-            do_op(path, "remove dir", |p| match fs::remove_dir(p) {
+            do_op(path, "remove dir", |p| match fs_err::remove_dir(p) {
                 // Check for dir not empty on Windows
                 // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
                 // match on `e.kind()` instead.
@@ -221,7 +222,7 @@ where
         Ok(()) => {}
         // On windows we can't remove a readonly file, and git will often clone files as readonly.
         // As a result, we have some special logic to remove readonly files on windows.
-        // This is also the reason that we can't use things like fs::remove_dir_all().
+        // This is also the reason that we can't use things like fs_err::remove_dir_all().
         #[cfg(windows)]
         Err(ref e) if e.kind() == ErrorKind::PermissionDenied => {
             let m = t!(path.symlink_metadata());
@@ -229,10 +230,10 @@ where
             // this os not unix, so clippy gives FP
             #[expect(clippy::permissions_set_readonly_false)]
             p.set_readonly(false);
-            t!(fs::set_permissions(path, p));
+            t!(fs_err::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
                 // Delete symlinked directories on Windows
-                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
+                if m.file_type().is_symlink() && path.is_dir() && fs_err::remove_dir(path).is_ok() {
                     return;
                 }
                 panic!("failed to {} {}: {}", desc, path.display(), e);

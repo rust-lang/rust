@@ -1,18 +1,18 @@
 use std::env;
 use std::ffi::OsString;
-use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
+use fs_err::{self, File};
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
-use crate::utils::exec::{BootstrapCommand, command};
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
-use crate::{Config, t};
+use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -50,14 +50,14 @@ impl Config {
         if self.dry_run() {
             return;
         }
-        t!(fs::write(path, s));
+        t!(fs_err::write(path, s));
     }
 
     pub(crate) fn remove(&self, f: &Path) {
         if self.dry_run() {
             return;
         }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+        fs_err::remove_file(f).unwrap();
     }
 
     /// Create a temporary directory in `out` and return its path.
@@ -66,7 +66,7 @@ impl Config {
     /// if you need an empty directory, create a new subdirectory inside it.
     pub(crate) fn tempdir(&self) -> PathBuf {
         let tmp = self.out.join("tmp");
-        t!(fs::create_dir_all(&tmp));
+        t!(fs_err::create_dir_all(&tmp));
         tmp
     }
 
@@ -192,13 +192,13 @@ impl Config {
         let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
         patchelf.args(&[
             OsString::from("--add-rpath"),
-            OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
+            OsString::from(t!(fs_err::canonicalize(nix_deps_dir)).join("lib")),
         ]);
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
             // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
-            let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+            let dynamic_linker = t!(String::from_utf8(t!(fs_err::read(dynamic_linker_path))));
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
@@ -300,7 +300,7 @@ impl Config {
     fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
         eprintln!("extracting {} to {}", tarball.display(), dst.display());
         if !dst.exists() {
-            t!(fs::create_dir_all(dst));
+            t!(fs_err::create_dir_all(dst));
         }
 
         // `tarball` ends with `.tar.xz`; strip that suffix
@@ -357,7 +357,7 @@ impl Config {
         }
         let dst_dir = dst.join(directory_prefix);
         if dst_dir.exists() {
-            t!(fs::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
+            t!(fs_err::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
         }
     }
 
@@ -486,7 +486,7 @@ impl Config {
             self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
             self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
             let lib_dir = bin_root.join("lib");
-            for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+            for lib in t!(fs_err::read_dir(&lib_dir), lib_dir.display().to_string()) {
                 let lib = t!(lib);
                 if path_is_dylib(&lib.path()) {
                     self.fix_bin_or_dylib(&lib.path());
@@ -575,7 +575,7 @@ impl Config {
             || program_out_of_date(&rustc_stamp, stamp_key)
         {
             if bin_root.exists() {
-                t!(fs::remove_dir_all(&bin_root));
+                t!(fs_err::remove_dir_all(&bin_root));
             }
             let filename = format!("rust-std-{version}-{host}.tar.xz");
             let pattern = format!("rust-std-{host}");
@@ -595,7 +595,7 @@ impl Config {
                     &bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"),
                 );
                 let lib_dir = bin_root.join("lib");
-                for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+                for lib in t!(fs_err::read_dir(&lib_dir), lib_dir.display().to_string()) {
                     let lib = t!(lib);
                     if path_is_dylib(&lib.path()) {
                         self.fix_bin_or_dylib(&lib.path());
@@ -603,7 +603,7 @@ impl Config {
                 }
             }
 
-            t!(fs::write(rustc_stamp, stamp_key));
+            t!(fs_err::write(rustc_stamp, stamp_key));
         }
     }
 
@@ -637,7 +637,7 @@ impl Config {
 
         let cache_dir = cache_dst.join(key);
         if !cache_dir.exists() {
-            t!(fs::create_dir_all(&cache_dir));
+            t!(fs_err::create_dir_all(&cache_dir));
         }
 
         let bin_root = self.out.join(self.build).join(destination);
@@ -720,6 +720,8 @@ download-rustc = false
 
     #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
+        use std::fs;
+
         use build_helper::exit;
 
         use crate::core::build_steps::llvm::detect_llvm_sha;
@@ -737,7 +739,7 @@ download-rustc = false
             self.download_ci_llvm(&llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
-                for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
+                for entry in t!(fs_err::read_dir(llvm_root.join("bin"))) {
                     self.fix_bin_or_dylib(&t!(entry).path());
                 }
             }
@@ -758,7 +760,7 @@ download-rustc = false
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");
-                for entry in t!(fs::read_dir(llvm_lib)) {
+                for entry in t!(fs_err::read_dir(llvm_lib)) {
                     let lib = t!(entry).path();
                     if path_is_dylib(&lib) {
                         self.fix_bin_or_dylib(&lib);
@@ -766,7 +768,7 @@ download-rustc = false
                 }
             }
 
-            t!(fs::write(llvm_stamp, key));
+            t!(fs_err::write(llvm_stamp, key));
         }
 
         if let Some(config_path) = &self.config {
@@ -800,7 +802,7 @@ download-rustc = false
 
         let rustc_cache = cache_dst.join(cache_prefix);
         if !rustc_cache.exists() {
-            t!(fs::create_dir_all(&rustc_cache));
+            t!(fs_err::create_dir_all(&rustc_cache));
         }
         let base = if llvm_assertions {
             &self.stage0_metadata.config.artifacts_with_llvm_assertions_server

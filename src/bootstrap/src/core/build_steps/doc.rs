@@ -9,7 +9,7 @@
 
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::{env, fs, mem};
+use std::{env, mem};
 
 use crate::Mode;
 use crate::core::build_steps::compile;
@@ -144,7 +144,7 @@ impl<P: Step> Step for RustbookSrc<P> {
         let name = self.name;
         let src = self.src;
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
 
         let out = out.join(&name);
         let index = out.join("index.html");
@@ -154,7 +154,7 @@ impl<P: Step> Step for RustbookSrc<P> {
             && (!up_to_date(&src, &index) || !up_to_date(&rustbook, &index))
         {
             builder.info(&format!("Rustbook ({target}) - {name}"));
-            let _ = fs::remove_dir_all(&out);
+            let _ = fs_err::remove_dir_all(&out);
 
             let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
 
@@ -183,7 +183,7 @@ impl<P: Step> Step for RustbookSrc<P> {
                 let out = out.join(lang);
 
                 builder.info(&format!("Rustbook ({target}) - {name} - {lang}"));
-                let _ = fs::remove_dir_all(&out);
+                let _ = fs_err::remove_dir_all(&out);
 
                 builder
                     .tool_cmd(Tool::Rustbook)
@@ -272,7 +272,7 @@ impl Step for TheBook {
 
         // build the redirect pages
         let _guard = builder.msg_doc(compiler, "book redirect pages", target);
-        for file in t!(fs::read_dir(redirect_path)) {
+        for file in t!(fs_err::read_dir(redirect_path)) {
             let file = t!(file);
             let path = file.path();
             let path = path.to_str().unwrap();
@@ -358,7 +358,7 @@ impl Step for Standalone {
         let compiler = self.compiler;
         let _guard = builder.msg_doc(compiler, "standalone", target);
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
 
         let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
 
@@ -366,7 +366,7 @@ impl Step for Standalone {
         let footer = builder.src.join("src/doc/footer.inc");
         let full_toc = builder.src.join("src/doc/full-toc.inc");
 
-        for file in t!(fs::read_dir(builder.src.join("src/doc"))) {
+        for file in t!(fs_err::read_dir(builder.src.join("src/doc"))) {
             let file = t!(file);
             let path = file.path();
             let filename = path.file_name().unwrap().to_str().unwrap();
@@ -457,7 +457,7 @@ impl Step for Releases {
         let compiler = self.compiler;
         let _guard = builder.msg_doc(compiler, "releases", target);
         let out = builder.doc_out(target);
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
 
         builder.ensure(Standalone {
             compiler: builder.compiler(builder.top_stage, builder.config.build),
@@ -482,9 +482,9 @@ impl Step for Releases {
                 || up_to_date(&version_info, &html)
                 || up_to_date(&rustdoc, &html))
         {
-            let mut tmpfile = t!(fs::File::create(&tmppath));
+            let mut tmpfile = t!(fs_err::File::create(&tmppath));
             t!(tmpfile.write_all(b"% Rust Release Notes\n\n"));
-            t!(io::copy(&mut t!(fs::File::open(&inpath)), &mut tmpfile));
+            t!(io::copy(&mut t!(fs_err::File::open(&inpath)), &mut tmpfile));
             mem::drop(tmpfile);
             let mut cmd = builder.rustdoc_cmd(compiler);
 
@@ -547,11 +547,11 @@ impl Step for SharedAssets {
         let version_input = builder.src.join("src").join("doc").join("version_info.html.template");
         let version_info = out.join("version_info.html");
         if !builder.config.dry_run() && !up_to_date(&version_input, &version_info) {
-            let info = t!(fs::read_to_string(&version_input))
+            let info = t!(fs_err::read_to_string(&version_input))
                 .replace("VERSION", &builder.rust_release())
                 .replace("SHORT_HASH", builder.rust_info().sha_short().unwrap_or(""))
                 .replace("STAMP", builder.rust_info().sha().unwrap_or(""));
-            t!(fs::write(&version_info, info));
+            t!(fs_err::write(&version_info, info));
         }
 
         builder.copy_link(
@@ -622,7 +622,7 @@ impl Step for Std {
             DocumentationFormat::Json => builder.json_doc_out(target),
         };
 
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
 
         if self.format == DocumentationFormat::Html {
             builder.ensure(SharedAssets { target: self.target });
@@ -805,7 +805,7 @@ impl Step for Rustc {
 
         // This is the intended out directory for compiler documentation.
         let out = builder.compiler_doc_out(target);
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
 
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
@@ -861,7 +861,7 @@ impl Step for Rustc {
             // relative links.
             // FIXME: Cargo should probably do this itself.
             let dir_name = krate.replace('-', "_");
-            t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+            t!(fs_err::create_dir_all(out_dir.join(&*dir_name)));
             cargo.arg("-p").arg(krate);
             if to_open.is_none() {
                 to_open = Some(dir_name);
@@ -952,7 +952,7 @@ macro_rules! tool_doc {
 
                 // This is the intended out directory for compiler documentation.
                 let out = builder.compiler_doc_out(target);
-                t!(fs::create_dir_all(&out));
+                t!(fs_err::create_dir_all(&out));
 
                 let compiler = builder.compiler(stage, builder.config.build);
                 builder.ensure(compile::Std::new(compiler, target));
@@ -1003,7 +1003,7 @@ macro_rules! tool_doc {
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
-                    t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+                    t!(fs_err::create_dir_all(out_dir.join(&*dir_name)));
                 })?
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
@@ -1105,7 +1105,7 @@ impl Step for ErrorIndex {
     fn run(self, builder: &Builder<'_>) {
         builder.info(&format!("Documenting error index ({})", self.target));
         let out = builder.doc_out(self.target);
-        t!(fs::create_dir_all(&out));
+        t!(fs_err::create_dir_all(&out));
         tool::ErrorIndex::command(builder).arg("html").arg(out).arg(&builder.version).run(builder);
     }
 }
@@ -1150,13 +1150,13 @@ fn symlink_dir_force(config: &Config, original: &Path, link: &Path) {
     if config.dry_run() {
         return;
     }
-    if let Ok(m) = fs::symlink_metadata(link) {
+    if let Ok(m) = fs_err::symlink_metadata(link) {
         if m.file_type().is_dir() {
-            t!(fs::remove_dir_all(link));
+            t!(fs_err::remove_dir_all(link));
         } else {
             // handle directory junctions on windows by falling back to
             // `remove_dir`.
-            t!(fs::remove_file(link).or_else(|_| fs::remove_dir(link)));
+            t!(fs_err::remove_file(link).or_else(|_| fs_err::remove_dir(link)));
         }
     }
 
@@ -1198,7 +1198,7 @@ impl Step for RustcBook {
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
         let out_base = builder.md_doc_out(self.target).join("rustc");
-        t!(fs::create_dir_all(&out_base));
+        t!(fs_err::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");
         builder.cp_link_r(&builder.src.join("src/doc/rustc"), &out_base);
         builder.info(&format!("Generating lint docs ({})", self.target));

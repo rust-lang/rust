@@ -5,7 +5,6 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::str::FromStr;
 use std::{env, process};
@@ -15,6 +14,7 @@ use bootstrap::{
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+use fs_err::{self, OpenOptions};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
@@ -33,9 +33,9 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = fs::read_to_string(&lock_path);
+        let pid = fs_err::read_to_string(&lock_path);
 
-        build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
+        build_lock = fd_lock::RwLock::new(t!(fs_err::OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
@@ -99,7 +99,7 @@ fn main() {
     // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
     // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
     // Instead, look for this comment, which is almost certainly not in any custom hook.
-    if fs::read_to_string(pre_commit).map_or(false, |contents| {
+    if fs_err::read_to_string(pre_commit).map_or(false, |contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(
@@ -123,7 +123,7 @@ fn main() {
                 continue;
             }
 
-            let file = t!(fs::File::open(entry.path()));
+            let file = t!(fs_err::File::open(entry.path()));
 
             // To ensure deterministic results we must sort the dump lines.
             // This is necessary because the order of rustc invocations different
@@ -150,7 +150,7 @@ fn check_version(config: &Config) -> Option<String> {
         // Always try to use `change-id` from .last-warned-change-id first. If it doesn't exist,
         // then use the one from the config.toml. This way we never show the same warnings
         // more than once.
-        if let Ok(t) = fs::read_to_string(&warned_id_path) {
+        if let Ok(t) = fs_err::read_to_string(&warned_id_path) {
             let last_warned_id = usize::from_str(&t)
                 .unwrap_or_else(|_| panic!("{} is corrupted.", warned_id_path.display()));
 
@@ -177,7 +177,7 @@ fn check_version(config: &Config) -> Option<String> {
         ));
 
         if io::stdout().is_terminal() && !config.dry_run() {
-            t!(fs::write(warned_id_path, latest_change_id.to_string()));
+            t!(fs_err::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");

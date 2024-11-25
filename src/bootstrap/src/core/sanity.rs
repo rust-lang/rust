@@ -9,9 +9,9 @@
 //! practice that's likely not true!
 
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
-use std::{env, fs};
 
 use crate::Build;
 #[cfg(not(feature = "bootstrap-self-test"))]
@@ -336,7 +336,7 @@ than building it.
             }
             match build.musl_libdir(*target) {
                 Some(libdir) => {
-                    if fs::metadata(libdir.join("libc.a")).is_err() {
+                    if fs_err::metadata(libdir.join("libc.a")).is_err() {
                         panic!("couldn't find libc.a in musl libdir: {}", libdir.display());
                     }
                 }

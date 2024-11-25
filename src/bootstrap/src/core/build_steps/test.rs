@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::{env, fs, iter};
+use std::{env, iter};
 
 use clap_complete::shells;
 
@@ -243,7 +243,7 @@ impl Step for Cargotest {
         // is currently to minimize the length of path on Windows where we otherwise
         // quickly run into path name limit constraints.
         let out_dir = builder.out.join("ct");
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
@@ -415,7 +415,7 @@ impl Step for Rustfmt {
         );
 
         let dir = testdir(builder, compiler.host);
-        t!(fs::create_dir_all(&dir));
+        t!(fs_err::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
         cargo.add_rustc_lib_path(builder);
@@ -2445,7 +2445,7 @@ impl Step for ErrorIndex {
         let compiler = self.compiler;
 
         let dir = testdir(builder, compiler.host);
-        t!(fs::create_dir_all(&dir));
+        t!(fs_err::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
         let mut tool = tool::ErrorIndex::command(builder);
@@ -2464,7 +2464,7 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
-    if let Ok(contents) = fs::read_to_string(markdown) {
+    if let Ok(contents) = fs_err::read_to_string(markdown) {
         if !contents.contains("```") {
             return true;
         }
@@ -3039,8 +3039,8 @@ impl Step for Distcheck {
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
         let dir = builder.tempdir().join("distcheck");
-        let _ = fs::remove_dir_all(&dir);
-        t!(fs::create_dir_all(&dir));
+        let _ = fs_err::remove_dir_all(&dir);
+        t!(fs_err::create_dir_all(&dir));
 
         // Guarantee that these are built before we begin running.
         builder.ensure(dist::PlainSourceTarball);
@@ -3065,8 +3065,8 @@ impl Step for Distcheck {
         // Now make sure that rust-src has all of libstd's dependencies
         builder.info("Distcheck rust-src");
         let dir = builder.tempdir().join("distcheck-src");
-        let _ = fs::remove_dir_all(&dir);
-        t!(fs::create_dir_all(&dir));
+        let _ = fs_err::remove_dir_all(&dir);
+        t!(fs_err::create_dir_all(&dir));
 
         command("tar")
             .arg("-xf")
@@ -3270,8 +3270,8 @@ impl Step for RustInstaller {
 
         let mut cmd = command(builder.src.join("src/tools/rust-installer/test.sh"));
         let tmpdir = testdir(builder, compiler.host).join("rust-installer");
-        let _ = std::fs::remove_dir_all(&tmpdir);
-        let _ = std::fs::create_dir_all(&tmpdir);
+        let _ = fs_err::remove_dir_all(&tmpdir);
+        let _ = fs_err::create_dir_all(&tmpdir);
         cmd.current_dir(&tmpdir);
         cmd.env("CARGO_TARGET_DIR", tmpdir.join("cargo-target"));
         cmd.env("CARGO", &builder.initial_cargo);
@@ -3326,7 +3326,7 @@ impl Step for TestHelpers {
         }
 
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
-        t!(fs::create_dir_all(&dst));
+        t!(fs_err::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our

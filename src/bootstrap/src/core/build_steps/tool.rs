@@ -1,5 +1,5 @@
+use std::env;
 use std::path::PathBuf;
-use std::{env, fs};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
@@ -582,9 +582,9 @@ impl Step for Rustdoc {
         let bin_rustdoc = || {
             let sysroot = builder.sysroot(target_compiler);
             let bindir = sysroot.join("bin");
-            t!(fs::create_dir_all(&bindir));
+            t!(fs_err::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
-            let _ = fs::remove_file(&bin_rustdoc);
+            let _ = fs_err::remove_file(&bin_rustdoc);
             bin_rustdoc
         };
 
@@ -835,7 +835,7 @@ impl Step for RustAnalyzerProcMacroSrv {
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
-        t!(fs::create_dir_all(&libexec_path));
+        t!(fs_err::create_dir_all(&libexec_path));
         builder.copy_link(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
 
         Some(path)
@@ -907,7 +907,7 @@ impl Step for LlvmBitcodeLinker {
             let bindir_self_contained = builder
                 .sysroot(self.compiler)
                 .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
-            t!(fs::create_dir_all(&bindir_self_contained));
+            t!(fs_err::create_dir_all(&bindir_self_contained));
             let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
             builder.copy_link(&tool_out, &bin_destination);
             bin_destination
@@ -948,7 +948,7 @@ impl Step for LibcxxVersionTool {
         // Therefore, we want to avoid recompiling this file unnecessarily.
         if !executable.exists() {
             if !out_dir.exists() {
-                t!(fs::create_dir_all(&out_dir));
+                t!(fs_err::create_dir_all(&out_dir));
             }
 
             let compiler = builder.cxx(self.target).unwrap();
@@ -1045,7 +1045,7 @@ macro_rules! tool_extended {
 
                 if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
                     let bindir = $builder.sysroot($sel.compiler).join("bin");
-                    t!(fs::create_dir_all(&bindir));
+                    t!(fs_err::create_dir_all(&bindir));
 
                     #[allow(unused_variables)]
                     let tools_out = $builder

@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::{env, fmt, fs, time};
+use std::{env, fmt, time};
 
 use serde_derive::{Deserialize, Serialize};
 
@@ -235,9 +235,9 @@ impl Builder<'_> {
         if let Some(ref path) = self.config.save_toolstates {
             if let Some(parent) = path.parent() {
                 // Ensure the parent directory always exists
-                t!(std::fs::create_dir_all(parent));
+                t!(fs_err::create_dir_all(parent));
             }
-            let mut file = t!(fs::OpenOptions::new()
+            let mut file = t!(fs_err::OpenOptions::new()
                 .create(true)
                 .truncate(false)
                 .write(true)
@@ -272,9 +272,9 @@ impl Builder<'_> {
         if let Some(ref path) = self.config.save_toolstates {
             if let Some(parent) = path.parent() {
                 // Ensure the parent directory always exists
-                t!(std::fs::create_dir_all(parent));
+                t!(fs_err::create_dir_all(parent));
             }
-            let mut file = t!(fs::OpenOptions::new()
+            let mut file = t!(fs_err::OpenOptions::new()
                 .create(true)
                 .truncate(false)
                 .read(true)
@@ -307,7 +307,7 @@ fn checkout_toolstate_repo(builder: &Builder<'_>) {
     }
     if Path::new(TOOLSTATE_DIR).exists() {
         eprintln!("Cleaning old toolstate directory...");
-        t!(fs::remove_dir_all(TOOLSTATE_DIR));
+        t!(fs_err::remove_dir_all(TOOLSTATE_DIR));
     }
 
     helpers::git(None)
@@ -332,13 +332,13 @@ fn prepare_toolstate_config(builder: &Builder<'_>, token: &str) {
 
     let credential = format!("https://{token}:x-oauth-basic@github.com\n",);
     let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
-    t!(fs::write(git_credential_path, credential));
+    t!(fs_err::write(git_credential_path, credential));
 }
 
 /// Reads the latest toolstate from the toolstate repo.
 fn read_old_toolstate() -> Vec<RepoState> {
     let latest_path = Path::new(TOOLSTATE_DIR).join("_data").join("latest.json");
-    let old_toolstate = t!(fs::read(latest_path));
+    let old_toolstate = t!(fs_err::read(latest_path));
     t!(serde_json::from_slice(&old_toolstate))
 }
 
@@ -433,10 +433,10 @@ fn publish_test_results(builder: &Builder<'_>, current_toolstate: &ToolstateData
     let history_path = Path::new(TOOLSTATE_DIR)
         .join("history")
         .join(format!("{}.tsv", OS.expect("linux/windows only")));
-    let mut file = t!(fs::read_to_string(&history_path));
+    let mut file = t!(fs_err::read_to_string(&history_path));
     let end_of_first_line = file.find('\n').unwrap();
     file.insert_str(end_of_first_line, &format!("\n{}\t{}", commit.trim(), toolstate_serialized));
-    t!(fs::write(&history_path, file));
+    t!(fs_err::write(&history_path, file));
 }
 
 #[derive(Debug, Deserialize)]

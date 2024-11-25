@@ -1,6 +1,8 @@
-use std::fs::{self, File, remove_file};
+use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+
+use fs_err::{self, File, remove_file};
 
 use crate::utils::helpers::{
     check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, set_file_times,
@@ -80,18 +82,18 @@ fn test_symlink_dir() {
     let tempdir = config.tempdir().join(".tmp-dir");
     let link_path = config.tempdir().join(".tmp-link");
 
-    fs::create_dir_all(&tempdir).unwrap();
+    fs_err::create_dir_all(&tempdir).unwrap();
     symlink_dir(&config, &tempdir, &link_path).unwrap();
 
-    let link_source = fs::read_link(&link_path).unwrap();
+    let link_source = fs_err::read_link(&link_path).unwrap();
     assert_eq!(link_source, tempdir);
 
-    fs::remove_dir(tempdir).unwrap();
+    fs_err::remove_dir(tempdir).unwrap();
 
     #[cfg(windows)]
-    fs::remove_dir(link_path).unwrap();
+    fs_err::remove_dir(link_path).unwrap();
     #[cfg(not(windows))]
-    fs::remove_file(link_path).unwrap();
+    fs_err::remove_file(link_path).unwrap();
 }
 
 #[test]
@@ -111,7 +113,7 @@ fn test_set_file_times_sanity_check() {
     let target_time = fs::FileTimes::new().set_accessed(unix_epoch).set_modified(unix_epoch);
     set_file_times(&tempfile, target_time).unwrap();
 
-    let found_metadata = fs::metadata(tempfile).unwrap();
+    let found_metadata = fs_err::metadata(tempfile).unwrap();
     assert_eq!(found_metadata.accessed().unwrap(), unix_epoch);
     assert_eq!(found_metadata.modified().unwrap(), unix_epoch)
 }

@@ -8,9 +8,10 @@
 //! GCC and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
+
+use fs_err;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -106,7 +107,7 @@ impl Step for Gcc {
         let _guard = builder.msg_unstaged(Kind::Build, "GCC", target);
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
+        t!(fs_err::create_dir_all(&out_dir));
 
         if builder.config.dry_run() {
             return true;

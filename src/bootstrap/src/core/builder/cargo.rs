@@ -892,7 +892,7 @@ impl Builder<'_> {
                 env_var.push("=/rust/deps");
             } else {
                 let registry_src = t!(home::cargo_home()).join("registry").join("src");
-                for entry in t!(std::fs::read_dir(registry_src)) {
+                for entry in t!(fs_err::read_dir(registry_src)) {
                     if !env_var.is_empty() {
                         env_var.push("\t");
                     }

@@ -135,7 +135,7 @@ impl<'a> Tarball<'a> {
         if let Some(target) = &target {
             temp_dir = temp_dir.join(target);
         }
-        let _ = std::fs::remove_dir_all(&temp_dir);
+        let _ = fs_err::remove_dir_all(&temp_dir);
 
         let image_dir = temp_dir.join("image");
         let overlay_dir = temp_dir.join("overlay");
@@ -181,7 +181,7 @@ impl<'a> Tarball<'a> {
     }
 
     pub(crate) fn image_dir(&self) -> &Path {
-        t!(std::fs::create_dir_all(&self.image_dir));
+        t!(fs_err::create_dir_all(&self.image_dir));
         &self.image_dir
     }
 
@@ -194,7 +194,7 @@ impl<'a> Tarball<'a> {
             self.image_dir.join(destdir.as_ref())
         };
 
-        t!(std::fs::create_dir_all(&destdir));
+        t!(fs_err::create_dir_all(&destdir));
         self.builder.install(src.as_ref(), &destdir, perms);
     }
 
@@ -205,7 +205,7 @@ impl<'a> Tarball<'a> {
         new_name: &str,
     ) {
         let destdir = self.image_dir.join(destdir.as_ref());
-        t!(std::fs::create_dir_all(&destdir));
+        t!(fs_err::create_dir_all(&destdir));
         self.builder.copy_link(src.as_ref(), &destdir.join(new_name));
     }
 
@@ -218,7 +218,7 @@ impl<'a> Tarball<'a> {
     pub(crate) fn add_dir(&self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
         let dest = self.image_dir.join(dest.as_ref());
 
-        t!(std::fs::create_dir_all(&dest));
+        t!(fs_err::create_dir_all(&dest));
         self.builder.cp_link_r(src.as_ref(), &dest);
     }
 
@@ -282,7 +282,7 @@ impl<'a> Tarball<'a> {
 
         self.run(|this, cmd| {
             let distdir = distdir(this.builder);
-            t!(std::fs::create_dir_all(&distdir));
+            t!(fs_err::create_dir_all(&distdir));
             cmd.arg("tarball")
                 .arg("--input")
                 .arg(&dest)
@@ -312,7 +312,7 @@ impl<'a> Tarball<'a> {
     }
 
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut BootstrapCommand)) -> GeneratedTarball {
-        t!(std::fs::create_dir_all(&self.overlay_dir));
+        t!(fs_err::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(info) = self.builder.rust_info().info() {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
