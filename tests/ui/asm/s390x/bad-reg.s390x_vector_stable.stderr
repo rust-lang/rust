@@ -118,6 +118,106 @@ error: invalid register `a1`: a0 and a1 are reserved for system use and cannot b
 LL |         asm!("", out("a1") _);
    |                  ^^^^^^^^^^^
 
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:74:18
+   |
+LL |         asm!("", in("v0") v); // requires vector & asm_experimental_reg
+   |                  ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:78:18
+   |
+LL |         asm!("", out("v0") v); // requires vector & asm_experimental_reg
+   |                  ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:82:18
+   |
+LL |         asm!("", in("v0") x); // requires vector & asm_experimental_reg
+   |                  ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:86:18
+   |
+LL |         asm!("", out("v0") x); // requires vector & asm_experimental_reg
+   |                  ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:90:18
+   |
+LL |         asm!("", in("v0") b);
+   |                  ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:95:18
+   |
+LL |         asm!("", out("v0") b);
+   |                  ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:100:26
+   |
+LL |         asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:104:26
+   |
+LL |         asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:108:26
+   |
+LL |         asm!("/* {} */", in(vreg) b);
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/bad-reg.rs:113:26
+   |
+LL |         asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
+   |                          ^^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: register class `areg` can only be used as a clobber, not as an input or output
   --> $DIR/bad-reg.rs:120:18
    |
@@ -276,65 +376,89 @@ error: invalid register `f16`: unknown register
 LL |         asm!("", out("v16") _, out("f16") _);
    |                                ^^^^^^^^^^^^
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:74:18
+error[E0658]: type `i64x2` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:74:27
    |
 LL |         asm!("", in("v0") v); // requires vector & asm_experimental_reg
-   |                  ^^^^^^^^^^
+   |                           ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:78:18
+error[E0658]: type `i64x2` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:78:28
    |
 LL |         asm!("", out("v0") v); // requires vector & asm_experimental_reg
-   |                  ^^^^^^^^^^^
+   |                            ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:82:18
+error[E0658]: type `i32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:82:27
    |
 LL |         asm!("", in("v0") x); // requires vector & asm_experimental_reg
-   |                  ^^^^^^^^^^
+   |                           ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:86:18
+error[E0658]: type `i32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:86:28
    |
 LL |         asm!("", out("v0") x); // requires vector & asm_experimental_reg
-   |                  ^^^^^^^^^^^
+   |                            ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:90:18
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:90:27
    |
 LL |         asm!("", in("v0") b);
-   |                  ^^^^^^^^^^
+   |                           ^
+   |
+   = note: register class `vreg` supports these types: 
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:95:18
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:95:28
    |
 LL |         asm!("", out("v0") b);
-   |                  ^^^^^^^^^^^
+   |                            ^
+   |
+   = note: register class `vreg` supports these types: 
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:100:26
+error[E0658]: type `i64x2` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:100:35
    |
 LL |         asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
-   |                          ^^^^^^^^^^
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:104:26
+error[E0658]: type `i32` cannot be used with this register class in stable
+  --> $DIR/bad-reg.rs:104:35
    |
 LL |         asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
-   |                          ^^^^^^^^^^
+   |                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:108:26
+error: type `u8` cannot be used with this register class
+  --> $DIR/bad-reg.rs:108:35
    |
 LL |         asm!("/* {} */", in(vreg) b);
-   |                          ^^^^^^^^^^
-
-error: register class `vreg` requires the `vector` target feature
-  --> $DIR/bad-reg.rs:113:26
+   |                                   ^
    |
-LL |         asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
-   |                          ^^^^^^^^^^^
+   = note: register class `vreg` supports these types: 
 
 error: type `i32` cannot be used with this register class
   --> $DIR/bad-reg.rs:120:27
@@ -360,5 +484,6 @@ LL |         asm!("/* {} */", in(areg) x);
    |
    = note: register class `areg` supports these types: 
 
-error: aborting due to 54 previous errors
+error: aborting due to 63 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

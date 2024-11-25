@@ -1,5 +1,5 @@
 warning: unreachable statement
-  --> $DIR/goto.rs:97:9
+  --> $DIR/goto.rs:143:9
    |
 LL | /         asm!(
 LL | |             "jmp {}",
@@ -13,7 +13,7 @@ LL |           unreachable!();
    |           ^^^^^^^^^^^^^^ unreachable statement
    |
 note: the lint level is defined here
-  --> $DIR/goto.rs:87:8
+  --> $DIR/goto.rs:133:8
    |
 LL | #[warn(unreachable_code)]
    |        ^^^^^^^^^^^^^^^^

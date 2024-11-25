@@ -1,19 +1,31 @@
 //@ add-core-stubs
 //@ needs-asm-support
-//@ revisions: s390x
+//@ revisions: s390x s390x_vector s390x_vector_stable
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
+//@[s390x_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
+//@[s390x_vector] needs-llvm-components: systemz
+//@[s390x_vector_stable] compile-flags: --target s390x-unknown-linux-gnu -C target-feature=+vector
+//@[s390x_vector_stable] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs)]
-#![feature(asm_experimental_arch)]
+#![feature(no_core, rustc_attrs, repr_simd)]
+#![cfg_attr(not(s390x_vector_stable), feature(asm_experimental_reg))]
 #![no_core]
+#![allow(non_camel_case_types)]
 
 extern crate minicore;
 use minicore::*;
 
+#[repr(simd)]
+pub struct i64x2([i64; 2]);
+
+impl Copy for i64x2 {}
+
 fn f() {
     let mut x = 0;
+    let mut b = 0u8;
+    let mut v = i64x2([0; 2]);
     unsafe {
         // Unsupported registers
         asm!("", out("r11") _);
@@ -57,6 +69,51 @@ fn f() {
         asm!("", out("a1") _);
         //~^ ERROR invalid register `a1`: a0 and a1 are reserved for system use and cannot be used as operands for inline asm
 
+        // vreg
+        asm!("", out("v0") _); // always ok
+        asm!("", in("v0") v); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("", out("v0") v); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("", in("v0") x); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
+        asm!("", out("v0") x); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
+        asm!("", in("v0") b);
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
+        asm!("", out("v0") b);
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
+        asm!("/* {} */", in(vreg) v); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i64x2` cannot be used with this register class in stable [E0658]
+        asm!("/* {} */", in(vreg) x); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `i32` cannot be used with this register class in stable [E0658]
+        asm!("/* {} */", in(vreg) b);
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector]~^^ ERROR type `u8` cannot be used with this register class
+        //[s390x_vector_stable]~^^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+        //[s390x_vector_stable]~| ERROR type `u8` cannot be used with this register class
+        asm!("/* {} */", out(vreg) _); // requires vector & asm_experimental_reg
+        //[s390x]~^ ERROR register class `vreg` requires the `vector` target feature
+        //[s390x_vector_stable]~^^ ERROR register class `vreg` can only be used as a clobber in stable [E0658]
+
         // Clobber-only registers
         // areg
         asm!("", out("a2") _); // ok
@@ -70,21 +127,6 @@ fn f() {
         //~^ ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(areg) _);
-        //~^ ERROR can only be used as a clobber
-
-        // vreg
-        asm!("", out("v0") _); // ok
-        // FIXME: will be supported in https://github.com/rust-lang/rust/pull/131664
-        asm!("", in("v0") x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("", out("v0") x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("/* {} */", in(vreg) x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("/* {} */", out(vreg) _);
         //~^ ERROR can only be used as a clobber
 
         // Overlapping registers

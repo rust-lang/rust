@@ -280,6 +280,14 @@ pub(crate) struct RegisterClassOnlyClobber {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_lowering_register_class_only_clobber_stable)]
+pub(crate) struct RegisterClassOnlyClobberStable {
+    #[primary_span]
+    pub op_span: Span,
+    pub reg_class_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_lowering_register_conflict)]
 pub(crate) struct RegisterConflict<'a> {
     #[primary_span]
