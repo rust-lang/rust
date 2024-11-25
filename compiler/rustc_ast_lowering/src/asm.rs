@@ -17,7 +17,8 @@ use super::errors::{
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
     InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
     InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
-    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
+    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterClassOnlyClobberStable,
+    RegisterConflict,
 };
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
@@ -61,6 +62,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .emit();
             }
         }
+        let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
             && !self.tcx.sess.opts.actually_rustdoc
@@ -324,11 +326,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // means that we disallow passing a value in/out of the asm and
                 // require that the operand name an explicit register, not a
                 // register class.
-                if reg_class.is_clobber_only(asm_arch.unwrap()) && !op.is_clobber() {
-                    self.dcx().emit_err(RegisterClassOnlyClobber {
-                        op_span: op_sp,
-                        reg_class_name: reg_class.name(),
-                    });
+                if reg_class.is_clobber_only(asm_arch.unwrap(), allow_experimental_reg)
+                    && !op.is_clobber()
+                {
+                    if allow_experimental_reg || reg_class.is_clobber_only(asm_arch.unwrap(), true)
+                    {
+                        // always clobber-only
+                        self.dcx().emit_err(RegisterClassOnlyClobber {
+                            op_span: op_sp,
+                            reg_class_name: reg_class.name(),
+                        });
+                    } else {
+                        // clobber-only in stable
+                        self.tcx
+                            .sess
+                            .create_feature_err(
+                                RegisterClassOnlyClobberStable {
+                                    op_span: op_sp,
+                                    reg_class_name: reg_class.name(),
+                                },
+                                sym::asm_experimental_reg,
+                            )
+                            .emit();
+                    }
                     continue;
                 }
 

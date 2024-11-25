@@ -45,7 +45,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
-                        for &(_, feature) in reg_class.supported_types(asm_arch) {
+                        for &(_, feature) in reg_class.supported_types(asm_arch, true) {
                             if let Some(feature) = feature {
                                 if self
                                     .tcx
@@ -85,7 +85,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         }
                         continue;
                     } else if !is_target_supported(reg.reg_class())
-                        || reg.reg_class().is_clobber_only(asm_arch)
+                        || reg.reg_class().is_clobber_only(asm_arch, true)
                     {
                         // We turn discarded outputs into clobber constraints
                         // if the target feature needed by the register class is
@@ -686,7 +686,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::reg) => "r",
             S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             S390x(S390xInlineAsmRegClass::freg) => "f",
-            S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+            S390x(S390xInlineAsmRegClass::vreg) => "v",
+            S390x(S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
             Sparc(SparcInlineAsmRegClass::reg) => "r",
@@ -852,7 +853,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         S390x(S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr) => cx.type_i32(),
         S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
-        S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+        S390x(S390xInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),
+        S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
         Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),

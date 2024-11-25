@@ -604,9 +604,13 @@ impl InlineAsmRegClass {
 
     /// Returns a list of supported types for this register class, each with an
     /// options target feature required to use this type.
+    ///
+    /// At the codegen stage, it is fine to always pass true for `allow_experimental_reg`,
+    /// since all the stability checking will have been done in prior stages.
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::X86(r) => r.supported_types(arch),
@@ -618,7 +622,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.supported_types(arch),
             Self::LoongArch(r) => r.supported_types(arch),
             Self::Mips(r) => r.supported_types(arch),
-            Self::S390x(r) => r.supported_types(arch),
+            Self::S390x(r) => r.supported_types(arch, allow_experimental_reg),
             Self::Sparc(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),
@@ -696,8 +700,11 @@ impl InlineAsmRegClass {
 
     /// Returns whether registers in this class can only be used as clobbers
     /// and not as inputs/outputs.
-    pub fn is_clobber_only(self, arch: InlineAsmArch) -> bool {
-        self.supported_types(arch).is_empty()
+    ///
+    /// At the codegen stage, it is fine to always pass true for `allow_experimental_reg`,
+    /// since all the stability checking will have been done in prior stages.
+    pub fn is_clobber_only(self, arch: InlineAsmArch, allow_experimental_reg: bool) -> bool {
+        self.supported_types(arch, allow_experimental_reg).is_empty()
     }
 }
 

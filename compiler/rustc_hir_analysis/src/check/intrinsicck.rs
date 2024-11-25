@@ -7,11 +7,13 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
-use rustc_span::Symbol;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Symbol, sym};
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
 };
+
+use crate::errors::RegisterTypeUnstable;
 
 pub struct InlineAsmCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -218,17 +220,29 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // Check the type against the list of types supported by the selected
         // register class.
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
+        let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
         let reg_class = reg.reg_class();
-        let supported_tys = reg_class.supported_types(asm_arch);
+        let supported_tys = reg_class.supported_types(asm_arch, allow_experimental_reg);
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
-            let msg = format!("type `{ty}` cannot be used with this register class");
-            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
-            let supported_tys: Vec<_> = supported_tys.iter().map(|(t, _)| t.to_string()).collect();
-            err.note(format!(
-                "register class `{}` supports these types: {}",
-                reg_class.name(),
-                supported_tys.join(", "),
-            ));
+            let mut err = if !allow_experimental_reg
+                && reg_class.supported_types(asm_arch, true).iter().any(|&(t, _)| t == asm_ty)
+            {
+                self.tcx.sess.create_feature_err(
+                    RegisterTypeUnstable { span: expr.span, ty },
+                    sym::asm_experimental_reg,
+                )
+            } else {
+                let msg = format!("type `{ty}` cannot be used with this register class");
+                let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
+                let supported_tys: Vec<_> =
+                    supported_tys.iter().map(|(t, _)| t.to_string()).collect();
+                err.note(format!(
+                    "register class `{}` supports these types: {}",
+                    reg_class.name(),
+                    supported_tys.join(", "),
+                ));
+                err
+            };
             if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
                 err.help(format!("consider using the `{}` register class instead", suggest.name()));
             }
@@ -313,6 +327,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             self.tcx.dcx().delayed_bug("target architecture does not support asm");
             return;
         };
+        let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
             // Validate register classes against currently enabled target
             // features. We check that at least one type is available for
@@ -352,7 +367,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let InlineAsmRegClass::Err = reg_class {
                         continue;
                     }
-                    for &(_, feature) in reg_class.supported_types(asm_arch) {
+                    for &(_, feature) in reg_class.supported_types(asm_arch, allow_experimental_reg)
+                    {
                         match feature {
                             Some(feature) => {
                                 if target_features.contains(&feature) {
