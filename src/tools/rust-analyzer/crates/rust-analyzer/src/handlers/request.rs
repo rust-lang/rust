@@ -1061,7 +1061,7 @@ pub(crate) fn handle_completion_resolve(
 
     let position = FilePosition { file_id, offset };
     let Some(unresolved_completions) = snap.analysis.completions(
-        &forced_resolve_completions_config,
+        &&forced_resolve_completions_config,
         position,
         resolve_data.trigger_character,
     )?
