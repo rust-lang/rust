@@ -144,6 +144,7 @@ where
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
     pub const fn splat(value: T) -> Self {
         const fn splat_const<T, const N: usize>(value: T) -> Simd<T, N>
         where
