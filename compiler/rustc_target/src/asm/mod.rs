@@ -941,6 +941,7 @@ impl InlineAsmClobberAbi {
     pub fn parse(
         arch: InlineAsmArch,
         target: &Target,
+        target_features: &FxIndexSet<Symbol>,
         name: Symbol,
     ) -> Result<Self, &'static [&'static str]> {
         let name = name.as_str();
@@ -963,11 +964,13 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi", "aapcs"]),
             },
             InlineAsmArch::AArch64 => match name {
-                "C" | "system" | "efiapi" => Ok(if aarch64::target_reserves_x18(target) {
-                    InlineAsmClobberAbi::AArch64NoX18
-                } else {
-                    InlineAsmClobberAbi::AArch64
-                }),
+                "C" | "system" | "efiapi" => {
+                    Ok(if aarch64::target_reserves_x18(target, target_features) {
+                        InlineAsmClobberAbi::AArch64NoX18
+                    } else {
+                        InlineAsmClobberAbi::AArch64
+                    })
+                }
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Arm64EC => match name {

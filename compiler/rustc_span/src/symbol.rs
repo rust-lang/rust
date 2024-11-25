@@ -1611,6 +1611,7 @@ symbols! {
         repr_simd,
         repr_transparent,
         require,
+        reserve_x18: "reserve-x18",
         residual,
         result,
         result_ffi_guarantees,
