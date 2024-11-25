@@ -23,7 +23,7 @@ pub use core::panicking::{panic_display, panic_fmt};
 #[rustfmt::skip]
 use crate::any::Any;
 use crate::sync::Once;
-use crate::thread::{self, Thread};
+use crate::thread::{self, main_thread};
 use crate::{mem, panic, sys};
 
 // Prints to the "panic output", depending on the platform this may be:
@@ -102,24 +102,9 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         sys::init(argc, argv, sigpipe)
     };
 
-    // Set up the current thread handle to give it the right name.
-    //
-    // When code running before main uses `ReentrantLock` (for example by
-    // using `println!`), the thread ID can become initialized before we
-    // create this handle. Since `set_current` fails when the ID of the
-    // handle does not match the current ID, we should attempt to use the
-    // current thread ID here instead of unconditionally creating a new
-    // one. Also see #130210.
-    let thread = Thread::new_main(thread::current_id());
-    if let Err(_thread) = thread::set_current(thread) {
-        // `thread::current` will create a new handle if none has been set yet.
-        // Thus, if someone uses it before main, this call will fail. That's a
-        // bad idea though, as we then cannot set the main thread name here.
-        //
-        // FIXME: detect the main thread in `thread::current` and use the
-        //        correct name there.
-        rtabort!("code running before main must not use thread::current");
-    }
+    // Remember the main thread ID to give it the correct name.
+    // SAFETY: this is the only time and place where we call this function.
+    unsafe { main_thread::set(thread::current_id()) };
 }
 
 /// Clean up the thread-local runtime state. This *should* be run after all other

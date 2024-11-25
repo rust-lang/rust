@@ -183,7 +183,8 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
-pub(crate) use current::{current_id, current_or_unnamed, drop_current, set_current, try_current};
+pub(crate) use current::{current_id, current_or_unnamed, drop_current};
+use current::{set_current, try_with_current};
 
 mod spawnhook;
 
@@ -498,10 +499,7 @@ impl Builder {
         });
 
         let id = ThreadId::new();
-        let my_thread = match name {
-            Some(name) => Thread::new(id, name),
-            None => Thread::new_unnamed(id),
-        };
+        let my_thread = Thread::new(id, name);
 
         let hooks = if no_hooks {
             spawnhook::ChildSpawnHooks::default()
@@ -1232,7 +1230,7 @@ impl ThreadId {
         }
     }
 
-    #[cfg(not(target_thread_local))]
+    #[cfg(any(not(target_thread_local), target_has_atomic = "64"))]
     fn from_u64(v: u64) -> Option<ThreadId> {
         NonZero::new(v).map(ThreadId)
     }
@@ -1256,30 +1254,16 @@ impl ThreadId {
 // Thread
 ////////////////////////////////////////////////////////////////////////////////
 
-/// The internal representation of a `Thread`'s name.
-enum ThreadName {
-    Main,
-    Other(ThreadNameString),
-    Unnamed,
-}
-
 // This module ensures private fields are kept private, which is necessary to enforce the safety requirements.
 mod thread_name_string {
-    use core::str;
-
-    use super::ThreadName;
     use crate::ffi::{CStr, CString};
+    use crate::str;
 
     /// Like a `String` it's guaranteed UTF-8 and like a `CString` it's null terminated.
     pub(crate) struct ThreadNameString {
         inner: CString,
     }
-    impl core::ops::Deref for ThreadNameString {
-        type Target = CStr;
-        fn deref(&self) -> &CStr {
-            &self.inner
-        }
-    }
+
     impl From<String> for ThreadNameString {
         fn from(s: String) -> Self {
             Self {
@@ -1287,27 +1271,91 @@ mod thread_name_string {
             }
         }
     }
-    impl ThreadName {
-        pub fn as_cstr(&self) -> Option<&CStr> {
-            match self {
-                ThreadName::Main => Some(c"main"),
-                ThreadName::Other(other) => Some(other),
-                ThreadName::Unnamed => None,
-            }
+
+    impl ThreadNameString {
+        pub fn as_cstr(&self) -> &CStr {
+            &self.inner
         }
 
-        pub fn as_str(&self) -> Option<&str> {
-            // SAFETY: `as_cstr` can only return `Some` for a fixed CStr or a `ThreadNameString`,
-            // which is guaranteed to be UTF-8.
-            self.as_cstr().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
+        pub fn as_str(&self) -> &str {
+            // SAFETY: `ThreadNameString` is guaranteed to be UTF-8.
+            unsafe { str::from_utf8_unchecked(self.inner.to_bytes()) }
         }
     }
 }
-pub(crate) use thread_name_string::ThreadNameString;
+
+use thread_name_string::ThreadNameString;
+
+pub(crate) mod main_thread {
+    cfg_if::cfg_if! {
+        if #[cfg(target_has_atomic = "64")] {
+            use super::ThreadId;
+            use crate::sync::atomic::AtomicU64;
+            use crate::sync::atomic::Ordering::Relaxed;
+
+            static MAIN: AtomicU64 = AtomicU64::new(0);
+
+            pub(super) fn get() -> Option<ThreadId> {
+                ThreadId::from_u64(MAIN.load(Relaxed))
+            }
+
+            /// # Safety
+            /// May only be called once.
+            pub(crate) unsafe fn set(id: ThreadId) {
+                MAIN.store(id.as_u64().get(), Relaxed)
+            }
+        } else {
+            use super::ThreadId;
+            use crate::mem::MaybeUninit;
+            use crate::sync::atomic::AtomicBool;
+            use crate::sync::atomic::Ordering::{Acquire, Release};
+
+            static INIT: AtomicBool = AtomicBool::new(false);
+            static mut MAIN: MaybeUninit<ThreadId> = MaybeUninit::uninit();
+
+            pub(super) fn get() -> Option<ThreadId> {
+                if INIT.load(Acquire) {
+                    Some(unsafe { MAIN.assume_init() })
+                } else {
+                    None
+                }
+            }
+
+            /// # Safety
+            /// May only be called once.
+            pub(crate) unsafe fn set(id: ThreadId) {
+                unsafe { MAIN = MaybeUninit::new(id) };
+                INIT.store(true, Release);
+            }
+        }
+    }
+}
+
+pub(crate) fn with_current_name<F, R>(f: F) -> R
+where
+    F: FnOnce(Option<&str>) -> R,
+{
+    try_with_current(|thread| {
+        if let Some(thread) = thread {
+            if let Some(name) = &thread.inner.name {
+                return f(Some(name.as_str()));
+            } else if Some(thread.inner.id) == main_thread::get() {
+                return f(Some("main"));
+            }
+        } else if let Some(main) = main_thread::get()
+            && let Some(id) = current::id::get()
+            && id == main
+        {
+            return f(Some("main"));
+        }
+
+        f(None)
+    })
+}
 
 /// The internal representation of a `Thread` handle
 struct Inner {
-    name: ThreadName, // Guaranteed to be UTF-8
+    name: Option<ThreadNameString>,
     id: ThreadId,
     parker: Parker,
 }
@@ -1343,21 +1391,9 @@ pub struct Thread {
 }
 
 impl Thread {
-    /// Used only internally to construct a thread object without spawning.
-    pub(crate) fn new(id: ThreadId, name: String) -> Thread {
-        Self::new_inner(id, ThreadName::Other(name.into()))
-    }
+    pub(crate) fn new(id: ThreadId, name: Option<String>) -> Thread {
+        let name = name.map(ThreadNameString::from);
 
-    pub(crate) fn new_unnamed(id: ThreadId) -> Thread {
-        Self::new_inner(id, ThreadName::Unnamed)
-    }
-
-    /// Constructs the thread handle for the main thread.
-    pub(crate) fn new_main(id: ThreadId) -> Thread {
-        Self::new_inner(id, ThreadName::Main)
-    }
-
-    fn new_inner(id: ThreadId, name: ThreadName) -> Thread {
         // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
@@ -1489,7 +1525,13 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub fn name(&self) -> Option<&str> {
-        self.inner.name.as_str()
+        if let Some(name) = &self.inner.name {
+            Some(name.as_str())
+        } else if main_thread::get() == Some(self.inner.id) {
+            Some("main")
+        } else {
+            None
+        }
     }
 
     /// Consumes the `Thread`, returning a raw pointer.
@@ -1541,7 +1583,13 @@ impl Thread {
     }
 
     fn cname(&self) -> Option<&CStr> {
-        self.inner.name.as_cstr()
+        if let Some(name) = &self.inner.name {
+            Some(name.as_cstr())
+        } else if main_thread::get() == Some(self.inner.id) {
+            Some(c"main")
+        } else {
+            None
+        }
     }
 }
 
