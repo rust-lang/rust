@@ -238,11 +238,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     trace!(?predicates);
     // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
-        match predicate {
-            hir::WherePredicate::BoundPredicate(bound_pred) => {
+        match predicate.kind {
+            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
                 let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
 
-                let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
+                let bound_vars = tcx.late_bound_vars(predicate.hir_id);
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
                 // is still checked for WF.
@@ -275,7 +275,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 predicates.extend(bounds.clauses());
             }
 
-            hir::WherePredicate::RegionPredicate(region_pred) => {
+            hir::WherePredicateKind::RegionPredicate(region_pred) => {
                 let r1 = icx
                     .lowerer()
                     .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
@@ -298,7 +298,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }))
             }
 
-            hir::WherePredicate::EqPredicate(..) => {
+            hir::WherePredicateKind::EqPredicate(..) => {
                 // FIXME(#20041)
             }
         }
@@ -881,7 +881,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         let mut bounds = Bounds::default();
 
         for predicate in hir_generics.predicates {
-            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
+            let hir_id = predicate.hir_id;
+            let hir::WherePredicateKind::BoundPredicate(predicate) = predicate.kind else {
                 continue;
             };
 
@@ -901,7 +902,7 @@ impl<'tcx> ItemCtxt<'tcx> {
 
             let bound_ty = self.lowerer().lower_ty_maybe_return_type_notation(predicate.bounded_ty);
 
-            let bound_vars = self.tcx.late_bound_vars(predicate.hir_id);
+            let bound_vars = self.tcx.late_bound_vars(hir_id);
             self.lowerer().lower_bounds(
                 bound_ty,
                 predicate.bounds,
@@ -974,10 +975,10 @@ pub(super) fn const_conditions<'tcx>(
     let mut bounds = Bounds::default();
 
     for pred in generics.predicates {
-        match pred {
-            hir::WherePredicate::BoundPredicate(bound_pred) => {
+        match pred.kind {
+            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
                 let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
-                let bound_vars = tcx.late_bound_vars(bound_pred.hir_id);
+                let bound_vars = tcx.late_bound_vars(pred.hir_id);
                 icx.lowerer().lower_bounds(
                     ty,
                     bound_pred.bounds.iter(),

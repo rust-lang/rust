@@ -10,7 +10,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
-    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
+    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind,
 };
 use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -1004,8 +1004,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // get all where BoundPredicates here, because they are used in two cases below
         let where_predicates = predicates
             .iter()
-            .filter_map(|p| match p {
-                WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+            .filter_map(|p| match p.kind {
+                WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bounds,
                     bounded_ty,
                     ..

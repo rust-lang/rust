@@ -69,7 +69,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         search_bounds(hir_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
                     && pred.is_param_bound(self_ty.to_def_id())
                 {
                     search_bounds(pred.bounds);

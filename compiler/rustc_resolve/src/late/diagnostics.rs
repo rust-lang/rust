@@ -1317,21 +1317,24 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&mut self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
-        let (bounded_ty, bounds, where_span) =
-            if let Some(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                bounded_ty,
-                bound_generic_params,
-                bounds,
-                span,
-            })) = self.diag_metadata.current_where_predicate
-            {
-                if !bound_generic_params.is_empty() {
-                    return false;
-                }
-                (bounded_ty, bounds, span)
-            } else {
+        let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
+            kind:
+                ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+                    bounded_ty,
+                    bound_generic_params,
+                    bounds,
+                }),
+            span,
+            ..
+        }) = self.diag_metadata.current_where_predicate
+        {
+            if !bound_generic_params.is_empty() {
                 return false;
-            };
+            }
+            (bounded_ty, bounds, span)
+        } else {
+            return false;
+        };
 
         // Confirm that the target is an associated type.
         let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
@@ -2840,9 +2843,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // for<'a, 'b> T: Trait<T> + 'b
                         // ^^^^^^^^^^^  suggest outer binder `for<'a, 'b>`
                         if let LifetimeBinderKind::WhereBound = kind
-                            && let Some(ast::WherePredicate::BoundPredicate(
+                            && let Some(predicate) = self.diag_metadata.current_where_predicate
+                            && let ast::WherePredicateKind::BoundPredicate(
                                 ast::WhereBoundPredicate { bounded_ty, bounds, .. },
-                            )) = self.diag_metadata.current_where_predicate
+                            ) = &predicate.kind
                             && bounded_ty.id == binder
                         {
                             for bound in bounds {
@@ -3473,7 +3477,6 @@ fn mk_where_bound_predicate(
     };
 
     let new_where_bound_predicate = ast::WhereBoundPredicate {
-        span: DUMMY_SP,
         bound_generic_params: ThinVec::new(),
         bounded_ty: ast::ptr::P(ty.clone()),
         bounds: vec![ast::GenericBound::Trait(ast::PolyTraitRef {

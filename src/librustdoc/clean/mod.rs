@@ -325,11 +325,11 @@ fn clean_where_predicate<'tcx>(
     predicate: &hir::WherePredicate<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    if !predicate.in_where_clause() {
+    if !predicate.kind.in_where_clause() {
         return None;
     }
-    Some(match *predicate {
-        hir::WherePredicate::BoundPredicate(ref wbp) => {
+    Some(match *predicate.kind {
+        hir::WherePredicateKind::BoundPredicate(ref wbp) => {
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
@@ -342,12 +342,12 @@ fn clean_where_predicate<'tcx>(
             }
         }
 
-        hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
+        hir::WherePredicateKind::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
 
-        hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
+        hir::WherePredicateKind::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
             lhs: clean_ty(wrp.lhs_ty, cx),
             rhs: clean_ty(wrp.rhs_ty, cx).into(),
         },

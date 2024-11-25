@@ -332,7 +332,11 @@ pub trait MutVisitor: Sized {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &mut WherePredicate) {
-        walk_where_predicate(self, where_predicate);
+        walk_where_predicate(self, where_predicate)
+    }
+
+    fn visit_where_predicate_kind(&mut self, kind: &mut WherePredicateKind) {
+        walk_where_predicate_kind(self, kind)
     }
 
     fn visit_vis(&mut self, vis: &mut Visibility) {
@@ -1065,26 +1069,30 @@ fn walk_where_clause<T: MutVisitor>(vis: &mut T, wc: &mut WhereClause) {
     vis.visit_span(span);
 }
 
-fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
-    match pred {
-        WherePredicate::BoundPredicate(bp) => {
-            let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
+pub fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
+    let WherePredicate { kind, id, span } = pred;
+    vis.visit_id(id);
+    vis.visit_where_predicate_kind(kind);
+    vis.visit_span(span);
+}
+
+pub fn walk_where_predicate_kind<T: MutVisitor>(vis: &mut T, kind: &mut WherePredicateKind) {
+    match kind {
+        WherePredicateKind::BoundPredicate(bp) => {
+            let WhereBoundPredicate { bound_generic_params, bounded_ty, bounds } = bp;
             bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_ty(bounded_ty);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-            vis.visit_span(span);
         }
-        WherePredicate::RegionPredicate(rp) => {
-            let WhereRegionPredicate { span, lifetime, bounds } = rp;
+        WherePredicateKind::RegionPredicate(rp) => {
+            let WhereRegionPredicate { lifetime, bounds } = rp;
             vis.visit_lifetime(lifetime);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-            vis.visit_span(span);
         }
-        WherePredicate::EqPredicate(ep) => {
-            let WhereEqPredicate { span, lhs_ty, rhs_ty } = ep;
+        WherePredicateKind::EqPredicate(ep) => {
+            let WhereEqPredicate { lhs_ty, rhs_ty } = ep;
             vis.visit_ty(lhs_ty);
             vis.visit_ty(rhs_ty);
-            vis.visit_span(span);
         }
     }
 }

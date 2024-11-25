@@ -5,7 +5,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
-use rustc_hir::WherePredicate::BoundPredicate;
+use rustc_hir::WherePredicateKind::BoundPredicate;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -236,7 +236,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut hrtb_bounds = vec![];
         gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
             for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                    pred.kind
                 else {
                     continue;
                 };
@@ -267,12 +268,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             };
             debug!(?generics_fn);
             generics_fn.predicates.iter().for_each(|predicate| {
-                let BoundPredicate(WhereBoundPredicate {
-                    span: bounded_span,
-                    bounded_ty,
-                    bounds,
-                    ..
-                }) = predicate
+                let BoundPredicate(WhereBoundPredicate { bounded_ty, bounds, .. }) = predicate.kind
                 else {
                     return;
                 };
@@ -287,7 +283,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             .rfind(|param| param.def_id.to_def_id() == defid)
                             .is_some()
                     {
-                        suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
+                        suggestions.push((predicate.span.shrink_to_hi(), " + 'static".to_string()));
                     }
                 });
             });
