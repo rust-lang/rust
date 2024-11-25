@@ -38,7 +38,7 @@ macro_rules! features {
       $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; $(#[$deprecate_attr:meta];)?)*
       $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
       $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
-          $(without cfg check: $feature_cfg_check:literal;)?
+          $(without cfg check: $feature_cfg_check:tt;)?
           $(implied by target_features: [$($target_feature_lit:tt),*];)?
           $(#[$feature_comment:meta])*)*
     ) => {
