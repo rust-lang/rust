@@ -76,31 +76,31 @@ impl fmt::Debug for Error {
 #[allow(dead_code)]
 impl Error {
     pub(crate) const INVALID_UTF8: Self =
-        const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
+        const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
     pub(crate) const READ_EXACT_EOF: Self =
-        const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
+        const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_io_error!(
+    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "The number of hardware threads is not known for the target platform"
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =
-        const_io_error!(ErrorKind::Unsupported, "operation not supported on this platform");
+        const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
     pub(crate) const WRITE_ALL_EOF: Self =
-        const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer");
+        const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
     pub(crate) const ZERO_TIMEOUT: Self =
-        const_io_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+        const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<alloc::ffi::NulError> for Error {
     /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
     fn from(_: alloc::ffi::NulError) -> Error {
-        const_io_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
+        const_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
@@ -603,8 +603,8 @@ impl Error {
     ///
     /// This function does not allocate.
     ///
-    /// You should not use this directly, and instead use the `const_io_error!`
-    /// macro: `io::const_io_error!(ErrorKind::Something, "some_message")`.
+    /// You should not use this directly, and instead use the `const_error!`
+    /// macro: `io::const_error!(ErrorKind::Something, "some_message")`.
     ///
     /// This function should maybe change to `from_static_message<const MSG: &'static
     /// str>(kind: ErrorKind)` in the future, when const generics allow that.

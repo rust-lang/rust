@@ -677,7 +677,7 @@ impl File {
                     )
                 }
                 _ => {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         io::ErrorKind::Uncategorized,
                         "Unsupported reparse point type",
                     ));
@@ -718,7 +718,7 @@ impl File {
             || times.modified.map_or(false, is_zero)
             || times.created.map_or(false, is_zero)
         {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0",
             ));
@@ -728,7 +728,7 @@ impl File {
             || times.modified.map_or(false, is_max)
             || times.created.map_or(false, is_max)
         {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
@@ -1305,10 +1305,9 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 
 #[cfg(target_vendor = "uwp")]
 pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
-    return Err(io::const_io_error!(
-        io::ErrorKind::Unsupported,
-        "hard link are not supported on UWP",
-    ));
+    return Err(
+        io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP",),
+    );
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
@@ -1495,7 +1494,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
             let bytes = unsafe { OsStr::from_encoded_bytes_unchecked(&abs_path[2..]) };
             r"\??\UNC\".encode_utf16().chain(bytes.encode_wide()).collect()
         } else {
-            return Err(io::const_io_error!(io::ErrorKind::InvalidInput, "path is not valid"));
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, "path is not valid"));
         }
     };
     // Defined inline so we don't have to mess about with variable length buffer.
@@ -1512,10 +1511,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     }
     let data_len = 12 + (abs_path.len() * 2);
     if data_len > u16::MAX as usize {
-        return Err(io::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "`original` path is too long"
-        ));
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
     }
     let data_len = data_len as u16;
     let mut header = MountPointBuffer {

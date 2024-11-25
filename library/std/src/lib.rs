@@ -411,6 +411,7 @@
 // Only for const-ness:
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
+#![feature(io_const_error)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
