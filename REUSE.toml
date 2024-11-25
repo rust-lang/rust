@@ -63,8 +63,8 @@ SPDX-License-Identifier = "Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT
 [[annotations]]
 path = "library/core/src/unicode/unicode_data.rs"
 precedence = "override"
-SPDX-FileCopyrightText = "1991-2022 Unicode, Inc. All rights reserved."
-SPDX-License-Identifier = "Unicode-DFS-2016"
+SPDX-FileCopyrightText = "1991-2024 Unicode, Inc."
+SPDX-License-Identifier = "Unicode-3.0"
 
 [[annotations]]
 path = "library/std/src/sync/mpmc/**"
