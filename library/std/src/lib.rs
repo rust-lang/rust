@@ -340,6 +340,7 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_must_use)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
