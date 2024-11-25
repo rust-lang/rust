@@ -144,7 +144,7 @@ impl AsRef<OsStr> for EnvKey {
 
 pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        Err(io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(str)
     }
@@ -439,10 +439,9 @@ fn resolve_exe<'a>(
 ) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
-        return Err(io::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "program path has no file name",
-        ));
+        return Err(
+            io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name",),
+        );
     }
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.
@@ -492,7 +491,7 @@ fn resolve_exe<'a>(
         }
     }
     // If we get here then the executable cannot be found.
-    Err(io::const_io_error!(io::ErrorKind::NotFound, "program not found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "program not found"))
 }
 
 // Calls `f` for every path that should be used to find an executable.
@@ -921,7 +920,7 @@ fn make_proc_thread_attribute_list(
     // a null pointer to retrieve the required size.
     let mut required_size = 0;
     let Ok(attribute_count) = attributes.len().try_into() else {
-        return Err(io::const_io_error!(
+        return Err(io::const_error!(
             ErrorKind::InvalidInput,
             "maximum number of ProcThreadAttributes exceeded",
         ));

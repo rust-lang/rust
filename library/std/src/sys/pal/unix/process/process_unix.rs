@@ -61,7 +61,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));
@@ -175,7 +175,7 @@ impl Command {
     // allowed to exist in dead code), but it sounds bad, so we go out of our
     // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_error!(
         ErrorKind::Unsupported,
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
@@ -218,7 +218,7 @@ impl Command {
                 } else if delay < MAX_FORKSPAWN_SLEEP {
                     thread::sleep(delay);
                 } else {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         ErrorKind::WouldBlock,
                         "forking returned EBADF too often",
                     ));
@@ -235,7 +235,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
         }
 
         match self.setup_io(default, true) {
@@ -561,7 +561,7 @@ impl Command {
                         } else if delay < MAX_FORKSPAWN_SLEEP {
                             thread::sleep(delay);
                         } else {
-                            return Err(io::const_io_error!(
+                            return Err(io::const_error!(
                                 ErrorKind::WouldBlock,
                                 "posix_spawnp returned EBADF too often",
                             ));
