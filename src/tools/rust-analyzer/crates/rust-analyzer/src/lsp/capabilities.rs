@@ -458,21 +458,7 @@ impl ClientCapabilities {
             .into_iter()
             .flatten()
             .cloned()
-            .collect()
-    }
-
-    pub fn completion_resolve_support_properties(&self) -> FxHashSet<String> {
-        self.0
-            .text_document
-            .as_ref()
-            .and_then(|text| text.completion.as_ref())
-            .and_then(|completion_caps| completion_caps.completion_item.as_ref())
-            .and_then(|completion_item_caps| completion_item_caps.resolve_support.as_ref())
-            .map(|resolve_support| resolve_support.properties.iter())
-            .into_iter()
-            .flatten()
-            .cloned()
-            .collect()
+            .collect::<FxHashSet<_>>()
     }
 
     pub fn hover_markdown_support(&self) -> bool {

@@ -1019,11 +1019,9 @@ pub(crate) fn handle_completion(
 
     let items = to_proto::completion_items(
         &snap.config,
-        &completion_config.fields_to_resolve,
         &line_index,
         snap.file_version(position.file_id),
         text_document_position,
-        completion_trigger_character,
         items,
     );
 

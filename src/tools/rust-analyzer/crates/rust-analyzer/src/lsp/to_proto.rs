@@ -6,9 +6,9 @@ use std::{
 };
 
 use ide::{
-    Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
-    FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
+    Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
+    CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
+    Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
     InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, Markup,
     NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
@@ -227,11 +227,9 @@ pub(crate) fn snippet_text_edit_vec(
 
 pub(crate) fn completion_items(
     config: &Config,
-    fields_to_resolve: &CompletionFieldsToResolve,
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: lsp_types::TextDocumentPositionParams,
-    completion_trigger_character: Option<char>,
     mut items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
     if config.completion_hide_deprecated() {
@@ -241,17 +239,7 @@ pub(crate) fn completion_items(
     let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(
-            &mut res,
-            config,
-            fields_to_resolve,
-            line_index,
-            version,
-            &tdpp,
-            max_relevance,
-            completion_trigger_character,
-            item,
-        );
+        completion_item(&mut res, config, line_index, version, &tdpp, max_relevance, item);
     }
 
     if let Some(limit) = config.completion(None).limit {
@@ -265,12 +253,10 @@ pub(crate) fn completion_items(
 fn completion_item(
     acc: &mut Vec<lsp_types::CompletionItem>,
     config: &Config,
-    fields_to_resolve: &CompletionFieldsToResolve,
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: &lsp_types::TextDocumentPositionParams,
     max_relevance: u32,
-    completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
@@ -278,7 +264,6 @@ fn completion_item(
     let lookup = item.lookup().to_owned();
 
     let mut additional_text_edits = Vec::new();
-    let mut something_to_resolve = false;
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
@@ -352,12 +337,7 @@ fn completion_item(
             })
             .collect::<Vec<_>>();
         if !imports.is_empty() {
-            let data = lsp_ext::CompletionResolveData {
-                position: tdpp.clone(),
-                imports,
-                version,
-                completion_trigger_character,
-            };
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports, version };
             lsp_item.data = Some(to_value(data).unwrap());
         }
     }
