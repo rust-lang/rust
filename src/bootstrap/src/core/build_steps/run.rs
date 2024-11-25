@@ -181,8 +181,7 @@ impl Step for CollectLicenseMetadata {
             panic!("REUSE is required to collect the license metadata");
         };
 
-        // Temporary location, it will be moved to src/etc once it's accurate.
-        let dest = builder.out.join("license-metadata.json");
+        let dest = builder.src.join("license-metadata.json");
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
