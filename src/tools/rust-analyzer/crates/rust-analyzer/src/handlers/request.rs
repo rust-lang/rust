@@ -1060,7 +1060,7 @@ pub(crate) fn handle_completion_resolve(
     forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
     let position = FilePosition { file_id, offset };
-    let Some(resolved_completions) = snap.analysis.completions(
+    let Some(unresolved_completions) = snap.analysis.completions(
         &forced_resolve_completions_config,
         position,
         resolve_data.trigger_character,
@@ -1075,7 +1075,7 @@ pub(crate) fn handle_completion_resolve(
         snap.file_version(position.file_id),
         resolve_data.position,
         resolve_data.trigger_character,
-        resolved_completions,
+        unresolved_completions,
     );
     let Some(mut resolved_completion) = resolved_completions.into_iter().find(|completion| {
         completion.label == original_completion.label

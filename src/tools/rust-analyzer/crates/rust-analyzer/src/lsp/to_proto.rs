@@ -286,12 +286,12 @@ fn completion_item(
         Some(item.lookup().to_owned())
     };
 
+    // LSP does not allow arbitrary edits in completion, so we have to do a
+    // non-trivial mapping here.
     let text_edit = if fields_to_resolve.resolve_text_edit {
         something_to_resolve = true;
         None
     } else {
-        // LSP does not allow arbitrary edits in completion, so we have to do a
-        // non-trivial mapping here.
         let mut text_edit = None;
         let source_range = item.source_range;
         for indel in item.text_edit {
@@ -327,9 +327,9 @@ fn completion_item(
     let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
         if fields_to_resolve.resolve_command {
             something_to_resolve = true;
-            None
-        } else {
             Some(command::trigger_parameter_hints())
+        } else {
+            None
         }
     } else {
         None
