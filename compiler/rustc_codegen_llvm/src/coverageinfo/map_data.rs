@@ -117,7 +117,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // (By construction, expressions can only refer to other expressions
         // that have lower IDs, so one pass is sufficient.)
         for (id, expression) in self.function_coverage_info.expressions.iter_enumerated() {
-            if !self.expressions_seen.contains(id) {
+            if !self.is_used || !self.expressions_seen.contains(id) {
                 // If an expression was not seen, it must have been optimized away,
                 // so any operand that refers to it can be replaced with zero.
                 zero_expressions.insert(id);
@@ -238,7 +238,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {
-        is_zero_term(&self.counters_seen, &self.zero_expressions, term)
+        !self.is_used || is_zero_term(&self.counters_seen, &self.zero_expressions, term)
     }
 }
 
