@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::sync::mpsc::{Receiver, channel};
 
 use rinja::Template;
@@ -51,17 +50,17 @@ pub(crate) struct Context<'tcx> {
     pub(crate) dst: PathBuf,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: DefIdMap<String>,
+    pub(super) deref_id_map: RefCell<DefIdMap<String>>,
     /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: IdMap,
+    pub(super) id_map: RefCell<IdMap>,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    pub(crate) shared: Rc<SharedContext<'tcx>>,
+    pub(crate) shared: SharedContext<'tcx>,
     /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: FxIndexSet<clean::Type>,
+    pub(crate) types_with_notable_traits: RefCell<FxIndexSet<clean::Type>>,
     /// Contains information that needs to be saved and reset after rendering an item which is
     /// not a module.
     pub(crate) info: ContextInfo,
@@ -170,8 +169,8 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id<S: AsRef<str> + ToString>(&mut self, id: S) -> String {
-        self.id_map.derive(id)
+    pub(super) fn derive_id<S: AsRef<str> + ToString>(&self, id: S) -> String {
+        self.id_map.borrow_mut().derive(id)
     }
 
     /// String representation of how to get back to the root path of the 'doc/'
@@ -230,24 +229,23 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !render_redirect_pages {
-            let clone_shared = Rc::clone(&self.shared);
+            let mut page_buffer = Buffer::html();
+            print_item(self, it, &mut page_buffer);
             let page = layout::Page {
                 css_class: tyname_s,
                 root_path: &self.root_path(),
-                static_root_path: clone_shared.static_root_path.as_deref(),
+                static_root_path: self.shared.static_root_path.as_deref(),
                 title: &title,
                 description: &desc,
-                resource_suffix: &clone_shared.resource_suffix,
+                resource_suffix: &self.shared.resource_suffix,
                 rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
             };
-            let mut page_buffer = Buffer::html();
-            print_item(self, it, &mut page_buffer);
             layout::render(
-                &clone_shared.layout,
+                &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
                 move |buf: &mut Buffer| buf.push_buffer(page_buffer),
-                &clone_shared.style_files,
+                &self.shared.style_files,
             )
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
@@ -572,10 +570,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let mut cx = Context {
             current: Vec::new(),
             dst,
-            id_map,
+            id_map: RefCell::new(id_map),
             deref_id_map: Default::default(),
-            shared: Rc::new(scx),
-            types_with_notable_traits: FxIndexSet::default(),
+            shared: scx,
+            types_with_notable_traits: RefCell::new(FxIndexSet::default()),
             info: ContextInfo::new(include_sources),
         };
 
@@ -591,9 +589,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     fn make_child_renderer(&mut self) -> Self::InfoType {
-        self.deref_id_map.clear();
-        self.id_map.clear();
-        self.types_with_notable_traits.clear();
+        self.deref_id_map.borrow_mut().clear();
+        self.id_map.borrow_mut().clear();
+        self.types_with_notable_traits.borrow_mut().clear();
         self.info
     }
 
@@ -612,7 +610,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
-        let shared = Rc::clone(&self.shared);
+        let shared = &self.shared;
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod sys",
@@ -759,11 +757,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared.fs.write(redirect_map_path, paths)?;
         }
 
-        // No need for it anymore.
-        drop(shared);
-
         // Flush pending errors.
-        Rc::get_mut(&mut self.shared).unwrap().fs.close();
+        self.shared.fs.close();
         let nb_errors = self.shared.errors.iter().map(|err| self.tcx().dcx().err(err)).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))

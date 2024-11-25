@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
 use std::{fmt, fs};
 
 use rinja::Template;
@@ -197,7 +196,7 @@ impl SourceCollector<'_, '_> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
-        let shared = Rc::clone(&self.cx.shared);
+        let shared = &self.cx.shared;
         // Create the intermediate directories
         let cur = RefCell::new(PathBuf::new());
         let root_path = RefCell::new(PathBuf::new());
@@ -250,12 +249,11 @@ impl SourceCollector<'_, '_> {
             &page,
             "",
             |buf: &mut _| {
-                let cx = &mut self.cx;
                 print_src(
                     buf,
                     contents,
                     file_span,
-                    cx,
+                    self.cx,
                     &root_path,
                     highlight::DecorationInfo::default(),
                     SourceContext::Standalone { file_path },
