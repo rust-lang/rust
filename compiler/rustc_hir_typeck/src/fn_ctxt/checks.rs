@@ -2347,9 +2347,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let check_for_matched_generics = || {
                     if matched_inputs.iter().any(|x| x.is_some())
-                        && params_with_generics.iter().any(|x| x.0.is_some())
+                        && params_with_generics.iter().any(|x| x.1.is_some())
                     {
-                        for (idx, (generic, _)) in params_with_generics.iter().enumerate() {
+                        for &(idx, generic, _) in &params_with_generics {
                             // Param has to have a generic and be matched to be relevant
                             if matched_inputs[idx.into()].is_none() {
                                 continue;
@@ -2362,7 +2362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             for unmatching_idx in idx + 1..params_with_generics.len() {
                                 if matched_inputs[unmatching_idx.into()].is_none()
                                     && let Some(unmatched_idx_param_generic) =
-                                        params_with_generics[unmatching_idx].0
+                                        params_with_generics[unmatching_idx].1
                                     && unmatched_idx_param_generic.name.ident()
                                         == generic.name.ident()
                                 {
@@ -2377,8 +2377,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let check_for_matched_generics = check_for_matched_generics();
 
-                for (idx, (generic_param, param)) in
-                    params_with_generics.iter().enumerate().filter(|(idx, _)| {
+                for &(idx, generic_param, param) in
+                    params_with_generics.iter().filter(|&(idx, _, _)| {
                         check_for_matched_generics
                             || expected_idx.is_none_or(|expected_idx| expected_idx == *idx)
                     })
@@ -2390,8 +2390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let other_params_matched: Vec<(usize, &hir::Param<'_>)> = params_with_generics
                         .iter()
-                        .enumerate()
-                        .filter(|(other_idx, (other_generic_param, _))| {
+                        .filter(|(other_idx, other_generic_param, _)| {
                             if *other_idx == idx {
                                 return false;
                             }
@@ -2410,18 +2409,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             other_generic_param.name.ident() == generic_param.name.ident()
                         })
-                        .map(|(other_idx, (_, other_param))| (other_idx, *other_param))
+                        .map(|&(other_idx, _, other_param)| (other_idx, other_param))
                         .collect();
 
                     if !other_params_matched.is_empty() {
                         let other_param_matched_names: Vec<String> = other_params_matched
                             .iter()
-                            .map(|(_, other_param)| {
+                            .map(|(idx, other_param)| {
                                 if let hir::PatKind::Binding(_, _, ident, _) = other_param.pat.kind
                                 {
                                     format!("`{ident}`")
                                 } else {
-                                    "{unknown}".to_string()
+                                    format!("parameter #{}", idx + 1)
                                 }
                             })
                             .collect();
@@ -2478,18 +2477,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let param_idents_matching: Vec<String> = params_with_generics
                         .iter()
-                        .filter(|(generic, _)| {
+                        .filter(|(_, generic, _)| {
                             if let Some(generic) = generic {
                                 generic.name.ident() == generic_param.name.ident()
                             } else {
                                 false
                             }
                         })
-                        .map(|(_, param)| {
+                        .map(|(idx, _, param)| {
                             if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind {
                                 format!("`{ident}`")
                             } else {
-                                "{unknown}".to_string()
+                                format!("parameter #{}", idx + 1)
                             }
                         })
                         .collect();
@@ -2498,8 +2497,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         spans.push_span_label(
                             generic_param.span,
                             format!(
-                                "{} all reference this parameter {}",
+                                "{} {} reference this parameter `{}`",
                                 display_list_with_comma_and(&param_idents_matching),
+                                if param_idents_matching.len() == 2 { "both" } else { "all" },
                                 generic_param.name.ident().name,
                             ),
                         );
@@ -2580,7 +2580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(params_with_generics) = self.get_hir_params_with_generics(def_id, is_method) {
             debug_assert_eq!(params_with_generics.len(), matched_inputs.len());
-            for (idx, (generic_param, _)) in params_with_generics.iter().enumerate() {
+            for &(idx, generic_param, _) in &params_with_generics {
                 if matched_inputs[idx.into()].is_none() {
                     continue;
                 }
@@ -2594,20 +2594,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let mut idxs_matched: Vec<usize> = vec![];
-                for (other_idx, (_, _)) in params_with_generics.iter().enumerate().filter(
-                    |(other_idx, (other_generic_param, _))| {
-                        if *other_idx == idx {
+                for &(other_idx, _, _) in
+                    params_with_generics.iter().filter(|&&(other_idx, other_generic_param, _)| {
+                        if other_idx == idx {
                             return false;
                         }
                         let Some(other_generic_param) = other_generic_param else {
                             return false;
                         };
-                        if matched_inputs[(*other_idx).into()].is_some() {
+                        if matched_inputs[other_idx.into()].is_some() {
                             return false;
                         }
                         other_generic_param.name.ident() == generic_param.name.ident()
-                    },
-                ) {
+                    })
+                {
                     idxs_matched.push(other_idx);
                 }
 
@@ -2642,7 +2642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         def_id: DefId,
         is_method: bool,
-    ) -> Option<Vec<(Option<&hir::GenericParam<'_>>, &hir::Param<'_>)>> {
+    ) -> Option<Vec<(usize, Option<&hir::GenericParam<'_>>, &hir::Param<'_>)>> {
         let fn_node = self.tcx.hir().get_if_local(def_id)?;
         let fn_decl = fn_node.fn_decl()?;
 
@@ -2685,7 +2685,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         debug_assert_eq!(params.len(), generic_params.len());
-        Some(generic_params.into_iter().zip(params).collect())
+        Some(
+            generic_params
+                .into_iter()
+                .zip(params)
+                .enumerate()
+                .map(|(a, (b, c))| (a, b, c))
+                .collect(),
+        )
     }
 }
 
