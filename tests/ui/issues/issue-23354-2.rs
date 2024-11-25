@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:panic evaluated
+//@ check-run-results:panic evaluated
 //@ ignore-emscripten no processes
 
 #[allow(unused_variables)]

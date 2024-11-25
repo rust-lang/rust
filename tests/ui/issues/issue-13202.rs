@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:bad input
+//@ check-run-results:bad input
 //@ ignore-emscripten no processes
 
 fn main() {

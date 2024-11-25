@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:panicked
-//@ error-pattern:test-assert-owned
+//@ check-run-results:panicked
+//@ check-run-results:test-assert-owned
 //@ ignore-emscripten no processes
 
 #![allow(non_fmt_panics)]

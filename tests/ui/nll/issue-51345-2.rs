@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:explicit panic
+//@ check-run-results:thread 'main' panicked
+//@ check-run-results:explicit panic
 //@ ignore-emscripten no processes
 
 fn main() {

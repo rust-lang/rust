@@ -1,0 +1,3 @@
+thread 'main' panicked at $DIR/location-mod-by-zero.rs:5:13:
+attempt to calculate the remainder with a divisor of zero
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

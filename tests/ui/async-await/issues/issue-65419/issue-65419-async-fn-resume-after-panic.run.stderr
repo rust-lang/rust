@@ -1,0 +1,5 @@
+thread 'main' panicked at $DIR/issue-65419-async-fn-resume-after-panic.rs:15:5:
+explicit panic
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+thread 'main' panicked at $DIR/issue-65419-async-fn-resume-after-panic.rs:14:16:
+`async fn` resumed after panicking
