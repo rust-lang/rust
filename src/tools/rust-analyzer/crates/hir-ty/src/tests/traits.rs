@@ -4790,3 +4790,24 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
         "#]],
     )
 }
+
+#[test]
+fn recursive_tail_sized() {
+    check_infer(
+        r#"
+struct WeirdFoo(WeirdBar);
+struct WeirdBar(WeirdFoo);
+
+fn bar(v: *const ()) {
+    let _ = v as *const WeirdFoo;
+}
+    "#,
+        expect![[r#"
+            62..63 'v': *const ()
+            76..113 '{     ...Foo; }': ()
+            86..87 '_': *const WeirdFoo
+            90..91 'v': *const ()
+            90..110 'v as *...irdFoo': *const WeirdFoo
+        "#]],
+    );
+}

@@ -916,6 +916,32 @@ impl<'a> InferenceTable<'a> {
 
     /// Check if given type is `Sized` or not
     pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        let mut ty = ty.clone();
+        {
+            let mut structs = SmallVec::<[_; 8]>::new();
+            // Must use a loop here and not recursion because otherwise users will conduct completely
+            // artificial examples of structs that have themselves as the tail field and complain r-a crashes.
+            while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
+                let struct_data = self.db.struct_data(id);
+                if let Some((last_field, _)) = struct_data.variant_data.fields().iter().next_back()
+                {
+                    let last_field_ty = self.db.field_types(id.into())[last_field]
+                        .clone()
+                        .substitute(Interner, subst);
+                    if structs.contains(&ty) {
+                        // A struct recursively contains itself as a tail field somewhere.
+                        return true; // Don't overload the users with too many errors.
+                    }
+                    structs.push(ty);
+                    // Structs can have DST as its last field and such cases are not handled
+                    // as unsized by the chalk, so we do this manually.
+                    ty = last_field_ty;
+                } else {
+                    break;
+                };
+            }
+        }
+
         // Early return for some obvious types
         if matches!(
             ty.kind(Interner),
@@ -930,16 +956,6 @@ impl<'a> InferenceTable<'a> {
             return true;
         }
 
-        if let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
-            let struct_data = self.db.struct_data(id);
-            if let Some((last_field, _)) = struct_data.variant_data.fields().iter().last() {
-                let last_field_ty =
-                    self.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);
-                // Structs can have DST as its last field and such cases are not handled
-                // as unsized by the chalk, so we do this manually
-                return self.is_sized(&last_field_ty);
-            }
-        }
         let Some(sized) = self
             .db
             .lang_item(self.trait_env.krate, LangItem::Sized)
