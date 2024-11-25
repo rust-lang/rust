@@ -342,24 +342,32 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
-        // Switch to the 'normal' basic block if we did an `invoke` instead of a `call`
-        if let Some(dest) = dest {
-            self.switch_to_block(dest);
-        }
+        // Write results to outputs. We need to do this for all possible control flow.
+        //
+        // Note that `dest` maybe populated with unreachable_block when asm goto with outputs
+        // is used (because we need to codegen callbr which always needs a destination), so
+        // here we use the NORETURN option to determine if `dest` should be used.
+        for block in (if options.contains(InlineAsmOptions::NORETURN) { None } else { Some(dest) })
+            .into_iter()
+            .chain(labels.iter().copied().map(Some))
+        {
+            if let Some(block) = block {
+                self.switch_to_block(block);
+            }
 
-        // Write results to outputs
-        for (idx, op) in operands.iter().enumerate() {
-            if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
-            | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
-            {
-                let value = if output_types.len() == 1 {
-                    result
-                } else {
-                    self.extract_value(result, op_idx[&idx] as u64)
-                };
-                let value =
-                    llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
-                OperandValue::Immediate(value).store(self, place);
+            for (idx, op) in operands.iter().enumerate() {
+                if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
+                | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
+                {
+                    let value = if output_types.len() == 1 {
+                        result
+                    } else {
+                        self.extract_value(result, op_idx[&idx] as u64)
+                    };
+                    let value =
+                        llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
+                    OperandValue::Immediate(value).store(self, place);
+                }
             }
         }
     }
