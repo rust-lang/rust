@@ -1494,7 +1494,7 @@ pub const fn cold_path() {}
 /// This intrinsic does not have a stable counterpart.
 #[cfg_attr(
     bootstrap,
-    rustc_const_stable(feature = "const_likely", since = "CURRENT_RUSTC_VERSION")
+    rustc_const_stable(feature = "const_likely", since = "1.84.0")
 )]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
@@ -1526,7 +1526,7 @@ pub const fn likely(b: bool) -> bool {
 /// This intrinsic does not have a stable counterpart.
 #[cfg_attr(
     bootstrap,
-    rustc_const_stable(feature = "const_likely", since = "CURRENT_RUSTC_VERSION")
+    rustc_const_stable(feature = "const_likely", since = "1.84.0")
 )]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
@@ -3629,7 +3629,7 @@ pub(crate) macro const_eval_select {
 /// ```
 #[cfg_attr(
     bootstrap,
-    rustc_const_stable(feature = "const_is_val_statically_known", since = "CURRENT_RUSTC_VERSION")
+    rustc_const_stable(feature = "const_is_val_statically_known", since = "1.84.0")
 )]
 #[cfg_attr(not(bootstrap), rustc_const_stable_indirect)]
 #[rustc_nounwind]

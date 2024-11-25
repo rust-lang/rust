@@ -208,7 +208,7 @@ pub macro const_panic {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         #[inline(always)] // inline the wrapper
         #[track_caller]
-        #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "CURRENT_RUSTC_VERSION"))]
+        #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "1.84.0"))]
         const fn do_panic($($arg: $ty),*) -> ! {
             $crate::intrinsics::const_eval_select!(
                 @capture { $($arg: $ty = $arg),* } -> !:

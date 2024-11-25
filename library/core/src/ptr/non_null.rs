@@ -278,7 +278,7 @@ impl<T: ?Sized> NonNull<T> {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> NonZero<usize> {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
@@ -293,7 +293,7 @@ impl<T: ?Sized> NonNull<T> {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn with_addr(self, addr: NonZero<usize>) -> Self {
         // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
         unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
@@ -307,7 +307,7 @@ impl<T: ?Sized> NonNull<T> {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn map_addr(self, f: impl FnOnce(NonZero<usize>) -> NonZero<usize>) -> Self {
         self.with_addr(f(self.addr()))
     }

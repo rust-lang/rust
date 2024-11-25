@@ -1613,8 +1613,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_isqrt(), Some(3));")]
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2860,8 +2860,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

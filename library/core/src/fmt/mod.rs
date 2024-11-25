@@ -438,7 +438,7 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{:?}", std::env::current_dir()).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_arguments_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_arguments_as_str", since = "1.84.0")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
