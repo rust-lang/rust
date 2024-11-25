@@ -32,6 +32,7 @@ use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
 use std::path::PathBuf;
 use std::str::{self, CharIndices};
+use std::sync::OnceLock;
 
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
@@ -1882,9 +1883,12 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<Cow<'static, str>, usize>,
-    defined_ids: FxHashSet<&'static str>,
     existing_footnotes: usize,
 }
+
+// The map is pre-initialized and then can be used as is to prevent cloning it for each item
+// (in the sidebar rendering).
+static DEFAULT_ID_MAP: OnceLock<FxHashSet<&'static str>> = OnceLock::new();
 
 fn init_id_map() -> FxHashSet<&'static str> {
     let mut map = FxHashSet::default();
@@ -1942,14 +1946,14 @@ fn init_id_map() -> FxHashSet<&'static str> {
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: FxHashMap::default(), defined_ids: init_id_map(), existing_footnotes: 0 }
+        IdMap { map: FxHashMap::default(), existing_footnotes: 0 }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
         let id = match self.map.get_mut(candidate.as_ref()) {
             None => {
                 let candidate = candidate.to_string();
-                if self.defined_ids.contains(candidate.as_str()) {
+                if DEFAULT_ID_MAP.get_or_init(init_id_map).contains(candidate.as_str()) {
                     let id = format!("{}-{}", candidate, 1);
                     self.map.insert(candidate.into(), 2);
                     id
