@@ -18,7 +18,7 @@ use stdarch_test::assert_instr;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
     let a = a.as_i8x16();
-    let zero = i8x16::splat(0);
+    let zero = i8x16::ZERO;
     let r = simd_select::<m8x16, _>(simd_lt(a, zero), simd_neg(a), a);
     transmute(r)
 }
@@ -34,7 +34,7 @@ pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
     let a = a.as_i16x8();
-    let zero = i16x8::splat(0);
+    let zero = i16x8::ZERO;
     let r = simd_select::<m16x8, _>(simd_lt(a, zero), simd_neg(a), a);
     transmute(r)
 }
@@ -50,7 +50,7 @@ pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_abs_epi32(a: __m128i) -> __m128i {
     let a = a.as_i32x4();
-    let zero = i32x4::splat(0);
+    let zero = i32x4::ZERO;
     let r = simd_select::<m32x4, _>(simd_lt(a, zero), simd_neg(a), a);
     transmute(r)
 }
@@ -103,12 +103,12 @@ pub unsafe fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
     if IMM8 > 32 {
-        return _mm_set1_epi8(0);
+        return _mm_setzero_si128();
     }
     // If palignr is shifting the pair of input vectors more than one lane,
     // but less than two lanes, convert to shifting in zeroes.
     let (a, b) = if IMM8 > 16 {
-        (_mm_set1_epi8(0), a)
+        (_mm_setzero_si128(), a)
     } else {
         (a, b)
     };

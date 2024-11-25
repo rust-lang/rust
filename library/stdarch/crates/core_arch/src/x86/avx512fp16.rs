@@ -239,7 +239,7 @@ pub unsafe fn _mm512_setr_ph(
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_setzero_ph() -> __m128h {
-    transmute(f16x8::splat(0.0))
+    transmute(f16x8::ZERO)
 }
 
 /// Return vector of type __m256h with all elements set to zero.
@@ -249,7 +249,7 @@ pub unsafe fn _mm_setzero_ph() -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm256_setzero_ph() -> __m256h {
-    transmute(f16x16::splat(0.0))
+    transmute(f16x16::ZERO)
 }
 
 /// Return vector of type __m512h with all elements set to zero.
@@ -259,7 +259,7 @@ pub unsafe fn _mm256_setzero_ph() -> __m256h {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm512_setzero_ph() -> __m512h {
-    transmute(f16x32::splat(0.0))
+    transmute(f16x32::ZERO)
 }
 
 /// Return vector of type `__m128h` with undefined elements. In practice, this returns the all-zero
@@ -270,7 +270,7 @@ pub unsafe fn _mm512_setzero_ph() -> __m512h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_undefined_ph() -> __m128h {
-    transmute(f16x8::splat(0.0))
+    transmute(f16x8::ZERO)
 }
 
 /// Return vector of type `__m256h` with undefined elements. In practice, this returns the all-zero
@@ -281,7 +281,7 @@ pub unsafe fn _mm_undefined_ph() -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm256_undefined_ph() -> __m256h {
-    transmute(f16x16::splat(0.0))
+    transmute(f16x16::ZERO)
 }
 
 /// Return vector of type `__m512h` with undefined elements. In practice, this returns the all-zero
@@ -292,7 +292,7 @@ pub unsafe fn _mm256_undefined_ph() -> __m256h {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm512_undefined_ph() -> __m512h {
-    transmute(f16x32::splat(0.0))
+    transmute(f16x32::ZERO)
 }
 
 /// Cast vector of type `__m128d` to type `__m128h`. This intrinsic is only used for compilation and
@@ -15986,7 +15986,7 @@ pub unsafe fn _mm_cvtsi128_si16(a: __m128i) -> i16 {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_cvtsi16_si128(a: i16) -> __m128i {
-    transmute(simd_insert!(i16x8::splat(0), 0, a))
+    transmute(simd_insert!(i16x8::ZERO, 0, a))
 }
 
 #[allow(improper_ctypes)]

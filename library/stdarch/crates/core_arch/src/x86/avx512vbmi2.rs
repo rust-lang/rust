@@ -247,11 +247,7 @@ pub unsafe fn _mm512_mask_compress_epi16(src: __m512i, k: __mmask32, a: __m512i)
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
 pub unsafe fn _mm512_maskz_compress_epi16(k: __mmask32, a: __m512i) -> __m512i {
-    transmute(vpcompressw(
-        a.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        k,
-    ))
+    transmute(vpcompressw(a.as_i16x32(), i16x32::ZERO, k))
 }
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -273,11 +269,7 @@ pub unsafe fn _mm256_mask_compress_epi16(src: __m256i, k: __mmask16, a: __m256i)
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
 pub unsafe fn _mm256_maskz_compress_epi16(k: __mmask16, a: __m256i) -> __m256i {
-    transmute(vpcompressw256(
-        a.as_i16x16(),
-        _mm256_setzero_si256().as_i16x16(),
-        k,
-    ))
+    transmute(vpcompressw256(a.as_i16x16(), i16x16::ZERO, k))
 }
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -299,11 +291,7 @@ pub unsafe fn _mm_mask_compress_epi16(src: __m128i, k: __mmask8, a: __m128i) -> 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
 pub unsafe fn _mm_maskz_compress_epi16(k: __mmask8, a: __m128i) -> __m128i {
-    transmute(vpcompressw128(
-        a.as_i16x8(),
-        _mm_setzero_si128().as_i16x8(),
-        k,
-    ))
+    transmute(vpcompressw128(a.as_i16x8(), i16x8::ZERO, k))
 }
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -325,11 +313,7 @@ pub unsafe fn _mm512_mask_compress_epi8(src: __m512i, k: __mmask64, a: __m512i) 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
 pub unsafe fn _mm512_maskz_compress_epi8(k: __mmask64, a: __m512i) -> __m512i {
-    transmute(vpcompressb(
-        a.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        k,
-    ))
+    transmute(vpcompressb(a.as_i8x64(), i8x64::ZERO, k))
 }
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -351,11 +335,7 @@ pub unsafe fn _mm256_mask_compress_epi8(src: __m256i, k: __mmask32, a: __m256i) 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
 pub unsafe fn _mm256_maskz_compress_epi8(k: __mmask32, a: __m256i) -> __m256i {
-    transmute(vpcompressb256(
-        a.as_i8x32(),
-        _mm256_setzero_si256().as_i8x32(),
-        k,
-    ))
+    transmute(vpcompressb256(a.as_i8x32(), i8x32::ZERO, k))
 }
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
@@ -377,11 +357,7 @@ pub unsafe fn _mm_mask_compress_epi8(src: __m128i, k: __mmask16, a: __m128i) -> 
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
 pub unsafe fn _mm_maskz_compress_epi8(k: __mmask16, a: __m128i) -> __m128i {
-    transmute(vpcompressb128(
-        a.as_i8x16(),
-        _mm_setzero_si128().as_i8x16(),
-        k,
-    ))
+    transmute(vpcompressb128(a.as_i8x16(), i8x16::ZERO, k))
 }
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -403,11 +379,7 @@ pub unsafe fn _mm512_mask_expand_epi16(src: __m512i, k: __mmask32, a: __m512i) -
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 pub unsafe fn _mm512_maskz_expand_epi16(k: __mmask32, a: __m512i) -> __m512i {
-    transmute(vpexpandw(
-        a.as_i16x32(),
-        _mm512_setzero_si512().as_i16x32(),
-        k,
-    ))
+    transmute(vpexpandw(a.as_i16x32(), i16x32::ZERO, k))
 }
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -429,11 +401,7 @@ pub unsafe fn _mm256_mask_expand_epi16(src: __m256i, k: __mmask16, a: __m256i) -
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 pub unsafe fn _mm256_maskz_expand_epi16(k: __mmask16, a: __m256i) -> __m256i {
-    transmute(vpexpandw256(
-        a.as_i16x16(),
-        _mm256_setzero_si256().as_i16x16(),
-        k,
-    ))
+    transmute(vpexpandw256(a.as_i16x16(), i16x16::ZERO, k))
 }
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -455,11 +423,7 @@ pub unsafe fn _mm_mask_expand_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
 pub unsafe fn _mm_maskz_expand_epi16(k: __mmask8, a: __m128i) -> __m128i {
-    transmute(vpexpandw128(
-        a.as_i16x8(),
-        _mm_setzero_si128().as_i16x8(),
-        k,
-    ))
+    transmute(vpexpandw128(a.as_i16x8(), i16x8::ZERO, k))
 }
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -481,11 +445,7 @@ pub unsafe fn _mm512_mask_expand_epi8(src: __m512i, k: __mmask64, a: __m512i) ->
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 pub unsafe fn _mm512_maskz_expand_epi8(k: __mmask64, a: __m512i) -> __m512i {
-    transmute(vpexpandb(
-        a.as_i8x64(),
-        _mm512_setzero_si512().as_i8x64(),
-        k,
-    ))
+    transmute(vpexpandb(a.as_i8x64(), i8x64::ZERO, k))
 }
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -507,11 +467,7 @@ pub unsafe fn _mm256_mask_expand_epi8(src: __m256i, k: __mmask32, a: __m256i) ->
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 pub unsafe fn _mm256_maskz_expand_epi8(k: __mmask32, a: __m256i) -> __m256i {
-    transmute(vpexpandb256(
-        a.as_i8x32(),
-        _mm256_setzero_si256().as_i8x32(),
-        k,
-    ))
+    transmute(vpexpandb256(a.as_i8x32(), i8x32::ZERO, k))
 }
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -533,11 +489,7 @@ pub unsafe fn _mm_mask_expand_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
 pub unsafe fn _mm_maskz_expand_epi8(k: __mmask16, a: __m128i) -> __m128i {
-    transmute(vpexpandb128(
-        a.as_i8x16(),
-        _mm_setzero_si128().as_i8x16(),
-        k,
-    ))
+    transmute(vpexpandb128(a.as_i8x16(), i8x16::ZERO, k))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
@@ -572,8 +524,7 @@ pub unsafe fn _mm512_mask_shldv_epi64(a: __m512i, k: __mmask8, b: __m512i, c: __
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub unsafe fn _mm512_maskz_shldv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: __m512i) -> __m512i {
     let shf = _mm512_shldv_epi64(a, b, c).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
@@ -608,8 +559,7 @@ pub unsafe fn _mm256_mask_shldv_epi64(a: __m256i, k: __mmask8, b: __m256i, c: __
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub unsafe fn _mm256_maskz_shldv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     let shf = _mm256_shldv_epi64(a, b, c).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
@@ -644,8 +594,7 @@ pub unsafe fn _mm_mask_shldv_epi64(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshldvq))]
 pub unsafe fn _mm_maskz_shldv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shldv_epi64(a, b, c).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
@@ -685,8 +634,7 @@ pub unsafe fn _mm512_maskz_shldv_epi32(
     c: __m512i,
 ) -> __m512i {
     let shf = _mm512_shldv_epi32(a, b, c).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
@@ -721,8 +669,7 @@ pub unsafe fn _mm256_mask_shldv_epi32(a: __m256i, k: __mmask8, b: __m256i, c: __
 #[cfg_attr(test, assert_instr(vpshldvd))]
 pub unsafe fn _mm256_maskz_shldv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     let shf = _mm256_shldv_epi32(a, b, c).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
@@ -757,8 +704,7 @@ pub unsafe fn _mm_mask_shldv_epi32(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshldvd))]
 pub unsafe fn _mm_maskz_shldv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shldv_epi32(a, b, c).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
@@ -798,8 +744,7 @@ pub unsafe fn _mm512_maskz_shldv_epi16(
     c: __m512i,
 ) -> __m512i {
     let shf = _mm512_shldv_epi16(a, b, c).as_i16x32();
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x32::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
@@ -839,8 +784,7 @@ pub unsafe fn _mm256_maskz_shldv_epi16(
     c: __m256i,
 ) -> __m256i {
     let shf = _mm256_shldv_epi16(a, b, c).as_i16x16();
-    let zero = _mm256_setzero_si256().as_i16x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x16::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
@@ -875,8 +819,7 @@ pub unsafe fn _mm_mask_shldv_epi16(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshldvw))]
 pub unsafe fn _mm_maskz_shldv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shldv_epi16(a, b, c).as_i16x8();
-    let zero = _mm_setzero_si128().as_i16x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
@@ -911,8 +854,7 @@ pub unsafe fn _mm512_mask_shrdv_epi64(a: __m512i, k: __mmask8, b: __m512i, c: __
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub unsafe fn _mm512_maskz_shrdv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: __m512i) -> __m512i {
     let shf = _mm512_shrdv_epi64(a, b, c).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
@@ -947,8 +889,7 @@ pub unsafe fn _mm256_mask_shrdv_epi64(a: __m256i, k: __mmask8, b: __m256i, c: __
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub unsafe fn _mm256_maskz_shrdv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     let shf = _mm256_shrdv_epi64(a, b, c).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
@@ -983,8 +924,7 @@ pub unsafe fn _mm_mask_shrdv_epi64(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshrdvq))]
 pub unsafe fn _mm_maskz_shrdv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shrdv_epi64(a, b, c).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
@@ -1024,8 +964,7 @@ pub unsafe fn _mm512_maskz_shrdv_epi32(
     c: __m512i,
 ) -> __m512i {
     let shf = _mm512_shrdv_epi32(a, b, c).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
@@ -1060,8 +999,7 @@ pub unsafe fn _mm256_mask_shrdv_epi32(a: __m256i, k: __mmask8, b: __m256i, c: __
 #[cfg_attr(test, assert_instr(vpshrdvd))]
 pub unsafe fn _mm256_maskz_shrdv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: __m256i) -> __m256i {
     let shf = _mm256_shrdv_epi32(a, b, c).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
@@ -1096,8 +1034,7 @@ pub unsafe fn _mm_mask_shrdv_epi32(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshrdvd))]
 pub unsafe fn _mm_maskz_shrdv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shrdv_epi32(a, b, c).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
@@ -1137,8 +1074,7 @@ pub unsafe fn _mm512_maskz_shrdv_epi16(
     c: __m512i,
 ) -> __m512i {
     let shf = _mm512_shrdv_epi16(a, b, c).as_i16x32();
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x32::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
@@ -1178,8 +1114,7 @@ pub unsafe fn _mm256_maskz_shrdv_epi16(
     c: __m256i,
 ) -> __m256i {
     let shf = _mm256_shrdv_epi16(a, b, c).as_i16x16();
-    let zero = _mm256_setzero_si256().as_i16x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x16::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
@@ -1214,8 +1149,7 @@ pub unsafe fn _mm_mask_shrdv_epi16(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 #[cfg_attr(test, assert_instr(vpshrdvw))]
 pub unsafe fn _mm_maskz_shrdv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m128i) -> __m128i {
     let shf = _mm_shrdv_epi16(a, b, c).as_i16x8();
-    let zero = _mm_setzero_si128().as_i16x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
@@ -1265,8 +1199,7 @@ pub unsafe fn _mm512_maskz_shldi_epi64<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shldi_epi64::<IMM8>(a, b).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
@@ -1316,8 +1249,7 @@ pub unsafe fn _mm256_maskz_shldi_epi64<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shldi_epi64::<IMM8>(a, b).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
@@ -1367,8 +1299,7 @@ pub unsafe fn _mm_maskz_shldi_epi64<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shldi_epi64::<IMM8>(a, b).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
@@ -1418,8 +1349,7 @@ pub unsafe fn _mm512_maskz_shldi_epi32<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shldi_epi32::<IMM8>(a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
@@ -1469,8 +1399,7 @@ pub unsafe fn _mm256_maskz_shldi_epi32<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shldi_epi32::<IMM8>(a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
@@ -1520,8 +1449,7 @@ pub unsafe fn _mm_maskz_shldi_epi32<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shldi_epi32::<IMM8>(a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
@@ -1571,8 +1499,7 @@ pub unsafe fn _mm512_maskz_shldi_epi16<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shldi_epi16::<IMM8>(a, b).as_i16x32();
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x32::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
@@ -1622,8 +1549,7 @@ pub unsafe fn _mm256_maskz_shldi_epi16<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shldi_epi16::<IMM8>(a, b).as_i16x16();
-    let zero = _mm256_setzero_si256().as_i16x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x16::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
@@ -1673,8 +1599,7 @@ pub unsafe fn _mm_maskz_shldi_epi16<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shldi_epi16::<IMM8>(a, b).as_i16x8();
-    let zero = _mm_setzero_si128().as_i16x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
@@ -1724,8 +1649,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shrdi_epi64::<IMM8>(a, b).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x8::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
@@ -1775,8 +1699,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shrdi_epi64::<IMM8>(a, b).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x4::ZERO))
 }
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
@@ -1826,8 +1749,7 @@ pub unsafe fn _mm_maskz_shrdi_epi64<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shrdi_epi64::<IMM8>(a, b).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i64x2::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
@@ -1877,8 +1799,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shrdi_epi32::<IMM8>(a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x16::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
@@ -1928,8 +1849,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shrdi_epi32::<IMM8>(a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x8::ZERO))
 }
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
@@ -1979,8 +1899,7 @@ pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shrdi_epi32::<IMM8>(a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i32x4::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
@@ -2030,8 +1949,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm512_shrdi_epi16::<IMM8>(a, b).as_i16x32();
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x32::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
@@ -2081,8 +1999,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm256_shrdi_epi16::<IMM8>(a, b).as_i16x16();
-    let zero = _mm256_setzero_si256().as_i16x16();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x16::ZERO))
 }
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
@@ -2132,8 +2049,7 @@ pub unsafe fn _mm_maskz_shrdi_epi16<const IMM8: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
     let shf = _mm_shrdi_epi16::<IMM8>(a, b).as_i16x8();
-    let zero = _mm_setzero_si128().as_i16x8();
-    transmute(simd_select_bitmask(k, shf, zero))
+    transmute(simd_select_bitmask(k, shf, i16x8::ZERO))
 }
 
 #[allow(improper_ctypes)]

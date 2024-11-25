@@ -46,8 +46,7 @@ pub unsafe fn _mm512_maskz_permutex2var_epi8(
     b: __m512i,
 ) -> __m512i {
     let permute = _mm512_permutex2var_epi8(a, idx, b).as_i8x64();
-    let zero = _mm512_setzero_si512().as_i8x64();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x64::ZERO))
 }
 
 /// Shuffle 8-bit integers in a and b across lanes using the corresponding selector and index in idx, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -109,8 +108,7 @@ pub unsafe fn _mm256_maskz_permutex2var_epi8(
     b: __m256i,
 ) -> __m256i {
     let permute = _mm256_permutex2var_epi8(a, idx, b).as_i8x32();
-    let zero = _mm256_setzero_si256().as_i8x32();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x32::ZERO))
 }
 
 /// Shuffle 8-bit integers in a and b across lanes using the corresponding selector and index in idx, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -172,8 +170,7 @@ pub unsafe fn _mm_maskz_permutex2var_epi8(
     b: __m128i,
 ) -> __m128i {
     let permute = _mm_permutex2var_epi8(a, idx, b).as_i8x16();
-    let zero = _mm_setzero_si128().as_i8x16();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x16::ZERO))
 }
 
 /// Shuffle 8-bit integers in a and b across lanes using the corresponding selector and index in idx, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
@@ -230,8 +227,7 @@ pub unsafe fn _mm512_mask_permutexvar_epi8(
 #[cfg_attr(test, assert_instr(vpermb))]
 pub unsafe fn _mm512_maskz_permutexvar_epi8(k: __mmask64, idx: __m512i, a: __m512i) -> __m512i {
     let permute = _mm512_permutexvar_epi8(idx, a).as_i8x64();
-    let zero = _mm512_setzero_si512().as_i8x64();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x64::ZERO))
 }
 
 /// Shuffle 8-bit integers in a across lanes using the corresponding index in idx, and store the results in dst.
@@ -271,8 +267,7 @@ pub unsafe fn _mm256_mask_permutexvar_epi8(
 #[cfg_attr(test, assert_instr(vpermb))]
 pub unsafe fn _mm256_maskz_permutexvar_epi8(k: __mmask32, idx: __m256i, a: __m256i) -> __m256i {
     let permute = _mm256_permutexvar_epi8(idx, a).as_i8x32();
-    let zero = _mm256_setzero_si256().as_i8x32();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x32::ZERO))
 }
 
 /// Shuffle 8-bit integers in a across lanes using the corresponding index in idx, and store the results in dst.
@@ -312,8 +307,7 @@ pub unsafe fn _mm_mask_permutexvar_epi8(
 #[cfg_attr(test, assert_instr(vpermb))]
 pub unsafe fn _mm_maskz_permutexvar_epi8(k: __mmask16, idx: __m128i, a: __m128i) -> __m128i {
     let permute = _mm_permutexvar_epi8(idx, a).as_i8x16();
-    let zero = _mm_setzero_si128().as_i8x16();
-    transmute(simd_select_bitmask(k, permute, zero))
+    transmute(simd_select_bitmask(k, permute, i8x16::ZERO))
 }
 
 /// For each 64-bit element in b, select 8 unaligned bytes using a byte-granular shift control within the corresponding 64-bit element of a, and store the 8 assembled bytes to the corresponding 64-bit element of dst.
@@ -353,8 +347,7 @@ pub unsafe fn _mm512_mask_multishift_epi64_epi8(
 #[cfg_attr(test, assert_instr(vpmultishiftqb))]
 pub unsafe fn _mm512_maskz_multishift_epi64_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     let multishift = _mm512_multishift_epi64_epi8(a, b).as_i8x64();
-    let zero = _mm512_setzero_si512().as_i8x64();
-    transmute(simd_select_bitmask(k, multishift, zero))
+    transmute(simd_select_bitmask(k, multishift, i8x64::ZERO))
 }
 
 /// For each 64-bit element in b, select 8 unaligned bytes using a byte-granular shift control within the corresponding 64-bit element of a, and store the 8 assembled bytes to the corresponding 64-bit element of dst.
@@ -394,8 +387,7 @@ pub unsafe fn _mm256_mask_multishift_epi64_epi8(
 #[cfg_attr(test, assert_instr(vpmultishiftqb))]
 pub unsafe fn _mm256_maskz_multishift_epi64_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     let multishift = _mm256_multishift_epi64_epi8(a, b).as_i8x32();
-    let zero = _mm256_setzero_si256().as_i8x32();
-    transmute(simd_select_bitmask(k, multishift, zero))
+    transmute(simd_select_bitmask(k, multishift, i8x32::ZERO))
 }
 
 /// For each 64-bit element in b, select 8 unaligned bytes using a byte-granular shift control within the corresponding 64-bit element of a, and store the 8 assembled bytes to the corresponding 64-bit element of dst.
@@ -435,8 +427,7 @@ pub unsafe fn _mm_mask_multishift_epi64_epi8(
 #[cfg_attr(test, assert_instr(vpmultishiftqb))]
 pub unsafe fn _mm_maskz_multishift_epi64_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     let multishift = _mm_multishift_epi64_epi8(a, b).as_i8x16();
-    let zero = _mm_setzero_si128().as_i8x16();
-    transmute(simd_select_bitmask(k, multishift, zero))
+    transmute(simd_select_bitmask(k, multishift, i8x16::ZERO))
 }
 
 #[allow(improper_ctypes)]

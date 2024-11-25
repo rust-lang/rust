@@ -983,7 +983,7 @@ pub unsafe fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 #[cfg_attr(test, assert_instr(xorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setzero_ps() -> __m128 {
-    __m128([0.0, 0.0, 0.0, 0.0])
+    const { mem::zeroed() }
 }
 
 /// A utility function for creating masks to use with Intel shuffle and
@@ -1089,7 +1089,7 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
-    let mask: i32x4 = simd_lt(transmute(a), i32x4::splat(0));
+    let mask: i32x4 = simd_lt(transmute(a), i32x4::ZERO);
     simd_bitmask::<i32x4, u8>(mask).into()
 }
 
@@ -1881,7 +1881,7 @@ pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_undefined_ps() -> __m128 {
-    _mm_set1_ps(0.0)
+    const { mem::zeroed() }
 }
 
 /// Transpose the 4x4 matrix formed by 4 rows of __m128 in place.

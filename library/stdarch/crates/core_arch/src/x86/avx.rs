@@ -515,7 +515,7 @@ pub unsafe fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vblendvpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
-    let mask: i64x4 = simd_lt(transmute::<_, i64x4>(c), i64x4::splat(0));
+    let mask: i64x4 = simd_lt(transmute::<_, i64x4>(c), i64x4::ZERO);
     transmute(simd_select(mask, b.as_f64x4(), a.as_f64x4()))
 }
 
@@ -528,7 +528,7 @@ pub unsafe fn _mm256_blendv_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vblendvps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
-    let mask: i32x8 = simd_lt(transmute::<_, i32x8>(c), i32x8::splat(0));
+    let mask: i32x8 = simd_lt(transmute::<_, i32x8>(c), i32x8::ZERO);
     transmute(simd_select(mask, b.as_f32x8(), a.as_f32x8()))
 }
 
@@ -983,11 +983,7 @@ pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
     static_assert_uimm_bits!(IMM1, 1);
-    let dst: i64x2 = simd_shuffle!(
-        a.as_i64x4(),
-        _mm256_undefined_si256().as_i64x4(),
-        [[0, 1], [2, 3]][IMM1 as usize],
-    );
+    let dst: i64x2 = simd_shuffle!(a.as_i64x4(), i64x4::ZERO, [[0, 1], [2, 3]][IMM1 as usize],);
     transmute(dst)
 }
 
@@ -2139,7 +2135,7 @@ pub unsafe fn _mm_testnzc_ps(a: __m128, b: __m128) -> i32 {
 pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
-    let mask: i64x4 = simd_lt(transmute(a), i64x4::splat(0));
+    let mask: i64x4 = simd_lt(transmute(a), i64x4::ZERO);
     simd_bitmask::<i64x4, u8>(mask).into()
 }
 
@@ -2155,7 +2151,7 @@ pub unsafe fn _mm256_movemask_pd(a: __m256d) -> i32 {
 pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
     // Propagate the highest bit to the rest, because simd_bitmask
     // requires all-1 or all-0.
-    let mask: i32x8 = simd_lt(transmute(a), i32x8::splat(0));
+    let mask: i32x8 = simd_lt(transmute(a), i32x8::ZERO);
     simd_bitmask::<i32x8, u8>(mask).into()
 }
 
@@ -2167,7 +2163,7 @@ pub unsafe fn _mm256_movemask_ps(a: __m256) -> i32 {
 #[cfg_attr(test, assert_instr(vxorp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_setzero_pd() -> __m256d {
-    _mm256_set1_pd(0.0)
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type __m256 with all elements set to zero.
@@ -2178,7 +2174,7 @@ pub unsafe fn _mm256_setzero_pd() -> __m256d {
 #[cfg_attr(test, assert_instr(vxorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_setzero_ps() -> __m256 {
-    _mm256_set1_ps(0.0)
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type __m256i with all elements set to zero.
@@ -2189,7 +2185,7 @@ pub unsafe fn _mm256_setzero_ps() -> __m256 {
 #[cfg_attr(test, assert_instr(vxor))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_setzero_si256() -> __m256i {
-    _mm256_set1_epi8(0)
+    const { mem::zeroed() }
 }
 
 /// Sets packed double-precision (64-bit) floating-point elements in returned
@@ -2722,7 +2718,7 @@ pub unsafe fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     let a = a.as_i64x2();
-    let undefined = _mm_undefined_si128().as_i64x2();
+    let undefined = i64x2::ZERO;
     let dst: i64x4 = simd_shuffle!(a, undefined, [0, 1, 2, 2]);
     transmute(dst)
 }
@@ -2752,7 +2748,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
-    let b = _mm_setzero_si128().as_i64x2();
+    let b = i64x2::ZERO;
     let dst: i64x4 = simd_shuffle!(a.as_i64x2(), b, [0, 1, 2, 3]);
     transmute(dst)
 }
@@ -2782,7 +2778,7 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_ps() -> __m256 {
-    _mm256_set1_ps(0.0)
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type `__m256d` with indeterminate elements.
@@ -2795,7 +2791,7 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_pd() -> __m256d {
-    _mm256_set1_pd(0.0)
+    const { mem::zeroed() }
 }
 
 /// Returns vector of type __m256i with with indeterminate elements.
@@ -2808,7 +2804,7 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
-    __m256i([0, 0, 0, 0])
+    const { mem::zeroed() }
 }
 
 /// Sets packed __m256 returned vector with the supplied values.

@@ -10,6 +10,9 @@ macro_rules! simd_ty {
 
         #[allow(clippy::use_self)]
         impl $id {
+            /// A value of this type where all elements are zeroed out.
+            pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
+
             #[inline(always)]
             pub(crate) const fn new($($param_name: $elem_type),*) -> Self {
                 $id([$($param_name),*])

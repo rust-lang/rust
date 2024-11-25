@@ -7,6 +7,9 @@
 //!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
+use crate::core_arch::simd::i16x16;
+use crate::core_arch::simd::i16x32;
+use crate::core_arch::simd::i16x8;
 use crate::core_arch::simd::i8x16;
 use crate::core_arch::simd::i8x32;
 use crate::core_arch::simd::i8x64;
@@ -17,9 +20,6 @@ use crate::core_arch::x86::__mmask16;
 use crate::core_arch::x86::__mmask32;
 use crate::core_arch::x86::__mmask64;
 use crate::core_arch::x86::__mmask8;
-use crate::core_arch::x86::_mm256_setzero_si256;
-use crate::core_arch::x86::_mm512_setzero_si512;
-use crate::core_arch::x86::_mm_setzero_si128;
 use crate::core_arch::x86::m128iExt;
 use crate::core_arch::x86::m256iExt;
 use crate::core_arch::x86::m512iExt;
@@ -61,8 +61,11 @@ pub unsafe fn _mm512_popcnt_epi16(a: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub unsafe fn _mm512_maskz_popcnt_epi16(k: __mmask32, a: __m512i) -> __m512i {
-    let zero = _mm512_setzero_si512().as_i16x32();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i16x32()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i16x32()),
+        i16x32::ZERO,
+    ))
 }
 
 /// For each packed 16-bit integer maps the value to the number of logical 1 bits.
@@ -105,8 +108,11 @@ pub unsafe fn _mm256_popcnt_epi16(a: __m256i) -> __m256i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub unsafe fn _mm256_maskz_popcnt_epi16(k: __mmask16, a: __m256i) -> __m256i {
-    let zero = _mm256_setzero_si256().as_i16x16();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i16x16()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i16x16()),
+        i16x16::ZERO,
+    ))
 }
 
 /// For each packed 16-bit integer maps the value to the number of logical 1 bits.
@@ -149,8 +155,11 @@ pub unsafe fn _mm_popcnt_epi16(a: __m128i) -> __m128i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntw))]
 pub unsafe fn _mm_maskz_popcnt_epi16(k: __mmask8, a: __m128i) -> __m128i {
-    let zero = _mm_setzero_si128().as_i16x8();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i16x8()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i16x8()),
+        i16x8::ZERO,
+    ))
 }
 
 /// For each packed 16-bit integer maps the value to the number of logical 1 bits.
@@ -193,8 +202,11 @@ pub unsafe fn _mm512_popcnt_epi8(a: __m512i) -> __m512i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub unsafe fn _mm512_maskz_popcnt_epi8(k: __mmask64, a: __m512i) -> __m512i {
-    let zero = _mm512_setzero_si512().as_i8x64();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i8x64()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i8x64()),
+        i8x64::ZERO,
+    ))
 }
 
 /// For each packed 8-bit integer maps the value to the number of logical 1 bits.
@@ -237,8 +249,11 @@ pub unsafe fn _mm256_popcnt_epi8(a: __m256i) -> __m256i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub unsafe fn _mm256_maskz_popcnt_epi8(k: __mmask32, a: __m256i) -> __m256i {
-    let zero = _mm256_setzero_si256().as_i8x32();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i8x32()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i8x32()),
+        i8x32::ZERO,
+    ))
 }
 
 /// For each packed 8-bit integer maps the value to the number of logical 1 bits.
@@ -281,8 +296,11 @@ pub unsafe fn _mm_popcnt_epi8(a: __m128i) -> __m128i {
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpopcntb))]
 pub unsafe fn _mm_maskz_popcnt_epi8(k: __mmask16, a: __m128i) -> __m128i {
-    let zero = _mm_setzero_si128().as_i8x16();
-    transmute(simd_select_bitmask(k, simd_ctpop(a.as_i8x16()), zero))
+    transmute(simd_select_bitmask(
+        k,
+        simd_ctpop(a.as_i8x16()),
+        i8x16::ZERO,
+    ))
 }
 
 /// For each packed 8-bit integer maps the value to the number of logical 1 bits.

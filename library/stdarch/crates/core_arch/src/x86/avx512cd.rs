@@ -102,8 +102,7 @@ pub unsafe fn _mm512_mask_conflict_epi32(src: __m512i, k: __mmask16, a: __m512i)
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm512_maskz_conflict_epi32(k: __mmask16, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi32(a).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i32x16::ZERO))
 }
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
@@ -138,8 +137,7 @@ pub unsafe fn _mm256_mask_conflict_epi32(src: __m256i, k: __mmask8, a: __m256i) 
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm256_maskz_conflict_epi32(k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi32(a).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i32x8::ZERO))
 }
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
@@ -174,8 +172,7 @@ pub unsafe fn _mm_mask_conflict_epi32(src: __m128i, k: __mmask8, a: __m128i) -> 
 #[cfg_attr(test, assert_instr(vpconflictd))]
 pub unsafe fn _mm_maskz_conflict_epi32(k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi32(a).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i32x4::ZERO))
 }
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
@@ -210,8 +207,7 @@ pub unsafe fn _mm512_mask_conflict_epi64(src: __m512i, k: __mmask8, a: __m512i) 
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm512_maskz_conflict_epi64(k: __mmask8, a: __m512i) -> __m512i {
     let conflict = _mm512_conflict_epi64(a).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i64x8::ZERO))
 }
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
@@ -246,8 +242,7 @@ pub unsafe fn _mm256_mask_conflict_epi64(src: __m256i, k: __mmask8, a: __m256i) 
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm256_maskz_conflict_epi64(k: __mmask8, a: __m256i) -> __m256i {
     let conflict = _mm256_conflict_epi64(a).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i64x4::ZERO))
 }
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
@@ -282,8 +277,7 @@ pub unsafe fn _mm_mask_conflict_epi64(src: __m128i, k: __mmask8, a: __m128i) -> 
 #[cfg_attr(test, assert_instr(vpconflictq))]
 pub unsafe fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
     let conflict = _mm_conflict_epi64(a).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, conflict, zero))
+    transmute(simd_select_bitmask(k, conflict, i64x2::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
@@ -318,8 +312,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) ->
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi32(a).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i32x16::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
@@ -354,8 +347,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> 
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi32(a).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i32x8::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
@@ -390,8 +382,7 @@ pub unsafe fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m
 #[cfg_attr(test, assert_instr(vplzcntd))]
 pub unsafe fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi32(a).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i32x4::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
@@ -426,8 +417,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> 
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
     let zerocount = _mm512_lzcnt_epi64(a).as_i64x8();
-    let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i64x8::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
@@ -462,8 +452,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> 
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
     let zerocount = _mm256_lzcnt_epi64(a).as_i64x4();
-    let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i64x4::ZERO))
 }
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
@@ -498,8 +487,7 @@ pub unsafe fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m
 #[cfg_attr(test, assert_instr(vplzcntq))]
 pub unsafe fn _mm_maskz_lzcnt_epi64(k: __mmask8, a: __m128i) -> __m128i {
     let zerocount = _mm_lzcnt_epi64(a).as_i64x2();
-    let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, zerocount, zero))
+    transmute(simd_select_bitmask(k, zerocount, i64x2::ZERO))
 }
 
 #[allow(improper_ctypes)]

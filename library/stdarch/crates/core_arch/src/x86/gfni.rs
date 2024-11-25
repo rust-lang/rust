@@ -16,9 +16,6 @@ use crate::core_arch::x86::__m512i;
 use crate::core_arch::x86::__mmask16;
 use crate::core_arch::x86::__mmask32;
 use crate::core_arch::x86::__mmask64;
-use crate::core_arch::x86::_mm256_setzero_si256;
-use crate::core_arch::x86::_mm512_setzero_si512;
-use crate::core_arch::x86::_mm_setzero_si128;
 use crate::core_arch::x86::m128iExt;
 use crate::core_arch::x86::m256iExt;
 use crate::core_arch::x86::m512iExt;
@@ -110,7 +107,7 @@ pub unsafe fn _mm512_mask_gf2p8mul_epi8(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm512_maskz_gf2p8mul_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
-    let zero = _mm512_setzero_si512().as_i8x64();
+    let zero = i8x64::ZERO;
     transmute(simd_select_bitmask(
         k,
         vgf2p8mulb_512(a.as_i8x64(), b.as_i8x64()),
@@ -169,7 +166,7 @@ pub unsafe fn _mm256_mask_gf2p8mul_epi8(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm256_maskz_gf2p8mul_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
-    let zero = _mm256_setzero_si256().as_i8x32();
+    let zero = i8x32::ZERO;
     transmute(simd_select_bitmask(
         k,
         vgf2p8mulb_256(a.as_i8x32(), b.as_i8x32()),
@@ -228,7 +225,7 @@ pub unsafe fn _mm_mask_gf2p8mul_epi8(
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
-    let zero = _mm_setzero_si128().as_i8x16();
+    let zero = i8x16::ZERO;
     transmute(simd_select_bitmask(
         k,
         vgf2p8mulb_128(a.as_i8x16(), b.as_i8x16()),
@@ -277,7 +274,7 @@ pub unsafe fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm512_setzero_si512().as_i8x64();
+    let zero = i8x64::ZERO;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
     let r = vgf2p8affineqb_512(x, a, b);
@@ -353,7 +350,7 @@ pub unsafe fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm256_setzero_si256().as_i8x32();
+    let zero = i8x32::ZERO;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
     let r = vgf2p8affineqb_256(x, a, b);
@@ -429,7 +426,7 @@ pub unsafe fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm_setzero_si128().as_i8x16();
+    let zero = i8x16::ZERO;
     let x = x.as_i8x16();
     let a = a.as_i8x16();
     let r = vgf2p8affineqb_128(x, a, b);
@@ -509,7 +506,7 @@ pub unsafe fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm512_setzero_si512().as_i8x64();
+    let zero = i8x64::ZERO;
     let x = x.as_i8x64();
     let a = a.as_i8x64();
     let r = vgf2p8affineinvqb_512(x, a, b);
@@ -591,7 +588,7 @@ pub unsafe fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm256_setzero_si256().as_i8x32();
+    let zero = i8x32::ZERO;
     let x = x.as_i8x32();
     let a = a.as_i8x32();
     let r = vgf2p8affineinvqb_256(x, a, b);
@@ -673,7 +670,7 @@ pub unsafe fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ) -> __m128i {
     static_assert_uimm_bits!(B, 8);
     let b = B as u8;
-    let zero = _mm_setzero_si128().as_i8x16();
+    let zero = i8x16::ZERO;
     let x = x.as_i8x16();
     let a = a.as_i8x16();
     let r = vgf2p8affineinvqb_128(x, a, b);

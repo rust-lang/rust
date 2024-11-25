@@ -60,7 +60,7 @@ pub const _MM_FROUND_NEARBYINT: i32 = _MM_FROUND_NO_EXC | _MM_FROUND_CUR_DIRECTI
 #[cfg_attr(test, assert_instr(pblendvb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blendv_epi8(a: __m128i, b: __m128i, mask: __m128i) -> __m128i {
-    let mask: i8x16 = simd_lt(mask.as_i8x16(), i8x16::splat(0));
+    let mask: i8x16 = simd_lt(mask.as_i8x16(), i8x16::ZERO);
     transmute(simd_select(mask, b.as_i8x16(), a.as_i8x16()))
 }
 
@@ -103,7 +103,7 @@ pub unsafe fn _mm_blend_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 #[cfg_attr(test, assert_instr(blendvpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blendv_pd(a: __m128d, b: __m128d, mask: __m128d) -> __m128d {
-    let mask: i64x2 = simd_lt(transmute::<_, i64x2>(mask), i64x2::splat(0));
+    let mask: i64x2 = simd_lt(transmute::<_, i64x2>(mask), i64x2::ZERO);
     transmute(simd_select(mask, b.as_f64x2(), a.as_f64x2()))
 }
 
@@ -116,7 +116,7 @@ pub unsafe fn _mm_blendv_pd(a: __m128d, b: __m128d, mask: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(blendvps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_blendv_ps(a: __m128, b: __m128, mask: __m128) -> __m128 {
-    let mask: i32x4 = simd_lt(transmute::<_, i32x4>(mask), i32x4::splat(0));
+    let mask: i32x4 = simd_lt(transmute::<_, i32x4>(mask), i32x4::ZERO);
     transmute(simd_select(mask, b.as_f32x4(), a.as_f32x4()))
 }
 

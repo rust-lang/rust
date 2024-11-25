@@ -46,8 +46,7 @@ pub unsafe fn _mm512_maskz_dpwssd_epi32(
     b: __m512i,
 ) -> __m512i {
     let r = _mm512_dpwssd_epi32(src, a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x16::ZERO))
 }
 
 /// Multiply groups of 2 adjacent pairs of signed 16-bit integers in a with corresponding 16-bit integers in b, producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in src, and store the packed 32-bit results in dst.
@@ -106,8 +105,7 @@ pub unsafe fn _mm256_maskz_dpwssd_epi32(
     b: __m256i,
 ) -> __m256i {
     let r = _mm256_dpwssd_epi32(src, a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x8::ZERO))
 }
 
 /// Multiply groups of 2 adjacent pairs of signed 16-bit integers in a with corresponding 16-bit integers in b, producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in src, and store the packed 32-bit results in dst.
@@ -156,8 +154,7 @@ pub unsafe fn _mm_mask_dpwssd_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __
 #[cfg_attr(test, assert_instr(vpdpwssd))]
 pub unsafe fn _mm_maskz_dpwssd_epi32(k: __mmask8, src: __m128i, a: __m128i, b: __m128i) -> __m128i {
     let r = _mm_dpwssd_epi32(src, a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x4::ZERO))
 }
 
 /// Multiply groups of 2 adjacent pairs of signed 16-bit integers in a with corresponding 16-bit integers in b, producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -202,8 +199,7 @@ pub unsafe fn _mm512_maskz_dpwssds_epi32(
     b: __m512i,
 ) -> __m512i {
     let r = _mm512_dpwssds_epi32(src, a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x16::ZERO))
 }
 
 /// Multiply groups of 2 adjacent pairs of signed 16-bit integers in a with corresponding 16-bit integers in b, producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -262,8 +258,7 @@ pub unsafe fn _mm256_maskz_dpwssds_epi32(
     b: __m256i,
 ) -> __m256i {
     let r = _mm256_dpwssds_epi32(src, a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x8::ZERO))
 }
 
 /// Multiply groups of 2 adjacent pairs of signed 16-bit integers in a with corresponding 16-bit integers in b, producing 2 intermediate signed 32-bit results. Sum these 2 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -317,8 +312,7 @@ pub unsafe fn _mm_maskz_dpwssds_epi32(
     b: __m128i,
 ) -> __m128i {
     let r = _mm_dpwssds_epi32(src, a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x4::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src, and store the packed 32-bit results in dst.
@@ -363,8 +357,7 @@ pub unsafe fn _mm512_maskz_dpbusd_epi32(
     b: __m512i,
 ) -> __m512i {
     let r = _mm512_dpbusd_epi32(src, a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x16::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src, and store the packed 32-bit results in dst.
@@ -423,8 +416,7 @@ pub unsafe fn _mm256_maskz_dpbusd_epi32(
     b: __m256i,
 ) -> __m256i {
     let r = _mm256_dpbusd_epi32(src, a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x8::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src, and store the packed 32-bit results in dst.
@@ -473,8 +465,7 @@ pub unsafe fn _mm_mask_dpbusd_epi32(src: __m128i, k: __mmask8, a: __m128i, b: __
 #[cfg_attr(test, assert_instr(vpdpbusd))]
 pub unsafe fn _mm_maskz_dpbusd_epi32(k: __mmask8, src: __m128i, a: __m128i, b: __m128i) -> __m128i {
     let r = _mm_dpbusd_epi32(src, a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x4::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -519,8 +510,7 @@ pub unsafe fn _mm512_maskz_dpbusds_epi32(
     b: __m512i,
 ) -> __m512i {
     let r = _mm512_dpbusds_epi32(src, a, b).as_i32x16();
-    let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x16::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -579,8 +569,7 @@ pub unsafe fn _mm256_maskz_dpbusds_epi32(
     b: __m256i,
 ) -> __m256i {
     let r = _mm256_dpbusds_epi32(src, a, b).as_i32x8();
-    let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x8::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in a with corresponding signed 8-bit integers in b, producing 4 intermediate signed 16-bit results. Sum these 4 results with the corresponding 32-bit integer in src using signed saturation, and store the packed 32-bit results in dst.
@@ -634,8 +623,7 @@ pub unsafe fn _mm_maskz_dpbusds_epi32(
     b: __m128i,
 ) -> __m128i {
     let r = _mm_dpbusds_epi32(src, a, b).as_i32x4();
-    let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, r, zero))
+    transmute(simd_select_bitmask(k, r, i32x4::ZERO))
 }
 
 /// Multiply groups of 4 adjacent pairs of signed 8-bit integers in a with corresponding signed 8-bit

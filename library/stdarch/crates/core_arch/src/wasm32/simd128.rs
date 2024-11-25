@@ -2232,7 +2232,7 @@ pub fn v128_any_true(a: v128) -> bool {
 pub fn i8x16_abs(a: v128) -> v128 {
     unsafe {
         let a = a.as_i8x16();
-        let zero = simd::i8x16::splat(0);
+        let zero = simd::i8x16::ZERO;
         simd_select::<simd::m8x16, simd::i8x16>(simd_lt(a, zero), simd_sub(zero, a), a).v128()
     }
 }
@@ -2524,7 +2524,7 @@ pub use i16x8_extadd_pairwise_u8x16 as u16x8_extadd_pairwise_u8x16;
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_abs(a: v128) -> v128 {
     let a = a.as_i16x8();
-    let zero = simd::i16x8::splat(0);
+    let zero = simd::i16x8::ZERO;
     unsafe {
         simd_select::<simd::m16x8, simd::i16x8>(simd_lt(a, zero), simd_sub(zero, a), a).v128()
     }
@@ -3012,7 +3012,7 @@ pub use i32x4_extadd_pairwise_u16x8 as u32x4_extadd_pairwise_u16x8;
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_abs(a: v128) -> v128 {
     let a = a.as_i32x4();
-    let zero = simd::i32x4::splat(0);
+    let zero = simd::i32x4::ZERO;
     unsafe {
         simd_select::<simd::m32x4, simd::i32x4>(simd_lt(a, zero), simd_sub(zero, a), a).v128()
     }
@@ -3394,7 +3394,7 @@ pub use i32x4_extmul_high_u16x8 as u32x4_extmul_high_u16x8;
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_abs(a: v128) -> v128 {
     let a = a.as_i64x2();
-    let zero = simd::i64x2::splat(0);
+    let zero = simd::i64x2::ZERO;
     unsafe {
         simd_select::<simd::m64x2, simd::i64x2>(simd_lt(a, zero), simd_sub(zero, a), a).v128()
     }
@@ -4105,7 +4105,7 @@ pub fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
     let ret: simd::i32x4 = unsafe {
         simd_shuffle!(
             llvm_i32x2_trunc_sat_f64x2_s(a.as_f64x2()),
-            simd::i32x2::splat(0),
+            simd::i32x2::ZERO,
             [0, 1, 2, 3],
         )
     };
@@ -4129,7 +4129,7 @@ pub fn u32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
     let ret: simd::i32x4 = unsafe {
         simd_shuffle!(
             llvm_i32x2_trunc_sat_f64x2_u(a.as_f64x2()),
-            simd::i32x2::splat(0),
+            simd::i32x2::ZERO,
             [0, 1, 2, 3],
         )
     };
@@ -4176,7 +4176,7 @@ pub fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
     unsafe {
         simd_cast::<simd::f64x4, simd::f32x4>(simd_shuffle!(
             a.as_f64x2(),
-            simd::f64x2::splat(0.0),
+            simd::f64x2::ZERO,
             [0, 1, 2, 3]
         ))
         .v128()
