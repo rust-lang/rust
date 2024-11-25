@@ -507,7 +507,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         // already, rustc should've picked that up).
         cargo.env(env_var, value);
 
-        // Allow CI to override the deployment target for `std`.
+        // Allow CI to override the deployment target for `std` on macOS.
+        //
+        // This is useful because we might want the host tooling LLVM, `rustc`
+        // and Cargo to have a different deployment target than `std` itself
+        // (currently, these two versions are the same, but in the past, we
+        // supported macOS 10.7 for user code and macOS 10.8 in host tooling).
+        //
+        // It is not necessary on the other platforms, since only macOS has
+        // support for host tooling.
         if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
             cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
         }
