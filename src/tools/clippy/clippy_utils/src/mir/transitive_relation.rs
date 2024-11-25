@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::bit_set::HybridBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 
 #[derive(Default)]
@@ -12,8 +12,8 @@ impl TransitiveRelation {
         self.relations.entry(a).or_default().push(b);
     }
 
-    pub fn reachable_from(&self, a: mir::Local, domain_size: usize) -> HybridBitSet<mir::Local> {
-        let mut seen = HybridBitSet::new_empty(domain_size);
+    pub fn reachable_from(&self, a: mir::Local, domain_size: usize) -> BitSet<mir::Local> {
+        let mut seen = BitSet::new_empty(domain_size);
         let mut stack = vec![a];
         while let Some(u) = stack.pop() {
             if let Some(edges) = self.relations.get(&u) {

@@ -2,7 +2,7 @@ use super::possible_origin::PossibleOriginVisitor;
 use super::transitive_relation::TransitiveRelation;
 use crate::ty::is_copy;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::bit_set::BitSet;
 use rustc_lint::LateContext;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{self, Mutability};
@@ -21,14 +21,14 @@ struct PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     possible_borrower: TransitiveRelation,
     body: &'b mir::Body<'tcx>,
     cx: &'a LateContext<'tcx>,
-    possible_origin: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
+    possible_origin: FxHashMap<mir::Local, BitSet<mir::Local>>,
 }
 
 impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     fn new(
         cx: &'a LateContext<'tcx>,
         body: &'b mir::Body<'tcx>,
-        possible_origin: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
+        possible_origin: FxHashMap<mir::Local, BitSet<mir::Local>>,
     ) -> Self {
         Self {
             possible_borrower: TransitiveRelation::default(),
@@ -119,7 +119,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'_, '_, 'tcx> {
             let mut mutable_variables: Vec<mir::Local> = mutable_borrowers
                 .iter()
                 .filter_map(|r| self.possible_origin.get(r))
-                .flat_map(HybridBitSet::iter)
+                .flat_map(BitSet::iter)
                 .collect();
 
             if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_break() {
@@ -171,7 +171,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 #[allow(clippy::module_name_repetitions)]
 pub struct PossibleBorrowerMap<'b, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
-    pub map: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
+    pub map: FxHashMap<mir::Local, BitSet<mir::Local>>,
     maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
     // Caches to avoid allocation of `BitSet` on every query
     pub bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
