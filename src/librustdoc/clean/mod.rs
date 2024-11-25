@@ -2516,14 +2516,6 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts for the case
-                    // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
-                    hir::GenericArg::Const(hir::ConstArg {
-                        is_desugared_from_effects: true,
-                        ..
-                    }) => {
-                        return None;
-                    }
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
