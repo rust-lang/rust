@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
     AssocItemConstraint, GenericArg, GenericBound, GenericBounds, PredicateOrigin, TraitBoundModifiers, TyKind,
-    WherePredicate,
+    WherePredicateKind,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -324,7 +324,7 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
 impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &rustc_hir::Generics<'tcx>) {
         for predicate in generics.predicates {
-            if let WherePredicate::BoundPredicate(predicate) = predicate
+            if let WherePredicateKind::BoundPredicate(predicate) = predicate.kind
                 // In theory, the origin doesn't really matter,
                 // we *could* also lint on explicit where clauses written out by the user,
                 // not just impl trait desugared ones, but that contradicts with the lint name...
