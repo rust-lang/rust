@@ -1,4 +1,4 @@
-//@ aux-build:derive-unstable.rs
+//@ proc-macro: derive-unstable.rs
 
 #![allow(warnings)]
 

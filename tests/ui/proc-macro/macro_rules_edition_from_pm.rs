@@ -2,7 +2,7 @@
 // proc-macro.
 // See https://github.com/rust-lang/rust/issues/132906
 
-//@ aux-crate: macro_rules_edition_pm=macro_rules_edition_pm.rs
+//@ proc-macro: macro_rules_edition_pm.rs
 //@ revisions: edition2021 edition2024
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024

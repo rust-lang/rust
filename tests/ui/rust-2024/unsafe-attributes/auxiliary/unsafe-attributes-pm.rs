@@ -1,7 +1,4 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
+//@ edition: 2018
 
 extern crate proc_macro;
 

@@ -1,6 +1,6 @@
 //@ run-pass
 //@ edition:2024
-//@ aux-build:reserved-guarded-strings-macro-2021.rs
+//@ proc-macro: reserved-guarded-strings-macro-2021.rs
 
 extern crate reserved_guarded_strings_macro_2021 as m2021;
 
