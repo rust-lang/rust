@@ -3,7 +3,6 @@
 // Test that `<Type as Trait>::Output` and `Self::Output` are accepted as type annotations in let
 // bindings
 
-//@ pretty-expanded FIXME #23616
 
 trait Int {
     fn one() -> Self;

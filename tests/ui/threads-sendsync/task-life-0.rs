@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_must_use)]
 //@ needs-threads
-//@ pretty-expanded FIXME #23616
 
 use std::thread;
 

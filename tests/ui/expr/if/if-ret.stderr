@@ -1,5 +1,5 @@
 warning: unreachable block in `if` or `while` expression
-  --> $DIR/if-ret.rs:6:24
+  --> $DIR/if-ret.rs:5:24
    |
 LL | fn foo() { if (return) { } }
    |               -------- ^^^ unreachable block in `if` or `while` expression
