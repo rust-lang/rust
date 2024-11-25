@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - bsan
+    paths:
+      - '**/*.rs'
+      - '**/*.toml'
+      - 'src/llvm-project'
   pull_request:
     branches:
       - "**"
