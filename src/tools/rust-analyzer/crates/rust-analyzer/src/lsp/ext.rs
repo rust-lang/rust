@@ -825,7 +825,7 @@ pub struct CompletionResolveData {
     pub position: lsp_types::TextDocumentPositionParams,
     pub imports: Vec<CompletionImport>,
     pub version: Option<i32>,
-    pub trigger_character: Option<char>,
+    pub completion_trigger_character: Option<char>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

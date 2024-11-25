@@ -396,7 +396,7 @@ fn completion_item(
             position: tdpp.clone(),
             imports,
             version,
-            trigger_character: completion_trigger_character,
+            completion_trigger_character,
         };
         lsp_item.data = Some(to_value(data).unwrap());
     }
