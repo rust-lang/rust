@@ -454,13 +454,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
-
-                // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg(true) {
-                    // Add a definition for the in-band const def.
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
-                }
-
+                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
                     AstP(Expr {

@@ -1383,6 +1383,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             self.tables.def_kind.set_some(def_id.index, def_kind);
+
+            // The `DefCollector` will sometimes create unnecessary `DefId`s
+            // for trivial const arguments which are directly lowered to
+            // `ConstArgKind::Path`. We never actually access this `DefId`
+            // anywhere so we don't need to encode it for other crates.
+            if def_kind == DefKind::AnonConst
+                && matches!(
+                    tcx.hir_node_by_def_id(local_id),
+                    hir::Node::ConstArg(hir::ConstArg { kind: hir::ConstArgKind::Path(..), .. })
+                )
+            {
+                continue;
+            }
+
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
