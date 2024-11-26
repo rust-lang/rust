@@ -1188,6 +1188,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
 
 [[package]]
+name = "features-status-dump"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tidy",
+]
+
+[[package]]
 name = "field-offset"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5249,6 +5258,7 @@ dependencies = [
  "regex",
  "rustc-hash 2.0.0",
  "semver",
+ "serde",
  "similar",
  "termcolor",
  "walkdir",
