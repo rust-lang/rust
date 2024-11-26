@@ -2,7 +2,6 @@
 
 use crate::ffi::CStr;
 use crate::num::NonZero;
-use crate::sys::unsupported;
 use crate::time::Duration;
 use crate::{io, mem};
 
@@ -33,6 +32,8 @@ cfg_if::cfg_if! {
 
             #[allow(non_camel_case_types)]
             pub type pthread_t = *mut ffi::c_void;
+
+            pub const _SC_NPROCESSORS_ONLN: ffi::c_int = 84;
 
             extern "C" {
                 pub fn pthread_create(
@@ -121,7 +122,7 @@ impl Thread {
             }
         } else {
             pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-                unsupported()
+                crate::sys::unsupported()
             }
         }
     }
@@ -187,5 +188,15 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsupported()
+    cfg_if::cfg_if! {
+        if #[cfg(target_feature = "atomics")] {
+            match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
+                -1 => Err(io::Error::last_os_error()),
+                0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
+                cpus => Ok(unsafe { NonZero::new_unchecked(cpus as usize) }),
+            }
+        } else {
+            crate::sys::unsupported()
+        }
+    }
 }
