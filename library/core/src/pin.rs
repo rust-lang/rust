@@ -1,4 +1,4 @@
-//! Types that pin data to a location in memory.
+//! A pointer wrapper that pins data to a location in memory, only when the target type requires it.
 //!
 //! It is sometimes useful to be able to rely upon a certain value not being able to *move*,
 //! in the sense that its address in memory cannot change. This is useful especially when there
@@ -931,7 +931,7 @@ use crate::{
 };
 use crate::{cmp, fmt};
 
-/// A pointer which pins its pointee in place.
+/// A pointer wrapper which pins its pointee in place, only when the target type requires it.
 ///
 /// [`Pin`] is a wrapper around some kind of pointer `Ptr` which makes that pointer "pin" its
 /// pointee value in place, thus preventing the value referenced by that pointer from being moved
