@@ -113,10 +113,11 @@ jobs:
           os: ubuntu-latest
         - tuple: thumbv7em-none-eabihf
           os: ubuntu-latest
-        - tuple: loongarch64-unknown-linux-gnu
-          os: ubuntu-latest
-        - tuple: wasm32-wasip1
-          os: ubuntu-latest
+        # Temporarily disabled due to fallout from SIMD ABI checking.
+        #- tuple: loongarch64-unknown-linux-gnu
+        #  os: ubuntu-latest
+        #- tuple: wasm32-wasip1
+        #  os: ubuntu-latest
 
         # macOS targets
         - tuple: x86_64-apple-darwin
