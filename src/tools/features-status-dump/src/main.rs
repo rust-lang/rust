@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::env;
+use std::fs::File;
 use std::io::BufWriter;
-use std::{env, fs::File};
 use std::path::Path;
-use tidy::features::{collect_lang_features, collect_lib_features, Feature};
+
+use tidy::features::{Feature, collect_lang_features, collect_lib_features};
 
 #[derive(serde::Serialize)]
 struct FeaturesStatus {
@@ -22,9 +24,7 @@ fn main() {
         .into_iter()
         .filter(|&(ref name, _)| !lang_features_status.contains_key(name))
         .collect();
-    let features_status = FeaturesStatus {
-        lang_features_status, lib_features_status
-    };
+    let features_status = FeaturesStatus { lang_features_status, lib_features_status };
     let writer = File::create(output_path).expect("output path should be a valid path");
     let writer = BufWriter::new(writer);
     serde_json::to_writer_pretty(writer, &features_status).unwrap();
