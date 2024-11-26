@@ -377,7 +377,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     const NAME: &'static str = "maybe_uninit";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
-        // bottom = initialized (start_block_effect counters this at outset)
+        // bottom = initialized (`initialize_start_block` overwrites this on first entry)
         MixedBitSet::new_empty(self.move_data().move_paths.len())
     }
 
