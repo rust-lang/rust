@@ -1885,16 +1885,25 @@ impl<T> JoinHandle<T> {
     /// Returns a [`Future`] that resolves when the thread has finished.
     ///
     /// Its [output](Future::Output) value is identical to that of [`JoinHandle::join()`];
-    /// this is the approximate `async` equivalent of that blocking function.
+    /// this is the `async` equivalent of that blocking function.
     ///
     /// # Details
     ///
-    /// * If the returned future is dropped (cancelled), the thread will become *detached*;
+    /// * If the returned [`JoinFuture`] is dropped (cancelled), the thread will become *detached*;
     ///   there will be no way to observe or wait for the thread’s termination.
     ///   This is identical to the behavior of `JoinHandle` itself.
     ///
-    /// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
-    ///   In particular, it may still be executing destructors for thread-local values.
+    /// * The returned [`JoinFuture`] wakes when the thread has produced its result value or
+    ///   panicked; however, as currently implemented, the thread may still be executing cleanup,
+    ///   including destructors for [thread-local](crate::thread_local) data.
+    ///   Polling the future may block until this cleanup completes, equivalently to if you called
+    ///   [`JoinHandle::join()`] after observing that [`JoinHandle::is_finished()`] returned true.
+    ///   This should usually be insignificant, but it is *possible* for thread locals to cause
+    ///   this future to block arbitrarily long.
+    ///
+    ///   This behavior is not currently guaranteed; future versions of Rust may instead have the
+    ///   future not block at all (the thread may still be running) or not wake until the thread
+    ///   has terminated.
     ///
     /// # Example
     ///
@@ -1981,9 +1990,17 @@ fn _assert_sync_and_send() {
 ///   the associated thread will become *detached*;
 ///   there will be no way to observe or wait for the thread’s termination.
 ///
-/// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
-///   In particular, it may still be executing destructors for thread-local values.
+/// * `JoinFuture` wakes when the thread has produced its result value or
+///   panicked; however, as currently implemented, the thread may still be executing cleanup,
+///   including destructors for [thread-local](crate::thread_local) data.
+///   Polling the future may block until this cleanup completes, equivalently to if you called
+///   [`JoinHandle::join()`] after observing that [`JoinHandle::is_finished()`] returned true.
+///   This should usually be insignificant, but it is *possible* for thread locals to cause
+///   this future to block arbitrarily long.
 ///
+///   This behavior is not currently guaranteed; future versions of Rust may instead have the
+///   future not block at all (the thread may still be running) or not wake until the thread
+///   has terminated.
 #[unstable(feature = "thread_join_future", issue = "none")]
 pub struct JoinFuture<'scope, T>(Option<JoinInner<'scope, T>>);
 
@@ -1997,6 +2014,9 @@ impl<'scope, T> JoinFuture<'scope, T> {
     ///
     /// If this returns `Some`, then `self.0` is now `None` and the future will panic
     /// if polled again.
+    ///
+    /// Note that this calls the actual `join` operation, and as a consequence will block until
+    /// TLS destructors complete.
     fn take_result(&mut self) -> Option<Result<T>> {
         self.0.take_if(|i| i.is_finished()).map(JoinInner::join)
     }

@@ -1,4 +1,4 @@
-use super::{Builder, JoinInner, Result, Thread, current, park};
+use super::{Builder, JoinFuture, JoinInner, Result, Thread, current, park};
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
@@ -320,23 +320,32 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// # Behavior details
     ///
-    /// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
-    ///   In particular, it may still be executing destructors for thread-local values.
+    /// * The returned [`JoinFuture`] wakes when the thread has produced its result value or
+    ///   panicked; however, as currently implemented, the thread may still be executing cleanup,
+    ///   including destructors for [thread-local](crate::thread_local) data.
+    ///   Polling the future may block until this cleanup completes, equivalently to if you called
+    ///   [`ScopedJoinHandle::join()`] after observing that [`ScopedJoinHandle::is_finished()`]
+    ///   returned true.
+    ///   This should usually be insignificant, but it is *possible* for thread locals to cause
+    ///   this future to block arbitrarily long.
+    ///
+    ///   This behavior is not currently guaranteed; future versions of Rust may instead have the
+    ///   future not block at all (the thread may still be running) or not wake until the thread
+    ///   has terminated.
     ///
     /// * While this function allows waiting for a scoped thread from `async`
     ///   functions, the original [`scope()`] is still a blocking function which should
-    ///   not be used in `async` functions.
+    ///   not be called from an `async` functions.
     ///
     /// [`Future`]: crate::future::Future
     /// [output]: crate::future::Future::Output
-    /// [`JoinHandle::join()`]: super::JoinHandle::join()
     #[unstable(feature = "thread_join_future", issue = "none")]
-    pub fn into_join_future(self) -> super::JoinFuture<'scope, T> {
+    pub fn into_join_future(self) -> JoinFuture<'scope, T> {
         // There is no `ScopedJoinFuture` because the only difference between `JoinHandle`
         // and `ScopedJoinHandle` is that `JoinHandle` has no lifetime parameter, because
         // it was introduced before scoped threads. `JoinFuture` is new enough that we don’t
         // need to make two versions of it.
-        super::JoinFuture::new(self.0)
+        JoinFuture::new(self.0)
     }
 
     /// Checks if the associated thread has finished running its main function.
