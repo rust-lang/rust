@@ -1596,15 +1596,9 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-std");
             prepare("rust-analysis");
-
-            for tool in &[
-                "clippy",
-                "rustfmt",
-                "rust-analyzer",
-                "rust-docs",
-                "miri",
-                "rustc-codegen-cranelift",
-            ] {
+            prepare("clippy");
+            prepare("rust-analyzer");
+            for tool in &["rust-docs", "miri", "rustc-codegen-cranelift"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
