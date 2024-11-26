@@ -44,48 +44,48 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         unreachable!();
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_before_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.apply_before_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
+        self.borrows.apply_early_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_early_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_early_statement_effect(&mut state.ever_inits, stmt, loc);
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.apply_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.apply_statement_effect(&mut state.ever_inits, stmt, loc);
+        self.borrows.apply_primary_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_primary_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_primary_statement_effect(&mut state.ever_inits, stmt, loc);
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_before_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.apply_before_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
+        self.borrows.apply_early_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_early_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_early_terminator_effect(&mut state.ever_inits, term, loc);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         term: &'mir mir::Terminator<'tcx>,
         loc: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.borrows.apply_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.apply_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.apply_terminator_effect(&mut state.ever_inits, term, loc);
+        self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
 
         // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
         // analysis doesn't use.
@@ -593,7 +593,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         // function execution, so this method has no effect.
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -602,7 +602,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
@@ -651,7 +651,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         }
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
@@ -660,7 +660,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,

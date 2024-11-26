@@ -600,7 +600,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,
@@ -674,7 +674,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
         }
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,
@@ -787,7 +787,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
         }
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,

@@ -123,20 +123,21 @@ pub trait Analysis<'tcx> {
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
 
     /// Updates the current dataflow state with the effect of evaluating a statement.
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
     );
 
-    /// Updates the current dataflow state with an effect that occurs immediately *before* the
-    /// given statement.
+    /// Updates the current dataflow state with an "early" effect, i.e. one
+    /// that occurs immediately before the given statement.
     ///
     /// This method is useful if the consumer of the results of this analysis only needs to observe
     /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without also implementing `apply_statement_effect`.
-    fn apply_before_statement_effect(
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_statement_effect`.
+    fn apply_early_statement_effect(
         &mut self,
         _state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -150,7 +151,7 @@ pub trait Analysis<'tcx> {
     /// in this function. That should go in `apply_call_return_effect`. For example, in the
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         _state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -164,8 +165,9 @@ pub trait Analysis<'tcx> {
     ///
     /// This method is useful if the consumer of the results of this analysis needs only to observe
     /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without also implementing `apply_terminator_effect`.
-    fn apply_before_terminator_effect(
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_terminator_effect`.
+    fn apply_early_terminator_effect(
         &mut self,
         _state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
@@ -178,8 +180,8 @@ pub trait Analysis<'tcx> {
     /// Updates the current dataflow state with the effect of a successful return from a `Call`
     /// terminator.
     ///
-    /// This is separate from `apply_terminator_effect` to properly track state across unwind
-    /// edges.
+    /// This is separate from `apply_primary_terminator_effect` to properly track state across
+    /// unwind edges.
     fn apply_call_return_effect(
         &mut self,
         _state: &mut Self::Domain,
@@ -359,11 +361,10 @@ impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
 // NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Effect {
-    /// The "before" effect (e.g., `apply_before_statement_effect`) for a statement (or
-    /// terminator).
-    Before,
+    /// The "early" effect (e.g., `apply_early_statement_effect`) for a statement/terminator.
+    Early,
 
-    /// The "primary" effect (e.g., `apply_statement_effect`) for a statement (or terminator).
+    /// The "primary" effect (e.g., `apply_primary_statement_effect`) for a statement/terminator.
     Primary,
 }
 
@@ -382,15 +383,15 @@ pub struct EffectIndex {
 impl EffectIndex {
     fn next_in_forward_order(self) -> Self {
         match self.effect {
-            Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index + 1),
+            Effect::Early => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Early.at_index(self.statement_index + 1),
         }
     }
 
     fn next_in_backward_order(self) -> Self {
         match self.effect {
-            Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index - 1),
+            Effect::Early => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Early.at_index(self.statement_index - 1),
         }
     }
 

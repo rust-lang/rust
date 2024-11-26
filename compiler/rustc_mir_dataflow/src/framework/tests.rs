@@ -104,7 +104,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
     /// Returns the index that should be added to the dataflow state at the given target.
     fn effect(&self, loc: EffectIndex) -> usize {
         let idx = match loc.effect {
-            Effect::Before => loc.statement_index * 2,
+            Effect::Early => loc.statement_index * 2,
             Effect::Primary => loc.statement_index * 2 + 1,
         };
 
@@ -128,14 +128,14 @@ impl<D: Direction> MockAnalysis<'_, D> {
 
         let target = match target {
             SeekTarget::BlockEntry { .. } => return ret,
-            SeekTarget::Before(loc) => Effect::Before.at_index(loc.statement_index),
+            SeekTarget::Early(loc) => Effect::Early.at_index(loc.statement_index),
             SeekTarget::After(loc) => Effect::Primary.at_index(loc.statement_index),
         };
 
         let mut pos = if D::IS_FORWARD {
-            Effect::Before.at_index(0)
+            Effect::Early.at_index(0)
         } else {
-            Effect::Before.at_index(self.body[block].statements.len())
+            Effect::Early.at_index(self.body[block].statements.len())
         };
 
         loop {
@@ -168,7 +168,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         unimplemented!("This is never called since `MockAnalysis` is never iterated to fixpoint");
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
@@ -178,17 +178,17 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        let idx = self.effect(Effect::Before.at_index(location.statement_index));
+        let idx = self.effect(Effect::Early.at_index(location.statement_index));
         assert!(state.insert(idx));
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -199,13 +199,13 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         terminator.edges()
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        let idx = self.effect(Effect::Before.at_index(location.statement_index));
+        let idx = self.effect(Effect::Early.at_index(location.statement_index));
         assert!(state.insert(idx));
     }
 }
@@ -213,7 +213,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SeekTarget {
     BlockEntry(BasicBlock),
-    Before(Location),
+    Early(Location),
     After(Location),
 }
 
@@ -223,7 +223,7 @@ impl SeekTarget {
 
         match *self {
             BlockEntry(block) => block,
-            Before(loc) | After(loc) => loc.block,
+            Early(loc) | After(loc) => loc.block,
         }
     }
 
@@ -235,7 +235,7 @@ impl SeekTarget {
             .map(move |(i, kind)| {
                 let loc = Location { block, statement_index: i };
                 match kind {
-                    0 => SeekTarget::Before(loc),
+                    0 => SeekTarget::Early(loc),
                     1 => SeekTarget::After(loc),
                     _ => unreachable!(),
                 }
@@ -262,7 +262,7 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
 
         match targ {
             BlockEntry(block) => cursor.seek_to_block_entry(block),
-            Before(loc) => cursor.seek_before_primary_effect(loc),
+            Early(loc) => cursor.seek_before_primary_effect(loc),
             After(loc) => cursor.seek_after_primary_effect(loc),
         }
 

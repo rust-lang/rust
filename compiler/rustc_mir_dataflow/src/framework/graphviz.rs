@@ -557,7 +557,7 @@ where
         }
     }
 
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -570,7 +570,7 @@ where
         }
     }
 
-    fn visit_statement_after_primary_effect(
+    fn visit_after_primary_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -581,7 +581,7 @@ where
         self.prev_state.clone_from(state)
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -594,7 +594,7 @@ where
         }
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,

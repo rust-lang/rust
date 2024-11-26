@@ -52,7 +52,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
         }
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &Statement<'tcx>,
@@ -96,7 +96,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageDead<'a> {
         }
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &Statement<'tcx>,
@@ -142,7 +142,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &Statement<'tcx>,
@@ -176,7 +176,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         _: &Statement<'tcx>,
@@ -187,7 +187,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         self.check_for_move(state, loc);
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
@@ -242,7 +242,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         }
     }
 
-    fn apply_terminator_effect<'t>(
+    fn apply_primary_terminator_effect<'t>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'t Terminator<'tcx>,
