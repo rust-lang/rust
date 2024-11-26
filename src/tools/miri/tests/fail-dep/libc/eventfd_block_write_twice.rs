@@ -28,7 +28,6 @@ fn main() {
     assert_eq!(res, 8);
 
     let thread1 = thread::spawn(move || {
-        thread::park();
         let sized_8_data = (u64::MAX - 1).to_ne_bytes();
         let res: i64 = unsafe {
             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
@@ -38,7 +37,6 @@ fn main() {
     });
 
     let thread2 = thread::spawn(move || {
-        thread::park();
         let sized_8_data = (u64::MAX - 1).to_ne_bytes();
         // Write u64::MAX - 1, so the all subsequent write will block.
         let res: i64 = unsafe {
@@ -52,7 +50,6 @@ fn main() {
     });
 
     let thread3 = thread::spawn(move || {
-        thread::park();
         let mut buf: [u8; 8] = [0; 8];
         // This will unblock both `write` in thread1 and thread2.
         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
@@ -60,10 +57,6 @@ fn main() {
         let counter = u64::from_ne_bytes(buf);
         assert_eq!(counter, (u64::MAX - 1));
     });
-
-    thread1.thread().unpark();
-    thread2.thread().unpark();
-    thread3.thread().unpark();
 
     thread1.join().unwrap();
     thread2.join().unwrap();

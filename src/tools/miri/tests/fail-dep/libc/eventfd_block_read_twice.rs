@@ -23,7 +23,6 @@ fn main() {
     let fd = unsafe { libc::eventfd(0, flags) };
 
     let thread1 = thread::spawn(move || {
-        thread::park();
         let mut buf: [u8; 8] = [0; 8];
         // This read will block initially.
         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
@@ -33,7 +32,6 @@ fn main() {
     });
 
     let thread2 = thread::spawn(move || {
-        thread::park();
         let mut buf: [u8; 8] = [0; 8];
         // This read will block initially, then get unblocked by thread3, then get blocked again
         // because the `read` in thread1 executes first and set the counter to 0 again.
@@ -45,7 +43,6 @@ fn main() {
     });
 
     let thread3 = thread::spawn(move || {
-        thread::park();
         let sized_8_data = 1_u64.to_ne_bytes();
         // Write 1 to the counter, so both thread1 and thread2 will unblock.
         let res: i64 = unsafe {
@@ -54,10 +51,6 @@ fn main() {
         // Make sure that write is successful.
         assert_eq!(res, 8);
     });
-
-    thread1.thread().unpark();
-    thread2.thread().unpark();
-    thread3.thread().unpark();
 
     thread1.join().unwrap();
     thread2.join().unwrap();
