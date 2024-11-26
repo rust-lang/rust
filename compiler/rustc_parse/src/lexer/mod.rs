@@ -803,7 +803,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
         let mut cursor = Cursor::new(str_before);
 
-        let (span, unterminated) = match cursor.guarded_double_quoted_string() {
+        let (is_string, span, unterminated) = match cursor.guarded_double_quoted_string() {
             Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) => {
                 let end = start + BytePos(token_len);
                 let span = self.mk_sp(start, end);
@@ -816,13 +816,13 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
 
                 let unterminated = if terminated { None } else { Some(str_start) };
 
-                (span, unterminated)
+                (true, span, unterminated)
             }
-            _ => {
+            None => {
                 // We should only get here in the `##+` case.
                 debug_assert_eq!(self.str_from_to(start, start + BytePos(2)), "##");
 
-                (span, None)
+                (false, span, None)
             }
         };
         if edition2024 {
@@ -844,7 +844,11 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
             };
 
             // In Edition 2024 and later, emit a hard error.
-            let err = self.dcx().emit_err(errors::ReservedString { span, sugg });
+            let err = if is_string {
+                self.dcx().emit_err(errors::ReservedString { span, sugg })
+            } else {
+                self.dcx().emit_err(errors::ReservedMultihash { span, sugg })
+            };
 
             token::Literal(token::Lit {
                 kind: token::Err(err),
@@ -857,7 +861,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedString(space_span),
+                BuiltinLintDiag::ReservedString { is_string, suggestion: space_span },
             );
 
             // For backwards compatibility, roll back to after just the first `#`
