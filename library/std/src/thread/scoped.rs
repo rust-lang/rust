@@ -314,6 +314,32 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
         self.0.join()
     }
 
+    /// Returns a [`Future`] that resolves when the thread has finished.
+    ///
+    /// Its [output] value is identical to that of [`ScopedJoinHandle::join()`];
+    /// this is the `async` equivalent of that blocking function.
+    ///
+    /// # Behavior details
+    ///
+    /// * Unlike [`JoinHandle::join()`], the thread may still exist when the future resolves.
+    ///   In particular, it may still be executing destructors for thread-local values.
+    ///
+    /// * While this function allows waiting for a scoped thread from `async`
+    ///   functions, the original [`scope()`] is still a blocking function which should
+    ///   not be used in `async` functions.
+    ///
+    /// [`Future`]: crate::future::Future
+    /// [output]: crate::future::Future::Output
+    /// [`JoinHandle::join()`]: super::JoinHandle::join()
+    #[unstable(feature = "thread_join_future", issue = "none")]
+    pub fn into_join_future(self) -> super::JoinFuture<'scope, T> {
+        // There is no `ScopedJoinFuture` because the only difference between `JoinHandle`
+        // and `ScopedJoinHandle` is that `JoinHandle` has no lifetime parameter, because
+        // it was introduced before scoped threads. `JoinFuture` is new enough that we don’t
+        // need to make two versions of it.
+        super::JoinFuture::new(self.0)
+    }
+
     /// Checks if the associated thread has finished running its main function.
     ///
     /// `is_finished` supports implementing a non-blocking join operation, by checking
@@ -326,7 +352,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// to return quickly, without blocking for any significant amount of time.
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn is_finished(&self) -> bool {
-        Arc::strong_count(&self.0.packet) == 1
+        self.0.is_finished()
     }
 }
 
