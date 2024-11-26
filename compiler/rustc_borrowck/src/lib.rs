@@ -43,7 +43,7 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
 };
-use rustc_mir_dataflow::{Analysis, EntrySets, Results, ResultsVisitor, visit_results};
+use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
@@ -426,14 +426,14 @@ fn get_flow_results<'a, 'tcx>(
         ever_inits: ever_inits.analysis,
     };
 
-    assert_eq!(borrows.entry_sets.len(), uninits.entry_sets.len());
-    assert_eq!(borrows.entry_sets.len(), ever_inits.entry_sets.len());
-    let entry_sets: EntrySets<'_, Borrowck<'_, '_>> =
-        itertools::izip!(borrows.entry_sets, uninits.entry_sets, ever_inits.entry_sets)
+    assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
+    assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
+    let entry_states: EntryStates<'_, Borrowck<'_, '_>> =
+        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
             .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
             .collect();
 
-    Results { analysis, entry_sets }
+    Results { analysis, entry_states }
 }
 
 pub(crate) struct BorrowckInferCtxt<'tcx> {

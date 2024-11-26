@@ -56,7 +56,7 @@ mod visitor;
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
-pub use self::results::{EntrySets, Results};
+pub use self::results::{EntryStates, Results};
 pub use self::visitor::{ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -234,11 +234,12 @@ pub trait Analysis<'tcx> {
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
-        let mut entry_sets =
+        let mut entry_states =
             IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
-        self.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
+        self.initialize_start_block(body, &mut entry_states[mir::START_BLOCK]);
 
-        if Self::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != self.bottom_value(body) {
+        if Self::Direction::IS_BACKWARD && entry_states[mir::START_BLOCK] != self.bottom_value(body)
+        {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
@@ -262,9 +263,9 @@ pub trait Analysis<'tcx> {
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
             // Set the state to the entry state of the block.
-            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // This is equivalent to `state = entry_states[bb].clone()`,
             // but it saves an allocation, thus improving compile times.
-            state.clone_from(&entry_sets[bb]);
+            state.clone_from(&entry_states[bb]);
 
             Self::Direction::apply_effects_in_block(
                 &mut self,
@@ -273,7 +274,7 @@ pub trait Analysis<'tcx> {
                 bb,
                 &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
-                    let set_changed = entry_sets[target].join(state);
+                    let set_changed = entry_states[target].join(state);
                     if set_changed {
                         dirty_queue.insert(target);
                     }
@@ -281,7 +282,7 @@ pub trait Analysis<'tcx> {
             );
         }
 
-        let mut results = Results { analysis: self, entry_sets };
+        let mut results = Results { analysis: self, entry_states };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
             let res = write_graphviz_results(tcx, body, &mut results, pass_name);
