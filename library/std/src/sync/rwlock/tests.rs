@@ -511,12 +511,15 @@ fn test_downgrade_basic() {
 }
 
 #[test]
+// FIXME: On macOS we use a provenance-incorrect implementation and Miri catches that issue.
+// See <https://github.com/rust-lang/rust/issues/121950> for details.
+#[cfg_attr(all(miri, target_os = "macos"), ignore)]
 fn test_downgrade_observe() {
     // Taken from the test `test_rwlock_downgrade` from:
     // https://github.com/Amanieu/parking_lot/blob/master/src/rwlock.rs
 
     const W: usize = 20;
-    const N: usize = 100;
+    const N: usize = if cfg!(miri) { 40 } else { 100 };
 
     // This test spawns `W` writer threads, where each will increment a counter `N` times, ensuring
     // that the value they wrote has not changed after downgrading.
