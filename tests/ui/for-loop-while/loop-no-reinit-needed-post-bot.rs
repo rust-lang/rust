@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 struct S;
 // Ensure S is moved, not copied, on assignment.

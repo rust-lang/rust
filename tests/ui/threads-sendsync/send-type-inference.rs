@@ -2,7 +2,6 @@
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
-//@ pretty-expanded FIXME #23616
 
 use std::sync::mpsc::{channel, Sender};
 
