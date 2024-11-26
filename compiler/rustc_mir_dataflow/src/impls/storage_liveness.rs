@@ -135,7 +135,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.mut_analysis().apply_statement_effect(trans, stmt, loc);
+        MaybeBorrowedLocals::transfer_function(trans).visit_statement(stmt, loc);
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -180,10 +180,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals
-            .mut_analysis()
-            .transfer_function(trans)
-            .visit_terminator(terminator, loc);
+        MaybeBorrowedLocals::transfer_function(trans).visit_terminator(terminator, loc);
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {
