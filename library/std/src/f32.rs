@@ -236,18 +236,39 @@ impl f32 {
     /// let b = 4.0;
     /// assert_eq!(a.div_euclid(b), 1.0); // 7.0 > 4.0 * 1.0
     /// assert_eq!((-a).div_euclid(b), -2.0); // -7.0 >= 4.0 * -2.0
-    /// assert_eq!(a.div_euclid(-b), -1.0); // 7.0 >= -4.0 * -1.0
-    /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
+    /// assert_eq!(a.div_euclid(-b), -2.0); // 7.0 >= -4.0 * -1.0
+    /// assert_eq!((-a).div_euclid(-b), 1.0); // -7.0 >= -4.0 * 2.0
+    /// assert_eq!(11f32.div_euclid(1.1), 9.0);
+    /// assert_eq!((-11f32).div_euclid(1.1), -10.0);
+    /// assert_eq!(0.5f32.div_euclid(1.1), 0.0);
+    /// assert_eq!((-0.5f32).div_euclid(1.1), -1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn div_euclid(self, rhs: f32) -> f32 {
-        let q = (self / rhs).trunc();
-        if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
+        // Copied from Python implementation: <https://github.com/python/cpython/blob/3.13/Objects/floatobject.c#L662>
+        // NOTE: Should we use `fmod` instead?
+        let rem = self % rhs;
+        let mut div = (self - rem) / rhs;
+        if rem != 0.0 {
+            /* ensure the remainder has the same sign as the denominator */
+            if (rhs < 0.0) != (rem < 0.0) {
+                div -= 1.0;
+            }
         }
+        /* snap quotient to nearest integral value */
+        let q = if div != 0.0 {
+            let mut q = div.floor();
+            if div - q > 0.5 {
+                q += 1.0;
+            }
+            q
+        } else {
+            /* div is zero - get the same sign as the true quotient */
+            Self::copysign(0.0, self / rhs)
+        };
         q
     }
 
