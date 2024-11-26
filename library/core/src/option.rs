@@ -738,7 +738,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_option_ext", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option_ext", since = "1.84.0")]
     pub const fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
         // FIXME(const-hack): use `map` once that is possible
         match Pin::get_ref(self).as_ref() {
@@ -755,7 +755,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_stable(feature = "const_option_ext", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option_ext", since = "1.84.0")]
     pub const fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
         // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
         // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
@@ -802,7 +802,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "option_as_slice", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_option_ext", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option_ext", since = "1.84.0")]
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
@@ -857,7 +857,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "option_as_slice", since = "1.75.0")]
-    #[rustc_const_stable(feature = "const_option_ext", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_option_ext", since = "1.84.0")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to

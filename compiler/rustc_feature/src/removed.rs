@@ -101,7 +101,7 @@ declare_features! (
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
     /// Uses generic effect parameters for ~const bounds
-    (removed, effects, "CURRENT_RUSTC_VERSION", Some(102090),
+    (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063),

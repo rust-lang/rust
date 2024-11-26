@@ -29,7 +29,7 @@ impl<T: ?Sized> *mut T {
     /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_ptr_is_null", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[rustc_diagnostic_item = "ptr_is_null"]
     #[inline]
     pub const fn is_null(self) -> bool {
@@ -146,7 +146,7 @@ impl<T: ?Sized> *mut T {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline(always)]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> usize {
         // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
         // address without exposing the provenance. Note that this is *not* a stable guarantee about
@@ -179,7 +179,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`with_exposed_provenance_mut`]: with_exposed_provenance_mut
     #[inline(always)]
-    #[stable(feature = "exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "exposed_provenance", since = "1.84.0")]
     pub fn expose_provenance(self) -> usize {
         self.cast::<()>() as usize
     }
@@ -197,7 +197,7 @@ impl<T: ?Sized> *mut T {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn with_addr(self, addr: usize) -> Self {
         // This should probably be an intrinsic to avoid doing any sort of arithmetic, but
         // meanwhile, we can implement it with `wrapping_offset`, which preserves the pointer's
@@ -216,7 +216,7 @@ impl<T: ?Sized> *mut T {
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
     #[inline]
-    #[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
         self.with_addr(f(self.addr()))
     }
@@ -271,7 +271,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_ptr_is_null", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
     pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid for a
@@ -619,7 +619,7 @@ impl<T: ?Sized> *mut T {
     /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_ptr_is_null", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
     pub const unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         // SAFETY: the caller must guarantee that `self` is be valid for

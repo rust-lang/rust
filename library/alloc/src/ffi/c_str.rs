@@ -773,7 +773,7 @@ impl From<&CStr> for Box<CStr> {
 }
 
 #[cfg(not(test))]
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl From<&mut CStr> for Box<CStr> {
     /// Converts a `&mut CStr` into a `Box<CStr>`,
     /// by copying the contents into a newly allocated [`Box`].
@@ -921,7 +921,7 @@ impl From<&CStr> for Arc<CStr> {
 }
 
 #[cfg(target_has_atomic = "ptr")]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut CStr> for Arc<CStr> {
     /// Converts a `&mut CStr` into a `Arc<CStr>`,
     /// by copying the contents into a newly allocated [`Arc`].
@@ -953,7 +953,7 @@ impl From<&CStr> for Rc<CStr> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut CStr> for Rc<CStr> {
     /// Converts a `&mut CStr` into a `Rc<CStr>`,
     /// by copying the contents into a newly allocated [`Rc`].

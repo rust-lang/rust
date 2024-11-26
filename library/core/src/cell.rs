@@ -2133,8 +2133,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(*uc.get_mut(), 41);
     /// ```
     #[inline(always)]
-    #[stable(feature = "unsafe_cell_from_mut", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_from_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_from_mut", since = "1.84.0")]
     #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(const_mut_refs))]
     pub const fn from_mut(value: &mut T) -> &mut UnsafeCell<T> {
         // SAFETY: `UnsafeCell<T>` has the same memory layout as `T` due to #[repr(transparent)].

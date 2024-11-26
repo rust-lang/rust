@@ -2659,7 +2659,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl<T: Clone> From<&mut [T]> for Rc<[T]> {
     /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
     ///
@@ -2698,7 +2698,7 @@ impl From<&str> for Rc<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
     ///

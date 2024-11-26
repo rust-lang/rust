@@ -2503,7 +2503,7 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_uppercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.
@@ -2531,7 +2531,7 @@ impl str {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_make_ascii", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_make_ascii", since = "1.84.0")]
     #[inline]
     pub const fn make_ascii_lowercase(&mut self) {
         // SAFETY: changing ASCII letters only does not invalidate UTF-8.

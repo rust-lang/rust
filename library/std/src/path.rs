@@ -1762,7 +1762,7 @@ impl From<&Path> for Box<Path> {
     }
 }
 
-#[stable(feature = "box_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "box_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Box<Path> {
     /// Creates a boxed [`Path`] from a reference.
     ///
@@ -2000,7 +2000,7 @@ impl From<&Path> for Arc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Arc<Path> {
     /// Converts a [`Path`] into an [`Arc`] by copying the [`Path`] data into a new [`Arc`] buffer.
     #[inline]
@@ -2030,7 +2030,7 @@ impl From<&Path> for Rc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut Path> for Rc<Path> {
     /// Converts a [`Path`] into an [`Rc`] by copying the [`Path`] data into a new [`Rc`] buffer.
     #[inline]
