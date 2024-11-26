@@ -963,7 +963,7 @@ fn report<'tcx>(
             // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
             // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
             /*
-            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence().order() < PREC_PREFIX {
+            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < PREC_PREFIX {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
@@ -1003,7 +1003,7 @@ fn report<'tcx>(
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
                             ExprKind::Call(..) => (PREC_UNAMBIGUOUS, matches!(expr.kind, ExprKind::Field(..))),
-                            _ => (e.precedence().order(), false),
+                            _ => (e.precedence(), false),
                         },
                         _ => (0, false),
                     };
@@ -1016,7 +1016,7 @@ fn report<'tcx>(
                     );
 
                     let sugg = if !snip_is_macro
-                        && (calls_field || expr.precedence().order() < precedence)
+                        && (calls_field || expr.precedence() < precedence)
                         && !has_enclosing_paren(&snip)
                         && !is_in_tuple
                     {
@@ -1071,7 +1071,7 @@ fn report<'tcx>(
                     let (snip, snip_is_macro) =
                         snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
                     let sugg =
-                        if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
+                        if !snip_is_macro && expr.precedence() < precedence && !has_enclosing_paren(&snip) {
                             format!("{prefix}({snip})")
                         } else {
                             format!("{prefix}{snip}")
@@ -1158,7 +1158,7 @@ impl<'tcx> Dereferencing<'tcx> {
                         },
                         Some(parent) if !parent.span.from_expansion() => {
                             // Double reference might be needed at this point.
-                            if parent.precedence().order() == PREC_UNAMBIGUOUS {
+                            if parent.precedence() == PREC_UNAMBIGUOUS {
                                 // Parentheses would be needed here, don't lint.
                                 *outer_pat = None;
                             } else {

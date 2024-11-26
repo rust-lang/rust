@@ -1011,7 +1011,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_maybe_paren(&mut self, expr: &hir::Expr<'_>, prec: i8) {
-        self.print_expr_cond_paren(expr, expr.precedence().order() < prec)
+        self.print_expr_cond_paren(expr, expr.precedence() < prec)
     }
 
     /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
@@ -1045,7 +1045,7 @@ impl<'a> State<'a> {
         }
         self.space();
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(init.precedence().order());
+        let npals = || parser::needs_par_as_let_scrutinee(init.precedence());
         self.print_expr_cond_paren(init, Self::cond_needs_par(init) || npals())
     }
 
