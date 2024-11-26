@@ -43,3 +43,10 @@ fn pad_integral_resets() {
 
     assert_eq!(format!("{Bar:<03}"), "1  0051  ");
 }
+
+#[test]
+fn test_maybe_uninit_short() {
+    // Ensure that the trimmed `MaybeUninit` Debug implementation doesn't break
+    let x = core::mem::MaybeUninit::new(0u32);
+    assert_eq!(format!("{x:?}"), "MaybeUninit<u32>");
+}
