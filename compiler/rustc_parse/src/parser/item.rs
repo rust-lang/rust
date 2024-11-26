@@ -1836,6 +1836,22 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut default = None;
+                if p.token == token::Eq {
+                    let mut snapshot = p.create_snapshot_for_diagnostic();
+                    snapshot.bump();
+                    match snapshot.parse_expr_anon_const() {
+                        Ok(const_expr) => {
+                            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+                            p.psess.gated_spans.gate(sym::default_field_values, sp);
+                            p.restore_snapshot(snapshot);
+                            default = Some(const_expr);
+                        }
+                        Err(err) => {
+                            err.cancel();
+                        }
+                    }
+                }
 
                 Ok((
                     FieldDef {
@@ -1845,7 +1861,7 @@ impl<'a> Parser<'a> {
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
-                        default: None,
+                        default,
                         attrs,
                         is_placeholder: false,
                     },

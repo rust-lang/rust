@@ -7,6 +7,12 @@ LL |     bat: i32 = <Qux<{ C }> as T>::K,
    = help: const parameters may only be used as standalone arguments, i.e. `C`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
+error: default field in tuple struct
+  --> $DIR/default-field-values-failures.rs:26:22
+   |
+LL | pub struct Rak(i32 = 42);
+   |                      ^^ default fields are only supported on structs
+
 error[E0277]: the trait bound `S: Default` is not satisfied
   --> $DIR/default-field-values-failures.rs:14:5
    |
@@ -24,7 +30,7 @@ LL | pub struct S;
    |
 
 error: missing mandatory field `bar`
-  --> $DIR/default-field-values-failures.rs:45:21
+  --> $DIR/default-field-values-failures.rs:47:21
    |
 LL |     let _ = Bar { .. };
    |                     ^
@@ -35,6 +41,6 @@ error: generic `Self` types are currently not permitted in anonymous constants
 LL |     bar: S = Self::S,
    |              ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

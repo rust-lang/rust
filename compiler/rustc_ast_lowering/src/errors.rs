@@ -38,6 +38,14 @@ pub(crate) struct InvalidAbi {
     pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_default_field_in_tuple)]
+pub(crate) struct TupleStructWithDefault {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
 pub(crate) struct InvalidAbiReason(pub &'static str);
 
 impl Subdiagnostic for InvalidAbiReason {

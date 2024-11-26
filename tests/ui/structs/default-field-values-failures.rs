@@ -23,6 +23,8 @@ pub struct Qux<const C: i32> {
     bay: i32 = C,
 }
 
+pub struct Rak(i32 = 42); //~ ERROR default field in tuple struct
+
 impl<const C: i32> Qux<C> {
     const S: S = S;
 }

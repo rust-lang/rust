@@ -17,7 +17,10 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
-use super::errors::{InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
+use super::errors::{
+    InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound,
+    TupleStructWithDefault,
+};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
@@ -690,13 +693,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
             VariantData::Tuple(fields, id) => {
                 let ctor_id = self.lower_node_id(*id);
                 self.alias_attrs(ctor_id, parent_id);
-                hir::VariantData::Tuple(
-                    self.arena.alloc_from_iter(
-                        fields.iter().enumerate().map(|f| self.lower_field_def(f)),
-                    ),
-                    ctor_id,
-                    self.local_def_id(*id),
-                )
+                let fields = self
+                    .arena
+                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f)));
+                for field in &fields[..] {
+                    if let Some(default) = field.default {
+                        // Default values in tuple struct and tuple variants are not allowed by the
+                        // RFC due to concerns about the syntax, both in the item definition and the
+                        // expression. We could in the future allow `struct S(i32 = 0);` and force
+                        // users to construct the value with `let _ = S { .. };`.
+                        if self.tcx.features().default_field_values() {
+                            self.dcx().emit_err(TupleStructWithDefault { span: default.span });
+                        } else {
+                            let _ = self.dcx().span_delayed_bug(
+                                default.span,
+                                "expected `default values on `struct` fields aren't supported` \
+                                 feature-gate error but none was produced",
+                            );
+                        }
+                    }
+                }
+                hir::VariantData::Tuple(fields, ctor_id, self.local_def_id(*id))
             }
             VariantData::Unit(id) => {
                 let ctor_id = self.lower_node_id(*id);

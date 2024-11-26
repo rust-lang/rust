@@ -53,6 +53,9 @@ ast_lowering_closure_cannot_be_static = closures cannot be static
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
 
+ast_lowering_default_field_in_tuple = default field in tuple struct
+    .label = default fields are only supported on structs
+
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 
