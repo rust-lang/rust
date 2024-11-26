@@ -53,19 +53,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "stat" | "stat@FBSD_1.0" => {
                 let [path, buf] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_fbsd_stat(path, buf)?;
+                let result = this.macos_fbsd_solaris_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat@FBSD_1.0" => {
                 let [path, buf] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_fbsd_lstat(path, buf)?;
+                let result = this.macos_fbsd_solaris_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat@FBSD_1.0" => {
                 let [fd, buf] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.macos_fbsd_fstat(fd, buf)?;
+                let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir_r" | "readdir_r@FBSD_1.0" => {
