@@ -243,17 +243,17 @@ fn init_current(current: *mut ()) -> Thread {
         // a particular API should be entirely allocation-free, feel free to open
         // an issue on the Rust repository, we'll see what we can do.
         rtabort!(
-            "\n
-            Attempted to access thread-local data while allocating said data.\n
-            Do not access functions that allocate in the global allocator!\n
-            This is a bug in the global allocator.\n
-        "
+            "\n\
+            Attempted to access thread-local data while allocating said data.\n\
+            Do not access functions that allocate in the global allocator!\n\
+            This is a bug in the global allocator.\n\
+            "
         )
     } else {
         debug_assert_eq!(current, DESTROYED);
         panic!(
-            "use of std::thread::current() is not possible after the thread's
-         local data has been destroyed"
+            "use of std::thread::current() is not possible after the thread's \
+            local data has been destroyed"
         )
     }
 }
