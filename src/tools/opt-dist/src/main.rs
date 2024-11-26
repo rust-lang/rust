@@ -159,6 +159,9 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .skipped_tests(vec![
                     // Fails because of linker errors, as of June 2023.
                     "tests/ui/process/nofile-limit.rs".to_string(),
+                    // FIXME(#133503): the rustc under test here during beta bump seems to be beta
+                    // but `//@ only-nightly` was active.
+                    "tests/ui/bootstrap/rustc_bootstap.rs".to_string(),
                 ])
                 .build()?;
 
@@ -181,6 +184,9 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .skipped_tests(vec![
                     // Fails as of June 2023.
                     "tests\\codegen\\vec-shrink-panik.rs".to_string(),
+                    // FIXME(#133503): the rustc under test here during beta bump seems to be beta
+                    // but `//@ only-nightly` was active.
+                    "tests\\ui\\bootstrap\\rustc_bootstap.rs".to_string(),
                 ])
                 .build()?;
 
