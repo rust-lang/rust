@@ -3,7 +3,6 @@ use std::iter;
 pub use rustc_type_ir::relate::*;
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{self as ty, Ty, TyCtxt};
 
 pub type RelateResult<'tcx, T> = rustc_type_ir::relate::RelateResult<TyCtxt<'tcx>, T>;
@@ -86,10 +85,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
         // in `a`.
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
-        // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
-        a_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         a_v.dedup();
-        b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         b_v.dedup();
         if a_v.len() != b_v.len() {
             return Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b)));
