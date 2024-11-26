@@ -61,18 +61,18 @@ pub fn is_dylib(path: &Path) -> bool {
 }
 
 fn is_aix_shared_archive(path: &Path) -> bool {
-    // FIXME(#133268): reading the entire file as &[u8] into memory seems excessive
-    // look into either mmap it or use the ReadCache
-    let data = match fs::read(path) {
-        Ok(data) => data,
-        Err(_) => return false,
-    };
-    let file = match ArchiveFile::parse(&*data) {
+    let file = match fs::File::open(path) {
         Ok(file) => file,
         Err(_) => return false,
     };
+    let reader = object::ReadCache::new(file);
+    let archive = match ArchiveFile::parse(&reader) {
+        Ok(result) => result,
+        Err(_) => return false,
+    };
 
-    file.members()
+    archive
+        .members()
         .filter_map(Result::ok)
         .any(|entry| String::from_utf8_lossy(entry.name()).contains(".so"))
 }
