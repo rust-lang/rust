@@ -47,7 +47,7 @@ fd-lock = "4.0"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"
-object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
 opener = "0.5"
 semver = "1.0"
 serde = "1.0"
