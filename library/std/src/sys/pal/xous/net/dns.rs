@@ -107,7 +107,7 @@ impl TryFrom<&str> for LookupHost {
             ($e:expr, $msg:expr) => {
                 match $e {
                     Some(r) => r,
-                    None => return Err(io::const_io_error!(io::ErrorKind::InvalidInput, &$msg)),
+                    None => return Err(io::const_error!(io::ErrorKind::InvalidInput, &$msg)),
                 }
             };
         }
@@ -123,7 +123,6 @@ impl TryFrom<(&str, u16)> for LookupHost {
     type Error = io::Error;
 
     fn try_from(v: (&str, u16)) -> io::Result<LookupHost> {
-        lookup(v.0, v.1)
-            .map_err(|_e| io::const_io_error!(io::ErrorKind::InvalidInput, &"DNS failure"))
+        lookup(v.0, v.1).map_err(|_e| io::const_error!(io::ErrorKind::InvalidInput, &"DNS failure"))
     }
 }

@@ -340,6 +340,7 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_must_use)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
@@ -410,6 +411,7 @@
 // Only for const-ness:
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
+#![feature(io_const_error)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
