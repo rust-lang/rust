@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicate};
+use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
@@ -180,7 +180,7 @@ fn suggest_changing_unsized_bound(
     // First look at the `where` clause because we can have `where T: ?Sized`,
     // then look at params.
     for (where_pos, predicate) in generics.predicates.iter().enumerate() {
-        let WherePredicate::BoundPredicate(predicate) = predicate else {
+        let WherePredicateKind::BoundPredicate(predicate) = predicate.kind else {
             continue;
         };
         if !predicate.is_param_bound(param.def_id.to_def_id()) {

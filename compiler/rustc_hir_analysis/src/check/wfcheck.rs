@@ -1921,8 +1921,8 @@ fn check_variances_for_type_defn<'tcx>(
         hir_generics
             .predicates
             .iter()
-            .filter_map(|predicate| match predicate {
-                hir::WherePredicate::BoundPredicate(predicate) => {
+            .filter_map(|predicate| match predicate.kind {
+                hir::WherePredicateKind::BoundPredicate(predicate) => {
                     match icx.lower_ty(predicate.bounded_ty).kind() {
                         ty::Param(data) => Some(Parameter(data.index)),
                         _ => None,
@@ -2202,8 +2202,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     span = predicates
                         .iter()
                         // There seems to be no better way to find out which predicate we are in
-                        .find(|pred| pred.span().contains(obligation_span))
-                        .map(|pred| pred.span())
+                        .find(|pred| pred.span.contains(obligation_span))
+                        .map(|pred| pred.span)
                         .unwrap_or(obligation_span);
                 }
 

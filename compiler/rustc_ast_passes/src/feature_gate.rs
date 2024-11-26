@@ -345,8 +345,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         for predicate in &g.where_clause.predicates {
-            match predicate {
-                ast::WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
                     // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }

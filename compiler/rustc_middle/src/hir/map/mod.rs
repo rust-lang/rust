@@ -947,7 +947,7 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::LetStmt(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
-            Node::WhereBoundPredicate(pred) => pred.span,
+            Node::WherePredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
@@ -1225,7 +1225,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             format!("{id} (generic_param {})", path_str(param.def_id))
         }
         Node::Crate(..) => String::from("(root_crate)"),
-        Node::WhereBoundPredicate(_) => node_str("where bound predicate"),
+        Node::WherePredicate(_) => node_str("where predicate"),
         Node::ArrayLenInfer(_) => node_str("array len infer"),
         Node::Synthetic => unreachable!(),
         Node::Err(_) => node_str("error"),

@@ -1100,7 +1100,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             // FIXME: we could potentially look at the impl's bounds to not point at bounds that
             // *are* present in the impl.
             for p in trait_generics.predicates {
-                if let hir::WherePredicate::BoundPredicate(pred) = p {
+                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                     for b in pred.bounds {
                         if let hir::GenericBound::Outlives(lt) = b {
                             bounds_span.push(lt.ident.span);
@@ -1113,7 +1113,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             {
                 let mut impl_bounds = 0;
                 for p in impl_generics.predicates {
-                    if let hir::WherePredicate::BoundPredicate(pred) = p {
+                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                         for b in pred.bounds {
                             if let hir::GenericBound::Outlives(_) = b {
                                 impl_bounds += 1;

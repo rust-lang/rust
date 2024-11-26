@@ -150,8 +150,8 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                     .predicates
                     .iter()
                     .filter_map(|pred| {
-                        match pred {
-                            hir::WherePredicate::BoundPredicate(pred)
+                        match pred.kind {
+                            hir::WherePredicateKind::BoundPredicate(pred)
                                 if pred.bounded_ty.hir_id.owner.to_def_id() == trait_def_id =>
                             {
                                 // Fetch spans for trait bounds that are Sized:

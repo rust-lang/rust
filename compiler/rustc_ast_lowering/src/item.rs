@@ -1401,7 +1401,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // keep track of the Span info. Now, `<dyn HirTyLowerer>::add_implicit_sized_bound`
         // checks both param bounds and where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
-            let WherePredicate::BoundPredicate(bound_pred) = pred else {
+            let WherePredicateKind::BoundPredicate(bound_pred) = &pred.kind else {
                 continue;
             };
             let compute_is_param = || {
@@ -1538,9 +1538,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         });
         let span = self.lower_span(span);
-
-        match kind {
-            GenericParamKind::Const { .. } => None,
+        let hir_id = self.next_id();
+        let kind = self.arena.alloc(match kind {
+            GenericParamKind::Const { .. } => return None,
             GenericParamKind::Type { .. } => {
                 let def_id = self.local_def_id(id).to_def_id();
                 let hir_id = self.next_id();
@@ -1555,38 +1555,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty_id = self.next_id();
                 let bounded_ty =
                     self.ty_path(ty_id, param_span, hir::QPath::Resolved(None, ty_path));
-                Some(hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    hir_id: self.next_id(),
+                hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bounded_ty: self.arena.alloc(bounded_ty),
                     bounds,
-                    span,
                     bound_generic_params: &[],
                     origin,
-                }))
+                })
             }
             GenericParamKind::Lifetime => {
                 let ident = self.lower_ident(ident);
                 let lt_id = self.next_node_id();
                 let lifetime = self.new_named_lifetime(id, lt_id, ident);
-                Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
-                    span,
                     bounds,
                     in_where_clause: false,
-                }))
+                })
             }
-        }
+        });
+        Some(hir::WherePredicate { hir_id, span, kind })
     }
 
     fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
-        match pred {
-            WherePredicate::BoundPredicate(WhereBoundPredicate {
+        let hir_id = self.lower_node_id(pred.id);
+        let span = self.lower_span(pred.span);
+        let kind = self.arena.alloc(match &pred.kind {
+            WherePredicateKind::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params,
                 bounded_ty,
                 bounds,
-                span,
-            }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                hir_id: self.next_id(),
+            }) => hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params: self
                     .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
                 bounded_ty: self
@@ -1595,12 +1593,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     bounds,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                 ),
-                span: self.lower_span(*span),
                 origin: PredicateOrigin::WhereClause,
             }),
-            WherePredicate::RegionPredicate(WhereRegionPredicate { lifetime, bounds, span }) => {
-                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    span: self.lower_span(*span),
+            WherePredicateKind::RegionPredicate(WhereRegionPredicate { lifetime, bounds }) => {
+                hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime: self.lower_lifetime(lifetime),
                     bounds: self.lower_param_bounds(
                         bounds,
@@ -1609,15 +1605,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     in_where_clause: true,
                 })
             }
-            WherePredicate::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty, span }) => {
-                hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
+            WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
+                hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
                     lhs_ty: self
                         .lower_ty(lhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                     rhs_ty: self
                         .lower_ty(rhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
-                    span: self.lower_span(*span),
                 })
             }
-        }
+        });
+        hir::WherePredicate { hir_id, span, kind }
     }
 }

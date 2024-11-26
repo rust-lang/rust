@@ -1268,15 +1268,14 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         debug!("visit_where_predicate {:?}", p);
         let previous_value = replace(&mut self.diag_metadata.current_where_predicate, Some(p));
         self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-            if let WherePredicate::BoundPredicate(WhereBoundPredicate {
-                ref bounded_ty,
-                ref bounds,
-                ref bound_generic_params,
-                span: predicate_span,
+            if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                bounded_ty,
+                bounds,
+                bound_generic_params,
                 ..
-            }) = p
+            }) = &p.kind
             {
-                let span = predicate_span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
+                let span = p.span.shrink_to_lo().to(bounded_ty.span.shrink_to_lo());
                 this.with_generic_param_rib(
                     bound_generic_params,
                     RibKind::Normal,

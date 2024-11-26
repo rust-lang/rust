@@ -420,7 +420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::GenericParam(_)
             | hir::Node::Crate(_)
             | hir::Node::Infer(_)
-            | hir::Node::WhereBoundPredicate(_)
+            | hir::Node::WherePredicate(_)
             | hir::Node::ArrayLenInfer(_)
             | hir::Node::PreciseCapturingNonLifetimeArg(_)
             | hir::Node::OpaqueTy(_) => {
