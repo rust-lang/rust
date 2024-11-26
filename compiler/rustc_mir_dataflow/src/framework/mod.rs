@@ -378,16 +378,6 @@ impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
     }
 }
 
-impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
-    fn gen_(&mut self, elem: T) {
-        self.0.insert(elem);
-    }
-
-    fn kill(&mut self, elem: T) {
-        self.0.remove(elem);
-    }
-}
-
 // NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Effect {
