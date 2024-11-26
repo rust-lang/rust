@@ -1,5 +1,5 @@
 warning: method `dummy` is never used
-  --> $DIR/issue-14958.rs:6:16
+  --> $DIR/issue-14958.rs:5:16
    |
 LL | trait Foo { fn dummy(&self) { }}
    |       ---      ^^^^^

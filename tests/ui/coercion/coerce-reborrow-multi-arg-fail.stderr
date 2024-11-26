@@ -16,7 +16,7 @@ LL | fn test<T>(_a: T, _b: T) {}
    |    ^^^^ -  -----  ----- this parameter needs to match the `&mut {integer}` type of `_a`
    |         |  |
    |         |  `_b` needs to match the `&mut {integer}` type of this parameter
-   |         `_a` and `_b` all reference this parameter T
+   |         `_a` and `_b` both reference this parameter `T`
 
 error: aborting due to 1 previous error
 

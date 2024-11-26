@@ -1172,7 +1172,7 @@ fn attempt_load_dylib(path: &Path) -> Result<libloading::Library, libloading::Er
         // the expected format is lib<name>.a(libname.so) for the actual
         // dynamic library
         let library_name = path.file_stem().expect("expect a library name");
-        let mut archive_member = OsString::from("a(");
+        let mut archive_member = std::ffi::OsString::from("a(");
         archive_member.push(library_name);
         archive_member.push(".so)");
         let new_path = path.with_extension(archive_member);

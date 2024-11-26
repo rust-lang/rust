@@ -2117,11 +2117,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::ConstArgKind::Anon(ct)
         };
 
-        self.arena.alloc(hir::ConstArg {
-            hir_id: self.next_id(),
-            kind: ct_kind,
-            is_desugared_from_effects: false,
-        })
+        self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
     }
 
     /// See [`hir::ConstArg`] for when to use this function vs
@@ -2163,19 +2159,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 None,
             );
 
-            return ConstArg {
-                hir_id: self.next_id(),
-                kind: hir::ConstArgKind::Path(qpath),
-                is_desugared_from_effects: false,
-            };
+            return ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath) };
         }
 
         let lowered_anon = self.lower_anon_const_to_anon_const(anon);
-        ConstArg {
-            hir_id: self.next_id(),
-            kind: hir::ConstArgKind::Anon(lowered_anon),
-            is_desugared_from_effects: false,
-        }
+        ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Anon(lowered_anon) }
     }
 
     /// See [`hir::ConstArg`] for when to use this function vs

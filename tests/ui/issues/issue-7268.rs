@@ -1,6 +1,5 @@
 //@ check-pass
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 fn foo<T: 'static>(_: T) {}
 
