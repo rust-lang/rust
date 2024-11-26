@@ -71,6 +71,9 @@ xflags::xflags! {
             optional --with-deps
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
+            /// Don't run cargo metadata on the sysroot to analyze its third-party dependencies.
+            /// Requires --no-sysroot to not be set.
+            optional --no-query-sysroot-metadata
             /// Don't set #[cfg(test)].
             optional --no-test
 
@@ -235,6 +238,7 @@ pub struct AnalysisStats {
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
+    pub no_query_sysroot_metadata: bool,
     pub no_test: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,

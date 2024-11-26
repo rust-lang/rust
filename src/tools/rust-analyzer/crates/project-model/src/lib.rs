@@ -240,3 +240,10 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
     };
     Ok(res)
 }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SysrootQueryMetadata {
+    #[default]
+    CargoMetadata,
+    None,
+}
