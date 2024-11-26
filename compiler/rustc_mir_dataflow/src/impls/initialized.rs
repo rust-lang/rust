@@ -369,10 +369,12 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 }
 
+/// There can be many more `MovePathIndex` than there are locals in a MIR body.
+/// We use a mixed bitset to avoid paying too high a memory footprint.
+pub type MaybeUninitializedPlacesDomain = MixedBitSet<MovePathIndex>;
+
 impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    /// There can be many more `MovePathIndex` than there are locals in a MIR body.
-    /// We use a mixed bitset to avoid paying too high a memory footprint.
-    type Domain = MixedBitSet<MovePathIndex>;
+    type Domain = MaybeUninitializedPlacesDomain;
 
     const NAME: &'static str = "maybe_uninit";
 
@@ -490,10 +492,12 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
+/// There can be many more `InitIndex` than there are locals in a MIR body.
+/// We use a mixed bitset to avoid paying too high a memory footprint.
+pub type EverInitializedPlacesDomain = MixedBitSet<InitIndex>;
+
 impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    /// There can be many more `InitIndex` than there are locals in a MIR body.
-    /// We use a mixed bitset to avoid paying too high a memory footprint.
-    type Domain = MixedBitSet<InitIndex>;
+    type Domain = EverInitializedPlacesDomain;
 
     const NAME: &'static str = "ever_init";
 

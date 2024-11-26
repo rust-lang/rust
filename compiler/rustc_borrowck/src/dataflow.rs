@@ -8,7 +8,10 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
+use rustc_mir_dataflow::impls::{
+    EverInitializedPlaces, EverInitializedPlacesDomain, MaybeUninitializedPlaces,
+    MaybeUninitializedPlacesDomain,
+};
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice, SwitchIntEdgeEffects};
 use tracing::debug;
 
@@ -24,7 +27,7 @@ pub(crate) struct Borrowck<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
-    type Domain = BorrowckDomain<'a, 'tcx>;
+    type Domain = BorrowckDomain;
 
     const NAME: &'static str = "borrowck";
 
@@ -110,14 +113,14 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 }
 
-impl JoinSemiLattice for BorrowckDomain<'_, '_> {
+impl JoinSemiLattice for BorrowckDomain {
     fn join(&mut self, _other: &Self) -> bool {
         // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
         unreachable!();
     }
 }
 
-impl<'tcx, C> DebugWithContext<C> for BorrowckDomain<'_, 'tcx>
+impl<'tcx, C> DebugWithContext<C> for BorrowckDomain
 where
     C: rustc_mir_dataflow::move_paths::HasMoveData<'tcx>,
 {
@@ -160,10 +163,10 @@ where
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct BorrowckDomain<'a, 'tcx> {
-    pub(crate) borrows: <Borrows<'a, 'tcx> as Analysis<'tcx>>::Domain,
-    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
-    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
+pub(crate) struct BorrowckDomain {
+    pub(crate) borrows: BorrowsDomain,
+    pub(crate) uninits: MaybeUninitializedPlacesDomain,
+    pub(crate) ever_inits: EverInitializedPlacesDomain,
 }
 
 rustc_index::newtype_index! {
@@ -566,6 +569,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
+type BorrowsDomain = BitSet<BorrowIndex>;
+
 /// Forward dataflow computation of the set of borrows that are in scope at a particular location.
 /// - we gen the introduced loans
 /// - we kill loans on locals going out of (regular) scope
@@ -574,7 +579,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 /// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
 ///   `a.b.c` when `a` is overwritten.
 impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
-    type Domain = BitSet<BorrowIndex>;
+    type Domain = BorrowsDomain;
 
     const NAME: &'static str = "borrows";
 
