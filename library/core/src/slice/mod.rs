@@ -10,10 +10,10 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, select_unpredictable, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
-use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
+use crate::ops::{Bound, OneSidedRange, Range, RangeBounds, RangeInclusive};
 use crate::simd::{self, Simd};
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::{fmt, hint, ptr, slice};
+use crate::{fmt, hint, ptr, range, slice};
 
 #[unstable(
     feature = "slice_internals",
@@ -4469,6 +4469,12 @@ impl<T> [T] {
 
     /// Returns mutable references to many indices at once, without doing any checks.
     ///
+    /// An index can be either a `usize`, a [`Range`] or a [`RangeInclusive`]. Note
+    /// that this method takes an array, so all indices must be of the same type.
+    /// If passed an array of `usize`s this method gives back an array of mutable references
+    /// to single elements, while if passed an array of ranges it gives back an array of
+    /// mutable references to slices.
+    ///
     /// For a safe alternative see [`get_many_mut`].
     ///
     /// # Safety
@@ -4489,30 +4495,49 @@ impl<T> [T] {
     ///     *b *= 100;
     /// }
     /// assert_eq!(x, &[10, 2, 400]);
+    ///
+    /// unsafe {
+    ///     let [a, b] = x.get_many_unchecked_mut([0..1, 1..3]);
+    ///     a[0] = 8;
+    ///     b[0] = 88;
+    ///     b[1] = 888;
+    /// }
+    /// assert_eq!(x, &[8, 88, 888]);
+    ///
+    /// unsafe {
+    ///     let [a, b] = x.get_many_unchecked_mut([1..=2, 0..=0]);
+    ///     a[0] = 11;
+    ///     a[1] = 111;
+    ///     b[0] = 1;
+    /// }
+    /// assert_eq!(x, &[1, 11, 111]);
     /// ```
     ///
     /// [`get_many_mut`]: slice::get_many_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "get_many_mut", issue = "104642")]
     #[inline]
-    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+    pub unsafe fn get_many_unchecked_mut<I, const N: usize>(
         &mut self,
-        indices: [usize; N],
-    ) -> [&mut T; N] {
+        indices: [I; N],
+    ) -> [&mut I::Output; N]
+    where
+        I: GetManyMutIndex + SliceIndex<Self>,
+    {
         // NB: This implementation is written as it is because any variation of
         // `indices.map(|i| self.get_unchecked_mut(i))` would make miri unhappy,
         // or generate worse code otherwise. This is also why we need to go
         // through a raw pointer here.
         let slice: *mut [T] = self;
-        let mut arr: mem::MaybeUninit<[&mut T; N]> = mem::MaybeUninit::uninit();
+        let mut arr: mem::MaybeUninit<[&mut I::Output; N]> = mem::MaybeUninit::uninit();
         let arr_ptr = arr.as_mut_ptr();
 
         // SAFETY: We expect `indices` to contain disjunct values that are
         // in bounds of `self`.
         unsafe {
             for i in 0..N {
-                let idx = *indices.get_unchecked(i);
-                *(*arr_ptr).get_unchecked_mut(i) = &mut *slice.get_unchecked_mut(idx);
+                let idx = indices.get_unchecked(i).clone();
+                arr_ptr.cast::<&mut I::Output>().add(i).write(&mut *slice.get_unchecked_mut(idx));
             }
             arr.assume_init()
         }
@@ -4520,8 +4545,18 @@ impl<T> [T] {
 
     /// Returns mutable references to many indices at once.
     ///
-    /// Returns an error if any index is out-of-bounds, or if the same index was
-    /// passed more than once.
+    /// An index can be either a `usize`, a [`Range`] or a [`RangeInclusive`]. Note
+    /// that this method takes an array, so all indices must be of the same type.
+    /// If passed an array of `usize`s this method gives back an array of mutable references
+    /// to single elements, while if passed an array of ranges it gives back an array of
+    /// mutable references to slices.
+    ///
+    /// Returns an error if any index is out-of-bounds, or if there are overlapping indices.
+    /// An empty range is not considered to overlap if it is located at the beginning or at
+    /// the end of another range, but is considered to overlap if it is located in the middle.
+    ///
+    /// This method does a O(n^2) check to check that there are no overlapping indices, so be careful
+    /// when passing many indices.
     ///
     /// # Examples
     ///
@@ -4534,13 +4569,30 @@ impl<T> [T] {
     ///     *b = 612;
     /// }
     /// assert_eq!(v, &[413, 2, 612]);
+    ///
+    /// if let Ok([a, b]) = v.get_many_mut([0..1, 1..3]) {
+    ///     a[0] = 8;
+    ///     b[0] = 88;
+    ///     b[1] = 888;
+    /// }
+    /// assert_eq!(v, &[8, 88, 888]);
+    ///
+    /// if let Ok([a, b]) = v.get_many_mut([1..=2, 0..=0]) {
+    ///     a[0] = 11;
+    ///     a[1] = 111;
+    ///     b[0] = 1;
+    /// }
+    /// assert_eq!(v, &[1, 11, 111]);
     /// ```
     #[unstable(feature = "get_many_mut", issue = "104642")]
     #[inline]
-    pub fn get_many_mut<const N: usize>(
+    pub fn get_many_mut<I, const N: usize>(
         &mut self,
-        indices: [usize; N],
-    ) -> Result<[&mut T; N], GetManyMutError<N>> {
+        indices: [I; N],
+    ) -> Result<[&mut I::Output; N], GetManyMutError<N>>
+    where
+        I: GetManyMutIndex + SliceIndex<Self>,
+    {
         if !get_many_check_valid(&indices, self.len()) {
             return Err(GetManyMutError { _private: () });
         }
@@ -4885,14 +4937,15 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 ///
 /// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
 /// comparison operations.
-fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
+#[inline]
+fn get_many_check_valid<I: GetManyMutIndex, const N: usize>(indices: &[I; N], len: usize) -> bool {
     // NB: The optimizer should inline the loops into a sequence
     // of instructions without additional branching.
     let mut valid = true;
-    for (i, &idx) in indices.iter().enumerate() {
-        valid &= idx < len;
-        for &idx2 in &indices[..i] {
-            valid &= idx != idx2;
+    for (i, idx) in indices.iter().enumerate() {
+        valid &= idx.is_in_bounds(len);
+        for idx2 in &indices[..i] {
+            valid &= !idx.is_overlapping(idx2);
         }
     }
     valid
@@ -4916,6 +4969,7 @@ fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> boo
 #[unstable(feature = "get_many_mut", issue = "104642")]
 // NB: The N here is there to be forward-compatible with adding more details
 // to the error type at a later point
+#[derive(Clone, PartialEq, Eq)]
 pub struct GetManyMutError<const N: usize> {
     _private: (),
 }
@@ -4931,5 +4985,113 @@ impl<const N: usize> fmt::Debug for GetManyMutError<N> {
 impl<const N: usize> fmt::Display for GetManyMutError<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("an index is out of bounds or appeared multiple times in the array", f)
+    }
+}
+
+mod private_get_many_mut_index {
+    use super::{Range, RangeInclusive, range};
+
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    pub trait Sealed {}
+
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    impl Sealed for usize {}
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    impl Sealed for Range<usize> {}
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    impl Sealed for RangeInclusive<usize> {}
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    impl Sealed for range::Range<usize> {}
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    impl Sealed for range::RangeInclusive<usize> {}
+}
+
+/// A helper trait for `<[T]>::get_many_mut()`.
+///
+/// # Safety
+///
+/// If `is_in_bounds()` returns `true` and `is_overlapping()` returns `false`,
+/// it must be safe to index the slice with the indices.
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+pub unsafe trait GetManyMutIndex: Clone + private_get_many_mut_index::Sealed {
+    /// Returns `true` if `self` is in bounds for `len` slice elements.
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    fn is_in_bounds(&self, len: usize) -> bool;
+
+    /// Returns `true` if `self` overlaps with `other`.
+    ///
+    /// Note that we don't consider zero-length ranges to overlap at the beginning or the end,
+    /// but do consider them to overlap in the middle.
+    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    fn is_overlapping(&self, other: &Self) -> bool;
+}
+
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+// SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
+unsafe impl GetManyMutIndex for usize {
+    #[inline]
+    fn is_in_bounds(&self, len: usize) -> bool {
+        *self < len
+    }
+
+    #[inline]
+    fn is_overlapping(&self, other: &Self) -> bool {
+        *self == *other
+    }
+}
+
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+// SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
+unsafe impl GetManyMutIndex for Range<usize> {
+    #[inline]
+    fn is_in_bounds(&self, len: usize) -> bool {
+        (self.start <= self.end) & (self.end <= len)
+    }
+
+    #[inline]
+    fn is_overlapping(&self, other: &Self) -> bool {
+        (self.start < other.end) & (other.start < self.end)
+    }
+}
+
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+// SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
+unsafe impl GetManyMutIndex for RangeInclusive<usize> {
+    #[inline]
+    fn is_in_bounds(&self, len: usize) -> bool {
+        (self.start <= self.end) & (self.end < len)
+    }
+
+    #[inline]
+    fn is_overlapping(&self, other: &Self) -> bool {
+        (self.start <= other.end) & (other.start <= self.end)
+    }
+}
+
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+// SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
+unsafe impl GetManyMutIndex for range::Range<usize> {
+    #[inline]
+    fn is_in_bounds(&self, len: usize) -> bool {
+        Range::from(*self).is_in_bounds(len)
+    }
+
+    #[inline]
+    fn is_overlapping(&self, other: &Self) -> bool {
+        Range::from(*self).is_overlapping(&Range::from(*other))
+    }
+}
+
+#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+// SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
+unsafe impl GetManyMutIndex for range::RangeInclusive<usize> {
+    #[inline]
+    fn is_in_bounds(&self, len: usize) -> bool {
+        RangeInclusive::from(*self).is_in_bounds(len)
+    }
+
+    #[inline]
+    fn is_overlapping(&self, other: &Self) -> bool {
+        RangeInclusive::from(*self).is_overlapping(&RangeInclusive::from(*other))
     }
 }
