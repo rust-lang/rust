@@ -1,5 +1,7 @@
 use std::assert_matches::assert_matches;
 
+use rustc_data_structures::fx::FxHashSet;
+
 use super::super::*;
 
 // Test target self-consistency and JSON encoding/decoding roundtrip.
@@ -169,6 +171,27 @@ impl Target {
                 assert_matches!(&*self.llvm_abiname, "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e")
             }
             _ => {}
+        }
+
+        // Check that the given target-features string makes some basic sense.
+        if !self.features.is_empty() {
+            let mut features_enabled = FxHashSet::default();
+            let mut features_disabled = FxHashSet::default();
+            for feat in self.features.split(',') {
+                if let Some(feat) = feat.strip_prefix("+") {
+                    features_enabled.insert(feat);
+                    if features_disabled.contains(feat) {
+                        panic!("target feature `{feat}` is both enabled and disabled");
+                    }
+                } else if let Some(feat) = feat.strip_prefix("-") {
+                    features_disabled.insert(feat);
+                    if features_enabled.contains(feat) {
+                        panic!("target feature `{feat}` is both enabled and disabled");
+                    }
+                } else {
+                    panic!("target feature `{feat}` is invalid, must start with `+` or `-`");
+                }
+            }
         }
     }
 
