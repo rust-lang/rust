@@ -122,14 +122,6 @@ pub trait Analysis<'tcx> {
     // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
 
-    /// Updates the current dataflow state with the effect of evaluating a statement.
-    fn apply_primary_statement_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        statement: &mir::Statement<'tcx>,
-        location: Location,
-    );
-
     /// Updates the current dataflow state with an "early" effect, i.e. one
     /// that occurs immediately before the given statement.
     ///
@@ -141,6 +133,29 @@ pub trait Analysis<'tcx> {
         &mut self,
         _state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+    }
+
+    /// Updates the current dataflow state with the effect of evaluating a statement.
+    fn apply_primary_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        statement: &mir::Statement<'tcx>,
+        location: Location,
+    );
+
+    /// Updates the current dataflow state with an effect that occurs immediately *before* the
+    /// given terminator.
+    ///
+    /// This method is useful if the consumer of the results of this analysis needs only to observe
+    /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_terminator_effect`.
+    fn apply_early_terminator_effect(
+        &mut self,
+        _state: &mut Self::Domain,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
     }
@@ -158,21 +173,6 @@ pub trait Analysis<'tcx> {
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         terminator.edges()
-    }
-
-    /// Updates the current dataflow state with an effect that occurs immediately *before* the
-    /// given terminator.
-    ///
-    /// This method is useful if the consumer of the results of this analysis needs only to observe
-    /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without also implementing
-    /// `apply_primary_terminator_effect`.
-    fn apply_early_terminator_effect(
-        &mut self,
-        _state: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
-        _location: Location,
-    ) {
     }
 
     /* Edge-specific effects */

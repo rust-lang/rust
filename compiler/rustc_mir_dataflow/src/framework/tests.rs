@@ -168,6 +168,16 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         unimplemented!("This is never called since `MockAnalysis` is never iterated to fixpoint");
     }
 
+    fn apply_early_statement_effect(
+        &mut self,
+        state: &mut Self::Domain,
+        _statement: &mir::Statement<'tcx>,
+        location: Location,
+    ) {
+        let idx = self.effect(Effect::Early.at_index(location.statement_index));
+        assert!(state.insert(idx));
+    }
+
     fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
@@ -178,10 +188,10 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_early_statement_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
-        _statement: &mir::Statement<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
         let idx = self.effect(Effect::Early.at_index(location.statement_index));
@@ -197,16 +207,6 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         let idx = self.effect(Effect::Primary.at_index(location.statement_index));
         assert!(state.insert(idx));
         terminator.edges()
-    }
-
-    fn apply_early_terminator_effect(
-        &mut self,
-        state: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
-        location: Location,
-    ) {
-        let idx = self.effect(Effect::Early.at_index(location.statement_index));
-        assert!(state.insert(idx));
     }
 }
 
