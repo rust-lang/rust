@@ -428,8 +428,8 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
 
             // Makes a note of the current item for comparison with the next.
             cur_t = Some(CurItem {
-                order: module_level_order,
                 item,
+                order: module_level_order,
                 name: get_item_name(item),
             });
         }

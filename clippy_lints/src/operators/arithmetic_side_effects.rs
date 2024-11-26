@@ -47,6 +47,7 @@ impl ArithmeticSideEffects {
         Self {
             allowed_binary,
             allowed_unary,
+            const_span: None,
             disallowed_int_methods: [
                 sym::saturating_div,
                 sym::wrapping_div,
@@ -55,7 +56,6 @@ impl ArithmeticSideEffects {
             ]
             .into_iter()
             .collect(),
-            const_span: None,
             expr_span: None,
         }
     }
