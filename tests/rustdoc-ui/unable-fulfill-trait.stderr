@@ -5,7 +5,7 @@ LL |     field1: dyn Bar<'a, 'b>,
    |                 ^^^ expected 1 generic argument
    |
 note: trait defined here, with 1 generic parameter: `U`
-  --> $DIR/unable-fulfill-trait.rs:9:11
+  --> $DIR/unable-fulfill-trait.rs:8:11
    |
 LL | pub trait Bar<'x, 's, U>
    |           ^^^         -
@@ -14,13 +14,6 @@ help: add missing generic argument
 LL |     field1: dyn Bar<'a, 'b, U>,
    |                           +++
 
-error[E0227]: ambiguous lifetime bound, explicit lifetime bound required
-  --> $DIR/unable-fulfill-trait.rs:4:13
-   |
-LL |     field1: dyn Bar<'a, 'b>,
-   |             ^^^^^^^^^^^^^^^
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0107, E0227.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.

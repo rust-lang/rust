@@ -12,9 +12,7 @@ use crate::errors::{
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
 };
 use crate::framework::BitSetExt;
-use crate::impls::{
-    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
-};
+use crate::impls::{MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces};
 use crate::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
@@ -54,13 +52,6 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
             .iterate_to_fixpoint(tcx, body, None);
 
         sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
-    }
-
-    if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
-        let flow_def_inits =
-            DefinitelyInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(tcx, body, None);
-
-        sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {

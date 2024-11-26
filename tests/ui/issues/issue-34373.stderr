@@ -5,7 +5,7 @@ LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    |                              ^^^^^^^^^^
    |
 note: ...which requires expanding type alias `DefaultFoo`...
-  --> $DIR/issue-34373.rs:10:19
+  --> $DIR/issue-34373.rs:9:19
    |
 LL | type DefaultFoo = Foo;
    |                   ^^^
@@ -17,28 +17,6 @@ LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0038]: the trait `Trait` cannot be made into an object
-  --> $DIR/issue-34373.rs:7:24
-   |
-LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   |                        ^^^^^^^^^^^^^^^^^ `Trait` cannot be made into an object
-   |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-34373.rs:4:8
-   |
-LL | trait Trait<T> {
-   |       ----- this trait cannot be made into an object...
-LL |     fn foo(_: T) {}
-   |        ^^^ ...because associated function `foo` has no `self` parameter
-help: consider turning `foo` into a method by giving it a `&self` argument
-   |
-LL |     fn foo(&self, _: T) {}
-   |            ++++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
-   |
-LL |     fn foo(_: T) where Self: Sized {}
-   |                  +++++++++++++++++
-
 error[E0392]: type parameter `T` is never used
   --> $DIR/issue-34373.rs:7:16
    |
@@ -48,7 +26,7 @@ LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0038, E0391, E0392.
-For more information about an error, try `rustc --explain E0038`.
+Some errors have detailed explanations: E0391, E0392.
+For more information about an error, try `rustc --explain E0391`.

@@ -1,7 +1,7 @@
 //@ known-bug: #130521
 
 #![feature(dyn_compatible_for_dispatch)]
-struct Vtable(dyn Cap);
+struct Vtable(dyn Cap<'static>);
 
 trait Cap<'a> {}
 

@@ -47,19 +47,15 @@ where
 {
     pub(crate) fn new(
         body: &'mir Body<'tcx>,
-        results: Results<'tcx, A>,
+        results: &'mir Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
         let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { cursor: results.into_results_cursor(body).into(), style, reachable }
+        Formatter { cursor: results.as_results_cursor(body).into(), style, reachable }
     }
 
     fn body(&self) -> &'mir Body<'tcx> {
         self.cursor.borrow().body()
-    }
-
-    pub(crate) fn into_results(self) -> Results<'tcx, A> {
-        self.cursor.into_inner().into_results()
     }
 }
 

@@ -8,8 +8,9 @@
 //! The `impls` module contains several examples of dataflow analyses.
 //!
 //! Then call `iterate_to_fixpoint` on your type that impls `Analysis` to get a `Results`. From
-//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem,
-//! or implement the `ResultsVisitor` interface and use `visit_results`. The following example uses
+//! there, you can use a `ResultsCursor` to inspect the fixpoint solution to your dataflow problem
+//! (good for inspecting a small number of locations), or implement the `ResultsVisitor` interface
+//! and use `visit_results` (good for inspecting many or all locations). The following example uses
 //! the `ResultsCursor` approach.
 //!
 //! ```ignore (cross-crate-imports)
@@ -278,22 +279,17 @@ pub trait Analysis<'tcx> {
         // every iteration.
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
-            let bb_data = &body[bb];
-
             // Set the state to the entry state of the block.
             // This is equivalent to `state = entry_sets[bb].clone()`,
             // but it saves an allocation, thus improving compile times.
             state.clone_from(&entry_sets[bb]);
 
-            // Apply the block transfer function, using the cached one if it exists.
-            let edges = Self::Direction::apply_effects_in_block(&mut self, &mut state, bb, bb_data);
-
-            Self::Direction::join_state_into_successors_of(
+            Self::Direction::apply_effects_in_block(
                 &mut self,
                 body,
                 &mut state,
                 bb,
-                edges,
+                &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
                     let set_changed = entry_sets[target].join(state);
                     if set_changed {
@@ -306,14 +302,13 @@ pub trait Analysis<'tcx> {
         let results = Results { analysis: self, entry_sets };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
+            let res = write_graphviz_results(tcx, body, &results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
-            results
-        } else {
-            results
         }
+
+        results
     }
 }
 
@@ -375,16 +370,6 @@ impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
             MaybeReachable::Unreachable => {}
             MaybeReachable::Reachable(set) => set.kill(elem),
         }
-    }
-}
-
-impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
-    fn gen_(&mut self, elem: T) {
-        self.0.insert(elem);
-    }
-
-    fn kill(&mut self, elem: T) {
-        self.0.remove(elem);
     }
 }
 

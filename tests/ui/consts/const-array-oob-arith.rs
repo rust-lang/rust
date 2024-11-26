@@ -4,10 +4,10 @@ const VAL: i32 = ARR[IDX];
 const BONG: [i32; (ARR[0] - 41) as usize] = [5];
 const BLUB: [i32; (ARR[0] - 40) as usize] = [5];
 //~^ ERROR: mismatched types
-//~| expected an array with a fixed size of 2 elements, found one with 1 element
+//~| expected an array
 const BOO: [i32; (ARR[0] - 41) as usize] = [5, 99];
 //~^ ERROR: mismatched types
-//~| expected an array with a fixed size of 1 element, found one with 2 elements
+//~| expected an array
 
 fn main() {
     let _ = VAL;
