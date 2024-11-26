@@ -501,19 +501,10 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
                 Ok(sz) => Ok(Ty::new_array_with_const_len(cx, t, sz)),
-                Err(err) => {
-                    // Check whether the lengths are both concrete/known values,
-                    // but are unequal, for better diagnostics.
-                    let sz_a = sz_a.try_to_target_usize(cx);
-                    let sz_b = sz_b.try_to_target_usize(cx);
-
-                    match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => {
-                            Err(TypeError::FixedArraySize(ExpectedFound::new(sz_a_val, sz_b_val)))
-                        }
-                        _ => Err(err),
-                    }
+                Err(TypeError::ConstMismatch(_)) => {
+                    Err(TypeError::ArraySize(ExpectedFound::new(sz_a, sz_b)))
                 }
+                Err(e) => Err(e),
             }
         }
 

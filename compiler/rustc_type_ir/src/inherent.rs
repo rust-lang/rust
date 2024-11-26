@@ -257,8 +257,6 @@ pub trait Const<I: Interner<Const = Self>>:
     + Relate<I>
     + Flags
 {
-    fn try_to_target_usize(self, interner: I) -> Option<u64>;
-
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;

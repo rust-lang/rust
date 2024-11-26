@@ -29,7 +29,7 @@ pub enum TypeError<I: Interner> {
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
-    FixedArraySize(ExpectedFound<u64>),
+    ArraySize(ExpectedFound<I::Const>),
     ArgCount,
 
     RegionsDoesNotOutlive(I::Region, I::Region),
@@ -69,7 +69,7 @@ impl<I: Interner> TypeError<I> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
-            | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
+            | AbiMismatch(_) | ArraySize(_) | ArgumentSorts(..) | Sorts(_)
             | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
