@@ -2050,9 +2050,7 @@ impl<T> Future for JoinFuture<'_, T> {
             // exiting because it's trying to acquire `packet.waker`, which it won't do while
             // holding any *other* locks (...unless the thread’s data includes a lock guard that
             // the waker also wants).
-            if !new_waker.will_wake(&*current_waker_guard) {
-                *current_waker_guard = new_waker.clone();
-            }
+            current_waker_guard.clone_from(new_waker);
         }
 
         // Check for completion again in case the thread finished while we were busy
