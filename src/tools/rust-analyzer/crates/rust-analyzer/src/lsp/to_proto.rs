@@ -6,9 +6,9 @@ use std::{
 };
 
 use ide::{
-    Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
-    CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
-    FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
+    Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
+    CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
+    Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
     InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, Markup,
     NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
@@ -227,11 +227,9 @@ pub(crate) fn snippet_text_edit_vec(
 
 pub(crate) fn completion_items(
     config: &Config,
-    fields_to_resolve: &CompletionFieldsToResolve,
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: lsp_types::TextDocumentPositionParams,
-    completion_trigger_character: Option<char>,
     mut items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
     if config.completion_hide_deprecated() {
@@ -241,17 +239,7 @@ pub(crate) fn completion_items(
     let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(
-            &mut res,
-            config,
-            fields_to_resolve,
-            line_index,
-            version,
-            &tdpp,
-            max_relevance,
-            completion_trigger_character,
-            item,
-        );
+        completion_item(&mut res, config, line_index, version, &tdpp, max_relevance, item);
     }
 
     if let Some(limit) = config.completion(None).limit {
@@ -265,33 +253,21 @@ pub(crate) fn completion_items(
 fn completion_item(
     acc: &mut Vec<lsp_types::CompletionItem>,
     config: &Config,
-    fields_to_resolve: &CompletionFieldsToResolve,
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: &lsp_types::TextDocumentPositionParams,
     max_relevance: u32,
-    completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
+    let lookup = item.lookup().to_owned();
 
     let mut additional_text_edits = Vec::new();
-    let mut something_to_resolve = false;
 
-    let filter_text = if fields_to_resolve.resolve_filter_text {
-        something_to_resolve = !item.lookup().is_empty();
-        None
-    } else {
-        Some(item.lookup().to_owned())
-    };
-
-    let text_edit = if fields_to_resolve.resolve_text_edit {
-        something_to_resolve = true;
-        None
-    } else {
-        // LSP does not allow arbitrary edits in completion, so we have to do a
-        // non-trivial mapping here.
+    // LSP does not allow arbitrary edits in completion, so we have to do a
+    // non-trivial mapping here.
+    let text_edit = {
         let mut text_edit = None;
         let source_range = item.source_range;
         for indel in item.text_edit {
@@ -314,49 +290,25 @@ fn completion_item(
                 additional_text_edits.push(text_edit);
             }
         }
-        Some(text_edit.unwrap())
+        text_edit.unwrap()
     };
 
     let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
-    let tags = if fields_to_resolve.resolve_tags {
-        something_to_resolve = item.deprecated;
-        None
-    } else {
-        item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED])
-    };
+    let tags = item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
     let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
-        if fields_to_resolve.resolve_command {
-            something_to_resolve = true;
-            None
-        } else {
-            Some(command::trigger_parameter_hints())
-        }
+        Some(command::trigger_parameter_hints())
     } else {
         None
-    };
-
-    let detail = if fields_to_resolve.resolve_detail {
-        something_to_resolve = item.detail.is_some();
-        None
-    } else {
-        item.detail
-    };
-
-    let documentation = if fields_to_resolve.resolve_documentation {
-        something_to_resolve = item.documentation.is_some();
-        None
-    } else {
-        item.documentation.map(documentation)
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
         label: item.label.to_string(),
-        detail,
-        filter_text,
+        detail: item.detail,
+        filter_text: Some(lookup),
         kind: Some(completion_item_kind(item.kind)),
-        text_edit,
+        text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
-        documentation,
+        documentation: item.documentation.map(documentation),
         deprecated: Some(item.deprecated),
         tags,
         command,
@@ -365,62 +317,33 @@ fn completion_item(
     };
 
     if config.completion_label_details_support() {
-        if fields_to_resolve.resolve_label_details {
-            something_to_resolve = true;
-        } else {
-            lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-                detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: lsp_item.detail.clone(),
-            });
-        }
+        lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
+            detail: item.label_detail.as_ref().map(ToString::to_string),
+            description: lsp_item.detail.clone(),
+        });
     } else if let Some(label_detail) = item.label_detail {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    let imports =
-        if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
-            item.import_to_add
-                .into_iter()
-                .map(|(import_path, import_name)| lsp_ext::CompletionImport {
-                    full_import_path: import_path,
-                    imported_name: import_name,
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-    let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
-        let mut item_index = acc.len();
-        let ref_resolve_data = if ref_match.is_some() {
-            let ref_resolve_data = lsp_ext::CompletionResolveData {
-                position: tdpp.clone(),
-                imports: Vec::new(),
-                version,
-                trigger_character: completion_trigger_character,
-                completion_item_index: item_index,
-            };
-            item_index += 1;
-            Some(to_value(ref_resolve_data).unwrap())
-        } else {
-            None
-        };
-        let resolve_data = lsp_ext::CompletionResolveData {
-            position: tdpp.clone(),
-            imports,
-            version,
-            trigger_character: completion_trigger_character,
-            completion_item_index: item_index,
-        };
-        (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
-    } else {
-        (None, None)
-    };
+    if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+        let imports = item
+            .import_to_add
+            .into_iter()
+            .map(|(import_path, import_name)| lsp_ext::CompletionImport {
+                full_import_path: import_path,
+                imported_name: import_name,
+            })
+            .collect::<Vec<_>>();
+        if !imports.is_empty() {
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports, version };
+            lsp_item.data = Some(to_value(data).unwrap());
+        }
+    }
 
     if let Some((label, indel, relevance)) = ref_match {
-        let mut lsp_item_with_ref =
-            lsp_types::CompletionItem { label, data: ref_resolve_data, ..lsp_item.clone() };
+        let mut lsp_item_with_ref = lsp_types::CompletionItem { label, ..lsp_item.clone() };
         lsp_item_with_ref
             .additional_text_edits
             .get_or_insert_with(Default::default)
@@ -429,7 +352,6 @@ fn completion_item(
         acc.push(lsp_item_with_ref);
     };
 
-    lsp_item.data = resolve_data;
     acc.push(lsp_item);
 
     fn set_score(
