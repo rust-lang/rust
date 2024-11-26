@@ -847,7 +847,7 @@ pub struct NextSolverConfig {
 }
 impl Default for NextSolverConfig {
     fn default() -> Self {
-        NextSolverConfig { coherence: true, globally: false }
+        NextSolverConfig { coherence: true, globally: true }
     }
 }
 
