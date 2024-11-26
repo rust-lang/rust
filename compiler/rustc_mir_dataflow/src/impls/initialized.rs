@@ -70,7 +70,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn is_unwind_dead(
         &self,
         place: mir::Place<'tcx>,
-        state: &MaybeReachable<MixedBitSet<MovePathIndex>>,
+        state: &<Self as Analysis<'tcx>>::Domain,
     ) -> bool {
         if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
             let mut maybe_live = false;
