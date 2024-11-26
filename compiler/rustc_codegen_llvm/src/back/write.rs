@@ -61,6 +61,7 @@ fn write_output_file<'ll>(
     dwo_output: Option<&Path>,
     file_type: llvm::FileType,
     self_profiler_ref: &SelfProfilerRef,
+    verify_llvm_ir: bool,
 ) -> Result<(), FatalError> {
     debug!("write_output_file output={:?} dwo_output={:?}", output, dwo_output);
     unsafe {
@@ -79,6 +80,7 @@ fn write_output_file<'ll>(
             output_c.as_ptr(),
             dwo_output_ptr,
             file_type,
+            verify_llvm_ir,
         );
 
         // Record artifact sizes for self-profiling
@@ -840,6 +842,7 @@ pub(crate) unsafe fn codegen(
                         None,
                         llvm::FileType::AssemblyFile,
                         &cgcx.prof,
+                        config.verify_llvm_ir,
                     )
                 })?;
             }
@@ -877,6 +880,7 @@ pub(crate) unsafe fn codegen(
                             dwo_out,
                             llvm::FileType::ObjectFile,
                             &cgcx.prof,
+                            config.verify_llvm_ir,
                         )
                     })?;
                 }
