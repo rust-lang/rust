@@ -9,56 +9,6 @@ LL | type Test = dyn Add + Sub;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add + Sub {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `Output` in `Add`, `Output` in `Sub` must be specified
-  --> $DIR/issue-22560.rs:9:17
-   |
-LL |     type Output;
-   |     ----------- `Output` defined here
-...
-LL |     type Output;
-   |     ----------- `Output` defined here
-...
-LL | type Test = dyn Add + Sub;
-   |                 ^^^   ^^^ associated type `Output` must be specified
-   |                 |
-   |                 associated type `Output` must be specified
-   |
-help: specify the associated types
-   |
-LL | type Test = dyn Add<Output = Type> + Sub<Output = Type>;
-   |                 ~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~
+error: aborting due to 1 previous error
 
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:9:17
-   |
-LL | trait Add<Rhs=Self> {
-   | ------------------- type parameter `Rhs` must be specified for this
-...
-LL | type Test = dyn Add + Sub;
-   |                 ^^^
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-help: set the type parameter to the desired type
-   |
-LL | type Test = dyn Add<Rhs> + Sub;
-   |                    +++++
-
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:9:23
-   |
-LL | trait Sub<Rhs=Self> {
-   | ------------------- type parameter `Rhs` must be specified for this
-...
-LL | type Test = dyn Add + Sub;
-   |                       ^^^
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-help: set the type parameter to the desired type
-   |
-LL | type Test = dyn Add + Sub<Rhs>;
-   |                          +++++
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0191, E0225, E0393.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0225`.
