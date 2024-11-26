@@ -219,42 +219,42 @@ pub fn main() {
 
     let (&X(_t),) = (&x.clone(),);
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the borrow
     if let (&Either::One(_t),) = (&e.clone(),) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the borrow
     while let (&Either::One(_t),) = (&e.clone(),) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the borrow
     match (&e.clone(),) {
         //~^ ERROR cannot move
         (&Either::One(_t),)
-        //~^ HELP consider borrowing the pattern binding
+        //~^ HELP consider removing the borrow
         | (&Either::Two(_t),) => (),
     }
     fn f3((&X(_t),): (&X,)) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the borrow
 
     let (&mut X(_t),) = (&mut xm.clone(),);
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the mutable borrow
     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the mutable borrow
     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the mutable borrow
     match (&mut em.clone(),) {
         //~^ ERROR cannot move
         (&mut Either::One(_t),) => (),
-        //~^ HELP consider borrowing the pattern binding
+        //~^ HELP consider removing the mutable borrow
         (&mut Either::Two(_t),) => (),
-        //~^ HELP consider borrowing the pattern binding
+        //~^ HELP consider removing the mutable borrow
     }
     fn f4((&mut X(_t),): (&mut X,)) { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing the pattern binding
+    //~| HELP consider removing the mutable borrow
 
     // move from &Either/&X value
 
