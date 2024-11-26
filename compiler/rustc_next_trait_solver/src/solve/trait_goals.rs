@@ -69,7 +69,9 @@ where
             // it's not a real impl.
             (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
-                TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Err(NoSolution),
+                TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => return Err(NoSolution),
             },
 
             // Impl matches polarity
@@ -174,20 +176,7 @@ where
         // ideally we want to avoid, since we can make progress on this goal
         // via an alias bound or a locally-inferred hidden type instead.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            match ecx.typing_mode() {
-                TypingMode::Coherence | TypingMode::PostAnalysis => {
-                    unreachable!("rigid opaque outside of analysis: {goal:?}");
-                }
-                TypingMode::Analysis { defining_opaque_types } => {
-                    if opaque_ty
-                        .def_id
-                        .as_local()
-                        .is_some_and(|def_id| defining_opaque_types.contains(&def_id))
-                    {
-                        return Err(NoSolution);
-                    }
-                }
-            }
+            debug_assert!(ecx.opaque_type_is_rigid(opaque_ty.def_id));
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(

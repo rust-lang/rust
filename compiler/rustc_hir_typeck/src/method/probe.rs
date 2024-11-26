@@ -1574,7 +1574,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // Thus we need to prevent them from trying to match the `&_` autoref
                         // candidates that get created for `&self` trait methods.
                         ty::Alias(ty::Opaque, alias_ty)
-                            if self.infcx.can_define_opaque_ty(alias_ty.def_id)
+                            if !self.next_trait_solver()
+                                && self.infcx.can_define_opaque_ty(alias_ty.def_id)
                                 && !xform_self_ty.is_ty_var() =>
                         {
                             return ProbeResult::NoMatch;

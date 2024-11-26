@@ -1471,7 +1471,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligation = &stack.obligation;
         match self.infcx.typing_mode() {
             TypingMode::Coherence => {}
-            TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Ok(()),
+            TypingMode::Analysis { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => return Ok(()),
         }
 
         debug!("is_knowable()");
@@ -1518,6 +1520,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Analysis { defining_opaque_types } => {
                 defining_opaque_types.is_empty() || !pred.has_opaque_types()
             }
+            // The hidden types of `defined_opaque_types` is not local to the current
+            // inference context, so we can freely move this to the global cache.
+            TypingMode::PostBorrowckAnalysis { .. } => true,
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //

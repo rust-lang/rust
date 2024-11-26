@@ -118,9 +118,10 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     // Opaques are treated as rigid outside of `TypingMode::PostAnalysis`,
     // so we can ignore those.
     match infcx.typing_mode() {
-        TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
-            flags.remove(ty::TypeFlags::HAS_TY_OPAQUE)
-        }
+        // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
+        TypingMode::Coherence
+        | TypingMode::Analysis { .. }
+        | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::PostAnalysis => {}
     }
 
@@ -213,9 +214,10 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.selcx.infcx.typing_mode() {
-                    TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
-                        ty.super_fold_with(self)
-                    }
+                    // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
+                    TypingMode::Coherence
+                    | TypingMode::Analysis { .. }
+                    | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),
                     TypingMode::PostAnalysis => {
                         let recursion_limit = self.cx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {

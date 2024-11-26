@@ -322,8 +322,12 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    // FIXME(#132279): This should eventually use the already defined hidden types.
-    let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, defining_use_anchor));
+    // FIXME(#132279): Once `PostBorrowckAnalysis` is supported in the old solver, this branch should be removed.
+    let infcx = tcx.infer_ctxt().build(if tcx.next_trait_solver_globally() {
+        TypingMode::post_borrowck_analysis(tcx, defining_use_anchor)
+    } else {
+        TypingMode::analysis_in_body(tcx, defining_use_anchor)
+    });
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match origin {
@@ -417,7 +421,11 @@ fn check_opaque_meets_bounds<'tcx>(
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
     ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
 
-    if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } = origin {
+    if infcx.next_trait_solver() {
+        Ok(())
+    } else if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } =
+        origin
+    {
         // HACK: this should also fall through to the hidden type check below, but the original
         // implementation had a bug where equivalent lifetimes are not identical. This caused us
         // to reject existing stable code that is otherwise completely fine. The real fix is to

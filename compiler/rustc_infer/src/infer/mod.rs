@@ -990,11 +990,17 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
+        debug_assert!(!self.next_trait_solver());
         match self.typing_mode() {
             TypingMode::Analysis { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
-            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+            // FIXME(#132279): This function is quite weird in post-analysis
+            // and post-borrowck analysis mode. We may need to modify its uses
+            // to support PostBorrowckAnalysis in the old solver as well.
+            TypingMode::Coherence
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => false,
         }
     }
 
@@ -1276,7 +1282,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// using canonicalization or carrying this inference context around.
     pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
         let typing_mode = match self.typing_mode() {
-            ty::TypingMode::Coherence => ty::TypingMode::Coherence,
             // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
@@ -1284,7 +1289,9 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::TypingMode::Analysis { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
-            ty::TypingMode::PostAnalysis => ty::TypingMode::PostAnalysis,
+            mode @ (ty::TypingMode::Coherence
+            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis) => mode,
         };
         ty::TypingEnv { typing_mode, param_env }
     }
