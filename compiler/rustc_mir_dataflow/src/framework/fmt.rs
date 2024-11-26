@@ -230,16 +230,3 @@ where
         write!(f, "{}", ctxt.move_data().move_paths[*self])
     }
 }
-
-impl<T, C> DebugWithContext<C> for crate::lattice::Dual<T>
-where
-    T: DebugWithContext<C>,
-{
-    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0).fmt_with(ctxt, f)
-    }
-
-    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0).fmt_diff_with(&old.0, ctxt, f)
-    }
-}
