@@ -11,7 +11,6 @@
       let mut _6: bool;
       let mut _7: bool;
       let mut _8: isize;
-+     let mut _9: bool;
       scope 1 {
           debug _v => _5;
       }
@@ -41,38 +40,32 @@
   
       bb4: {
           _0 = const ();
--         goto -> bb17;
-+         goto -> bb15;
+          goto -> bb17;
       }
   
       bb5: {
           _0 = const ();
--         goto -> bb17;
-+         goto -> bb15;
+          goto -> bb17;
       }
   
       bb6: {
           _0 = const ();
--         goto -> bb17;
-+         goto -> bb15;
+          goto -> bb17;
       }
   
       bb7: {
           StorageLive(_5);
           _5 = move ((((((_1 as Some).0: std::option::Option<std::option::Option<T>>) as Some).0: std::option::Option<T>) as Some).0: T);
           _0 = const ();
--         drop(_5) -> [return: bb8, unwind: bb20];
-+         drop(_5) -> [return: bb8, unwind: bb16];
+          drop(_5) -> [return: bb8, unwind: bb20];
       }
   
       bb8: {
           StorageDead(_5);
--         goto -> bb17;
-+         goto -> bb15;
+          goto -> bb17;
       }
   
       bb9 (cleanup): {
-+         StorageDead(_9);
           resume;
       }
   
@@ -81,8 +74,7 @@
       }
   
       bb11: {
--         switchInt(copy _6) -> [0: bb12, otherwise: bb16];
-+         switchInt(copy _6) -> [0: bb12, otherwise: bb14];
+          switchInt(copy _6) -> [0: bb12, otherwise: bb16];
       }
   
       bb12: {
@@ -91,45 +83,37 @@
       }
   
       bb13: {
--         switchInt(copy _7) -> [0: bb14, otherwise: bb15];
--     }
-- 
--     bb14: {
+          switchInt(copy _7) -> [0: bb14, otherwise: bb15];
+      }
+  
+      bb14: {
           _7 = const false;
           goto -> bb12;
       }
   
--     bb15: {
--         goto -> bb14;
--     }
-- 
--     bb16: {
-+     bb14: {
+      bb15: {
+          goto -> bb14;
+      }
+  
+      bb16: {
           _8 = discriminant(((_1 as Some).0: std::option::Option<std::option::Option<T>>));
           switchInt(move _8) -> [1: bb13, otherwise: bb12];
       }
   
--     bb17: {
-+     bb15: {
+      bb17: {
           switchInt(copy _4) -> [1: bb11, otherwise: bb10];
       }
   
--     bb18 (cleanup): {
--         switchInt(copy _3) -> [1: bb19, otherwise: bb9];
-+     bb16 (cleanup): {
-+         StorageLive(_9);
-+         _9 = Ne(copy _4, copy _3);
-+         switchInt(move _9) -> [0: bb17, otherwise: bb9];
+      bb18 (cleanup): {
+          switchInt(copy _3) -> [1: bb19, otherwise: bb9];
       }
   
--     bb19 (cleanup): {
-+     bb17 (cleanup): {
-+         StorageDead(_9);
+      bb19 (cleanup): {
           goto -> bb9;
--     }
-- 
--     bb20 (cleanup): {
--         switchInt(copy _4) -> [1: bb18, otherwise: bb9];
+      }
+  
+      bb20 (cleanup): {
+          switchInt(copy _4) -> [1: bb18, otherwise: bb9];
       }
   }
   

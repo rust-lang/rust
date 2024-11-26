@@ -244,6 +244,10 @@ fn evaluate_candidate<'tcx>(
     parent: BasicBlock,
 ) -> Option<OptimizationData<'tcx>> {
     let bbs = &body.basic_blocks;
+    // NB: If this BB is a cleanup, we may need to figure out what else needs to be handled.
+    if bbs[parent].is_cleanup {
+        return None;
+    }
     let TerminatorKind::SwitchInt { targets, discr: parent_discr } = &bbs[parent].terminator().kind
     else {
         return None;
