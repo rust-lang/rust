@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 #![allow(dead_code)]
 
 unsafe extern fn foo() {}

@@ -1,5 +1,5 @@
 warning: method `dummy` is never used
-  --> $DIR/issue-8248.rs:5:8
+  --> $DIR/issue-8248.rs:4:8
    |
 LL | trait A {
    |       - method in this trait

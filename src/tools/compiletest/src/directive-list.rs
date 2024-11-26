@@ -214,7 +214,6 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-x86_64-unknown-linux-gnu",
     "pp-exact",
     "pretty-compare-only",
-    "pretty-expanded",
     "pretty-mode",
     "reference",
     "regex-error-pattern",
