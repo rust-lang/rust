@@ -27,10 +27,26 @@ pub struct FileAttr {
 
 pub struct ReadDir {
     inner: Arc<ReadDirInner>,
-    cookie: Option<wasi::Dircookie>,
-    buf: Vec<u8>,
-    offset: usize,
-    cap: usize,
+    state: ReadDirState,
+}
+
+enum ReadDirState {
+    /// Next DirEntry should be read from contents of buf at `offset`
+    FillBuffer {
+        next_read_offset: wasi::Dircookie,
+        buf: Vec<u8>,
+    },
+    ProcessEntry {
+        buf: Vec<u8>,
+        next_read_offset: Option<wasi::Dircookie>,
+        offset: usize,
+    },
+    /// Do not fetch any more entries, process all entries
+    RunUntilExhaustion {
+        buf: Vec<u8>,
+        offset: usize,
+    },
+    Done,
 }
 
 struct ReadDirInner {
@@ -147,11 +163,8 @@ impl FileType {
 impl ReadDir {
     fn new(dir: File, root: PathBuf) -> ReadDir {
         ReadDir {
-            cookie: Some(0),
-            buf: vec![0; 128],
-            offset: 0,
-            cap: 0,
             inner: Arc::new(ReadDirInner { dir, root }),
+            state: ReadDirState::FillBuffer { next_read_offset: 0, buf: vec![0; 128] },
         }
     }
 }
@@ -162,81 +175,99 @@ impl fmt::Debug for ReadDir {
     }
 }
 
+impl core::iter::FusedIterator for ReadDir {}
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        loop {
-            // If we've reached the capacity of our buffer then we need to read
-            // some more from the OS, otherwise we pick up at our old offset.
-            let offset = if self.offset == self.cap {
-                let cookie = self.cookie.take()?;
-                match self.inner.dir.fd.readdir(&mut self.buf, cookie) {
-                    Ok(bytes) => {
-                        // No more entries if we read less than buffer size
-                        if bytes < self.buf.len() {
-                            self.cookie = None;
-                            if bytes == 0 {
-                                return None;
-                            }
+        match &mut self.state {
+            ReadDirState::FillBuffer { next_read_offset, ref mut buf } => {
+                let result = self.inner.dir.fd.readdir(buf, *next_read_offset);
+                match result {
+                    Ok(read_bytes) => {
+                        if read_bytes < buf.len() {
+                            buf.truncate(read_bytes);
+                            self.state =
+                                ReadDirState::RunUntilExhaustion { buf: mem::take(buf), offset: 0 };
                         } else {
-                            self.cookie = Some(cookie);
+                            debug_assert_eq!(read_bytes, buf.len());
+                            self.state = ReadDirState::ProcessEntry {
+                                buf: mem::take(buf),
+                                offset: 0,
+                                next_read_offset: Some(*next_read_offset),
+                            };
                         }
-                        self.cap = self.buf.len();
-                        self.offset = 0;
-                        0
+                        self.next()
                     }
-                    Err(e) => return Some(Err(e)),
+                    Err(e) => {
+                        self.state = ReadDirState::Done;
+                        return Some(Err(e));
+                    }
                 }
-            } else {
-                self.offset
-            };
-            let data = &self.buf[offset..self.cap];
-
-            // If we're not able to read a directory entry then that means it
-            // must have been truncated at the end of the buffer, so reset our
-            // offset so we can go back and reread into the buffer, picking up
-            // where we last left off.
-            let dirent_size = mem::size_of::<wasi::Dirent>();
-            if data.len() < dirent_size {
-                assert!(self.buf.len() >= dirent_size);
-                self.offset = self.cap;
-                continue;
             }
-            let (dirent, data) = data.split_at(dirent_size);
-            let dirent = unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
+            ReadDirState::ProcessEntry { ref mut buf, next_read_offset, offset } => {
+                let contents = &buf[*offset..];
+                const DIRENT_SIZE: usize = crate::mem::size_of::<wasi::Dirent>();
+                if contents.len() >= DIRENT_SIZE {
+                    let (dirent, data) = contents.split_at(DIRENT_SIZE);
+                    let dirent =
+                        unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
+                    // If the file name was truncated, then we need to reinvoke
+                    // `readdir` so we truncate our buffer to start over and reread this
+                    // descriptor.
+                    if data.len() < dirent.d_namlen as usize {
+                        if buf.len() < dirent.d_namlen as usize + DIRENT_SIZE {
+                            buf.resize(dirent.d_namlen as usize + DIRENT_SIZE, 0);
+                        }
+                        if let Some(next_read_offset) = *next_read_offset {
+                            self.state =
+                                ReadDirState::FillBuffer { next_read_offset, buf: mem::take(buf) };
+                        } else {
+                            self.state = ReadDirState::Done;
+                        }
 
-            // If the file name was truncated, then we need to reinvoke
-            // `readdir` so we truncate our buffer to start over and reread this
-            // descriptor. Note that if our offset is 0 that means the file name
-            // is massive and we need a bigger buffer.
-            if data.len() < dirent.d_namlen as usize {
-                if offset == 0 {
-                    let amt_to_add = self.buf.capacity();
-                    self.buf.extend(iter::repeat(0).take(amt_to_add));
+                        return self.next();
+                    }
+                    next_read_offset.as_mut().map(|cookie| {
+                        *cookie = dirent.d_next;
+                    });
+                    *offset = *offset + DIRENT_SIZE + dirent.d_namlen as usize;
+
+                    let name = &data[..(dirent.d_namlen as usize)];
+
+                    // These names are skipped on all other platforms, so let's skip
+                    // them here too
+                    if name == b"." || name == b".." {
+                        return self.next();
+                    }
+
+                    return Some(Ok(DirEntry {
+                        meta: dirent,
+                        name: name.to_vec(),
+                        inner: self.inner.clone(),
+                    }));
+                } else if let Some(next_read_offset) = *next_read_offset {
+                    self.state = ReadDirState::FillBuffer { next_read_offset, buf: mem::take(buf) };
+                } else {
+                    self.state = ReadDirState::Done;
                 }
-                assert!(self.cookie.is_some());
-                self.offset = self.cap;
-                continue;
+                self.next()
             }
-            self.cookie.as_mut().map(|cookie| {
-                *cookie = dirent.d_next;
-            });
-            self.offset = offset + dirent_size + dirent.d_namlen as usize;
+            ReadDirState::RunUntilExhaustion { buf, offset } => {
+                if *offset >= buf.len() {
+                    self.state = ReadDirState::Done;
+                } else {
+                    self.state = ReadDirState::ProcessEntry {
+                        buf: mem::take(buf),
+                        offset: *offset,
+                        next_read_offset: None,
+                    };
+                }
 
-            let name = &data[..(dirent.d_namlen as usize)];
-
-            // These names are skipped on all other platforms, so let's skip
-            // them here too
-            if name == b"." || name == b".." {
-                continue;
+                self.next()
             }
-
-            return Some(Ok(DirEntry {
-                meta: dirent,
-                name: name.to_vec(),
-                inner: self.inner.clone(),
-            }));
+            ReadDirState::Done => None,
         }
     }
 }
