@@ -27,6 +27,7 @@ const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(serde::Serialize)]
 pub enum Status {
     Accepted,
     Removed,
@@ -45,6 +46,7 @@ impl fmt::Display for Status {
 }
 
 #[derive(Debug, Clone)]
+#[derive(serde::Serialize)]
 pub struct Feature {
     pub level: Status,
     pub since: Option<Version>,
