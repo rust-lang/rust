@@ -1526,6 +1526,22 @@ impl<T> *const [T] {
         self as *const T
     }
 
+    /// Gets a raw pointer to the underlying array.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {
+        if self.len() == N {
+            let me = self.as_ptr() as *const [T; N];
+            Some(me)
+        } else {
+            None
+        }
+    }
+
     /// Returns a raw pointer to an element or subslice, without doing bounds
     /// checking.
     ///
