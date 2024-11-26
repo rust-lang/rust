@@ -4129,7 +4129,7 @@ declare_clippy_lint! {
     ///     )
     /// }
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.84.0"]
     pub UNNECESSARY_MAP_OR,
     style,
     "reduce unnecessary calls to `.map_or(bool, …)`"
