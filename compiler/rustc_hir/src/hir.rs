@@ -261,8 +261,6 @@ pub struct ConstArg<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: ConstArgKind<'hir>,
-    /// Indicates whether this comes from a `~const` desugaring.
-    pub is_desugared_from_effects: bool,
 }
 
 impl<'hir> ConstArg<'hir> {
@@ -462,14 +460,7 @@ impl<'hir> GenericArgs<'hir> {
     /// This function returns the number of type and const generic params.
     /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
-        self.args
-            .iter()
-            .filter(|arg| match arg {
-                GenericArg::Lifetime(_)
-                | GenericArg::Const(ConstArg { is_desugared_from_effects: true, .. }) => false,
-                _ => true,
-            })
-            .count()
+        self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
 
     /// The span encompassing the arguments and constraints[^1] inside the surrounding brackets.
