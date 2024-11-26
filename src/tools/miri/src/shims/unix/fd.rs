@@ -10,7 +10,7 @@ use std::rc::{Rc, Weak};
 use rustc_abi::Size;
 
 use crate::helpers::check_min_arg_count;
-use crate::shims::unix::linux::epoll::EpollReadyEvents;
+use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
 

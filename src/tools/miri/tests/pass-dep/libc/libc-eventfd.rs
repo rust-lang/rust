@@ -1,4 +1,4 @@
-//@only-target: linux
+//@only-target: linux android
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 

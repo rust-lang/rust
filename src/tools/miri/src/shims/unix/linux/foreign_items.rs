@@ -1,10 +1,10 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
-use self::shims::unix::linux::epoll::EvalContextExt as _;
-use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
-use self::shims::unix::linux::syscall::syscall;
+use self::shims::unix::linux_like::epoll::EvalContextExt as _;
+use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
+use self::shims::unix::linux_like::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
 use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;

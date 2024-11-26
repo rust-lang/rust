@@ -11,6 +11,7 @@ mod unnamed_socket;
 mod android;
 mod freebsd;
 mod linux;
+mod linux_like;
 mod macos;
 mod solarish;
 
@@ -18,7 +19,7 @@ mod solarish;
 pub use self::env::{EvalContextExt as _, UnixEnvVars};
 pub use self::fd::{EvalContextExt as _, FdTable, FileDescription};
 pub use self::fs::{DirTable, EvalContextExt as _};
-pub use self::linux::epoll::EpollInterestTable;
+pub use self::linux_like::epoll::EpollInterestTable;
 pub use self::mem::EvalContextExt as _;
 pub use self::sync::EvalContextExt as _;
 pub use self::thread::{EvalContextExt as _, ThreadNameResult};

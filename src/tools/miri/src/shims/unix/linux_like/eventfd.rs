@@ -5,7 +5,7 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
+use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::*;
 
@@ -143,9 +143,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// <https://linux.die.net/man/2/eventfd>
     fn eventfd(&mut self, val: &OpTy<'tcx>, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
-        // eventfd is Linux specific.
-        this.assert_target_os("linux", "eventfd");
 
         let val = this.read_scalar(val)?.to_u32()?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
