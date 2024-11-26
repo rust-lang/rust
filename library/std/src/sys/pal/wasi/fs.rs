@@ -31,7 +31,7 @@ pub struct ReadDir {
 }
 
 enum ReadDirState {
-    /// Next DirEntry should be read from contents of buf at `offset`
+    /// Fill `buf` with `buf.len()` bytes starting from `next_read_offset`.
     FillBuffer {
         next_read_offset: wasi::Dircookie,
         buf: Vec<u8>,
@@ -41,7 +41,8 @@ enum ReadDirState {
         next_read_offset: Option<wasi::Dircookie>,
         offset: usize,
     },
-    /// Do not fetch any more entries, process all entries
+    /// There is no more data to get in [`Self::FillBuffer`]; keep returning
+    /// entries via ProcessEntry until `buf` is exhausted.
     RunUntilExhaustion {
         buf: Vec<u8>,
         offset: usize,
