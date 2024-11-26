@@ -35,20 +35,20 @@ impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
 
     fn apply_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
-        Self::transfer_function(trans).visit_statement(statement, location);
+        Self::transfer_function(state).visit_statement(statement, location);
     }
 
     fn apply_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        Self::transfer_function(trans).visit_terminator(terminator, location);
+        Self::transfer_function(state).visit_terminator(terminator, location);
         terminator.edges()
     }
 }

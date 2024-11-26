@@ -506,7 +506,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
         &self,
-        trans: &mut <Self as Analysis<'tcx>>::Domain,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
         location: Location,
     ) {
         // NOTE: The state associated with a given `location`
@@ -521,14 +521,14 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // region, then setting that gen-bit will override any
         // potential kill introduced here.
         if let Some(indices) = self.borrows_out_of_scope_at_location.get(&location) {
-            trans.kill_all(indices.iter().copied());
+            state.kill_all(indices.iter().copied());
         }
     }
 
     /// Kill any borrows that conflict with `place`.
     fn kill_borrows_on_place(
         &self,
-        trans: &mut <Self as Analysis<'tcx>>::Domain,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
         place: Place<'tcx>,
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
@@ -546,7 +546,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // `places_conflict` for every borrow.
         if place.projection.is_empty() {
             if !self.body.local_decls[place.local].is_ref_to_static() {
-                trans.kill_all(other_borrows_of_local);
+                state.kill_all(other_borrows_of_local);
             }
             return;
         }
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             )
         });
 
-        trans.kill_all(definitely_conflicting_borrows);
+        state.kill_all(definitely_conflicting_borrows);
     }
 }
 
@@ -595,16 +595,16 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn apply_before_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        self.kill_loans_out_of_scope_at_location(trans, location);
+        self.kill_loans_out_of_scope_at_location(state, location);
     }
 
     fn apply_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -622,18 +622,18 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                         panic!("could not find BorrowIndex for location {location:?}");
                     });
 
-                    trans.gen_(index);
+                    state.gen_(index);
                 }
 
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(trans, *lhs);
+                self.kill_borrows_on_place(state, *lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, Place::from(*local));
+                self.kill_borrows_on_place(state, Place::from(*local));
             }
 
             mir::StatementKind::FakeRead(..)
@@ -653,16 +653,16 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn apply_before_terminator_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        self.kill_loans_out_of_scope_at_location(trans, location);
+        self.kill_loans_out_of_scope_at_location(state, location);
     }
 
     fn apply_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
@@ -671,7 +671,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
                 | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op
                 {
-                    self.kill_borrows_on_place(trans, place);
+                    self.kill_borrows_on_place(state, place);
                 }
             }
         }
