@@ -1371,8 +1371,17 @@ impl<'tcx> GlobalCtxt<'tcx> {
         tls::enter_context(&icx, || f(icx.tcx))
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
-        self.dep_graph.finish_encoding()
+    pub fn finish(&'tcx self) {
+        // We assume that no queries are run past here. If there are new queries
+        // after this point, they'll show up as "<unknown>" in self-profiling data.
+        self.enter(|tcx| tcx.alloc_self_profile_query_strings());
+
+        self.enter(|tcx| tcx.save_dep_graph());
+        self.enter(|tcx| tcx.query_key_hash_verify_all());
+
+        if let Err((path, error)) = self.dep_graph.finish_encoding() {
+            self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
     }
 }
 
