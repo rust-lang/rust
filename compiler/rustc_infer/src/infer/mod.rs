@@ -33,7 +33,7 @@ use rustc_middle::traits::select;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{
-    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,
 };
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
@@ -1165,7 +1165,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 if value.has_infer_regions() {
                     let guar = self.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
-                    Ok(self.tcx.fold_regions(value, |re, _| {
+                    Ok(fold_regions(self.tcx, value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))
                 } else {

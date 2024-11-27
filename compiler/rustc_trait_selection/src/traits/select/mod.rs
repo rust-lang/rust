@@ -25,6 +25,7 @@ use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
@@ -3209,7 +3210,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
             // Only remap erased regions if we use them.
             if considering_regions {
                 bty = bty.map_bound(|ty| {
-                    tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+                    fold_regions(tcx, ty, |r, current_depth| match r.kind() {
                         ty::ReErased => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_u32(counter),
