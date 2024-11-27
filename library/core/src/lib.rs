@@ -107,9 +107,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_exact_div))]
-#![cfg_attr(bootstrap, feature(const_fmt_arguments_new))]
-#![cfg_attr(bootstrap, feature(const_ub_checks))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_align_of_val)]
@@ -158,8 +155,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -209,6 +204,7 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(strict_provenance_lints)]
 #![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
@@ -258,7 +254,6 @@ pub mod assert_matches {
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "autodiff", issue = "124509")]
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {

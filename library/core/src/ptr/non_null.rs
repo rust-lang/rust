@@ -629,7 +629,6 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_neg))]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,

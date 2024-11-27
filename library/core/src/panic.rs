@@ -208,14 +208,13 @@ pub macro const_panic {
         #[rustc_allow_const_fn_unstable(const_eval_select)]
         #[inline(always)] // inline the wrapper
         #[track_caller]
-        #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_panic", since = "1.84.0"))]
         const fn do_panic($($arg: $ty),*) -> ! {
             $crate::intrinsics::const_eval_select!(
                 @capture { $($arg: $ty = $arg),* } -> !:
                 #[noinline]
                 if const #[track_caller] #[inline] { // Inline this, to prevent codegen
                     $crate::panic!($const_msg)
-                } else #[track_caller] #[cfg_attr(bootstrap, inline)] { // Do not inline this, it makes perf worse
+                } else #[track_caller] { // Do not inline this, it makes perf worse
                     $crate::panic!($runtime_msg)
                 }
             )

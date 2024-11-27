@@ -333,10 +333,6 @@ pub struct Arguments<'a> {
 #[unstable(feature = "fmt_internals", issue = "none")]
 impl<'a> Arguments<'a> {
     #[inline]
-    #[cfg_attr(
-        bootstrap,
-        rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")
-    )]
     pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
         const { assert!(N <= 1) };
         Arguments { pieces, fmt: None, args: &[] }

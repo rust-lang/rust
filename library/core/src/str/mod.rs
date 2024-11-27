@@ -373,7 +373,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
-    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
+    #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const u8 {
@@ -391,7 +391,7 @@ impl str {
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_str_as_mut", since = "1.83.0")]
     #[rustc_never_returns_null_ptr]
-    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
+    #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut u8 {
