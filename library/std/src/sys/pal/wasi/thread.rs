@@ -192,8 +192,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         if #[cfg(target_feature = "atomics")] {
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
-                0 => Err(io::Error::UNKNOWN_THREAD_COUNT),
-                cpus => Ok(unsafe { NonZero::new_unchecked(cpus as usize) }),
+                cpus => NonZero::new(cpus as usize).ok_or(io::Error::UNKNOWN_THREAD_COUNT),
             }
         } else {
             crate::sys::unsupported()
