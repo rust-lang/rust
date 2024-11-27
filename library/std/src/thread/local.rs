@@ -252,6 +252,19 @@ impl<T: 'static> LocalKey<T> {
     /// This function will `panic!()` if the key currently has its
     /// destructor running, and it **may** panic if the destructor has
     /// previously been run for this thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// thread_local! {
+    ///     pub static STATIC: String = String::from("I am");
+    /// }
+    ///
+    /// assert_eq!(
+    ///     STATIC.with(|original_value| format!("{original_value} initialized")),
+    ///     "I am initialized",
+    /// );
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
     where
@@ -273,6 +286,19 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// thread_local! {
+    ///     pub static STATIC: String = String::from("I am");
+    /// }
+    ///
+    /// assert_eq!(
+    ///     STATIC.try_with(|original_value| format!("{original_value} initialized")),
+    ///     Ok(String::from("I am initialized")),
+    /// );
+    /// ```
     #[stable(feature = "thread_local_try_with", since = "1.26.0")]
     #[inline]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
@@ -452,7 +478,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::RefCell;
@@ -483,7 +509,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::RefCell;
