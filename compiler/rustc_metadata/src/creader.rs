@@ -799,20 +799,16 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
-    fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if self.sess.opts.unstable_opts.no_profiler_runtime
-            || !(self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled())
-        {
+    fn inject_profiler_runtime(&mut self) {
+        let needs_profiler_runtime =
+            self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled();
+        if !needs_profiler_runtime || self.sess.opts.unstable_opts.no_profiler_runtime {
             return;
         }
 
         info!("loading profiler");
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
-        if name == sym::profiler_builtins && attr::contains_name(&krate.attrs, sym::no_core) {
-            self.dcx().emit_err(errors::ProfilerBuiltinsNeedsCore);
-        }
-
         let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
             return;
         };
@@ -1046,7 +1042,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
         self.inject_forced_externs();
-        self.inject_profiler_runtime(krate);
+        self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 

@@ -235,8 +235,6 @@ name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
  "cc",
- "compiler_builtins",
- "core",
 ]
 
 [[package]]
