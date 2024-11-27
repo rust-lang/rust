@@ -41,7 +41,7 @@ impl Buffer {
         match Box::try_new_uninit_slice(capacity) {
             Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
             Err(_) => {
-                Err(io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
+                Err(io::const_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
             }
         }
     }

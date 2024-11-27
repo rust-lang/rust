@@ -559,7 +559,7 @@ impl FileAttr {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
                     SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64)
                 } else {
-                    Err(io::const_io_error!(
+                    Err(io::const_error!(
                         io::ErrorKind::Unsupported,
                         "creation time is not available for the filesystem",
                     ))
@@ -567,7 +567,7 @@ impl FileAttr {
             }
         }
 
-        Err(io::const_io_error!(
+        Err(io::const_error!(
             io::ErrorKind::Unsupported,
             "creation time is not available on this platform \
                             currently",
@@ -1272,7 +1272,7 @@ impl File {
         target_vendor = "apple",
     )))]
     pub fn lock(&self) -> io::Result<()> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "lock() not supported"))
+        Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
     }
 
     #[cfg(any(
@@ -1293,7 +1293,7 @@ impl File {
         target_vendor = "apple",
     )))]
     pub fn lock_shared(&self) -> io::Result<()> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
+        Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
     }
 
     #[cfg(any(
@@ -1320,7 +1320,7 @@ impl File {
         target_vendor = "apple",
     )))]
     pub fn try_lock(&self) -> io::Result<bool> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "try_lock() not supported"))
+        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock() not supported"))
     }
 
     #[cfg(any(
@@ -1347,7 +1347,7 @@ impl File {
         target_vendor = "apple",
     )))]
     pub fn try_lock_shared(&self) -> io::Result<bool> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "try_lock_shared() not supported"))
+        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock_shared() not supported"))
     }
 
     #[cfg(any(
@@ -1368,7 +1368,7 @@ impl File {
         target_vendor = "apple",
     )))]
     pub fn unlock(&self) -> io::Result<()> {
-        Err(io::const_io_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
+        Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
@@ -1459,11 +1459,11 @@ impl File {
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(
+            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "timestamp is too large to set as a file time"
             )),
-            Some(_) => Err(io::const_io_error!(
+            Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "timestamp is too small to set as a file time"
             )),
@@ -1476,7 +1476,7 @@ impl File {
                 // the same as for Redox.
                 // `futimens` and `UTIME_OMIT` are a work in progress for vxworks.
                 let _ = times;
-                Err(io::const_io_error!(
+                Err(io::const_error!(
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
@@ -1515,7 +1515,7 @@ impl File {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
-                        None => return Err(io::const_io_error!(
+                        None => return Err(io::const_error!(
                             io::ErrorKind::Unsupported,
                             "setting file times requires Android API level >= 19",
                         )),
@@ -2090,7 +2090,7 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 #[cfg(target_os = "vxworks")]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     let (_, _, _) = (path, uid, gid);
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
+    Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
@@ -2101,7 +2101,7 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 #[cfg(target_os = "vxworks")]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     let _ = dir;
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
+    Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
 pub use remove_dir_impl::remove_dir_all;

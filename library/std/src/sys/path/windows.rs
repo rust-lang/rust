@@ -328,7 +328,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     if prefix.map(|x| x.is_verbatim()).unwrap_or(false) {
         // NULs in verbatim paths are rejected for consistency.
         if path.as_encoded_bytes().contains(&0) {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
             ));
