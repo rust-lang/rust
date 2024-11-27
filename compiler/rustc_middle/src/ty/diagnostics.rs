@@ -1,6 +1,5 @@
 //! Diagnostics related methods for `Ty`.
 
-use std::borrow::Cow;
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
@@ -278,8 +277,21 @@ pub fn suggest_constraining_type_params<'a>(
     span_to_replace: Option<Span>,
 ) -> bool {
     let mut grouped = FxHashMap::default();
+    let mut unstable_suggestion = false;
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
-        grouped.entry(param_name).or_insert(Vec::new()).push((constraint, def_id))
+        let stable = match def_id {
+            Some(def_id) => match tcx.lookup_stability(def_id) {
+                Some(s) => s.level.is_stable(),
+                None => true,
+            },
+            None => true,
+        };
+        if stable || tcx.sess.is_nightly_build() {
+            grouped.entry(param_name).or_insert(Vec::new()).push((constraint, def_id));
+            if !stable {
+                unstable_suggestion = true;
+            }
+        }
     });
 
     let mut applicability = Applicability::MachineApplicable;
@@ -464,28 +476,32 @@ pub fn suggest_constraining_type_params<'a>(
 
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
+        let post = if unstable_suggestion { " but it is an `unstable` trait" } else { "" };
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                Cow::from("consider further restricting this bound")
+                format!("consider further restricting this bound{post}")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                Cow::from(format!("consider restricting type parameter `{ty}`"))
+                format!("consider restricting type parameter `{ty}`{post}")
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                Cow::from(format!("consider further restricting type parameter `{ty}`"))
+                format!("consider further restricting type parameter `{ty}`{post}")
             }
             SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
-                Cow::from("consider removing the `?Sized` bound to make the type parameter `Sized`")
+                format!(
+                    "consider removing the `?Sized` bound to make the type parameter `Sized`{post}"
+                )
             }
             SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized => {
-                Cow::from("consider replacing `?Sized` with `Sized`")
+                format!("consider replacing `?Sized` with `Sized`{post}")
             }
         };
 
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
     } else if suggestions.len() > 1 {
+        let post = if unstable_suggestion { " but some of them are `unstable` traits" } else { "" };
         err.multipart_suggestion_verbose(
-            "consider restricting type parameters",
+            format!("consider restricting type parameters{post}"),
             suggestions.into_iter().map(|(span, suggestion, _)| (span, suggestion)).collect(),
             applicability,
         );
