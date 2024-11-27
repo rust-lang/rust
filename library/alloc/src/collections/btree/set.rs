@@ -15,7 +15,7 @@ use crate::vec::Vec;
 
 mod entry;
 
-#[unstable(feature = "btree_set_entry", issue = "none")]
+#[unstable(feature = "btree_set_entry", issue = "133549")]
 pub use self::entry::{Entry, OccupiedEntry, VacantEntry};
 
 /// An ordered set based on a B-Tree.
@@ -950,7 +950,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.len(), 4); // 100 was inserted
     /// ```
     #[inline]
-    #[unstable(feature = "btree_set_entry", issue = "none")]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
     pub fn get_or_insert(&mut self, value: T) -> &T
     where
         T: Ord,
@@ -979,7 +979,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
     #[inline]
-    #[unstable(feature = "btree_set_entry", issue = "none")]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
     pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
     where
         T: Borrow<Q> + Ord,
@@ -995,7 +995,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// TODO
     #[inline]
-    #[unstable(feature = "btree_set_entry", issue = "none")]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
     pub fn entry(&mut self, value: T) -> Entry<'_, T, A>
     where
         T: Ord,
