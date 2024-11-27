@@ -9,7 +9,7 @@ use rustc_ast::{
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
@@ -1139,7 +1139,7 @@ impl<'a> Parser<'a> {
                 Some(ast::Path {
                     span: fn_token_span.to(self.prev_token.span),
                     segments: thin_vec![ast::PathSegment {
-                        ident: Ident::new(Symbol::intern("Fn"), fn_token_span),
+                        ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
                         args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
                             span: args_lo.to(self.prev_token.span),

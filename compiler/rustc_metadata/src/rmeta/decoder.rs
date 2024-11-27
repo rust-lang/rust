@@ -872,6 +872,7 @@ impl MetadataBlob {
 
                         let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
+                        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
                         let def_name = if item == CRATE_DEF_INDEX {
                             rustc_span::symbol::kw::Crate
                         } else {

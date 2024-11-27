@@ -419,7 +419,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Node::ConstBlock(_) = node {
         own_params.push(ty::GenericParamDef {
             index: next_index(),
-            name: Symbol::intern("<const_ty>"),
+            name: rustc_span::sym::const_ty_placeholder,
             def_id: def_id.to_def_id(),
             pure_wrt_drop: false,
             kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
