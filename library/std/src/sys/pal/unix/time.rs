@@ -96,7 +96,7 @@ impl Timespec {
         if tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64 {
             Ok(unsafe { Self::new_unchecked(tv_sec, tv_nsec) })
         } else {
-            Err(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid timestamp"))
+            Err(io::const_error!(io::ErrorKind::InvalidData, "Invalid timestamp"))
         }
     }
 

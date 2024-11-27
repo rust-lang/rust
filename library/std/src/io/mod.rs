@@ -301,12 +301,15 @@ mod tests;
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
 
-pub(crate) use error::const_io_error;
-
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
+pub use self::error::SimpleMessage;
+#[unstable(feature = "io_const_error", issue = "133448")]
+pub use self::error::const_error;
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
 pub(crate) use self::stdio::attempt_print_to_stderr;

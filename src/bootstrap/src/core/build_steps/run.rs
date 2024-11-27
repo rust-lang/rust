@@ -181,8 +181,7 @@ impl Step for CollectLicenseMetadata {
             panic!("REUSE is required to collect the license metadata");
         };
 
-        // Temporary location, it will be moved to src/etc once it's accurate.
-        let dest = builder.out.join("license-metadata.json");
+        let dest = builder.src.join("license-metadata.json");
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
@@ -209,8 +208,7 @@ impl Step for GenerateCopyright {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let license_metadata = builder.ensure(CollectLicenseMetadata);
-
+        let license_metadata = builder.src.join("license-metadata.json");
         let dest = builder.out.join("COPYRIGHT.html");
         let dest_libstd = builder.out.join("COPYRIGHT-library.html");
 

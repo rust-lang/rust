@@ -307,7 +307,7 @@ mod uefi_command_internal {
 
     use super::super::helpers;
     use crate::ffi::{OsStr, OsString};
-    use crate::io::{self, const_io_error};
+    use crate::io::{self, const_error};
     use crate::mem::MaybeUninit;
     use crate::os::uefi::env::{boot_services, image_handle, system_table};
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
@@ -328,7 +328,7 @@ mod uefi_command_internal {
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
             let path = helpers::DevicePath::from_text(p)?;
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
-                .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
+                .ok_or_else(|| const_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let image_handle = image_handle();
@@ -369,7 +369,7 @@ mod uefi_command_internal {
             }
 
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
-                .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
+                .ok_or_else(|| const_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
             let mut exit_data_size: usize = 0;
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
@@ -583,7 +583,7 @@ mod uefi_command_internal {
             OsString::from_wide(&self._buffer)
                 .into_string()
                 .map(Into::into)
-                .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                .map_err(|_| const_error!(io::ErrorKind::Other, "utf8 conversion failed"))
         }
 
         extern "efiapi" fn reset(

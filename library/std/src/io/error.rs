@@ -76,31 +76,31 @@ impl fmt::Debug for Error {
 #[allow(dead_code)]
 impl Error {
     pub(crate) const INVALID_UTF8: Self =
-        const_io_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
+        const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
     pub(crate) const READ_EXACT_EOF: Self =
-        const_io_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
+        const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_io_error!(
+    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "The number of hardware threads is not known for the target platform"
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =
-        const_io_error!(ErrorKind::Unsupported, "operation not supported on this platform");
+        const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
     pub(crate) const WRITE_ALL_EOF: Self =
-        const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer");
+        const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
     pub(crate) const ZERO_TIMEOUT: Self =
-        const_io_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+        const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<alloc::ffi::NulError> for Error {
     /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
     fn from(_: alloc::ffi::NulError) -> Error {
-        const_io_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
+        const_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
@@ -151,27 +151,38 @@ pub type RawOsError = sys::RawOsError;
 // (For the sake of being explicit: the alignment requirement here only matters
 // if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
+#[doc(hidden)]
+#[unstable(feature = "io_const_error_internals", issue = "none")]
 #[repr(align(4))]
 #[derive(Debug)]
-pub(crate) struct SimpleMessage {
-    kind: ErrorKind,
-    message: &'static str,
+pub struct SimpleMessage {
+    pub kind: ErrorKind,
+    pub message: &'static str,
 }
 
-impl SimpleMessage {
-    pub(crate) const fn new(kind: ErrorKind, message: &'static str) -> Self {
-        Self { kind, message }
-    }
-}
-
-/// Creates and returns an `io::Error` for a given `ErrorKind` and constant
-/// message. This doesn't allocate.
-pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
-    $crate::io::error::Error::from_static_message({
-        const MESSAGE_DATA: $crate::io::error::SimpleMessage =
-            $crate::io::error::SimpleMessage::new($kind, $message);
-        &MESSAGE_DATA
-    })
+/// Creates a new I/O error from a known kind of error and a string literal.
+///
+/// Contrary to [`Error::new`], this macro does not allocate and can be used in
+/// `const` contexts.
+///
+/// # Example
+/// ```
+/// #![feature(io_const_error)]
+/// use std::io::{const_error, Error, ErrorKind};
+///
+/// const FAIL: Error = const_error!(ErrorKind::Unsupported, "tried something that never works");
+///
+/// fn not_here() -> Result<(), Error> {
+///     Err(FAIL)
+/// }
+/// ```
+#[rustc_macro_transparency = "semitransparent"]
+#[unstable(feature = "io_const_error", issue = "133448")]
+#[allow_internal_unstable(hint_must_use, io_const_error_internals)]
+pub macro const_error($kind:expr, $message:expr $(,)?) {
+    $crate::hint::must_use($crate::io::Error::from_static_message(
+        const { &$crate::io::SimpleMessage { kind: $kind, message: $message } },
+    ))
 }
 
 // As with `SimpleMessage`: `#[repr(align(4))]` here is just because
@@ -592,13 +603,15 @@ impl Error {
     ///
     /// This function does not allocate.
     ///
-    /// You should not use this directly, and instead use the `const_io_error!`
-    /// macro: `io::const_io_error!(ErrorKind::Something, "some_message")`.
+    /// You should not use this directly, and instead use the `const_error!`
+    /// macro: `io::const_error!(ErrorKind::Something, "some_message")`.
     ///
     /// This function should maybe change to `from_static_message<const MSG: &'static
     /// str>(kind: ErrorKind)` in the future, when const generics allow that.
     #[inline]
-    pub(crate) const fn from_static_message(msg: &'static SimpleMessage) -> Error {
+    #[doc(hidden)]
+    #[unstable(feature = "io_const_error_internals", issue = "none")]
+    pub const fn from_static_message(msg: &'static SimpleMessage) -> Error {
         Self { repr: Repr::new_simple_message(msg) }
     }
 

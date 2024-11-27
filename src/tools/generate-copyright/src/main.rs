@@ -57,6 +57,10 @@ fn main() -> Result<(), Error> {
         dependencies: collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Git stores text files with \n, but this file may contain \r\n in files
+    // copied from dependencies. Normalise them before we write them out, for
+    // consistency.
+    let output = output.replace("\r\n", "\n");
     std::fs::write(&dest_file, output)?;
 
     // Output libstd subset file
@@ -65,6 +69,10 @@ fn main() -> Result<(), Error> {
         dependencies: library_collected_cargo_metadata,
     };
     let output = template.render()?;
+    // Git stores text files with \n, but this file may contain \r\n in files
+    // copied from dependencies. Normalise them before we write them out, for
+    // consistency.
+    let output = output.replace("\r\n", "\n");
     std::fs::write(&libstd_dest_file, output)?;
 
     Ok(())

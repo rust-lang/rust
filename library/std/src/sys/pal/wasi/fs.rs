@@ -496,7 +496,7 @@ impl File {
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         let to_timestamp = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
-            Some(_) => Err(io::const_io_error!(
+            Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "timestamp is too large to set as a file time"
             )),
@@ -764,8 +764,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str()
-        .ok_or_else(|| io::const_io_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::const_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -811,7 +810,7 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
     for entry in ReadDir::new(fd, dummy_root) {
         let entry = entry?;
         let path = crate::str::from_utf8(&entry.name).map_err(|_| {
-            io::const_io_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
+            io::const_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
         })?;
 
         let result: io::Result<()> = try {
