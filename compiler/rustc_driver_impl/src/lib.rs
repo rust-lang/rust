@@ -511,9 +511,9 @@ fn make_input(
             Ok(Some(Input::Str { name, input }))
         }
         [ifile] => Ok(Some(Input::File(PathBuf::from(ifile)))),
-        _ => early_dcx.early_fatal(format!(
+        [ifile1, ifile2, ..] => early_dcx.early_fatal(format!(
             "multiple input filenames provided (first two filenames are `{}` and `{}`)",
-            free_matches[0], free_matches[1],
+            ifile1, ifile2
         )),
     }
 }
