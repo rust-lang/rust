@@ -3469,7 +3469,6 @@ impl Step for CodegenCranelift {
             // FIXME remove once vendoring is handled
             .arg("--skip-test")
             .arg("testsuite.extended_sysroot");
-        cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
     }
@@ -3664,12 +3663,8 @@ impl Step for TestFloatParse {
             &[],
         );
 
-        cargo_run.arg("--");
-        if builder.config.args().is_empty() {
-            // By default, exclude tests that take longer than ~1m.
-            cargo_run.arg("--skip-huge");
-        } else {
-            cargo_run.args(builder.config.args());
+        if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
+            cargo_run.args(["--", "--skip-huge"]);
         }
 
         cargo_run.into_cmd().run(builder);
