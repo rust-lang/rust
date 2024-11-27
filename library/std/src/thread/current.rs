@@ -156,6 +156,9 @@ where
 {
     let current = CURRENT.get();
     if current > DESTROYED {
+        // SAFETY: `Arc` does not contain interior mutability, so it does not
+        // matter that the address of the handle might be different depending
+        // on where this is called.
         unsafe {
             let current = ManuallyDrop::new(Thread::from_raw(current));
             f(Some(&current))

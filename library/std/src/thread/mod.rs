@@ -1286,6 +1286,18 @@ mod thread_name_string {
 
 use thread_name_string::ThreadNameString;
 
+/// Store the ID of the main thread.
+///
+/// The thread handle for the main thread is created lazily, and this might even
+/// happen pre-main. Since not every platform has a way to identify the main
+/// thread when that happens – macOS's `pthread_main_np` function being a notable
+/// exception – we cannot assign it the right name right then. Instead, in our
+/// runtime startup code, we remember the thread ID of the main thread (through
+/// this modules `set` function) and use it to identify the main thread from then
+/// on. This works reliably and has the additional advantage that we can report
+/// the right thread name on main even after the thread handle has been destroyed.
+/// Note however that this also means that the name reported in pre-main functions
+/// will be incorrect, but that's just something we have to live with.
 pub(crate) mod main_thread {
     cfg_if::cfg_if! {
         if #[cfg(target_has_atomic = "64")] {
@@ -1331,21 +1343,35 @@ pub(crate) mod main_thread {
     }
 }
 
+/// Run a function with the current thread's name.
+///
+/// Modulo thread local accesses, this function is safe to call from signal
+/// handlers and in similar circumstances where allocations are not possible.
 pub(crate) fn with_current_name<F, R>(f: F) -> R
 where
     F: FnOnce(Option<&str>) -> R,
 {
     try_with_current(|thread| {
         if let Some(thread) = thread {
+            // If there is a current thread handle, try to use the name stored
+            // there.
             if let Some(name) = &thread.inner.name {
                 return f(Some(name.as_str()));
             } else if Some(thread.inner.id) == main_thread::get() {
+                // The main thread doesn't store its name in the handle, we must
+                // identify it through its ID. Since we already have the `Thread`,
+                // we can retrieve the ID from it instead of going through another
+                // thread local.
                 return f(Some("main"));
             }
         } else if let Some(main) = main_thread::get()
             && let Some(id) = current::id::get()
             && id == main
         {
+            // The main thread doesn't always have a thread handle, we must
+            // identify it through its ID instead. The checks are ordered so
+            // that the current ID is only loaded if it is actually needed,
+            // since loading it from TLS might need multiple expensive accesses.
             return f(Some("main"));
         }
 
