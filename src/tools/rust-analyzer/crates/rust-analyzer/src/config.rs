@@ -13,7 +13,7 @@ use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
 use ide::{
     AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
-    CompletionFieldsToResolve, DiagnosticsConfig, ExprFillDefaultMode, GenericParameterHints,
+     DiagnosticsConfig, ExprFillDefaultMode, GenericParameterHints,
     HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
     InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
     Snippet, SnippetScope, SourceRootId,
@@ -1418,7 +1418,6 @@ impl Config {
     }
 
     pub fn completion(&self, source_root: Option<SourceRootId>) -> CompletionConfig {
-        let client_capability_fields = self.completion_resolve_support_properties();
         CompletionConfig {
             enable_postfix_completions: self.completion_postfix_enable(source_root).to_owned(),
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
@@ -1443,15 +1442,6 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            fields_to_resolve: CompletionFieldsToResolve {
-                resolve_label_details: client_capability_fields.contains("labelDetails"),
-                resolve_tags: client_capability_fields.contains("tags"),
-                resolve_detail: client_capability_fields.contains("detail"),
-                resolve_documentation: client_capability_fields.contains("documentation"),
-                resolve_filter_text: client_capability_fields.contains("filterText"),
-                resolve_text_edit: client_capability_fields.contains("textEdit"),
-                resolve_command: client_capability_fields.contains("command"),
-            },
         }
     }
 
