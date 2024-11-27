@@ -66,7 +66,7 @@ impl<'tcx> At<'_, 'tcx> {
             let value = self
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
-            let errors = fulfill_cx.select_where_possible(self.infcx);
+            let errors = fulfill_cx.select_all_or_error(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
             if errors.is_empty() { Ok(value) } else { Err(errors) }
         }
