@@ -382,6 +382,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
+            "TlsFree" => {
+                let [key] = this.check_shim(abi, ExternAbi::System { unwind: false }, link_name, args)?;
+                let key = u128::from(this.read_scalar(key)?.to_u32()?);
+                this.machine.tls.delete_tls_key(key)?;
+
+                // Return success (`1`).
+                this.write_int(1, dest)?;
+            }
 
             // Access to command-line arguments
             "GetCommandLineW" => {
