@@ -56,13 +56,37 @@ impl GenericParamsOwnerEdit for ast::Fn {
 }
 
 impl ast::Fn {
-    pub fn syntax_editor_get_or_create_generic_param_list(
+    pub fn syntax_editor_add_generic_param(
         &self,
         editor: &mut SyntaxEditor,
-    ) -> ast::GenericParamList {
+        new_param: GenericParam,
+    ) {
         match self.generic_param_list() {
-            Some(it) => it,
+            Some(generic_param_list) => match generic_param_list.generic_params().last() {
+                Some(_last_param) => {
+                    // There exists a generic param list and it's not empty
+                    let mut params = generic_param_list
+                        .generic_params()
+                        .map(|param| param.clone())
+                        .collect::<Vec<_>>();
+                    params.push(new_param.into());
+                    let new_param_list = make::generic_param_list(params);
+                    editor.replace(
+                        generic_param_list.syntax(),
+                        new_param_list.syntax().clone_for_update(),
+                    );
+                }
+                None => {
+                    // There exists a generic param list but it's empty
+                    let position = crate::syntax_editor::Position::after(
+                        generic_param_list.l_angle_token().unwrap(),
+                    );
+
+                    editor.insert(position, new_param.syntax());
+                }
+            },
             None => {
+                // There was no generic param list
                 let position = if let Some(name) = self.name() {
                     crate::syntax_editor::Position::after(name.syntax)
                 } else if let Some(fn_token) = self.fn_token() {
@@ -72,7 +96,9 @@ impl ast::Fn {
                 } else {
                     crate::syntax_editor::Position::last_child_of(self.syntax())
                 };
-                syntax_editor_create_generic_param_list(editor, position)
+
+                let new_param_list = make::generic_param_list(once(new_param.clone()));
+                editor.insert(position, new_param_list.syntax().clone_for_update());
             }
         }
     }
@@ -214,15 +240,6 @@ fn create_generic_param_list(position: Position) -> ast::GenericParamList {
     gpl
 }
 
-fn syntax_editor_create_generic_param_list(
-    editor: &mut SyntaxEditor,
-    position: crate::syntax_editor::Position,
-) -> ast::GenericParamList {
-    let gpl = make::generic_param_list(empty()).clone_for_update();
-    editor.insert(position, gpl.syntax());
-    gpl
-}
-
 pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
         remove_attrs_and_docs(self.syntax());
@@ -286,28 +303,6 @@ impl ast::GenericParamList {
             None => {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());
                 ted::insert(after_l_angle, generic_param.syntax());
-            }
-        }
-    }
-
-    pub fn syntax_editor_add_generic_param(
-        &self,
-        editor: &mut SyntaxEditor,
-        new_param: ast::GenericParam,
-    ) {
-        match self.generic_params().last() {
-            Some(_) => {
-                let mut params =
-                    self.generic_params().map(|param| param.clone()).collect::<Vec<_>>();
-                params.push(new_param.into());
-                let new_param_list = make::generic_param_list(params);
-
-                editor.replace(self.syntax(), new_param_list.syntax());
-            }
-            None => {
-                let position = crate::syntax_editor::Position::after(self.l_angle_token().unwrap());
-                let new_param_list = make::generic_param_list(once(new_param.clone()));
-                editor.insert(position, new_param_list.syntax());
             }
         }
     }

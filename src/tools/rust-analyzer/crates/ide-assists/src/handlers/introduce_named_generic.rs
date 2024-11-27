@@ -39,16 +39,17 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
         target,
         |edit| {
             let mut editor = edit.make_editor(&parent_node);
-            let fn_generic_param_list =
-                fn_.syntax_editor_get_or_create_generic_param_list(&mut editor);
 
-            let existing_names = fn_generic_param_list
-                .generic_params()
-                .flat_map(|param| match param {
-                    ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
-                    p => Some(p.to_string()),
-                })
-                .collect_vec();
+            let existing_names = match fn_.generic_param_list() {
+                Some(generic_param_list) => generic_param_list
+                    .generic_params()
+                    .flat_map(|param| match param {
+                        ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
+                        p => Some(p.to_string()),
+                    })
+                    .collect_vec(),
+                None => Vec::new(),
+            };
             let type_param_name = suggest_name::NameGenerator::new_with_names(
                 existing_names.iter().map(|s| s.as_str()),
             )
@@ -58,13 +59,13 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             let new_ty = make.ty(&type_param_name);
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_generic_param_list.syntax_editor_add_generic_param(&mut editor, type_param.into());
+            fn_.syntax_editor_add_generic_param(&mut editor, type_param.into());
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(generic_param) =
                     fn_.generic_param_list().and_then(|it| it.generic_params().last())
                 {
-                    edit.add_tabstop_before(cap, generic_param);
+                    editor.add_annotation(generic_param.syntax(), edit.make_tabstop_before(cap));
                 }
             }
 
