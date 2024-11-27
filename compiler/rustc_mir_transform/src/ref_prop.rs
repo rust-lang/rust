@@ -8,8 +8,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
-use rustc_mir_dataflow::impls::MaybeStorageDead;
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
 use tracing::{debug, instrument};
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
