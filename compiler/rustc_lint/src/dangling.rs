@@ -130,11 +130,11 @@ impl DanglingPointerSearcher<'_, '_> {
 
 fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
-        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
         && is_temporary_rvalue(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
+        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
     {
         // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(
