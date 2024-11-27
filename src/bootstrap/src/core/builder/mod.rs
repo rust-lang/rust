@@ -1523,15 +1523,19 @@ impl<'a> Builder<'a> {
     pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
         if self.was_invoked_explicitly::<S>(Kind::Doc) {
             self.open_in_browser(path);
+        } else {
+            self.info(&format!("Doc path: {}", path.as_ref().display()));
         }
     }
 
     pub(crate) fn open_in_browser(&self, path: impl AsRef<Path>) {
+        let path = path.as_ref();
+
         if self.config.dry_run() || !self.config.cmd.open() {
+            self.info(&format!("Doc path: {}", path.display()));
             return;
         }
 
-        let path = path.as_ref();
         self.info(&format!("Opening doc {}", path.display()));
         if let Err(err) = opener::open(path) {
             self.info(&format!("{err}\n"));
