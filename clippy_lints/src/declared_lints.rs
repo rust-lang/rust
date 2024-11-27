@@ -335,6 +335,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::matches::INFALLIBLE_DESTRUCTURING_MATCH_INFO,
     crate::matches::MANUAL_FILTER_INFO,
     crate::matches::MANUAL_MAP_INFO,
+    crate::matches::MANUAL_OK_ERR_INFO,
     crate::matches::MANUAL_UNWRAP_OR_INFO,
     crate::matches::MATCH_AS_REF_INFO,
     crate::matches::MATCH_BOOL_INFO,
