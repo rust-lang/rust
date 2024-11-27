@@ -25,7 +25,7 @@ pub use self::framework::{
 use self::move_paths::MoveData;
 
 pub mod debuginfo;
-pub mod drop_flag_effects;
+mod drop_flag_effects;
 pub mod elaborate_drops;
 mod errors;
 mod framework;
@@ -33,8 +33,7 @@ pub mod impls;
 pub mod move_paths;
 pub mod points;
 pub mod rustc_peek;
-pub mod storage;
-pub mod un_derefer;
+mod un_derefer;
 pub mod value_analysis;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

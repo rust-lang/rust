@@ -1,53 +1,9 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:9:61
+error[E0277]: the trait bound `Foo<E>: ~const Destruct` is not satisfied
+  --> $DIR/const-drop-bound.rs:23:5
    |
-LL | const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
-   |                                                             ^^^^^^
+LL |     foo(res)
+   |     ^^^^^^^^
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:9:61
-   |
-LL | const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
-   |                                                             ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+error: aborting due to 1 previous error
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:20:8
-   |
-LL |     T: ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:21:8
-   |
-LL |     E: ~const Destruct,
-   |        ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:20:8
-   |
-LL |     T: ~const Destruct,
-   |        ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-bound.rs:21:8
-   |
-LL |     E: ~const Destruct,
-   |        ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0493]: destructor of `E` cannot be evaluated at compile-time
-  --> $DIR/const-drop-bound.rs:12:13
-   |
-LL |         Err(_e) => None,
-   |             ^^        - value is dropped here
-   |             |
-   |             the destructor for this type cannot be evaluated in constant functions
-
-error: aborting due to 7 previous errors
-
-For more information about this error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0277`.

@@ -217,11 +217,6 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 else {
                     continue;
                 };
-                if !tcx.consider_optimizing(|| {
-                    format!("{} round {}", tcx.def_path_str(def_id), round_count)
-                }) {
-                    break;
-                }
 
                 // Replace `src` by `dest` everywhere.
                 merges.insert(*src, *dest);

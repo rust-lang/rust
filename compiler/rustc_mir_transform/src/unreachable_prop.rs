@@ -43,12 +43,6 @@ impl crate::MirPass<'_> for UnreachablePropagation {
             }
         }
 
-        if !tcx
-            .consider_optimizing(|| format!("UnreachablePropagation {:?} ", body.source.def_id()))
-        {
-            return;
-        }
-
         patch.apply(body);
 
         // We do want do keep some unreachable blocks, but make them empty.

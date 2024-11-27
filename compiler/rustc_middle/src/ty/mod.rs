@@ -1558,10 +1558,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
 
         // This is here instead of layout because the choice must make it into metadata.
-        if is_box
-            || !self
-                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
-        {
+        if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 
