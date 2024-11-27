@@ -718,6 +718,31 @@ fn threads_support() {
     }
 }
 
+#[test]
+fn target_has_atomic_support() {
+    let atomics = [
+        ("aarch64-unknown-linux-gnu", &["8", "16", "32", "64", "128", "ptr"][..], &[][..]),
+        ("aarch64-apple-darwin", &["8", "16", "32", "64", "128", "ptr"], &[]),
+        ("i686-pc-windows-gnu", &["8", "16", "32", "64", "ptr"], &["128"]),
+        ("i686-pc-windows-msvc", &["8", "16", "32", "64", "ptr"], &["128"]),
+        ("i686-unknown-linux-gnu", &["8", "16", "32", "64", "ptr"], &["128"]),
+        ("x86_64-apple-darwin", &["8", "16", "32", "64", "128", "ptr"], &[]),
+        ("x86_64-pc-windows-gnu", &["8", "16", "32", "64", "128", "ptr"], &[]),
+        ("x86_64-pc-windows-msvc", &["8", "16", "32", "64", "128", "ptr"], &[]),
+        ("x86_64-unknown-linux-gnu", &["8", "16", "32", "64", "ptr"], &["128"]),
+    ];
+
+    for (target, supported, not_supported) in atomics {
+        let config = cfg().target(target).build();
+        for size in supported {
+            assert!(config.has_atomic(size));
+        }
+        for size in not_supported {
+            assert!(!config.has_atomic(size));
+        }
+    }
+}
+
 fn run_path(poisoned: &mut bool, path: &Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
     iter_header(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
