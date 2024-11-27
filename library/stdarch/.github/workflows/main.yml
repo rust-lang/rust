@@ -1,12 +1,7 @@
 name: CI
 on:
-  push:
-    branches:
-    - auto
-    - try
   pull_request:
-    branches:
-    - master
+  merge_group:
 
 jobs:
   style:
@@ -29,14 +24,6 @@ jobs:
     - run: ci/dox.sh
       env:
         CI: 1
-    - name: Publish documentation
-      run: |
-        cd target/doc
-        git init
-        git add .
-        git -c user.name='ci' -c user.email='ci' commit -m init
-        git push -f -q https://git:${{ secrets.github_token }}@github.com/${{ github.repository }} HEAD:gh-pages
-      if: github.event_name == 'push' && github.event.ref == 'refs/heads/master'
 
   verify:
     name: Automatic intrinsic verification
