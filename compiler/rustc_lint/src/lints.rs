@@ -20,7 +20,7 @@ use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
-use crate::errors::{OverruledAttributeSub, RequestedLevel};
+use crate::errors::RequestedLevel;
 use crate::{LateContext, fluent_generated as fluent};
 
 // array_into_iter.rs
@@ -1021,18 +1021,6 @@ impl Subdiagnostic for NonBindingLetSub {
             diag.help(fluent::lint_non_binding_let_multi_drop_fn);
         }
     }
-}
-
-// levels.rs
-#[derive(LintDiagnostic)]
-#[diag(lint_overruled_attribute)]
-pub(crate) struct OverruledAttributeLint<'a> {
-    #[label]
-    pub overruled: Span,
-    pub lint_level: &'a str,
-    pub lint_source: Symbol,
-    #[subdiagnostic]
-    pub sub: OverruledAttributeSub,
 }
 
 #[derive(LintDiagnostic)]

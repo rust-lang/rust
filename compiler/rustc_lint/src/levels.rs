@@ -15,8 +15,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
-    self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
-    UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
+    self, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES, UNFULFILLED_LINT_EXPECTATIONS,
+    UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_span::symbol::{Symbol, sym};
@@ -34,9 +34,8 @@ use crate::fluent_generated as fluent;
 use crate::late::unerased_lint_store;
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
-    OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
-    RenamedLintFromCommandLine, RenamedLintSuggestion, UnknownLint, UnknownLintFromCommandLine,
-    UnknownLintSuggestion,
+    RemovedLint, RemovedLintFromCommandLine, RenamedLint, RenamedLintFromCommandLine,
+    RenamedLintSuggestion, UnknownLint, UnknownLintFromCommandLine, UnknownLintSuggestion,
 };
 
 /// Collection of lint levels for the whole crate.
@@ -645,16 +644,13 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     sub,
                 });
             } else {
-                self.emit_span_lint(
-                    FORBIDDEN_LINT_GROUPS,
-                    src.span().into(),
-                    OverruledAttributeLint {
-                        overruled: src.span(),
-                        lint_level: level.as_str(),
-                        lint_source: src.name(),
-                        sub,
-                    },
-                );
+                self.sess.dcx().emit_err(OverruledAttribute {
+                    span: src.span(),
+                    overruled: src.span(),
+                    lint_level: level.as_str(),
+                    lint_source: src.name(),
+                    sub,
+                });
             }
 
             // Retain the forbid lint level, unless we are
