@@ -43,8 +43,9 @@ struct BcbExpression {
     rhs: BcbCounter,
 }
 
-#[derive(Debug)]
-pub(super) enum CounterIncrementSite {
+/// Enum representing either a node or an edge in the coverage graph.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Site {
     Node { bcb: BasicCoverageBlock },
     Edge { from_bcb: BasicCoverageBlock, to_bcb: BasicCoverageBlock },
 }
@@ -54,7 +55,7 @@ pub(super) enum CounterIncrementSite {
 pub(super) struct CoverageCounters {
     /// List of places where a counter-increment statement should be injected
     /// into MIR, each with its corresponding counter ID.
-    counter_increment_sites: IndexVec<CounterId, CounterIncrementSite>,
+    counter_increment_sites: IndexVec<CounterId, Site>,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     node_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
@@ -98,14 +99,14 @@ impl CoverageCounters {
 
     /// Shared helper used by [`Self::make_phys_node_counter`] and
     /// [`Self::make_phys_edge_counter`]. Don't call this directly.
-    fn make_counter_inner(&mut self, site: CounterIncrementSite) -> BcbCounter {
+    fn make_counter_inner(&mut self, site: Site) -> BcbCounter {
         let id = self.counter_increment_sites.push(site);
         BcbCounter::Counter { id }
     }
 
     /// Creates a new physical counter for a BCB node.
     fn make_phys_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        self.make_counter_inner(CounterIncrementSite::Node { bcb })
+        self.make_counter_inner(Site::Node { bcb })
     }
 
     /// Creates a new physical counter for a BCB edge.
@@ -114,7 +115,7 @@ impl CoverageCounters {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> BcbCounter {
-        self.make_counter_inner(CounterIncrementSite::Edge { from_bcb, to_bcb })
+        self.make_counter_inner(Site::Edge { from_bcb, to_bcb })
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
@@ -224,8 +225,8 @@ impl CoverageCounters {
     /// each site's corresponding counter ID.
     pub(super) fn counter_increment_sites(
         &self,
-    ) -> impl Iterator<Item = (CounterId, &CounterIncrementSite)> {
-        self.counter_increment_sites.iter_enumerated()
+    ) -> impl Iterator<Item = (CounterId, Site)> + Captures<'_> {
+        self.counter_increment_sites.iter_enumerated().map(|(id, &site)| (id, site))
     }
 
     /// Returns an iterator over the subset of BCB nodes that have been associated
