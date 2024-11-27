@@ -70,7 +70,7 @@ pub unsafe fn lgammaf_r(n: f32, s: &mut i32) -> f32 {
 cfg_if::cfg_if! {
 if #[cfg(all(target_os = "windows", target_env = "msvc", target_arch = "x86"))] {
     #[inline]
-   pub unsafe fn acosf(n: f32) -> f32 {
+    pub unsafe fn acosf(n: f32) -> f32 {
         f64::acos(n as f64) as f32
     }
 
