@@ -116,13 +116,12 @@ where
     }
     f(&mut wfcx)?;
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
-
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
     debug!(?assumed_wf_types);
 
     let infcx_compat = infcx.fork();
