@@ -261,8 +261,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: if there were a single returned type, you could use `impl Trait` instead
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn bat() -> impl Trait {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bat() -> Box<dyn Trait> {
 LL |     if true {
@@ -277,8 +280,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: if there were a single returned type, you could use `impl Trait` instead
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn bay() -> impl Trait {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bay() -> Box<dyn Trait> {
 LL |     if true {
