@@ -700,7 +700,7 @@ impl IndividualTestOptions {
     fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
+            path.push(test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");

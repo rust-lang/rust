@@ -178,7 +178,7 @@ impl fmt::Debug for Options {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct FmtExterns<'a>(&'a Externs);
 
-        impl<'a> fmt::Debug for FmtExterns<'a> {
+        impl fmt::Debug for FmtExterns<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_map().entries(self.0.iter()).finish()
             }
@@ -508,7 +508,7 @@ impl Options {
         };
 
         let parts_out_dir =
-            match matches.opt_str("parts-out-dir").map(|p| PathToParts::from_flag(p)).transpose() {
+            match matches.opt_str("parts-out-dir").map(PathToParts::from_flag).transpose() {
                 Ok(parts_out_dir) => parts_out_dir,
                 Err(e) => dcx.fatal(e),
             };

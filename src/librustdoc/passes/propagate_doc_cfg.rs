@@ -27,7 +27,7 @@ struct CfgPropagator<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
+impl CfgPropagator<'_, '_> {
     // Some items need to merge their attributes with their parents' otherwise a few of them
     // (mostly `cfg` ones) will be missing.
     fn merge_with_parent_attributes(&mut self, item: &mut Item) {
@@ -65,7 +65,7 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DocFolder for CfgPropagator<'a, 'tcx> {
+impl DocFolder for CfgPropagator<'_, '_> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let old_parent_cfg = self.parent_cfg.clone();
 

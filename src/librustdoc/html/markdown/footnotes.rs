@@ -64,7 +64,7 @@ impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, 'b, I> {
     }
 }
 
-impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, 'b, I> {
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, '_, I> {
     type Item = SpannedEvent<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {

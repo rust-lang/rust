@@ -9,6 +9,7 @@
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
@@ -785,16 +786,20 @@ pub(crate) fn href_relative_parts<'fqp>(
             );
         }
     }
-    // e.g. linking to std::sync::atomic from std::sync
-    if relative_to_fqp.len() < fqp.len() {
-        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
-    // e.g. linking to std::sync from std::sync::atomic
-    } else if fqp.len() < relative_to_fqp.len() {
-        let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
-    // linking to the same module
-    } else {
-        Box::new(iter::empty())
+    match relative_to_fqp.len().cmp(&fqp.len()) {
+        Ordering::Less => {
+            // e.g. linking to std::sync::atomic from std::sync
+            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+        }
+        Ordering::Greater => {
+            // e.g. linking to std::sync from std::sync::atomic
+            let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
+            Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+        }
+        Ordering::Equal => {
+            // linking to the same module
+            Box::new(iter::empty())
+        }
     }
 }
 
@@ -1384,7 +1389,7 @@ impl clean::Impl {
                 write!(f, ">")?;
             }
         } else {
-            fmt_type(&type_, f, use_absolute, cx)?;
+            fmt_type(type_, f, use_absolute, cx)?;
         }
         Ok(())
     }
@@ -1531,14 +1536,14 @@ impl clean::FnDecl {
                 (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
                 (None, Some(_)) => (),
                 (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
-                (Some(_), Some(_)) => write!(f, ",\n")?,
+                (Some(_), Some(_)) => writeln!(f, ",")?,
             }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
+                Some(n) => writeln!(f, "{}...", Indent(n + 4))?,
             };
         }
 

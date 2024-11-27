@@ -63,7 +63,7 @@ struct SpanMapVisitor<'tcx> {
     pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
 }
 
-impl<'tcx> SpanMapVisitor<'tcx> {
+impl SpanMapVisitor<'_> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
     fn handle_path(&mut self, path: &rustc_hir::Path<'_>) {
         match path.res {
