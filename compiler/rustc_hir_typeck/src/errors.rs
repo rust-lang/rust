@@ -800,6 +800,8 @@ pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_fn_item_to_variadic_function, code = E0617)]
+#[help]
+#[note]
 pub(crate) struct PassFnItemToVariadicFunction {
     #[primary_span]
     pub span: Span,
