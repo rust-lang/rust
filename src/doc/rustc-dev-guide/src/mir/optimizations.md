@@ -110,26 +110,3 @@ current level using [`tcx.sess.opts.unstable_opts.mir_opt_level`][mir_opt_level]
 
 [compiler MCP]: https://github.com/rust-lang/compiler-team/issues/319
 [mir_opt_level]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/struct.UnstableOptions.html#structfield.mir_opt_level
-
-## Optimization fuel
-
-Optimization fuel is a compiler option (`-Z fuel=<crate>=<value>`) that allows for fine grained
-control over which optimizations can be applied during compilation: each optimization reduces
-fuel by 1, and when fuel reaches 0 no more optimizations are applied. The primary use of fuel
-is debugging optimizations that may be incorrect or misapplied. By changing the fuel
-value, you can bisect a compilation session down to the exact incorrect optimization
-(this behaves like a kind of binary search through the optimizations).
-
-MIR optimizations respect fuel, and in general each pass should check fuel by calling
-[`tcx.consider_optimizing`][consideroptimizing] and skipping the optimization if fuel
-is empty. There are a few considerations:
-
-1. If the pass is considered "guaranteed" (for example, it should always be run because it is
-needed for correctness), then fuel should not be used. An example of this is `PromoteTemps`.
-2. In some cases, an initial pass is performed to gather candidates, which are then iterated to
-perform optimizations. In these situations, we should allow for the initial gathering pass
-and then check fuel as close to the mutation as possible. This allows for the best
-debugging experience, because we can determine where in the list of candidates an optimization
-may have been misapplied. Examples of this are `InstSimplify` and `ConstantPropagation`.
-
-[consideroptimizing]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.consider_optimizing
