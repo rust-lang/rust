@@ -262,7 +262,7 @@ similarly, in `x + 2`, `2` is a MIR constant. Type system constants are used in
 the type system, in particular for array lengths but also for const generics.
 
 Generally, both kinds of constants can be "unevaluated" or "already evaluated".
-And unevaluated constant simply stores the `DefId` of what needs to be evaluated
+An unevaluated constant simply stores the `DefId` of what needs to be evaluated
 to compute this result. An evaluated constant (a "value") has already been
 computed; their representation differs between type system constants and MIR
 constants: MIR constants evaluate to a `mir::ConstValue`; type system constants
