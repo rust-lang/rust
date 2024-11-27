@@ -136,7 +136,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         for (base_trait_ref, original_span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.upcast(tcx);
-            for ClauseWithSupertraitSpan { pred, original_span, supertrait_span } in
+            for ClauseWithSupertraitSpan { pred, supertrait_span } in
                 traits::elaborate(tcx, [ClauseWithSupertraitSpan::new(base_pred, original_span)])
                     .filter_only_self()
             {
@@ -204,7 +204,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for def_ids in associated_types.values_mut() {
             for (projection_bound, span) in &projection_bounds {
                 let def_id = projection_bound.projection_def_id();
-                // FIXME(#120456) - is `swap_remove` correct?
                 def_ids.swap_remove(&def_id);
                 if tcx.generics_require_sized_self(def_id) {
                     tcx.emit_node_span_lint(
