@@ -179,7 +179,7 @@ declare_lint! {
     Warn,
     "applying forbid to lint-groups",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
     };
 }
