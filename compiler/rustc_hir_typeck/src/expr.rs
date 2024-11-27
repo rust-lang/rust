@@ -1290,7 +1290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        let expected = orig_expected.adjust_for_branches(self);
+        let expected = orig_expected.adjust_for_branches(self, sp);
         let then_ty = self.check_expr_with_expectation(then_expr, expected);
         let then_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);

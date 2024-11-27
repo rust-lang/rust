@@ -39,10 +39,14 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // an expected type. Otherwise, we might write parts of the type
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
-    pub(super) fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
+    pub(super) fn adjust_for_branches(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        span: Span,
+    ) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
-                let ety = fcx.shallow_resolve(ety);
+                let ety = fcx.try_structurally_resolve_type(span, ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
