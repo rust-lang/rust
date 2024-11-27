@@ -66,6 +66,12 @@ pub(crate) struct Context<'tcx> {
     pub(crate) info: ContextInfo,
 }
 
+/// This struct contains the information that needs to be reset between each
+/// [`FormatRenderer::render_item`] call.
+///
+/// When we enter a new module, we set these values for the whole module but they might be updated
+/// in each child item (especially if it's a module). So to prevent these changes to impact other
+/// items rendering in the same module, we need to reset them to the module's set values.
 #[derive(Clone, Copy)]
 pub(crate) struct ContextInfo {
     /// A flag, which when `true`, will render pages which redirect to the
