@@ -1120,23 +1120,23 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     }
 }
 
-#[allow(clippy::range_plus_one)] // inclusive ranges aren't the same type
+#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
     let offset = range.start;
     let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
     let mut start = None;
     while let Some((i, byte)) = iterator.next() {
-        if byte == b'\\' {
-            iterator.next();
-            continue;
-        }
-        if byte == b'[' {
-            start = Some(i + offset);
-        }
-        if let Some(start) = start
-            && byte == b']'
-        {
-            return Some(start..i + offset + 1);
+        match byte {
+            b'\\' => {
+                iterator.next();
+            },
+            b'[' => {
+                start = Some(i + offset);
+            },
+            b']' if let Some(start) = start => {
+                return Some(start..i + offset + 1);
+            },
+            _ => {},
         }
     }
     None
