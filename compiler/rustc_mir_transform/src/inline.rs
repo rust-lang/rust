@@ -210,12 +210,6 @@ impl<'tcx> Inliner<'tcx> {
         let callee_body = try_instance_mir(self.tcx, callsite.callee.def)?;
         self.check_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
 
-        if !self.tcx.consider_optimizing(|| {
-            format!("Inline {:?} into {:?}", callsite.callee, caller_body.source)
-        }) {
-            return Err("optimization fuel exhausted");
-        }
-
         let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
             self.typing_env,

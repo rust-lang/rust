@@ -17,10 +17,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
             return;
         }
 
-        if !tcx.consider_optimizing(|| format!("RemoveZsts - {:?}", body.source.def_id())) {
-            return;
-        }
-
         let typing_env = body.typing_env(tcx);
         let local_decls = &body.local_decls;
         let mut replacer = Replacer { tcx, typing_env, local_decls };
@@ -94,16 +90,12 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         }
     }
 
-    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
+    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Constant(_) = operand {
             return;
         }
         let op_ty = operand.ty(self.local_decls, self.tcx);
-        if self.known_to_be_zst(op_ty)
-            && self.tcx.consider_optimizing(|| {
-                format!("RemoveZsts - Operand: {operand:?} Location: {loc:?}")
-            })
-        {
+        if self.known_to_be_zst(op_ty) {
             *operand = Operand::Constant(Box::new(self.make_zst(op_ty)))
         }
     }
