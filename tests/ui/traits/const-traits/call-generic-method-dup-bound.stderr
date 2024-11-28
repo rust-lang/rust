@@ -42,7 +42,7 @@ LL |     *t == *t
    |     ^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const std::cmp::PartialEq`
    |
 LL | const fn equals_self<T: PartialEq + ~const PartialEq + ~const std::cmp::PartialEq>(t: &T) -> bool {
    |                                                      ++++++++++++++++++++++++++++
@@ -62,7 +62,7 @@ LL |     *t == *t
    |     ^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const std::cmp::PartialEq`
    |
 LL | const fn equals_self2<T: A + ~const PartialEq + ~const std::cmp::PartialEq>(t: &T) -> bool {
    |                                               ++++++++++++++++++++++++++++

@@ -14,7 +14,7 @@ note: this definition site has more where clauses than the opaque type
    |
 LL | fn foo<T: Default>(t: T) -> Foo<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::default::Default`
    |
 LL | type Foo<T: std::default::Default> = impl Default;
    |           +++++++++++++++++++++++

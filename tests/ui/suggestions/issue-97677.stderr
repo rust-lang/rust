@@ -6,7 +6,7 @@ LL |     n + 10
    |     |
    |     N
    |
-help: consider restricting type parameter `N`
+help: consider restricting type parameter `N` with trait `std::ops::Add<i32, Output = N>`
    |
 LL | fn add_ten<N: std::ops::Add<i32, Output = N>>(n: N) -> N {
    |             ++++++++++++++++++++++++++++++++

@@ -10,7 +10,7 @@ note: required by a bound in `Foo`
    |
 LL | trait Foo : Send+Sync { }
    |             ^^^^ required by this bound in `Foo`
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `std::marker::Send`
    |
 LL | impl <T: Sync+'static + std::marker::Send> Foo for (T,) { }
    |                       +++++++++++++++++++
@@ -27,7 +27,7 @@ note: required by a bound in `Foo`
    |
 LL | trait Foo : Send+Sync { }
    |                  ^^^^ required by this bound in `Foo`
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `std::marker::Sync`
    |
 LL | impl <T: Send + std::marker::Sync> Foo for (T,T) { }
    |               +++++++++++++++++++

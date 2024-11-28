@@ -25,7 +25,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -73,7 +73,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `std::iter::Iterator`
    |
 LL | fn example<Q: std::iter::Iterator>(q: Q) {
    |             +++++++++++++++++++++
@@ -100,7 +100,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `std::iter::Iterator`
    |
 LL | fn example<Q: std::iter::Iterator>(q: Q) {
    |             +++++++++++++++++++++
@@ -125,7 +125,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -150,7 +150,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -175,7 +175,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -200,7 +200,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -225,7 +225,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -248,7 +248,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -273,7 +273,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -296,7 +296,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -319,7 +319,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -342,7 +342,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -367,7 +367,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++
@@ -392,7 +392,7 @@ note: required by a bound in `want`
    |
 LL | fn want<V: T1>(_x: V) {}
    |            ^^ required by this bound in `want`
-help: consider restricting type parameter `Q`
+help: consider restricting type parameter `Q` with trait `T3`
    |
 LL | fn example<Q: T3>(q: Q) {
    |             ++++

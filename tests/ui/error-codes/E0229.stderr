@@ -42,7 +42,7 @@ error[E0277]: the trait bound `I: Foo` is not satisfied
 LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
    |               ^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `I`
    |
-help: consider restricting type parameter `I`
+help: consider restricting type parameter `I` with trait `Foo`
    |
 LL | fn baz<I: Foo>(x: &<I as Foo<A = Bar>>::A) {}
    |         +++++
@@ -53,7 +53,7 @@ error[E0277]: the trait bound `I: Foo` is not satisfied
 LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
    |                                       ^^ the trait `Foo` is not implemented for `I`
    |
-help: consider restricting type parameter `I`
+help: consider restricting type parameter `I` with trait `Foo`
    |
 LL | fn baz<I: Foo>(x: &<I as Foo<A = Bar>>::A) {}
    |         +++++

@@ -14,7 +14,7 @@ LL |     T: TraitFoo,
    |        -------- unsatisfied trait bound introduced here
 note: required by a bound in `Copy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `TraitFoo`
    |
 LL | impl<T: TraitFoo> Copy for Foo<T> {}
    |       ++++++++++

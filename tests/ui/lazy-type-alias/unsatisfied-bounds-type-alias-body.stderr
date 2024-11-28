@@ -4,7 +4,7 @@ error[E0277]: cannot multiply `T` by `T`
 LL | type Alias<T> = <T as std::ops::Mul>::Output;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T * T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::ops::Mul`
    |
 LL | type Alias<T: std::ops::Mul> = <T as std::ops::Mul>::Output;
    |             +++++++++++++++

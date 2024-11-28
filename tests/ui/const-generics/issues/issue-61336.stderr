@@ -7,7 +7,7 @@ LL |     [x; N]
    = note: the `Copy` trait is required because this value will be copied for each element of the array
    = help: consider using `core::array::from_fn` to initialize the array
    = help: see https://doc.rust-lang.org/stable/std/array/fn.from_fn.html for more information
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
    |       +++++++++++++++++++
