@@ -103,7 +103,7 @@ impl<'hir> IfLet<'hir> {
     /// Parses an `if let` expression
     pub fn hir(cx: &LateContext<'_>, expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::If(
-            Expr {
+            &Expr {
                 kind:
                     ExprKind::Let(&hir::LetExpr {
                         pat: let_pat,
@@ -381,12 +381,12 @@ impl<'hir> WhileLet<'hir> {
     /// Parses a desugared `while let` loop
     pub const fn hir(expr: &Expr<'hir>) -> Option<Self> {
         if let ExprKind::Loop(
-            Block {
+            &Block {
                 expr:
-                    Some(Expr {
+                    Some(&Expr {
                         kind:
                             ExprKind::If(
-                                Expr {
+                                &Expr {
                                     kind:
                                         ExprKind::Let(&hir::LetExpr {
                                             pat: let_pat,

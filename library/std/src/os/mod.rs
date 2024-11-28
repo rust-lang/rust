@@ -15,7 +15,16 @@ pub mod raw;
 // documented don't compile (missing things in `libc` which is empty),
 // so just omit them with an empty module and add the "unstable" attribute.
 
-// unix, linux, wasi and windows are handled a bit differently.
+// darwin, unix, linux, wasi and windows are handled a bit differently.
+#[cfg(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+))]
+#[unstable(issue = "none", feature = "std_internals")]
+pub mod darwin {}
 #[cfg(all(
     doc,
     any(
@@ -52,6 +61,17 @@ pub mod wasi {}
 ))]
 #[unstable(issue = "none", feature = "std_internals")]
 pub mod windows {}
+
+// darwin
+#[cfg(not(all(
+    doc,
+    any(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_vendor = "fortanix", target_env = "sgx")
+    )
+)))]
+#[cfg(any(target_vendor = "apple", doc))]
+pub mod darwin;
 
 // unix
 #[cfg(not(all(
@@ -105,8 +125,6 @@ pub mod windows;
 pub mod aix;
 #[cfg(target_os = "android")]
 pub mod android;
-#[cfg(target_vendor = "apple")]
-pub(crate) mod darwin;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]

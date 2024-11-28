@@ -193,7 +193,7 @@ fn check_collect_into_intoiterator<'tcx>(
 
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
-    cx.typeck_results().type_dependent_def_id(call_id).map_or(false, |id| {
+    cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
         let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
@@ -203,10 +203,10 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, sym::Item, [iter_ty])
+        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
-            cx.param_env,
+            cx.typing_env(),
             Ty::new_projection_from_args(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
         )
     {
@@ -237,7 +237,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
         && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
-        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
+        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), proj_ty)
     {
         item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
     } else {
@@ -322,7 +322,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
             if args.is_empty()
-                && method_name.ident.name == sym!(collect)
+                && method_name.ident.name.as_str() == "collect"
                 && is_trait_method(self.cx, expr, sym::Iterator)
             {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));

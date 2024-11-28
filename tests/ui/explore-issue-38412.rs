@@ -1,9 +1,9 @@
 //@ aux-build:pub-and-stability.rs
 
-// A big point of this test is that we *declare* `unstable_declared`,
-// but do *not* declare `unstable_undeclared`. This way we can check
-// that the compiler is letting in uses of declared feature-gated
-// stuff but still rejecting uses of undeclared feature-gated stuff.
+// A big point of this test is that we *enable* `unstable_declared`,
+// but do *not* enable `unstable_undeclared`. This way we can check
+// that the compiler is letting in uses of enabled feature-gated
+// stuff but still rejecting uses of disabled feature-gated stuff.
 #![feature(unstable_declared)]
 
 extern crate pub_and_stability;
@@ -18,7 +18,7 @@ fn main() {
 
     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
         Record::new();
-    //~^^ ERROR use of unstable library feature 'unstable_undeclared'
+    //~^^ ERROR use of unstable library feature `unstable_undeclared`
 
     let r = Record::new();
     let t = Tuple::new();

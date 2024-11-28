@@ -20,7 +20,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing pent[(0, 0)] -> ImmBorrow
+note: Capturing pent[(0, 0)] -> Immutable
   --> $DIR/path-with-array-access.rs:30:24
    |
 LL |         println!("{}", pent.points[5].x);
@@ -38,7 +38,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture pent[(0, 0)] -> ImmBorrow
+note: Min Capture pent[(0, 0)] -> Immutable
   --> $DIR/path-with-array-access.rs:30:24
    |
 LL |         println!("{}", pent.points[5].x);

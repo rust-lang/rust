@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
         )
         .unchecked_map(|(param_env, value)| param_env.and(value));
-        CanonicalQueryInput { canonical, typing_mode: self.typing_mode(param_env) }
+        CanonicalQueryInput { canonical, typing_mode: self.typing_mode() }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
@@ -753,7 +753,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { var, kind: ty::BrAnon };
+        let br = ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon };
         ty::Region::new_bound(self.cx(), self.binder_index, br)
     }
 

@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
-  --> $DIR/assoc-type-const-bound-usage-fail-2.rs:24:5
+  --> $DIR/assoc-type-const-bound-usage-fail-2.rs:23:5
    |
 LL |     T::Assoc::<U>::func();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
-  --> $DIR/assoc-type-const-bound-usage-fail-2.rs:26:5
+  --> $DIR/assoc-type-const-bound-usage-fail-2.rs:25:5
    |
 LL |     <T as Trait>::Assoc::<U>::func();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

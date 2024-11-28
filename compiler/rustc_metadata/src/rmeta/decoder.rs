@@ -15,6 +15,7 @@ use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
+use rustc_hir::Safety;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
@@ -770,7 +771,7 @@ impl MetadataBlob {
                         root.stable_crate_id
                     )?;
                     writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
-                    writeln!(out, "triple {}", root.header.triple.triple())?;
+                    writeln!(out, "triple {}", root.header.triple.tuple())?;
                     writeln!(out, "edition {}", root.edition)?;
                     writeln!(out, "symbol_mangling_version {:?}", root.symbol_mangling_version)?;
                     writeln!(
@@ -1101,6 +1102,7 @@ impl<'a> CrateMetadataRef<'a> {
                         did,
                         name: self.item_name(did.index),
                         vis: self.get_visibility(did.index),
+                        safety: self.get_safety(did.index),
                     })
                     .collect(),
                 adt_kind,
@@ -1160,6 +1162,10 @@ impl<'a> CrateMetadataRef<'a> {
             .unwrap_or_else(|| self.missing("visibility", id))
             .decode(self)
             .map_id(|index| self.local_def_id(index))
+    }
+
+    fn get_safety(self, id: DefIndex) -> Safety {
+        self.root.tables.safety.get(self, id).unwrap_or_else(|| self.missing("safety", id))
     }
 
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {

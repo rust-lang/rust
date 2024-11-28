@@ -6,12 +6,7 @@ LL |     needs_test(foreign_struct_trait_unimplemented::B);
    |     |
    |     required by a bound introduced by this call
    |
-help: there are multiple different versions of crate `foreign_struct_trait_unimplemented` in the dependency graph
-  --> $DIR/foreign_struct_trait_unimplemented.rs:3:1
-   |
-LL | extern crate foreign_struct_trait_unimplemented;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one version of crate `foreign_struct_trait_unimplemented` is used here, as a direct dependency of the current crate
-   = help: you can use `cargo tree` to explore your dependency tree
+   = help: the trait `Test` is implemented for `A`
 note: required by a bound in `needs_test`
   --> $DIR/foreign_struct_trait_unimplemented.rs:10:23
    |

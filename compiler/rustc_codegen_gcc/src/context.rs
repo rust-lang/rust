@@ -11,10 +11,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError,
+    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::respan;
 use rustc_span::{DUMMY_SP, Span};
@@ -144,7 +144,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_f128_type: bool,
     ) -> Self {
         let create_type = |ctype, rust_type| {
-            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
+                .unwrap();
             let align = layout.align.abi.bytes();
             #[cfg(feature = "master")]
             {
@@ -459,7 +461,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
                 let instance = ty::Instance::expect_resolve(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    self.typing_env(),
                     def_id,
                     ty::List::empty(),
                     DUMMY_SP,
@@ -583,9 +585,9 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'tcx, 'gcc> HasParamEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx, 'gcc> HasTypingEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 

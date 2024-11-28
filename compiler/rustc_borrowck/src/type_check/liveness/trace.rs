@@ -38,7 +38,7 @@ pub(super) fn trace<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     elements: &DenseLocationMap,
-    flow_inits: &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
+    flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     relevant_live_locals: Vec<Local>,
     boring_locals: Vec<Local>,
@@ -47,13 +47,12 @@ pub(super) fn trace<'a, 'tcx>(
 
     // When using `-Zpolonius=next`, compute the set of loans that can reach a given region.
     if typeck.tcx().sess.opts.unstable_opts.polonius.is_next_enabled() {
-        let borrowck_context = &mut typeck.borrowck_context;
-        let borrow_set = &borrowck_context.borrow_set;
+        let borrow_set = &typeck.borrow_set;
         let mut live_loans = LiveLoans::new(borrow_set.len());
-        let outlives_constraints = &borrowck_context.constraints.outlives_constraints;
+        let outlives_constraints = &typeck.constraints.outlives_constraints;
         let graph = outlives_constraints.graph(typeck.infcx.num_region_vars());
         let region_graph =
-            graph.region_graph(outlives_constraints, borrowck_context.universal_regions.fr_static);
+            graph.region_graph(outlives_constraints, typeck.universal_regions.fr_static);
 
         // Traverse each issuing region's constraints, and record the loan as flowing into the
         // outlived region.
@@ -73,7 +72,7 @@ pub(super) fn trace<'a, 'tcx>(
 
         // Store the inflowing loans in the liveness constraints: they will be used to compute live
         // loans when liveness data is recorded there.
-        borrowck_context.constraints.liveness_constraints.loans = Some(live_loans);
+        typeck.constraints.liveness_constraints.loans = Some(live_loans);
     };
 
     let cx = LivenessContext {
@@ -114,7 +113,7 @@ struct LivenessContext<'a, 'typeck, 'b, 'tcx> {
 
     /// Results of dataflow tracking which variables (and paths) have been
     /// initialized.
-    flow_inits: &'a mut ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
+    flow_inits: ResultsCursor<'b, 'tcx, MaybeInitializedPlaces<'b, 'tcx>>,
 
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
@@ -222,7 +221,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         // It may be necessary to just pick out the parts of
         // `add_drop_live_facts_for()` that make sense.
         let facts_to_add: Vec<_> = {
-            let drop_used = &self.cx.typeck.borrowck_context.all_facts.as_ref()?.var_dropped_at;
+            let drop_used = &self.cx.typeck.all_facts.as_ref()?.var_dropped_at;
 
             let relevant_live_locals: FxIndexSet<_> =
                 relevant_live_locals.iter().copied().collect();
@@ -235,12 +234,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
                         return None;
                     }
 
-                    let location = match self
-                        .cx
-                        .typeck
-                        .borrowck_context
-                        .location_table
-                        .to_location(*location_index)
+                    let location = match self.cx.typeck.location_table.to_location(*location_index)
                     {
                         RichLocation::Start(l) => l,
                         RichLocation::Mid(l) => l,
@@ -251,7 +245,8 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
                 .collect()
         };
 
-        // FIXME: these locations seem to have a special meaning (e.g. everywhere, at the end, ...), but I don't know which one. Please help me rename it to something descriptive!
+        // FIXME: these locations seem to have a special meaning (e.g. everywhere, at the end,
+        // ...), but I don't know which one. Please help me rename it to something descriptive!
         // Also, if this IntervalSet is used in many places, it maybe should have a newtype'd
         // name with a description of what it means for future mortals passing by.
         let locations = IntervalSet::new(self.cx.elements.num_points());
@@ -613,15 +608,11 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
         value.visit_with(&mut for_liveness::FreeRegionsVisitor {
             tcx: typeck.tcx(),
-            param_env: typeck.param_env,
+            param_env: typeck.infcx.param_env,
             op: |r| {
-                let live_region_vid = typeck.borrowck_context.universal_regions.to_region_vid(r);
+                let live_region_vid = typeck.universal_regions.to_region_vid(r);
 
-                typeck
-                    .borrowck_context
-                    .constraints
-                    .liveness_constraints
-                    .add_points(live_region_vid, live_at);
+                typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
     }
@@ -630,6 +621,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         match typeck
+            .infcx
             .param_env
             .and(DropckOutlives { dropped_ty })
             .fully_perform(typeck.infcx, DUMMY_SP)

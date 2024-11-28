@@ -115,17 +115,22 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            // FIXME(min_generic_const_args): once ConstArgKind::Path is used for non-params too,
-            // this should match against that instead of ::Anon
-            if let hir::ConstArgKind::Anon(anon) = cnst.kind
+            if let hir::ConstArgKind::Path(qpath) = cnst.kind
+                && let rustc_hir::QPath::Resolved(_, path) = qpath
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
+            {
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
+            } else if let hir::ConstArgKind::Anon(anon) = cnst.kind
                 && let body = tcx.hir().body(anon.body)
                 && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                     body.value.kind
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
             {
-                if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
-                    err.help("function item types cannot be named directly");
-                }
+                // FIXME(min_generic_const_args): this branch is dead once new const path lowering
+                // (for single-segment paths) is no longer gated
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
             }
         }
         _ => {}

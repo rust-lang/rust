@@ -7,6 +7,7 @@
 
 use std::fmt::Write as _;
 
+use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -18,8 +19,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_target::abi::Integer;
-use rustc_target::spec::abi::Abi;
 use tracing::instrument;
 
 use crate::cfi::typeid::TypeIdOptions;
@@ -134,7 +133,7 @@ fn encode_const<'tcx>(
             match ct_ty.kind() {
                 ty::Int(ity) => {
                     let bits = c
-                        .try_to_bits(tcx, ty::ParamEnv::reveal_all())
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -144,7 +143,7 @@ fn encode_const<'tcx>(
                 }
                 ty::Uint(_) => {
                     let val = c
-                        .try_to_bits(tcx, ty::ParamEnv::reveal_all())
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
@@ -185,7 +184,7 @@ fn encode_fnsig<'tcx>(
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
     match fn_sig.abi {
-        Abi::C { .. } => {
+        ExternAbi::C { .. } => {
             encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
         }
         _ => {

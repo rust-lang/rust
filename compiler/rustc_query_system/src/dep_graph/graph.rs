@@ -837,12 +837,6 @@ impl<D: Deps> DepGraphData<D> {
     ) -> Option<DepNodeIndex> {
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
-        #[cfg(not(parallel_compiler))]
-        {
-            debug_assert!(!self.dep_node_exists(dep_node));
-            debug_assert!(self.colors.get(prev_dep_node_index).is_none());
-        }
-
         // We never try to mark eval_always nodes as green
         debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
 
@@ -870,13 +864,6 @@ impl<D: Deps> DepGraphData<D> {
         // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
         // Maybe store a list on disk and encode this fact in the DepNodeState
         let side_effects = qcx.load_side_effects(prev_dep_node_index);
-
-        #[cfg(not(parallel_compiler))]
-        debug_assert!(
-            self.colors.get(prev_dep_node_index).is_none(),
-            "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
-                      insertion for {dep_node:?}"
-        );
 
         if side_effects.maybe_any() {
             qcx.dep_context().dep_graph().with_query_deserialization(|| {
@@ -1098,7 +1085,7 @@ impl<D: Deps> CurrentDepGraph<D> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
+        let nanos = duration.as_nanos();
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();

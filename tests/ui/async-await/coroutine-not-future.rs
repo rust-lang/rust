@@ -1,4 +1,5 @@
 //@ edition:2018
+//@compile-flags: --diagnostic-width=300
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 use std::future::Future;

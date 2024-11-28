@@ -44,7 +44,7 @@ pub(super) struct Sidebar<'a> {
     pub(super) path: String,
 }
 
-impl<'a> Sidebar<'a> {
+impl Sidebar<'_> {
     /// Only create a `<section>` if there are any blocks
     /// which should actually be rendered.
     pub fn should_render_blocks(&self) -> bool {
@@ -564,9 +564,9 @@ pub(crate) fn sidebar_module_like(
         .filter(|sec| item_sections_in_use.contains(sec))
         .map(|sec| Link::new(ids.derive(sec.id()), sec.name()))
         .collect();
-    let header = if let Some(first_section) = item_sections.get(0) {
+    let header = if let Some(first_section) = item_sections.first() {
         Link::new(
-            first_section.href.to_owned(),
+            first_section.href.clone(),
             if module_like.is_crate() { "Crate Items" } else { "Module Items" },
         )
     } else {

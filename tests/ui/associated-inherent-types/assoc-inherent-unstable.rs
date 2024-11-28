@@ -4,6 +4,6 @@
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 
-type Data = aux::Owner::Data; //~ ERROR use of unstable library feature 'data'
+type Data = aux::Owner::Data; //~ ERROR use of unstable library feature `data`
 
 fn main() {}

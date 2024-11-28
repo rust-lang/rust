@@ -206,7 +206,7 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
         .with_verbose_exit(true)
         .with_verbose_entry(true)
         .with_indent_amount(2);
-    #[cfg(all(parallel_compiler, debug_assertions))]
+    #[cfg(debug_assertions)]
     let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     use tracing_subscriber::layer::SubscriberExt;
@@ -215,477 +215,482 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
 }
 
 fn opts() -> Vec<RustcOptGroup> {
-    let stable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::stable;
-    let unstable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::unstable;
+    use rustc_session::config::OptionKind::{Flag, FlagMulti, Multi, Opt};
+    use rustc_session::config::OptionStability::{Stable, Unstable};
+    use rustc_session::config::make_opt as opt;
+
     vec![
-        stable("h", |o| o.optflagmulti("h", "help", "show this help message")),
-        stable("V", |o| o.optflagmulti("V", "version", "print rustdoc's version")),
-        stable("v", |o| o.optflagmulti("v", "verbose", "use verbose output")),
-        stable("w", |o| o.optopt("w", "output-format", "the output type to write", "[html]")),
-        stable("output", |o| {
-            o.optopt(
-                "",
-                "output",
-                "Which directory to place the output. \
-                 This option is deprecated, use --out-dir instead.",
-                "PATH",
-            )
-        }),
-        stable("o", |o| o.optopt("o", "out-dir", "which directory to place the output", "PATH")),
-        stable("crate-name", |o| {
-            o.optopt("", "crate-name", "specify the name of this crate", "NAME")
-        }),
+        opt(Stable, FlagMulti, "h", "help", "show this help message", ""),
+        opt(Stable, FlagMulti, "V", "version", "print rustdoc's version", ""),
+        opt(Stable, FlagMulti, "v", "verbose", "use verbose output", ""),
+        opt(Stable, Opt, "w", "output-format", "the output type to write", "[html]"),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "output",
+            "Which directory to place the output. This option is deprecated, use --out-dir instead.",
+            "PATH",
+        ),
+        opt(Stable, Opt, "o", "out-dir", "which directory to place the output", "PATH"),
+        opt(Stable, Opt, "", "crate-name", "specify the name of this crate", "NAME"),
         make_crate_type_option(),
-        stable("L", |o| {
-            o.optmulti("L", "library-path", "directory to add to crate search path", "DIR")
-        }),
-        stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
-        stable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
-        stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
-        unstable("extern-html-root-url", |o| {
-            o.optmulti(
-                "",
-                "extern-html-root-url",
-                "base URL to use for dependencies; for example, \
-                 \"std=/doc\" links std::vec::Vec to /doc/std/vec/struct.Vec.html",
-                "NAME=URL",
-            )
-        }),
-        unstable("extern-html-root-takes-precedence", |o| {
-            o.optflagmulti(
-                "",
-                "extern-html-root-takes-precedence",
-                "give precedence to `--extern-html-root-url`, not `html_root_url`",
-            )
-        }),
-        stable("C", |o| {
-            o.optmulti("C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]")
-        }),
-        stable("document-private-items", |o| {
-            o.optflagmulti("", "document-private-items", "document private items")
-        }),
-        unstable("document-hidden-items", |o| {
-            o.optflagmulti("", "document-hidden-items", "document items that have doc(hidden)")
-        }),
-        stable("test", |o| o.optflagmulti("", "test", "run code examples as tests")),
-        stable("test-args", |o| {
-            o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
-        }),
-        stable("test-run-directory", |o| {
-            o.optopt(
-                "",
-                "test-run-directory",
-                "The working directory in which to run tests",
-                "PATH",
-            )
-        }),
-        stable("target", |o| o.optopt("", "target", "target triple to document", "TRIPLE")),
-        stable("markdown-css", |o| {
-            o.optmulti(
-                "",
-                "markdown-css",
-                "CSS files to include via <link> in a rendered Markdown file",
-                "FILES",
-            )
-        }),
-        stable("html-in-header", |o| {
-            o.optmulti(
-                "",
-                "html-in-header",
-                "files to include inline in the <head> section of a rendered Markdown file \
-                 or generated documentation",
-                "FILES",
-            )
-        }),
-        stable("html-before-content", |o| {
-            o.optmulti(
-                "",
-                "html-before-content",
-                "files to include inline between <body> and the content of a rendered \
-                 Markdown file or generated documentation",
-                "FILES",
-            )
-        }),
-        stable("html-after-content", |o| {
-            o.optmulti(
-                "",
-                "html-after-content",
-                "files to include inline between the content and </body> of a rendered \
-                 Markdown file or generated documentation",
-                "FILES",
-            )
-        }),
-        unstable("markdown-before-content", |o| {
-            o.optmulti(
-                "",
-                "markdown-before-content",
-                "files to include inline between <body> and the content of a rendered \
-                 Markdown file or generated documentation",
-                "FILES",
-            )
-        }),
-        unstable("markdown-after-content", |o| {
-            o.optmulti(
-                "",
-                "markdown-after-content",
-                "files to include inline between the content and </body> of a rendered \
-                 Markdown file or generated documentation",
-                "FILES",
-            )
-        }),
-        stable("markdown-playground-url", |o| {
-            o.optopt("", "markdown-playground-url", "URL to send code snippets to", "URL")
-        }),
-        stable("markdown-no-toc", |o| {
-            o.optflagmulti("", "markdown-no-toc", "don't include table of contents")
-        }),
-        stable("e", |o| {
-            o.optopt(
-                "e",
-                "extend-css",
-                "To add some CSS rules with a given file to generate doc with your \
-                 own theme. However, your theme might break if the rustdoc's generated HTML \
-                 changes, so be careful!",
-                "PATH",
-            )
-        }),
-        unstable("Z", |o| {
-            o.optmulti("Z", "", "unstable / perma-unstable options (only on nightly build)", "FLAG")
-        }),
-        stable("sysroot", |o| o.optopt("", "sysroot", "Override the system root", "PATH")),
-        unstable("playground-url", |o| {
-            o.optopt(
-                "",
-                "playground-url",
-                "URL to send code snippets to, may be reset by --markdown-playground-url \
-                 or `#![doc(html_playground_url=...)]`",
-                "URL",
-            )
-        }),
-        unstable("display-doctest-warnings", |o| {
-            o.optflagmulti(
-                "",
-                "display-doctest-warnings",
-                "show warnings that originate in doctests",
-            )
-        }),
-        stable("crate-version", |o| {
-            o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
-        }),
-        unstable("sort-modules-by-appearance", |o| {
-            o.optflagmulti(
-                "",
-                "sort-modules-by-appearance",
-                "sort modules by where they appear in the program, rather than alphabetically",
-            )
-        }),
-        stable("default-theme", |o| {
-            o.optopt(
-                "",
-                "default-theme",
-                "Set the default theme. THEME should be the theme name, generally lowercase. \
-                 If an unknown default theme is specified, the builtin default is used. \
-                 The set of themes, and the rustdoc built-in default, are not stable.",
-                "THEME",
-            )
-        }),
-        unstable("default-setting", |o| {
-            o.optmulti(
-                "",
-                "default-setting",
-                "Default value for a rustdoc setting (used when \"rustdoc-SETTING\" is absent \
-                 from web browser Local Storage). If VALUE is not supplied, \"true\" is used. \
-                 Supported SETTINGs and VALUEs are not documented and not stable.",
-                "SETTING[=VALUE]",
-            )
-        }),
-        stable("theme", |o| {
-            o.optmulti(
-                "",
-                "theme",
-                "additional themes which will be added to the generated docs",
-                "FILES",
-            )
-        }),
-        stable("check-theme", |o| {
-            o.optmulti("", "check-theme", "check if given theme is valid", "FILES")
-        }),
-        unstable("resource-suffix", |o| {
-            o.optopt(
-                "",
-                "resource-suffix",
-                "suffix to add to CSS and JavaScript files, e.g., \"search-index.js\" will \
-                 become \"search-index-suffix.js\"",
-                "PATH",
-            )
-        }),
-        stable("edition", |o| {
-            o.optopt(
-                "",
-                "edition",
-                "edition to use when compiling rust code (default: 2015)",
-                "EDITION",
-            )
-        }),
-        stable("color", |o| {
-            o.optopt(
-                "",
-                "color",
-                "Configure coloring of output:
+        opt(Stable, Multi, "L", "library-path", "directory to add to crate search path", "DIR"),
+        opt(Stable, Multi, "", "cfg", "pass a --cfg to rustc", ""),
+        opt(Stable, Multi, "", "check-cfg", "pass a --check-cfg to rustc", ""),
+        opt(Stable, Multi, "", "extern", "pass an --extern to rustc", "NAME[=PATH]"),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "extern-html-root-url",
+            "base URL to use for dependencies; for example, \
+                \"std=/doc\" links std::vec::Vec to /doc/std/vec/struct.Vec.html",
+            "NAME=URL",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "extern-html-root-takes-precedence",
+            "give precedence to `--extern-html-root-url`, not `html_root_url`",
+            "",
+        ),
+        opt(Stable, Multi, "C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]"),
+        opt(Stable, FlagMulti, "", "document-private-items", "document private items", ""),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "document-hidden-items",
+            "document items that have doc(hidden)",
+            "",
+        ),
+        opt(Stable, FlagMulti, "", "test", "run code examples as tests", ""),
+        opt(Stable, Multi, "", "test-args", "arguments to pass to the test runner", "ARGS"),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "test-run-directory",
+            "The working directory in which to run tests",
+            "PATH",
+        ),
+        opt(Stable, Opt, "", "target", "target triple to document", "TRIPLE"),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "markdown-css",
+            "CSS files to include via <link> in a rendered Markdown file",
+            "FILES",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "html-in-header",
+            "files to include inline in the <head> section of a rendered Markdown file \
+                or generated documentation",
+            "FILES",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "html-before-content",
+            "files to include inline between <body> and the content of a rendered \
+                Markdown file or generated documentation",
+            "FILES",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "html-after-content",
+            "files to include inline between the content and </body> of a rendered \
+                Markdown file or generated documentation",
+            "FILES",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "markdown-before-content",
+            "files to include inline between <body> and the content of a rendered \
+                Markdown file or generated documentation",
+            "FILES",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "markdown-after-content",
+            "files to include inline between the content and </body> of a rendered \
+                Markdown file or generated documentation",
+            "FILES",
+        ),
+        opt(Stable, Opt, "", "markdown-playground-url", "URL to send code snippets to", "URL"),
+        opt(Stable, FlagMulti, "", "markdown-no-toc", "don't include table of contents", ""),
+        opt(
+            Stable,
+            Opt,
+            "e",
+            "extend-css",
+            "To add some CSS rules with a given file to generate doc with your own theme. \
+                However, your theme might break if the rustdoc's generated HTML changes, so be careful!",
+            "PATH",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "Z",
+            "",
+            "unstable / perma-unstable options (only on nightly build)",
+            "FLAG",
+        ),
+        opt(Stable, Opt, "", "sysroot", "Override the system root", "PATH"),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "playground-url",
+            "URL to send code snippets to, may be reset by --markdown-playground-url \
+                or `#![doc(html_playground_url=...)]`",
+            "URL",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "display-doctest-warnings",
+            "show warnings that originate in doctests",
+            "",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "crate-version",
+            "crate version to print into documentation",
+            "VERSION",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "sort-modules-by-appearance",
+            "sort modules by where they appear in the program, rather than alphabetically",
+            "",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "default-theme",
+            "Set the default theme. THEME should be the theme name, generally lowercase. \
+                If an unknown default theme is specified, the builtin default is used. \
+                The set of themes, and the rustdoc built-in default, are not stable.",
+            "THEME",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "default-setting",
+            "Default value for a rustdoc setting (used when \"rustdoc-SETTING\" is absent \
+                from web browser Local Storage). If VALUE is not supplied, \"true\" is used. \
+                Supported SETTINGs and VALUEs are not documented and not stable.",
+            "SETTING[=VALUE]",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "theme",
+            "additional themes which will be added to the generated docs",
+            "FILES",
+        ),
+        opt(Stable, Multi, "", "check-theme", "check if given theme is valid", "FILES"),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "resource-suffix",
+            "suffix to add to CSS and JavaScript files, \
+                e.g., \"search-index.js\" will become \"search-index-suffix.js\"",
+            "PATH",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "edition",
+            "edition to use when compiling rust code (default: 2015)",
+            "EDITION",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "color",
+            "Configure coloring of output:
                                           auto   = colorize, if output goes to a tty (default);
                                           always = always colorize output;
                                           never  = never colorize output",
-                "auto|always|never",
-            )
-        }),
-        stable("error-format", |o| {
-            o.optopt(
-                "",
-                "error-format",
-                "How errors and other messages are produced",
-                "human|json|short",
-            )
-        }),
-        stable("diagnostic-width", |o| {
-            o.optopt(
-                "",
-                "diagnostic-width",
-                "Provide width of the output for truncated error messages",
-                "WIDTH",
-            )
-        }),
-        stable("json", |o| {
-            o.optopt("", "json", "Configure the structure of JSON diagnostics", "CONFIG")
-        }),
-        stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
-        stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
-        stable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
-        stable("deny", |o| o.optmulti("D", "deny", "Set lint denied", "LINT")),
-        stable("forbid", |o| o.optmulti("F", "forbid", "Set lint forbidden", "LINT")),
-        stable("cap-lints", |o| {
-            o.optmulti(
-                "",
-                "cap-lints",
-                "Set the most restrictive lint level. \
-                 More restrictive lints are capped at this \
-                 level. By default, it is at `forbid` level.",
-                "LEVEL",
-            )
-        }),
-        unstable("index-page", |o| {
-            o.optopt("", "index-page", "Markdown file to be used as index page", "PATH")
-        }),
-        unstable("enable-index-page", |o| {
-            o.optflagmulti("", "enable-index-page", "To enable generation of the index page")
-        }),
-        unstable("static-root-path", |o| {
-            o.optopt(
-                "",
-                "static-root-path",
-                "Path string to force loading static files from in output pages. \
-                 If not set, uses combinations of '../' to reach the documentation root.",
-                "PATH",
-            )
-        }),
-        unstable("persist-doctests", |o| {
-            o.optopt(
-                "",
-                "persist-doctests",
-                "Directory to persist doctest executables into",
-                "PATH",
-            )
-        }),
-        unstable("show-coverage", |o| {
-            o.optflagmulti(
-                "",
-                "show-coverage",
-                "calculate percentage of public items with documentation",
-            )
-        }),
-        unstable("enable-per-target-ignores", |o| {
-            o.optflagmulti(
-                "",
-                "enable-per-target-ignores",
-                "parse ignore-foo for ignoring doctests on a per-target basis",
-            )
-        }),
-        unstable("runtool", |o| {
-            o.optopt(
-                "",
-                "runtool",
-                "",
-                "The tool to run tests with when building for a different target than host",
-            )
-        }),
-        unstable("runtool-arg", |o| {
-            o.optmulti(
-                "",
-                "runtool-arg",
-                "",
-                "One (of possibly many) arguments to pass to the runtool",
-            )
-        }),
-        unstable("test-builder", |o| {
-            o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
-        }),
-        unstable("test-builder-wrapper", |o| {
-            o.optmulti(
-                "",
-                "test-builder-wrapper",
-                "Wrapper program to pass test-builder and arguments",
-                "PATH",
-            )
-        }),
-        unstable("check", |o| o.optflagmulti("", "check", "Run rustdoc checks")),
-        unstable("generate-redirect-map", |o| {
-            o.optflagmulti(
-                "",
-                "generate-redirect-map",
-                "Generate JSON file at the top level instead of generating HTML redirection files",
-            )
-        }),
-        unstable("emit", |o| {
-            o.optmulti(
-                "",
-                "emit",
-                "Comma separated list of types of output for rustdoc to emit",
-                "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
-            )
-        }),
-        unstable("no-run", |o| {
-            o.optflagmulti("", "no-run", "Compile doctests without running them")
-        }),
-        unstable("remap-path-prefix", |o| {
-            o.optmulti(
-                "",
-                "remap-path-prefix",
-                "Remap source names in compiler messages",
-                "FROM=TO",
-            )
-        }),
-        unstable("show-type-layout", |o| {
-            o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
-        }),
-        unstable("nocapture", |o| {
-            o.optflag("", "nocapture", "Don't capture stdout and stderr of tests")
-        }),
-        unstable("generate-link-to-definition", |o| {
-            o.optflag(
-                "",
-                "generate-link-to-definition",
-                "Make the identifiers in the HTML source code pages navigable",
-            )
-        }),
-        unstable("scrape-examples-output-path", |o| {
-            o.optopt(
-                "",
-                "scrape-examples-output-path",
-                "",
-                "collect function call information and output at the given path",
-            )
-        }),
-        unstable("scrape-examples-target-crate", |o| {
-            o.optmulti(
-                "",
-                "scrape-examples-target-crate",
-                "",
-                "collect function call information for functions from the target crate",
-            )
-        }),
-        unstable("scrape-tests", |o| {
-            o.optflag("", "scrape-tests", "Include test code when scraping examples")
-        }),
-        unstable("with-examples", |o| {
-            o.optmulti(
-                "",
-                "with-examples",
-                "",
-                "path to function call information (for displaying examples in the documentation)",
-            )
-        }),
-        unstable("merge", |o| {
-            o.optopt(
-                "",
-                "merge",
-                "Controls how rustdoc handles files from previously documented crates in the doc root
-                      none = Do not write cross-crate information to the --out-dir
-                      shared = Append current crate's info to files found in the --out-dir
-                      finalize = Write current crate's info and --include-parts-dir info to the --out-dir, overwriting conflicting files",
-                "none|shared|finalize",
-            )
-        }),
-        unstable("parts-out-dir", |o| {
-            o.optopt(
-                "",
-                "parts-out-dir",
-                "Writes trait implementations and other info for the current crate to provided path. Only use with --merge=none",
-                "path/to/doc.parts/<crate-name>",
-            )
-        }),
-        unstable("include-parts-dir", |o| {
-            o.optmulti(
-                "",
-                "include-parts-dir",
-                "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
-                "path/to/doc.parts/<crate-name>",
-            )
-        }),
+            "auto|always|never",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "error-format",
+            "How errors and other messages are produced",
+            "human|json|short",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "diagnostic-width",
+            "Provide width of the output for truncated error messages",
+            "WIDTH",
+        ),
+        opt(Stable, Opt, "", "json", "Configure the structure of JSON diagnostics", "CONFIG"),
+        opt(Stable, Multi, "A", "allow", "Set lint allowed", "LINT"),
+        opt(Stable, Multi, "W", "warn", "Set lint warnings", "LINT"),
+        opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "LINT"),
+        opt(Stable, Multi, "D", "deny", "Set lint denied", "LINT"),
+        opt(Stable, Multi, "F", "forbid", "Set lint forbidden", "LINT"),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "cap-lints",
+            "Set the most restrictive lint level. \
+                More restrictive lints are capped at this level. \
+                By default, it is at `forbid` level.",
+            "LEVEL",
+        ),
+        opt(Unstable, Opt, "", "index-page", "Markdown file to be used as index page", "PATH"),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "enable-index-page",
+            "To enable generation of the index page",
+            "",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "static-root-path",
+            "Path string to force loading static files from in output pages. \
+                If not set, uses combinations of '../' to reach the documentation root.",
+            "PATH",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "persist-doctests",
+            "Directory to persist doctest executables into",
+            "PATH",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "show-coverage",
+            "calculate percentage of public items with documentation",
+            "",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "enable-per-target-ignores",
+            "parse ignore-foo for ignoring doctests on a per-target basis",
+            "",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "runtool",
+            "",
+            "The tool to run tests with when building for a different target than host",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "runtool-arg",
+            "",
+            "One (of possibly many) arguments to pass to the runtool",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "test-builder",
+            "The rustc-like binary to use as the test builder",
+            "PATH",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "test-builder-wrapper",
+            "Wrapper program to pass test-builder and arguments",
+            "PATH",
+        ),
+        opt(Unstable, FlagMulti, "", "check", "Run rustdoc checks", ""),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "generate-redirect-map",
+            "Generate JSON file at the top level instead of generating HTML redirection files",
+            "",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "emit",
+            "Comma separated list of types of output for rustdoc to emit",
+            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+        ),
+        opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "remap-path-prefix",
+            "Remap source names in compiler messages",
+            "FROM=TO",
+        ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "show-type-layout",
+            "Include the memory layout of types in the docs",
+            "",
+        ),
+        opt(Unstable, Flag, "", "nocapture", "Don't capture stdout and stderr of tests", ""),
+        opt(
+            Unstable,
+            Flag,
+            "",
+            "generate-link-to-definition",
+            "Make the identifiers in the HTML source code pages navigable",
+            "",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "scrape-examples-output-path",
+            "",
+            "collect function call information and output at the given path",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "scrape-examples-target-crate",
+            "",
+            "collect function call information for functions from the target crate",
+        ),
+        opt(Unstable, Flag, "", "scrape-tests", "Include test code when scraping examples", ""),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "with-examples",
+            "",
+            "path to function call information (for displaying examples in the documentation)",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "merge",
+            "Controls how rustdoc handles files from previously documented crates in the doc root\n\
+                none = Do not write cross-crate information to the --out-dir\n\
+                shared = Append current crate's info to files found in the --out-dir\n\
+                finalize = Write current crate's info and --include-parts-dir info to the --out-dir, overwriting conflicting files",
+            "none|shared|finalize",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "parts-out-dir",
+            "Writes trait implementations and other info for the current crate to provided path. Only use with --merge=none",
+            "path/to/doc.parts/<crate-name>",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "include-parts-dir",
+            "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
+            "path/to/doc.parts/<crate-name>",
+        ),
         // deprecated / removed options
-        unstable("disable-minification", |o| o.optflagmulti("", "disable-minification", "removed")),
-        stable("plugin-path", |o| {
-            o.optmulti(
-                "",
-                "plugin-path",
-                "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-                "DIR",
-            )
-        }),
-        stable("passes", |o| {
-            o.optmulti(
-                "",
-                "passes",
-                "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-                "PASSES",
-            )
-        }),
-        stable("plugins", |o| {
-            o.optmulti(
-                "",
-                "plugins",
-                "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-                "PLUGINS",
-            )
-        }),
-        stable("no-default", |o| {
-            o.optflagmulti(
-                "",
-                "no-defaults",
-                "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-            )
-        }),
-        stable("r", |o| {
-            o.optopt(
-                "r",
-                "input-format",
-                "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                for more information",
-                "[rust]",
-            )
-        }),
-        unstable("html-no-source", |o| {
-            o.optflag("", "html-no-source", "Disable HTML source code pages generation")
-        }),
+        opt(Unstable, FlagMulti, "", "disable-minification", "removed", ""),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "plugin-path",
+            "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
+            "DIR",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "passes",
+            "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
+            "PASSES",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "plugins",
+            "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
+            "PLUGINS",
+        ),
+        opt(
+            Stable,
+            FlagMulti,
+            "",
+            "no-defaults",
+            "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
+            "",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "r",
+            "input-format",
+            "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
+            "[rust]",
+        ),
+        opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
     ]
 }
 
 fn usage(argv0: &str) {
     let mut options = getopts::Options::new();
     for option in opts() {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
@@ -769,7 +774,7 @@ fn main_args(
 
     let mut options = getopts::Options::new();
     for option in opts() {
-        (option.apply)(&mut options);
+        option.apply(&mut options);
     }
     let matches = match options.parse(&args) {
         Ok(m) => m,

@@ -579,28 +579,70 @@ pub union MaybeUninit<T> {
 }
 
 pub mod intrinsics {
-    use crate::Sized;
-
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
-        #[rustc_safe_intrinsic]
-        pub fn size_of<T>() -> usize;
-        pub fn size_of_val<T: ?Sized>(val: *const T) -> usize;
-        #[rustc_safe_intrinsic]
-        pub fn min_align_of<T>() -> usize;
-        pub fn min_align_of_val<T: ?Sized>(val: *const T) -> usize;
-        pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-        pub fn transmute<T, U>(e: T) -> U;
-        pub fn ctlz_nonzero<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn needs_drop<T: ?Sized>() -> bool;
-        #[rustc_safe_intrinsic]
-        pub fn bitreverse<T>(x: T) -> T;
-        #[rustc_safe_intrinsic]
-        pub fn bswap<T>(x: T) -> T;
-        pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-        pub fn unreachable() -> !;
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn abort() -> ! {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn size_of<T>() -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn size_of_val<T: ?::Sized>(_val: *const T) -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn min_align_of<T>() -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn min_align_of_val<T: ?::Sized>(_val: *const T) -> usize {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn copy<T>(_src: *const T, _dst: *mut T, _count: usize) {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn transmute<T, U>(_e: T) -> U {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn ctlz_nonzero<T>(_x: T) -> u32 {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn needs_drop<T: ?::Sized>() -> bool {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn bitreverse<T>(_x: T) -> T {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn bswap<T>(_x: T) -> T {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn write_bytes<T>(_dst: *mut T, _val: u8, _count: usize) {
+        loop {}
+    }
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub unsafe fn unreachable() -> ! {
+        loop {}
     }
 }
 

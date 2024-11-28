@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -9,7 +10,6 @@ use rustc_session::config::EntryFnType;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
@@ -158,7 +158,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         expected_return_type,
         false,
         hir::Safety::Safe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
 
     if check_function_signature(
@@ -254,7 +254,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 tcx.types.isize,
                 false,
                 hir::Safety::Safe,
-                Abi::Rust,
+                ExternAbi::Rust,
             ));
 
             let _ = check_function_signature(

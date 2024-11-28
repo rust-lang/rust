@@ -84,7 +84,7 @@ impl<F: FileFormat> FromStr for SortedTemplate<F> {
         let offset = offset
             .strip_suffix(F::COMMENT_END)
             .ok_or(Error("last line expected to end with a comment"))?;
-        let offset: Offset = serde_json::from_str(&offset).map_err(|_| {
+        let offset: Offset = serde_json::from_str(offset).map_err(|_| {
             Error("could not find insertion location descriptor object on last line")
         })?;
         let (before, mut s) =

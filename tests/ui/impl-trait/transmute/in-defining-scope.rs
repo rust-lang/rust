@@ -1,5 +1,5 @@
-// This causes a query cycle due to using `Reveal::All`,
-// in #119821 const eval was changed to always use `Reveal::All`
+// This causes a query cycle due to using `TypingEnv::PostAnalysis`,
+// in #119821 const eval was changed to always use this mode.
 //
 // See that PR for more details.
 use std::mem::transmute;

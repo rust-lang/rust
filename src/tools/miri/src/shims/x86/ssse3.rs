@@ -1,6 +1,6 @@
+use rustc_abi::ExternAbi;
 use rustc_middle::mir;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
@@ -10,7 +10,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_ssse3_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -23,7 +23,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm_abs_epi{8,16,32} functions.
             // Calculates the absolute value of packed 8/16/32-bit integers.
             "pabs.b.128" | "pabs.w.128" | "pabs.d.128" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [op] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 int_abs(this, op, dest)?;
             }
@@ -32,7 +32,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8
             "pshuf.b.128" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -62,7 +62,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "phadd.w.128" | "phadd.sw.128" | "phadd.d.128" | "phsub.w.128" | "phsub.sw.128"
             | "phsub.d.128" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (which, saturating) = match unprefixed_name {
                     "phadd.w.128" | "phadd.d.128" => (mir::BinOp::Add, false),
@@ -82,7 +82,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16
             "pmadd.ub.sw.128" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -118,7 +118,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16
             "pmul.hr.sw.128" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 pmulhrsw(this, left, right, dest)?;
             }
@@ -129,7 +129,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b.128" | "psign.w.128" | "psign.d.128" => {
                 let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
 
                 psign(this, left, right, dest)?;
             }

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `u32: ~const Plus` is not satisfied
-  --> $DIR/call-const-trait-method-fail.rs:27:5
+  --> $DIR/call-const-trait-method-fail.rs:26:5
    |
 LL |     a.plus(b)
    |     ^^^^^^^^^

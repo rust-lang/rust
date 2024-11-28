@@ -469,7 +469,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
-                    Err(io::const_io_error!(io::ErrorKind::NotFound, "No syspage available"))
+                    Err(io::const_error!(io::ErrorKind::NotFound, "No syspage available"))
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
                     NonZero::new(cpus as usize)
@@ -509,7 +509,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
         } else {
             // FIXME: implement on Redox, l4re
-            Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
+            Err(io::const_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }
 }

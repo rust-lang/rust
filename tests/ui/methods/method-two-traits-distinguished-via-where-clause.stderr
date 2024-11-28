@@ -1,5 +1,5 @@
 warning: trait `A` is never used
-  --> $DIR/method-two-traits-distinguished-via-where-clause.rs:7:7
+  --> $DIR/method-two-traits-distinguished-via-where-clause.rs:6:7
    |
 LL | trait A {
    |       ^

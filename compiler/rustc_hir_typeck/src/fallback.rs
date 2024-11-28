@@ -1,11 +1,15 @@
 use std::cell::OnceCell;
+use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::iterate::DepthFirstSearch;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::{self};
 use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::HirId;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
@@ -14,7 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::debug;
 
-use crate::{FnCtxt, TypeckRootCtxt, errors};
+use crate::{FnCtxt, errors};
 
 #[derive(Copy, Clone)]
 pub(crate) enum DivergingFallbackBehavior {
@@ -321,7 +325,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
 
-        self.lint_obligations_broken_by_never_type_fallback_change(behavior, &diverging_vids);
+        self.lint_obligations_broken_by_never_type_fallback_change(
+            behavior,
+            &diverging_vids,
+            &coercion_graph,
+        );
 
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
@@ -419,7 +427,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         root_vid: ty::TyVid,
     ) {
         let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-            let unsafe_infer_vars = compute_unsafe_infer_vars(self.root_ctxt, self.body_id);
+            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_id);
             debug!(?unsafe_infer_vars);
             unsafe_infer_vars
         });
@@ -429,19 +437,31 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 .filter_map(|x| unsafe_infer_vars.get(&x).copied())
                 .collect::<Vec<_>>();
 
+        let sugg = self.try_to_suggest_annotations(&[root_vid], coercion_graph);
+
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
             self.tcx.emit_node_span_lint(
                 lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
                 span,
                 match reason {
-                    UnsafeUseReason::Call => errors::NeverTypeFallbackFlowingIntoUnsafe::Call,
-                    UnsafeUseReason::Method => errors::NeverTypeFallbackFlowingIntoUnsafe::Method,
-                    UnsafeUseReason::Path => errors::NeverTypeFallbackFlowingIntoUnsafe::Path,
-                    UnsafeUseReason::UnionField => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField
+                    UnsafeUseReason::Call => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
                     }
-                    UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
+                    UnsafeUseReason::Method => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Method { sugg: sugg.clone() }
+                    }
+                    UnsafeUseReason::Path => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
+                    }
+                    UnsafeUseReason::UnionField => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
+                            sugg: sugg.clone(),
+                        }
+                    }
+                    UnsafeUseReason::Deref => {
+                        errors::NeverTypeFallbackFlowingIntoUnsafe::Deref { sugg: sugg.clone() }
+                    }
                 },
             );
         }
@@ -451,6 +471,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         behavior: DivergingFallbackBehavior,
         diverging_vids: &[ty::TyVid],
+        coercions: &VecGraph<ty::TyVid, true>,
     ) {
         let DivergingFallbackBehavior::ToUnit = behavior else { return };
 
@@ -478,13 +499,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         };
 
         // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
-        // then this code will be broken by the never type fallback change.qba
+        // then this code will be broken by the never type fallback change.
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
             && let [ref mut never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
+            let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
             self.tcx.emit_node_span_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
                 self.tcx.local_def_id_to_hir_id(self.body_id),
@@ -492,6 +514,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 errors::DependencyOnUnitNeverTypeFallback {
                     obligation_span: never_error.obligation.cause.span,
                     obligation: never_error.obligation.predicate,
+                    sugg,
                 },
             )
         }
@@ -541,6 +564,158 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
         Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
     }
+
+    /// Given a set of diverging vids and coercions, walk the HIR to gather a
+    /// set of suggestions which can be applied to preserve fallback to unit.
+    fn try_to_suggest_annotations(
+        &self,
+        diverging_vids: &[ty::TyVid],
+        coercions: &VecGraph<ty::TyVid, true>,
+    ) -> errors::SuggestAnnotations {
+        let body =
+            self.tcx.hir().maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+        // For each diverging var, look through the HIR for a place to give it
+        // a type annotation. We do this per var because we only really need one
+        // suggestion to influence a var to be `()`.
+        let suggestions = diverging_vids
+            .iter()
+            .copied()
+            .filter_map(|vid| {
+                let reachable_vids =
+                    graph::depth_first_search_as_undirected(coercions, vid).collect();
+                AnnotateUnitFallbackVisitor { reachable_vids, fcx: self }
+                    .visit_expr(body.value)
+                    .break_value()
+            })
+            .collect();
+        errors::SuggestAnnotations { suggestions }
+    }
+}
+
+/// Try to walk the HIR to find a place to insert a useful suggestion
+/// to preserve fallback to `()` in 2024.
+struct AnnotateUnitFallbackVisitor<'a, 'tcx> {
+    reachable_vids: FxHashSet<ty::TyVid>,
+    fcx: &'a FnCtxt<'a, 'tcx>,
+}
+impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
+    // For a given path segment, if it's missing a turbofish, try to suggest adding
+    // one so we can constrain an argument to `()`. To keep the suggestion simple,
+    // we want to simply suggest `_` for all the other args. This (for now) only
+    // works when there are only type variables (and region variables, since we can
+    // elide them)...
+    fn suggest_for_segment(
+        &self,
+        arg_segment: &'tcx hir::PathSegment<'tcx>,
+        def_id: DefId,
+        id: HirId,
+    ) -> ControlFlow<errors::SuggestAnnotation> {
+        if arg_segment.args.is_none()
+            && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
+            && let generics = self.fcx.tcx.generics_of(def_id)
+            && let args = &all_args[generics.parent_count..]
+            // We can't turbofish consts :(
+            && args.iter().all(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Lifetime(_)))
+        {
+            let n_tys = args
+                .iter()
+                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+                .count();
+            for (idx, arg) in args
+                .iter()
+                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+                .enumerate()
+            {
+                if let Some(ty) = arg.as_type()
+                    && let Some(vid) = self.fcx.root_vid(ty)
+                    && self.reachable_vids.contains(&vid)
+                {
+                    return ControlFlow::Break(errors::SuggestAnnotation::Turbo(
+                        arg_segment.ident.span.shrink_to_hi(),
+                        n_tys,
+                        idx,
+                    ));
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    }
+}
+impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
+    type Result = ControlFlow<errors::SuggestAnnotation>;
+
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        // Try to replace `_` with `()`.
+        if let hir::TyKind::Infer = hir_ty.kind
+            && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
+            && let Some(vid) = self.fcx.root_vid(ty)
+            && self.reachable_vids.contains(&vid)
+        {
+            return ControlFlow::Break(errors::SuggestAnnotation::Unit(hir_ty.span));
+        }
+        hir::intravisit::walk_ty(self, hir_ty)
+    }
+
+    fn visit_qpath(
+        &mut self,
+        qpath: &'tcx rustc_hir::QPath<'tcx>,
+        id: HirId,
+        _span: Span,
+    ) -> Self::Result {
+        let arg_segment = match qpath {
+            hir::QPath::Resolved(_, path) => {
+                path.segments.last().expect("paths should have a segment")
+            }
+            hir::QPath::TypeRelative(_, segment) => segment,
+            hir::QPath::LangItem(..) => {
+                return hir::intravisit::walk_qpath(self, qpath, id);
+            }
+        };
+        // Alternatively, try to turbofish `::<_, (), _>`.
+        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id() {
+            self.suggest_for_segment(arg_segment, def_id, id)?;
+        }
+        hir::intravisit::walk_qpath(self, qpath, id)
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        // Try to suggest adding an explicit qself `()` to a trait method path.
+        // i.e. changing `Default::default()` to `<() as Default>::default()`.
+        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+            && let Res::Def(DefKind::AssocFn, def_id) = path.res
+            && self.fcx.tcx.trait_of_item(def_id).is_some()
+            && let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(expr.hir_id)
+            && let self_ty = args.type_at(0)
+            && let Some(vid) = self.fcx.root_vid(self_ty)
+            && self.reachable_vids.contains(&vid)
+            && let [.., trait_segment, _method_segment] = path.segments
+        {
+            let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
+            return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
+        }
+        // Or else, try suggesting turbofishing the method args.
+        if let hir::ExprKind::MethodCall(segment, ..) = expr.kind
+            && let Some(def_id) =
+                self.fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+        {
+            self.suggest_for_segment(segment, def_id, expr.hir_id)?;
+        }
+        hir::intravisit::walk_expr(self, expr)
+    }
+
+    fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) -> Self::Result {
+        // For a local, try suggest annotating the type if it's missing.
+        if let None = local.ty
+            && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(local.hir_id)
+            && let Some(vid) = self.fcx.root_vid(ty)
+            && self.reachable_vids.contains(&vid)
+        {
+            return ControlFlow::Break(errors::SuggestAnnotation::Local(
+                local.pat.span.shrink_to_hi(),
+            ));
+        }
+        hir::intravisit::walk_local(self, local)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -569,27 +744,26 @@ pub(crate) enum UnsafeUseReason {
 ///
 /// `compute_unsafe_infer_vars` will return `{ id(?X) -> (hir_id, span, Call) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
-    root_ctxt: &'a TypeckRootCtxt<'tcx>,
+    fcx: &'a FnCtxt<'a, 'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body =
-        root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {
-        root_ctxt: &'a TypeckRootCtxt<'tcx>,
+        fcx: &'a FnCtxt<'a, 'tcx>,
         res: &'a mut UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
     }
 
     impl Visitor<'_> for UnsafeInferVarsVisitor<'_, '_> {
         fn visit_expr(&mut self, ex: &'_ hir::Expr<'_>) {
-            let typeck_results = self.root_ctxt.typeck_results.borrow();
+            let typeck_results = self.fcx.typeck_results.borrow();
 
             match ex.kind {
                 hir::ExprKind::MethodCall(..) => {
                     if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
-                        && let method_ty = self.root_ctxt.tcx.type_of(def_id).instantiate_identity()
-                        && let sig = method_ty.fn_sig(self.root_ctxt.tcx)
+                        && let method_ty = self.fcx.tcx.type_of(def_id).instantiate_identity()
+                        && let sig = method_ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -609,7 +783,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     let func_ty = typeck_results.expr_ty(func);
 
                     if func_ty.is_fn()
-                        && let sig = func_ty.fn_sig(self.root_ctxt.tcx)
+                        && let sig = func_ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -640,7 +814,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     // If this path refers to an unsafe function, collect inference variables which may affect it.
                     // `is_fn` excludes closures, but those can't be unsafe.
                     if ty.is_fn()
-                        && let sig = ty.fn_sig(self.root_ctxt.tcx)
+                        && let sig = ty.fn_sig(self.fcx.tcx)
                         && let hir::Safety::Unsafe = sig.safety()
                     {
                         let mut collector = InferVarCollector {
@@ -698,7 +872,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
         }
     }
 
-    UnsafeInferVarsVisitor { root_ctxt, res: &mut res }.visit_expr(&body.value);
+    UnsafeInferVarsVisitor { fcx, res: &mut res }.visit_expr(&body.value);
 
     debug!(?res, "collected the following unsafe vars for {body_id:?}");
 

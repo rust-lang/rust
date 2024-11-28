@@ -348,7 +348,7 @@ fn parse_iter_usage<'tcx>(
                     && cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| is_diag_item_method(cx, id, sym::Option)) =>
+                        .is_some_and(|id| is_diag_item_method(cx, id, sym::Option)) =>
             {
                 (Some(UnwrapKind::Unwrap), e.span)
             },

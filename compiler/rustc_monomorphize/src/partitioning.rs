@@ -666,7 +666,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     // This is a method within an impl, find out what the self-type is:
                     let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
                         instance.args,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         tcx.type_of(impl_def_id),
                     );
                     if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
@@ -1317,6 +1317,21 @@ pub(crate) fn provide(providers: &mut Providers) {
         all.iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
+    };
+
+    providers.size_estimate = |tcx, instance| {
+        match instance.def {
+            // "Normal" functions size estimate: the number of
+            // statements, plus one for the terminator.
+            InstanceKind::Item(..)
+            | InstanceKind::DropGlue(..)
+            | InstanceKind::AsyncDropGlueCtorShim(..) => {
+                let mir = tcx.instance_mir(instance.def);
+                mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+            }
+            // Other compiler-generated shims size estimate: 1
+            _ => 1,
+        }
     };
 
     collector::provide(providers);

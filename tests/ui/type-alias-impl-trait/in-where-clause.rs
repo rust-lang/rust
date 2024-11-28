@@ -1,4 +1,4 @@
-//! We evaluate `1 + 2` with `Reveal::All` during typeck, causing
+//! We evaluate `1 + 2` with `TypingMode::PostAnalysis` during typeck, causing
 //! us to get the concrete type of `Bar` while computing it.
 //! This again requires type checking `foo`.
 #![feature(type_alias_impl_trait)]

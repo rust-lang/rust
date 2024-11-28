@@ -20,11 +20,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
-    fn typing_mode(
-        &self,
-        param_env_for_debug_assertion: ty::ParamEnv<'tcx>,
-    ) -> ty::TypingMode<'tcx> {
-        self.typing_mode(param_env_for_debug_assertion)
+    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
+        self.typing_mode()
     }
 
     fn universe(&self) -> ty::UniverseIndex {

@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use rinja::Template;
+use rustc_abi::VariantIdx;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
@@ -14,7 +15,6 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_target::abi::VariantIdx;
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -35,7 +35,6 @@ use crate::html::format::{
     Buffer, Ending, PrintWithSpace, display_fn, join_with_double_colon, print_abi_with_space,
     print_constness_with_space, print_where_clause, visibility_print_with_space,
 };
-use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
@@ -752,7 +751,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
 
             if !required_methods.is_empty() {
-                write!(w, "    // Required method{}\n", pluralize(required_methods.len()));
+                writeln!(w, "    // Required method{}", pluralize(required_methods.len()));
             }
             for (pos, m) in required_methods.iter().enumerate() {
                 render_assoc_item(
@@ -774,7 +773,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
 
             if !provided_methods.is_empty() {
-                write!(w, "    // Provided method{}\n", pluralize(provided_methods.len()));
+                writeln!(w, "    // Provided method{}", pluralize(provided_methods.len()));
             }
             for (pos, m) in provided_methods.iter().enumerate() {
                 render_assoc_item(
@@ -941,7 +940,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "Dyn Compatibility",
             "dyn-compatibility",
             None,
-            &format!(
+            format!(
                 "<div class=\"dyn-compatibility-info\"><p>This trait is <b>not</b> \
                 <a href=\"{base}/reference/items/traits.html#object-safety\">dyn compatible</a>.</p>\
                 <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
@@ -1226,14 +1225,14 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                         w,
                         cx,
                         Some(&t.generics),
-                        &variants,
+                        variants,
                         variants_count,
                         has_stripped_entries,
                         *is_non_exhaustive,
                         enum_def_id,
                     )
                 });
-                item_variants(w, cx, it, &variants, enum_def_id);
+                item_variants(w, cx, it, variants, enum_def_id);
             }
             clean::TypeAliasInnerType::Union { fields } => {
                 wrap_item(w, |w| {
@@ -1745,7 +1744,13 @@ fn item_variants(
 }
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
-    highlight::render_item_decl_with_highlighting(&t.source, w);
+    wrap_item(w, |w| {
+        // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
+        if !t.macro_rules {
+            write!(w, "{}", visibility_print_with_space(it, cx));
+        }
+        write!(w, "{}", Escape(&t.source));
+    });
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
@@ -1819,7 +1824,7 @@ fn item_constant(
             name = it.name.unwrap(),
             generics = generics.print(cx),
             typ = ty.print(cx),
-            where_clause = print_where_clause(&generics, cx, 0, Ending::NoNewline),
+            where_clause = print_where_clause(generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints
@@ -2189,7 +2194,7 @@ fn render_union<'a, 'cx: 'a>(
             f.write_str(" ")?;
         }
 
-        write!(f, "{{\n")?;
+        writeln!(f, "{{")?;
         let count_fields =
             fields.iter().filter(|field| matches!(field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
@@ -2199,9 +2204,9 @@ fn render_union<'a, 'cx: 'a>(
 
         for field in fields {
             if let clean::StructFieldItem(ref ty) = field.kind {
-                write!(
+                writeln!(
                     f,
-                    "    {}{}: {},\n",
+                    "    {}{}: {},",
                     visibility_print_with_space(field, cx),
                     field.name.unwrap(),
                     ty.print(cx)
@@ -2210,7 +2215,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    <span class=\"comment\">/* private fields */</span>\n")?;
+            writeln!(f, "    <span class=\"comment\">/* private fields */</span>")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2350,7 +2355,7 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
     if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
 }
 
-fn document_non_exhaustive<'a>(item: &'a clean::Item) -> impl fmt::Display + 'a {
+fn document_non_exhaustive(item: &clean::Item) -> impl fmt::Display + '_ {
     display_fn(|f| {
         if item.is_non_exhaustive() {
             write!(

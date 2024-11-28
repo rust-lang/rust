@@ -6,8 +6,8 @@ LL |     let i = i.map(|x| x.clone());
 LL |     i.collect()
    |       ^^^^^^^ value of type `Vec<X>` cannot be built from `std::iter::Iterator<Item=&X>`
    |
-   = help: the trait `FromIterator<&X>` is not implemented for `Vec<X>`
-   = help: the trait `FromIterator<X>` is implemented for `Vec<X>`
+   = help: the trait `FromIterator<&_>` is not implemented for `Vec<X>`
+           but trait `FromIterator<_>` is implemented for it
    = help: for that trait implementation, expected `X`, found `&X`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:4:26
@@ -181,7 +181,7 @@ LL |     let g: Vec<i32> = f.collect();
    |                         ^^^^^^^ value of type `Vec<i32>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<i32>`
-   = help: the trait `FromIterator<i32>` is implemented for `Vec<i32>`
+           but trait `FromIterator<i32>` is implemented for it
    = help: for that trait implementation, expected `i32`, found `()`
 note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:44:15

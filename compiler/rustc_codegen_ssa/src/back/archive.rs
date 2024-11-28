@@ -26,6 +26,35 @@ use crate::errors::{
     DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
 };
 
+/// An item to be included in an import library.
+/// This is a slimmed down version of `COFFShortExport` from `ar-archive-writer`.
+pub struct ImportLibraryItem {
+    /// The name to be exported.
+    pub name: String,
+    /// The ordinal to be exported, if any.
+    pub ordinal: Option<u16>,
+    /// The original, decorated name if `name` is not decorated.
+    pub symbol_name: Option<String>,
+    /// True if this is a data export, false if it is a function export.
+    pub is_data: bool,
+}
+
+impl From<ImportLibraryItem> for COFFShortExport {
+    fn from(item: ImportLibraryItem) -> Self {
+        COFFShortExport {
+            name: item.name,
+            ext_name: None,
+            symbol_name: item.symbol_name,
+            alias_target: None,
+            ordinal: item.ordinal.unwrap_or(0),
+            noname: item.ordinal.is_some(),
+            data: item.is_data,
+            private: false,
+            constant: false,
+        }
+    }
+}
+
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a>;
 
@@ -38,7 +67,7 @@ pub trait ArchiveBuilderBuilder {
         &self,
         sess: &Session,
         lib_name: &str,
-        import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+        items: Vec<ImportLibraryItem>,
         output_path: &Path,
     ) {
         if common::is_mingw_gnu_toolchain(&sess.target) {
@@ -47,21 +76,16 @@ pub trait ArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions. Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            create_mingw_dll_import_lib(
-                sess,
-                lib_name,
-                import_name_and_ordinal_vector,
-                output_path,
-            );
+            create_mingw_dll_import_lib(sess, lib_name, items, output_path);
         } else {
             trace!("creating import library");
             trace!("  dll_name {:#?}", lib_name);
             trace!("  output_path {}", output_path.display());
             trace!(
                 "  import names: {}",
-                import_name_and_ordinal_vector
+                items
                     .iter()
-                    .map(|(name, _ordinal)| name.clone())
+                    .map(|ImportLibraryItem { name, .. }| name.clone())
                     .collect::<Vec<_>>()
                     .join(", "),
             );
@@ -79,20 +103,7 @@ pub trait ArchiveBuilderBuilder {
                     .emit_fatal(ErrorCreatingImportLibrary { lib_name, error: error.to_string() }),
             };
 
-            let exports = import_name_and_ordinal_vector
-                .iter()
-                .map(|(name, ordinal)| COFFShortExport {
-                    name: name.to_string(),
-                    ext_name: None,
-                    symbol_name: None,
-                    alias_target: None,
-                    ordinal: ordinal.unwrap_or(0),
-                    noname: ordinal.is_some(),
-                    data: false,
-                    private: false,
-                    constant: false,
-                })
-                .collect::<Vec<_>>();
+            let exports = items.into_iter().map(Into::into).collect::<Vec<_>>();
             let machine = match &*sess.target.arch {
                 "x86_64" => MachineTypes::AMD64,
                 "x86" => MachineTypes::I386,
@@ -160,16 +171,16 @@ pub trait ArchiveBuilderBuilder {
 fn create_mingw_dll_import_lib(
     sess: &Session,
     lib_name: &str,
-    import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+    items: Vec<ImportLibraryItem>,
     output_path: &Path,
 ) {
     let def_file_path = output_path.with_extension("def");
 
     let def_file_content = format!(
         "EXPORTS\n{}",
-        import_name_and_ordinal_vector
+        items
             .into_iter()
-            .map(|(name, ordinal)| {
+            .map(|ImportLibraryItem { name, ordinal, .. }| {
                 match ordinal {
                     Some(n) => format!("{name} @{n} NONAME"),
                     None => name,
@@ -291,6 +302,14 @@ pub trait ArchiveBuilder {
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
+}
+
+pub struct ArArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
+        Box::new(ArArchiveBuilder::new(sess, &DEFAULT_OBJECT_READER))
+    }
 }
 
 #[must_use = "must call build() to finish building the archive"]

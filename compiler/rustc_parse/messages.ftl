@@ -77,6 +77,8 @@ parse_box_syntax_removed_suggestion = use `Box::new()` instead
 
 parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
 
+parse_cannot_be_raw_lifetime = `{$ident}` cannot be a raw lifetime
+
 parse_catch_after_try = keyword `catch` cannot follow a `try` block
     .help = try using `match` on the result of the `try` block instead
 
@@ -214,6 +216,9 @@ parse_expected_identifier_found_doc_comment = expected identifier, found doc com
 parse_expected_identifier_found_doc_comment_str = expected identifier, found doc comment `{$token}`
 parse_expected_identifier_found_keyword = expected identifier, found keyword
 parse_expected_identifier_found_keyword_str = expected identifier, found keyword `{$token}`
+parse_expected_identifier_found_metavar = expected identifier, found metavariable
+# This one deliberately doesn't print a token.
+parse_expected_identifier_found_metavar_str = expected identifier, found metavariable
 parse_expected_identifier_found_reserved_identifier = expected identifier, found reserved identifier
 parse_expected_identifier_found_reserved_identifier_str = expected identifier, found reserved identifier `{$token}`
 parse_expected_identifier_found_reserved_keyword = expected identifier, found reserved keyword
@@ -225,6 +230,8 @@ parse_expected_mut_or_const_in_raw_pointer_type = expected `mut` or `const` keyw
 
 parse_expected_semi_found_doc_comment_str = expected `;`, found doc comment `{$token}`
 parse_expected_semi_found_keyword_str = expected `;`, found keyword `{$token}`
+# This one deliberately doesn't print a token.
+parse_expected_semi_found_metavar_str = expected `;`, found metavariable
 parse_expected_semi_found_reserved_identifier_str = expected `;`, found reserved identifier `{$token}`
 parse_expected_semi_found_reserved_keyword_str = expected `;`, found reserved keyword `{$token}`
 parse_expected_semi_found_str = expected `;`, found `{$token}`
@@ -820,7 +827,7 @@ parse_unexpected_expr_in_pat =
     }, found an expression
 
     .label = not a pattern
-    .note = arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+    .note = arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 parse_unexpected_expr_in_pat_const_sugg = consider extracting the expression into a `const`
 
@@ -862,6 +869,8 @@ parse_unexpected_token_after_not_logical = use `!` to perform logical negation
 parse_unexpected_token_after_struct_name = expected `where`, `{"{"}`, `(`, or `;` after struct name
 parse_unexpected_token_after_struct_name_found_doc_comment = expected `where`, `{"{"}`, `(`, or `;` after struct name, found doc comment `{$token}`
 parse_unexpected_token_after_struct_name_found_keyword = expected `where`, `{"{"}`, `(`, or `;` after struct name, found keyword `{$token}`
+# This one deliberately doesn't print a token.
+parse_unexpected_token_after_struct_name_found_metavar = expected `where`, `{"{"}`, `(`, or `;` after struct name, found metavar
 parse_unexpected_token_after_struct_name_found_other = expected `where`, `{"{"}`, `(`, or `;` after struct name, found `{$token}`
 
 parse_unexpected_token_after_struct_name_found_reserved_identifier = expected `where`, `{"{"}`, `(`, or `;` after struct name, found reserved identifier `{$token}`

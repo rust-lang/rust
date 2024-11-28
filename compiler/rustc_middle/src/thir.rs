@@ -12,6 +12,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
 
+use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,7 +30,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
-use rustc_target::abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
 
@@ -247,11 +247,22 @@ pub struct Expr<'tcx> {
     pub ty: Ty<'tcx>,
 
     /// The lifetime of this expression if it should be spilled into a
-    /// temporary; should be `None` only if in a constant context
-    pub temp_lifetime: Option<region::Scope>,
+    /// temporary
+    pub temp_lifetime: TempLifetime,
 
     /// span of the expression in the source
     pub span: Span,
+}
+
+/// Temporary lifetime information for THIR expressions
+#[derive(Clone, Copy, Debug, HashStable)]
+pub struct TempLifetime {
+    /// Lifetime for temporaries as expected.
+    /// This should be `None` in a constant context.
+    pub temp_lifetime: Option<region::Scope>,
+    /// If `Some(lt)`, indicates that the lifetime of this temporary will change to `lt` in a future edition.
+    /// If `None`, then no changes are expected, or lints are disabled.
+    pub backwards_incompatible: Option<region::Scope>,
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -645,7 +656,7 @@ impl<'tcx> Pat<'tcx> {
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
             | DerefPattern { subpattern, .. }
-            | InlineConstant { subpattern, .. } => subpattern.walk_(it),
+            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -788,12 +799,17 @@ pub enum PatKind<'tcx> {
         value: mir::Const<'tcx>,
     },
 
-    /// Inline constant found while lowering a pattern.
-    InlineConstant {
-        /// [LocalDefId] of the constant, we need this so that we have a
+    /// Pattern obtained by converting a constant (inline or named) to its pattern
+    /// representation using `const_to_pat`.
+    ExpandedConstant {
+        /// [DefId] of the constant, we need this so that we have a
         /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants.
-        def: LocalDefId,
+        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
+        /// correspond to a local crate, it points at the `const` item.
+        def_id: DefId,
+        /// If `false`, then `def_id` points at a `const` item, otherwise it
+        /// corresponds to a local inline const.
+        is_inline: bool,
         /// If the inline constant is used in a range pattern, this subpattern
         /// represents the range (if both ends are inline constants, there will
         /// be multiple InlineConstant wrappers).
@@ -905,7 +921,7 @@ impl<'tcx> PatRange<'tcx> {
         &self,
         value: mir::Const<'tcx>,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<bool> {
         use Ordering::*;
         debug_assert_eq!(self.ty, value.ty());
@@ -913,10 +929,10 @@ impl<'tcx> PatRange<'tcx> {
         let value = PatRangeBoundary::Finite(value);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match self.lo.compare_with(value, ty, tcx, param_env)? {
+            match self.lo.compare_with(value, ty, tcx, typing_env)? {
                 Less | Equal => true,
                 Greater => false,
-            } && match value.compare_with(self.hi, ty, tcx, param_env)? {
+            } && match value.compare_with(self.hi, ty, tcx, typing_env)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
@@ -929,17 +945,17 @@ impl<'tcx> PatRange<'tcx> {
         &self,
         other: &Self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<bool> {
         use Ordering::*;
         debug_assert_eq!(self.ty, other.ty);
         // For performance, it's important to only do the second comparison if necessary.
         Some(
-            match other.lo.compare_with(self.hi, self.ty, tcx, param_env)? {
+            match other.lo.compare_with(self.hi, self.ty, tcx, typing_env)? {
                 Less => true,
                 Equal => self.end == RangeEnd::Included,
                 Greater => false,
-            } && match self.lo.compare_with(other.hi, self.ty, tcx, param_env)? {
+            } && match self.lo.compare_with(other.hi, self.ty, tcx, typing_env)? {
                 Less => true,
                 Equal => other.end == RangeEnd::Included,
                 Greater => false,
@@ -985,9 +1001,14 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
+    pub fn eval_bits(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> u128 {
         match self {
-            Self::Finite(value) => value.eval_bits(tcx, param_env),
+            Self::Finite(value) => value.eval_bits(tcx, typing_env),
             Self::NegInfinity => {
                 // Unwrap is ok because the type is known to be numeric.
                 ty.numeric_min_and_max_as_bits(tcx).unwrap().0
@@ -999,13 +1020,13 @@ impl<'tcx> PatRangeBoundary<'tcx> {
         }
     }
 
-    #[instrument(skip(tcx, param_env), level = "debug", ret)]
+    #[instrument(skip(tcx, typing_env), level = "debug", ret)]
     pub fn compare_with(
         self,
         other: Self,
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Ordering> {
         use PatRangeBoundary::*;
         match (self, other) {
@@ -1034,8 +1055,8 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             _ => {}
         }
 
-        let a = self.eval_bits(ty, tcx, param_env);
-        let b = other.eval_bits(ty, tcx, param_env);
+        let a = self.eval_bits(ty, tcx, typing_env);
+        let b = other.eval_bits(ty, tcx, typing_env);
 
         match ty.kind() {
             ty::Float(ty::FloatTy::F16) => {
@@ -1063,7 +1084,7 @@ impl<'tcx> PatRangeBoundary<'tcx> {
                 a.partial_cmp(&b)
             }
             ty::Int(ity) => {
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, *ity).size();
+                let size = rustc_abi::Integer::from_int_ty(&tcx, *ity).size();
                 let a = size.sign_extend(a) as i128;
                 let b = size.sign_extend(b) as i128;
                 Some(a.cmp(&b))
@@ -1082,7 +1103,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr<'_>, 64);
+    static_assert_size!(Expr<'_>, 72);
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 64);
     static_assert_size!(PatKind<'_>, 48);

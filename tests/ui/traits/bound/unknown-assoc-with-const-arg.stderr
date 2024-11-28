@@ -1,0 +1,38 @@
+error[E0220]: associated type `unknown` not found for `T`
+  --> $DIR/unknown-assoc-with-const-arg.rs:4:21
+   |
+LL |     fn a<T>() -> T::unknown<{}> {}
+   |                     ^^^^^^^ associated type `unknown` not found
+
+error[E0220]: associated type `unknown` not found for `T`
+  --> $DIR/unknown-assoc-with-const-arg.rs:15:18
+   |
+LL |     fn a() -> T::unknown<{}> {}
+   |                  ^^^^^^^ associated type `unknown` not found
+
+error[E0220]: associated type `unknown` not found for `T`
+  --> $DIR/unknown-assoc-with-const-arg.rs:4:21
+   |
+LL |     fn a<T>() -> T::unknown<{}> {}
+   |                     ^^^^^^^ associated type `unknown` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0220]: associated type `unknown` not found for `T`
+  --> $DIR/unknown-assoc-with-const-arg.rs:15:18
+   |
+LL |     fn a() -> T::unknown<{}> {}
+   |                  ^^^^^^^ associated type `unknown` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0433]: failed to resolve: use of undeclared type `NOT_EXIST`
+  --> $DIR/unknown-assoc-with-const-arg.rs:10:15
+   |
+LL |     fn a() -> NOT_EXIST::unknown<{}> {}
+   |               ^^^^^^^^^ use of undeclared type `NOT_EXIST`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0220, E0433.
+For more information about an error, try `rustc --explain E0220`.

@@ -839,6 +839,7 @@ impl<'a> Builder<'a> {
                 clippy::RustInstaller,
                 clippy::TestFloatParse,
                 clippy::Tidy,
+                clippy::CI,
             ),
             Kind::Check | Kind::Fix => describe!(
                 check::Std,
@@ -914,6 +915,7 @@ impl<'a> Builder<'a> {
                 test::HtmlCheck,
                 test::RustInstaller,
                 test::TestFloatParse,
+                test::CollectLicenseMetadata,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
@@ -1161,9 +1163,14 @@ impl<'a> Builder<'a> {
         self.ensure(compile::Sysroot::new(compiler))
     }
 
+    /// Returns the bindir for a compiler's sysroot.
+    pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+        self.sysroot_target_libdir(compiler, target).parent().unwrap().join("bin")
+    }
+
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+    pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         struct Libdir {
             compiler: Compiler,
@@ -1211,7 +1218,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
-        self.sysroot_libdir(compiler, compiler.host).with_file_name("codegen-backends")
+        self.sysroot_target_libdir(compiler, compiler.host).with_file_name("codegen-backends")
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -1516,15 +1523,19 @@ impl<'a> Builder<'a> {
     pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
         if self.was_invoked_explicitly::<S>(Kind::Doc) {
             self.open_in_browser(path);
+        } else {
+            self.info(&format!("Doc path: {}", path.as_ref().display()));
         }
     }
 
     pub(crate) fn open_in_browser(&self, path: impl AsRef<Path>) {
+        let path = path.as_ref();
+
         if self.config.dry_run() || !self.config.cmd.open() {
+            self.info(&format!("Doc path: {}", path.display()));
             return;
         }
 
-        let path = path.as_ref();
         self.info(&format!("Opening doc {}", path.display()));
         if let Err(err) = opener::open(path) {
             self.info(&format!("{err}\n"));

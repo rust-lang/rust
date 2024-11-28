@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
-  --> $DIR/trait-where-clause-const.rs:22:5
+  --> $DIR/trait-where-clause-const.rs:21:5
    |
 LL |     T::b();
    |     ^^^^^^
 
 error[E0277]: the trait bound `T: ~const Bar` is not satisfied
-  --> $DIR/trait-where-clause-const.rs:24:5
+  --> $DIR/trait-where-clause-const.rs:23:5
    |
 LL |     T::c::<T>();
    |     ^^^^^^^^^^^

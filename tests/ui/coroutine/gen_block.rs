@@ -1,5 +1,5 @@
 //@ revisions: e2024 none
-//@[e2024] compile-flags: --edition 2024 -Zunstable-options
+//@[e2024] edition: 2024
 #![cfg_attr(e2024, feature(gen_blocks))]
 #![feature(stmt_expr_attributes)]
 

@@ -23,7 +23,7 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::visit::{AssocCtxt, BoundKind};
+use crate::visit::{AssocCtxt, BoundKind, FnCtxt};
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -37,7 +37,16 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait WalkItemKind {
-    fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor);
+    type Ctxt;
+    fn walk(
+        &mut self,
+        span: Span,
+        id: NodeId,
+        ident: &mut Ident,
+        visibility: &mut Visibility,
+        ctxt: Self::Ctxt,
+        visitor: &mut impl MutVisitor,
+    );
 }
 
 pub trait MutVisitor: Sized {
@@ -95,8 +104,16 @@ pub trait MutVisitor: Sized {
         walk_use_tree(self, use_tree);
     }
 
+    fn visit_foreign_item(&mut self, ni: &mut P<ForeignItem>) {
+        walk_item(self, ni);
+    }
+
     fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-        walk_flat_map_item(self, ni)
+        walk_flat_map_foreign_item(self, ni)
+    }
+
+    fn visit_item(&mut self, i: &mut P<Item>) {
+        walk_item(self, i);
     }
 
     fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -107,16 +124,24 @@ pub trait MutVisitor: Sized {
         walk_fn_header(self, header);
     }
 
+    fn visit_field_def(&mut self, fd: &mut FieldDef) {
+        walk_field_def(self, fd);
+    }
+
     fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
         walk_flat_map_field_def(self, fd)
+    }
+
+    fn visit_assoc_item(&mut self, i: &mut P<AssocItem>, ctxt: AssocCtxt) {
+        walk_assoc_item(self, i, ctxt)
     }
 
     fn flat_map_assoc_item(
         &mut self,
         i: P<AssocItem>,
-        _ctxt: AssocCtxt,
+        ctxt: AssocCtxt,
     ) -> SmallVec<[P<AssocItem>; 1]> {
-        walk_flat_map_item(self, i)
+        walk_flat_map_assoc_item(self, i, ctxt)
     }
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
@@ -142,6 +167,10 @@ pub trait MutVisitor: Sized {
 
     fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
         walk_flat_map_stmt(self, s)
+    }
+
+    fn visit_arm(&mut self, arm: &mut Arm) {
+        walk_arm(self, arm);
     }
 
     fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
@@ -188,6 +217,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_foreign_mod(&mut self, nm: &mut ForeignMod) {
         walk_foreign_mod(self, nm);
+    }
+
+    fn visit_variant(&mut self, v: &mut Variant) {
+        walk_variant(self, v);
     }
 
     fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
@@ -242,6 +275,10 @@ pub trait MutVisitor: Sized {
         walk_attribute(self, at);
     }
 
+    fn visit_param(&mut self, param: &mut Param) {
+        walk_param(self, param);
+    }
+
     fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
         walk_flat_map_param(self, param)
     }
@@ -262,6 +299,10 @@ pub trait MutVisitor: Sized {
         walk_variant_data(self, vdata);
     }
 
+    fn visit_generic_param(&mut self, param: &mut GenericParam) {
+        walk_generic_param(self, param)
+    }
+
     fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
         walk_flat_map_generic_param(self, param)
     }
@@ -278,6 +319,10 @@ pub trait MutVisitor: Sized {
         walk_mt(self, mt);
     }
 
+    fn visit_expr_field(&mut self, f: &mut ExprField) {
+        walk_expr_field(self, f);
+    }
+
     fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
         walk_flat_map_expr_field(self, f)
     }
@@ -287,7 +332,11 @@ pub trait MutVisitor: Sized {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &mut WherePredicate) {
-        walk_where_predicate(self, where_predicate);
+        walk_where_predicate(self, where_predicate)
+    }
+
+    fn visit_where_predicate_kind(&mut self, kind: &mut WherePredicateKind) {
+        walk_where_predicate_kind(self, kind)
     }
 
     fn visit_vis(&mut self, vis: &mut Visibility) {
@@ -300,6 +349,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_span(&mut self, _sp: &mut Span) {
         // Do nothing.
+    }
+
+    fn visit_pat_field(&mut self, fp: &mut PatField) {
+        walk_pat_field(self, fp)
     }
 
     fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
@@ -320,6 +373,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_capture_by(&mut self, capture_by: &mut CaptureBy) {
         walk_capture_by(self, capture_by)
+    }
+
+    fn visit_fn_ret_ty(&mut self, fn_ret_ty: &mut FnRetTy) {
+        walk_fn_ret_ty(self, fn_ret_ty)
     }
 }
 
@@ -416,16 +473,20 @@ pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &
     vis.visit_span(close);
 }
 
-pub fn walk_flat_map_pat_field<T: MutVisitor>(
-    vis: &mut T,
-    mut fp: PatField,
-) -> SmallVec<[PatField; 1]> {
-    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+pub fn walk_pat_field<T: MutVisitor>(vis: &mut T, fp: &mut PatField) {
+    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
     vis.visit_pat(pat);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_pat_field<T: MutVisitor>(
+    vis: &mut T,
+    mut fp: PatField,
+) -> SmallVec<[PatField; 1]> {
+    vis.visit_pat_field(&mut fp);
     smallvec![fp]
 }
 
@@ -446,14 +507,18 @@ fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
+pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
+    let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     visit_opt(body, |body| vis.visit_expr(body));
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
+    vis.visit_arm(&mut arm);
     smallvec![arm]
 }
 
@@ -530,11 +595,8 @@ fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
-pub fn walk_flat_map_variant<T: MutVisitor>(
-    visitor: &mut T,
-    mut variant: Variant,
-) -> SmallVec<[Variant; 1]> {
-    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
+pub fn walk_variant<T: MutVisitor>(visitor: &mut T, variant: &mut Variant) {
+    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
@@ -542,6 +604,13 @@ pub fn walk_flat_map_variant<T: MutVisitor>(
     visitor.visit_variant_data(data);
     visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_variant<T: MutVisitor>(
+    vis: &mut T,
+    mut variant: Variant,
+) -> SmallVec<[Variant; 1]> {
+    vis.visit_variant(&mut variant);
     smallvec![variant]
 }
 
@@ -600,7 +669,7 @@ fn walk_angle_bracketed_parameter_data<T: MutVisitor>(vis: &mut T, data: &mut An
 fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
     let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
     visit_thin_vec(inputs, |input| vis.visit_ty(input));
-    walk_fn_ret_ty(vis, output);
+    vis.visit_fn_ret_ty(output);
     vis.visit_span(span);
     vis.visit_span(inputs_span);
 }
@@ -672,13 +741,17 @@ fn walk_meta_item<T: MutVisitor>(vis: &mut T, mi: &mut MetaItem) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
-    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
+pub fn walk_param<T: MutVisitor>(vis: &mut T, param: &mut Param) {
+    let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
     vis.visit_span(span);
+}
+
+pub fn walk_flat_map_param<T: MutVisitor>(vis: &mut T, mut param: Param) -> SmallVec<[Param; 1]> {
+    vis.visit_param(&mut param);
     smallvec![param]
 }
 
@@ -880,7 +953,7 @@ fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut Coroutin
 
 fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     match kind {
-        FnKind::Fn(FnSig { header, decl, span }, generics, body) => {
+        FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span }, _visibility, generics, body) => {
             // Identifier and visibility are visited as a part of the item.
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
@@ -890,8 +963,9 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             }
             vis.visit_span(span);
         }
-        FnKind::Closure(binder, decl, body) => {
+        FnKind::Closure(binder, coroutine_kind, decl, body) => {
             vis.visit_closure_binder(binder);
+            coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
             vis.visit_fn_decl(decl);
             vis.visit_expr(body);
         }
@@ -901,7 +975,7 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
 fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
     let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-    walk_fn_ret_ty(vis, output);
+    vis.visit_fn_ret_ty(output);
 }
 
 fn walk_fn_ret_ty<T: MutVisitor>(vis: &mut T, fn_ret_ty: &mut FnRetTy) {
@@ -936,11 +1010,8 @@ fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCaptu
     }
 }
 
-pub fn walk_flat_map_generic_param<T: MutVisitor>(
-    vis: &mut T,
-    mut param: GenericParam,
-) -> SmallVec<[GenericParam; 1]> {
-    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
+pub fn walk_generic_param<T: MutVisitor>(vis: &mut T, param: &mut GenericParam) {
+    let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_ident(ident);
@@ -958,6 +1029,13 @@ pub fn walk_flat_map_generic_param<T: MutVisitor>(
     if let Some(colon_span) = colon_span {
         vis.visit_span(colon_span);
     }
+}
+
+pub fn walk_flat_map_generic_param<T: MutVisitor>(
+    vis: &mut T,
+    mut param: GenericParam,
+) -> SmallVec<[GenericParam; 1]> {
+    vis.visit_generic_param(&mut param);
     smallvec![param]
 }
 
@@ -991,26 +1069,30 @@ fn walk_where_clause<T: MutVisitor>(vis: &mut T, wc: &mut WhereClause) {
     vis.visit_span(span);
 }
 
-fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
-    match pred {
-        WherePredicate::BoundPredicate(bp) => {
-            let WhereBoundPredicate { span, bound_generic_params, bounded_ty, bounds } = bp;
+pub fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
+    let WherePredicate { kind, id, span } = pred;
+    vis.visit_id(id);
+    vis.visit_where_predicate_kind(kind);
+    vis.visit_span(span);
+}
+
+pub fn walk_where_predicate_kind<T: MutVisitor>(vis: &mut T, kind: &mut WherePredicateKind) {
+    match kind {
+        WherePredicateKind::BoundPredicate(bp) => {
+            let WhereBoundPredicate { bound_generic_params, bounded_ty, bounds } = bp;
             bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_ty(bounded_ty);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-            vis.visit_span(span);
         }
-        WherePredicate::RegionPredicate(rp) => {
-            let WhereRegionPredicate { span, lifetime, bounds } = rp;
+        WherePredicateKind::RegionPredicate(rp) => {
+            let WhereRegionPredicate { lifetime, bounds } = rp;
             vis.visit_lifetime(lifetime);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
-            vis.visit_span(span);
         }
-        WherePredicate::EqPredicate(ep) => {
-            let WhereEqPredicate { span, lhs_ty, rhs_ty } = ep;
+        WherePredicateKind::EqPredicate(ep) => {
+            let WhereEqPredicate { lhs_ty, rhs_ty } = ep;
             vis.visit_ty(lhs_ty);
             vis.visit_ty(rhs_ty);
-            vis.visit_span(span);
         }
     }
 }
@@ -1040,30 +1122,39 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
     vis.visit_span(span);
 }
 
-pub fn walk_flat_map_field_def<T: MutVisitor>(
-    visitor: &mut T,
-    mut fd: FieldDef,
-) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _, safety } = fd;
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
+    visit_safety(visitor, safety);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_ty(ty);
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_field_def<T: MutVisitor>(
+    vis: &mut T,
+    mut fd: FieldDef,
+) -> SmallVec<[FieldDef; 1]> {
+    vis.visit_field_def(&mut fd);
     smallvec![fd]
+}
+
+pub fn walk_expr_field<T: MutVisitor>(vis: &mut T, f: &mut ExprField) {
+    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
+    vis.visit_id(id);
+    visit_attrs(vis, attrs);
+    vis.visit_ident(ident);
+    vis.visit_expr(expr);
+    vis.visit_span(span);
 }
 
 pub fn walk_flat_map_expr_field<T: MutVisitor>(
     vis: &mut T,
     mut f: ExprField,
 ) -> SmallVec<[ExprField; 1]> {
-    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
-    vis.visit_id(id);
-    visit_attrs(vis, attrs);
-    vis.visit_ident(ident);
-    vis.visit_expr(expr);
-    vis.visit_span(span);
+    vis.visit_expr_field(&mut f);
     smallvec![f]
 }
 
@@ -1079,17 +1170,29 @@ pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
     vis.visit_span(span);
 }
 
-pub fn walk_item_kind(
-    kind: &mut impl WalkItemKind,
+pub fn walk_item_kind<K: WalkItemKind>(
+    kind: &mut K,
     span: Span,
     id: NodeId,
+    ident: &mut Ident,
+    visibility: &mut Visibility,
+    ctxt: K::Ctxt,
     vis: &mut impl MutVisitor,
 ) {
-    kind.walk(span, id, vis)
+    kind.walk(span, id, ident, visibility, ctxt, vis)
 }
 
 impl WalkItemKind for ItemKind {
-    fn walk(&mut self, span: Span, id: NodeId, vis: &mut impl MutVisitor) {
+    type Ctxt = ();
+    fn walk(
+        &mut self,
+        span: Span,
+        id: NodeId,
+        ident: &mut Ident,
+        visibility: &mut Visibility,
+        _ctxt: Self::Ctxt,
+        vis: &mut impl MutVisitor,
+    ) {
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
@@ -1102,7 +1205,11 @@ impl WalkItemKind for ItemKind {
             }
             ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(vis, defaultness);
-                vis.visit_fn(FnKind::Fn(sig, generics, body), span, id);
+                vis.visit_fn(
+                    FnKind::Fn(FnCtxt::Free, ident, sig, visibility, generics, body),
+                    span,
+                    id,
+                );
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(vis, safety);
@@ -1201,14 +1308,27 @@ impl WalkItemKind for ItemKind {
 }
 
 impl WalkItemKind for AssocItemKind {
-    fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor) {
+    type Ctxt = AssocCtxt;
+    fn walk(
+        &mut self,
+        span: Span,
+        id: NodeId,
+        ident: &mut Ident,
+        visibility: &mut Visibility,
+        ctxt: Self::Ctxt,
+        visitor: &mut impl MutVisitor,
+    ) {
         match self {
             AssocItemKind::Const(item) => {
                 visit_const_item(item, visitor);
             }
             AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(visitor, defaultness);
-                visitor.visit_fn(FnKind::Fn(sig, generics, body), span, id);
+                visitor.visit_fn(
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, visibility, generics, body),
+                    span,
+                    id,
+                );
             }
             AssocItemKind::Type(box TyAlias {
                 defaultness,
@@ -1288,24 +1408,62 @@ pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
     vis.visit_span(inject_use_span);
 }
 
-/// Mutates one item, returning the item again.
-pub fn walk_flat_map_item<K: WalkItemKind>(
+pub fn walk_item(visitor: &mut impl MutVisitor, item: &mut P<Item<impl WalkItemKind<Ctxt = ()>>>) {
+    walk_item_ctxt(visitor, item, ())
+}
+
+pub fn walk_assoc_item(visitor: &mut impl MutVisitor, item: &mut P<AssocItem>, ctxt: AssocCtxt) {
+    walk_item_ctxt(visitor, item, ctxt)
+}
+
+fn walk_item_ctxt<K: WalkItemKind>(
     visitor: &mut impl MutVisitor,
-    mut item: P<Item<K>>,
-) -> SmallVec<[P<Item<K>>; 1]> {
+    item: &mut P<Item<K>>,
+    ctxt: K::Ctxt,
+) {
     let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
     visitor.visit_id(id);
     visit_attrs(visitor, attrs);
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
-    kind.walk(*span, *id, visitor);
+    kind.walk(*span, *id, ident, vis, ctxt, visitor);
     visit_lazy_tts(visitor, tokens);
     visitor.visit_span(span);
+}
+
+pub fn walk_flat_map_item(vis: &mut impl MutVisitor, mut item: P<Item>) -> SmallVec<[P<Item>; 1]> {
+    vis.visit_item(&mut item);
+    smallvec![item]
+}
+
+pub fn walk_flat_map_foreign_item(
+    vis: &mut impl MutVisitor,
+    mut item: P<ForeignItem>,
+) -> SmallVec<[P<ForeignItem>; 1]> {
+    vis.visit_foreign_item(&mut item);
+    smallvec![item]
+}
+
+pub fn walk_flat_map_assoc_item(
+    vis: &mut impl MutVisitor,
+    mut item: P<AssocItem>,
+    ctxt: AssocCtxt,
+) -> SmallVec<[P<AssocItem>; 1]> {
+    vis.visit_assoc_item(&mut item, ctxt);
     smallvec![item]
 }
 
 impl WalkItemKind for ForeignItemKind {
-    fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor) {
+    type Ctxt = ();
+    fn walk(
+        &mut self,
+        span: Span,
+        id: NodeId,
+        ident: &mut Ident,
+        visibility: &mut Visibility,
+        _ctxt: Self::Ctxt,
+        visitor: &mut impl MutVisitor,
+    ) {
         match self {
             ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                 visitor.visit_ty(ty);
@@ -1313,7 +1471,11 @@ impl WalkItemKind for ForeignItemKind {
             }
             ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
                 visit_defaultness(visitor, defaultness);
-                visitor.visit_fn(FnKind::Fn(sig, generics, body), span, id);
+                visitor.visit_fn(
+                    FnKind::Fn(FnCtxt::Foreign, ident, sig, visibility, generics, body),
+                    span,
+                    id,
+                );
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1522,9 +1684,8 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             fn_arg_span,
         }) => {
             visit_constness(vis, constness);
-            coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
             vis.visit_capture_by(capture_clause);
-            vis.visit_fn(FnKind::Closure(binder, fn_decl, body), *span, *id);
+            vis.visit_fn(FnKind::Closure(binder, coroutine_kind, fn_decl, body), *span, *id);
             vis.visit_span(fn_decl_span);
             vis.visit_span(fn_arg_span);
         }
@@ -1785,8 +1946,20 @@ impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNo
 #[derive(Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(&'a mut FnSig, &'a mut Generics, &'a mut Option<P<Block>>),
+    Fn(
+        FnCtxt,
+        &'a mut Ident,
+        &'a mut FnSig,
+        &'a mut Visibility,
+        &'a mut Generics,
+        &'a mut Option<P<Block>>,
+    ),
 
     /// E.g., `|x, y| body`.
-    Closure(&'a mut ClosureBinder, &'a mut P<FnDecl>, &'a mut P<Expr>),
+    Closure(
+        &'a mut ClosureBinder,
+        &'a mut Option<CoroutineKind>,
+        &'a mut P<FnDecl>,
+        &'a mut P<Expr>,
+    ),
 }

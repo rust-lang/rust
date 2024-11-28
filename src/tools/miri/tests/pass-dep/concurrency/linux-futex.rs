@@ -1,4 +1,4 @@
-//@only-target: linux
+//@only-target: linux android
 //@compile-flags: -Zmiri-disable-isolation
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
@@ -7,8 +7,8 @@
 use std::mem::MaybeUninit;
 use std::ptr::{self, addr_of};
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::thread;
 use std::time::{Duration, Instant};
+use std::{io, thread};
 
 fn wake_nobody() {
     let futex = 0;
@@ -40,9 +40,12 @@ fn wake_dangling() {
     let ptr: *const i32 = &*futex;
     drop(futex);
 
-    // Wake 1 waiter. Expect zero waiters woken up, as nobody is waiting.
+    // Expect error since this is now "unmapped" memory.
+    // parking_lot relies on this:
+    // <https://github.com/Amanieu/parking_lot/blob/ca920b31312839013b4455aba1d53a4aede21b2f/core/src/thread_parker/linux.rs#L138-L145>
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, ptr, libc::FUTEX_WAKE, 1), 0);
+        assert_eq!(libc::syscall(libc::SYS_futex, ptr, libc::FUTEX_WAKE, 1), -1);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EFAULT);
     }
 }
 

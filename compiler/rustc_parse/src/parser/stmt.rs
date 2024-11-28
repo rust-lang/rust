@@ -475,6 +475,7 @@ impl<'a> Parser<'a> {
     }
 
     fn error_block_no_opening_brace_msg(&mut self, msg: Cow<'static, str>) -> Diag<'a> {
+        let prev = self.prev_token.span;
         let sp = self.token.span;
         let mut e = self.dcx().struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
@@ -514,14 +515,11 @@ impl<'a> Parser<'a> {
                 } else {
                     stmt.span
                 };
-                e.multipart_suggestion(
-                    "try placing this code inside a block",
-                    vec![
-                        (stmt_span.shrink_to_lo(), "{ ".to_string()),
-                        (stmt_span.shrink_to_hi(), " }".to_string()),
-                    ],
-                    // Speculative; has been misleading in the past (#46836).
-                    Applicability::MaybeIncorrect,
+                self.suggest_fixes_misparsed_for_loop_head(
+                    &mut e,
+                    prev.between(sp),
+                    stmt_span,
+                    &stmt.kind,
                 );
             }
             Err(e) => {
@@ -532,6 +530,103 @@ impl<'a> Parser<'a> {
         }
         e.span_label(sp, "expected `{`");
         e
+    }
+
+    fn suggest_fixes_misparsed_for_loop_head(
+        &self,
+        e: &mut Diag<'_>,
+        between: Span,
+        stmt_span: Span,
+        stmt_kind: &StmtKind,
+    ) {
+        match (&self.token.kind, &stmt_kind) {
+            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+                if let ExprKind::Call(..) = expr.kind =>
+            {
+                // for _ in x y() {}
+                e.span_suggestion_verbose(
+                    between,
+                    "you might have meant to write a method call",
+                    ".".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+                if let ExprKind::Field(..) = expr.kind =>
+            {
+                // for _ in x y.z {}
+                e.span_suggestion_verbose(
+                    between,
+                    "you might have meant to write a field access",
+                    ".".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (token::CloseDelim(Delimiter::Brace), StmtKind::Expr(expr))
+                if let ExprKind::Struct(expr) = &expr.kind
+                    && let None = expr.qself
+                    && expr.path.segments.len() == 1 =>
+            {
+                // This is specific to "mistyped `if` condition followed by empty body"
+                //
+                // for _ in x y {}
+                e.span_suggestion_verbose(
+                    between,
+                    "you might have meant to write a field access",
+                    ".".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+                if let ExprKind::Lit(lit) = expr.kind
+                    && let None = lit.suffix
+                    && let token::LitKind::Integer | token::LitKind::Float = lit.kind =>
+            {
+                // for _ in x 0 {}
+                // for _ in x 0.0 {}
+                e.span_suggestion_verbose(
+                    between,
+                    format!("you might have meant to write a field access"),
+                    ".".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+                if let ExprKind::Loop(..)
+                | ExprKind::If(..)
+                | ExprKind::While(..)
+                | ExprKind::Match(..)
+                | ExprKind::ForLoop { .. }
+                | ExprKind::TryBlock(..)
+                | ExprKind::Ret(..)
+                | ExprKind::Closure(..)
+                | ExprKind::Struct(..)
+                | ExprKind::Try(..) = expr.kind =>
+            {
+                // These are more likely to have been meant as a block body.
+                e.multipart_suggestion(
+                    "you might have meant to write this as part of a block",
+                    vec![
+                        (stmt_span.shrink_to_lo(), "{ ".to_string()),
+                        (stmt_span.shrink_to_hi(), " }".to_string()),
+                    ],
+                    // Speculative; has been misleading in the past (#46836).
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (token::OpenDelim(Delimiter::Brace), _) => {}
+            (_, _) => {
+                e.multipart_suggestion(
+                    "you might have meant to write this as part of a block",
+                    vec![
+                        (stmt_span.shrink_to_lo(), "{ ".to_string()),
+                        (stmt_span.shrink_to_hi(), " }".to_string()),
+                    ],
+                    // Speculative; has been misleading in the past (#46836).
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
     }
 
     fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {

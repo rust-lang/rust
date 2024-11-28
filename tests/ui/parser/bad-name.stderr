@@ -10,7 +10,7 @@ error: expected a pattern, found an expression
 LL |   let x.y::<isize>.z foo;
    |       ^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected one of `(`, `.`, `::`, `:`, `;`, `=`, `?`, `|`, or an operator, found `foo`
   --> $DIR/bad-name.rs:2:22

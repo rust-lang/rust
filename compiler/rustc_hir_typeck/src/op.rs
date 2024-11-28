@@ -26,7 +26,7 @@ use crate::Expectation;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
-    pub(crate) fn check_binop_assign(
+    pub(crate) fn check_expr_binop_assign(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
@@ -85,7 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Checks a potentially overloaded binary operator.
-    pub(crate) fn check_binop(
+    pub(crate) fn check_expr_binop(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
@@ -249,7 +249,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // see `NB` above
-        let rhs_ty = self.check_expr_coercible_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
+        let rhs_ty = self.check_expr_coercible_to_type_or_error(
+            rhs_expr,
+            rhs_ty_var,
+            Some(lhs_expr),
+            |err, ty| {
+                self.suggest_swapping_lhs_and_rhs(err, ty, lhs_ty, rhs_expr, lhs_expr, op);
+            },
+        );
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {

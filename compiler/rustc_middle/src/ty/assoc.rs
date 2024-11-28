@@ -10,8 +10,8 @@ use crate::ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
-    TraitContainer,
-    ImplContainer,
+    Trait,
+    Impl,
 }
 
 /// Information about an associated item
@@ -63,16 +63,16 @@ impl AssocItem {
     #[inline]
     pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::ImplContainer => None,
-            AssocItemContainer::TraitContainer => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::Impl => None,
+            AssocItemContainer::Trait => Some(tcx.parent(self.def_id)),
         }
     }
 
     #[inline]
     pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.container {
-            AssocItemContainer::ImplContainer => Some(tcx.parent(self.def_id)),
-            AssocItemContainer::TraitContainer => None,
+            AssocItemContainer::Impl => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::Trait => None,
         }
     }
 

@@ -6,7 +6,6 @@
 //@ ignore-musl
 //@ needs-dynamic-linking
 
-//@ pretty-expanded FIXME #23616
 
 extern crate issue_12133_dylib2 as other;
 

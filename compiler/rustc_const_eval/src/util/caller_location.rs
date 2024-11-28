@@ -60,7 +60,7 @@ pub(crate) fn const_caller_location_provider(
     let mut ecx = mk_eval_cx_to_read_const_val(
         tcx.tcx,
         tcx.span,
-        ty::ParamEnv::reveal_all(),
+        ty::TypingEnv::fully_monomorphized(),
         CanAccessMutGlobal::No,
     );
 

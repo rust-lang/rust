@@ -99,17 +99,18 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     opaque((x * y) - y);
     opaque((x * y) - y);
 
-    // We can substitute through an immutable reference too.
+    // We cannot substitute through an immutable reference.
+    // (Disabled due to <https://github.com/rust-lang/rust/issues/130853>)
     // CHECK: [[ref:_.*]] = &_3;
     // CHECK: [[deref:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
-    // CHECK: opaque::<u64>(copy [[addref]])
-    // CHECK: opaque::<u64>(copy [[addref]])
+    // COM: CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
+    // COM: CHECK: opaque::<u64>(copy [[addref]])
+    // COM: CHECK: opaque::<u64>(copy [[addref]])
     let a = &z;
     opaque(*a + x);
     opaque(*a + x);
 
-    // But not through a mutable reference or a pointer.
+    // And certainly not through a mutable reference or a pointer.
     // CHECK: [[mut:_.*]] = &mut _3;
     // CHECK: [[addmut:_.*]] = Add(
     // CHECK: opaque::<u64>(move [[addmut]])
@@ -137,13 +138,13 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
         opaque(*d + x);
     }
 
-    // We can substitute again, but not with the earlier computations.
+    // We still cannot substitute again, and never with the earlier computations.
     // Important: `e` is not `a`!
     // CHECK: [[ref2:_.*]] = &_3;
     // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
-    // CHECK: opaque::<u64>(copy [[addref2]])
-    // CHECK: opaque::<u64>(copy [[addref2]])
+    // COM: CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
+    // COM: CHECK: opaque::<u64>(copy [[addref2]])
+    // COM: CHECK: opaque::<u64>(copy [[addref2]])
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
@@ -495,15 +496,15 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     unsafe { opaque(*z) };
     unsafe { opaque(*z) };
 
-    // We can reuse dereferences of `&Freeze`.
+    // Do not reuse dereferences of `&Freeze`.
     // CHECK: [[ref:_.*]] = &(*_1);
     // CHECK: [[st7:_.*]] = copy (*[[ref]]);
-    // CHECK: opaque::<u32>(copy [[st7]])
-    // CHECK: opaque::<u32>(copy [[st7]])
+    // COM: CHECK: opaque::<u32>(copy [[st7]])
+    // COM: CHECK: opaque::<u32>(copy [[st7]])
     let z = &*t;
     opaque(*z);
     opaque(*z);
-    // But not in reborrows.
+    // Not in reborrows either.
     // CHECK: [[reborrow:_.*]] = &(*[[ref]]);
     // CHECK: opaque::<&u32>(move [[reborrow]])
     opaque(&*z);
@@ -516,10 +517,10 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     opaque(*u);
     opaque(*u);
 
-    // `*s` is not Copy, but `(*s).0` is, so we can reuse.
+    // `*s` is not Copy, but `(*s).0` is, but we still cannot reuse.
     // CHECK: [[st10:_.*]] = copy ((*_3).0: u32);
-    // CHECK: opaque::<u32>(copy [[st10]])
-    // CHECK: opaque::<u32>(copy [[st10]])
+    // COM: CHECK: opaque::<u32>(copy [[st10]])
+    // COM: CHECK: opaque::<u32>(copy [[st10]])
     opaque(s.0);
     opaque(s.0);
 }
@@ -736,7 +737,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(copy _1)
     // CHECK: bb2: {
-    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
+    // COM: CHECK-NEXT: _0 = opaque::<T>(copy _1)
     mir! {
         {
             let a = x;

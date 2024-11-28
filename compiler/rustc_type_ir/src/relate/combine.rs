@@ -123,13 +123,11 @@ where
         }
 
         // All other cases of inference are errors
-        (ty::Infer(_), _) | (_, ty::Infer(_)) => {
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
-        }
+        (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
         (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
             assert!(!infcx.next_trait_solver());
-            match infcx.typing_mode(relation.param_env()) {
+            match infcx.typing_mode() {
                 // During coherence, opaque types should be treated as *possibly*
                 // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible

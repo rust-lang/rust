@@ -140,7 +140,7 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         kind,
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
     }
@@ -159,7 +159,7 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         kind,
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
     }
@@ -267,7 +267,7 @@ fn associated_type_for_impl_trait_in_trait(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: None,
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
             fn_def_id: fn_def_id.to_def_id(),
@@ -319,7 +319,7 @@ fn associated_type_for_impl_trait_in_impl(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
     });

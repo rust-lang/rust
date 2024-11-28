@@ -1,3 +1,4 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -12,7 +13,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::spec::abi::Abi;
 use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
 use crate::hir::ModuleItems;
@@ -668,7 +668,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_foreign_abi(self, hir_id: HirId) -> Abi {
+    pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
         let parent = self.get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =
             self.tcx.hir_owner_node(parent)
@@ -947,7 +947,7 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::LetStmt(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
-            Node::WhereBoundPredicate(pred) => pred.span,
+            Node::WherePredicate(pred) => pred.span,
             Node::ArrayLenInfer(inf) => inf.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
@@ -1225,7 +1225,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             format!("{id} (generic_param {})", path_str(param.def_id))
         }
         Node::Crate(..) => String::from("(root_crate)"),
-        Node::WhereBoundPredicate(_) => node_str("where bound predicate"),
+        Node::WherePredicate(_) => node_str("where predicate"),
         Node::ArrayLenInfer(_) => node_str("array len infer"),
         Node::Synthetic => unreachable!(),
         Node::Err(_) => node_str("error"),

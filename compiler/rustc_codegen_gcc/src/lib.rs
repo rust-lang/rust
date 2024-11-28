@@ -58,7 +58,6 @@ extern crate rustc_driver;
 
 mod abi;
 mod allocator;
-mod archive;
 mod asm;
 mod attributes;
 mod back;
@@ -103,7 +102,7 @@ use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBacken
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::DiagCtxtHandle;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -259,17 +258,6 @@ impl CodegenBackend for GccCodegenBackend {
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess)
-    }
-
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        use rustc_codegen_ssa::back::link::link_binary;
-
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
     }
 
     fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
@@ -491,8 +479,9 @@ pub fn target_features(
 ) -> Vec<Symbol> {
     // TODO(antoyo): use global_gcc_features.
     sess.target
-        .supported_target_features()
+        .rust_target_features()
         .iter()
+        .filter(|(_, gate, _)| gate.is_supported())
         .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)

@@ -5,7 +5,6 @@ use std::ops::Deref;
 use std::{fmt, iter, mem, ptr, slice};
 
 use rustc_data_structures::aligned::{Aligned, align_of};
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sync::DynSync;
 use rustc_serialize::{Encodable, Encoder};
 
@@ -259,7 +258,6 @@ impl<'a, H, T: Copy> IntoIterator for &'a RawList<H, T> {
 unsafe impl<H: Sync, T: Sync> Sync for RawList<H, T> {}
 
 // We need this since `List` uses extern type `OpaqueListContents`.
-#[cfg(parallel_compiler)]
 unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 
 // Safety:

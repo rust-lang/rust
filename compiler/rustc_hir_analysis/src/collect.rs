@@ -18,6 +18,7 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
+use rustc_abi::ExternAbi;
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -38,7 +39,6 @@ use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMo
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -46,7 +46,7 @@ use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use crate::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -78,7 +78,7 @@ pub fn provide(providers: &mut Providers) {
             predicates_of::explicit_supertraits_containing_assoc_item,
         trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
         const_conditions: predicates_of::const_conditions,
-        implied_const_bounds: predicates_of::implied_const_bounds,
+        explicit_implied_const_bounds: predicates_of::explicit_implied_const_bounds,
         type_param_predicates: predicates_of::type_param_predicates,
         trait_def,
         adt_def,
@@ -88,6 +88,7 @@ pub fn provide(providers: &mut Providers) {
         coroutine_for_closure,
         opaque_ty_origin,
         rendered_precise_capturing_args,
+        const_param_default,
         ..*providers
     };
 }
@@ -339,6 +340,10 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.ensure().explicit_item_super_predicates(def_id);
         self.tcx.ensure().item_bounds(def_id);
         self.tcx.ensure().item_super_predicates(def_id);
+        if self.tcx.is_conditionally_const(def_id) {
+            self.tcx.ensure().explicit_implied_const_bounds(def_id);
+            self.tcx.ensure().const_conditions(def_id);
+        }
         intravisit::walk_opaque_ty(self, opaque);
     }
 
@@ -634,7 +639,7 @@ fn get_new_lifetime_name<'tcx>(
         .collect_referenced_late_bound_regions(poly_trait_ref)
         .into_iter()
         .filter_map(|lt| {
-            if let ty::BoundRegionKind::BrNamed(_, name) = lt {
+            if let ty::BoundRegionKind::Named(_, name) = lt {
                 Some(name.as_str().to_string())
             } else {
                 None
@@ -681,6 +686,10 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().generics_of(item.owner_id);
                 tcx.ensure().type_of(item.owner_id);
                 tcx.ensure().predicates_of(item.owner_id);
+                if tcx.is_conditionally_const(def_id) {
+                    tcx.ensure().explicit_implied_const_bounds(def_id);
+                    tcx.ensure().const_conditions(def_id);
+                }
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => {
                         tcx.ensure().codegen_fn_attrs(item.owner_id);
@@ -1031,6 +1040,7 @@ fn lower_variant(
             did: f.def_id.to_def_id(),
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
+            safety: f.safety,
         })
         .collect();
     let recovered = match def {
@@ -1361,7 +1371,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                 (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
                 _ => hir::Safety::Unsafe,
             };
-            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, abi::Abi::Rust))
+            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, ExternAbi::Rust))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1686,10 +1696,10 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     decl: &'tcx hir::FnDecl<'tcx>,
-    abi: abi::Abi,
+    abi: ExternAbi,
     safety: hir::Safety,
 ) -> ty::PolyFnSig<'tcx> {
-    let safety = if abi == abi::Abi::RustIntrinsic {
+    let safety = if abi == ExternAbi::RustIntrinsic {
         intrinsic_operation_unsafety(tcx, def_id)
     } else {
         safety
@@ -1700,7 +1710,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
-    if abi != abi::Abi::RustIntrinsic && !tcx.features().simd_ffi() {
+    if abi != ExternAbi::RustIntrinsic && !tcx.features().simd_ffi() {
         let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx
@@ -1789,4 +1799,24 @@ fn rendered_precise_capturing_args<'tcx>(
         }
         _ => None,
     })
+}
+
+fn const_param_default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let default_ct = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { default: Some(ct), .. },
+            ..
+        }) => ct,
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "`const_param_default` expected a generic parameter with a constant"
+        ),
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    // FIXME(const_generics): investigate which places do and don't need const ty feeding
+    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::No);
+    ty::EarlyBinder::bind(ct)
 }

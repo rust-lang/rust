@@ -578,7 +578,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         if output_ty.contains(param_ty) {
                             if let Ok(new_ty) = cx.tcx.try_instantiate_and_normalize_erasing_regions(
                                 new_subst,
-                                cx.param_env,
+                                cx.typing_env(),
                                 bound_fn_sig.rebind(output_ty),
                             ) {
                                 expr = parent_expr;

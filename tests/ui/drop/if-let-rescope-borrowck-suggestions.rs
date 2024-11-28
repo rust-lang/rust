@@ -1,5 +1,5 @@
 //@ edition: 2024
-//@ compile-flags: -Z validate-mir -Zunstable-options
+//@ compile-flags: -Z validate-mir
 
 #![deny(if_let_rescope)]
 

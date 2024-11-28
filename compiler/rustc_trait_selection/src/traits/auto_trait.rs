@@ -7,10 +7,8 @@ use std::iter;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{Region, RegionVid};
 use tracing::debug;
-use ty::TypingMode;
 
 use super::*;
 use crate::errors::UnableToConstructConstantValue;
@@ -72,7 +70,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     pub fn find_auto_trait_generics<A>(
         &self,
         ty: Ty<'tcx>,
-        orig_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         trait_did: DefId,
         mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
@@ -80,7 +78,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_ref = ty::TraitRef::new(tcx, trait_did, [ty]);
 
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         let mut selcx = SelectionContext::new(&infcx);
         for polarity in [ty::PredicatePolarity::Positive, ty::PredicatePolarity::Negative] {
             let result = selcx.select(&Obligation::new(
@@ -90,17 +88,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::TraitPredicate { trait_ref, polarity },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
-                debug!(
-                    "find_auto_trait_generics({:?}): \
-                 manual impl found, bailing out",
-                    trait_ref
-                );
+                debug!("find_auto_trait_generics({trait_ref:?}): manual impl found, bailing out");
                 // If an explicit impl exists, it always takes priority over an auto impl
                 return AutoTraitResult::ExplicitImpl;
             }
         }
 
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         let mut fresh_preds = FxIndexSet::default();
 
         // Due to the way projections are handled by SelectionContext, we need to run
@@ -324,13 +318,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 elaborate(tcx, computed_preds.clone().chain(user_computed_preds.iter().cloned()));
             new_env = ty::ParamEnv::new(
                 tcx.mk_clauses_from_iter(normalized_preds.filter_map(|p| p.as_clause())),
-                param_env.reveal(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_clauses_from_iter(user_computed_preds.into_iter().filter_map(|p| p.as_clause())),
-            user_env.reveal(),
         );
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \
@@ -761,23 +753,20 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
                         if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match selcx.infcx.const_eval_resolve(
+                            let ct = super::try_evaluate_const(
+                                selcx.infcx,
+                                c,
                                 obligation.param_env,
-                                unevaluated,
-                                obligation.cause.span,
-                            ) {
-                                Ok(Ok(valtree)) => Ok(ty::Const::new_value(selcx.tcx(),valtree, self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args))),
-                                Ok(Err(_)) => {
-                                    let tcx = self.tcx;
-                                    let reported =
-                                        tcx.dcx().emit_err(UnableToConstructConstantValue {
-                                            span: tcx.def_span(unevaluated.def),
-                                            unevaluated,
-                                        });
-                                    Err(ErrorHandled::Reported(reported.into(), tcx.def_span(unevaluated.def)))
-                                }
-                                Err(err) => Err(err),
+                            );
+
+                            if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
+                                self.tcx.dcx().emit_err(UnableToConstructConstantValue {
+                                    span: self.tcx.def_span(unevaluated.def),
+                                    unevaluated,
+                                });
                             }
+
+                            ct
                         } else {
                             Ok(c)
                         }

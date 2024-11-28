@@ -1,5 +1,6 @@
 use std::cmp;
 
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
@@ -13,9 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode, Reg};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -378,20 +377,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // If there are two targets (one conditional, one fallback), emit `br` instead of
             // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llbb_with_cleanup(self, target);
-            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
+            let otherwise = targets.otherwise();
+            let lltarget = helper.llbb_with_cleanup(self, target);
+            let llotherwise = helper.llbb_with_cleanup(self, otherwise);
+            let target_cold = self.cold_blocks[target];
+            let otherwise_cold = self.cold_blocks[otherwise];
+            // If `target_cold == otherwise_cold`, the branches have the same weight
+            // so there is no expectation. If they differ, the `target` branch is expected
+            // when the `otherwise` branch is cold.
+            let expect = if target_cold == otherwise_cold { None } else { Some(otherwise_cold) };
             if switch_ty == bx.tcx().types.bool {
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr_value, llfalse, lltrue),
-                    1 => bx.cond_br(discr_value, lltrue, llfalse),
+                    0 => {
+                        let expect = expect.map(|e| !e);
+                        bx.cond_br_with_expect(discr_value, llotherwise, lltarget, expect);
+                    }
+                    1 => {
+                        bx.cond_br_with_expect(discr_value, lltarget, llotherwise, expect);
+                    }
                     _ => bug!(),
                 }
             } else {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
-                bx.cond_br(cmp, lltrue, llfalse);
+                bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
             }
         } else if self.cx.sess().opts.optimize == OptLevel::No
             && target_iter.len() == 2
@@ -766,7 +777,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let do_panic = !bx
                 .tcx()
-                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
                 .expect("expect to have layout during codegen");
 
             let layout = bx.layout_of(ty);
@@ -837,14 +848,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
                 Some(
-                    ty::Instance::expect_resolve(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        args,
-                        fn_span,
-                    )
-                    .polymorphize(bx.tcx()),
+                    ty::Instance::expect_resolve(bx.tcx(), bx.typing_env(), def_id, args, fn_span)
+                        .polymorphize(bx.tcx()),
                 ),
                 None,
             ),
@@ -977,7 +982,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         });
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
             let (tup, args) = args.split_last().unwrap();
             (args, Some(tup))
         } else {
@@ -1180,7 +1185,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
-                            ty::ParamEnv::reveal_all(),
+                            bx.typing_env(),
                             def_id,
                             args,
                         )

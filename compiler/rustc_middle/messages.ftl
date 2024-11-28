@@ -68,10 +68,13 @@ middle_deprecated_in_version = use of {$kind} `{$path}` that will be deprecated 
 middle_deprecated_suggestion = replace the use of the deprecated {$kind}
 
 middle_drop_check_overflow =
-    overflow while adding drop-check rules for {$ty}
-    .note = overflowed on {$overflow_ty}
+    overflow while adding drop-check rules for `{$ty}`
+    .note = overflowed on `{$overflow_ty}`
 
 middle_erroneous_constant = erroneous constant encountered
+
+middle_failed_writing_file =
+    failed to write file {$path}: {$error}"
 
 middle_layout_references_error =
     the type has an unknown layout

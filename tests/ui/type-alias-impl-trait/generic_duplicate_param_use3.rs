@@ -9,10 +9,9 @@ type Two<T, U> = impl Debug;
 
 fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
     t
-    //~^ ERROR `T` doesn't implement `Debug`
 }
 
 fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
     u
-    //~^ ERROR `U` doesn't implement `Debug`
+    //~^ ERROR concrete type differs
 }

@@ -1,13 +1,8 @@
 name: Remark
 
 on:
-  push:
-    branches:
-      - auto
-      - try
+  merge_group:
   pull_request:
-    paths:
-    - '**.md'
 
 jobs:
   remark:
@@ -45,28 +40,21 @@ jobs:
     - name: Build mdbook
       run: mdbook build book
 
-  # These jobs doesn't actually test anything, but they're only used to tell
-  # bors the build completed, as there is no practical way to detect when a
-  # workflow is successful listening to webhooks only.
-  #
-  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
-
-  end-success:
-    name: bors remark test finished
-    if: github.event.pusher.name == 'bors' && success()
+  conclusion_remark:
+    needs: [ remark ]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    #
+    # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [remark]
-
     steps:
-      - name: Mark the job as successful
-        run: exit 0
-
-  end-failure:
-    name: bors remark test finished
-    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
-    runs-on: ubuntu-latest
-    needs: [remark]
-
-    steps:
-      - name: Mark the job as a failure
-        run: exit 1
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'

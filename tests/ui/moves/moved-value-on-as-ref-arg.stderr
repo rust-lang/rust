@@ -8,7 +8,7 @@ LL |     foo(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider borrowing `bar`
    |
 LL |     foo(&bar);
    |         +
@@ -31,7 +31,7 @@ LL | struct Bar;
 ...
 LL |     qux(bar);
    |         --- you could clone this value
-help: borrow the value to avoid moving it
+help: consider mutably borrowing `bar`
    |
 LL |     qux(&mut bar);
    |         ++++
@@ -46,7 +46,7 @@ LL |     bat(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
-help: borrow the value to avoid moving it
+help: consider borrowing `bar`
    |
 LL |     bat(&bar);
    |         +
@@ -69,7 +69,7 @@ LL | struct Bar;
 ...
 LL |     baz(bar);
    |         --- you could clone this value
-help: borrow the value to avoid moving it
+help: consider mutably borrowing `bar`
    |
 LL |     baz(&mut bar);
    |         ++++

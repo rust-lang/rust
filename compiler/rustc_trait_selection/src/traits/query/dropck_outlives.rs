@@ -144,7 +144,14 @@ pub fn compute_dropck_outlives_inner<'tcx>(
             result.overflows.len(),
             ty_stack.len()
         );
-        dtorck_constraint_for_ty_inner(tcx, param_env, DUMMY_SP, depth, ty, &mut constraints)?;
+        dtorck_constraint_for_ty_inner(
+            tcx,
+            ocx.infcx.typing_env(param_env),
+            DUMMY_SP,
+            depth,
+            ty,
+            &mut constraints,
+        )?;
 
         // "outlives" represent types/regions that may be touched
         // by a destructor.
@@ -196,10 +203,10 @@ pub fn compute_dropck_outlives_inner<'tcx>(
 
 /// Returns a set of constraints that needs to be satisfied in
 /// order for `ty` to be valid for destruction.
-#[instrument(level = "debug", skip(tcx, param_env, span, constraints))]
+#[instrument(level = "debug", skip(tcx, typing_env, span, constraints))]
 pub fn dtorck_constraint_for_ty_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     span: Span,
     depth: usize,
     ty: Ty<'tcx>,
@@ -234,20 +241,20 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, *ety, constraints)
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, *ety, constraints)
             })?;
         }
 
         ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
-                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, ty, constraints)?;
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
             }
             Ok::<_, NoSolution>(())
         })?,
 
         ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in args.as_closure().upvar_tys() {
-                dtorck_constraint_for_ty_inner(tcx, param_env, span, depth + 1, ty, constraints)?;
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
             }
             Ok::<_, NoSolution>(())
         })?,
@@ -257,7 +264,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 for ty in args.as_coroutine_closure().upvar_tys() {
                     dtorck_constraint_for_ty_inner(
                         tcx,
-                        param_env,
+                        typing_env,
                         span,
                         depth + 1,
                         ty,
@@ -296,7 +303,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can check the actual
             // witness during borrowck to avoid unnecessary liveness constraints.
-            if args.witness().needs_drop(tcx, tcx.erase_regions(param_env)) {
+            if args.witness().needs_drop(tcx, tcx.erase_regions(typing_env)) {
                 constraints.outlives.extend(args.upvar_tys().iter().map(ty::GenericArg::from));
                 constraints.outlives.push(args.resume_ty().into());
             }

@@ -373,7 +373,6 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0)).is_benchmarking(), true);
     /// ```
     #[unstable(feature = "ip", issue = "27709")]
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[must_use]
     #[inline]
     pub const fn is_benchmarking(&self) -> bool {
@@ -1595,16 +1594,15 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
-    #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
+    #[stable(feature = "ipv6_is_unique_local", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
@@ -1666,8 +1664,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// // The loopback address (`::1`) does not actually have link-local scope.
@@ -1681,9 +1677,10 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    #[unstable(feature = "ip", issue = "27709")]
     #[must_use]
     #[inline]
+    #[stable(feature = "ipv6_is_unique_local", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ipv6_is_unique_local", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }

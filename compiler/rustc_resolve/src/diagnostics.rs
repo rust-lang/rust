@@ -35,7 +35,8 @@ use tracing::debug;
 
 use crate::errors::{
     self, AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion, ConsiderAddingADerive,
-    ExplicitUnsafeTraits, MacroDefinedLater, MacroSuggMovePosition, MaybeMissingMacroRulesName,
+    ExplicitUnsafeTraits, MacroDefinedLater, MacroRulesNot, MacroSuggMovePosition,
+    MaybeMissingMacroRulesName,
 };
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
@@ -535,14 +536,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         filter_fn: &impl Fn(Res) -> bool,
         ctxt: Option<SyntaxContext>,
     ) {
-        for (key, resolution) in self.resolutions(module).borrow().iter() {
-            if let Some(binding) = resolution.borrow().binding {
-                let res = binding.res();
-                if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
-                    names.push(TypoSuggestion::typo_from_ident(key.ident, res));
-                }
+        module.for_each_child(self, |_this, ident, _ns, binding| {
+            let res = binding.res();
+            if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == ident.span.ctxt()) {
+                names.push(TypoSuggestion::typo_from_ident(ident, res));
             }
-        }
+        });
     }
 
     /// Combines an error with provided span and emits it.
@@ -1475,8 +1474,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let scope = self.local_macro_def_scopes[&def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
             if Some(parent_nearest) == scope.opt_def_id() {
-                err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
-                err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                match macro_kind {
+                    MacroKind::Bang => {
+                        err.subdiagnostic(MacroDefinedLater { span: unused_ident.span });
+                        err.subdiagnostic(MacroSuggMovePosition { span: ident.span, ident });
+                    }
+                    MacroKind::Attr => {
+                        err.subdiagnostic(MacroRulesNot::Attr { span: unused_ident.span, ident });
+                    }
+                    MacroKind::Derive => {
+                        err.subdiagnostic(MacroRulesNot::Derive { span: unused_ident.span, ident });
+                    }
+                }
+
                 return;
             }
         }

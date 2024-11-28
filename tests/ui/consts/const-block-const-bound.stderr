@@ -1,25 +1,9 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-block-const-bound.rs:8:15
+error[E0277]: the trait bound `UnconstDrop: const Destruct` is not satisfied
+  --> $DIR/const-block-const-bound.rs:18:9
    |
-LL | const fn f<T: ~const Destruct>(x: T) {}
-   |               ^^^^^^
+LL |         f(UnconstDrop);
+   |         ^^^^^^^^^^^^^^
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-block-const-bound.rs:8:15
-   |
-LL | const fn f<T: ~const Destruct>(x: T) {}
-   |               ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+error: aborting due to 1 previous error
 
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-block-const-bound.rs:8:32
-   |
-LL | const fn f<T: ~const Destruct>(x: T) {}
-   |                                ^      - value is dropped here
-   |                                |
-   |                                the destructor for this type cannot be evaluated in constant functions
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0277`.

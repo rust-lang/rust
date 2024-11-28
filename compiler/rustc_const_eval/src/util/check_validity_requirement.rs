@@ -3,7 +3,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
-use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
 use crate::interpret::{InterpCx, MemoryKind};
@@ -23,16 +23,16 @@ use crate::interpret::{InterpCx, MemoryKind};
 pub fn check_validity_requirement<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
-    param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    input: PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    let layout = tcx.layout_of(param_env_and_ty)?;
+    let layout = tcx.layout_of(input)?;
 
     // There is nothing strict or lax about inhabitedness.
     if kind == ValidityRequirement::Inhabited {
         return Ok(!layout.is_uninhabited());
     }
 
-    let layout_cx = LayoutCx::new(tcx, param_env_and_ty.param_env);
+    let layout_cx = LayoutCx::new(tcx, input.typing_env);
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
         check_validity_requirement_strict(layout, &layout_cx, kind)
     } else {
@@ -49,7 +49,7 @@ fn check_validity_requirement_strict<'tcx>(
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let mut cx = InterpCx::new(cx.tcx(), rustc_span::DUMMY_SP, cx.param_env, machine);
+    let mut cx = InterpCx::new(cx.tcx(), rustc_span::DUMMY_SP, cx.typing_env, machine);
 
     let allocated = cx
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))

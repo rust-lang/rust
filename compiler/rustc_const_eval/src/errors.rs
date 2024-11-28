@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 use either::Either;
+use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
@@ -15,8 +16,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::WrappingRange;
-use rustc_target::abi::call::AdjustForForeignAbiError;
+use rustc_target::callconv::AdjustForForeignAbiError;
 
 use crate::interpret::InternKind;
 
@@ -173,6 +173,16 @@ pub(crate) struct MutableRawEscaping {
 pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
+    pub kind: ConstContext,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_conditionally_const_call)]
+pub(crate) struct ConditionallyConstCall {
+    #[primary_span]
+    pub span: Span,
+    pub def_path_str: String,
+    pub def_descr: &'static str,
     pub kind: ConstContext,
 }
 
@@ -401,7 +411,7 @@ pub struct LiveDrop<'tcx> {
     pub kind: ConstContext,
     pub dropped_ty: Ty<'tcx>,
     #[label(const_eval_dropped_at_label)]
-    pub dropped_at: Option<Span>,
+    pub dropped_at: Span,
 }
 
 #[derive(Diagnostic)]

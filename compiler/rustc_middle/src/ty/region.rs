@@ -56,7 +56,7 @@ impl<'tcx> Region<'tcx> {
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
-        if let ty::BoundRegion { var, kind: ty::BrAnon } = bound_region
+        if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
             && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
@@ -147,7 +147,7 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
     }
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
-        Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::BrAnon })
+        Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
     }
 
     fn new_static(tcx: TyCtxt<'tcx>) -> Self {
@@ -311,7 +311,7 @@ impl<'tcx> Region<'tcx> {
                 Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
             }
             ty::ReLateParam(ty::LateParamRegion {
-                bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
+                bound_region: ty::BoundRegionKind::Named(def_id, _),
                 ..
             }) => Some(def_id),
             _ => None,
@@ -355,7 +355,7 @@ impl std::fmt::Debug for EarlyParamRegion {
 /// Similar to a placeholder region as we create `LateParam` regions when entering a binder
 /// except they are always in the root universe and instead of using a boundvar to distinguish
 /// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
-/// should basically always be `BoundRegionKind::BrNamed` as otherwise there is no way of telling
+/// should basically always be `BoundRegionKind::Named` as otherwise there is no way of telling
 /// different parameters apart.
 pub struct LateParamRegion {
     pub scope: DefId,
@@ -366,17 +366,17 @@ pub struct LateParamRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon,
+    Anon,
 
     /// Named region parameters for functions (a in &'a T)
     ///
     /// The `DefId` is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, Symbol),
+    Named(DefId, Symbol),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
-    BrEnv,
+    ClosureEnv,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -399,9 +399,9 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundRegion {
 impl core::fmt::Debug for BoundRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
-            BoundRegionKind::BrAnon => write!(f, "{:?}", self.var),
-            BoundRegionKind::BrEnv => write!(f, "{:?}.Env", self.var),
-            BoundRegionKind::BrNamed(def, symbol) => {
+            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
+            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
+            BoundRegionKind::Named(def, symbol) => {
                 write!(f, "{:?}.Named({:?}, {:?})", self.var, def, symbol)
             }
         }
@@ -411,9 +411,7 @@ impl core::fmt::Debug for BoundRegion {
 impl BoundRegionKind {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegionKind::BrNamed(_, name) => {
-                name != kw::UnderscoreLifetime && name != kw::Empty
-            }
+            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime && name != kw::Empty,
             _ => false,
         }
     }
@@ -421,7 +419,7 @@ impl BoundRegionKind {
     pub fn get_name(&self) -> Option<Symbol> {
         if self.is_named() {
             match *self {
-                BoundRegionKind::BrNamed(_, name) => return Some(name),
+                BoundRegionKind::Named(_, name) => return Some(name),
                 _ => unreachable!(),
             }
         }
@@ -431,7 +429,7 @@ impl BoundRegionKind {
 
     pub fn get_id(&self) -> Option<DefId> {
         match *self {
-            BoundRegionKind::BrNamed(id, _) => Some(id),
+            BoundRegionKind::Named(id, _) => Some(id),
             _ => None,
         }
     }

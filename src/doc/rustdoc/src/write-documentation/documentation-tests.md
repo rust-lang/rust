@@ -360,7 +360,7 @@ are added.
 # fn foo() {}
 ```
 
-`edition2015`, `edition2018` and `edition2021` tell `rustdoc`
+`edition2015`, `edition2018`, `edition2021`, and `edition2024` tell `rustdoc`
 that the code sample should be compiled using the respective edition of Rust.
 
 ```rust

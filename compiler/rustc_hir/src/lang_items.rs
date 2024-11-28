@@ -241,6 +241,8 @@ language_item_table! {
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
     DerefPure,               sym::deref_pure,          deref_pure_trait,           Target::Trait,          GenericRequirement::Exact(0);
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
+    Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
+    ReceiverTarget,          sym::receiver_target,     receiver_target,            Target::AssocTy,        GenericRequirement::None;
     LegacyReceiver,          sym::legacy_receiver,     legacy_receiver_trait,      Target::Trait,          GenericRequirement::None;
 
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
@@ -347,9 +349,6 @@ language_item_table! {
     ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct,         GenericRequirement::None;
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
-
-    /// Align offset for stride != 1; must not panic.
-    AlignOffset,             sym::align_offset,        align_offset_fn,            Target::Fn,             GenericRequirement::None;
 
     Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
 

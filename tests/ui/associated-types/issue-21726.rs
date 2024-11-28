@@ -4,7 +4,6 @@
 // subtyping of projection types that resulted in an unconstrained
 // region, yielding region inference failures.
 
-//@ pretty-expanded FIXME #23616
 
 fn main() { }
 

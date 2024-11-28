@@ -463,8 +463,8 @@ impl Rewrite for ast::WherePredicate {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         // FIXME: dead spans?
-        let result = match *self {
-            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+        let result = match self.kind {
+            ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 ref bound_generic_params,
                 ref bounded_ty,
                 ref bounds,
@@ -482,12 +482,11 @@ impl Rewrite for ast::WherePredicate {
 
                 rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
             }
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+            ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
-                span,
-            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape)?,
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+            }) => rewrite_bounded_lifetime(lifetime, bounds, self.span, context, shape)?,
+            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
                 ..

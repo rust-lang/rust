@@ -1,5 +1,5 @@
-use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::{fmt, io};
 
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
@@ -16,6 +16,13 @@ pub struct DropCheckOverflow<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub overflow_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_failed_writing_file)]
+pub struct FailedWritingFile<'a> {
+    pub path: &'a Path,
+    pub error: io::Error,
 }
 
 #[derive(Diagnostic)]

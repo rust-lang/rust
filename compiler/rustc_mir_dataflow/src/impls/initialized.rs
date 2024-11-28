@@ -12,7 +12,7 @@ use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
     Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
-    drop_flag_effects_for_location, lattice, on_all_children_bits, on_lookup_result_bits,
+    drop_flag_effects_for_location, on_all_children_bits, on_lookup_result_bits,
 };
 
 /// `MaybeInitializedPlaces` tracks all places that might be
@@ -42,10 +42,10 @@ use crate::{
 /// }
 /// ```
 ///
-/// To determine whether a place *must* be initialized at a
-/// particular control-flow point, one can take the set-difference
-/// between this data and the data from `MaybeUninitializedPlaces` at the
-/// corresponding control-flow point.
+/// To determine whether a place is *definitely* initialized at a
+/// particular control-flow point, one can take the set-complement
+/// of the data from `MaybeUninitializedPlaces` at the corresponding
+/// control-flow point.
 ///
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedPlaces` yields the set of
@@ -117,10 +117,10 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 /// }
 /// ```
 ///
-/// To determine whether a place *must* be uninitialized at a
-/// particular control-flow point, one can take the set-difference
-/// between this data and the data from `MaybeInitializedPlaces` at the
-/// corresponding control-flow point.
+/// To determine whether a place is *definitely* uninitialized at a
+/// particular control-flow point, one can take the set-complement
+/// of the data from `MaybeInitializedPlaces` at the corresponding
+/// control-flow point.
 ///
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedPlaces` yields the set of
@@ -165,57 +165,6 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> {
-        self.move_data
-    }
-}
-
-/// `DefinitelyInitializedPlaces` tracks all places that are definitely
-/// initialized upon reaching a particular point in the control flow
-/// for a function.
-///
-/// For example, in code like the following, we have corresponding
-/// dataflow information shown in the right-hand comments.
-///
-/// ```rust
-/// struct S;
-/// fn foo(pred: bool) {                        // definite-init:
-///                                             // {          }
-///     let a = S; let mut b = S; let c; let d; // {a, b      }
-///
-///     if pred {
-///         drop(a);                            // {   b,     }
-///         b = S;                              // {   b,     }
-///
-///     } else {
-///         drop(b);                            // {a,        }
-///         d = S;                              // {a,       d}
-///
-///     }                                       // {          }
-///
-///     c = S;                                  // {       c  }
-/// }
-/// ```
-///
-/// To determine whether a place *may* be uninitialized at a
-/// particular control-flow point, one can take the set-complement
-/// of this data.
-///
-/// Similarly, at a given `drop` statement, the set-difference between
-/// this data and `MaybeInitializedPlaces` yields the set of places
-/// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedPlaces<'a, 'tcx> {
-    body: &'a Body<'tcx>,
-    move_data: &'a MoveData<'tcx>,
-}
-
-impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
-        DefinitelyInitializedPlaces { body, move_data }
-    }
-}
-
-impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> {
         self.move_data
     }
@@ -289,19 +238,6 @@ impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
         match state {
             DropFlagState::Absent => trans.gen_(path),
             DropFlagState::Present => trans.kill(path),
-        }
-    }
-}
-
-impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
-    fn update_bits(
-        trans: &mut <Self as Analysis<'tcx>>::Domain,
-        path: MovePathIndex,
-        state: DropFlagState,
-    ) {
-        match state {
-            DropFlagState::Absent => trans.kill(path),
-            DropFlagState::Present => trans.gen_(path),
         }
     }
 }
@@ -549,70 +485,6 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
                 enum_place,
                 variant,
                 |mpi| trans.gen_(mpi),
-            );
-        });
-    }
-}
-
-impl<'a, 'tcx> Analysis<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
-    /// Use set intersection as the join operator.
-    type Domain = lattice::Dual<BitSet<MovePathIndex>>;
-
-    const NAME: &'static str = "definite_init";
-
-    fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
-        // bottom = initialized (start_block_effect counters this at outset)
-        lattice::Dual(BitSet::new_filled(self.move_data().move_paths.len()))
-    }
-
-    // sets on_entry bits for Arg places
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        state.0.clear();
-
-        drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
-            assert!(s == DropFlagState::Present);
-            state.0.insert(path);
-        });
-    }
-
-    fn apply_statement_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _statement: &mir::Statement<'tcx>,
-        location: Location,
-    ) {
-        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(trans, path, s)
-        })
-    }
-
-    fn apply_terminator_effect<'mir>(
-        &mut self,
-        trans: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(trans, path, s)
-        });
-        terminator.edges()
-    }
-
-    fn apply_call_return_effect(
-        &mut self,
-        trans: &mut Self::Domain,
-        _block: mir::BasicBlock,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        return_places.for_each(|place| {
-            // when a call returns successfully, that means we need to set
-            // the bits for that dest_place to 1 (initialized).
-            on_lookup_result_bits(
-                self.move_data(),
-                self.move_data().rev_lookup.find(place.as_ref()),
-                |mpi| {
-                    trans.gen_(mpi);
-                },
             );
         });
     }

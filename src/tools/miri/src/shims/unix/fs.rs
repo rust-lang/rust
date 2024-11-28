@@ -8,8 +8,8 @@ use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::abi::Size;
 
 use self::fd::FlockOp;
 use self::shims::time::system_time_to_duration;
@@ -385,7 +385,7 @@ pub struct DirTable {
 }
 
 impl DirTable {
-    #[allow(clippy::arithmetic_side_effects)]
+    #[expect(clippy::arithmetic_side_effects)]
     fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
         let id = self.next_id;
         self.next_id += 1;

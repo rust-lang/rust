@@ -100,7 +100,10 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
+                    (
+                        Some(rbv::ResolvedArg::EarlyBound(id)),
+                        ty::BoundRegionKind::Named(def_id, _),
+                    ) => {
                         debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                         if id.to_def_id() == def_id {
                             return ControlFlow::Break(arg);
@@ -112,7 +115,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     // region at the right depth with the same index
                     (
                         Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)),
-                        ty::BrNamed(def_id, _),
+                        ty::BoundRegionKind::Named(def_id, _),
                     ) => {
                         debug!(
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
@@ -191,14 +194,17 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) -> Self::Result {
         match (self.tcx.named_bound_var(lifetime.hir_id), self.bound_region) {
             // the lifetime of the TyPath!
-            (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
+            (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BoundRegionKind::Named(def_id, _)) => {
                 debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                 if id.to_def_id() == def_id {
                     return ControlFlow::Break(());
                 }
             }
 
-            (Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)), ty::BrNamed(def_id, _)) => {
+            (
+                Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)),
+                ty::BoundRegionKind::Named(def_id, _),
+            ) => {
                 debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}", debruijn_index,);
                 debug!("id={:?}", id);
                 debug!("def_id={:?}", def_id);

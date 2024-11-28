@@ -1,6 +1,6 @@
 //@ run-pass
 //@ edition:2024
-//@ compile-flags: -Z validate-mir -Zunstable-options
+//@ compile-flags: -Z validate-mir
 
 #![feature(let_chains)]
 

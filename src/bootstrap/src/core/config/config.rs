@@ -28,6 +28,24 @@ use crate::utils::cache::{INTERNER, Interned};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, output, t};
 
+/// Each path in this list is considered "allowed" in the `download-rustc="if-unchanged"` logic.
+/// This means they can be modified and changes to these paths should never trigger a compiler build
+/// when "if-unchanged" is set.
+///
+/// NOTE: Paths must have the ":!" prefix to tell git to ignore changes in those paths during
+/// the diff check.
+///
+/// WARNING: Be cautious when adding paths to this list. If a path that influences the compiler build
+/// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
+/// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
+/// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
+#[rustfmt::skip] // We don't want rustfmt to oneline this list
+pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!src/tools",
+    ":!tests",
+    ":!triagebot.toml",
+];
+
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -263,8 +281,10 @@ pub struct Config {
     pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
-    pub rust_debug_assertions: bool,
-    pub rust_debug_assertions_std: bool,
+
+    pub rustc_debug_assertions: bool,
+    pub std_debug_assertions: bool,
+
     pub rust_overflow_checks: bool,
     pub rust_overflow_checks_std: bool,
     pub rust_debug_logging: bool,
@@ -276,7 +296,6 @@ pub struct Config {
     pub rust_strip: bool,
     pub rust_frame_pointers: bool,
     pub rust_stack_protector: Option<String>,
-    pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_dist_src: bool,
@@ -1115,9 +1134,9 @@ define_config! {
         debug: Option<bool> = "debug",
         codegen_units: Option<u32> = "codegen-units",
         codegen_units_std: Option<u32> = "codegen-units-std",
-        debug_assertions: Option<bool> = "debug-assertions",
+        rustc_debug_assertions: Option<bool> = "debug-assertions",
         randomize_layout: Option<bool> = "randomize-layout",
-        debug_assertions_std: Option<bool> = "debug-assertions-std",
+        std_debug_assertions: Option<bool> = "debug-assertions-std",
         overflow_checks: Option<bool> = "overflow-checks",
         overflow_checks_std: Option<bool> = "overflow-checks-std",
         debug_logging: Option<bool> = "debug-logging",
@@ -1222,7 +1241,6 @@ impl Config {
             bindir: "bin".into(),
             dist_include_mingw_linker: true,
             dist_compression_profile: "fast".into(),
-            rustc_parallel: true,
 
             stdout_is_tty: std::io::stdout().is_terminal(),
             stderr_is_tty: std::io::stderr().is_terminal(),
@@ -1236,6 +1254,10 @@ impl Config {
                 manifest_dir.parent().unwrap().parent().unwrap().to_owned()
             },
             out: PathBuf::from("build"),
+
+            // This is needed by codegen_ssa on macOS to ship `llvm-objcopy` aliased to
+            // `rust-objcopy` to workaround bad `strip`s on macOS.
+            llvm_tools_enabled: true,
 
             ..Default::default()
         }
@@ -1652,8 +1674,8 @@ impl Config {
         let mut llvm_offload = None;
         let mut llvm_plugins = None;
         let mut debug = None;
-        let mut debug_assertions = None;
-        let mut debug_assertions_std = None;
+        let mut rustc_debug_assertions = None;
+        let mut std_debug_assertions = None;
         let mut overflow_checks = None;
         let mut overflow_checks_std = None;
         let mut debug_logging = None;
@@ -1663,11 +1685,33 @@ impl Config {
         let mut debuginfo_level_tools = None;
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
-        let mut omit_git_hash = None;
         let mut lld_enabled = None;
         let mut std_features = None;
 
-        let mut is_user_configured_rust_channel = false;
+        let is_user_configured_rust_channel =
+            if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
+                config.channel = channel;
+                true
+            } else {
+                false
+            };
+
+        let default = config.channel == "dev";
+        config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
+
+        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
+        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
+        config.rust_analyzer_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
+        config.clippy_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
+        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
+        config.rustfmt_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
+        config.enzyme_info =
+            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
+        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
+        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -1675,8 +1719,8 @@ impl Config {
                 debug: debug_toml,
                 codegen_units,
                 codegen_units_std,
-                debug_assertions: debug_assertions_toml,
-                debug_assertions_std: debug_assertions_std_toml,
+                rustc_debug_assertions: rustc_debug_assertions_toml,
+                std_debug_assertions: std_debug_assertions_toml,
                 overflow_checks: overflow_checks_toml,
                 overflow_checks_std: overflow_checks_std_toml,
                 debug_logging: debug_logging_toml,
@@ -1690,14 +1734,14 @@ impl Config {
                 parallel_compiler,
                 randomize_layout,
                 default_linker,
-                channel,
+                channel: _, // already handled above
                 description,
                 musl_root,
                 rpath,
                 verbose_tests,
                 optimize_tests,
                 codegen_tests,
-                omit_git_hash: omit_git_hash_toml,
+                omit_git_hash: _, // already handled above
                 dist_src,
                 save_toolstates,
                 codegen_backends,
@@ -1727,15 +1771,41 @@ impl Config {
                 std_features: std_features_toml,
             } = rust;
 
-            is_user_configured_rust_channel = channel.is_some();
-            set(&mut config.channel, channel.clone());
+            // FIXME(#133381): alt rustc builds currently do *not* have rustc debug assertions
+            // enabled. We should not download a CI alt rustc if we need rustc to have debug
+            // assertions (e.g. for crashes test suite). This can be changed once something like
+            // [Enable debug assertions on alt
+            // builds](https://github.com/rust-lang/rust/pull/131077) lands.
+            //
+            // Note that `rust.debug = true` currently implies `rust.debug-assertions = true`!
+            //
+            // This relies also on the fact that the global default for `download-rustc` will be
+            // `false` if it's not explicitly set.
+            let debug_assertions_requested = matches!(rustc_debug_assertions_toml, Some(true))
+                || (matches!(debug_toml, Some(true))
+                    && !matches!(rustc_debug_assertions_toml, Some(false)));
 
-            config.download_rustc_commit =
-                config.download_ci_rustc_commit(download_rustc, config.llvm_assertions);
+            if debug_assertions_requested {
+                if let Some(ref opt) = download_rustc {
+                    if opt.is_string_or_true() {
+                        eprintln!(
+                            "WARN: currently no CI rustc builds have rustc debug assertions \
+                            enabled. Please either set `rust.debug-assertions` to `false` if you \
+                            want to use download CI rustc or set `rust.download-rustc` to `false`."
+                        );
+                    }
+                }
+            }
+
+            config.download_rustc_commit = config.download_ci_rustc_commit(
+                download_rustc,
+                debug_assertions_requested,
+                config.llvm_assertions,
+            );
 
             debug = debug_toml;
-            debug_assertions = debug_assertions_toml;
-            debug_assertions_std = debug_assertions_std_toml;
+            rustc_debug_assertions = rustc_debug_assertions_toml;
+            std_debug_assertions = std_debug_assertions_toml;
             overflow_checks = overflow_checks_toml;
             overflow_checks_std = overflow_checks_std_toml;
             debug_logging = debug_logging_toml;
@@ -1748,7 +1818,6 @@ impl Config {
             std_features = std_features_toml;
 
             optimize = optimize_toml;
-            omit_git_hash = omit_git_hash_toml;
             config.rust_new_symbol_mangling = new_symbol_mangling;
             set(&mut config.rust_optimize_tests, optimize_tests);
             set(&mut config.codegen_tests, codegen_tests);
@@ -1771,8 +1840,14 @@ impl Config {
 
             config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
-            config.rustc_parallel =
-                parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
+
+            // FIXME: Remove this option at the end of 2024.
+            if parallel_compiler.is_some() {
+                println!(
+                    "WARNING: The `rust.parallel-compiler` option is deprecated and does nothing. The parallel compiler (with one thread) is now the default"
+                );
+            }
+
             config.llvm_enzyme =
                 llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
@@ -1823,24 +1898,6 @@ impl Config {
         }
 
         config.reproducible_artifacts = flags.reproducible_artifact;
-
-        // rust_info must be set before is_ci_llvm_available() is called.
-        let default = config.channel == "dev";
-        config.omit_git_hash = omit_git_hash.unwrap_or(default);
-        config.rust_info = GitInfo::new(config.omit_git_hash, &config.src);
-
-        config.cargo_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/cargo"));
-        config.rust_analyzer_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rust-analyzer"));
-        config.clippy_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/clippy"));
-        config.miri_info = GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/miri"));
-        config.rustfmt_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/rustfmt"));
-        config.enzyme_info =
-            GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
-        config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
-        config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in config.toml,
@@ -2148,14 +2205,13 @@ impl Config {
         config.rust_std_features = std_features.unwrap_or(default_std_features);
 
         let default = debug == Some(true);
-        config.rust_debug_assertions = debug_assertions.unwrap_or(default);
-        config.rust_debug_assertions_std =
-            debug_assertions_std.unwrap_or(config.rust_debug_assertions);
+        config.rustc_debug_assertions = rustc_debug_assertions.unwrap_or(default);
+        config.std_debug_assertions = std_debug_assertions.unwrap_or(config.rustc_debug_assertions);
         config.rust_overflow_checks = overflow_checks.unwrap_or(default);
         config.rust_overflow_checks_std =
             overflow_checks_std.unwrap_or(config.rust_overflow_checks);
 
-        config.rust_debug_logging = debug_logging.unwrap_or(config.rust_debug_assertions);
+        config.rust_debug_logging = debug_logging.unwrap_or(config.rustc_debug_assertions);
 
         let with_defaults = |debuginfo_level_specific: Option<_>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
@@ -2751,6 +2807,7 @@ impl Config {
     fn download_ci_rustc_commit(
         &self,
         download_rustc: Option<StringOrBool>,
+        debug_assertions_requested: bool,
         llvm_assertions: bool,
     ) -> Option<String> {
         if !is_download_ci_available(&self.build.triple, llvm_assertions) {
@@ -2759,40 +2816,55 @@ impl Config {
 
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
+            // Globally default `download-rustc` to `false`, because some contributors don't use
+            // profiles for reasons such as:
+            // - They need to seamlessly switch between compiler/library work.
+            // - They don't want to use compiler profile because they need to override too many
+            //   things and it's easier to not use a profile.
             None | Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
+                if !self.rust_info.is_managed_git_subrepository() {
+                    println!(
+                        "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
+                    );
+                    crate::exit!(1);
+                }
+
+                true
+            }
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-rustc: {other}")
             }
         };
 
-        let mut files_to_track = vec!["compiler", "src/version", "src/stage0", "src/ci/channel"];
+        // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
+        let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
 
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, ignore
+        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
         // these changes to speed up the build process for library developers. This provides consistent
         // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
         // options.
-        if CiEnv::is_ci() {
-            files_to_track.push("library");
+        if !CiEnv::is_ci() {
+            allowed_paths.push(":!library");
         }
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit =
-            match self.last_modified_commit(&files_to_track, "download-rustc", if_unchanged) {
-                Some(commit) => commit,
-                None => {
-                    if if_unchanged {
-                        return None;
-                    }
-                    println!("ERROR: could not find commit hash for downloading rustc");
-                    println!("HELP: maybe your repository history is too shallow?");
-                    println!("HELP: consider disabling `download-rustc`");
-                    println!("HELP: or fetch enough history to include one upstream commit");
-                    crate::exit!(1);
+        let commit = match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged)
+        {
+            Some(commit) => commit,
+            None => {
+                if if_unchanged {
+                    return None;
                 }
-            };
+                println!("ERROR: could not find commit hash for downloading rustc");
+                println!("HELP: maybe your repository history is too shallow?");
+                println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                println!("HELP: or fetch enough history to include one upstream commit");
+                crate::exit!(1);
+            }
+        };
 
         if CiEnv::is_ci() && {
             let head_sha =
@@ -2803,6 +2875,14 @@ impl Config {
             eprintln!("CI rustc commit matches with HEAD and we are in CI.");
             eprintln!(
                 "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
+        }
+
+        if debug_assertions_requested {
+            eprintln!(
+                "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
+                rustc is not currently built with debug assertions."
             );
             return None;
         }
@@ -3075,8 +3155,8 @@ fn check_incompatible_options_for_ci_rustc(
         debug: _,
         codegen_units: _,
         codegen_units_std: _,
-        debug_assertions: _,
-        debug_assertions_std: _,
+        rustc_debug_assertions: _,
+        std_debug_assertions: _,
         overflow_checks: _,
         overflow_checks_std: _,
         debuginfo_level: _,

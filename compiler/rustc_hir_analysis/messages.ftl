@@ -253,6 +253,13 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
+hir_analysis_invalid_unsafe_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
+    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`
+
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
     .label = const parameter declared here
 
@@ -311,8 +318,8 @@ hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snip
 
 hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
     .note = default implementation of `{$missing_item_name}` is unstable
-    .some_note = use of unstable library feature '{$feature}': {$reason}
-    .none_note = use of unstable library feature '{$feature}'
+    .some_note = use of unstable library feature `{$feature}`: {$reason}
+    .none_note = use of unstable library feature `{$feature}`
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
@@ -424,6 +431,9 @@ hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
+hir_analysis_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
+
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
 hir_analysis_return_type_notation_equality_bound =
@@ -445,6 +455,11 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
     .suggestion = replace the return type so that it matches the trait
     .label = return type from trait method defined here
     .unmatched_bound_label = this bound is stronger than that defined on the trait
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+
+hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer lifetimes than in trait
+    .suggestion = modify the `use<..>` bound to capture the same lifetimes that the trait does
     .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
     .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 

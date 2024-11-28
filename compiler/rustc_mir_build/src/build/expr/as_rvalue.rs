@@ -33,14 +33,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_rvalue(block, Some(local_scope), expr_id)
+        self.as_rvalue(
+            block,
+            TempLifetime { temp_lifetime: Some(local_scope), backwards_incompatible: None },
+            expr_id,
+        )
     }
 
     /// Compile `expr`, yielding an rvalue.
     pub(crate) fn as_rvalue(
         &mut self,
         mut block: BasicBlock,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let this = self;
@@ -171,7 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     kind: StatementKind::StorageLive(result),
                 });
-                if let Some(scope) = scope {
+                if let Some(scope) = scope.temp_lifetime {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_drop_storage_and_value(expr_span, scope, result);
                 }
@@ -197,7 +201,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let layout = this.tcx.layout_of(this.param_env.and(source_expr.ty));
+                    let layout =
+                        this.tcx.layout_of(this.typing_env().as_query_input(source_expr.ty));
                     let discr = this.temp(discr_ty, source_expr.span);
                     this.cfg.push_assign(
                         block,
@@ -226,10 +231,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             if range.start <= range.end { BinOp::BitAnd } else { BinOp::BitOr };
 
                         let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
+                            // We can use `ty::TypingEnv::fully_monomorphized()`` here
+                            // as we only need it to compute the layout of a primitive.
                             let range_val = Const::from_bits(
                                 this.tcx,
                                 range,
-                                ty::ParamEnv::empty().and(unsigned_ty),
+                                ty::TypingEnv::fully_monomorphized(),
+                                unsigned_ty,
                             );
                             let lit_op = this.literal_operand(expr.span, range_val);
                             let is_bin_op = this.temp(bool_ty, expr_span);
@@ -441,7 +449,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         block = this.limit_capture_mutability(
                                             upvar_expr.span,
                                             upvar_expr.ty,
-                                            scope,
+                                            scope.temp_lifetime,
                                             block,
                                             arg,
                                         )
@@ -701,7 +709,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         value: ExprId,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         outer_source_info: SourceInfo,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let this = self;
@@ -812,9 +820,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let param_ty = ty::ParamEnv::empty().and(ty);
-        let size = self.tcx.layout_of(param_ty).unwrap().size;
-        let literal = Const::from_bits(self.tcx, size.unsigned_int_max(), param_ty);
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let size = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size;
+        let literal = Const::from_bits(self.tcx, size.unsigned_int_max(), typing_env, ty);
 
         self.literal_operand(span, literal)
     }
@@ -822,10 +830,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
-        let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let bits = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size.bits();
         let n = 1 << (bits - 1);
-        let literal = Const::from_bits(self.tcx, n, param_ty);
+        let literal = Const::from_bits(self.tcx, n, typing_env, ty);
 
         self.literal_operand(span, literal)
     }

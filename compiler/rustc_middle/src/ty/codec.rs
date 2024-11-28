@@ -10,12 +10,14 @@ use std::hash::Hash;
 use std::intrinsics;
 use std::marker::DiscriminantKind;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
+use rustc_span::source_map::Spanned;
 pub use rustc_type_ir::{TyDecoder, TyEncoder};
 
 use crate::arena::ArenaAllocatable;
@@ -172,7 +174,6 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for CtfeProvenance {
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
         self.caller_bounds().encode(e);
-        self.reveal().encode(e);
     }
 }
 
@@ -308,8 +309,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::SymbolName<'tcx>
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
-        let reveal = Decodable::decode(d);
-        ty::ParamEnv::new(caller_bounds, reveal)
+        ty::ParamEnv::new(caller_bounds)
     }
 }
 
@@ -389,6 +389,15 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [(ty::Claus
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     for [(ty::PolyTraitRef<'tcx>, Span)]
 {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        decoder
+            .interner()
+            .arena
+            .alloc_from_iter((0..decoder.read_usize()).map(|_| Decodable::decode(decoder)))
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [Spanned<MonoItem<'tcx>>] {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder
             .interner()

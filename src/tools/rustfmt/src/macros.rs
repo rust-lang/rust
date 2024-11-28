@@ -620,7 +620,7 @@ fn delim_token_to_str(
                 ("{ ", " }")
             }
         }
-        Delimiter::Invisible => unreachable!(),
+        Delimiter::Invisible(_) => unreachable!(),
     };
     if use_multiple_lines {
         let indent_str = shape.indent.to_string_with_newline(context.config);

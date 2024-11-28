@@ -24,7 +24,6 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
-use crate::html::format::visibility_to_src_with_space;
 
 #[cfg(test)]
 mod tests;
@@ -112,7 +111,6 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             return None;
         }
 
-        // Elide internal host effect args.
         let param = generics.param_at(index, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
@@ -201,35 +199,30 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    constraints: ThinVec<AssocItemConstraint>,
-    ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    mut constraints: ThinVec<AssocItemConstraint>,
+    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
-
-    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
-        let ty = ty_args
+    if cx.tcx.is_trait(did)
+        && cx.tcx.trait_def(did).paren_sugar
+        && let ty::Tuple(tys) = args.skip_binder().type_at(has_self as usize).kind()
+    {
+        let inputs = tys
             .iter()
-            .nth(if has_self { 1 } else { 0 })
-            .unwrap()
-            .map_bound(|arg| arg.expect_ty());
-        let inputs =
-            // The trait's first substitution is the one after self, if there is one.
-            match ty.skip_binder().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None, None)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), constraints },
-            };
-        let output = constraints.into_iter().next().and_then(|binding| match binding.kind {
-            AssocItemConstraintKind::Equality { term: Term::Type(ty) }
-                if ty != Type::Tuple(Vec::new()) =>
-            {
+            .map(|ty| clean_middle_ty(args.rebind(ty), cx, None, None))
+            .collect::<Vec<_>>()
+            .into();
+        let output = constraints.pop().and_then(|constraint| match constraint.kind {
+            AssocItemConstraintKind::Equality { term: Term::Type(ty) } if !ty.is_unit() => {
                 Some(Box::new(ty))
             }
             _ => None,
         });
-        GenericArgs::Parenthesized { inputs, output }
-    } else {
-        GenericArgs::AngleBracketed { args: args.into(), constraints }
+        return GenericArgs::Parenthesized { inputs, output };
     }
+
+    let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
+
+    GenericArgs::AngleBracketed { args: args.into(), constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
@@ -426,7 +419,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
         }
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let size = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                .unwrap()
+                .size;
             let sign_extended_data = int.assert_scalar_int().to_int(size);
             let mut output = if with_underscores {
                 format_integer_with_underscore_sep(&sign_extended_data.to_string())
@@ -599,7 +595,7 @@ pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
-pub(super) fn render_macro_arms<'a>(
+fn render_macro_arms<'a>(
     tcx: TyCtxt<'_>,
     matchers: impl Iterator<Item = &'a TokenTree>,
     arm_delim: &str,
@@ -620,9 +616,6 @@ pub(super) fn display_macro_source(
     cx: &mut DocContext<'_>,
     name: Symbol,
     def: &ast::MacroDef,
-    def_id: DefId,
-    vis: ty::Visibility<DefId>,
-    is_doc_hidden: bool,
 ) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
@@ -632,18 +625,13 @@ pub(super) fn display_macro_source(
     } else {
         if matchers.len() <= 1 {
             format!(
-                "{vis}macro {name}{matchers} {{\n    ...\n}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
+                "macro {name}{matchers} {{\n    ...\n}}",
                 matchers = matchers
                     .map(|matcher| render_macro_matcher(cx.tcx, matcher))
                     .collect::<String>(),
             )
         } else {
-            format!(
-                "{vis}macro {name} {{\n{arms}}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
-                arms = render_macro_arms(cx.tcx, matchers, ","),
-            )
+            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ","))
         }
     }
 }

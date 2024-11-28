@@ -19,6 +19,40 @@ impl<'a, T> Iter<'a, T> {
     pub(super) fn new(i1: slice::Iter<'a, T>, i2: slice::Iter<'a, T>) -> Self {
         Self { i1, i2 }
     }
+
+    /// Views the underlying data as a pair of subslices of the original data.
+    ///
+    /// The slices contain, in order, the contents of the deque not yet yielded
+    /// by the iterator.
+    ///
+    /// This has the same lifetime as the original `VecDeque`, and so the
+    /// iterator can continue to be used while this exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_iter_as_slices)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::new();
+    /// deque.push_back(0);
+    /// deque.push_back(1);
+    /// deque.push_back(2);
+    /// deque.push_front(10);
+    /// deque.push_front(9);
+    /// deque.push_front(8);
+    ///
+    /// let mut iter = deque.iter();
+    /// iter.next();
+    /// iter.next_back();
+    ///
+    /// assert_eq!(iter.as_slices(), (&[9, 10][..], &[0, 1][..]));
+    /// ```
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    pub fn as_slices(&self) -> (&'a [T], &'a [T]) {
+        (self.i1.as_slice(), self.i2.as_slice())
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

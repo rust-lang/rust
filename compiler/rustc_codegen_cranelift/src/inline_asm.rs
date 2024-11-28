@@ -47,7 +47,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
     if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
-        fx.bcx.ins().trap(TrapCode::User(1));
+        fx.bcx.ins().trap(TrapCode::user(2).unwrap());
         return;
     }
 
@@ -92,7 +92,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         def_id,
                         args,
                     )
@@ -137,7 +137,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
         }
         None => {
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
         }
     }
 }
@@ -227,18 +227,18 @@ pub(crate) fn codegen_naked_asm<'tcx>(
             InlineAsmOperand::Const { ref value } => {
                 let cv = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     ty::EarlyBinder::bind(value.const_),
                 );
                 let const_value = cv
-                    .eval(tcx, ty::ParamEnv::reveal_all(), value.span)
+                    .eval(tcx, ty::TypingEnv::fully_monomorphized(), value.span)
                     .expect("erroneous constant missed by mono item collection");
 
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     tcx,
                     span,
                     const_value,
-                    RevealAllLayoutCx(tcx).layout_of(cv.ty()),
+                    FullyMonomorphizedLayoutCx(tcx).layout_of(cv.ty()),
                 );
                 CInlineAsmOperand::Const { value }
             }
@@ -250,13 +250,13 @@ pub(crate) fn codegen_naked_asm<'tcx>(
 
                 let const_ = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     ty::EarlyBinder::bind(value.const_),
                 );
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         tcx,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         def_id,
                         args,
                     )
@@ -462,9 +462,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut slots_output = vec![None; self.operands.len()];
 
         let new_slot_fn = |slot_size: &mut Size, reg_class: InlineAsmRegClass| {
-            let reg_size =
-                reg_class.supported_types(self.arch).iter().map(|(ty, _)| ty.size()).max().unwrap();
-            let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
+            let reg_size = reg_class
+                .supported_types(self.arch, true)
+                .iter()
+                .map(|(ty, _)| ty.size())
+                .max()
+                .unwrap();
+            let align = rustc_abi::Align::from_bytes(reg_size.bytes()).unwrap();
             let offset = slot_size.align_to(align);
             *slot_size = offset + reg_size;
             offset

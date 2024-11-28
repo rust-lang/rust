@@ -10,7 +10,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing variant[] -> ImmBorrow
+note: Capturing variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:15:15
    |
 LL |         match variant {
@@ -28,7 +28,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[] -> ImmBorrow
+note: Min Capture variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:15:15
    |
 LL |         match variant {
@@ -68,12 +68,12 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing variant[] -> ImmBorrow
+note: Capturing variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
    |               ^^^^^^^
-note: Capturing variant[(0, 0)] -> ImmBorrow
+note: Capturing variant[(0, 0)] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
@@ -91,7 +91,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[] -> ImmBorrow
+note: Min Capture variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
@@ -142,7 +142,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing variant[] -> ImmBorrow
+note: Capturing variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
@@ -160,7 +160,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[] -> ImmBorrow
+note: Min Capture variant[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:133:15
    |
 LL |         match variant {
@@ -178,7 +178,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> ImmBorrow
+note: Capturing slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:151:15
    |
 LL |         match slice {
@@ -196,7 +196,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> ImmBorrow
+note: Min Capture slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:151:15
    |
 LL |         match slice {
@@ -214,7 +214,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> ImmBorrow
+note: Capturing slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:163:15
    |
 LL |         match slice {
@@ -232,7 +232,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> ImmBorrow
+note: Min Capture slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:163:15
    |
 LL |         match slice {
@@ -250,7 +250,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Capturing slice[] -> ImmBorrow
+note: Capturing slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:175:15
    |
 LL |         match slice {
@@ -268,7 +268,7 @@ LL | |         }
 LL | |     };
    | |_____^
    |
-note: Min Capture slice[] -> ImmBorrow
+note: Min Capture slice[] -> Immutable
   --> $DIR/patterns-capture-analysis.rs:175:15
    |
 LL |         match slice {

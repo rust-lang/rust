@@ -120,7 +120,7 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
+        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.typing_env)
     }
 }
 

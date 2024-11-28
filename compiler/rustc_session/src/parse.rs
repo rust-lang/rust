@@ -155,6 +155,7 @@ pub fn feature_warn_issue(
 }
 
 /// Adds the diagnostics for a feature to an existing error.
+/// Must be a language feature!
 pub fn add_feature_diagnostics<G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     sess: &Session,

@@ -6,7 +6,7 @@ use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
@@ -27,7 +27,7 @@ use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{
-    self, DeducedParamAttrs, ParameterizedOverTcx, ReprOptions, Ty, TyCtxt, UnusedGenericParams,
+    self, DeducedParamAttrs, ParameterizedOverTcx, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{mir, trivially_parameterized_over_tcx};
@@ -38,7 +38,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
-use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
@@ -213,7 +213,7 @@ pub(crate) struct ProcMacroData {
 /// If you do modify this struct, also bump the [`METADATA_VERSION`] constant.
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct CrateHeader {
-    pub(crate) triple: TargetTriple,
+    pub(crate) triple: TargetTuple,
     pub(crate) hash: Svh,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
@@ -391,7 +391,7 @@ define_tables! {
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
+    explicit_implied_const_bounds: Table<DefIndex, LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     associated_types_for_impl_traits_in_associated_fn: Table<DefIndex, LazyArray<DefId>>,
     opt_rpitit_info: Table<DefIndex, Option<LazyValue<ty::ImplTraitInTraitData>>>,
@@ -411,6 +411,7 @@ define_tables! {
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
     def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
+    safety: Table<DefIndex, hir::Safety>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
     lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,

@@ -9,10 +9,12 @@
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
 use itertools::Itertools;
+use rustc_abi::ExternAbi;
 use rustc_attr::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -23,7 +25,6 @@ use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, trace};
 
 use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
@@ -785,16 +786,20 @@ pub(crate) fn href_relative_parts<'fqp>(
             );
         }
     }
-    // e.g. linking to std::sync::atomic from std::sync
-    if relative_to_fqp.len() < fqp.len() {
-        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
-    // e.g. linking to std::sync from std::sync::atomic
-    } else if fqp.len() < relative_to_fqp.len() {
-        let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
-    // linking to the same module
-    } else {
-        Box::new(iter::empty())
+    match relative_to_fqp.len().cmp(&fqp.len()) {
+        Ordering::Less => {
+            // e.g. linking to std::sync::atomic from std::sync
+            Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
+        }
+        Ordering::Greater => {
+            // e.g. linking to std::sync from std::sync::atomic
+            let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
+            Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+        }
+        Ordering::Equal => {
+            // linking to the same module
+            Box::new(iter::empty())
+        }
     }
 }
 
@@ -1296,7 +1301,7 @@ impl clean::Impl {
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, ">")?;
                     } else {
-                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx).to_string())?;
+                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx))?;
                         self.print_type(inner_type, f, use_absolute, cx)?;
                         write!(f, "&gt;")?;
                     }
@@ -1384,7 +1389,7 @@ impl clean::Impl {
                 write!(f, ">")?;
             }
         } else {
-            fmt_type(&type_, f, use_absolute, cx)?;
+            fmt_type(type_, f, use_absolute, cx)?;
         }
         Ok(())
     }
@@ -1531,14 +1536,14 @@ impl clean::FnDecl {
                 (None, Some(last_i)) if i != last_i => write!(f, ", ")?,
                 (None, Some(_)) => (),
                 (Some(n), Some(last_i)) if i != last_i => write!(f, ",\n{}", Indent(n + 4))?,
-                (Some(_), Some(_)) => write!(f, ",\n")?,
+                (Some(_), Some(_)) => writeln!(f, ",")?,
             }
         }
 
         if self.c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
-                Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
+                Some(n) => writeln!(f, "{}...", Indent(n + 4))?,
             };
         }
 
@@ -1611,47 +1616,6 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        f.write_str(&vis)
-    })
-}
-
-/// This function is the same as print_with_space, except that it renders no links.
-/// It's used for macros' rendered source view, which is syntax highlighted and cannot have
-/// any HTML in it.
-pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
-    visibility: Option<ty::Visibility<DefId>>,
-    tcx: TyCtxt<'tcx>,
-    item_did: DefId,
-    is_doc_hidden: bool,
-) -> impl Display + 'a + Captures<'tcx> {
-    let vis: Cow<'static, str> = match visibility {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(tcx, item_did);
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                format!("pub(in {}) ", tcx.def_path_str(vis_did)).into()
-            }
-        }
-    };
-    display_fn(move |f| {
-        if is_doc_hidden {
-            f.write_str("#[doc(hidden)] ")?;
-        }
         f.write_str(&vis)
     })
 }
@@ -1787,11 +1751,11 @@ impl clean::AssocItemConstraint {
     }
 }
 
-pub(crate) fn print_abi_with_space(abi: Abi) -> impl Display {
+pub(crate) fn print_abi_with_space(abi: ExternAbi) -> impl Display {
     display_fn(move |f| {
         let quot = if f.alternate() { "\"" } else { "&quot;" };
         match abi {
-            Abi::Rust => Ok(()),
+            ExternAbi::Rust => Ok(()),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
         }
     })

@@ -7,6 +7,7 @@ use crate::*;
 #[derive(Debug)]
 pub enum IoError {
     LibcError(&'static str),
+    WindowsError(&'static str),
     HostError(io::Error),
     Raw(Scalar),
 }
@@ -113,6 +114,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let errno = match err.into() {
             HostError(err) => this.io_error_to_errnum(err)?,
             LibcError(name) => this.eval_libc(name),
+            WindowsError(name) => this.eval_windows("c", name),
             Raw(val) => val,
         };
         let errno_place = this.last_error_place()?;
@@ -186,7 +188,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// The inverse of `io_error_to_errnum`.
-    #[allow(clippy::needless_return)]
+    #[expect(clippy::needless_return)]
     fn try_errnum_to_io_error(
         &self,
         errnum: Scalar,

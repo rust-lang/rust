@@ -60,8 +60,8 @@ impl UnwindContext {
                 self.frame_table
                     .add_fde(self.cie_id.unwrap(), unwind_info.to_fde(address_for_func(func_id)));
             }
-            UnwindInfo::WindowsX64(_) => {
-                // FIXME implement this
+            UnwindInfo::WindowsX64(_) | UnwindInfo::WindowsArm64(_) => {
+                // Windows does not have debug info for its unwind info.
             }
             unwind_info => unimplemented!("{:?}", unwind_info),
         }

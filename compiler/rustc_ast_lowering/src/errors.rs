@@ -280,6 +280,14 @@ pub(crate) struct RegisterClassOnlyClobber {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_lowering_register_class_only_clobber_stable)]
+pub(crate) struct RegisterClassOnlyClobberStable {
+    #[primary_span]
+    pub op_span: Span,
+    pub reg_class_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_lowering_register_conflict)]
 pub(crate) struct RegisterConflict<'a> {
     #[primary_span]
@@ -450,4 +458,27 @@ pub(crate) struct YieldInClosure {
     pub span: Span,
     #[suggestion(code = "#[coroutine] ", applicability = "maybe-incorrect", style = "verbose")]
     pub suggestion: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_invalid_legacy_const_generic_arg)]
+pub(crate) struct InvalidLegacyConstGenericArg {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: UseConstGenericArg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    ast_lowering_invalid_legacy_const_generic_arg_suggestion,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UseConstGenericArg {
+    #[suggestion_part(code = "::<{const_args}>")]
+    pub end_of_fn: Span,
+    pub const_args: String,
+    pub other_args: String,
+    #[suggestion_part(code = "{other_args}")]
+    pub call_args: Span,
 }

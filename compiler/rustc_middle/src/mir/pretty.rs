@@ -4,6 +4,7 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
+use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{
     AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer, Provenance, alloc_range,
@@ -11,7 +12,6 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::graphviz::write_mir_fn_graphviz;
@@ -596,13 +596,15 @@ fn write_function_coverage_info(
     function_coverage_info: &coverage::FunctionCoverageInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { expressions, mappings, .. } = function_coverage_info;
+    let coverage::FunctionCoverageInfo { body_span, expressions, mappings, .. } =
+        function_coverage_info;
 
+    writeln!(w, "{INDENT}coverage body span: {body_span:?}")?;
     for (id, expression) in expressions.iter_enumerated() {
         writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
     }
-    for coverage::Mapping { kind, source_region } in mappings {
-        writeln!(w, "{INDENT}coverage {kind:?} => {source_region:?};")?;
+    for coverage::Mapping { kind, span } in mappings {
+        writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
     }
     writeln!(w)?;
 
@@ -762,32 +764,34 @@ where
 
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
-    let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    if options.include_extra_comments {
-        writeln!(
-            w,
-            "{:A$} // {}{}",
-            indented_terminator,
-            if tcx.sess.verbose_internals() {
-                format!("{current_location:?}: ")
-            } else {
-                String::new()
-            },
-            comment(tcx, data.terminator().source_info),
-            A = ALIGN,
-        )?;
-    } else {
-        writeln!(w, "{indented_terminator}")?;
-    }
+    if data.terminator.is_some() {
+        let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
+        if options.include_extra_comments {
+            writeln!(
+                w,
+                "{:A$} // {}{}",
+                indented_terminator,
+                if tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
+                comment(tcx, data.terminator().source_info),
+                A = ALIGN,
+            )?;
+        } else {
+            writeln!(w, "{indented_terminator}")?;
+        }
 
-    write_extra(
-        tcx,
-        w,
-        |visitor| {
-            visitor.visit_terminator(data.terminator(), current_location);
-        },
-        options,
-    )?;
+        write_extra(
+            tcx,
+            w,
+            |visitor| {
+                visitor.visit_terminator(data.terminator(), current_location);
+            },
+            options,
+        )?;
+    }
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;
     extra_data(PassWhere::AfterTerminator(block), w)?;
@@ -830,6 +834,11 @@ impl Debug for Statement<'_> {
             Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
+            BackwardIncompatibleDropHint { ref place, reason: _ } => {
+                // For now, we don't record the reason because there is only one use case,
+                // which is to report breaking change in drop order by Edition 2024
+                write!(fmt, "backward incompatible drop({place:?})")
+            }
         }
     }
 }

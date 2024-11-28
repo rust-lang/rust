@@ -313,6 +313,7 @@ macro_rules! optional {
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
+        use rustc_middle::ty::TyCtxt;
         use rustc_interface::{interface, Queries};
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
@@ -373,23 +374,21 @@ macro_rules! run_driver {
             fn after_analysis<'tcx>(
                 &mut self,
                 _compiler: &interface::Compiler,
-                queries: &'tcx Queries<'tcx>,
+                tcx: TyCtxt<'tcx>,
             ) -> Compilation {
-                queries.global_ctxt().unwrap().enter(|tcx| {
-                    if let Some(callback) = self.callback.take() {
-                        rustc_internal::run(tcx, || {
-                            self.result = Some(callback($(optional!($with_tcx tcx))?));
-                        })
-                        .unwrap();
-                        if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                            Compilation::Continue
-                        } else {
-                            Compilation::Stop
-                        }
-                    } else {
+                if let Some(callback) = self.callback.take() {
+                    rustc_internal::run(tcx, || {
+                        self.result = Some(callback($(optional!($with_tcx tcx))?));
+                    })
+                    .unwrap();
+                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
                         Compilation::Continue
+                    } else {
+                        Compilation::Stop
                     }
-                })
+                } else {
+                    Compilation::Continue
+                }
             }
         }
 

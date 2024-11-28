@@ -4,6 +4,7 @@
 
 use std::assert_matches::assert_matches;
 
+use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
@@ -11,7 +12,6 @@ use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_span::symbol::{Symbol, sym};
-use rustc_target::abi::Size;
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -34,7 +34,7 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
 /// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
 pub(crate) fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     def_id: DefId,
     args: GenericArgsRef<'tcx>,
 ) -> InterpResult<'tcx, ConstValue<'tcx>> {
@@ -48,11 +48,13 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
         }
         sym::needs_drop => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+            ConstValue::from_bool(tp_ty.needs_drop(tcx, typing_env))
         }
         sym::pref_align_of => {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
-            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(*e)))?;
+            let layout = tcx
+                .layout_of(typing_env.as_query_input(tp_ty))
+                .map_err(|e| err_inval!(Layout(*e)))?;
             ConstValue::from_target_usize(layout.align.pref.bytes(), &tcx)
         }
         sym::type_id => {
@@ -149,8 +151,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::type_name => Ty::new_static_str(self.tcx.tcx),
                     _ => bug!(),
                 };
-                let val =
-                    self.ctfe_query(|tcx| tcx.const_eval_global_id(self.param_env, gid, tcx.span))?;
+                let val = self
+                    .ctfe_query(|tcx| tcx.const_eval_global_id(self.typing_env, gid, tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
@@ -355,7 +357,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let should_panic = !self
                     .tcx
-                    .check_validity_requirement((requirement, self.param_env.and(ty)))
+                    .check_validity_requirement((requirement, self.typing_env.as_query_input(ty)))
                     .map_err(|_| err_inval!(TooGeneric))?;
 
                 if should_panic {

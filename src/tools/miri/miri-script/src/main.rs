@@ -2,6 +2,7 @@
 
 mod args;
 mod commands;
+mod coverage;
 mod util;
 
 use std::ops::Range;
@@ -34,6 +35,8 @@ pub enum Command {
         /// The cross-interpretation target.
         /// If none then the host is the target.
         target: Option<String>,
+        /// Produce coverage report if set.
+        coverage: bool,
         /// Flags that are passed through to the test harness.
         flags: Vec<String>,
     },
@@ -158,9 +161,12 @@ fn main() -> Result<()> {
             let mut target = None;
             let mut bless = false;
             let mut flags = Vec::new();
+            let mut coverage = false;
             loop {
                 if args.get_long_flag("bless")? {
                     bless = true;
+                } else if args.get_long_flag("coverage")? {
+                    coverage = true;
                 } else if let Some(val) = args.get_long_opt("target")? {
                     target = Some(val);
                 } else if let Some(flag) = args.get_other() {
@@ -169,7 +175,7 @@ fn main() -> Result<()> {
                     break;
                 }
             }
-            Command::Test { bless, flags, target }
+            Command::Test { bless, flags, target, coverage }
         }
         Some("run") => {
             let mut dep = false;

@@ -74,6 +74,8 @@ struct ConfigBuilder {
     git_hash: bool,
     system_llvm: bool,
     profiler_runtime: bool,
+    rustc_debug_assertions: bool,
+    std_debug_assertions: bool,
 }
 
 impl ConfigBuilder {
@@ -119,6 +121,16 @@ impl ConfigBuilder {
 
     fn profiler_runtime(&mut self, is_available: bool) -> &mut Self {
         self.profiler_runtime = is_available;
+        self
+    }
+
+    fn rustc_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.rustc_debug_assertions = is_enabled;
+        self
+    }
+
+    fn std_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_debug_assertions = is_enabled;
         self
     }
 
@@ -169,6 +181,12 @@ impl ConfigBuilder {
         }
         if self.profiler_runtime {
             args.push("--profiler-runtime".to_owned());
+        }
+        if self.rustc_debug_assertions {
+            args.push("--with-rustc-debug-assertions".to_owned());
+        }
+        if self.std_debug_assertions {
+            args.push("--with-std-debug-assertions".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -266,6 +284,30 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("9.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("10.6.2").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("19.0.0").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("19.1.2").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("20.0.0").build();
+    assert!(check_ignore(&config, "//@ max-llvm-major-version: 19"));
 }
 
 #[test]
@@ -312,6 +354,32 @@ fn only_target() {
     assert!(!check_ignore(&config, "//@ only-windows"));
     assert!(!check_ignore(&config, "//@ only-gnu"));
     assert!(!check_ignore(&config, "//@ only-64bit"));
+}
+
+#[test]
+fn rustc_debug_assertions() {
+    let config: Config = cfg().rustc_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+
+    let config: Config = cfg().rustc_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+}
+
+#[test]
+fn std_debug_assertions() {
+    let config: Config = cfg().std_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-std-debug-assertions"));
+
+    let config: Config = cfg().std_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
 }
 
 #[test]
@@ -583,10 +651,6 @@ fn wasm_special() {
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
         ("wasm32-unknown-emscripten", "wasm32-bare", false),
-        ("wasm32-wasi", "emscripten", false),
-        ("wasm32-wasi", "wasm32", true),
-        ("wasm32-wasi", "wasm32-bare", false),
-        ("wasm32-wasi", "wasi", true),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
         ("wasm32-wasip1", "wasm32-bare", false),

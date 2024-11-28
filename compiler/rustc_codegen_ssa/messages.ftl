@@ -2,6 +2,14 @@ codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not imp
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
+codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to AIX which is not guaranteed to work
+
+codegen_ssa_apple_deployment_target_invalid =
+    failed to parse deployment target specified in {$env_var}: {$error}
+
+codegen_ssa_apple_deployment_target_too_low =
+    deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
+
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
@@ -57,6 +65,9 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
+
+codegen_ssa_forbidden_target_feature_attr =
+    target feature `{$feature}` cannot be toggled with `#[target_feature]`: {$reason}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 

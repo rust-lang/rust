@@ -1,9 +1,6 @@
 const_eval_address_space_full =
     there are no more free addresses in the address space
 
-const_eval_align_offset_invalid_align =
-    `align_offset` called with non-power-of-two align: {$target_align}
-
 const_eval_alignment_check_failed =
     {$msg ->
      [AccessedPtr] accessing memory
@@ -28,6 +25,10 @@ const_eval_closure_fndef_not_const =
     function defined here, but it is not `const`
 const_eval_closure_non_const =
     cannot call non-const closure in {const_eval_const_context}s
+
+const_eval_conditionally_const_call =
+    cannot call conditionally-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
+
 const_eval_consider_dereferencing =
     consider dereferencing here
 
@@ -402,7 +403,7 @@ const_eval_uninhabited_enum_variant_written =
 const_eval_unmarked_const_fn_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
     .help = either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
 const_eval_unmarked_intrinsic_exposed = intrinsic `{$def_path}` cannot be (indirectly) exposed to stable
-    .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_const_stable_indirect]` (but this requires team approval)
+    .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 const_eval_unreachable = entering unreachable code
 const_eval_unreachable_unwind =

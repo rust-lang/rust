@@ -3,6 +3,8 @@ use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_uint};
 use std::str;
 
+use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -13,7 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -23,7 +25,6 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -153,6 +154,11 @@ pub(crate) unsafe fn create_module<'ll>(
             // See https://github.com/llvm/llvm-project/pull/106951
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
+        if sess.target.arch.starts_with("mips64") {
+            // LLVM 20 updates the mips64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/112084
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -182,7 +188,7 @@ pub(crate) unsafe fn create_module<'ll>(
         llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
     }
 
-    let llvm_target = SmallCStr::new(&sess.target.llvm_target);
+    let llvm_target = SmallCStr::new(&versioned_llvm_target(sess));
     unsafe {
         llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     }
@@ -268,8 +274,12 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
-    // Control Flow Guard is currently only supported by the MSVC linker on Windows.
-    if sess.target.is_like_msvc {
+    // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
+    if sess.target.is_like_msvc
+        || (sess.target.options.os == "windows"
+            && sess.target.options.env == "gnu"
+            && sess.target.options.abi == "llvm")
+    {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
@@ -307,7 +317,13 @@ pub(crate) unsafe fn create_module<'ll>(
                 "sign-return-address",
                 pac_ret.is_some().into(),
             );
-            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
+            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Min,
+                "branch-protection-pauth-lr",
+                pac_opts.pc.into(),
+            );
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,
@@ -642,7 +658,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if name.is_none() => self.get_fn_addr(ty::Instance::expect_resolve(
                 tcx,
-                ty::ParamEnv::reveal_all(),
+                self.typing_env(),
                 def_id,
                 ty::List::empty(),
                 DUMMY_SP,
@@ -1146,9 +1162,9 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for CodegenCx<'_, 'tcx> {
     }
 }
 
-impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::reveal_all()
+impl<'tcx, 'll> HasTypingEnv<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 

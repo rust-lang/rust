@@ -99,9 +99,8 @@ impl RawEmitter {
 
         writeln!(
             &mut self.file,
-            r#"#[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]"#
-        )
-        .unwrap();
+            r#"#[cfg_attr(bootstrap, rustc_const_stable(feature = "const_unicode_case_lookup", since = "1.84.0"))]"#
+        ).unwrap();
         writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
         if first_code_point > 0x7f {
             writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} &&").unwrap();

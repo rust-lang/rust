@@ -15,7 +15,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_type_ir::TypingMode;
 use rustc_type_ir::solve::{Certainty, NoSolution};
 
-use crate::traits::specialization_graph;
+use crate::traits::{EvaluateConstErr, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -77,20 +77,19 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.leak_check(max_input_universe, None).map_err(|_| NoSolution)
     }
 
-    fn try_const_eval_resolve(
+    fn evaluate_const(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
+        uv: ty::UnevaluatedConst<'tcx>,
     ) -> Option<ty::Const<'tcx>> {
-        use rustc_middle::mir::interpret::ErrorHandled;
-        match self.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            Ok(Ok(val)) => Some(ty::Const::new_value(
-                self.tcx,
-                val,
-                self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
-            )),
-            Ok(Err(_)) | Err(ErrorHandled::TooGeneric(_)) => None,
-            Err(ErrorHandled::Reported(e, _)) => Some(ty::Const::new_error(self.tcx, e.into())),
+        let ct = ty::Const::new_unevaluated(self.tcx, uv);
+
+        match crate::traits::try_evaluate_const(&self.0, ct, param_env) {
+            Ok(ct) => Some(ct),
+            Err(EvaluateConstErr::EvaluationFailure(e)) => Some(ty::Const::new_error(self.tcx, e)),
+            Err(
+                EvaluateConstErr::InvalidConstParamTy(_) | EvaluateConstErr::HasGenericsOrInfers,
+            ) => None,
         }
     }
 
@@ -205,7 +204,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // and the obligation is monomorphic, otherwise passes such as
             // transmute checking and polymorphic MIR optimizations could
             // get a result which isn't correct for all monomorphizations.
-            match self.typing_mode_unchecked() {
+            match self.typing_mode() {
                 TypingMode::Coherence | TypingMode::Analysis { .. } => false,
                 TypingMode::PostAnalysis => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);

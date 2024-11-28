@@ -16,9 +16,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_next_trait_solver = { path = "../rustc_next_trait_solver" }
 rustc_span = { path = "../rustc_span" }
-rustc_target = { path = "../rustc_target" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"

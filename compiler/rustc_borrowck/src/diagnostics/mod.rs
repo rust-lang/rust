@@ -1,5 +1,6 @@
 //! Borrow checker diagnostics.
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
@@ -21,7 +22,6 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -763,7 +763,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     }
 }
 
-///helper struct for explain_captures()
+/// Helper struct for `explain_captures`.
 struct CapturedMessageOpt {
     is_partial_move: bool,
     is_loop_message: bool,
@@ -864,7 +864,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let kind = call_kind(
                 self.infcx.tcx,
-                self.param_env,
+                self.infcx.typing_env(self.infcx.param_env),
                 method_did,
                 method_args,
                 *fn_span,
@@ -1062,8 +1062,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && let spans = hir_generics
                             .predicates
                             .iter()
-                            .filter_map(|pred| match pred {
-                                hir::WherePredicate::BoundPredicate(pred) => Some(pred),
+                            .filter_map(|pred| match pred.kind {
+                                hir::WherePredicateKind::BoundPredicate(pred) => Some(pred),
                                 _ => None,
                             })
                             .filter(|pred| {
@@ -1160,7 +1160,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
                                 self.infcx,
-                                self.param_env,
+                                self.infcx.param_env,
                                 Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
                                 def_id,
                             ),
@@ -1224,7 +1224,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 BoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
                             )
-                            && self.infcx.can_eq(self.param_env, ty, self_ty)
+                            && self.infcx.can_eq(self.infcx.param_env, ty, self_ty)
                         {
                             err.subdiagnostic(CaptureReasonSuggest::FreshReborrow {
                                 span: move_span.shrink_to_hi(),
@@ -1258,7 +1258,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             if let Some(errors) = self.infcx.type_implements_trait_shallow(
                                 clone_trait,
                                 ty,
-                                self.param_env,
+                                self.infcx.param_env,
                             ) && !has_sugg
                             {
                                 let msg = match &errors[..] {

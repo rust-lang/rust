@@ -42,7 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Generate better code for things that don't need to be
                 // dropped.
-                if lhs_expr.ty.needs_drop(this.tcx, this.param_env) {
+                if lhs_expr.ty.needs_drop(this.tcx, this.typing_env()) {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
                     block =
@@ -172,8 +172,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 };
 
-                let temp =
-                    unpack!(block = this.as_temp(block, statement_scope, expr_id, Mutability::Not));
+                let temp = unpack!(
+                    block = this.as_temp(
+                        block,
+                        TempLifetime {
+                            temp_lifetime: statement_scope,
+                            backwards_incompatible: None
+                        },
+                        expr_id,
+                        Mutability::Not
+                    )
+                );
 
                 if let Some(span) = adjusted_span {
                     this.local_decls[temp].source_info.span = span;

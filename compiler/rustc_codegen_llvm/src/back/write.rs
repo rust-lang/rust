@@ -9,6 +9,7 @@ use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
 use rustc_codegen_ssa::back::link::ensure_removed;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
@@ -211,7 +212,7 @@ pub(crate) fn target_machine_factory(
         singlethread = false;
     }
 
-    let triple = SmallCStr::new(&sess.target.llvm_target);
+    let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
@@ -591,7 +592,6 @@ pub(crate) unsafe fn llvm_optimize(
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.instrument_coverage,
             instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
-            config.instrument_gcov,
             pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             config.debug_info_for_profiling,
             llvm_selfprofiler,
@@ -945,47 +945,17 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
     asm
 }
 
-fn target_is_apple(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    let triple = cgcx.opts.target_triple.triple();
-    triple.contains("-ios")
-        || triple.contains("-darwin")
-        || triple.contains("-tvos")
-        || triple.contains("-watchos")
-        || triple.contains("-visionos")
-}
-
-fn target_is_aix(cgcx: &CodegenContext<LlvmCodegenBackend>) -> bool {
-    cgcx.opts.target_triple.triple().contains("-aix")
-}
-
 pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) -> &'static CStr {
-    if target_is_apple(cgcx) {
+    if cgcx.target_is_like_osx {
         c"__LLVM,__bitcode"
-    } else if target_is_aix(cgcx) {
+    } else if cgcx.target_is_like_aix {
         c".ipa"
     } else {
         c".llvmbc"
     }
 }
 
-/// Embed the bitcode of an LLVM module in the LLVM module itself.
-///
-/// This is done primarily for iOS where it appears to be standard to compile C
-/// code at least with `-fembed-bitcode` which creates two sections in the
-/// executable:
-///
-/// * __LLVM,__bitcode
-/// * __LLVM,__cmdline
-///
-/// It appears *both* of these sections are necessary to get the linker to
-/// recognize what's going on. A suitable cmdline value is taken from the
-/// target spec.
-///
-/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
-/// embed an empty section.
-///
-/// Basically all of this is us attempting to follow in the footsteps of clang
-/// on iOS. See #35968 for lots more info.
+/// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
 unsafe fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
@@ -1028,10 +998,12 @@ unsafe fn embed_bitcode(
     // Unfortunately, LLVM provides no way to set custom section flags. For ELF
     // and COFF we emit the sections using module level inline assembly for that
     // reason (see issue #90326 for historical background).
-    let is_aix = target_is_aix(cgcx);
-    let is_apple = target_is_apple(cgcx);
     unsafe {
-        if is_apple || is_aix || cgcx.opts.target_triple.triple().starts_with("wasm") {
+        if cgcx.target_is_like_osx
+            || cgcx.target_is_like_aix
+            || cgcx.target_arch == "wasm32"
+            || cgcx.target_arch == "wasm64"
+        {
             // We don't need custom section flags, create LLVM globals.
             let llconst = common::bytes_in_context(llcx, bitcode);
             let llglobal = llvm::LLVMAddGlobal(
@@ -1052,9 +1024,9 @@ unsafe fn embed_bitcode(
                 c"rustc.embedded.cmdline".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
-            let section = if is_apple {
+            let section = if cgcx.target_is_like_osx {
                 c"__LLVM,__cmdline"
-            } else if is_aix {
+            } else if cgcx.target_is_like_aix {
                 c".info"
             } else {
                 c".llvmcmd"

@@ -4,7 +4,7 @@ warning: this function depends on never type fallback being `()`
 LL | fn def() {
    | ^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
@@ -13,6 +13,10 @@ note: in edition 2024, the requirement `!: Default` will fail
 LL |         false => <_>::default(),
    |                   ^
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+help: use `()` annotations to avoid fallback changes
+   |
+LL |         false => <()>::default(),
+   |                   ~~
 
 warning: this function depends on never type fallback being `()`
   --> $DIR/dependency-on-fallback-to-unit.rs:19:1
@@ -20,7 +24,7 @@ warning: this function depends on never type fallback being `()`
 LL | fn question_mark() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
@@ -28,6 +32,10 @@ note: in edition 2024, the requirement `!: Default` will fail
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
+help: use `()` annotations to avoid fallback changes
+   |
+LL |     deserialize::<()>()?;
+   |                ++++++
 
 warning: 2 warnings emitted
 

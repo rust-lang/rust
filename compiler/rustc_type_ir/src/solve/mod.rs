@@ -10,54 +10,6 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
-/// Depending on the stage of compilation, we want projection to be
-/// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
-pub enum Reveal {
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```compile_fail,E0308
-    /// #![feature(specialization)]
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let x: <() as Assoc>::Output = true;
-    /// }
-    /// ```
-    ///
-    /// We also do not reveal the hidden type of opaque types during
-    /// type-checking.
-    UserFacing,
-
-    /// At codegen time, all monomorphic projections will succeed.
-    /// Also, `impl Trait` is normalized to the concrete type,
-    /// which has to be already collected by type-checking.
-    ///
-    /// NOTE: as `impl Trait`'s concrete type should *never*
-    /// be observable directly by the user, `Reveal::All`
-    /// should not be used by checks which may expose
-    /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around auto traits and
-    /// transmute-checking, which expose some details, but
-    /// not the whole concrete type of the `impl Trait`.
-    All,
-}
-
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
     ty::CanonicalQueryInput<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
@@ -325,4 +277,11 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
+}
+
+/// Indicates that a `impl Drop for Adt` is `const` or not.
+#[derive(Debug)]
+pub enum AdtDestructorKind {
+    NotConst,
+    Const,
 }

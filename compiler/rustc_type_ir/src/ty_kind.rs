@@ -41,7 +41,7 @@ pub enum AliasTyKind {
     /// An associated type in an inherent `impl`
     Inherent,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
-    /// Can only be normalized away in RevealAll mode
+    /// Can only be normalized away in PostAnalysis mode or its defining scope.
     Opaque,
     /// A type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.

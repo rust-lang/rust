@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::{fmt, iter};
 
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -15,8 +16,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_target::spec::abi::Abi;
 use tracing::{debug, instrument};
 
 use crate::{
@@ -142,7 +141,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
     // We don't validate MIR here because the shims may generate code that's
-    // only valid in a reveal-all param-env. However, since we do initial
+    // only valid in a `PostAnalysis` param-env. However, since we do initial
     // validation with the MirBuilt phase, which uses a user-facing param-env.
     // This causes validation errors when TAITs are involved.
     pm::run_passes_no_validate(
@@ -275,9 +274,9 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     if ty.is_some() {
         let patch = {
-            let param_env = tcx.param_env_reveal_all_normalized(def_id);
+            let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator =
-                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
+                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, typing_env };
             let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
@@ -335,7 +334,7 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -356,8 +355,8 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -905,7 +904,7 @@ fn build_call_shim<'tcx>(
     let mut body =
         new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
 
-    if let Abi::RustCall = sig.abi {
+    if let ExternAbi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
 
@@ -915,7 +914,7 @@ fn build_call_shim<'tcx>(
 pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let param_env = tcx.param_env_reveal_all_normalized(ctor_id);
+    let typing_env = ty::TypingEnv::post_analysis(tcx, ctor_id);
 
     // Normalize the sig.
     let sig = tcx
@@ -923,7 +922,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         .instantiate_identity()
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
-    let sig = tcx.normalize_erasing_regions(param_env, sig);
+    let sig = tcx.normalize_erasing_regions(typing_env, sig);
 
     let ty::Adt(adt_def, args) = sig.output().kind() else {
         bug!("unexpected type for ADT ctor {:?}", sig.output());

@@ -130,7 +130,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 {
                     suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                 } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
-                    // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                    // We can use `var_or_use_span` if either `path_span` is not present, or both
+                    // spans are the same.
                     if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
@@ -165,7 +166,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
-                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                // We can use `var_or_use_span` if either `path_span` is not present, or both spans
+                // are the same.
                 if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
                     err.span_label(var_or_use_span, format!("{borrow_desc}{message}"));
                 } else {
@@ -285,7 +287,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 span: _,
                                 pat,
                                 init,
-                                // FIXME(#101728): enable rewrite when type ascription is stabilized again
+                                // FIXME(#101728): enable rewrite when type ascription is
+                                // stabilized again.
                                 ty: None,
                                 recovered: _,
                             }) = cond.kind
@@ -353,8 +356,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
-            // We try to elaborate the object lifetime defaults and present those to the user. This should
-            // make it clear where the region constraint is coming from.
+            // We try to elaborate the object lifetime defaults and present those to the user. This
+            // should make it clear where the region constraint is coming from.
             let generics = tcx.generics_of(def.did());
 
             let mut has_dyn = false;
@@ -531,9 +534,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mut use_in_later_iteration_of_loop = false;
 
         if region_sub == borrow_region_vid {
-            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow is
-            // issued is the same location that invalidates the reference), this is likely a loop iteration
-            // - in this case, try using the loop terminator location in `find_sub_region_live_at`.
+            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow
+            // is issued is the same location that invalidates the reference), this is likely a
+            // loop iteration. In this case, try using the loop terminator location in
+            // `find_sub_region_live_at`.
             if let Some(loop_terminator_location) =
                 regioncx.find_loop_terminator_location(borrow.region, body)
             {

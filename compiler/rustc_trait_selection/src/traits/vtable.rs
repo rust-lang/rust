@@ -9,8 +9,7 @@ use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, TypingMode, Upcast,
-    VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };
 use rustc_span::{DUMMY_SP, Span, sym};
 use smallvec::{SmallVec, smallvec};
@@ -276,8 +275,10 @@ fn vtable_entries<'tcx>(
                     // The trait type may have higher-ranked lifetimes in it;
                     // erase them if they appear, so that we get the type
                     // at some particular call site.
-                    let args =
-                        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), args);
+                    let args = tcx.normalize_erasing_late_bound_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        args,
+                    );
 
                     // It's possible that the method relies on where-clauses that
                     // do not hold for this particular set of type parameters.
@@ -294,7 +295,7 @@ fn vtable_entries<'tcx>(
 
                     let instance = ty::Instance::expect_resolve_for_vtable(
                         tcx,
-                        ty::ParamEnv::reveal_all(),
+                        ty::TypingEnv::fully_monomorphized(),
                         def_id,
                         args,
                         DUMMY_SP,
@@ -440,8 +441,8 @@ fn trait_refs_are_compatible<'tcx>(
         return false;
     }
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::PostAnalysis);
-    let param_env = ty::ParamEnv::reveal_all();
+    let (infcx, param_env) =
+        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
     let ocx = ObligationCtxt::new(&infcx);
     let hr_source_principal =
         ocx.normalize(&ObligationCause::dummy(), param_env, hr_vtable_principal);

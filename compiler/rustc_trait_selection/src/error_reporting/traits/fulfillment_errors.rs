@@ -6,8 +6,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Suggestions, pluralize,
-    struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
+    pluralize, struct_span_code_err,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -328,6 +328,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         } else if let Some(custom_explanation) = safe_transmute_explanation {
                             err.span_label(span, custom_explanation);
+                        } else if explanation.len() > self.tcx.sess.diagnostic_width() {
+                            // Really long types don't look good as span labels, instead move it
+                            // to a `help`.
+                            err.span_label(span, "unsatisfied trait bound");
+                            err.help(explanation);
                         } else {
                             err.span_label(span, explanation);
                         }
@@ -466,6 +471,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
 
                         self.try_to_add_help_message(
+                            &root_obligation,
                             &obligation,
                             leaf_trait_predicate,
                             &mut err,
@@ -533,7 +539,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        // FIXME(effects): We should recompute the predicate with `~const`
+                        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
                         // if it's `const`, and if it holds, explain that this bound only
                         // *conditionally* holds. If that fails, we should also do selection
                         // to drill this down to an impl or built-in source, so we can
@@ -719,7 +725,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     &obligation.cause,
                     None,
                     None,
-                    TypeError::Sorts(ty::error::ExpectedFound::new(true, expected_ty, ct_ty)),
+                    TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
                     false,
                 );
                 diag
@@ -1443,7 +1449,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 secondary_span,
                 values.map(|(_, normalized_ty, expected_ty)| {
                     obligation.param_env.and(infer::ValuePairs::Terms(ExpectedFound::new(
-                        true,
                         expected_ty,
                         normalized_ty,
                     )))
@@ -1701,15 +1706,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // one crate version and the type comes from another crate version, even though they both
         // are from the same crate.
         let trait_def_id = trait_ref.def_id();
-        if let ty::Adt(def, _) = trait_ref.self_ty().skip_binder().peel_refs().kind()
-            && let found_type = def.did()
-            && trait_def_id.krate != found_type.krate
-            && self.tcx.crate_name(trait_def_id.krate) == self.tcx.crate_name(found_type.krate)
-        {
-            let name = self.tcx.crate_name(trait_def_id.krate);
-            let spans: Vec<_> = [trait_def_id, found_type]
-                .into_iter()
-                .filter(|def_id| def_id.krate != LOCAL_CRATE)
+        let trait_name = self.tcx.item_name(trait_def_id);
+        let crate_name = self.tcx.crate_name(trait_def_id.krate);
+        if let Some(other_trait_def_id) = self.tcx.all_traits().find(|def_id| {
+            trait_name == self.tcx.item_name(trait_def_id)
+                && trait_def_id.krate != def_id.krate
+                && crate_name == self.tcx.crate_name(def_id.krate)
+        }) {
+            // We've found two different traits with the same name, same crate name, but
+            // different crate `DefId`. We highlight the traits.
+
+            let found_type =
+                if let ty::Adt(def, _) = trait_ref.self_ty().skip_binder().peel_refs().kind() {
+                    Some(def.did())
+                } else {
+                    None
+                };
+            let candidates = if impl_candidates.is_empty() {
+                alternative_candidates(trait_def_id)
+            } else {
+                impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
+            };
+            let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
+            span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
+            for (sp, label) in [trait_def_id, other_trait_def_id]
+                .iter()
                 .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
@@ -1720,57 +1741,68 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     (
                         data.span,
-                        format!("one version of crate `{name}` is used here, as a {dependency}"),
+                        format!(
+                            "one version of crate `{crate_name}` is used here, as a {dependency}"
+                        ),
                     )
                 })
-                .collect();
-            let mut span: MultiSpan = spans.iter().map(|(sp, _)| *sp).collect::<Vec<Span>>().into();
-            for (sp, label) in spans.into_iter() {
+            {
                 span.push_span_label(sp, label);
             }
-            err.highlighted_span_help(span, vec![
+            let mut points_at_type = false;
+            if let Some(found_type) = found_type {
+                span.push_span_label(
+                    self.tcx.def_span(found_type),
+                    "this type doesn't implement the required trait",
+                );
+                for trait_ref in candidates {
+                    if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
+                        && let candidate_def_id = def.did()
+                        && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
+                        && let Some(found) = self.tcx.opt_item_name(found_type)
+                        && name == found
+                        && candidate_def_id.krate != found_type.krate
+                        && self.tcx.crate_name(candidate_def_id.krate)
+                            == self.tcx.crate_name(found_type.krate)
+                    {
+                        // A candidate was found of an item with the same name, from two separate
+                        // versions of the same crate, let's clarify.
+                        let candidate_span = self.tcx.def_span(candidate_def_id);
+                        span.push_span_label(
+                            candidate_span,
+                            "this type implements the required trait",
+                        );
+                        points_at_type = true;
+                    }
+                }
+            }
+            span.push_span_label(self.tcx.def_span(other_trait_def_id), "this is the found trait");
+            err.highlighted_span_note(span, vec![
                 StringPart::normal("there are ".to_string()),
                 StringPart::highlighted("multiple different versions".to_string()),
                 StringPart::normal(" of crate `".to_string()),
-                StringPart::highlighted(format!("{name}")),
-                StringPart::normal("` in the dependency graph".to_string()),
+                StringPart::highlighted(format!("{crate_name}")),
+                StringPart::normal("` in the dependency graph\n".to_string()),
             ]);
-            let candidates = if impl_candidates.is_empty() {
-                alternative_candidates(trait_def_id)
-            } else {
-                impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
-            };
-            if let Some((sp_candidate, sp_found)) = candidates.iter().find_map(|trait_ref| {
-                if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
-                    && let candidate_def_id = def.did()
-                    && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
-                    && let Some(found) = self.tcx.opt_item_name(found_type)
-                    && name == found
-                    && candidate_def_id.krate != found_type.krate
-                    && self.tcx.crate_name(candidate_def_id.krate)
-                        == self.tcx.crate_name(found_type.krate)
-                {
-                    // A candidate was found of an item with the same name, from two separate
-                    // versions of the same crate, let's clarify.
-                    Some((self.tcx.def_span(candidate_def_id), self.tcx.def_span(found_type)))
-                } else {
-                    None
-                }
-            }) {
-                let mut span: MultiSpan = vec![sp_candidate, sp_found].into();
-                span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
-                span.push_span_label(sp_candidate, "this type implements the required trait");
-                span.push_span_label(sp_found, "this type doesn't implement the required trait");
-                err.highlighted_span_note(span, vec![
+            if points_at_type {
+                // We only clarify that the same type from different crate versions are not the
+                // same when we *find* the same type coming from different crate versions, otherwise
+                // it could be that it was a type provided by a different crate than the one that
+                // provides the trait, and mentioning this adds verbosity without clarification.
+                err.highlighted_note(vec![
                     StringPart::normal(
                         "two types coming from two different versions of the same crate are \
-                             different types "
+                         different types "
                             .to_string(),
                     ),
                     StringPart::highlighted("even if they look the same".to_string()),
                 ]);
             }
-            err.help("you can use `cargo tree` to explore your dependency tree");
+            err.highlighted_help(vec![
+                StringPart::normal("you can use `".to_string()),
+                StringPart::highlighted("cargo tree".to_string()),
+                StringPart::normal("` to explore your dependency tree".to_string()),
+            ]);
             return true;
         }
 
@@ -1832,21 +1864,81 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_trait_ref.references_error() {
                         return false;
                     }
-                    let self_ty = impl_trait_ref.self_ty().to_string();
-                    err.highlighted_help(vec![
-                        StringPart::normal(format!(
-                            "the trait `{}` ",
-                            impl_trait_ref.print_trait_sugared()
-                        )),
-                        StringPart::highlighted("is"),
+
+                    if let [child, ..] = &err.children[..]
+                        && child.level == Level::Help
+                        && let Some(line) = child.messages.get(0)
+                        && let Some(line) = line.0.as_str()
+                        && line.starts_with("the trait")
+                        && line.contains("is not implemented for")
+                    {
+                        // HACK(estebank): we remove the pre-existing
+                        // "the trait `X` is not implemented for" note, which only happens if there
+                        // was a custom label. We do this because we want that note to always be the
+                        // first, and making this logic run earlier will get tricky. For now, we
+                        // instead keep the logic the same and modify the already constructed error
+                        // to avoid the wording duplication.
+                        err.children.remove(0);
+                    }
+
+                    let traits = self.cmp_traits(
+                        obligation_trait_ref.def_id,
+                        &obligation_trait_ref.args[1..],
+                        impl_trait_ref.def_id,
+                        &impl_trait_ref.args[1..],
+                    );
+                    let traits_content = (traits.0.content(), traits.1.content());
+                    let types = self.cmp(obligation_trait_ref.self_ty(), impl_trait_ref.self_ty());
+                    let types_content = (types.0.content(), types.1.content());
+                    let mut msg = vec![StringPart::normal("the trait `")];
+                    if traits_content.0 == traits_content.1 {
+                        msg.push(StringPart::normal(
+                            impl_trait_ref.print_trait_sugared().to_string(),
+                        ));
+                    } else {
+                        msg.extend(traits.0.0);
+                    }
+                    msg.extend([
+                        StringPart::normal("` "),
+                        StringPart::highlighted("is not"),
                         StringPart::normal(" implemented for `"),
-                        if let [TypeError::Sorts(_)] = &terrs[..] {
-                            StringPart::normal(self_ty)
-                        } else {
-                            StringPart::highlighted(self_ty)
-                        },
-                        StringPart::normal("`"),
                     ]);
+                    if types_content.0 == types_content.1 {
+                        let ty =
+                            self.tcx.short_ty_string(obligation_trait_ref.self_ty(), &mut None);
+                        msg.push(StringPart::normal(ty));
+                    } else {
+                        msg.extend(types.0.0);
+                    }
+                    msg.push(StringPart::normal("`"));
+                    if types_content.0 == types_content.1 {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for it"),
+                        ]);
+                    } else if traits_content.0 == traits_content.1 {
+                        msg.extend([
+                            StringPart::normal("\nbut it "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    } else {
+                        msg.push(StringPart::normal("\nbut trait `"));
+                        msg.extend(traits.1.0);
+                        msg.extend([
+                            StringPart::normal("` "),
+                            StringPart::highlighted("is"),
+                            StringPart::normal(" implemented for `"),
+                        ]);
+                        msg.extend(types.1.0);
+                        msg.push(StringPart::normal("`"));
+                    }
+                    err.highlighted_help(msg);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
@@ -1968,7 +2060,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 cand.trait_ref = self
                     .tcx
                     .try_normalize_erasing_regions(
-                        self.tcx.param_env(cand.impl_def_id),
+                        ty::TypingEnv::non_body_analysis(self.tcx, cand.impl_def_id),
                         cand.trait_ref,
                     )
                     .unwrap_or(cand.trait_ref);
@@ -2423,6 +2515,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn try_to_add_help_message(
         &self,
+        root_obligation: &PredicateObligation<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         trait_predicate: ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
@@ -2475,12 +2568,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && self.tcx.trait_impls_of(trait_def_id).is_empty()
             && !self.tcx.trait_is_auto(trait_def_id)
             && !self.tcx.trait_is_alias(trait_def_id)
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
         {
             err.span_help(
                 self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
-        } else if !suggested && !unsatisfied_const {
+        } else if !suggested
+            && !unsatisfied_const
+            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
+        {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
@@ -2506,6 +2603,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 impl_candidates.as_slice(),
                 span,
             );
+
+            self.suggest_tuple_wrapping(err, root_obligation, obligation);
         }
     }
 
@@ -2572,7 +2671,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         _span: Span,
     ) -> UnsatisfiedConst {
         let unsatisfied_const = UnsatisfiedConst(false);
-        // FIXME(effects)
+        // FIXME(const_trait_impl)
         unsatisfied_const
     }
 
@@ -2637,7 +2736,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (obligation.cause.clone(), terr)
         };
         self.report_and_explain_type_error(
-            TypeTrace::trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+            TypeTrace::trait_refs(&cause, expected_trait_ref, found_trait_ref),
             obligation.param_env,
             terr,
         )
@@ -2728,7 +2827,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if Some(expected_trait_ref.def_id) != self.tcx.lang_items().coroutine_trait() && not_tupled
         {
             return Ok(self.report_and_explain_type_error(
-                TypeTrace::trait_refs(&obligation.cause, true, expected_trait_ref, found_trait_ref),
+                TypeTrace::trait_refs(&obligation.cause, expected_trait_ref, found_trait_ref),
                 obligation.param_env,
                 ty::error::TypeError::Mismatch,
             ));
@@ -2983,7 +3082,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Make a fresh inference variable so we can determine what the generic parameters
                 // of the trait are.
                 let var = self.next_ty_var(DUMMY_SP);
-                // FIXME(effects)
+                // FIXME(const_trait_impl)
                 let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(
                     self.tcx,

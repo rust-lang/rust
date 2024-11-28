@@ -12,9 +12,9 @@
 
 use std::{fmt, mem};
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
-use rustc_target::abi::Size;
 use smallvec::SmallVec;
 
 use crate::borrow_tracker::tree_borrows::Permission;

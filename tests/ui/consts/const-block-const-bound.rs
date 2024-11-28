@@ -1,7 +1,7 @@
 //@ known-bug: #103507
 
 #![allow(unused)]
-#![feature(const_trait_impl, negative_impls)]
+#![feature(const_trait_impl, negative_impls, const_destruct)]
 
 use std::marker::Destruct;
 

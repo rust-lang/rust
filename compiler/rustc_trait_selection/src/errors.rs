@@ -1,13 +1,14 @@
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{FnRetTy, GenericParamKind};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -1792,6 +1793,138 @@ impl Subdiagnostic for AddPreciseCapturingAndParams {
             self.suggs,
             Applicability::MaybeIncorrect,
         );
-        diag.span_note(self.apit_spans, fluent::trait_selection_warn_removing_apit_params);
+        diag.span_note(
+            self.apit_spans,
+            fluent::trait_selection_warn_removing_apit_params_for_undercapture,
+        );
+    }
+}
+
+/// Given a set of captured `DefId` for an RPIT (opaque_def_id) and a given
+/// function (fn_def_id), try to suggest adding `+ use<...>` to capture just
+/// the specified parameters. If one of those parameters is an APIT, then try
+/// to suggest turning it into a regular type parameter.
+pub fn impl_trait_overcapture_suggestion<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: LocalDefId,
+    fn_def_id: LocalDefId,
+    captured_args: FxIndexSet<DefId>,
+) -> Option<AddPreciseCapturingForOvercapture> {
+    let generics = tcx.generics_of(fn_def_id);
+
+    let mut captured_lifetimes = FxIndexSet::default();
+    let mut captured_non_lifetimes = FxIndexSet::default();
+    let mut synthetics = vec![];
+
+    for arg in captured_args {
+        if tcx.def_kind(arg) == DefKind::LifetimeParam {
+            captured_lifetimes.insert(tcx.item_name(arg));
+        } else {
+            let idx = generics.param_def_id_to_index(tcx, arg).expect("expected arg in scope");
+            let param = generics.param_at(idx as usize, tcx);
+            if param.kind.is_synthetic() {
+                synthetics.push((tcx.def_span(arg), param.name));
+            } else {
+                captured_non_lifetimes.insert(tcx.item_name(arg));
+            }
+        }
+    }
+
+    let mut next_fresh_param = || {
+        ["T", "U", "V", "W", "X", "Y", "A", "B", "C"]
+            .into_iter()
+            .map(Symbol::intern)
+            .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
+            .find(|s| captured_non_lifetimes.insert(*s))
+            .unwrap()
+    };
+
+    let mut suggs = vec![];
+    let mut apit_spans = vec![];
+
+    if !synthetics.is_empty() {
+        let mut new_params = String::new();
+        for (i, (span, name)) in synthetics.into_iter().enumerate() {
+            apit_spans.push(span);
+
+            let fresh_param = next_fresh_param();
+
+            // Suggest renaming.
+            suggs.push((span, fresh_param.to_string()));
+
+            // Super jank. Turn `impl Trait` into `T: Trait`.
+            //
+            // This currently involves stripping the `impl` from the name of
+            // the parameter, since APITs are always named after how they are
+            // rendered in the AST. This sucks! But to recreate the bound list
+            // from the APIT itself would be miserable, so we're stuck with
+            // this for now!
+            if i > 0 {
+                new_params += ", ";
+            }
+            let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
+            new_params += fresh_param.as_str();
+            new_params += ": ";
+            new_params += name_as_bounds;
+        }
+
+        let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+            // This shouldn't happen, but don't ICE.
+            return None;
+        };
+
+        // Add generics or concatenate to the end of the list.
+        suggs.push(if let Some(params_span) = generics.span_for_param_suggestion() {
+            (params_span, format!(", {new_params}"))
+        } else {
+            (generics.span, format!("<{new_params}>"))
+        });
+    }
+
+    let concatenated_bounds = captured_lifetimes
+        .into_iter()
+        .chain(captured_non_lifetimes)
+        .map(|sym| sym.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    suggs.push((
+        tcx.def_span(opaque_def_id).shrink_to_hi(),
+        format!(" + use<{concatenated_bounds}>"),
+    ));
+
+    Some(AddPreciseCapturingForOvercapture { suggs, apit_spans })
+}
+
+pub struct AddPreciseCapturingForOvercapture {
+    pub suggs: Vec<(Span, String)>,
+    pub apit_spans: Vec<Span>,
+}
+
+impl Subdiagnostic for AddPreciseCapturingForOvercapture {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        let applicability = if self.apit_spans.is_empty() {
+            Applicability::MachineApplicable
+        } else {
+            // If there are APIT that are converted to regular parameters,
+            // then this may make the API turbofishable in ways that were
+            // not intended.
+            Applicability::MaybeIncorrect
+        };
+        diag.multipart_suggestion_verbose(
+            fluent::trait_selection_precise_capturing_overcaptures,
+            self.suggs,
+            applicability,
+        );
+        if !self.apit_spans.is_empty() {
+            diag.span_note(
+                self.apit_spans,
+                fluent::trait_selection_warn_removing_apit_params_for_overcapture,
+            );
+        }
     }
 }

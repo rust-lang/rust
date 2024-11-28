@@ -340,7 +340,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
             if self.cx.tcx.is_diagnostic_item(sym::HashMap, ty_did) {
                 if method.ident.name == sym::new {
                     self.suggestions.insert(e.span, "HashMap::default()".to_string());
-                } else if method.ident.name == sym!(with_capacity) {
+                } else if method.ident.name.as_str() == "with_capacity" {
                     self.suggestions.insert(
                         e.span,
                         format!(
@@ -352,7 +352,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
             } else if self.cx.tcx.is_diagnostic_item(sym::HashSet, ty_did) {
                 if method.ident.name == sym::new {
                     self.suggestions.insert(e.span, "HashSet::default()".to_string());
-                } else if method.ident.name == sym!(with_capacity) {
+                } else if method.ident.name.as_str() == "with_capacity" {
                     self.suggestions.insert(
                         e.span,
                         format!(

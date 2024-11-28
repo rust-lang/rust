@@ -1,3 +1,5 @@
+//@ normalize-stderr-test: "\d+ bits" -> "$$BITS bits"
+
 // Regression test for issue #124031
 // Checks that we don't ICE when the tail
 // of an ADT has a type error
@@ -16,5 +18,6 @@ struct Other {
 fn main() {
     unsafe {
         std::mem::transmute::<Option<()>, Option<&Other>>(None);
+        //~^ ERROR cannot transmute between types of different sizes
     }
 }

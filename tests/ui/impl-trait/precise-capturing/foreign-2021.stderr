@@ -16,7 +16,7 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
 LL |     let h = foreign::hello(&x);
    |             ^^^^^^^^^^^^^^^^^^
 help: if you can modify this crate, add a precise capturing bound to avoid overcapturing: `+ use<>`
-  --> $DIR/auxiliary/foreign.rs:6:31
+  --> $DIR/auxiliary/foreign.rs:5:31
    |
 LL | pub fn hello(x: &Vec<i32>) -> impl Display { 0 }
    |                               ^^^^^^^^^^^^

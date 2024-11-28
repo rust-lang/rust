@@ -1,5 +1,7 @@
 //! List of the unstable feature gates.
 
+use std::path::PathBuf;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -54,7 +56,7 @@ pub struct EnabledLangFeature {
     pub stable_since: Option<Symbol>,
 }
 
-/// Information abhout an enabled library feature.
+/// Information about an enabled library feature.
 #[derive(Debug, Copy, Clone)]
 pub struct EnabledLibFeature {
     pub gate_name: Symbol,
@@ -336,6 +338,7 @@ declare_features! (
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
     (unstable, s390x_target_feature, "1.82.0", Some(44839)),
+    (unstable, sparc_target_feature, "CURRENT_RUSTC_VERSION", Some(132783)),
     (unstable, sse4a_target_feature, "1.27.0", Some(44839)),
     (unstable, tbm_target_feature, "1.27.0", Some(44839)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
@@ -373,8 +376,12 @@ declare_features! (
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
+    /// Enables experimental register support in inline assembly.
+    (unstable, asm_experimental_reg, "CURRENT_RUSTC_VERSION", Some(133416)),
     /// Allows using `label` operands in inline assembly.
     (unstable, asm_goto, "1.78.0", Some(119364)),
+    /// Allows using `label` operands in inline assembly together with output operands.
+    (unstable, asm_goto_with_outputs, "CURRENT_RUSTC_VERSION", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
@@ -423,6 +430,8 @@ declare_features! (
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
+    /// Allows using `~const Destruct` bounds and calling drop impls in const contexts.
+    (unstable, const_destruct, "CURRENT_RUSTC_VERSION", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.
@@ -462,8 +471,6 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
-    /// Uses generic effect parameters for ~const bounds
-    (incomplete, effects, "1.72.0", Some(102090)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
@@ -530,6 +537,8 @@ declare_features! (
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
+    /// Enables the generic const args MVP (only bare paths, not arbitrary computation).
+    (incomplete, min_generic_const_args, "CURRENT_RUSTC_VERSION", Some(132980)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -624,6 +633,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
+    /// Allows declaring fields `unsafe`.
+    (incomplete, unsafe_fields, "CURRENT_RUSTC_VERSION", Some(132922)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),
@@ -649,6 +660,54 @@ declare_features! (
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
 );
+
+impl Features {
+    pub fn dump_feature_usage_metrics(
+        &self,
+        metrics_path: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        #[derive(serde::Serialize)]
+        struct LibFeature {
+            symbol: String,
+        }
+
+        #[derive(serde::Serialize)]
+        struct LangFeature {
+            symbol: String,
+            since: Option<String>,
+        }
+
+        #[derive(serde::Serialize)]
+        struct FeatureUsage {
+            lib_features: Vec<LibFeature>,
+            lang_features: Vec<LangFeature>,
+        }
+
+        let metrics_file = std::fs::File::create(metrics_path)?;
+        let metrics_file = std::io::BufWriter::new(metrics_file);
+
+        let lib_features = self
+            .enabled_lib_features
+            .iter()
+            .map(|EnabledLibFeature { gate_name, .. }| LibFeature { symbol: gate_name.to_string() })
+            .collect();
+
+        let lang_features = self
+            .enabled_lang_features
+            .iter()
+            .map(|EnabledLangFeature { gate_name, stable_since, .. }| LangFeature {
+                symbol: gate_name.to_string(),
+                since: stable_since.map(|since| since.to_string()),
+            })
+            .collect();
+
+        let feature_usage = FeatureUsage { lib_features, lang_features };
+
+        serde_json::to_writer(metrics_file, &feature_usage)?;
+
+        Ok(())
+    }
+}
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.

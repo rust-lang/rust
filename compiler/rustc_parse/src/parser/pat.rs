@@ -1,11 +1,12 @@
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
+use rustc_ast::util::parser::AssocOp;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
-    self as ast, Arm, AttrVec, BinOpKind, BindingMode, ByRef, Expr, ExprKind, ExprPrecedence,
-    LocalKind, MacCall, Mutability, Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd,
-    RangeSyntax, Stmt, StmtKind,
+    self as ast, Arm, AttrVec, BinOpKind, BindingMode, ByRef, Expr, ExprKind, LocalKind, MacCall,
+    Mutability, Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt,
+    StmtKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
@@ -458,7 +459,7 @@ impl<'a> Parser<'a> {
                 .create_err(UnexpectedExpressionInPattern {
                     span,
                     is_bound,
-                    expr_precedence: expr.precedence().order(),
+                    expr_precedence: expr.precedence(),
                 })
                 .stash(span, StashKey::ExprInPat)
                 .unwrap(),
@@ -545,7 +546,8 @@ impl<'a> Parser<'a> {
                             let expr = match &err.args["expr_precedence"] {
                                 DiagArgValue::Number(expr_precedence) => {
                                     if *expr_precedence
-                                        <= ExprPrecedence::Binary(BinOpKind::Eq).order() as i32
+                                        <= AssocOp::from_ast_binop(BinOpKind::Eq).precedence()
+                                            as i32
                                     {
                                         format!("({expr})")
                                     } else {
@@ -568,8 +570,9 @@ impl<'a> Parser<'a> {
                                 }
                                 Some(guard) => {
                                     // Are parentheses required around the old guard?
-                                    let wrap_guard = guard.precedence().order()
-                                        <= ExprPrecedence::Binary(BinOpKind::And).order();
+                                    let wrap_guard = guard.precedence()
+                                        <= AssocOp::from_ast_binop(BinOpKind::And).precedence()
+                                            as i8;
 
                                     err.subdiagnostic(
                                         UnexpectedExpressionInPatternSugg::UpdateGuard {
@@ -683,7 +686,9 @@ impl<'a> Parser<'a> {
             })
         {
             self.bump();
-            self.dcx().emit_err(RemoveLet { span: lo });
+            // Trim extra space after the `let`
+            let span = lo.with_hi(self.token.span.lo());
+            self.dcx().emit_err(RemoveLet { span: lo, suggestion: span });
             lo = self.token.span;
         }
 

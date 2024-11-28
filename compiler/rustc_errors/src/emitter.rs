@@ -22,7 +22,7 @@ use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, FileName, SourceFile, Span, char_width};
+use rustc_span::{FileLines, FileName, SourceFile, Span, char_width, str_width};
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{debug, instrument, trace, warn};
 
@@ -44,6 +44,7 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
     Default,
+    Unicode,
     AnnotateSnippet,
     Short,
 }
@@ -112,8 +113,12 @@ impl Margin {
     fn was_cut_right(&self, line_len: usize) -> bool {
         let right =
             if self.computed_right == self.span_right || self.computed_right == self.label_right {
+                // FIXME: This comment refers to the only callsite of this method.
+                //        Rephrase it or refactor it, so it can stand on its own.
                 // Account for the "..." padding given above. Otherwise we end up with code lines
                 // that do fit but end in "..." as if they were trimmed.
+                // FIXME: Don't hard-code this offset. Is this meant to represent
+                //        `2 * str_width(self.margin())`?
                 self.computed_right - 6
             } else {
                 self.computed_right
@@ -595,6 +600,12 @@ impl ColorConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputTheme {
+    Ascii,
+    Unicode,
+}
+
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 #[derive(Setters)]
 pub struct HumanEmitter {
@@ -613,6 +624,7 @@ pub struct HumanEmitter {
     macro_backtrace: bool,
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
+    theme: OutputTheme,
 }
 
 #[derive(Debug)]
@@ -637,6 +649,7 @@ impl HumanEmitter {
             macro_backtrace: false,
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
+            theme: OutputTheme::Ascii,
         }
     }
 
@@ -664,6 +677,7 @@ impl HumanEmitter {
         // Create the source line we will highlight.
         let left = margin.left(line_len);
         let right = margin.right(line_len);
+        // FIXME: The following code looks fishy. See #132860.
         // On long lines, we strip the source line, accounting for unicode.
         let mut taken = 0;
         let code: String = source_string
@@ -680,17 +694,19 @@ impl HumanEmitter {
             })
             .collect();
         buffer.puts(line_offset, code_offset, &code, Style::Quotation);
+        let placeholder = self.margin();
         if margin.was_cut_left() {
             // We have stripped some code/whitespace from the beginning, make it clear.
-            buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
+            buffer.puts(line_offset, code_offset, placeholder, Style::LineNumber);
         }
         if margin.was_cut_right(line_len) {
+            let padding = str_width(placeholder);
             // We have stripped some code after the rightmost span end, make it clear we did so.
-            buffer.puts(line_offset, code_offset + taken - 3, "...", Style::LineNumber);
+            buffer.puts(line_offset, code_offset + taken - padding, placeholder, Style::LineNumber);
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
 
-        draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
+        self.draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -702,6 +718,7 @@ impl HumanEmitter {
         width_offset: usize,
         code_offset: usize,
         margin: Margin,
+        close_window: bool,
     ) -> Vec<(usize, Style)> {
         // Draw:
         //
@@ -732,6 +749,7 @@ impl HumanEmitter {
         // Left trim
         let left = margin.left(source_string.len());
 
+        // FIXME: This looks fishy. See #132860.
         // Account for unicode characters of width !=0 that were removed.
         let left = source_string.chars().take(left).map(|ch| char_width(ch)).sum();
 
@@ -767,13 +785,10 @@ impl HumanEmitter {
         for ann in &line.annotations {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
                 if source_string.chars().take(ann.start_col.display).all(|c| c.is_whitespace()) {
-                    let style = if ann.is_primary {
-                        Style::UnderlinePrimary
-                    } else {
-                        Style::UnderlineSecondary
-                    };
-                    annotations.push((depth, style));
-                    buffer_ops.push((line_offset, width_offset + depth - 1, '/', style));
+                    let uline = self.underline(ann.is_primary);
+                    let chr = uline.multiline_whole_line;
+                    annotations.push((depth, uline.style));
+                    buffer_ops.push((line_offset, width_offset + depth - 1, chr, uline.style));
                 } else {
                     short_start = false;
                     break;
@@ -970,7 +985,7 @@ impl HumanEmitter {
             // 3 │       X0 Y0 Z0
             //   │ ┏━━━━━┛  │  │     < We are writing these lines
             //   │ ┃┌───────┘  │     < by reverting the "depth" of
-            //   │ ┃│┌─────────┘     < their multilne spans.
+            //   │ ┃│┌─────────┘     < their multiline spans.
             // 4 │ ┃││   X1 Y1 Z1
             // 5 │ ┃││   X2 Y2 Z2
             //   │ ┃│└────╿──│──┘ `Z` label
@@ -997,7 +1012,10 @@ impl HumanEmitter {
         // 4 |   }
         //   |
         for pos in 0..=line_len {
-            draw_col_separator_no_space(buffer, line_offset + pos + 1, width_offset - 2);
+            self.draw_col_separator_no_space(buffer, line_offset + pos + 1, width_offset - 2);
+        }
+        if close_window {
+            self.draw_col_separator_end(buffer, line_offset + line_len + 1, width_offset - 2);
         }
 
         // Write the horizontal lines for multiline annotations
@@ -1013,21 +1031,17 @@ impl HumanEmitter {
         // 4 |   }
         //   |  _
         for &(pos, annotation) in &annotations_position {
-            let style = if annotation.is_primary {
-                Style::UnderlinePrimary
-            } else {
-                Style::UnderlineSecondary
-            };
+            let underline = self.underline(annotation.is_primary);
             let pos = pos + 1;
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) | AnnotationType::MultilineEnd(depth) => {
-                    draw_range(
+                    self.draw_range(
                         buffer,
-                        '_',
+                        underline.multiline_horizontal,
                         line_offset + pos,
                         width_offset + depth,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
-                        style,
+                        underline.style,
                     );
                 }
                 _ if self.teach => {
@@ -1035,7 +1049,7 @@ impl HumanEmitter {
                         line_offset,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
                         (code_offset + annotation.end_col.display).saturating_sub(left),
-                        style,
+                        underline.style,
                         annotation.is_primary,
                     );
                 }
@@ -1055,11 +1069,7 @@ impl HumanEmitter {
         // 4 | | }
         //   | |_
         for &(pos, annotation) in &annotations_position {
-            let style = if annotation.is_primary {
-                Style::UnderlinePrimary
-            } else {
-                Style::UnderlineSecondary
-            };
+            let underline = self.underline(annotation.is_primary);
             let pos = pos + 1;
 
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
@@ -1067,21 +1077,64 @@ impl HumanEmitter {
                     buffer.putc(
                         p,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
-                        '|',
-                        style,
+                        match annotation.annotation_type {
+                            AnnotationType::MultilineLine(_) => underline.multiline_vertical,
+                            _ => underline.vertical_text_line,
+                        },
+                        underline.style,
+                    );
+                }
+                if let AnnotationType::MultilineStart(_) = annotation.annotation_type {
+                    buffer.putc(
+                        line_offset + pos,
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        underline.bottom_right,
+                        underline.style,
+                    );
+                }
+                if let AnnotationType::MultilineEnd(_) = annotation.annotation_type
+                    && annotation.has_label()
+                {
+                    buffer.putc(
+                        line_offset + pos,
+                        (code_offset + annotation.start_col.display).saturating_sub(left),
+                        underline.multiline_bottom_right_with_text,
+                        underline.style,
                     );
                 }
             }
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) => {
+                    buffer.putc(
+                        line_offset + pos,
+                        width_offset + depth - 1,
+                        underline.top_left,
+                        underline.style,
+                    );
                     for p in line_offset + pos + 1..line_offset + line_len + 2 {
-                        buffer.putc(p, width_offset + depth - 1, '|', style);
+                        buffer.putc(
+                            p,
+                            width_offset + depth - 1,
+                            underline.multiline_vertical,
+                            underline.style,
+                        );
                     }
                 }
                 AnnotationType::MultilineEnd(depth) => {
-                    for p in line_offset..=line_offset + pos {
-                        buffer.putc(p, width_offset + depth - 1, '|', style);
+                    for p in line_offset..line_offset + pos {
+                        buffer.putc(
+                            p,
+                            width_offset + depth - 1,
+                            underline.multiline_vertical,
+                            underline.style,
+                        );
                     }
+                    buffer.putc(
+                        line_offset + pos,
+                        width_offset + depth - 1,
+                        underline.bottom_left,
+                        underline.style,
+                    );
                 }
                 _ => (),
             }
@@ -1102,7 +1155,11 @@ impl HumanEmitter {
             let style =
                 if annotation.is_primary { Style::LabelPrimary } else { Style::LabelSecondary };
             let (pos, col) = if pos == 0 {
-                (pos + 1, (annotation.end_col.display + 1).saturating_sub(left))
+                if annotation.end_col.display == 0 {
+                    (pos + 1, (annotation.end_col.display + 2).saturating_sub(left))
+                } else {
+                    (pos + 1, (annotation.end_col.display + 1).saturating_sub(left))
+                }
             } else {
                 (pos + 2, annotation.start_col.display.saturating_sub(left))
             };
@@ -1135,18 +1192,60 @@ impl HumanEmitter {
         // 3 |
         // 4 |   }
         //   |  _^  test
-        for &(_, annotation) in &annotations_position {
-            let (underline, style) = if annotation.is_primary {
-                ('^', Style::UnderlinePrimary)
-            } else {
-                ('-', Style::UnderlineSecondary)
-            };
+        for &(pos, annotation) in &annotations_position {
+            let uline = self.underline(annotation.is_primary);
             for p in annotation.start_col.display..annotation.end_col.display {
+                // The default span label underline.
                 buffer.putc(
                     line_offset + 1,
                     (code_offset + p).saturating_sub(left),
-                    underline,
-                    style,
+                    uline.underline,
+                    uline.style,
+                );
+            }
+
+            if pos == 0
+                && matches!(
+                    annotation.annotation_type,
+                    AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_)
+                )
+            {
+                // The beginning of a multiline span with its leftward moving line on the same line.
+                buffer.putc(
+                    line_offset + 1,
+                    (code_offset + annotation.start_col.display).saturating_sub(left),
+                    match annotation.annotation_type {
+                        AnnotationType::MultilineStart(_) => uline.top_right_flat,
+                        AnnotationType::MultilineEnd(_) => uline.multiline_end_same_line,
+                        _ => panic!("unexpected annotation type: {annotation:?}"),
+                    },
+                    uline.style,
+                );
+            } else if pos != 0
+                && matches!(
+                    annotation.annotation_type,
+                    AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_)
+                )
+            {
+                // The beginning of a multiline span with its leftward moving line on another line,
+                // so we start going down first.
+                buffer.putc(
+                    line_offset + 1,
+                    (code_offset + annotation.start_col.display).saturating_sub(left),
+                    match annotation.annotation_type {
+                        AnnotationType::MultilineStart(_) => uline.multiline_start_down,
+                        AnnotationType::MultilineEnd(_) => uline.multiline_end_up,
+                        _ => panic!("unexpected annotation type: {annotation:?}"),
+                    },
+                    uline.style,
+                );
+            } else if pos != 0 && annotation.has_label() {
+                // The beginning of a span label with an actual label, we'll point down.
+                buffer.putc(
+                    line_offset + 1,
+                    (code_offset + annotation.start_col.display).saturating_sub(left),
+                    uline.label_start,
+                    uline.style,
                 );
             }
         }
@@ -1217,7 +1316,7 @@ impl HumanEmitter {
         padding: usize,
         label: &str,
         override_style: Option<Style>,
-    ) {
+    ) -> usize {
         // The extra 5 ` ` is padding that's always needed to align to the `note: `:
         //
         //   error: message
@@ -1281,6 +1380,7 @@ impl HumanEmitter {
                 buffer.append(line_number, text, style_or_override(*style, override_style));
             }
         }
+        line_number
     }
 
     #[instrument(level = "trace", skip(self, args), ret)]
@@ -1294,6 +1394,7 @@ impl HumanEmitter {
         max_line_num_len: usize,
         is_secondary: bool,
         emitted_at: Option<&DiagLocation>,
+        is_cont: bool,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -1303,12 +1404,29 @@ impl HumanEmitter {
             for _ in 0..max_line_num_len {
                 buffer.prepend(0, " ", Style::NoStyle);
             }
-            draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
+            self.draw_note_separator(&mut buffer, 0, max_line_num_len + 1, is_cont);
             if *level != Level::FailureNote {
                 buffer.append(0, level.to_str(), Style::MainHeaderMsg);
                 buffer.append(0, ": ", Style::NoStyle);
             }
-            self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
+            let printed_lines =
+                self.msgs_to_buffer(&mut buffer, msgs, args, max_line_num_len, "note", None);
+            if is_cont && matches!(self.theme, OutputTheme::Unicode) {
+                // There's another note after this one, associated to the subwindow above.
+                // We write additional vertical lines to join them:
+                //   ╭▸ test.rs:3:3
+                //   │
+                // 3 │   code
+                //   │   ━━━━
+                //   │
+                //   ├ note: foo
+                //   │       bar
+                //   ╰ note: foo
+                //           bar
+                for i in 1..=printed_lines {
+                    self.draw_col_separator_no_space(&mut buffer, i, max_line_num_len + 1);
+                }
+            }
         } else {
             let mut label_width = 0;
             // The failure note level itself does not provide any useful diagnostic information
@@ -1439,9 +1557,13 @@ impl HumanEmitter {
                                 Style::LineAndColumn,
                             );
                             if annotation_id == 0 {
-                                buffer.prepend(line_idx, "--> ", Style::LineNumber);
+                                buffer.prepend(line_idx, self.file_start(), Style::LineNumber);
                             } else {
-                                buffer.prepend(line_idx, "::: ", Style::LineNumber);
+                                buffer.prepend(
+                                    line_idx,
+                                    self.secondary_file_start(),
+                                    Style::LineNumber,
+                                );
                             }
                             for _ in 0..max_line_num_len {
                                 buffer.prepend(line_idx, " ", Style::NoStyle);
@@ -1454,12 +1576,14 @@ impl HumanEmitter {
                             } else {
                                 Style::LabelSecondary
                             };
-                            buffer.prepend(line_idx, " |", Style::LineNumber);
+                            let pipe = self.col_separator();
+                            buffer.prepend(line_idx, &format!(" {pipe}"), Style::LineNumber);
                             for _ in 0..max_line_num_len {
                                 buffer.prepend(line_idx, " ", Style::NoStyle);
                             }
                             line_idx += 1;
-                            buffer.append(line_idx, " = note: ", style);
+                            let chr = self.note_separator();
+                            buffer.append(line_idx, &format!(" {chr} note: "), style);
                             for _ in 0..max_line_num_len {
                                 buffer.prepend(line_idx, " ", Style::NoStyle);
                             }
@@ -1480,7 +1604,7 @@ impl HumanEmitter {
                     // remember where we are in the output buffer for easy reference
                     let buffer_msg_line_offset = buffer.num_lines();
 
-                    buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
+                    buffer.prepend(buffer_msg_line_offset, self.file_start(), Style::LineNumber);
                     buffer.append(
                         buffer_msg_line_offset,
                         &format!(
@@ -1510,15 +1634,28 @@ impl HumanEmitter {
                 // remember where we are in the output buffer for easy reference
                 let buffer_msg_line_offset = buffer.num_lines();
 
-                // Add spacing line
-                draw_col_separator_no_space(
+                // Add spacing line, as shown:
+                //   --> $DIR/file:54:15
+                //    |
+                // LL |         code
+                //    |         ^^^^
+                //    | (<- It prints *this* line)
+                //   ::: $DIR/other_file.rs:15:5
+                //    |
+                // LL |     code
+                //    |     ----
+                self.draw_col_separator_no_space(
                     &mut buffer,
                     buffer_msg_line_offset,
                     max_line_num_len + 1,
                 );
 
                 // Then, the secondary file indicator
-                buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
+                buffer.prepend(
+                    buffer_msg_line_offset + 1,
+                    self.secondary_file_start(),
+                    Style::LineNumber,
+                );
                 let loc = if let Some(first_line) = annotated_file.lines.first() {
                     let col = if let Some(first_annotation) = first_line.annotations.first() {
                         format!(":{}", first_annotation.start_col.file + 1)
@@ -1543,7 +1680,7 @@ impl HumanEmitter {
             if !self.short_message {
                 // Put in the spacer between the location and annotated source
                 let buffer_msg_line_offset = buffer.num_lines();
-                draw_col_separator_no_space(
+                self.draw_col_separator_no_space(
                     &mut buffer,
                     buffer_msg_line_offset,
                     max_line_num_len + 1,
@@ -1651,6 +1788,7 @@ impl HumanEmitter {
                         width_offset,
                         code_offset,
                         margin,
+                        !is_cont && line_idx + 1 == annotated_file.lines.len(),
                     );
 
                     let mut to_add = FxHashMap::default();
@@ -1666,7 +1804,13 @@ impl HumanEmitter {
                     // the code in this line.
                     for (depth, style) in &multilines {
                         for line in previous_buffer_line..buffer.num_lines() {
-                            draw_multiline_line(&mut buffer, line, width_offset, *depth, *style);
+                            self.draw_multiline_line(
+                                &mut buffer,
+                                line,
+                                width_offset,
+                                *depth,
+                                *style,
+                            );
                         }
                     }
                     // check to see if we need to print out or elide lines that come between
@@ -1676,11 +1820,15 @@ impl HumanEmitter {
                             - annotated_file.lines[line_idx].line_index;
                         if line_idx_delta > 2 {
                             let last_buffer_line_num = buffer.num_lines();
-                            buffer.puts(last_buffer_line_num, 0, "...", Style::LineNumber);
+                            self.draw_line_separator(
+                                &mut buffer,
+                                last_buffer_line_num,
+                                width_offset,
+                            );
 
                             // Set the multiline annotation vertical lines on `...` bridging line.
                             for (depth, style) in &multilines {
-                                draw_multiline_line(
+                                self.draw_multiline_line(
                                     &mut buffer,
                                     last_buffer_line_num,
                                     width_offset,
@@ -1695,7 +1843,7 @@ impl HumanEmitter {
                                         // In the case where we have elided the entire start of the
                                         // multispan because those lines were empty, we still need
                                         // to draw the `|`s across the `...`.
-                                        draw_multiline_line(
+                                        self.draw_multiline_line(
                                             &mut buffer,
                                             last_buffer_line_num,
                                             width_offset,
@@ -1728,7 +1876,7 @@ impl HumanEmitter {
                             );
 
                             for (depth, style) in &multilines {
-                                draw_multiline_line(
+                                self.draw_multiline_line(
                                     &mut buffer,
                                     last_buffer_line_num,
                                     width_offset,
@@ -1740,7 +1888,7 @@ impl HumanEmitter {
                                 for ann in &line.annotations {
                                     if let AnnotationType::MultilineStart(pos) = ann.annotation_type
                                     {
-                                        draw_multiline_line(
+                                        self.draw_multiline_line(
                                             &mut buffer,
                                             last_buffer_line_num,
                                             width_offset,
@@ -1824,13 +1972,24 @@ impl HumanEmitter {
         );
 
         let mut row_num = 2;
-        draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
-        for (complete, parts, highlights, _) in suggestions.iter().take(MAX_SUGGESTIONS) {
+        for (i, (complete, parts, highlights, _)) in
+            suggestions.iter().enumerate().take(MAX_SUGGESTIONS)
+        {
             debug!(?complete, ?parts, ?highlights);
 
             let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
             let is_multiline = complete.lines().count() > 1;
 
+            if i == 0 {
+                self.draw_col_separator_start(&mut buffer, row_num - 1, max_line_num_len + 1);
+            } else {
+                buffer.puts(
+                    row_num - 1,
+                    max_line_num_len + 1,
+                    self.multi_suggestion_separator(),
+                    Style::LineNumber,
+                );
+            }
             if let Some(span) = span.primary_span() {
                 // Compare the primary span of the diagnostic with the span of the suggestion
                 // being emitted. If they belong to the same file, we don't *need* to show the
@@ -1838,7 +1997,9 @@ impl HumanEmitter {
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
                 if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
-                    let arrow = "--> ";
+                    // --> file.rs:line:col
+                    //  |
+                    let arrow = self.file_start();
                     buffer.puts(row_num - 1, 0, arrow, Style::LineNumber);
                     let filename = sm.filename_for_diagnostics(&loc.file.name);
                     let offset = sm.doctest_offset_line(&loc.file.name, loc.line);
@@ -1852,6 +2013,7 @@ impl HumanEmitter {
                     for _ in 0..max_line_num_len {
                         buffer.prepend(row_num - 1, " ", Style::NoStyle);
                     }
+                    self.draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                     row_num += 1;
                 }
             }
@@ -1882,7 +2044,6 @@ impl HumanEmitter {
             assert!(!file_lines.lines.is_empty() || parts[0].span.is_dummy());
 
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
-            draw_col_separator_no_space(&mut buffer, row_num - 1, max_line_num_len + 1);
             let mut lines = complete.lines();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
@@ -1972,7 +2133,14 @@ impl HumanEmitter {
                             )
                         }
 
-                        buffer.puts(row_num, 0, "...", Style::LineNumber);
+                        let placeholder = self.margin();
+                        let padding = str_width(placeholder);
+                        buffer.puts(
+                            row_num,
+                            max_line_num_len.saturating_sub(padding),
+                            placeholder,
+                            Style::LineNumber,
+                        );
                         row_num += 1;
 
                         if let Some((p, l)) = last_line {
@@ -2040,7 +2208,6 @@ impl HumanEmitter {
             if let DisplaySuggestion::Diff | DisplaySuggestion::Underline | DisplaySuggestion::Add =
                 show_code_change
             {
-                draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 for part in parts {
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
@@ -2057,11 +2224,11 @@ impl HumanEmitter {
                     };
                     // ...or trailing spaces. Account for substitutions containing unicode
                     // characters.
-                    let sub_len: usize =
-                        if is_whitespace_addition { &part.snippet } else { part.snippet.trim() }
-                            .chars()
-                            .map(|ch| char_width(ch))
-                            .sum();
+                    let sub_len: usize = str_width(if is_whitespace_addition {
+                        &part.snippet
+                    } else {
+                        part.snippet.trim()
+                    });
 
                     let offset: isize = offsets
                         .iter()
@@ -2082,7 +2249,7 @@ impl HumanEmitter {
                             buffer.putc(
                                 row_num,
                                 (padding as isize + p) as usize,
-                                if part.is_addition(sm) { '+' } else { '~' },
+                                if part.is_addition(sm) { '+' } else { self.diff() },
                                 Style::Addition,
                             );
                         }
@@ -2099,8 +2266,7 @@ impl HumanEmitter {
                     }
 
                     // length of the code after substitution
-                    let full_sub_len =
-                        part.snippet.chars().map(|ch| char_width(ch)).sum::<usize>() as isize;
+                    let full_sub_len = str_width(&part.snippet) as isize;
 
                     // length of the code to be substituted
                     let snippet_len = span_end_pos as isize - span_start_pos as isize;
@@ -2114,10 +2280,23 @@ impl HumanEmitter {
 
             // if we elided some lines, add an ellipsis
             if lines.next().is_some() {
-                buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
-            } else if let DisplaySuggestion::None = show_code_change {
-                draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
-                row_num += 1;
+                let placeholder = self.margin();
+                let padding = str_width(placeholder);
+                buffer.puts(
+                    row_num,
+                    max_line_num_len.saturating_sub(padding),
+                    placeholder,
+                    Style::LineNumber,
+                );
+            } else {
+                let row = match show_code_change {
+                    DisplaySuggestion::Diff
+                    | DisplaySuggestion::Add
+                    | DisplaySuggestion::Underline => row_num - 1,
+                    DisplaySuggestion::None => row_num,
+                };
+                self.draw_col_separator_end(&mut buffer, row, max_line_num_len + 1);
+                row_num = row + 1;
             }
         }
         if suggestions.len() > MAX_SUGGESTIONS {
@@ -2125,6 +2304,7 @@ impl HumanEmitter {
             let msg = format!("and {} other candidate{}", others, pluralize!(others));
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         }
+
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
         Ok(())
     }
@@ -2157,6 +2337,8 @@ impl HumanEmitter {
             max_line_num_len,
             false,
             emitted_at,
+            !children.is_empty()
+                || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden),
         ) {
             Ok(()) => {
                 if !children.is_empty()
@@ -2164,7 +2346,15 @@ impl HumanEmitter {
                 {
                     let mut buffer = StyledBuffer::new();
                     if !self.short_message {
-                        draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
+                        if let Some(child) = children.iter().next()
+                            && child.span.primary_spans().is_empty()
+                        {
+                            // We'll continue the vertical bar to point into the next note.
+                            self.draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
+                        } else {
+                            // We'll close the vertical bar to visually end the code window.
+                            self.draw_col_separator_end(&mut buffer, 0, max_line_num_len + 1);
+                        }
                     }
                     if let Err(e) = emit_to_destination(
                         &buffer.render(),
@@ -2176,9 +2366,14 @@ impl HumanEmitter {
                     }
                 }
                 if !self.short_message {
-                    for child in children {
+                    for (i, child) in children.iter().enumerate() {
                         assert!(child.level.can_be_subdiag());
                         let span = &child.span;
+                        // FIXME: audit that this behaves correctly with suggestions.
+                        let should_close = match children.get(i + 1) {
+                            Some(c) => !c.span.primary_spans().is_empty(),
+                            None => i + 1 == children.len(),
+                        };
                         if let Err(err) = self.emit_messages_default_inner(
                             span,
                             &child.messages,
@@ -2188,11 +2383,12 @@ impl HumanEmitter {
                             max_line_num_len,
                             true,
                             None,
+                            !should_close,
                         ) {
                             panic!("failed to emit error: {err}");
                         }
                     }
-                    for sugg in suggestions {
+                    for (i, sugg) in suggestions.iter().enumerate() {
                         match sugg.style {
                             SuggestionStyle::CompletelyHidden => {
                                 // do not display this suggestion, it is meant only for tools
@@ -2207,6 +2403,9 @@ impl HumanEmitter {
                                     max_line_num_len,
                                     true,
                                     None,
+                                    // FIXME: this needs to account for the suggestion type,
+                                    //        some don't take any space.
+                                    i + 1 != suggestions.len(),
                                 ) {
                                     panic!("failed to emit error: {e}");
                                 }
@@ -2323,10 +2522,17 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
+                    // FIXME: needed? Doesn't get excercised in any test.
+                    self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
-                    buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
+                    let diff = self.diff();
+                    buffer.puts(
+                        *row_num,
+                        max_line_num_len + 1,
+                        &format!("{diff} "),
+                        Style::Addition,
+                    );
                 }
             }
             //   LL | line_to_add
@@ -2346,7 +2552,7 @@ impl HumanEmitter {
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         } else {
             buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
-            draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+            self.draw_col_separator(buffer, *row_num, max_line_num_len + 1);
             buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         }
 
@@ -2374,6 +2580,306 @@ impl HumanEmitter {
         }
         *row_num += 1;
     }
+
+    fn underline(&self, is_primary: bool) -> UnderlineParts {
+        //               X0 Y0
+        // label_start > ┯━━━━ < underline
+        //               │ < vertical_text_line
+        //               text
+
+        //    multiline_start_down ⤷ X0 Y0
+        //            top_left > ┌───╿──┘ < top_right_flat
+        //           top_left > ┏│━━━┙ < top_right
+        // multiline_vertical > ┃│
+        //                      ┃│   X1 Y1
+        //                      ┃│   X2 Y2
+        //                      ┃└────╿──┘ < multiline_end_same_line
+        //        bottom_left > ┗━━━━━┥ < bottom_right_with_text
+        //   multiline_horizontal ^   `X` is a good letter
+
+        // multiline_whole_line > ┏ X0 Y0
+        //                        ┃   X1 Y1
+        //                        ┗━━━━┛ < multiline_end_same_line
+
+        // multiline_whole_line > ┏ X0 Y0
+        //                        ┃ X1 Y1
+        //                        ┃  ╿ < multiline_end_up
+        //                        ┗━━┛ < bottom_right
+
+        match (self.theme, is_primary) {
+            (OutputTheme::Ascii, true) => UnderlineParts {
+                style: Style::UnderlinePrimary,
+                underline: '^',
+                label_start: '^',
+                vertical_text_line: '|',
+                multiline_vertical: '|',
+                multiline_horizontal: '_',
+                multiline_whole_line: '/',
+                multiline_start_down: '^',
+                bottom_right: '|',
+                top_left: ' ',
+                top_right_flat: '^',
+                bottom_left: '|',
+                multiline_end_up: '^',
+                multiline_end_same_line: '^',
+                multiline_bottom_right_with_text: '|',
+            },
+            (OutputTheme::Ascii, false) => UnderlineParts {
+                style: Style::UnderlineSecondary,
+                underline: '-',
+                label_start: '-',
+                vertical_text_line: '|',
+                multiline_vertical: '|',
+                multiline_horizontal: '_',
+                multiline_whole_line: '/',
+                multiline_start_down: '-',
+                bottom_right: '|',
+                top_left: ' ',
+                top_right_flat: '-',
+                bottom_left: '|',
+                multiline_end_up: '-',
+                multiline_end_same_line: '-',
+                multiline_bottom_right_with_text: '|',
+            },
+            (OutputTheme::Unicode, true) => UnderlineParts {
+                style: Style::UnderlinePrimary,
+                underline: '━',
+                label_start: '┯',
+                vertical_text_line: '│',
+                multiline_vertical: '┃',
+                multiline_horizontal: '━',
+                multiline_whole_line: '┏',
+                multiline_start_down: '╿',
+                bottom_right: '┙',
+                top_left: '┏',
+                top_right_flat: '┛',
+                bottom_left: '┗',
+                multiline_end_up: '╿',
+                multiline_end_same_line: '┛',
+                multiline_bottom_right_with_text: '┥',
+            },
+            (OutputTheme::Unicode, false) => UnderlineParts {
+                style: Style::UnderlineSecondary,
+                underline: '─',
+                label_start: '┬',
+                vertical_text_line: '│',
+                multiline_vertical: '│',
+                multiline_horizontal: '─',
+                multiline_whole_line: '┌',
+                multiline_start_down: '│',
+                bottom_right: '┘',
+                top_left: '┌',
+                top_right_flat: '┘',
+                bottom_left: '└',
+                multiline_end_up: '│',
+                multiline_end_same_line: '┘',
+                multiline_bottom_right_with_text: '┤',
+            },
+        }
+    }
+
+    fn col_separator(&self) -> char {
+        match self.theme {
+            OutputTheme::Ascii => '|',
+            OutputTheme::Unicode => '│',
+        }
+    }
+
+    fn note_separator(&self) -> char {
+        match self.theme {
+            OutputTheme::Ascii => '=',
+            OutputTheme::Unicode => '╰',
+        }
+    }
+
+    fn multi_suggestion_separator(&self) -> &'static str {
+        match self.theme {
+            OutputTheme::Ascii => "|",
+            OutputTheme::Unicode => "├╴",
+        }
+    }
+
+    fn draw_col_separator(&self, buffer: &mut StyledBuffer, line: usize, col: usize) {
+        let chr = self.col_separator();
+        buffer.puts(line, col, &format!("{chr} "), Style::LineNumber);
+    }
+
+    fn draw_col_separator_no_space(&self, buffer: &mut StyledBuffer, line: usize, col: usize) {
+        let chr = self.col_separator();
+        self.draw_col_separator_no_space_with_style(buffer, chr, line, col, Style::LineNumber);
+    }
+
+    fn draw_col_separator_start(&self, buffer: &mut StyledBuffer, line: usize, col: usize) {
+        match self.theme {
+            OutputTheme::Ascii => {
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '|',
+                    line,
+                    col,
+                    Style::LineNumber,
+                );
+            }
+            OutputTheme::Unicode => {
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '╭',
+                    line,
+                    col,
+                    Style::LineNumber,
+                );
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '╴',
+                    line,
+                    col + 1,
+                    Style::LineNumber,
+                );
+            }
+        }
+    }
+
+    fn draw_col_separator_end(&self, buffer: &mut StyledBuffer, line: usize, col: usize) {
+        match self.theme {
+            OutputTheme::Ascii => {
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '|',
+                    line,
+                    col,
+                    Style::LineNumber,
+                );
+            }
+            OutputTheme::Unicode => {
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '╰',
+                    line,
+                    col,
+                    Style::LineNumber,
+                );
+                self.draw_col_separator_no_space_with_style(
+                    buffer,
+                    '╴',
+                    line,
+                    col + 1,
+                    Style::LineNumber,
+                );
+            }
+        }
+    }
+
+    fn draw_col_separator_no_space_with_style(
+        &self,
+        buffer: &mut StyledBuffer,
+        chr: char,
+        line: usize,
+        col: usize,
+        style: Style,
+    ) {
+        buffer.putc(line, col, chr, style);
+    }
+
+    fn draw_range(
+        &self,
+        buffer: &mut StyledBuffer,
+        symbol: char,
+        line: usize,
+        col_from: usize,
+        col_to: usize,
+        style: Style,
+    ) {
+        for col in col_from..col_to {
+            buffer.putc(line, col, symbol, style);
+        }
+    }
+
+    fn draw_note_separator(
+        &self,
+        buffer: &mut StyledBuffer,
+        line: usize,
+        col: usize,
+        is_cont: bool,
+    ) {
+        let chr = match self.theme {
+            OutputTheme::Ascii => "= ",
+            OutputTheme::Unicode if is_cont => "├ ",
+            OutputTheme::Unicode => "╰ ",
+        };
+        buffer.puts(line, col, chr, Style::LineNumber);
+    }
+
+    fn draw_multiline_line(
+        &self,
+        buffer: &mut StyledBuffer,
+        line: usize,
+        offset: usize,
+        depth: usize,
+        style: Style,
+    ) {
+        let chr = match (style, self.theme) {
+            (Style::UnderlinePrimary | Style::LabelPrimary, OutputTheme::Ascii) => '|',
+            (_, OutputTheme::Ascii) => '|',
+            (Style::UnderlinePrimary | Style::LabelPrimary, OutputTheme::Unicode) => '┃',
+            (_, OutputTheme::Unicode) => '│',
+        };
+        buffer.putc(line, offset + depth - 1, chr, style);
+    }
+
+    fn file_start(&self) -> &'static str {
+        match self.theme {
+            OutputTheme::Ascii => "--> ",
+            OutputTheme::Unicode => " ╭▸ ",
+        }
+    }
+
+    fn secondary_file_start(&self) -> &'static str {
+        match self.theme {
+            OutputTheme::Ascii => "::: ",
+            OutputTheme::Unicode => " ⸬ ",
+        }
+    }
+
+    fn diff(&self) -> char {
+        match self.theme {
+            OutputTheme::Ascii => '~',
+            OutputTheme::Unicode => '±',
+        }
+    }
+
+    fn draw_line_separator(&self, buffer: &mut StyledBuffer, line: usize, col: usize) {
+        let (column, dots) = match self.theme {
+            OutputTheme::Ascii => (0, "..."),
+            OutputTheme::Unicode => (col - 2, "‡"),
+        };
+        buffer.puts(line, column, dots, Style::LineNumber);
+    }
+
+    fn margin(&self) -> &'static str {
+        match self.theme {
+            OutputTheme::Ascii => "...",
+            OutputTheme::Unicode => "…",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct UnderlineParts {
+    style: Style,
+    underline: char,
+    label_start: char,
+    vertical_text_line: char,
+    multiline_vertical: char,
+    multiline_horizontal: char,
+    multiline_whole_line: char,
+    multiline_start_down: char,
+    bottom_right: char,
+    top_left: char,
+    top_right_flat: char,
+    bottom_left: char,
+    multiline_end_up: char,
+    multiline_end_same_line: char,
+    multiline_bottom_right_with_text: char,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2664,50 +3170,6 @@ fn normalize_whitespace(s: &str) -> String {
         }
         s
     })
-}
-
-fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
-    buffer.puts(line, col, "| ", Style::LineNumber);
-}
-
-fn draw_col_separator_no_space(buffer: &mut StyledBuffer, line: usize, col: usize) {
-    draw_col_separator_no_space_with_style(buffer, line, col, Style::LineNumber);
-}
-
-fn draw_col_separator_no_space_with_style(
-    buffer: &mut StyledBuffer,
-    line: usize,
-    col: usize,
-    style: Style,
-) {
-    buffer.putc(line, col, '|', style);
-}
-
-fn draw_range(
-    buffer: &mut StyledBuffer,
-    symbol: char,
-    line: usize,
-    col_from: usize,
-    col_to: usize,
-    style: Style,
-) {
-    for col in col_from..col_to {
-        buffer.putc(line, col, symbol, style);
-    }
-}
-
-fn draw_note_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {
-    buffer.puts(line, col, "= ", Style::LineNumber);
-}
-
-fn draw_multiline_line(
-    buffer: &mut StyledBuffer,
-    line: usize,
-    offset: usize,
-    depth: usize,
-    style: Style,
-) {
-    buffer.putc(line, offset + depth - 1, '|', style);
 }
 
 fn num_overlap(

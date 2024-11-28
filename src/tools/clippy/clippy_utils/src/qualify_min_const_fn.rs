@@ -142,7 +142,7 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, tcx.param_env(def_id));
+            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, ty::TypingEnv::post_analysis(tcx, def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
@@ -233,6 +233,7 @@ fn check_statement<'tcx>(
         | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)
         | StatementKind::ConstEvalCounter
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::Nop => Ok(()),
     }
 }
@@ -393,34 +394,31 @@ fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
 
                 msrv.meets(const_stab_rust_version)
             } else {
-                // Unstable const fn, check if the feature is enabled. We need both the regular stability
-                // feature and (if set) the const stability feature to const-call this function.
-                let stab = tcx.lookup_stability(def_id);
-                let is_enabled = stab.is_some_and(|s| s.is_stable() || tcx.features().enabled(s.feature))
-                    && const_stab.feature.is_none_or(|f| tcx.features().enabled(f));
-                is_enabled && msrv.current().is_none()
+                // Unstable const fn, check if the feature is enabled.
+                tcx.features().enabled(const_stab.feature) && msrv.current().is_none()
             }
         })
 }
 
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-    // FIXME(effects, fee1-dead) revert to const destruct once it works again
+    // FIXME(const_trait_impl, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
     fn is_ty_const_destruct_unused<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-        // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::is_trivially_const_drop(ty) {
-            return true;
+        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        if !ty.needs_drop(tcx, body.typing_env(tcx)) {
+            return false;
         }
 
-        // FIXME(effects) constness
+        let (infcx, param_env) =
+            tcx.infer_ctxt().build_with_typing_env(body.typing_env(tcx));
+        // FIXME(const_trait_impl) constness
         let obligation = Obligation::new(
             tcx,
             ObligationCause::dummy_with_span(body.span),
-            ConstCx::new(tcx, body).param_env,
+            param_env,
             TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, Some(body.span)), [ty]),
         );
 
-        let infcx = tcx.infer_ctxt().build(body.typing_mode(tcx));
         let mut selcx = SelectionContext::new(&infcx);
         let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
             return false;
@@ -438,5 +436,5 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
         ocx.select_all_or_error().is_empty()
     }
 
-    !ty.needs_drop(tcx, ConstCx::new(tcx, body).param_env)
+    !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)
 }

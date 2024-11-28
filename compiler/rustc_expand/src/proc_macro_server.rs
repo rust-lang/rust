@@ -38,7 +38,7 @@ impl FromInternal<token::Delimiter> for Delimiter {
             token::Delimiter::Parenthesis => Delimiter::Parenthesis,
             token::Delimiter::Brace => Delimiter::Brace,
             token::Delimiter::Bracket => Delimiter::Bracket,
-            token::Delimiter::Invisible => Delimiter::None,
+            token::Delimiter::Invisible(_) => Delimiter::None,
         }
     }
 }
@@ -49,7 +49,7 @@ impl ToInternal<token::Delimiter> for Delimiter {
             Delimiter::Parenthesis => token::Delimiter::Parenthesis,
             Delimiter::Brace => token::Delimiter::Brace,
             Delimiter::Bracket => token::Delimiter::Bracket,
-            Delimiter::None => token::Delimiter::Invisible,
+            Delimiter::None => token::Delimiter::Invisible(token::InvisibleOrigin::ProcMacro),
         }
     }
 }

@@ -83,7 +83,7 @@ impl<'tcx> At<'_, 'tcx> {
 
             Ok(self.infcx.resolve_vars_if_possible(new_infer_ct))
         } else if self.infcx.tcx.features().generic_const_exprs() {
-            Ok(ct.normalize_internal(self.infcx.tcx, self.param_env))
+            Ok(super::evaluate_const(&self.infcx, ct, self.param_env))
         } else {
             Ok(self.normalize(ct).into_value_registering_obligations(self.infcx, fulfill_cx))
         }

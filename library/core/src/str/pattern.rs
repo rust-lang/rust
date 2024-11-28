@@ -886,8 +886,8 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(&['l', 'l'] as &[_]), Some(2));
-/// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
+/// assert_eq!("Hello world".find(&['o', 'l'][..]), Some(2));
+/// assert_eq!("Hello world".find(&['h', 'w'][..]), Some(6));
 /// ```
 impl<'b> Pattern for &'b [char] {
     pattern_methods!('a, CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);

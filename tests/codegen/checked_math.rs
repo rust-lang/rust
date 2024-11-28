@@ -90,7 +90,7 @@ pub fn checked_shr_signed(a: i32, b: u32) -> Option<i32> {
 #[no_mangle]
 pub fn checked_add_one_unwrap_unsigned(x: u32) -> u32 {
     // CHECK: %[[IS_MAX:.+]] = icmp eq i32 %x, -1
-    // CHECK: br i1 %[[IS_MAX]], label %[[NONE_BB:.+]], label %[[SOME_BB:.+]]
+    // CHECK: br i1 %[[IS_MAX]], label %[[NONE_BB:.+]], label %[[SOME_BB:.+]],
     // CHECK: [[SOME_BB]]:
     // CHECK: %[[R:.+]] = add nuw i32 %x, 1
     // CHECK: ret i32 %[[R]]

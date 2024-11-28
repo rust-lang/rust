@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::iter;
 use std::ops::Range;
 
-use rustc_abi::Integer;
+use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -27,7 +26,7 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let args = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.args);
+    let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
 
     let prefix = "_R";
     let mut cx: SymbolMangler<'_> = SymbolMangler {
@@ -234,19 +233,20 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
-        let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
+        let mut typing_env = ty::TypingEnv::post_analysis(self.tcx, impl_def_id);
         if !args.is_empty() {
-            param_env = EarlyBinder::bind(param_env).instantiate(self.tcx, args);
+            typing_env.param_env =
+                EarlyBinder::bind(typing_env.param_env).instantiate(self.tcx, args);
         }
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
                 assert_eq!(impl_trait_ref.self_ty(), self_ty);
-                *impl_trait_ref = self.tcx.normalize_erasing_regions(param_env, *impl_trait_ref);
+                *impl_trait_ref = self.tcx.normalize_erasing_regions(typing_env, *impl_trait_ref);
                 self_ty = impl_trait_ref.self_ty();
             }
             None => {
-                self_ty = self.tcx.normalize_erasing_regions(param_env, self_ty);
+                self_ty = self.tcx.normalize_erasing_regions(typing_env, self_ty);
             }
         }
 
@@ -291,7 +291,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
             // Bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon }) => {
+            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + var.as_u32();
 
@@ -444,8 +444,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         cx.push("U");
                     }
                     match sig.abi {
-                        Abi::Rust => {}
-                        Abi::C { unwind: false } => cx.push("KC"),
+                        ExternAbi::Rust => {}
+                        ExternAbi::C { unwind: false } => cx.push("KC"),
                         abi => {
                             cx.push("K");
                             let name = abi.name();
@@ -569,7 +569,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
             // We may still encounter unevaluated consts due to the printing
             // logic sometimes passing identity-substituted impl headers.
-            ty::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args, .. }) => {
                 return self.print_def_path(def, args);
             }
 
@@ -592,7 +592,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ct_ty.print(self)?;
 
                 let mut bits = ct
-                    .try_to_bits(self.tcx, ty::ParamEnv::reveal_all())
+                    .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
                     .expect("expected const to be monomorphic");
 
                 // Negative integer values are mangled using `n` as a "sign prefix".

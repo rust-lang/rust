@@ -7,7 +7,7 @@
 
 use std::ops;
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {

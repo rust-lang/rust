@@ -80,7 +80,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_unstable_by_key(|k| k.1);
 
-        for (symbol, &span) in &symbols {
+        for &(symbol, &span) in &symbols {
             // Note: `symbol.as_str()` is an expensive operation, thus should not be called
             // more than once for a single symbol.
             let symbol_str = symbol.as_str();

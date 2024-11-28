@@ -2,7 +2,7 @@ struct A;
 struct B;
 
 static S: &'static B = &A;
-//~^ ERROR cannot perform deref coercion
+//~^ ERROR cannot call conditionally-const method
 
 use std::ops::Deref;
 

@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
 
-//@ pretty-expanded FIXME #23616
 
 macro_rules! vec [
     ($($e:expr),*) => ({

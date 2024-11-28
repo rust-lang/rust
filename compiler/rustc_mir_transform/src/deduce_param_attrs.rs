@@ -198,7 +198,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
     // see [1].
     //
     // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
-    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let typing_env = body.typing_env(tcx);
     let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
@@ -207,8 +207,8 @@ pub(super) fn deduced_param_attrs<'tcx>(
                     // their generic parameters, otherwise we'll see exponential
                     // blow-up in compile times: #113372
                     && tcx
-                        .normalize_erasing_regions(param_env, local_decl.ty)
-                        .is_freeze(tcx, param_env),
+                        .normalize_erasing_regions(typing_env, local_decl.ty)
+                        .is_freeze(tcx, typing_env),
             },
         ),
     );

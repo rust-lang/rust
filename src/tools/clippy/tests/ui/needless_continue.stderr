@@ -136,5 +136,13 @@ LL | |                 }
                                println!("bar-5");
                            }
 
-error: aborting due to 8 previous errors
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:166:13
+   |
+LL |             continue 'b;
+   |             ^^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: aborting due to 9 previous errors
 

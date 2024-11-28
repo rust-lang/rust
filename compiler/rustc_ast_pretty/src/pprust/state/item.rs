@@ -726,11 +726,12 @@ impl<'a> State<'a> {
     }
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
-        match predicate {
-            ast::WherePredicate::BoundPredicate(where_bound_predicate) => {
+        let ast::WherePredicate { kind, id: _, span: _ } = predicate;
+        match kind {
+            ast::WherePredicateKind::BoundPredicate(where_bound_predicate) => {
                 self.print_where_bound_predicate(where_bound_predicate);
             }
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+            ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
@@ -742,7 +743,9 @@ impl<'a> State<'a> {
                     self.print_lifetime_bounds(bounds);
                 }
             }
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
+                lhs_ty, rhs_ty, ..
+            }) => {
                 self.print_type(lhs_ty);
                 self.space();
                 self.word_space("=");

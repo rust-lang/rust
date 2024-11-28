@@ -11,7 +11,7 @@
 //@ [cfi] compile-flags: -Z sanitizer=cfi
 //@ [kcfi] compile-flags: -Z sanitizer=kcfi
 //@ [kcfi] compile-flags: -C panic=abort -Z panic-abort-tests -C prefer-dynamic=off
-//@ compile-flags: --test -Z unstable-options
+//@ compile-flags: --test
 //@ run-pass
 
 #![feature(coroutines, stmt_expr_attributes)]

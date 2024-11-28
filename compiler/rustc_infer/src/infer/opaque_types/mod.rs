@@ -101,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                if let ty::TypingMode::Coherence = self.typing_mode(param_env) {
+                if let ty::TypingMode::Coherence = self.typing_mode() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -177,7 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
+            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
         }
     }
 
@@ -432,7 +432,6 @@ where
                     upvar.visit_with(self);
                 }
 
-                // FIXME(async_closures): Is this the right signature to visit here?
                 args.as_coroutine_closure().signature_parts_ty().visit_with(self);
             }
 
@@ -523,7 +522,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        match self.typing_mode(param_env) {
+        match self.typing_mode() {
             ty::TypingMode::Coherence => {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement
@@ -575,9 +574,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // unexpected region errors.
         goals.push(Goal::new(tcx, param_env, ty::ClauseKind::WellFormed(hidden_ty.into())));
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
-        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
-            let predicate = predicate.fold_with(&mut BottomUpFolder {
+        let replace_opaques_in = |clause: ty::Clause<'tcx>, goals: &mut Vec<_>| {
+            clause.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
@@ -613,11 +611,31 @@ impl<'tcx> InferCtxt<'tcx> {
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
-            });
+            })
+        };
+
+        let item_bounds = tcx.explicit_item_bounds(def_id);
+        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+            let predicate = replace_opaques_in(predicate, goals);
 
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
             goals.push(Goal::new(self.tcx, param_env, predicate));
+        }
+
+        // If this opaque is being defined and it's conditionally const,
+        if self.tcx.is_conditionally_const(def_id) {
+            let item_bounds = tcx.explicit_implied_const_bounds(def_id);
+            for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+                let predicate = replace_opaques_in(
+                    predicate.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe),
+                    goals,
+                );
+
+                // Require that the predicate holds for the concrete type.
+                debug!(?predicate);
+                goals.push(Goal::new(self.tcx, param_env, predicate));
+            }
         }
     }
 }

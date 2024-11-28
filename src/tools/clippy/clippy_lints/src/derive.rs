@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
@@ -9,7 +11,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
     self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast,
 };
@@ -202,7 +203,7 @@ declare_lint_pass!(Derive => [
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
+            of_trait: Some(trait_ref),
             ..
         }) = item.kind
         {
@@ -325,7 +326,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     // there's a Copy impl for any instance of the adt.
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
-            let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
+            let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).is_some_and(|impls| {
                 impls.iter().any(|&id| {
                     matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)
                                         if ty_adt.did() == adt.did())
@@ -371,9 +372,8 @@ fn check_unsafe_derive_deserialize<'tcx>(
     ty: Ty<'tcx>,
 ) {
     fn has_unsafe<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>) -> bool {
-        let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
-        walk_item(&mut visitor, item);
-        visitor.has_unsafe
+        let mut visitor = UnsafeVisitor { cx };
+        walk_item(&mut visitor, item).is_break()
     }
 
     if let Some(trait_def_id) = trait_ref.trait_def_id()
@@ -406,38 +406,37 @@ fn check_unsafe_derive_deserialize<'tcx>(
 
 struct UnsafeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    has_unsafe: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::All;
 
-    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: LocalDefId) {
-        if self.has_unsafe {
-            return;
-        }
-
+    fn visit_fn(
+        &mut self,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl<'_>,
+        body_id: BodyId,
+        _: Span,
+        id: LocalDefId,
+    ) -> Self::Result {
         if let Some(header) = kind.header()
             && header.safety == Safety::Unsafe
         {
-            self.has_unsafe = true;
+            ControlFlow::Break(())
+        } else {
+            walk_fn(self, kind, decl, body_id, id)
         }
-
-        walk_fn(self, kind, decl, body_id, id);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.has_unsafe {
-            return;
-        }
-
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> Self::Result {
         if let ExprKind::Block(block, _) = expr.kind {
             if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                self.has_unsafe = true;
+                return ControlFlow::Break(());
             }
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -454,13 +453,13 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
-        && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && let typing_env = typing_env_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[]))
+            .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty, eq_trait_def_id, None, &[]))
     {
         span_lint_hir_and_then(
             cx,
@@ -485,7 +484,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
-fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ParamEnv<'_> {
+fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
@@ -506,7 +505,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         }
     }
 
-    ParamEnv::new(
+    let param_env = ParamEnv::new(
         tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 ClauseKind::Trait(TraitPredicate {
@@ -516,6 +515,9 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
                 .upcast(tcx)
             }),
         )),
-        Reveal::UserFacing,
-    )
+    );
+    ty::TypingEnv {
+        typing_mode: ty::TypingMode::non_body_analysis(),
+        param_env,
+    }
 }

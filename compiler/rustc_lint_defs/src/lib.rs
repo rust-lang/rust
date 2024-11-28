@@ -381,6 +381,8 @@ pub enum FutureIncompatibilityReason {
     /// hard errors (and the lint removed). Preferably when there is some
     /// confidence that the number of impacted projects is very small (few
     /// should have a broken dependency in their dependency tree).
+    ///
+    /// [`EditionAndFutureReleaseError`]: FutureIncompatibilityReason::EditionAndFutureReleaseError
     FutureReleaseErrorReportInDeps,
     /// Code that changes meaning in some way in a
     /// future release.
@@ -419,6 +421,28 @@ pub enum FutureIncompatibilityReason {
     /// slightly changes the text of the diagnostic, but is otherwise the
     /// same.
     EditionSemanticsChange(Edition),
+    /// This will be an error in the provided edition *and* in a future
+    /// release.
+    ///
+    /// This variant a combination of [`FutureReleaseErrorDontReportInDeps`]
+    /// and [`EditionError`]. This is useful in rare cases when we
+    /// want to have "preview" of a breaking change in an edition, but do a
+    /// breaking change later on all editions anyway.
+    ///
+    /// [`EditionError`]: FutureIncompatibilityReason::EditionError
+    /// [`FutureReleaseErrorDontReportInDeps`]: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+    EditionAndFutureReleaseError(Edition),
+    /// This will change meaning in the provided edition *and* in a future
+    /// release.
+    ///
+    /// This variant a combination of [`FutureReleaseSemanticsChange`]
+    /// and [`EditionSemanticsChange`]. This is useful in rare cases when we
+    /// want to have "preview" of a breaking change in an edition, but do a
+    /// breaking change later on all editions anyway.
+    ///
+    /// [`EditionSemanticsChange`]: FutureIncompatibilityReason::EditionSemanticsChange
+    /// [`FutureReleaseSemanticsChange`]: FutureIncompatibilityReason::FutureReleaseSemanticsChange
+    EditionAndFutureReleaseSemanticsChange(Edition),
     /// A custom reason.
     ///
     /// Choose this variant if the built-in text of the diagnostic of the
@@ -431,9 +455,29 @@ pub enum FutureIncompatibilityReason {
 impl FutureIncompatibilityReason {
     pub fn edition(self) -> Option<Edition> {
         match self {
-            Self::EditionError(e) => Some(e),
-            Self::EditionSemanticsChange(e) => Some(e),
-            _ => None,
+            Self::EditionError(e)
+            | Self::EditionSemanticsChange(e)
+            | Self::EditionAndFutureReleaseError(e)
+            | Self::EditionAndFutureReleaseSemanticsChange(e) => Some(e),
+
+            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
+            | FutureIncompatibilityReason::Custom(_) => None,
+        }
+    }
+
+    pub fn has_future_breakage(self) -> bool {
+        match self {
+            FutureIncompatibilityReason::FutureReleaseErrorReportInDeps => true,
+
+            FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps
+            | FutureIncompatibilityReason::FutureReleaseSemanticsChange
+            | FutureIncompatibilityReason::EditionError(_)
+            | FutureIncompatibilityReason::EditionSemanticsChange(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseError(_)
+            | FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(_)
+            | FutureIncompatibilityReason::Custom(_) => false,
         }
     }
 }

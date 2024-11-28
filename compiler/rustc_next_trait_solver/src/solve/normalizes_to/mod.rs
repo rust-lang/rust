@@ -71,7 +71,7 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match self.typing_mode(param_env) {
+                match self.typing_mode() {
                     // Opaques are never rigid outside of analysis mode.
                     TypingMode::Coherence | TypingMode::PostAnalysis => Err(NoSolution),
                     // During analysis, opaques are only rigid if we may not define it.
@@ -363,13 +363,6 @@ where
         panic!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 
-    fn consider_builtin_pointer_like_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        panic!("`PointerLike` does not have an associated type: {:?}", goal);
-    }
-
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -394,6 +387,9 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
             ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
         });
@@ -408,8 +404,6 @@ where
             })
             .upcast(cx);
 
-        // A built-in `Fn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -438,6 +432,9 @@ where
                 goal_kind,
                 env_region,
             )?;
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty: output_ty, .. }| {
                 ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output_ty])
@@ -494,8 +491,6 @@ where
             )
             .upcast(cx);
 
-        // A built-in `AsyncFn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),

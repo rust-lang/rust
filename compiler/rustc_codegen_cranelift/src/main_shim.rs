@@ -49,7 +49,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         // regions must appear in the argument
         // listing.
         let main_ret_ty = tcx.normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             main_ret_ty.no_bound_vars().unwrap(),
         );
 
@@ -113,7 +113,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     .unwrap();
                 let report = Instance::expect_resolve(
                     tcx,
-                    ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     report.def_id,
                     tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
                     DUMMY_SP,
@@ -139,7 +139,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::expect_resolve(
                     tcx,
-                    ParamEnv::reveal_all(),
+                    ty::TypingEnv::fully_monomorphized(),
                     start_def_id,
                     tcx.mk_args(&[main_ret_ty.into()]),
                     DUMMY_SP,

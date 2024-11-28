@@ -2,7 +2,7 @@
 //@ compile-flags: --target riscv64imac-unknown-none-elf -Ctarget-feature=+f,+d
 //@ needs-llvm-components: riscv
 //@ revisions: LLVM-PRE-20 LLVM-POST-20
-//@ [LLVM-PRE-20] ignore-llvm-version: 20 - 99
+//@ [LLVM-PRE-20] max-llvm-major-version: 19
 //@ [LLVM-POST-20] min-llvm-version: 20
 
 #![feature(no_core, lang_items, f16)]

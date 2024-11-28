@@ -1,6 +1,7 @@
 #![deny(dangling_pointers_from_temporaries)]
+#![feature(sync_unsafe_cell)]
 
-use std::cell::Cell;
+use std::cell::{Cell, SyncUnsafeCell, UnsafeCell};
 use std::ffi::{CStr, CString};
 use std::mem::MaybeUninit;
 
@@ -47,6 +48,10 @@ fn main() {
     //~^ ERROR a dangling pointer will be produced because the temporary `MaybeUninit<u8>` will be dropped
     declval::<Vec<AsPtrFake>>().as_ptr();
     //~^ ERROR a dangling pointer will be produced because the temporary `Vec<AsPtrFake>` will be dropped
+    declval::<UnsafeCell<u8>>().get();
+    //~^ ERROR a dangling pointer will be produced because the temporary `UnsafeCell<u8>` will be dropped
+    declval::<SyncUnsafeCell<u8>>().get();
+    //~^ ERROR a dangling pointer will be produced because the temporary `SyncUnsafeCell<u8>` will be dropped
     declval::<Box<AsPtrFake>>().as_ptr();
     declval::<AsPtrFake>().as_ptr();
 }

@@ -1,12 +1,12 @@
 //! Implements threads.
 
 use std::mem;
-use std::num::TryFromIntError;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
+use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -14,7 +14,6 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::shims::tls;
@@ -114,6 +113,11 @@ impl ThreadId {
         self.0
     }
 
+    /// Create a new thread id from a `u32` without checking if this thread exists.
+    pub fn new_unchecked(id: u32) -> Self {
+        Self(id)
+    }
+
     pub const MAIN_THREAD: ThreadId = ThreadId(0);
 }
 
@@ -124,26 +128,6 @@ impl Idx for ThreadId {
 
     fn index(self) -> usize {
         usize::try_from(self.0).unwrap()
-    }
-}
-
-impl TryFrom<u64> for ThreadId {
-    type Error = TryFromIntError;
-    fn try_from(id: u64) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(Self)
-    }
-}
-
-impl TryFrom<i128> for ThreadId {
-    type Error = TryFromIntError;
-    fn try_from(id: i128) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(Self)
-    }
-}
-
-impl From<u32> for ThreadId {
-    fn from(id: u32) -> Self {
-        Self(id)
     }
 }
 
@@ -162,17 +146,19 @@ pub enum BlockReason {
     /// Waiting for time to pass.
     Sleep,
     /// Blocked on a mutex.
-    Mutex(MutexId),
+    Mutex,
     /// Blocked on a condition variable.
     Condvar(CondvarId),
     /// Blocked on a reader-writer lock.
     RwLock(RwLockId),
     /// Blocked on a Futex variable.
-    Futex { addr: u64 },
+    Futex,
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),
     /// Blocked on epoll.
     Epoll,
+    /// Blocked on eventfd.
+    Eventfd,
 }
 
 /// The state of a thread.
@@ -448,6 +434,10 @@ pub enum TimeoutAnchor {
     Absolute,
 }
 
+/// An error signaling that the requested thread doesn't exist.
+#[derive(Debug, Copy, Clone)]
+pub struct ThreadNotFound;
+
 /// A set of threads.
 #[derive(Debug)]
 pub struct ThreadManager<'tcx> {
@@ -509,6 +499,16 @@ impl<'tcx> ThreadManager<'tcx> {
         }
     }
 
+    pub fn thread_id_try_from(&self, id: impl TryInto<u32>) -> Result<ThreadId, ThreadNotFound> {
+        if let Ok(id) = id.try_into()
+            && usize::try_from(id).is_ok_and(|id| id < self.threads.len())
+        {
+            Ok(ThreadId(id))
+        } else {
+            Err(ThreadNotFound)
+        }
+    }
+
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
     fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<StrictPointer> {
@@ -534,6 +534,7 @@ impl<'tcx> ThreadManager<'tcx> {
     ) -> &mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
+
     pub fn all_stacks(
         &self,
     ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> {
@@ -868,6 +869,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 // Public interface to thread management.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    #[inline]
+    fn thread_id_try_from(&self, id: impl TryInto<u32>) -> Result<ThreadId, ThreadNotFound> {
+        self.eval_context_ref().machine.threads.thread_id_try_from(id)
+    }
+
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     fn get_or_create_thread_local_alloc(
@@ -911,7 +917,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         thread: Option<MPlaceTy<'tcx>>,
         start_routine: Pointer,
-        start_abi: Abi,
+        start_abi: ExternAbi,
         func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
@@ -1160,8 +1166,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Set the name of the current thread. The buffer must not include the null terminator.
     #[inline]
     fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
-        let this = self.eval_context_mut();
-        this.machine.threads.set_thread_name(thread, new_thread_name);
+        self.eval_context_mut().machine.threads.set_thread_name(thread, new_thread_name);
     }
 
     #[inline]

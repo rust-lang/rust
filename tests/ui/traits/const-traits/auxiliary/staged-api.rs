@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![allow(incomplete_features)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

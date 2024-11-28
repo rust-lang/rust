@@ -3,7 +3,6 @@
 #![allow(unused_variables)]
 // Test that we can use `Self` types in impls in the expected way.
 
-//@ pretty-expanded FIXME #23616
 
 struct Foo;
 

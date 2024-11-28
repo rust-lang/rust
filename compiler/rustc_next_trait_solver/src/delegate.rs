@@ -29,10 +29,10 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
 
-    fn try_const_eval_resolve(
+    fn evaluate_const(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
-        unevaluated: ty::UnevaluatedConst<Self::Interner>,
+        uv: ty::UnevaluatedConst<Self::Interner>,
     ) -> Option<<Self::Interner as Interner>::Const>;
 
     // FIXME: This only is here because `wf::obligations` is in `rustc_trait_selection`!

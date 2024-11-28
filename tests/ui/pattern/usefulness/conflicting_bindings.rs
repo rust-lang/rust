@@ -10,6 +10,8 @@ fn main() {
     //~^ ERROR: mutable more than once
     if let Some(ref mut y @ ref mut z) = x && true {}
     //~^ ERROR: mutable more than once
+    if let Some(_) = Some(()) && let Some(ref mut y @ ref mut z) = x && true {}
+    //~^ ERROR: mutable more than once
     while let Some(ref mut y @ ref mut z) = x {}
     //~^ ERROR: mutable more than once
     while let Some(ref mut y @ ref mut z) = x && true {}

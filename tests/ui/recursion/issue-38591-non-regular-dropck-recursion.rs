@@ -8,7 +8,7 @@ struct S<T> {
     s: Box<S<fn(u: T)>>,
 }
 
-fn f(x: S<u32>) {} //~ ERROR overflow while adding drop-check rules for S<u32>
+fn f(x: S<u32>) {} //~ ERROR overflow while adding drop-check rules for `S<u32>`
 
 fn main() {
     // Force instantiation.

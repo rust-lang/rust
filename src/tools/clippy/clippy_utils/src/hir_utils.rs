@@ -128,7 +128,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         self.inter_expr().eq_path_segments(left, right)
     }
 
-    pub fn eq_modifiers(&mut self, left: TraitBoundModifiers, right: TraitBoundModifiers) -> bool {
+    pub fn eq_modifiers(left: TraitBoundModifiers, right: TraitBoundModifiers) -> bool {
         std::mem::discriminant(&left.constness) == std::mem::discriminant(&right.constness)
             && std::mem::discriminant(&left.polarity) == std::mem::discriminant(&right.polarity)
     }
@@ -258,7 +258,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
-        macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+        macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 &self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
                 Some(sym::todo_macro | sym::unimplemented_macro)
@@ -297,8 +297,8 @@ impl HirEqInterExpr<'_, '_, '_> {
         if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
             && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
             && let (Some(l), Some(r)) = (
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.param_env, typeck_lhs).eval_simple(left),
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.param_env, typeck_rhs).eval_simple(right),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs).eval_simple(left),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs).eval_simple(right),
             )
             && l == r
         {
@@ -322,7 +322,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Block(l, _), &ExprKind::Block(r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ll, lr), &ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
+                    || swap_binop(l_op.node, ll, lr).is_some_and(|(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -444,7 +444,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
-            || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
+            || self.inner.expr_fallback.as_mut().is_some_and(|f| f(left, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
@@ -724,7 +724,7 @@ fn swap_binop<'a>(
 /// `eq_fn`.
 pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
-        .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
+        .map_or_else(|| r.is_none(), |x| r.as_ref().is_some_and(|y| eq_fn(x, y)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.
@@ -813,7 +813,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     #[expect(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self.maybe_typeck_results.and_then(|typeck_results| {
-            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.param_env, typeck_results).eval_simple(e)
+            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_simple(e)
         });
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
@@ -1201,11 +1201,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
                 self.hash_pat(pat);
             },
-            TyKind::Ptr(ref mut_ty) => {
+            TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::Ref(lifetime, ref mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
@@ -1230,14 +1230,19 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(ref qpath) => self.hash_qpath(qpath),
+            TyKind::Path(qpath) => self.hash_qpath(qpath),
             TyKind::TraitObject(_, lifetime, _) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
-            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) | TyKind::OpaqueDef(_) | TyKind::AnonAdt(_) => {},
+            TyKind::Err(_)
+            | TyKind::Infer
+            | TyKind::Never
+            | TyKind::InferDelegation(..)
+            | TyKind::OpaqueDef(_)
+            | TyKind::AnonAdt(_) => {},
         }
     }
 

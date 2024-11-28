@@ -9,11 +9,12 @@ This option is only accepted when targeting AArch64 architectures.
 It takes some combination of the following values, separated by a `,`.
 
 - `pac-ret` - Enable pointer authentication for non-leaf functions.
+- `pc` - Use PC as a diversifier using PAuthLR instructions
 - `leaf` - Enable pointer authentication for all functions, including leaf functions.
 - `b-key` - Sign return addresses with key B, instead of the default key A.
 - `bti` - Enable branch target identification.
 
-`leaf` and `b-key` are only valid if `pac-ret` was previously specified.
+`leaf`, `b-key` and `pc` are only valid if `pac-ret` was previously specified.
 For example, `-Z branch-protection=bti,pac-ret,leaf` is valid, but
 `-Z branch-protection=bti,leaf,pac-ret` is not.
 
