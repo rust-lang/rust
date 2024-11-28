@@ -162,8 +162,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
-    fn make_child_renderer(&mut self) -> Self::InfoType {}
-    fn set_back_info(&mut self, _info: Self::InfoType) {}
+    fn make_child_renderer(&mut self) -> Self::InfoType {
+        unreachable!("RUN_ON_MODULE = false should never call make_child_renderer")
+    }
+
+    fn set_back_info(&mut self, _info: Self::InfoType) {
+        unreachable!("RUN_ON_MODULE = false should never call set_back_info")
+    }
 
     /// Inserts an item into the index. This should be used rather than directly calling insert on
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
