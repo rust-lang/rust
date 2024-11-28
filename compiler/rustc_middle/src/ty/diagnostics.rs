@@ -345,6 +345,7 @@ pub fn suggest_constraining_type_params<'a>(
         let mut constraint = constraints.iter().map(|&(c, _, _)| c).collect::<Vec<_>>();
         constraint.sort();
         constraint.dedup();
+        let all_known = constraints.iter().all(|&(_, def_id, _)| def_id.is_some());
         let all_stable = constraints.iter().all(|&(_, _, stable)| stable.is_empty());
         let all_unstable = constraints.iter().all(|&(_, _, stable)| !stable.is_empty());
         let post = if all_stable || all_unstable {
@@ -360,7 +361,8 @@ pub fn suggest_constraining_type_params<'a>(
             trait_names.dedup();
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
-            format!("{stable}trait{} {}", pluralize!(n), match &trait_names[..] {
+            let trait_ = if all_known { "trait" } else { "" };
+            format!("{stable}{trait_}{} {}", pluralize!(n), match &trait_names[..] {
                 [t] => t.to_string(),
                 [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
                 [] => return false,
@@ -370,7 +372,7 @@ pub fn suggest_constraining_type_params<'a>(
             let mut trait_names = constraints
                 .iter()
                 .map(|&(c, def_id, stable)| match def_id {
-                    None => format!("{stable}trait `{c}`"),
+                    None => format!("`{c}`"),
                     Some(def_id) => format!("{stable}trait `{}`", tcx.item_name(def_id)),
                 })
                 .collect::<Vec<_>>();
