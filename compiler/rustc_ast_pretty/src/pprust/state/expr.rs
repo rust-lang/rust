@@ -276,21 +276,22 @@ impl<'a> State<'a> {
         fixup: FixupContext,
     ) {
         let assoc_op = AssocOp::from_ast_binop(op.node);
-        let prec = assoc_op.precedence() as i8;
-        let fixity = assoc_op.fixity();
+        let binop_prec = assoc_op.precedence() as i8;
+        let left_prec = lhs.precedence();
+        let right_prec = rhs.precedence();
 
-        let (left_prec, right_prec) = match fixity {
-            Fixity::Left => (prec, prec + 1),
-            Fixity::Right => (prec + 1, prec),
-            Fixity::None => (prec + 1, prec + 1),
+        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+            Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
+            Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
+            Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
         };
 
-        let left_prec = match (&lhs.kind, op.node) {
+        match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
             (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Lt | ast::BinOpKind::Shl) => {
-                parser::PREC_FORCE_PAREN
+                left_needs_paren = true;
             }
             // We are given `(let _ = a) OP b`.
             //
@@ -300,26 +301,16 @@ impl<'a> State<'a> {
             // - Otherwise, e.g. when we have `(let a = b) < c` in AST,
             //   parens are required since the parser would interpret `let a = b < c` as
             //   `let a = (b < c)`. To achieve this, we force parens.
-            (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
-                parser::PREC_FORCE_PAREN
+            (&ast::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(binop_prec) => {
+                left_needs_paren = true;
             }
-            _ => left_prec,
-        };
+            _ => {}
+        }
 
-        self.print_expr_cond_paren(
-            lhs,
-            lhs.precedence() < left_prec,
-            fixup.leftmost_subexpression(),
-        );
-
+        self.print_expr_cond_paren(lhs, left_needs_paren, fixup.leftmost_subexpression());
         self.space();
         self.word_space(op.node.as_str());
-
-        self.print_expr_cond_paren(
-            rhs,
-            rhs.precedence() < right_prec,
-            fixup.subsequent_subexpression(),
-        );
+        self.print_expr_cond_paren(rhs, right_needs_paren, fixup.subsequent_subexpression());
     }
 
     fn print_expr_unary(&mut self, op: ast::UnOp, expr: &ast::Expr, fixup: FixupContext) {
