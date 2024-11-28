@@ -12,13 +12,12 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
-use rustc_serialize::opaque::FileEncodeResult;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
 use crate::errors::FailedWritingFile;
 use crate::interface::{Compiler, Result};
-use crate::{errors, passes};
+use crate::passes;
 
 /// Represent the result of a query.
 ///
@@ -62,7 +61,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
 
 impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
-        (*self.0).get_mut().enter(f)
+        (*self.0).borrow().enter(f)
     }
 }
 
@@ -90,8 +89,10 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
-        if let Some(gcx) = self.gcx_cell.get() { gcx.finish() } else { Ok(0) }
+    pub fn finish(&'tcx self) {
+        if let Some(gcx) = self.gcx_cell.get() {
+            gcx.finish();
+        }
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
@@ -209,29 +210,10 @@ impl Compiler {
         let queries = Queries::new(self);
         let ret = f(&queries);
 
-        // NOTE: intentionally does not compute the global context if it hasn't been built yet,
-        // since that likely means there was a parse error.
-        if let Some(Ok(gcx)) = &mut *queries.gcx.result.borrow_mut() {
-            let gcx = gcx.get_mut();
-            // We assume that no queries are run past here. If there are new queries
-            // after this point, they'll show up as "<unknown>" in self-profiling data.
-            {
-                let _prof_timer =
-                    queries.compiler.sess.prof.generic_activity("self_profile_alloc_query_strings");
-                gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
-            }
-
-            self.sess.time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
-
-            gcx.enter(rustc_query_impl::query_key_hash_verify_all);
-        }
-
         // The timer's lifetime spans the dropping of `queries`, which contains
         // the global context.
         _timer = self.sess.timer("free_global_ctxt");
-        if let Err((path, error)) = queries.finish() {
-            self.sess.dcx().emit_fatal(errors::FailedWritingFile { path: &path, error });
-        }
+        queries.finish();
 
         ret
     }

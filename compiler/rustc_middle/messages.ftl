@@ -73,6 +73,9 @@ middle_drop_check_overflow =
 
 middle_erroneous_constant = erroneous constant encountered
 
+middle_failed_writing_file =
+    failed to write file {$path}: {$error}"
+
 middle_layout_references_error =
     the type has an unknown layout
 

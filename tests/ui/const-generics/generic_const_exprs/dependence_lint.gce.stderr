@@ -1,12 +1,4 @@
 error: overly complex generic constant
-  --> $DIR/dependence_lint.rs:17:9
-   |
-LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error with gce
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ control flow is not supported in generic constants
-   |
-   = help: consider moving this anonymous constant into a `const` function
-
-error: overly complex generic constant
   --> $DIR/dependence_lint.rs:21:17
    |
 LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable, error with gce
@@ -35,6 +27,14 @@ help: try adding a `where` bound
    |
 LL | fn foo<T>() where [(); size_of::<*mut T>()]: {
    |             ++++++++++++++++++++++++++++++++
+
+error: overly complex generic constant
+  --> $DIR/dependence_lint.rs:17:9
+   |
+LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error with gce
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ control flow is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
 
 error: aborting due to 4 previous errors
 
