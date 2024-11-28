@@ -19,7 +19,7 @@ LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
    |    ^^^ -                       -----  ----- this parameter needs to match the `async` block type of `f1`
    |        |                       |
    |        |                       `f2` needs to match the `async` block type of this parameter
-   |        `f1` and `f2` all reference this parameter F
+   |        `f1` and `f2` both reference this parameter `F`
 
 error[E0308]: mismatched types
   --> $DIR/coroutine-desc.rs:12:16
@@ -39,7 +39,7 @@ LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
    |    ^^^ -                       -----  ----- this parameter needs to match the future type of `f1`
    |        |                       |
    |        |                       `f2` needs to match the future type of this parameter
-   |        `f1` and `f2` all reference this parameter F
+   |        `f1` and `f2` both reference this parameter `F`
 
 error[E0308]: mismatched types
   --> $DIR/coroutine-desc.rs:14:26
@@ -62,7 +62,7 @@ LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
    |    ^^^ -                       -----  ----- this parameter needs to match the `async` closure body type of `f1`
    |        |                       |
    |        |                       `f2` needs to match the `async` closure body type of this parameter
-   |        `f1` and `f2` all reference this parameter F
+   |        `f1` and `f2` both reference this parameter `F`
 
 error: aborting due to 3 previous errors
 

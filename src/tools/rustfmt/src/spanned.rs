@@ -150,11 +150,7 @@ impl Spanned for ast::FieldDef {
 
 impl Spanned for ast::WherePredicate {
     fn span(&self) -> Span {
-        match *self {
-            ast::WherePredicate::BoundPredicate(ref p) => p.span,
-            ast::WherePredicate::RegionPredicate(ref p) => p.span,
-            ast::WherePredicate::EqPredicate(ref p) => p.span,
-        }
+        self.span
     }
 }
 

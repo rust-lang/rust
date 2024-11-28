@@ -1,5 +1,5 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/issue-15261.rs:9:37
+  --> $DIR/issue-15261.rs:8:37
    |
 LL | static n: &'static usize = unsafe { &n_mut };
    |                                     ^^^^^^ shared reference to mutable static

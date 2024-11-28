@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 //@ revisions: classic structural both
 #![allow(incomplete_features)]
 #![cfg_attr(any(classic, both), feature(ref_pat_eat_one_layer_2024))]

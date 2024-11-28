@@ -7,6 +7,23 @@ use rustc_middle::mir::*;
 use super::MaybeBorrowedLocals;
 use crate::{Analysis, GenKill, ResultsCursor};
 
+/// The set of locals in a MIR body that do not have `StorageLive`/`StorageDead` annotations.
+///
+/// These locals have fixed storage for the duration of the body.
+pub fn always_storage_live_locals(body: &Body<'_>) -> BitSet<Local> {
+    let mut always_live_locals = BitSet::new_filled(body.local_decls.len());
+
+    for block in &*body.basic_blocks {
+        for statement in &block.statements {
+            if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = statement.kind {
+                always_live_locals.remove(l);
+            }
+        }
+    }
+
+    always_live_locals
+}
+
 pub struct MaybeStorageLive<'a> {
     always_live_locals: Cow<'a, BitSet<Local>>,
 }
@@ -28,10 +45,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeStorageLive<'a> {
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, on_entry: &mut Self::Domain) {
-        assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
-        for local in self.always_live_locals.iter() {
-            on_entry.insert(local);
-        }
+        on_entry.union(&*self.always_live_locals);
 
         for arg in body.args_iter() {
             on_entry.insert(arg);
@@ -135,7 +149,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a statement, it needs storage for that statement.
-        self.borrowed_locals.mut_analysis().apply_statement_effect(trans, stmt, loc);
+        MaybeBorrowedLocals::transfer_function(trans).visit_statement(stmt, loc);
 
         match &stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(*l),
@@ -180,10 +194,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
         loc: Location,
     ) {
         // If a place is borrowed in a terminator, it needs storage for that terminator.
-        self.borrowed_locals
-            .mut_analysis()
-            .transfer_function(trans)
-            .visit_terminator(terminator, loc);
+        MaybeBorrowedLocals::transfer_function(trans).visit_terminator(terminator, loc);
 
         match &terminator.kind {
             TerminatorKind::Call { destination, .. } => {

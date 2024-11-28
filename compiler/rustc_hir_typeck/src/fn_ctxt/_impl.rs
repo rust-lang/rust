@@ -269,13 +269,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
                 Adjust::Deref(None) => {
-                    // FIXME(effects): We *could* enforce `&T: ~const Deref` here.
+                    // FIXME(const_trait_impl): We *could* enforce `&T: ~const Deref` here.
                 }
                 Adjust::Pointer(_pointer_coercion) => {
-                    // FIXME(effects): We should probably enforce these.
+                    // FIXME(const_trait_impl): We should probably enforce these.
                 }
                 Adjust::ReborrowPin(_mutability) => {
-                    // FIXME(effects): We could enforce these; they correspond to
+                    // FIXME(const_trait_impl): We could enforce these; they correspond to
                     // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
                 Adjust::Borrow(_) => {

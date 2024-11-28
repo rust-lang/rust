@@ -4,7 +4,5 @@
 
 fn produce() -> impl !Fn<(u32,)> {}
 //~^ ERROR the trait bound `(): !Fn(u32)` is not satisfied
-//~| ERROR the trait bound `(): !Fn(u32)` is not satisfied
-//~| ERROR the trait bound `(): !Fn(u32)` is not satisfied
 
 fn main() {}

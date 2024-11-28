@@ -1,5 +1,4 @@
 //@ force-host
-//@ compile-flags: -Zunstable-options
 //@ edition:2024
 //@ no-prefer-dynamic
 

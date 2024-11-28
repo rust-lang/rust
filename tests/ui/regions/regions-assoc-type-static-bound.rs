@@ -3,7 +3,6 @@
 // Test that the compiler considers the 'static bound declared in the
 // trait. Issue #20890.
 
-//@ pretty-expanded FIXME #23616
 
 trait Foo {
     type Value: 'static;

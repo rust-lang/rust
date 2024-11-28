@@ -1373,18 +1373,20 @@ rustc_queries! {
     /// Gets the ParameterEnvironment for a given item; this environment
     /// will be in "user-facing" mode, meaning that it is suitable for
     /// type-checking etc, and it does not normalize specializable
-    /// associated types. This is almost always what you want,
-    /// unless you are doing MIR optimizations, in which case you
-    /// might want to use `reveal_all()` method to change modes.
+    /// associated types.
+    ///
+    /// You should almost certainly not use this. If you already have an InferCtxt, then
+    /// you should also probably have a `ParamEnv` from when it was built. If you don't,
+    /// then you should take a `TypingEnv` to ensure that you handle opaque types correctly.
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
     }
 
-    /// Like `param_env`, but returns the `ParamEnv` in `Reveal::All` mode.
-    /// Prefer this over `tcx.param_env(def_id).with_reveal_all_normalized(tcx)`,
-    /// as this method is more efficient.
-    query param_env_reveal_all_normalized(def_id: DefId) -> ty::ParamEnv<'tcx> {
+    /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
+    /// replaced with their hidden type. This is used in the old trait solver
+    /// when in `PostAnalysis` mode and should not be called directly.
+    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1465,13 +1467,13 @@ rustc_queries! {
     /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
     /// because this query partially depends on that query.
     /// Otherwise, there is a risk of query cycles.
-    query list_significant_drop_tys(ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
+    query list_significant_drop_tys(ty: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
         desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
         cache_on_disk_if { false }
     }
 
     /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
+    /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     query layout_of(
         key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {

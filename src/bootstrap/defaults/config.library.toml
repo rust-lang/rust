@@ -10,7 +10,9 @@ bench-stage = 0
 incremental = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
-download-rustc = false
+# Download rustc by default for library profile if compiler-affecting
+# directories are not modified. For CI this is disabled.
+download-rustc = "if-unchanged"
 
 [llvm]
 # Will download LLVM from CI if available on your platform.

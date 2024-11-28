@@ -87,6 +87,16 @@ pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UnsafeOpInUnsafeFnInitializingTypeWithUnsafeFieldRequiresUnsafe {
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_mutable_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
@@ -100,6 +110,16 @@ pub(crate) struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 #[diag(mir_build_unsafe_op_in_unsafe_fn_extern_static_requires_unsafe, code = E0133)]
 #[note]
 pub(crate) struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_unsafe_op_in_unsafe_fn_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UnsafeOpInUnsafeFnUseOfUnsafeFieldRequiresUnsafe {
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
@@ -251,12 +271,37 @@ pub(crate) struct InitializingTypeWithRequiresUnsafe {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_initializing_type_with_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct InitializingTypeWithUnsafeFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
     code = E0133
 )]
 #[note]
 pub(crate) struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    mir_build_initializing_type_with_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = E0133
+)]
+#[note]
+pub(crate) struct InitializingTypeWithUnsafeFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -301,6 +346,28 @@ pub(crate) struct UseOfExternStaticRequiresUnsafe {
 #[diag(mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
 #[note]
 pub(crate) struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_unsafe_field_requires_unsafe, code = E0133)]
+#[note]
+pub(crate) struct UseOfUnsafeFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = E0133)]
+#[note]
+pub(crate) struct UseOfUnsafeFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
@@ -528,7 +595,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
-            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.typing_env()) {
+            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.typing_env) {
                 diag.note(fluent::mir_build_reference_note);
             }
         }
@@ -593,6 +660,14 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) uninhabited_note: Option<()>,
     #[label(mir_build_unreachable_covered_by_catchall)]
     pub(crate) covered_by_catchall: Option<Span>,
+    #[subdiagnostic]
+    pub(crate) wanted_constant: Option<WantedConstant>,
+    #[note(mir_build_unreachable_pattern_const_reexport_accessible)]
+    pub(crate) accessible_constant: Option<Span>,
+    #[note(mir_build_unreachable_pattern_const_inaccessible)]
+    pub(crate) inaccessible_constant: Option<Span>,
+    #[note(mir_build_unreachable_pattern_let_binding)]
+    pub(crate) pattern_let_binding: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]
     pub(crate) covered_by_one: Option<Span>,
     #[note(mir_build_unreachable_covered_by_many)]
@@ -600,6 +675,20 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) covered_by_many_n_more_count: usize,
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub(crate) suggest_remove: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    mir_build_unreachable_pattern_wanted_const,
+    code = "{const_path}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct WantedConstant {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) is_typo: bool,
+    pub(crate) const_name: String,
+    pub(crate) const_path: String,
 }
 
 #[derive(Diagnostic)]

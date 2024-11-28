@@ -1,4 +1,4 @@
-//@ compile-flags: -Zunstable-options=yes --error-format=human-unicode --color=always
+//@ compile-flags: -Zunstable-options --error-format=human-unicode --color=always
 //@ edition:2018
 //@ only-linux
 

@@ -68,7 +68,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
+        if self.try_structurally_resolve_type(expr.span, ty).is_never()
+            && self.expr_guaranteed_to_constitute_read_for_never(expr)
+        {
             if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
@@ -274,7 +276,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // unless it's a place expression that isn't being read from, in which case
         // diverging would be unsound since we may never actually read the `!`.
         // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
-        if ty.is_never() && self.expr_guaranteed_to_constitute_read_for_never(expr) {
+        if self.try_structurally_resolve_type(expr.span, ty).is_never()
+            && self.expr_guaranteed_to_constitute_read_for_never(expr)
+        {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
@@ -420,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::GenericParam(_)
             | hir::Node::Crate(_)
             | hir::Node::Infer(_)
-            | hir::Node::WhereBoundPredicate(_)
+            | hir::Node::WherePredicate(_)
             | hir::Node::ArrayLenInfer(_)
             | hir::Node::PreciseCapturingNonLifetimeArg(_)
             | hir::Node::OpaqueTy(_) => {

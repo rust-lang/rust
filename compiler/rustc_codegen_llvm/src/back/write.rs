@@ -955,24 +955,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext<LlvmCodegenBackend>) ->
     }
 }
 
-/// Embed the bitcode of an LLVM module in the LLVM module itself.
-///
-/// This is done primarily for iOS where it appears to be standard to compile C
-/// code at least with `-fembed-bitcode` which creates two sections in the
-/// executable:
-///
-/// * __LLVM,__bitcode
-/// * __LLVM,__cmdline
-///
-/// It appears *both* of these sections are necessary to get the linker to
-/// recognize what's going on. A suitable cmdline value is taken from the
-/// target spec.
-///
-/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
-/// embed an empty section.
-///
-/// Basically all of this is us attempting to follow in the footsteps of clang
-/// on iOS. See #35968 for lots more info.
+/// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
 unsafe fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,

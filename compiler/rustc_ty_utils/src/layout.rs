@@ -46,10 +46,10 @@ fn layout_of<'tcx>(
     let PseudoCanonicalInput { typing_env, value: ty } = query;
     debug!(?ty);
 
-    // Optimization: We convert to RevealAll and convert opaque types in the where bounds
-    // to their hidden types. This reduces overall uncached invocations of `layout_of` and
-    // is thus a small performance improvement.
-    let typing_env = typing_env.with_reveal_all_normalized(tcx);
+    // Optimization: We convert to TypingMode::PostAnalysis and convert opaque types in
+    // the where bounds to their hidden types. This reduces overall uncached invocations
+    // of `layout_of` and is thus a small performance improvement.
+    let typing_env = typing_env.with_post_analysis_normalized(tcx);
     let unnormalized_ty = ty;
 
     // FIXME: We might want to have two different versions of `layout_of`:

@@ -557,8 +557,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             ProcessResult::Changed(mk_pending(ok.obligations))
                         }
                         Ok(Err(err)) => {
-                            let expected_found =
-                                ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
+                            let expected_found = if subtype.a_is_expected {
+                                ExpectedFound::new(subtype.a, subtype.b)
+                            } else {
+                                ExpectedFound::new(subtype.b, subtype.a)
+                            };
                             ProcessResult::Error(FulfillmentErrorCode::Subtype(expected_found, err))
                         }
                     }
@@ -578,7 +581,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                         Ok(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
                         Ok(Err(err)) => {
-                            let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
+                            let expected_found = ExpectedFound::new(coerce.b, coerce.a);
                             ProcessResult::Error(FulfillmentErrorCode::Subtype(expected_found, err))
                         }
                     }
@@ -703,7 +706,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 }
                                 Err(err) => {
                                     ProcessResult::Error(FulfillmentErrorCode::ConstEquate(
-                                        ExpectedFound::new(true, c1, c2),
+                                        ExpectedFound::new(c1, c2),
                                         err,
                                     ))
                                 }
@@ -727,7 +730,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ProcessResult::Unchanged
                             } else {
                                 // Two different constants using generic parameters ~> error.
-                                let expected_found = ExpectedFound::new(true, c1, c2);
+                                let expected_found = ExpectedFound::new(c1, c2);
                                 ProcessResult::Error(FulfillmentErrorCode::ConstEquate(
                                     expected_found,
                                     TypeError::ConstMismatch(expected_found),
@@ -768,8 +771,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global()
-            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        if obligation.predicate.is_global() && !matches!(infcx.typing_mode(), TypingMode::Coherence)
         {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
@@ -824,8 +826,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let tcx = self.selcx.tcx();
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global()
-            && !matches!(infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        if obligation.predicate.is_global() && !matches!(infcx.typing_mode(), TypingMode::Coherence)
         {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.

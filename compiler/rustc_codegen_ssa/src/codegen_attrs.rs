@@ -576,9 +576,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
     //
     // At this point, `unsafe` has already been checked and `#[target_feature]` only affects codegen.
-    // Emitting both `#[inline(always)]` and `#[target_feature]` can potentially result in an
-    // ICE, because LLVM errors when the function fails to be inlined due to a target feature
-    // mismatch.
+    // Due to LLVM limitations, emitting both `#[inline(always)]` and `#[target_feature]` is *unsound*:
+    // the function may be inlined into a caller with fewer target features. Also see
+    // <https://github.com/rust-lang/rust/issues/116573>.
     //
     // Using `#[inline(always)]` implies that this closure will most likely be inlined into
     // its parent function, which effectively inherits the features anyway. Boxing this closure

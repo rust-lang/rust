@@ -2,11 +2,14 @@
 //!
 //! See the `Qualif` trait for more info.
 
+// FIXME(const_trait_impl): This API should be really reworked. It's dangerously general for
+// having basically only two use-cases that act in different ways.
+
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
+use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
@@ -59,26 +62,12 @@ pub trait Qualif {
     /// It also determines the `Qualif`s for primitive types.
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
 
-    /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
+    /// Returns `true` if the `Qualif` is structural in an ADT's fields, i.e. if we may
+    /// recurse into an operand *value* to determine whether it has this `Qualif`.
     ///
-    /// By default, `Qualif`s propagate into ADTs in a structural way: An ADT only becomes
-    /// qualified if part of it is assigned a value with that `Qualif`. However, some ADTs *always*
-    /// have a certain `Qualif`, regardless of whether their fields have it. For example, a type
-    /// with a custom `Drop` impl is inherently `NeedsDrop`.
-    ///
-    /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> bool;
-
-    /// Returns `true` if this `Qualif` behaves sructurally for pointers and references:
-    /// the pointer/reference qualifies if and only if the pointee qualifies.
-    ///
-    /// (This is currently `false` for all our instances, but that may change in the future. Also,
-    /// by keeping it abstract, the handling of `Deref` in `in_place` becomes more clear.)
-    fn deref_structural<'tcx>(cx: &ConstCx<'_, 'tcx>) -> bool;
+    /// If this returns false, `in_any_value_of_ty` will be invoked to determine the
+    /// final qualif for this ADT.
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -99,6 +88,11 @@ impl Qualif for HasMutInterior {
         // Avoid selecting for simple cases, such as builtin types.
         if ty.is_trivially_freeze() {
             return false;
+        }
+
+        // Avoid selecting for `UnsafeCell` either.
+        if ty.ty_adt_def().is_some_and(|adt| adt.is_unsafe_cell()) {
+            return true;
         }
 
         // We do not use `ty.is_freeze` here, because that requires revealing opaque types, which
@@ -129,18 +123,10 @@ impl Qualif for HasMutInterior {
         !errors.is_empty()
     }
 
-    fn in_adt_inherently<'tcx>(
-        _cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
+    fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        adt.is_unsafe_cell()
-    }
-
-    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
-        false
+        !adt.is_unsafe_cell()
     }
 }
 
@@ -154,6 +140,7 @@ pub struct NeedsDrop;
 impl Qualif for NeedsDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
+    const ALLOW_PROMOTED: bool = true;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.needs_drop
@@ -163,16 +150,8 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.typing_env)
     }
 
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
-        adt.has_dtor(cx.tcx)
-    }
-
-    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
-        false
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+        !adt.has_dtor(cx.tcx)
     }
 }
 
@@ -191,25 +170,46 @@ impl Qualif for NeedsNonConstDrop {
 
     #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::is_trivially_const_drop(ty) {
+        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        if !ty.needs_drop(cx.tcx, cx.typing_env) {
             return false;
         }
 
-        // FIXME(const_trait_impl): Reimplement const drop checking.
-        NeedsDrop::in_any_value_of_ty(cx, ty)
+        // We check that the type is `~const Destruct` since that will verify that
+        // the type is both `~const Drop` (if a drop impl exists for the adt), *and*
+        // that the components of this type are also `~const Destruct`. This
+        // amounts to verifying that there are no values in this ADT that may have
+        // a non-const drop.
+        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
+        let ocx = ObligationCtxt::new(&infcx);
+        ocx.register_obligation(Obligation::new(
+            cx.tcx,
+            ObligationCause::misc(cx.body.span, cx.def_id()),
+            param_env,
+            ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
+                .to_host_effect_clause(cx.tcx, match cx.const_kind() {
+                    rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+                    rustc_hir::ConstContext::Static(_) | rustc_hir::ConstContext::Const { .. } => {
+                        ty::BoundConstness::Const
+                    }
+                }),
+        ));
+        !ocx.select_all_or_error().is_empty()
     }
 
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
-        _: GenericArgsRef<'tcx>,
-    ) -> bool {
-        adt.has_non_const_dtor(cx.tcx)
-    }
-
-    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
-        false
+    fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
+        // As soon as an ADT has a destructor, then the drop becomes non-structural
+        // in its value since:
+        // 1. The destructor may have `~const` bounds which are not present on the type.
+        //   Someone needs to check that those are satisfied.
+        //   While this could be instead satisfied by checking that the `~const Drop`
+        //   impl holds (i.e. replicating part of the `in_any_value_of_ty` logic above),
+        //   even in this case, we have another problem, which is,
+        // 2. The destructor may *modify* the operand being dropped, so even if we
+        //   did recurse on the components of the operand, we may not be even dropping
+        //   the same values that were present before the custom destructor was invoked.
+        !adt.has_dtor(cx.tcx)
     }
 }
 
@@ -261,14 +261,15 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(adt_did, _, args, ..) = **kind {
+            if let AggregateKind::Adt(adt_did, ..) = **kind {
                 let def = cx.tcx.adt_def(adt_did);
-                if Q::in_adt_inherently(cx, def, args) {
-                    return true;
-                }
                 // Don't do any value-based reasoning for unions.
-                if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
-                    return true;
+                // Also, if the ADT is not structural in its fields,
+                // then we cannot recurse on its fields. Instead,
+                // we fall back to checking the qualif for *any* value
+                // of the ADT.
+                if def.is_union() || !Q::is_structural_in_adt_value(cx, def) {
+                    return Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx));
                 }
             }
 
@@ -305,7 +306,11 @@ where
             return false;
         }
 
-        if matches!(elem, ProjectionElem::Deref) && !Q::deref_structural(cx) {
+        // `Deref` currently unconditionally "qualifies" if `in_any_value_of_ty` returns true,
+        // i.e., we treat all qualifs as non-structural for deref projections. Generally,
+        // we can say very little about `*ptr` even if we know that `ptr` satisfies all
+        // sorts of properties.
+        if matches!(elem, ProjectionElem::Deref) {
             // We have to assume that this qualifies.
             return true;
         }

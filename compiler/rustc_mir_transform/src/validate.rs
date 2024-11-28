@@ -646,7 +646,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             {
                 self.fail(
                     location,
-                    format!("explicit opaque type cast to `{ty}` after `RevealAll`"),
+                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
                 )
             }
             ProjectionElem::Index(index) => {

@@ -504,8 +504,8 @@ impl<'tcx> Instance<'tcx> {
     /// ```
     ///
     /// trying to resolve `Debug::fmt` applied to `T` will yield `Ok(None)`, because we do not
-    /// know what code ought to run. (Note that this setting is also affected by the
-    /// `RevealMode` in the parameter environment.)
+    /// know what code ought to run. This setting is also affected by the current `TypingMode`
+    /// of the environment.
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return

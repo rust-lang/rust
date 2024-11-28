@@ -222,7 +222,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Enables tracking of intercrate ambiguity causes. See
     /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert_matches!(self.infcx.typing_mode_unchecked(), TypingMode::Coherence);
+        assert_matches!(self.infcx.typing_mode(), TypingMode::Coherence);
         assert!(self.intercrate_ambiguity_causes.is_none());
         self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
@@ -234,7 +234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn take_intercrate_ambiguity_causes(
         &mut self,
     ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-        assert_matches!(self.infcx.typing_mode_unchecked(), TypingMode::Coherence);
+        assert_matches!(self.infcx.typing_mode(), TypingMode::Coherence);
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
@@ -1027,7 +1027,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !matches!(self.infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+        if !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
             && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
@@ -1310,13 +1310,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<EvaluationResult> {
-        let tcx = self.tcx();
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
         if self.can_use_global_caches(param_env, trait_pred) {
-            if let Some(res) = tcx.evaluation_cache.get(&(param_env, trait_pred), tcx) {
-                return Some(res);
+            let key = (infcx.typing_env(param_env), trait_pred);
+            if let Some(res) = tcx.evaluation_cache.get(&key, tcx) {
+                Some(res)
+            } else {
+                debug_assert_eq!(infcx.evaluation_cache.get(&(param_env, trait_pred), tcx), None);
+                None
             }
+        } else {
+            self.infcx.evaluation_cache.get(&(param_env, trait_pred), tcx)
         }
-        self.infcx.evaluation_cache.get(&(param_env, trait_pred), tcx)
     }
 
     fn insert_evaluation_cache(
@@ -1332,18 +1338,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        if self.can_use_global_caches(param_env, trait_pred) && !trait_pred.has_infer() {
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
+        if self.can_use_global_caches(param_env, trait_pred) {
             debug!(?trait_pred, ?result, "insert_evaluation_cache global");
             // This may overwrite the cache with the same value
-            // FIXME: Due to #50507 this overwrites the different values
-            // This should be changed to use HashMapExt::insert_same
-            // when that is fixed
-            self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
+            tcx.evaluation_cache.insert(
+                (infcx.typing_env(param_env), trait_pred),
+                dep_node,
+                result,
+            );
             return;
+        } else {
+            debug!(?trait_pred, ?result, "insert_evaluation_cache local");
+            self.infcx.evaluation_cache.insert((param_env, trait_pred), dep_node, result);
         }
-
-        debug!(?trait_pred, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert((param_env, trait_pred), dep_node, result);
     }
 
     fn check_recursion_depth<T>(
@@ -1459,7 +1468,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         let obligation = &stack.obligation;
-        match self.infcx.typing_mode(obligation.param_env) {
+        match self.infcx.typing_mode() {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Ok(()),
         }
@@ -1485,11 +1494,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
         // switch to a global cache.
-        if param_env.has_infer() {
+        if param_env.has_infer() || pred.has_infer() {
             return false;
         }
 
-        match self.infcx.typing_mode(param_env) {
+        match self.infcx.typing_mode() {
             // Avoid using the global cache during coherence and just rely
             // on the local cache. It is really just a simplification to
             // avoid us having to fear that coherence results "pollute"
@@ -1522,15 +1531,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
-        let tcx = self.tcx();
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
         let pred = cache_fresh_trait_pred.skip_binder();
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
-            if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
-                return Some(res);
+            if let Some(res) = tcx.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx) {
+                Some(res)
+            } else {
+                debug_assert_eq!(infcx.selection_cache.get(&(param_env, pred), tcx), None);
+                None
             }
+        } else {
+            infcx.selection_cache.get(&(param_env, pred), tcx)
         }
-        self.infcx.selection_cache.get(&(param_env, pred), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1567,7 +1581,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
-        let tcx = self.tcx();
+        let infcx = self.infcx;
+        let tcx = infcx.tcx;
         let pred = cache_fresh_trait_pred.skip_binder();
 
         if !self.can_cache_candidate(&candidate) {
@@ -1578,10 +1593,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !pred.has_infer() && !candidate.has_infer() {
+            } else {
                 debug!(?pred, ?candidate, "insert_candidate_cache global");
+                debug_assert!(!candidate.has_infer());
+
                 // This may overwrite the cache with the same value.
-                tcx.selection_cache.insert((param_env, pred), dep_node, candidate);
+                tcx.selection_cache.insert(
+                    (infcx.typing_env(param_env), pred),
+                    dep_node,
+                    candidate,
+                );
                 return;
             }
         }
@@ -2487,10 +2508,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
         let trait_ref = impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args);
-        if trait_ref.references_error() {
-            return Err(());
-        }
-
         debug!(?impl_trait_header);
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
@@ -2522,7 +2539,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         if impl_trait_header.polarity == ty::ImplPolarity::Reservation
-            && !matches!(self.infcx.typing_mode(obligation.param_env), TypingMode::Coherence)
+            && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
         {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());

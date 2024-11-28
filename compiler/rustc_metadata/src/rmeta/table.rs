@@ -199,6 +199,13 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
+    hir::Safety {
+        ( Unsafe )
+        ( Safe   )
+    }
+}
+
+fixed_size_enum! {
     ty::Asyncness {
         ( Yes )
         ( No  )

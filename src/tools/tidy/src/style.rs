@@ -337,12 +337,16 @@ pub fn check(path: &Path, bad: &mut bool) {
         .case_insensitive(true)
         .build()
         .unwrap();
-    let style_file = Path::new(file!());
+
+    // In some cases, a style check would be triggered by its own implementation
+    // or comments. A simple workaround is to just allowlist this file.
+    let this_file = Path::new(file!());
+
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
 
-        let is_style_file = filename.ends_with(".css");
+        let is_css_file = filename.ends_with(".css");
         let under_rustfmt = filename.ends_with(".rs") &&
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
@@ -405,13 +409,13 @@ pub fn check(path: &Path, bad: &mut bool) {
         let mut comment_block: Option<(usize, usize)> = None;
         let is_test = file.components().any(|c| c.as_os_str() == "tests")
             || file.file_stem().unwrap() == "tests";
-        let is_style = file.ends_with(style_file) || style_file.ends_with(file);
-        let is_style_test =
-            is_test && file.parent().unwrap().ends_with(style_file.with_extension(""));
+        let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
+        let is_test_for_this_file =
+            is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
         // scanning the whole file for multiple needles at once is more efficient than
         // executing lines times needles separate searches.
         let any_problematic_line =
-            !is_style && !is_style_test && problematic_regex.is_match(contents);
+            !is_this_file && !is_test_for_this_file && problematic_regex.is_match(contents);
         for (i, line) in contents.split('\n').enumerate() {
             if line.is_empty() {
                 if i == 0 {
@@ -458,19 +462,19 @@ pub fn check(path: &Path, bad: &mut bool) {
                     "line longer than {max_columns} chars"
                 );
             }
-            if !is_style_file && line.contains('\t') {
+            if !is_css_file && line.contains('\t') {
                 suppressible_tidy_err!(err, skip_tab, "tab character");
             }
             if line.ends_with(' ') || line.ends_with('\t') {
                 suppressible_tidy_err!(err, skip_end_whitespace, "trailing whitespace");
             }
-            if is_style_file && line.starts_with(' ') {
+            if is_css_file && line.starts_with(' ') {
                 err("CSS files use tabs for indent");
             }
             if line.contains('\r') {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
-            if !is_style {
+            if !is_this_file {
                 // Allow using TODO in diagnostic suggestions by marking the
                 // relevant line with `// ignore-tidy-todo`.
                 if trimmed.contains("TODO") && !trimmed.contains("ignore-tidy-todo") {

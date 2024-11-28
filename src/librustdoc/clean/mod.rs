@@ -325,11 +325,11 @@ fn clean_where_predicate<'tcx>(
     predicate: &hir::WherePredicate<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    if !predicate.in_where_clause() {
+    if !predicate.kind.in_where_clause() {
         return None;
     }
-    Some(match *predicate {
-        hir::WherePredicate::BoundPredicate(ref wbp) => {
+    Some(match *predicate.kind {
+        hir::WherePredicateKind::BoundPredicate(ref wbp) => {
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
@@ -342,12 +342,12 @@ fn clean_where_predicate<'tcx>(
             }
         }
 
-        hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
+        hir::WherePredicateKind::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
 
-        hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
+        hir::WherePredicateKind::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
             lhs: clean_ty(wrp.lhs_ty, cx),
             rhs: clean_ty(wrp.rhs_ty, cx).into(),
         },
@@ -2516,14 +2516,6 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts for the case
-                    // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
-                    hir::GenericArg::Const(hir::ConstArg {
-                        is_desugared_from_effects: true,
-                        ..
-                    }) => {
-                        return None;
-                    }
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })

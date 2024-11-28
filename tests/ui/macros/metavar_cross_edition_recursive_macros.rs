@@ -1,4 +1,4 @@
-//@ compile-flags: --edition=2024 -Z unstable-options
+//@ edition: 2024
 //@ aux-build: metavar_2018.rs
 //@ known-bug: #130484
 //@ run-pass

@@ -117,11 +117,7 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
-            Node::WhereBoundPredicate(pred) => {
-                self.print_formal_generic_params(pred.bound_generic_params);
-                self.print_type(pred.bounded_ty);
-                self.print_bounds(":", pred.bounds);
-            }
+            Node::WherePredicate(pred) => self.print_where_predicate(pred),
             Node::ArrayLenInfer(_) => self.word("_"),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
@@ -1015,7 +1011,7 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_maybe_paren(&mut self, expr: &hir::Expr<'_>, prec: i8) {
-        self.print_expr_cond_paren(expr, expr.precedence().order() < prec)
+        self.print_expr_cond_paren(expr, expr.precedence() < prec)
     }
 
     /// Prints an expr using syntax that's acceptable in a condition position, such as the `cond` in
@@ -1049,7 +1045,7 @@ impl<'a> State<'a> {
         }
         self.space();
         self.word_space("=");
-        let npals = || parser::needs_par_as_let_scrutinee(init.precedence().order());
+        let npals = || parser::needs_par_as_let_scrutinee(init.precedence());
         self.print_expr_cond_paren(init, Self::cond_needs_par(init) || npals())
     }
 
@@ -2160,47 +2156,50 @@ impl<'a> State<'a> {
             if i != 0 {
                 self.word_space(",");
             }
+            self.print_where_predicate(predicate);
+        }
+    }
 
-            match *predicate {
-                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    bound_generic_params,
-                    bounded_ty,
-                    bounds,
-                    ..
-                }) => {
-                    self.print_formal_generic_params(bound_generic_params);
-                    self.print_type(bounded_ty);
-                    self.print_bounds(":", bounds);
-                }
-                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    lifetime,
-                    bounds,
-                    ..
-                }) => {
-                    self.print_lifetime(lifetime);
-                    self.word(":");
+    fn print_where_predicate(&mut self, predicate: &hir::WherePredicate<'_>) {
+        match *predicate.kind {
+            hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                bound_generic_params,
+                bounded_ty,
+                bounds,
+                ..
+            }) => {
+                self.print_formal_generic_params(bound_generic_params);
+                self.print_type(bounded_ty);
+                self.print_bounds(":", bounds);
+            }
+            hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
+                lifetime,
+                bounds,
+                ..
+            }) => {
+                self.print_lifetime(lifetime);
+                self.word(":");
 
-                    for (i, bound) in bounds.iter().enumerate() {
-                        match bound {
-                            GenericBound::Outlives(lt) => {
-                                self.print_lifetime(lt);
-                            }
-                            _ => panic!("unexpected bound on lifetime param: {bound:?}"),
+                for (i, bound) in bounds.iter().enumerate() {
+                    match bound {
+                        GenericBound::Outlives(lt) => {
+                            self.print_lifetime(lt);
                         }
+                        _ => panic!("unexpected bound on lifetime param: {bound:?}"),
+                    }
 
-                        if i != 0 {
-                            self.word(":");
-                        }
+                    if i != 0 {
+                        self.word(":");
                     }
                 }
-                hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    lhs_ty, rhs_ty, ..
-                }) => {
-                    self.print_type(lhs_ty);
-                    self.space();
-                    self.word_space("=");
-                    self.print_type(rhs_ty);
-                }
+            }
+            hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
+                lhs_ty, rhs_ty, ..
+            }) => {
+                self.print_type(lhs_ty);
+                self.space();
+                self.word_space("=");
+                self.print_type(rhs_ty);
             }
         }
     }

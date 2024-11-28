@@ -63,6 +63,7 @@ ENV SCRIPT \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
            reuse --include-submodules lint && \
+           python3 ../x.py test collect-license-metadata && \
            # Runs checks to ensure that there are no issues in our JS code.
            es-check es2019 ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \

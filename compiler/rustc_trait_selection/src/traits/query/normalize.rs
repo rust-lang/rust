@@ -89,7 +89,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             }
         }
 
-        if !needs_normalization(self.infcx, self.param_env, &value) {
+        if !needs_normalization(self.infcx, &value) {
             return Ok(Normalized { value, obligations: PredicateObligations::new() });
         }
 
@@ -191,7 +191,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if !needs_normalization(self.infcx, self.param_env, &ty) {
+        if !needs_normalization(self.infcx, &ty) {
             return Ok(ty);
         }
 
@@ -215,7 +215,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         let res = match kind {
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
-                match self.infcx.typing_mode(self.param_env) {
+                match self.infcx.typing_mode() {
                     TypingMode::Coherence | TypingMode::Analysis { defining_opaque_types: _ } => {
                         ty.try_super_fold_with(self)?
                     }
@@ -334,7 +334,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         &mut self,
         constant: ty::Const<'tcx>,
     ) -> Result<ty::Const<'tcx>, Self::Error> {
-        if !needs_normalization(self.infcx, self.param_env, &constant) {
+        if !needs_normalization(self.infcx, &constant) {
             return Ok(constant);
         }
 
@@ -353,7 +353,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         &mut self,
         p: ty::Predicate<'tcx>,
     ) -> Result<ty::Predicate<'tcx>, Self::Error> {
-        if p.allow_normalization() && needs_normalization(self.infcx, self.param_env, &p) {
+        if p.allow_normalization() && needs_normalization(self.infcx, &p) {
             p.try_super_fold_with(self)
         } else {
             Ok(p)

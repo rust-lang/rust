@@ -1,7 +1,7 @@
 //@ known-bug: #103507
 
 #![feature(type_alias_impl_trait)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_destruct)]
 
 use std::marker::Destruct;
 

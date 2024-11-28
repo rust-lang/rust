@@ -37,7 +37,7 @@ test = false
 # Most of the time updating these dependencies requires modifications to the
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
-cc = "=1.1.22"
+cc = "=1.2.0"
 cmake = "=0.1.48"
 
 build_helper = { path = "../build_helper" }
@@ -47,7 +47,7 @@ fd-lock = "4.0"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"
-object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
 opener = "0.5"
 semver = "1.0"
 serde = "1.0"

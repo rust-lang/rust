@@ -133,8 +133,10 @@ fn resolve_associated_item<'tcx>(
                     bug!("{:?} not found in {:?}", trait_item_id, impl_data.impl_def_id);
                 });
 
-            // Since this is a trait item, we need to see if the item is either a trait default item
-            // or a specialization because we can't resolve those unless we can `Reveal::All`.
+            // Since this is a trait item, we need to see if the item is either a trait
+            // default item or a specialization because we can't resolve those until we're
+            // in `TypingMode::PostAnalysis`.
+            //
             // NOTE: This should be kept in sync with the similar code in
             // `rustc_trait_selection::traits::project::assemble_candidates_from_impls()`.
             let eligible = if leaf_def.is_final() {
@@ -155,7 +157,7 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
-            let typing_env = typing_env.with_reveal_all_normalized(tcx);
+            let typing_env = typing_env.with_post_analysis_normalized(tcx);
             let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
             let args = rcvr_args.rebase_onto(tcx, trait_def_id, impl_data.args);
             let args = translate_args(

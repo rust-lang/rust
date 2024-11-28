@@ -12,7 +12,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
-use rustc_middle::ty::solve::Reveal;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
 
@@ -57,7 +56,7 @@ struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: Thir<'tcx>,
 
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 
     region_scope_tree: &'tcx region::ScopeTree,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -98,7 +97,9 @@ impl<'tcx> Cx<'tcx> {
         Cx {
             tcx,
             thir: Thir::new(body_type),
-            param_env: tcx.param_env(def),
+            // FIXME(#132279): We're in a body, we should use a typing
+            // mode which reveals the opaque types defined by that body.
+            typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
             region_scope_tree: tcx.region_scope_tree(def),
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
@@ -110,20 +111,9 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
-    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
-        debug_assert_eq!(self.param_env.reveal(), Reveal::UserFacing);
-        // FIXME(#132279): In case we're in a body, we should use a typing
-        // mode which reveals the opaque types defined by that body.
-        ty::TypingMode::non_body_analysis()
-    }
-
-    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
-    }
-
     #[instrument(level = "debug", skip(self))]
     fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.typing_env(), self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {

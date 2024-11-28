@@ -84,6 +84,10 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
+        if !ecx.cx().alias_has_const_conditions(alias_ty.def_id) {
+            return vec![];
+        }
+
         for clause in elaborate::elaborate(
             cx,
             cx.explicit_implied_const_bounds(alias_ty.def_id)
@@ -338,10 +342,27 @@ where
     }
 
     fn consider_builtin_destruct_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        Err(NoSolution)
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let const_conditions = structural_traits::const_conditions_for_destruct(cx, self_ty)?;
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.add_goals(
+                GoalSource::Misc,
+                const_conditions.into_iter().map(|trait_ref| {
+                    goal.with(
+                        cx,
+                        ty::Binder::dummy(trait_ref)
+                            .to_host_effect_clause(cx, goal.predicate.constness),
+                    )
+                }),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_transmute_candidate(

@@ -214,8 +214,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn typing_mode(&self, param_env_for_debug_assertion: I::ParamEnv) -> TypingMode<I> {
-        self.delegate.typing_mode(param_env_for_debug_assertion)
+    pub(super) fn typing_mode(&self) -> TypingMode<I> {
+        self.delegate.typing_mode()
     }
 
     pub(super) fn set_is_normalizes_to_goal(&mut self) {

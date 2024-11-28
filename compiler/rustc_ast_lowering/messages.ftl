@@ -152,6 +152,8 @@ ast_lowering_register2 = register `{$reg2_name}`
 
 ast_lowering_register_class_only_clobber =
     register class `{$reg_class_name}` can only be used as a clobber, not as an input or output
+ast_lowering_register_class_only_clobber_stable =
+    register class `{$reg_class_name}` can only be used as a clobber in stable
 
 ast_lowering_register_conflict =
     register `{$reg1_name}` conflicts with register `{$reg2_name}`
@@ -181,6 +183,8 @@ ast_lowering_underscore_expr_lhs_assign =
     .label = `_` not allowed here
 
 ast_lowering_unstable_inline_assembly = inline assembly is not stable yet on this architecture
+ast_lowering_unstable_inline_assembly_label_operand_with_outputs =
+    using both label and output operands for inline assembly is unstable
 ast_lowering_unstable_inline_assembly_label_operands =
     label operands for inline assembly are unstable
 ast_lowering_unstable_may_unwind = the `may_unwind` option is unstable

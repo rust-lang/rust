@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
 use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
@@ -12,7 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
+    DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
@@ -48,13 +47,6 @@ use crate::filesearch::FileSearch;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
-
-struct OptimizationFuel {
-    /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
-    remaining: u64,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: bool,
-}
 
 /// The behavior of the CTFE engine when an error occurs with regards to backtraces.
 #[derive(Clone, Copy)]
@@ -162,12 +154,6 @@ pub struct Session {
 
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
-
-    /// Tracks fuel info if `-zfuel=crate=n` is specified.
-    optimization_fuel: Lock<OptimizationFuel>,
-
-    /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: AtomicU64,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
@@ -530,41 +516,6 @@ impl Session {
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
-    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
-    /// This expends fuel if applicable, and records fuel if applicable.
-    pub fn consider_optimizing(
-        &self,
-        get_crate_name: impl Fn() -> Symbol,
-        msg: impl Fn() -> String,
-    ) -> bool {
-        let mut ret = true;
-        if let Some((ref c, _)) = self.opts.unstable_opts.fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                let mut fuel = self.optimization_fuel.lock();
-                ret = fuel.remaining != 0;
-                if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    if self.dcx().can_emit_warnings() {
-                        // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `must_produce_diag` ICE
-                        // (issue #79546).
-                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
-                    }
-                    fuel.out_of_fuel = true;
-                } else if fuel.remaining > 0 {
-                    fuel.remaining -= 1;
-                }
-            }
-        }
-        if let Some(ref c) = self.opts.unstable_opts.print_fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                self.print_fuel.fetch_add(1, SeqCst);
-            }
-        }
-        ret
     }
 
     /// Is this edition 2015?
@@ -1097,12 +1048,6 @@ pub fn build_session(
         Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
 
-    let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |&(_, i)| i),
-        out_of_fuel: false,
-    });
-    let print_fuel = AtomicU64::new(0);
-
     let prof = SelfProfilerRef::new(
         self_profiler,
         sopts.unstable_opts.time_passes.then(|| sopts.unstable_opts.time_passes_format),
@@ -1130,8 +1075,6 @@ pub fn build_session(
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
-        optimization_fuel,
-        print_fuel,
         jobserver: jobserver::client(),
         lint_store: None,
         registered_lints: false,

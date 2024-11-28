@@ -321,7 +321,7 @@ where
 
         let mut candidates = vec![];
 
-        if let TypingMode::Coherence = self.typing_mode(goal.param_env) {
+        if let TypingMode::Coherence = self.typing_mode() {
             if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
                 return vec![candidate];
             }
@@ -337,7 +337,7 @@ where
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
-        match self.typing_mode(goal.param_env) {
+        match self.typing_mode() {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. } | TypingMode::PostAnalysis => {
                 self.discard_impls_shadowed_by_env(goal, &mut candidates);

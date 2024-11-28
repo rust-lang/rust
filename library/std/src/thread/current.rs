@@ -165,6 +165,23 @@ pub(crate) fn try_current() -> Option<Thread> {
     }
 }
 
+/// Gets a handle to the thread that invokes it. If the handle stored in thread-
+/// local storage was already destroyed, this creates a new unnamed temporary
+/// handle to allow thread parking in nearly all situations.
+pub(crate) fn current_or_unnamed() -> Thread {
+    let current = CURRENT.get();
+    if current > DESTROYED {
+        unsafe {
+            let current = ManuallyDrop::new(Thread::from_raw(current));
+            (*current).clone()
+        }
+    } else if current == DESTROYED {
+        Thread::new_unnamed(id::get_or_init())
+    } else {
+        init_current(current)
+    }
+}
+
 /// Gets a handle to the thread that invokes it.
 ///
 /// # Examples
@@ -226,17 +243,17 @@ fn init_current(current: *mut ()) -> Thread {
         // a particular API should be entirely allocation-free, feel free to open
         // an issue on the Rust repository, we'll see what we can do.
         rtabort!(
-            "\n
-            Attempted to access thread-local data while allocating said data.\n
-            Do not access functions that allocate in the global allocator!\n
-            This is a bug in the global allocator.\n
-        "
+            "\n\
+            Attempted to access thread-local data while allocating said data.\n\
+            Do not access functions that allocate in the global allocator!\n\
+            This is a bug in the global allocator.\n\
+            "
         )
     } else {
         debug_assert_eq!(current, DESTROYED);
         panic!(
-            "use of std::thread::current() is not possible after the thread's
-         local data has been destroyed"
+            "use of std::thread::current() is not possible after the thread's \
+            local data has been destroyed"
         )
     }
 }

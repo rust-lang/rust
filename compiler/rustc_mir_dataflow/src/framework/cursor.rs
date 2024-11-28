@@ -1,6 +1,7 @@
 //! Random access inspection of the results of a dataflow analysis.
 
 use std::cmp::Ordering;
+use std::ops::{Deref, DerefMut};
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
@@ -8,18 +9,63 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
-/// Allows random access inspection of the results of a dataflow analysis.
+/// Some `ResultsCursor`s want to own a `Results`, and some want to borrow a `Results`, either
+/// mutable or immutably. This type allows all of the above. It's similar to `Cow`.
+pub enum ResultsHandle<'a, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    Borrowed(&'a Results<'tcx, A>),
+    BorrowedMut(&'a mut Results<'tcx, A>),
+    Owned(Results<'tcx, A>),
+}
+
+impl<'tcx, A> Deref for ResultsHandle<'_, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    type Target = Results<'tcx, A>;
+
+    fn deref(&self) -> &Results<'tcx, A> {
+        match self {
+            ResultsHandle::Borrowed(borrowed) => borrowed,
+            ResultsHandle::BorrowedMut(borrowed) => borrowed,
+            ResultsHandle::Owned(owned) => owned,
+        }
+    }
+}
+
+impl<'tcx, A> DerefMut for ResultsHandle<'_, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    fn deref_mut(&mut self) -> &mut Results<'tcx, A> {
+        match self {
+            ResultsHandle::Borrowed(_borrowed) => {
+                panic!("tried to deref_mut a `ResultsHandle::Borrowed")
+            }
+            ResultsHandle::BorrowedMut(borrowed) => borrowed,
+            ResultsHandle::Owned(owned) => owned,
+        }
+    }
+}
+
+/// Allows random access inspection of the results of a dataflow analysis. Use this when you want
+/// to inspect domain values only in certain locations; use `ResultsVisitor` if you want to inspect
+/// domain values in many or all locations.
 ///
-/// This cursor only has linear performance within a basic block when its statements are visited in
-/// the same order as the `DIRECTION` of the analysis. In the worst case—when statements are
-/// visited in *reverse* order—performance will be quadratic in the number of statements in the
-/// block. The order in which basic blocks are inspected has no impact on performance.
+/// Because `Results` only has domain values for the entry of each basic block, these inspections
+/// involve some amount of domain value recomputations. This cursor only has linear performance
+/// within a basic block when its statements are visited in the same order as the `DIRECTION` of
+/// the analysis. In the worst case—when statements are visited in *reverse* order—performance will
+/// be quadratic in the number of statements in the block. The order in which basic blocks are
+/// inspected has no impact on performance.
 pub struct ResultsCursor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: Results<'tcx, A>,
+    results: ResultsHandle<'mir, 'tcx, A>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -47,13 +93,8 @@ where
         self.body
     }
 
-    /// Unwraps this cursor, returning the underlying `Results`.
-    pub fn into_results(self) -> Results<'tcx, A> {
-        self.results
-    }
-
     /// Returns a new cursor that can inspect `results`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+    pub fn new(body: &'mir mir::Body<'tcx>, results: ResultsHandle<'mir, 'tcx, A>) -> Self {
         let bottom_value = results.analysis.bottom_value(body);
         ResultsCursor {
             body,

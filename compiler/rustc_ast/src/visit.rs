@@ -192,6 +192,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) -> Self::Result {
         walk_where_predicate(self, p)
     }
+    fn visit_where_predicate_kind(&mut self, k: &'ast WherePredicateKind) -> Self::Result {
+        walk_where_predicate_kind(self, k)
+    }
     fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
         walk_fn(self, fk)
     }
@@ -794,22 +797,29 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    match predicate {
-        WherePredicate::BoundPredicate(WhereBoundPredicate {
+    let WherePredicate { kind, id: _, span: _ } = predicate;
+    visitor.visit_where_predicate_kind(kind)
+}
+
+pub fn walk_where_predicate_kind<'a, V: Visitor<'a>>(
+    visitor: &mut V,
+    kind: &'a WherePredicateKind,
+) -> V::Result {
+    match kind {
+        WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bounds,
             bound_generic_params,
-            span: _,
         }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);
             try_visit!(visitor.visit_ty(bounded_ty));
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
-        WherePredicate::RegionPredicate(WhereRegionPredicate { lifetime, bounds, span: _ }) => {
+        WherePredicateKind::RegionPredicate(WhereRegionPredicate { lifetime, bounds }) => {
             try_visit!(visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound));
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }
-        WherePredicate::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty, span: _ }) => {
+        WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
             try_visit!(visitor.visit_ty(lhs_ty));
             try_visit!(visitor.visit_ty(rhs_ty));
         }
@@ -961,7 +971,7 @@ pub fn walk_struct_def<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) -> V::Result {
-    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _ } = field;
+    let FieldDef { attrs, id: _, span: _, vis, ident, ty, is_placeholder: _, safety: _ } = field;
     walk_list!(visitor, visit_attribute, attrs);
     try_visit!(visitor.visit_vis(vis));
     visit_opt!(visitor, visit_ident, ident);

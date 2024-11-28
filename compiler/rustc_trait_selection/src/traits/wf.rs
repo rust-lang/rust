@@ -963,30 +963,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 /// bounds that must hold on the elided self type. These are derived
 /// from the declarations of `SomeTrait`, `Send`, and friends -- if
 /// they declare `trait SomeTrait : 'static`, for example, then
-/// `'static` would appear in the list. The hard work is done by
-/// `infer::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<ty::Region<'tcx>> {
-    let predicates = existential_predicates.iter().filter_map(|predicate| {
-        if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
-            None
-        } else {
-            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
-        }
-    });
-
-    required_region_bounds(tcx, tcx.types.trait_object_dummy_self, predicates)
-}
-
-/// Given a set of predicates that apply to an object type, returns
-/// the region bounds that the (erased) `Self` type must
-/// outlive. Precisely *because* the `Self` type is erased, the
-/// parameter `erased_self_ty` must be supplied to indicate what type
-/// has been used to represent `Self` in the predicates
-/// themselves. This should really be a unique type; `FreshTy(0)` is a
-/// popular choice.
+/// `'static` would appear in the list.
 ///
 /// N.B., in some cases, particularly around higher-ranked bounds,
 /// this function returns a kind of conservative approximation.
@@ -996,13 +973,14 @@ pub fn object_region_bounds<'tcx>(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-#[instrument(skip(tcx, predicates), level = "debug", ret)]
-pub(crate) fn required_region_bounds<'tcx>(
+pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    erased_self_ty: Ty<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    assert!(!erased_self_ty.has_escaping_bound_vars());
+    let erased_self_ty = tcx.types.trait_object_dummy_self;
+
+    let predicates =
+        existential_predicates.iter().map(|predicate| predicate.with_self_ty(tcx, erased_self_ty));
 
     traits::elaborate(tcx, predicates)
         .filter_map(|pred| {

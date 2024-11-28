@@ -6,6 +6,7 @@ static FOO: u8 = 2;
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];
-    // CHECK: [[x]] = const 4_u8;
+    // Disabled due to <https://github.com/rust-lang/rust/issues/130853>
+    // COM: CHECK: [[x]] = const 4_u8;
     let x = FOO + FOO;
 }

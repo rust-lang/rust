@@ -3,18 +3,15 @@ use std::collections::BTreeMap;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
-
-use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -165,34 +162,6 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Other
 ///////////////////////////////////////////////////////////////////////////
-
-/// Instantiate all bound parameters of the impl subject with the given args,
-/// returning the resulting subject and all obligations that arise.
-/// The obligations are closed under normalization.
-pub(crate) fn impl_subject_and_oblig<'a, 'tcx>(
-    selcx: &SelectionContext<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: DefId,
-    impl_args: GenericArgsRef<'tcx>,
-    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let subject = selcx.tcx().impl_subject(impl_def_id);
-    let subject = subject.instantiate(selcx.tcx(), impl_args);
-
-    let InferOk { value: subject, obligations: normalization_obligations1 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
-
-    let predicates = selcx.tcx().predicates_of(impl_def_id);
-    let predicates = predicates.instantiate(selcx.tcx(), impl_args);
-    let InferOk { value: predicates, obligations: normalization_obligations2 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
-    let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);
-
-    let impl_obligations =
-        impl_obligations.chain(normalization_obligations1).chain(normalization_obligations2);
-
-    (subject, impl_obligations)
-}
 
 /// Casts a trait reference into a reference to one of its super
 /// traits; returns `None` if `target_trait_def_id` is not a

@@ -162,7 +162,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs =
-            self.erase_regions(typing_env.with_reveal_all_normalized(self).as_query_input(cid));
+            self.erase_regions(typing_env.with_post_analysis_normalized(self).as_query_input(cid));
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
@@ -182,7 +182,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs =
-            self.erase_regions(typing_env.with_reveal_all_normalized(self).as_query_input(cid));
+            self.erase_regions(typing_env.with_post_analysis_normalized(self).as_query_input(cid));
         debug!(?inputs);
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.

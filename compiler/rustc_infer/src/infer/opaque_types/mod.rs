@@ -101,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                if let ty::TypingMode::Coherence = self.typing_mode(param_env) {
+                if let ty::TypingMode::Coherence = self.typing_mode() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -177,7 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
+            Err(TypeError::Sorts(ExpectedFound::new(a, b)))
         }
     }
 
@@ -522,7 +522,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        match self.typing_mode(param_env) {
+        match self.typing_mode() {
             ty::TypingMode::Coherence => {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement

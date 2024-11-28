@@ -26,7 +26,9 @@ pub fn visit_results<'mir, 'tcx, A>(
     }
 }
 
-/// A visitor over the results of an `Analysis`.
+/// A visitor over the results of an `Analysis`. Use this when you want to inspect domain values in
+/// many or all locations; use `ResultsCursor` if you want to inspect domain values only in certain
+/// locations.
 pub trait ResultsVisitor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,

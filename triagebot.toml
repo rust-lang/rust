@@ -428,8 +428,14 @@ trigger_files = [
     "triagebot.toml",
     "rustfmt.toml",
     "LICENSES",
+    "COPYRIGHT",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "CODE_OF_CONDUCT.md",
     "README.md",
     "CONTRIBUTING.md",
+    "INSTALL.md",
+    "REUSE.toml",
     ".reuse",
     ".mailmap",
     ".git-blame-ignore-revs",
@@ -991,7 +997,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
     "oli-obk",
-    "onur-ozkan",
 ]
 
 [assign.adhoc_groups]

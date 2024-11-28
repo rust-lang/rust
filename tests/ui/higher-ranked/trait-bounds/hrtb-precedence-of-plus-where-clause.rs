@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-//@ pretty-expanded FIXME #23616
 
 // Test that `F : Fn(isize) -> isize + Send` is interpreted as two
 // distinct bounds on `F`.

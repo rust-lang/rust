@@ -45,6 +45,7 @@ impl_marker_trait!(
 impl<'a, T: ?Sized> Copy for &'a T {}
 impl<T: ?Sized> Copy for *const T {}
 impl<T: ?Sized> Copy for *mut T {}
+impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 #[lang = "phantom_data"]
 pub struct PhantomData<T: ?Sized>;

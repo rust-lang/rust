@@ -1,4 +1,4 @@
-//@ compile-flags: -Zunstable-options --edition=2024
+//@ edition: 2024
 //@ check-pass
 
 #![feature(precise_capturing_in_traits)]

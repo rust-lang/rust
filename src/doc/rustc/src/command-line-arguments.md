@@ -179,7 +179,7 @@ This informs `rustc` of the name of your crate.
 <a id="option-edition"></a>
 ## `--edition`: specify the edition to use
 
-This flag takes a value of `2015`, `2018` or `2021`. The default is `2015`. More
+This flag takes a value of `2015`, `2018`,`2021`, or `2024`. The default is `2015`. More
 information about editions may be found in the [edition guide].
 
 [edition guide]: ../edition-guide/introduction.html

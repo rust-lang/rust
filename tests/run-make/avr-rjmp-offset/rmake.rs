@@ -10,6 +10,11 @@
 //! wrong output is only produced with direct assembly generation, but not when
 //! "emit-asm" is used, as described in the issue description of #129301:
 //! https://github.com/rust-lang/rust/issues/129301#issue-2475070770
+
+// FIXME(#133480): this has been randomly failing on `x86_64-mingw` due to linker hangs or
+// crashes... so I'm going to disable this test for windows for now.
+//@ ignore-windows-gnu
+
 use run_make_support::{llvm_objdump, rustc};
 
 fn main() {

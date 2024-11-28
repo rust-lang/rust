@@ -186,7 +186,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             // `clobber_abi` can add lots of clobbers that are not supported by the target,
                             // such as AVX-512 registers, so we just ignore unsupported registers
                             let is_target_supported =
-                                reg.reg_class().supported_types(asm_arch).iter().any(
+                                reg.reg_class().supported_types(asm_arch, true).iter().any(
                                     |&(_, feature)| {
                                         if let Some(feature) = feature {
                                             self.tcx
@@ -683,9 +683,8 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
-            InlineAsmRegClass::S390x(
-                S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg,
-            ) => {
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => "v",
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
             InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
@@ -766,7 +765,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr,
         ) => cx.type_i32(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
