@@ -645,6 +645,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+            Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
             LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
             LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
             Mips(MipsInlineAsmRegClass::reg) => "r",
@@ -813,6 +814,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         | Arm(ArmInlineAsmRegClass::qreg_low8)
         | Arm(ArmInlineAsmRegClass::qreg_low4) => cx.type_vector(cx.type_i64(), 2),
         Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
         LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
         Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
