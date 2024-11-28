@@ -21,14 +21,14 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     ///
     /// For each module, we go through their items by calling for each item:
     ///
-    /// 1. make_child_renderer
+    /// 1. save_module_data
     /// 2. item
     /// 3. set_back_info
     ///
     /// However,the `item` method might update information in `self` (for example if the child is
     /// a module). To prevent it to impact the other children of the current module, we need to
     /// reset the information between each call to `item` by using `set_back_info`.
-    type InfoType;
+    type ModuleData;
 
     /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
@@ -46,13 +46,13 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     /// In short it goes like this:
     ///
     /// ```ignore (not valid code)
-    /// let reset_data = type.make_child_renderer();
+    /// let reset_data = type.save_module_data();
     /// type.item(item)?;
     /// type.set_back_info(reset_data);
     /// ```
-    fn make_child_renderer(&mut self) -> Self::InfoType;
+    fn save_module_data(&mut self) -> Self::ModuleData;
     /// Used to reset current module's information.
-    fn set_back_info(&mut self, info: Self::InfoType);
+    fn set_back_info(&mut self, info: Self::ModuleData);
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
     fn item(&mut self, item: clean::Item) -> Result<(), Error>;
@@ -89,7 +89,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             unreachable!()
         };
         for it in module.items {
-            let info = cx.make_child_renderer();
+            let info = cx.save_module_data();
             run_format_inner(cx, it, prof)?;
             cx.set_back_info(info);
         }

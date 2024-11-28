@@ -137,7 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = false;
-    type InfoType = ();
+    type ModuleData = ();
 
     fn init(
         krate: clean::Crate,
@@ -162,11 +162,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
-    fn make_child_renderer(&mut self) -> Self::InfoType {
-        unreachable!("RUN_ON_MODULE = false should never call make_child_renderer")
+    fn save_module_data(&mut self) -> Self::ModuleData {
+        unreachable!("RUN_ON_MODULE = false should never call save_module_data")
     }
 
-    fn set_back_info(&mut self, _info: Self::InfoType) {
+    fn set_back_info(&mut self, _info: Self::ModuleData) {
         unreachable!("RUN_ON_MODULE = false should never call set_back_info")
     }
 

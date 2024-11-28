@@ -454,7 +454,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = true;
-    type InfoType = ContextInfo;
+    type ModuleData = ContextInfo;
 
     fn init(
         krate: clean::Crate,
@@ -594,14 +594,14 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok((cx, krate))
     }
 
-    fn make_child_renderer(&mut self) -> Self::InfoType {
+    fn save_module_data(&mut self) -> Self::ModuleData {
         self.deref_id_map.borrow_mut().clear();
         self.id_map.borrow_mut().clear();
         self.types_with_notable_traits.borrow_mut().clear();
         self.info
     }
 
-    fn set_back_info(&mut self, info: Self::InfoType) {
+    fn set_back_info(&mut self, info: Self::ModuleData) {
         self.info = info;
     }
 
