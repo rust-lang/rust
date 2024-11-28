@@ -5,7 +5,6 @@
 //@ check-pass
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
-//@[edition2024] compile-flags: -Zunstable-options
 //@ proc-macro: unsafe-attributes-pm.rs
 
 unsafe_attributes_pm::missing_unsafe!();
