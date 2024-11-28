@@ -11,7 +11,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
     self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast,
 };
@@ -454,13 +453,13 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
-        && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && let typing_env = typing_env_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[]))
+            .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty, eq_trait_def_id, None, &[]))
     {
         span_lint_hir_and_then(
             cx,
@@ -485,7 +484,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
-fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ParamEnv<'_> {
+fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
@@ -506,16 +505,17 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         }
     }
 
-    ParamEnv::new(
-        tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
-            params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                ClauseKind::Trait(TraitPredicate {
-                    trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                    polarity: ty::PredicatePolarity::Positive,
-                })
-                .upcast(tcx)
-            }),
-        )),
-        Reveal::UserFacing,
-    )
+    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_predicates.iter().map(|&(p, _)| p).chain(
+        params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
+            ClauseKind::Trait(TraitPredicate {
+                trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
+                polarity: ty::PredicatePolarity::Positive,
+            })
+            .upcast(tcx)
+        }),
+    )));
+    ty::TypingEnv {
+        typing_mode: ty::TypingMode::non_body_analysis(),
+        param_env,
+    }
 }

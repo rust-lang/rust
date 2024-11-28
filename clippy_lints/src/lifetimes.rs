@@ -13,7 +13,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind, Generics,
     HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
-    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate, lang_items,
+    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
+    WherePredicateKind, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -443,9 +444,9 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 /// reason about elision.
 fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) -> bool {
     for predicate in generics.predicates {
-        match *predicate {
-            WherePredicate::RegionPredicate(..) => return true,
-            WherePredicate::BoundPredicate(ref pred) => {
+        match *predicate.kind {
+            WherePredicateKind::RegionPredicate(..) => return true,
+            WherePredicateKind::BoundPredicate(ref pred) => {
                 // a predicate like F: Trait or F: for<'a> Trait<'a>
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
@@ -468,7 +469,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     }
                 }
             },
-            WherePredicate::EqPredicate(ref pred) => {
+            WherePredicateKind::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
                 walk_ty(&mut visitor, pred.lhs_ty);
                 walk_ty(&mut visitor, pred.rhs_ty);
@@ -565,16 +566,14 @@ where
 
     fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
         self.where_predicate_depth += 1;
-        if let &WherePredicate::BoundPredicate(WhereBoundPredicate {
-            hir_id,
+        if let &WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bounds,
             bound_generic_params,
             origin: _,
-            span: _,
-        }) = predicate
+        }) = predicate.kind
         {
-            self.visit_where_bound_predicate(hir_id, bounded_ty, bounds, bound_generic_params);
+            self.visit_where_bound_predicate(predicate.hir_id, bounded_ty, bounds, bound_generic_params);
         } else {
             walk_where_predicate(self, predicate);
         }

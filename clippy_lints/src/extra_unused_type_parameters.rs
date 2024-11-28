@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_impl_item, walk_item, walk_param_bound, walk_ty};
 use rustc_hir::{
     BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind,
-    PredicateOrigin, Ty, WherePredicate,
+    PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
@@ -205,12 +205,13 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
-        if let WherePredicate::BoundPredicate(predicate) = predicate {
+        let span = predicate.span;
+        if let WherePredicateKind::BoundPredicate(predicate) = predicate.kind {
             // Collect spans for any bounds on type parameters.
             if let Some((def_id, _)) = predicate.bounded_ty.peel_refs().as_generic_param() {
                 match predicate.origin {
                     PredicateOrigin::GenericParam => {
-                        self.inline_bounds.insert(def_id, predicate.span);
+                        self.inline_bounds.insert(def_id, span);
                     },
                     PredicateOrigin::WhereClause => {
                         self.where_bounds.insert(def_id);

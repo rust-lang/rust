@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         if from_mutbl == to_mutbl
-                            && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
+                            && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
                             && msrv.meets(msrvs::POINTER_CAST)
                         {
                             diag.span_suggestion_verbose(

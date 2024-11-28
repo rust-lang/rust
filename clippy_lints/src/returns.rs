@@ -391,7 +391,7 @@ fn check_final_expr<'tcx>(
 
             if let Some(inner) = inner {
                 if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
-                    if temporary_ty.has_significant_drop(cx.tcx, cx.param_env)
+                    if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
                         && temporary_ty
                             .walk()
                             .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
