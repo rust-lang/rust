@@ -23,7 +23,6 @@ rand = "0.8"
 smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.8.3", features = ["hazmat"] }
 measureme = "11"
-ctrlc = "3.2.5"
 chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "5"
