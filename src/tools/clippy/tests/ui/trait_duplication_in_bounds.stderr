@@ -70,5 +70,11 @@ error: these where clauses contain repeated elements
 LL |     T: IntoIterator<Item = U::Owned> + IntoIterator<Item = U::Owned>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `IntoIterator<Item = U::Owned>`
 
-error: aborting due to 11 previous errors
+error: these where clauses contain repeated elements
+  --> tests/ui/trait_duplication_in_bounds.rs:194:8
+   |
+LL |     T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `AssocConstTrait<ASSOC = 0>`
+
+error: aborting due to 12 previous errors
 

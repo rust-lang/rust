@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_in_test;
+use clippy_utils::msrvs::Msrv;
 use rustc_attr::{StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind, HirId};

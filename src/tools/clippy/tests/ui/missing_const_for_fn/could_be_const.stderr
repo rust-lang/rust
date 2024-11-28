@@ -316,27 +316,5 @@ help: make the function `const`
 LL |     const extern "system-unwind" fn system_unwind() {}
    |     +++++
 
-error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:214:5
-   |
-LL |     pub extern "vectorcall" fn std_call() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: make the function `const`
-   |
-LL |     pub const extern "vectorcall" fn std_call() {}
-   |         +++++
-
-error: this could be a `const fn`
-  --> tests/ui/missing_const_for_fn/could_be_const.rs:216:5
-   |
-LL |     pub extern "vectorcall-unwind" fn std_call_unwind() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: make the function `const`
-   |
-LL |     pub const extern "vectorcall-unwind" fn std_call_unwind() {}
-   |         +++++
-
-error: aborting due to 26 previous errors
+error: aborting due to 24 previous errors
 
