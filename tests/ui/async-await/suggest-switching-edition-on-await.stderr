@@ -5,7 +5,7 @@ LL |     x.await;
    |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0609]: no field `await` on type `await_on_struct_similar::S`
@@ -15,7 +15,7 @@ LL |     x.await;
    |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 help: a field with a similar name exists
    |
@@ -29,7 +29,7 @@ LL |     x.await;
    |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0609]: no field `await` on type `impl Future<Output = ()>`
@@ -39,7 +39,7 @@ LL |     x.await;
    |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: aborting due to 4 previous errors

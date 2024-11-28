@@ -2,6 +2,7 @@
 //! standalone executable.
 
 use std::fs::{self, File};
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -397,14 +398,19 @@ fn emit_module(
     }
 
     let tmp_file = output_filenames.temp_path(OutputType::Object, Some(&name));
-    let mut file = match File::create(&tmp_file) {
+    let file = match File::create(&tmp_file) {
         Ok(file) => file,
         Err(err) => return Err(format!("error creating object file: {}", err)),
     };
 
+    let mut file = BufWriter::new(file);
     if let Err(err) = object.write_stream(&mut file) {
         return Err(format!("error writing object file: {}", err));
     }
+    let file = match file.into_inner() {
+        Ok(file) => file,
+        Err(err) => return Err(format!("error writing object file: {}", err)),
+    };
 
     prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
 

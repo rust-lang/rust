@@ -1,9 +1,9 @@
+use rustc_abi::WrappingRange;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, sym};
-use rustc_target::abi::WrappingRange;
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::callconv::{FnAbi, PassMode};
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -59,14 +59,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         llresult: Bx::Value,
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
-        let callee_ty = instance.ty(bx.tcx(), ty::ParamEnv::reveal_all());
+        let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(bx.tcx());
-        let sig = bx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = bx.tcx().normalize_erasing_late_bound_regions(bx.typing_env(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = bx.tcx().item_name(def_id);
@@ -146,10 +146,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
-                let value = bx
-                    .tcx()
-                    .const_eval_instance(ty::ParamEnv::reveal_all(), instance, span)
-                    .unwrap();
+                let value = bx.tcx().const_eval_instance(bx.typing_env(), instance, span).unwrap();
                 OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
             }
             sym::arith_offset => {
@@ -496,6 +493,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let d = bx.unchecked_usub(a, b);
                     bx.exactudiv(d, pointee_size)
                 }
+            }
+
+            sym::cold_path => {
+                // This is a no-op. The intrinsic is just a hint to the optimizer.
+                return Ok(());
             }
 
             _ => {

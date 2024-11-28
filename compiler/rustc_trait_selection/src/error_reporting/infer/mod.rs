@@ -50,6 +50,7 @@ use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir::def::DefKind;
@@ -67,7 +68,6 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_span::{BytePos, DesugaringKind, Pos, Span, sym};
-use rustc_target::spec::abi;
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -152,7 +152,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
         self.report_and_explain_type_error(
-            TypeTrace::types(cause, true, expected, actual),
+            TypeTrace::types(cause, expected, actual),
             param_env,
             err,
         )
@@ -167,7 +167,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
         self.report_and_explain_type_error(
-            TypeTrace::consts(cause, true, expected, actual),
+            TypeTrace::consts(cause, expected, actual),
             param_env,
             err,
         )
@@ -686,10 +686,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
-        if sig1.abi != abi::Abi::Rust {
+        if sig1.abi != ExternAbi::Rust {
             values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
         }
-        if sig2.abi != abi::Abi::Rust {
+        if sig2.abi != ExternAbi::Rust {
             values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
         }
 
@@ -763,6 +763,67 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (values.1).0.extend(x2.0);
         }
 
+        values
+    }
+
+    pub fn cmp_traits(
+        &self,
+        def_id1: DefId,
+        args1: &[ty::GenericArg<'tcx>],
+        def_id2: DefId,
+        args2: &[ty::GenericArg<'tcx>],
+    ) -> (DiagStyledString, DiagStyledString) {
+        let mut values = (DiagStyledString::new(), DiagStyledString::new());
+
+        if def_id1 != def_id2 {
+            values.0.push_highlighted(self.tcx.def_path_str(def_id1).as_str());
+            values.1.push_highlighted(self.tcx.def_path_str(def_id2).as_str());
+        } else {
+            values.0.push_normal(self.tcx.item_name(def_id1).as_str());
+            values.1.push_normal(self.tcx.item_name(def_id2).as_str());
+        }
+
+        if args1.len() != args2.len() {
+            let (pre, post) = if args1.len() > 0 { ("<", ">") } else { ("", "") };
+            values.0.push_normal(format!(
+                "{pre}{}{post}",
+                args1.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", ")
+            ));
+            let (pre, post) = if args2.len() > 0 { ("<", ">") } else { ("", "") };
+            values.1.push_normal(format!(
+                "{pre}{}{post}",
+                args2.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", ")
+            ));
+            return values;
+        }
+
+        if args1.len() > 0 {
+            values.0.push_normal("<");
+            values.1.push_normal("<");
+        }
+        for (i, (a, b)) in std::iter::zip(args1, args2).enumerate() {
+            let a_str = a.to_string();
+            let b_str = b.to_string();
+            if let (Some(a), Some(b)) = (a.as_type(), b.as_type()) {
+                let (a, b) = self.cmp(a, b);
+                values.0.0.extend(a.0);
+                values.1.0.extend(b.0);
+            } else if a_str != b_str {
+                values.0.push_highlighted(a_str);
+                values.1.push_highlighted(b_str);
+            } else {
+                values.0.push_normal(a_str);
+                values.1.push_normal(b_str);
+            }
+            if i + 1 < args1.len() {
+                values.0.push_normal(", ");
+                values.1.push_normal(", ");
+            }
+        }
+        if args1.len() > 0 {
+            values.0.push_normal(">");
+            values.1.push_normal(">");
+        }
         values
     }
 
@@ -1731,12 +1792,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn suggest_specify_actual_length(
         &self,
-        terr: TypeError<'_>,
-        trace: &TypeTrace<'_>,
+        terr: TypeError<'tcx>,
+        trace: &TypeTrace<'tcx>,
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
         let hir = self.tcx.hir();
-        let TypeError::FixedArraySize(sz) = terr else {
+        let TypeError::ArraySize(sz) = terr else {
             return None;
         };
         let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_id) {
@@ -1777,9 +1838,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let Some(tykind) = tykind
             && let hir::TyKind::Array(_, length) = tykind
             && let hir::ArrayLen::Body(ct) = length
+            && let Some((scalar, ty)) = sz.found.try_to_scalar()
+            && ty == self.tcx.types.usize
         {
             let span = ct.span();
-            Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength { span, length: sz.found })
+            Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
+                span,
+                length: scalar.to_target_usize(&self.tcx).unwrap(),
+            })
         } else {
             None
         }

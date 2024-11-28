@@ -88,6 +88,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             | StatementKind::Nop
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }

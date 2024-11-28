@@ -25,10 +25,10 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -38,12 +38,11 @@ use rustc_middle::ty::fold::{
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid, TypingMode,
+    GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
+    TypeVisitable, TypingEnv, TypingMode,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_type_ir::solve::Reveal;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -265,11 +264,12 @@ pub struct InferCtxt<'tcx> {
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
-    /// for things that have to do with the parameters in scope.
-    pub selection_cache: select::SelectionCache<'tcx>,
+    /// for things that depends on inference variables or placeholders.
+    pub selection_cache: select::SelectionCache<'tcx, ty::ParamEnv<'tcx>>,
 
-    /// Caches the results of trait evaluation.
-    pub evaluation_cache: select::EvaluationCache<'tcx>,
+    /// Caches the results of trait evaluation. This cache is used
+    /// for things that depends on inference variables or placeholders.
+    pub evaluation_cache: select::EvaluationCache<'tcx, ty::ParamEnv<'tcx>>,
 
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
@@ -566,6 +566,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         (infcx, value, args)
     }
 
+    pub fn build_with_typing_env(
+        mut self,
+        TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
+    ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
+        (self.build(typing_mode), param_env)
+    }
+
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
         let InferCtxtBuilder { tcx, considering_regions, skip_leak_check, next_trait_solver } =
             *self;
@@ -617,22 +624,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn typing_mode(
-        &self,
-        param_env_for_debug_assertion: ty::ParamEnv<'tcx>,
-    ) -> TypingMode<'tcx> {
-        if cfg!(debug_assertions) {
-            match (param_env_for_debug_assertion.reveal(), self.typing_mode) {
-                (Reveal::All, TypingMode::PostAnalysis)
-                | (Reveal::UserFacing, TypingMode::Coherence | TypingMode::Analysis { .. }) => {}
-                (r, t) => unreachable!("TypingMode x Reveal mismatch: {r:?} {t:?}"),
-            }
-        }
-        self.typing_mode
-    }
-
-    #[inline(always)]
-    pub fn typing_mode_unchecked(&self) -> TypingMode<'tcx> {
+    pub fn typing_mode(&self) -> TypingMode<'tcx> {
         self.typing_mode
     }
 
@@ -998,7 +990,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
-        match self.typing_mode_unchecked() {
+        match self.typing_mode() {
             TypingMode::Analysis { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
@@ -1279,82 +1271,40 @@ impl<'tcx> InferCtxt<'tcx> {
         u
     }
 
-    pub fn try_const_eval_resolve(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
-        match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Ok(val)) => Ok(ty::Const::new_value(
-                self.tcx,
-                val,
-                self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
-            )),
-            Ok(Err(bad_ty)) => {
-                let tcx = self.tcx;
-                let def_id = unevaluated.def;
-                span_bug!(
-                    tcx.def_span(def_id),
-                    "unable to construct a valtree for the unevaluated constant {:?}: type {bad_ty} is not valtree-compatible",
-                    unevaluated
-                );
+    /// Extract [`ty::TypingMode`] of this inference context to get a `TypingEnv`
+    /// which contains the necessary information to use the trait system without
+    /// using canonicalization or carrying this inference context around.
+    pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
+        let typing_mode = match self.typing_mode() {
+            ty::TypingMode::Coherence => ty::TypingMode::Coherence,
+            // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
+            // to handle them without proper canonicalization. This means we may cause cycle
+            // errors and fail to reveal opaques while inside of bodies. We should rename this
+            // function and require explicit comments on all use-sites in the future.
+            ty::TypingMode::Analysis { defining_opaque_types: _ } => {
+                TypingMode::non_body_analysis()
             }
-            Err(err) => Err(err),
-        }
+            ty::TypingMode::PostAnalysis => ty::TypingMode::PostAnalysis,
+        };
+        ty::TypingEnv { typing_mode, param_env }
     }
 
-    /// Resolves and evaluates a constant.
-    ///
-    /// The constant can be located on a trait like `<A as B>::C`, in which case the given
-    /// generic parameters and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the instantiations are used to evaluate the value
-    /// of the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is
-    /// still too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
-    /// returned.
-    ///
-    /// This handles inferences variables within both `param_env` and `args` by
-    /// performing the operation on their respective canonical forms.
-    #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_resolve(
+    /// Similar to [`Self::canonicalize_query`], except that it returns
+    /// a [`PseudoCanonicalInput`] and requires both the `value` and the
+    /// `param_env` to not contain any inference variables or placeholders.
+    pub fn pseudo_canonicalize_query<V>(
         &self,
-        mut param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
-        span: Span,
-    ) -> EvalToValTreeResult<'tcx> {
-        let mut args = self.resolve_vars_if_possible(unevaluated.args);
-        debug!(?args);
-
-        // Postpone the evaluation of constants whose args depend on inference
-        // variables
-        let tcx = self.tcx;
-        if args.has_non_region_infer() {
-            if let Some(ct) = tcx.thir_abstract_const(unevaluated.def)? {
-                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, args));
-                if let Err(e) = ct.error_reported() {
-                    return Err(ErrorHandled::Reported(e.into(), span));
-                } else if ct.has_non_region_infer() || ct.has_non_region_param() {
-                    return Err(ErrorHandled::TooGeneric(span));
-                } else {
-                    args = replace_param_and_infer_args_with_placeholder(tcx, args);
-                }
-            } else {
-                args = GenericArgs::identity_for_item(tcx, unevaluated.def);
-                param_env = tcx.param_env(unevaluated.def);
-            }
-        }
-
-        let param_env_erased = tcx.erase_regions(param_env);
-        let args_erased = tcx.erase_regions(args);
-        debug!(?param_env_erased);
-        debug!(?args_erased);
-
-        let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args: args_erased };
-
-        // The return value is the evaluated value which doesn't contain any reference to inference
-        // variables, thus we don't need to instantiate back the original values.
-        tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
+        param_env: ty::ParamEnv<'tcx>,
+        value: V,
+    ) -> PseudoCanonicalInput<'tcx, V>
+    where
+        V: TypeVisitable<TyCtxt<'tcx>>,
+    {
+        debug_assert!(!value.has_infer());
+        debug_assert!(!value.has_placeholders());
+        debug_assert!(!param_env.has_infer());
+        debug_assert!(!param_env.has_placeholders());
+        self.typing_env(param_env).as_query_input(value)
     }
 
     /// The returned function is used in a fast path. If it returns `true` the variable is
@@ -1513,39 +1463,29 @@ impl<'tcx> TypeTrace<'tcx> {
         self.cause.span
     }
 
-    pub fn types(
-        cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-    ) -> TypeTrace<'tcx> {
+    pub fn types(cause: &ObligationCause<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a.into(), b.into())),
         }
     }
 
     pub fn trait_refs(
         cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
         a: ty::TraitRef<'tcx>,
         b: ty::TraitRef<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace {
-            cause: cause.clone(),
-            values: ValuePairs::TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
-        }
+        TypeTrace { cause: cause.clone(), values: ValuePairs::TraitRefs(ExpectedFound::new(a, b)) }
     }
 
     pub fn consts(
         cause: &ObligationCause<'tcx>,
-        a_is_expected: bool,
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: ValuePairs::Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: ValuePairs::Terms(ExpectedFound::new(a.into(), b.into())),
         }
     }
 }
@@ -1620,61 +1560,6 @@ impl RegionVariableOrigin {
             Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
-}
-
-/// Replaces args that reference param or infer variables with suitable
-/// placeholders. This function is meant to remove these param and infer
-/// args when they're not actually needed to evaluate a constant.
-fn replace_param_and_infer_args_with_placeholder<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
-    struct ReplaceParamAndInferWithPlaceholder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        idx: u32,
-    }
-
-    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn cx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            if let ty::Infer(_) = t.kind() {
-                let idx = {
-                    let idx = self.idx;
-                    self.idx += 1;
-                    idx
-                };
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundTy {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon,
-                    },
-                })
-            } else {
-                t.super_fold_with(self)
-            }
-        }
-
-        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-            if let ty::ConstKind::Infer(_) = c.kind() {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundVar::from_u32({
-                        let idx = self.idx;
-                        self.idx += 1;
-                        idx
-                    }),
-                })
-            } else {
-                c.super_fold_with(self)
-            }
-        }
-    }
-
-    args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }
 
 impl<'tcx> InferCtxt<'tcx> {

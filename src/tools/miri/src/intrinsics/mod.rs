@@ -4,11 +4,11 @@ mod atomic;
 mod simd;
 
 use rand::Rng;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
-use rustc_target::abi::Size;
 
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_arg_count};
@@ -218,20 +218,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let f_host = f.to_host();
+                // Using host floats except for sqrt (but it's fine, these operations do not have
+                // guaranteed precision).
                 let res = match intrinsic_name {
-                    "sinf32" => f_host.sin(),
-                    "cosf32" => f_host.cos(),
-                    "sqrtf32" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
-                    "expf32" => f_host.exp(),
-                    "exp2f32" => f_host.exp2(),
-                    "logf32" => f_host.ln(),
-                    "log10f32" => f_host.log10(),
-                    "log2f32" => f_host.log2(),
+                    "sinf32" => f.to_host().sin().to_soft(),
+                    "cosf32" => f.to_host().cos().to_soft(),
+                    "sqrtf32" => math::sqrt(f),
+                    "expf32" => f.to_host().exp().to_soft(),
+                    "exp2f32" => f.to_host().exp2().to_soft(),
+                    "logf32" => f.to_host().ln().to_soft(),
+                    "log10f32" => f.to_host().log10().to_soft(),
+                    "log2f32" => f.to_host().log2().to_soft(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -247,20 +246,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // Using host floats (but it's fine, these operations do not have guaranteed precision).
-                let f_host = f.to_host();
+                // Using host floats except for sqrt (but it's fine, these operations do not have
+                // guaranteed precision).
                 let res = match intrinsic_name {
-                    "sinf64" => f_host.sin(),
-                    "cosf64" => f_host.cos(),
-                    "sqrtf64" => f_host.sqrt(), // FIXME Using host floats, this should use full-precision soft-floats
-                    "expf64" => f_host.exp(),
-                    "exp2f64" => f_host.exp2(),
-                    "logf64" => f_host.ln(),
-                    "log10f64" => f_host.log10(),
-                    "log2f64" => f_host.log2(),
+                    "sinf64" => f.to_host().sin().to_soft(),
+                    "cosf64" => f.to_host().cos().to_soft(),
+                    "sqrtf64" => math::sqrt(f),
+                    "expf64" => f.to_host().exp().to_soft(),
+                    "exp2f64" => f.to_host().exp2().to_soft(),
+                    "logf64" => f.to_host().ln().to_soft(),
+                    "log10f64" => f.to_host().log10().to_soft(),
+                    "log2f64" => f.to_host().log2().to_soft(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -292,7 +290,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
                 let fuse: bool = this.machine.rng.get_mut().gen();
-                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
@@ -308,7 +305,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
                 let fuse: bool = this.machine.rng.get_mut().gen();
-                #[allow(clippy::arithmetic_side_effects)] // float ops don't overflow
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()

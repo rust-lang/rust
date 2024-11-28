@@ -3,6 +3,7 @@
 use core::ascii::EscapeDefault;
 
 use crate::fmt::{self, Write};
+use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, mem, ops};
 
 #[cfg(not(test))]
@@ -51,10 +52,30 @@ impl [u8] {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_unstable(feature = "const_eq_ignore_ascii_case", issue = "131719")]
     #[must_use]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
+    pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        // FIXME(const-hack): This implementation can be reverted when
+        // `core::iter::zip` is allowed in const. The original implementation:
+        //  self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
+        let mut a = self;
+        let mut b = other;
+
+        while let ([first_a, rest_a @ ..], [first_b, rest_b @ ..]) = (a, b) {
+            if first_a.eq_ignore_ascii_case(&first_b) {
+                a = rest_a;
+                b = rest_b;
+            } else {
+                return false;
+            }
+        }
+
+        true
     }
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
@@ -346,89 +367,91 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 /// If any of these loads produces something for which `contains_nonascii`
 /// (above) returns true, then we know the answer is false.
 #[inline]
-#[rustc_allow_const_fn_unstable(const_raw_ptr_comparison, const_pointer_is_aligned)] // only in a debug assertion
-#[rustc_allow_const_fn_unstable(const_align_offset)] // behavior does not change when `align_offset` fails
+#[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 const fn is_ascii(s: &[u8]) -> bool {
-    const USIZE_SIZE: usize = mem::size_of::<usize>();
+    // The runtime version behaves the same as the compiletime version, it's
+    // just more optimized.
+    const_eval_select!(
+        @capture { s: &[u8] } -> bool:
+        if const {
+            is_ascii_simple(s)
+        } else {
+            const USIZE_SIZE: usize = mem::size_of::<usize>();
 
-    let len = s.len();
-    let align_offset = s.as_ptr().align_offset(USIZE_SIZE);
+            let len = s.len();
+            let align_offset = s.as_ptr().align_offset(USIZE_SIZE);
 
-    // If we wouldn't gain anything from the word-at-a-time implementation, fall
-    // back to a scalar loop.
-    //
-    // We also do this for architectures where `size_of::<usize>()` isn't
-    // sufficient alignment for `usize`, because it's a weird edge case.
-    if len < USIZE_SIZE || len < align_offset || USIZE_SIZE < mem::align_of::<usize>() {
-        return is_ascii_simple(s);
-    }
+            // If we wouldn't gain anything from the word-at-a-time implementation, fall
+            // back to a scalar loop.
+            //
+            // We also do this for architectures where `size_of::<usize>()` isn't
+            // sufficient alignment for `usize`, because it's a weird edge case.
+            if len < USIZE_SIZE || len < align_offset || USIZE_SIZE < mem::align_of::<usize>() {
+                return is_ascii_simple(s);
+            }
 
-    // We always read the first word unaligned, which means `align_offset` is
-    // 0, we'd read the same value again for the aligned read.
-    let offset_to_aligned = if align_offset == 0 { USIZE_SIZE } else { align_offset };
+            // We always read the first word unaligned, which means `align_offset` is
+            // 0, we'd read the same value again for the aligned read.
+            let offset_to_aligned = if align_offset == 0 { USIZE_SIZE } else { align_offset };
 
-    let start = s.as_ptr();
-    // SAFETY: We verify `len < USIZE_SIZE` above.
-    let first_word = unsafe { (start as *const usize).read_unaligned() };
+            let start = s.as_ptr();
+            // SAFETY: We verify `len < USIZE_SIZE` above.
+            let first_word = unsafe { (start as *const usize).read_unaligned() };
 
-    if contains_nonascii(first_word) {
-        return false;
-    }
-    // We checked this above, somewhat implicitly. Note that `offset_to_aligned`
-    // is either `align_offset` or `USIZE_SIZE`, both of are explicitly checked
-    // above.
-    debug_assert!(offset_to_aligned <= len);
+            if contains_nonascii(first_word) {
+                return false;
+            }
+            // We checked this above, somewhat implicitly. Note that `offset_to_aligned`
+            // is either `align_offset` or `USIZE_SIZE`, both of are explicitly checked
+            // above.
+            debug_assert!(offset_to_aligned <= len);
 
-    // SAFETY: word_ptr is the (properly aligned) usize ptr we use to read the
-    // middle chunk of the slice.
-    let mut word_ptr = unsafe { start.add(offset_to_aligned) as *const usize };
+            // SAFETY: word_ptr is the (properly aligned) usize ptr we use to read the
+            // middle chunk of the slice.
+            let mut word_ptr = unsafe { start.add(offset_to_aligned) as *const usize };
 
-    // `byte_pos` is the byte index of `word_ptr`, used for loop end checks.
-    let mut byte_pos = offset_to_aligned;
+            // `byte_pos` is the byte index of `word_ptr`, used for loop end checks.
+            let mut byte_pos = offset_to_aligned;
 
-    // Paranoia check about alignment, since we're about to do a bunch of
-    // unaligned loads. In practice this should be impossible barring a bug in
-    // `align_offset` though.
-    // While this method is allowed to spuriously fail in CTFE, if it doesn't
-    // have alignment information it should have given a `usize::MAX` for
-    // `align_offset` earlier, sending things through the scalar path instead of
-    // this one, so this check should pass if it's reachable.
-    debug_assert!(word_ptr.is_aligned_to(mem::align_of::<usize>()));
+            // Paranoia check about alignment, since we're about to do a bunch of
+            // unaligned loads. In practice this should be impossible barring a bug in
+            // `align_offset` though.
+            // While this method is allowed to spuriously fail in CTFE, if it doesn't
+            // have alignment information it should have given a `usize::MAX` for
+            // `align_offset` earlier, sending things through the scalar path instead of
+            // this one, so this check should pass if it's reachable.
+            debug_assert!(word_ptr.is_aligned_to(mem::align_of::<usize>()));
 
-    // Read subsequent words until the last aligned word, excluding the last
-    // aligned word by itself to be done in tail check later, to ensure that
-    // tail is always one `usize` at most to extra branch `byte_pos == len`.
-    while byte_pos < len - USIZE_SIZE {
-        // Sanity check that the read is in bounds
-        debug_assert!(byte_pos + USIZE_SIZE <= len);
-        // And that our assumptions about `byte_pos` hold.
-        debug_assert!(matches!(
-            word_ptr.cast::<u8>().guaranteed_eq(start.wrapping_add(byte_pos)),
-            // These are from the same allocation, so will hopefully always be
-            // known to match even in CTFE, but if it refuses to compare them
-            // that's ok since it's just a debug check anyway.
-            None | Some(true),
-        ));
+            // Read subsequent words until the last aligned word, excluding the last
+            // aligned word by itself to be done in tail check later, to ensure that
+            // tail is always one `usize` at most to extra branch `byte_pos == len`.
+            while byte_pos < len - USIZE_SIZE {
+                // Sanity check that the read is in bounds
+                debug_assert!(byte_pos + USIZE_SIZE <= len);
+                // And that our assumptions about `byte_pos` hold.
+                debug_assert!(word_ptr.cast::<u8>() == start.wrapping_add(byte_pos));
 
-        // SAFETY: We know `word_ptr` is properly aligned (because of
-        // `align_offset`), and we know that we have enough bytes between `word_ptr` and the end
-        let word = unsafe { word_ptr.read() };
-        if contains_nonascii(word) {
-            return false;
+                // SAFETY: We know `word_ptr` is properly aligned (because of
+                // `align_offset`), and we know that we have enough bytes between `word_ptr` and the end
+                let word = unsafe { word_ptr.read() };
+                if contains_nonascii(word) {
+                    return false;
+                }
+
+                byte_pos += USIZE_SIZE;
+                // SAFETY: We know that `byte_pos <= len - USIZE_SIZE`, which means that
+                // after this `add`, `word_ptr` will be at most one-past-the-end.
+                word_ptr = unsafe { word_ptr.add(1) };
+            }
+
+            // Sanity check to ensure there really is only one `usize` left. This should
+            // be guaranteed by our loop condition.
+            debug_assert!(byte_pos <= len && len - byte_pos <= USIZE_SIZE);
+
+            // SAFETY: This relies on `len >= USIZE_SIZE`, which we check at the start.
+            let last_word = unsafe { (start.add(len - USIZE_SIZE) as *const usize).read_unaligned() };
+
+            !contains_nonascii(last_word)
         }
-
-        byte_pos += USIZE_SIZE;
-        // SAFETY: We know that `byte_pos <= len - USIZE_SIZE`, which means that
-        // after this `add`, `word_ptr` will be at most one-past-the-end.
-        word_ptr = unsafe { word_ptr.add(1) };
-    }
-
-    // Sanity check to ensure there really is only one `usize` left. This should
-    // be guaranteed by our loop condition.
-    debug_assert!(byte_pos <= len && len - byte_pos <= USIZE_SIZE);
-
-    // SAFETY: This relies on `len >= USIZE_SIZE`, which we check at the start.
-    let last_word = unsafe { (start.add(len - USIZE_SIZE) as *const usize).read_unaligned() };
-
-    !contains_nonascii(last_word)
+    )
 }

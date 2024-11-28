@@ -5,6 +5,7 @@ use std::sync::{Arc, OnceLock as OnceCell};
 use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
+use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast::MetaItemInner;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
@@ -26,8 +27,6 @@ use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Loc};
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi::Abi;
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
@@ -265,17 +264,19 @@ impl ExternalCrate {
         // rendering by delegating everything to a hash map.
         let as_primitive = |res: Res<!>| {
             let Res::Def(DefKind::Mod, def_id) = res else { return None };
-            tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
-                let attr_value = attr.value_str().expect("syntax should already be validated");
-                let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
-                    span_bug!(
-                        attr.span,
-                        "primitive `{attr_value}` is not a member of `PrimitiveType`"
-                    );
-                };
+            tcx.get_attrs(def_id, sym::rustc_doc_primitive)
+                .map(|attr| {
+                    let attr_value = attr.value_str().expect("syntax should already be validated");
+                    let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
+                        span_bug!(
+                            attr.span,
+                            "primitive `{attr_value}` is not a member of `PrimitiveType`"
+                        );
+                    };
 
-                Some((def_id, prim))
-            })
+                    (def_id, prim)
+                })
+                .next()
         };
 
         if root.is_local() {
@@ -340,7 +341,7 @@ pub(crate) struct ItemInner {
 impl std::ops::Deref for Item {
     type Target = ItemInner;
     fn deref(&self) -> &ItemInner {
-        &*self.inner
+        &self.inner
     }
 }
 
@@ -413,7 +414,7 @@ impl Item {
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &self.kind {
-            ItemKind::StrippedItem(k) => &*k,
+            ItemKind::StrippedItem(k) => k,
             _ => &self.kind,
         };
         match kind {
@@ -656,7 +657,7 @@ impl Item {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    safety: if abi == Abi::RustIntrinsic {
+                    safety: if abi == ExternAbi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
                         safety
@@ -704,8 +705,8 @@ impl Item {
             | TyMethodItem(..) | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
-                    ty::TraitContainer => true,
-                    ty::ImplContainer => {
+                    ty::AssocItemContainer::Trait => true,
+                    ty::AssocItemContainer::Impl => {
                         // Trait impl items always inherit the impl's visibility --
                         // we don't want to show `pub`.
                         tcx.impl_trait_ref(tcx.parent(assoc_item.def_id)).is_some()
@@ -773,8 +774,10 @@ impl Item {
                         .find(|field| {
                             let ty =
                                 field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                            tcx.layout_of(tcx.param_env(field.did).and(ty))
-                                .is_ok_and(|layout| !layout.is_1zst())
+                            tcx.layout_of(
+                                ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty),
+                            )
+                            .is_ok_and(|layout| !layout.is_1zst())
                         })
                         .map_or_else(
                             || adt.all_fields().any(|field| field.vis.is_public()),
@@ -1869,7 +1872,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).iter())
             .copied()
     }
 
@@ -1877,7 +1880,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).iter())
             .copied()
     }
 
@@ -2342,7 +2345,7 @@ pub(crate) struct BareFunctionDecl {
     pub(crate) safety: hir::Safety,
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
-    pub(crate) abi: Abi,
+    pub(crate) abi: ExternAbi,
 }
 
 #[derive(Clone, Debug)]
@@ -2544,6 +2547,8 @@ pub(crate) struct ImportSource {
 #[derive(Clone, Debug)]
 pub(crate) struct Macro {
     pub(crate) source: String,
+    /// Whether the macro was defined via `macro_rules!` as opposed to `macro`.
+    pub(crate) macro_rules: bool,
 }
 
 #[derive(Clone, Debug)]

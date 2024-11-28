@@ -3,7 +3,7 @@
 
 use std::borrow::Cow;
 
-use rustc_target::abi::call::PassMode;
+use rustc_target::callconv::PassMode;
 
 use crate::prelude::*;
 

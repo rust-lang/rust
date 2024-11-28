@@ -452,6 +452,7 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::ConstEvalCounter => {}
                     StatementKind::Nop => {}
+                    StatementKind::BackwardIncompatibleDropHint { .. } => {}
                 }
             }
 

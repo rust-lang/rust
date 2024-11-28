@@ -39,7 +39,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
             (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut))
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
-        && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
+        && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {

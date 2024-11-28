@@ -177,6 +177,7 @@ enum Scope<'a> {
     LateBoundary {
         s: ScopeRef<'a>,
         what: &'static str,
+        deny_late_regions: bool,
     },
 
     Root {
@@ -234,9 +235,11 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("s", &"..")
                 .finish(),
             Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Scope::LateBoundary { s: _, what } => {
-                f.debug_struct("LateBoundary").field("what", what).finish()
-            }
+            Scope::LateBoundary { s: _, what, deny_late_regions } => f
+                .debug_struct("LateBoundary")
+                .field("what", what)
+                .field("deny_late_regions", deny_late_regions)
+                .finish(),
             Scope::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
             }
@@ -322,7 +325,7 @@ fn late_arg_as_bound_arg<'tcx>(
     let name = tcx.item_name(def_id);
     match param.kind {
         GenericParamKind::Lifetime { .. } => {
-            ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
         }
         GenericParamKind::Type { .. } => {
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
@@ -337,7 +340,7 @@ fn late_arg_as_bound_arg<'tcx>(
 fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
     match param.kind {
         ty::GenericParamDefKind::Lifetime => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::BrNamed(param.def_id, param.name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id, param.name))
         }
         ty::GenericParamDefKind::Type { .. } => {
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
@@ -571,16 +574,22 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             // We list scopes outwards, this causes us to see lifetime parameters in reverse
             // declaration order. In order to make it consistent with what `generics_of` might
             // give, we will reverse the IndexMap after early captures.
+            let mut late_depth = 0;
             let mut scope = self.scope;
             let mut opaque_capture_scopes = vec![(opaque.def_id, &captures)];
             loop {
                 match *scope {
-                    Scope::Binder { ref bound_vars, s, .. } => {
+                    Scope::Binder { ref bound_vars, scope_type, s, .. } => {
                         for (&original_lifetime, &def) in bound_vars.iter().rev() {
                             if let DefKind::LifetimeParam = self.tcx.def_kind(original_lifetime) {
+                                let def = def.shifted(late_depth);
                                 let ident = lifetime_ident(original_lifetime);
                                 self.remap_opaque_captures(&opaque_capture_scopes, def, ident);
                             }
+                        }
+                        match scope_type {
+                            BinderScopeType::Normal => late_depth += 1,
+                            BinderScopeType::Concatenating => {}
                         }
                         scope = s;
                     }
@@ -602,6 +611,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                     Scope::Opaque { captures, def_id, s } => {
                         opaque_capture_scopes.push((def_id, captures));
+                        late_depth = 0;
                         scope = s;
                     }
 
@@ -623,7 +633,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         let scope = Scope::Opaque { captures: &captures, def_id: opaque.def_id, s: self.scope };
         self.with(scope, |this| {
             let scope = Scope::TraitRefBoundary { s: this.scope };
-            this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
+            this.with(scope, |this| {
+                let scope = Scope::LateBoundary {
+                    s: this.scope,
+                    what: "nested `impl Trait`",
+                    // We can capture late-bound regions; we just don't duplicate
+                    // lifetime or const params, so we can't allow those.
+                    deny_late_regions: false,
+                };
+                this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
+            })
         });
 
         let captures = captures.into_inner().into_iter().collect();
@@ -917,9 +936,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'tcx hir::WherePredicate<'tcx>) {
-        match predicate {
-            &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                hir_id,
+        let hir_id = predicate.hir_id;
+        match predicate.kind {
+            &hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bounded_ty,
                 bounds,
                 bound_generic_params,
@@ -960,7 +979,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
-            &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+            &hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
@@ -968,7 +987,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.visit_lifetime(lifetime);
                 walk_list!(self, visit_param_bound, bounds);
             }
-            &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+            &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
+                lhs_ty, rhs_ty, ..
+            }) => {
                 self.visit_ty(lhs_ty);
                 self.visit_ty(rhs_ty);
             }
@@ -980,9 +1001,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-        self.with(Scope::LateBoundary { s: self.scope, what: "constant" }, |this| {
-            intravisit::walk_anon_const(this, c);
-        });
+        self.with(
+            Scope::LateBoundary { s: self.scope, what: "constant", deny_late_regions: true },
+            |this| {
+                intravisit::walk_anon_const(this, c);
+            },
+        );
     }
 
     fn visit_generic_param(&mut self, p: &'tcx GenericParam<'tcx>) {
@@ -1274,8 +1298,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what } => {
-                    crossed_late_boundary = Some(what);
+                Scope::LateBoundary { s, what, deny_late_regions } => {
+                    if deny_late_regions {
+                        crossed_late_boundary = Some(what);
+                    }
                     scope = s;
                 }
             }
@@ -1491,7 +1517,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     scope = s;
                 }
 
-                Scope::LateBoundary { s, what } => {
+                Scope::LateBoundary { s, what, deny_late_regions: _ } => {
                     crossed_late_boundary = Some(what);
                     scope = s;
                 }
@@ -2049,7 +2075,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         // bounds since we'll be emitting a hard error in HIR lowering, so this
                         // is purely speculative.
                         let one_bound = generics.predicates.iter().find_map(|predicate| {
-                            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
+                            let hir::WherePredicateKind::BoundPredicate(predicate) = predicate.kind
+                            else {
                                 return None;
                             };
                             let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =

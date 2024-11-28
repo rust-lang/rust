@@ -67,7 +67,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
-        if bk == ty::BorrowKind::MutBorrow {
+        if bk == ty::BorrowKind::Mutable {
             self.update(cmt);
         }
     }
@@ -109,34 +109,28 @@ impl<'tcx> Visitor<'tcx> for ParamBindingIdCollector {
 pub struct BindingUsageFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     binding_ids: Vec<HirId>,
-    usage_found: bool,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
     pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
         let mut finder = BindingUsageFinder {
             cx,
             binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
-            usage_found: false,
         };
-        finder.visit_body(body);
-        finder.usage_found
+        finder.visit_body(body).is_break()
     }
 }
 impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if !self.usage_found {
-            intravisit::walk_expr(self, expr);
-        }
-    }
-
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: HirId) -> Self::Result {
         if let Res::Local(id) = path.res {
             if self.binding_ids.contains(&id) {
-                self.usage_found = true;
+                return ControlFlow::Break(());
             }
         }
+
+        ControlFlow::Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

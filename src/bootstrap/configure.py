@@ -3,6 +3,7 @@
 # ignore-tidy-linelength
 
 from __future__ import absolute_import, division, print_function
+import shlex
 import sys
 import os
 rust_dir = os.path.dirname(os.path.abspath(__file__))
@@ -288,8 +289,9 @@ def build(known_args):
 
 def set(key, value, config):
     if isinstance(value, list):
-        # Remove empty values, which value.split(',') tends to generate.
-        value = [v for v in value if v]
+        # Remove empty values, which value.split(',') tends to generate and
+        # replace single quotes for double quotes to ensure correct parsing.
+        value = [v.replace('\'', '"') for v in value if v]
 
     s = "{:20} := {}".format(key, value)
     if len(s) < 70 or VERBOSE:
@@ -298,7 +300,13 @@ def set(key, value, config):
         p(s[:70] + " ...")
 
     arr = config
-    parts = key.split('.')
+
+    # Split `key` on periods using shell semantics.
+    lexer = shlex.shlex(key, posix=True)
+    lexer.whitespace = "."
+    lexer.wordchars += "-"
+    parts = list(lexer)
+
     for i, part in enumerate(parts):
         if i == len(parts) - 1:
             if is_value_list(part) and isinstance(value, str):

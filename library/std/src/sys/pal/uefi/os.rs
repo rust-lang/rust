@@ -131,7 +131,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
             let path_ptr = unsafe { ((*shell.as_ptr()).get_cur_dir)(crate::ptr::null_mut()) };
             helpers::os_string_from_raw(path_ptr)
                 .map(PathBuf::from)
-                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))
+                .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))
         }
         None => {
             let mut t = current_exe()?;
@@ -147,7 +147,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let shell = helpers::open_shell().ok_or(unsupported_err())?;
 
     let mut p = helpers::os_string_to_raw(p.as_os_str())
-        .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
+        .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
     let r = unsafe { ((*shell.as_ptr()).set_cur_dir)(crate::ptr::null_mut(), p.as_mut_ptr()) };
     if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
@@ -290,15 +290,15 @@ mod uefi_env {
 
     pub(crate) fn set(key: &OsStr, val: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
         let mut val_ptr = helpers::os_string_to_raw(val)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
         unsafe { set_raw(key_ptr.as_mut_ptr(), val_ptr.as_mut_ptr()) }
     }
 
     pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
         unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) }
     }
 
@@ -328,7 +328,7 @@ mod uefi_env {
                 });
                 // SAFETY: val.add(start) is always NULL terminated
                 let val = unsafe { get_raw(shell, val.add(start)) }
-                    .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
+                    .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
 
                 vars.push((key, val));
                 start = i + 1;

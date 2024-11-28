@@ -477,7 +477,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -573,7 +572,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add_unsigned(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -629,7 +627,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -725,7 +722,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub_unsigned(3);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -781,7 +777,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_mul(2);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -895,7 +890,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -969,7 +963,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1042,7 +1035,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem(-1);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1115,7 +1107,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_rem_euclid(-1);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1161,7 +1152,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_neg", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_neg", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
@@ -1203,7 +1194,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_neg();")]
         ///
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1227,8 +1217,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        // We could always go back to wrapping
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1267,7 +1256,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x1", stringify!($SelfT), ".strict_shl(129);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1294,7 +1282,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
@@ -1312,7 +1300,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
@@ -1326,7 +1314,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1353,8 +1340,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        // We could always go back to wrapping
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1393,7 +1379,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = 0x10", stringify!($SelfT), ".strict_shr(128);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1420,7 +1405,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
+        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
@@ -1438,7 +1423,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`.
         ///
         /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, which yields `0` for a positive number,
@@ -1454,7 +1439,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1521,7 +1505,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_abs();")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1596,7 +1579,6 @@ macro_rules! int_impl {
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_pow(2);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
-        #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2119,6 +2101,7 @@ macro_rules! int_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);")]
+        #[doc = concat!("assert_eq!((-100", stringify!($SelfT), ").wrapping_neg(), 100);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.wrapping_neg(), ", stringify!($SelfT), "::MIN);")]
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
@@ -2151,7 +2134,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2181,7 +2164,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2260,7 +2243,6 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
             if exp == 0 {
                 return 1;
@@ -2370,7 +2352,6 @@ macro_rules! int_impl {
         /// assert_eq!((sum1, sum0), (6, 8));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2408,7 +2389,7 @@ macro_rules! int_impl {
             (res, overflowed ^ (rhs < 0))
         }
 
-        /// Calculates `self` - `rhs`
+        /// Calculates `self` - `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic overflow
         /// would occur. If an overflow would have occurred then the wrapped value is returned.
@@ -2478,7 +2459,6 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((diff1, diff0), (10, ", stringify!($UnsignedT), "::MAX));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2490,7 +2470,7 @@ macro_rules! int_impl {
             (c, b != d)
         }
 
-        /// Calculates `self` - `rhs` with an unsigned `rhs`
+        /// Calculates `self` - `rhs` with an unsigned `rhs`.
         ///
         /// Returns a tuple of the subtraction along with a boolean indicating
         /// whether an arithmetic overflow would occur. If an overflow would
@@ -2828,7 +2808,6 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
             if exp == 0 {
                 return 1;

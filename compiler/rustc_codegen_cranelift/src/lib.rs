@@ -40,9 +40,9 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
+use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -55,7 +55,6 @@ use crate::prelude::*;
 mod abi;
 mod allocator;
 mod analyze;
-mod archive;
 mod base;
 mod cast;
 mod codegen_i128;
@@ -99,7 +98,7 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceKind, IntTy, ParamEnv, Ty, TyCtxt, UintTy,
+        self, FloatTy, Instance, InstanceKind, IntTy, Ty, TyCtxt, UintTy,
     };
     pub(crate) use rustc_span::Span;
 
@@ -240,27 +239,20 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        let _timer = sess.timer("finish_ongoing_codegen");
+
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
             sess,
             outputs,
             self.config.borrow().as_ref().unwrap(),
         )
     }
-
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        use rustc_codegen_ssa::back::link::link_binary;
-
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
-    }
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    match sess.target.llvm_target.parse() {
+    // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
+    // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
+    match versioned_llvm_target(sess).parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
@@ -299,8 +291,11 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
         OptLevel::No => {
             flags_builder.set("opt_level", "none").unwrap();
         }
-        OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
+        OptLevel::Less
+        | OptLevel::Default
+        | OptLevel::Size
+        | OptLevel::SizeMin
+        | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
     }

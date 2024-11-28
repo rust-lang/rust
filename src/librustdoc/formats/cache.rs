@@ -203,7 +203,7 @@ impl Cache {
     }
 }
 
-impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
+impl DocFolder for CacheBuilder<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
             debug!(

@@ -91,14 +91,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
-
-                // FIXME: Consider moving this check to the top level as it
-                // may also be useful for predicates other than `Sized`
-                // Error type cannot possibly implement `Sized` (fixes #123154)
-                if let Err(e) = obligation.predicate.skip_binder().self_ty().error_reported() {
-                    return Err(SelectionError::Overflow(e.into()));
-                }
-
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
@@ -111,8 +103,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Tuple) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if tcx.is_lang_item(def_id, LangItem::PointerLike) {
-                self.assemble_candidate_for_pointer_like(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
                 self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
             } else {
@@ -231,13 +221,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
-
-        // An error type will unify with anything. So, avoid
-        // matching an error type with `ParamCandidate`.
-        // This helps us avoid spurious errors like issue #121941.
-        if stack.obligation.predicate.references_error() {
-            return Ok(());
-        }
 
         let bounds = stack
             .obligation
@@ -565,19 +548,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // Essentially any user-written impl will match with an error type,
-        // so creating `ImplCandidates` isn't useful. However, we might
-        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized`)
-        // This helps us avoid overflow: see issue #72839
-        // Since compilation is already guaranteed to fail, this is just
-        // to try to show the 'nicest' possible errors to the user.
-        // We don't check for errors in the `ParamEnv` - in practice,
-        // it seems to cause us to be overly aggressive in deciding
-        // to give up searching for candidates, leading to spurious errors.
-        if obligation.predicate.references_error() {
-            return;
-        }
-
         let drcx = DeepRejectCtxt::relate_rigid_infer(self.tcx());
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
@@ -790,9 +760,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if let TypingMode::Coherence =
-                        self.infcx.typing_mode(obligation.param_env)
-                    {
+                    } else if let TypingMode::Coherence = self.infcx.typing_mode() {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;
@@ -935,7 +903,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //
         // FIXME(@lcnr): This should probably only trigger during analysis,
         // disabling candidates during codegen is also questionable.
-        if let TypingMode::Coherence = self.infcx.typing_mode(param_env) {
+        if let TypingMode::Coherence = self.infcx.typing_mode() {
             return None;
         }
 
@@ -1170,8 +1138,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         _obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // FIXME(effects): Destruct is not const yet, and it is implemented
-        // by all types today in non-const setting.
         candidates.vec.push(BuiltinCandidate { has_nested: false });
     }
 
@@ -1215,31 +1181,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
-        }
-    }
-
-    fn assemble_candidate_for_pointer_like(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-        candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
-        // The regions of a type don't affect the size of the type
-        let tcx = self.tcx();
-        let self_ty = tcx.instantiate_bound_regions_with_erased(obligation.predicate.self_ty());
-        // We should erase regions from both the param-env and type, since both
-        // may have infer regions. Specifically, after canonicalizing and instantiating,
-        // early bound regions turn into region vars in both the new and old solver.
-        let key = tcx.erase_regions(obligation.param_env.and(self_ty));
-        // But if there are inference variables, we have to wait until it's resolved.
-        if key.has_non_region_infer() {
-            candidates.ambiguous = true;
-            return;
-        }
-
-        if let Ok(layout) = tcx.layout_of(key)
-            && layout.layout.is_pointer_like(&tcx.data_layout)
-        {
-            candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
 

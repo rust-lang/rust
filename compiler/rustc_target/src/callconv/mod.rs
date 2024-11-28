@@ -143,7 +143,8 @@ pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
     /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
-    /// (corresponding to LLVM's dereferenceable and dereferenceable_or_null attributes).
+    /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
+    /// set on a null pointer, but all non-null pointers must be dereferenceable).
     pub pointee_size: Size,
     pub pointee_align: Option<Align>,
 }
@@ -737,6 +738,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "x86" => x86::compute_rust_abi_info(cx, self, abi),
             "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
             "loongarch64" => loongarch::compute_rust_abi_info(cx, self, abi),
+            "aarch64" => aarch64::compute_rust_abi_info(cx, self),
             _ => {}
         };
 

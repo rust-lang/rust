@@ -1,6 +1,6 @@
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
 use crate::util;
@@ -40,10 +40,10 @@ pub(super) struct AddMovesForPackedDrops;
 impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
-
-        let def_id = body.source.def_id();
         let mut patch = MirPatch::new(body);
-        let param_env = tcx.param_env(def_id);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
 
         for (bb, data) in body.basic_blocks.iter_enumerated() {
             let loc = Location { block: bb, statement_index: data.statements.len() };
@@ -51,7 +51,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
 
             match terminator.kind {
                 TerminatorKind::Drop { place, .. }
-                    if util::is_disaligned(tcx, body, param_env, place) =>
+                    if util::is_disaligned(tcx, body, typing_env, place) =>
                 {
                     add_move_for_packed_drop(
                         tcx,

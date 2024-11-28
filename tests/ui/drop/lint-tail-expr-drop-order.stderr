@@ -1,42 +1,335 @@
-error: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
-  --> $DIR/lint-tail-expr-drop-order.rs:27:15
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:42:15
    |
 LL |     let x = LoudDropper;
-   |         - these values have significant drop implementation and will observe changes in drop order under Edition 2024
-LL |     // Should lint
+   |         -
+   |         |
+   |         `x` calls a custom destructor
+   |         `x` will be dropped later as of Edition 2024
+...
 LL |     x.get() + LoudDropper.get()
    |               ^^^^^^^^^^^
+   |               |
+   |               this value will be stored in a temporary; let us call it `#1`
+   |               up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 note: the lint level is defined here
   --> $DIR/lint-tail-expr-drop-order.rs:7:9
    |
 LL | #![deny(tail_expr_drop_order)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
-  --> $DIR/lint-tail-expr-drop-order.rs:34:23
-   |
-LL |     let x = LoudDropper;
-   |         - these values have significant drop implementation and will observe changes in drop order under Edition 2024
-LL |     move || x.get() + LoudDropper.get()
-   |                       ^^^^^^^^^^^
-   |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
-
-error: these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
-  --> $DIR/lint-tail-expr-drop-order.rs:63:19
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:67:19
    |
 LL |         let x = LoudDropper;
-   |             - these values have significant drop implementation and will observe changes in drop order under Edition 2024
-LL |         // Should lint
+   |             -
+   |             |
+   |             `x` calls a custom destructor
+   |             `x` will be dropped later as of Edition 2024
+...
 LL |         x.get() + LoudDropper.get()
    |                   ^^^^^^^^^^^
+   |                   |
+   |                   this value will be stored in a temporary; let us call it `#1`
+   |                   up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL |     }
+   |     - now the temporary value is dropped here, before the local variables in the block or statement
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
-error: aborting due to 3 previous errors
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:94:7
+   |
+LL |     let x = LoudDropper;
+   |         -
+   |         |
+   |         `x` calls a custom destructor
+   |         `x` will be dropped later as of Edition 2024
+...
+LL |     { LoudDropper.get() }
+   |       ^^^^^^^^^^^
+   |       |
+   |       this value will be stored in a temporary; let us call it `#1`
+   |       up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:147:5
+   |
+LL |     let future = f();
+   |         ------
+   |         |
+   |         `future` calls a custom destructor
+   |         `future` will be dropped later as of Edition 2024
+...
+LL |     LoudDropper.get()
+   |     ^^^^^^^^^^^
+   |     |
+   |     this value will be stored in a temporary; let us call it `#1`
+   |     up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `future` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:164:14
+   |
+LL |     let x = T::default();
+   |         -
+   |         |
+   |         `x` calls a custom destructor
+   |         `x` will be dropped later as of Edition 2024
+...
+LL |     extract(&T::default())
+   |              ^^^^^^^^^^^^
+   |              |
+   |              this value will be stored in a temporary; let us call it `#1`
+   |              up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:178:5
+   |
+LL |     let x: Result<LoudDropper, ()> = Ok(LoudDropper);
+   |         -
+   |         |
+   |         `x` calls a custom destructor
+   |         `x` will be dropped later as of Edition 2024
+...
+LL |     LoudDropper.get()
+   |     ^^^^^^^^^^^
+   |     |
+   |     this value will be stored in a temporary; let us call it `#1`
+   |     up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:222:5
+   |
+LL |     let x = LoudDropper2;
+   |         -
+   |         |
+   |         `x` calls a custom destructor
+   |         `x` will be dropped later as of Edition 2024
+...
+LL |     LoudDropper3.get()
+   |     ^^^^^^^^^^^^
+   |     |
+   |     this value will be stored in a temporary; let us call it `#1`
+   |     up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL | }
+   | - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:195:5
+   |
+LL | /     impl Drop for LoudDropper3 {
+LL | |
+LL | |         fn drop(&mut self) {
+LL | |             println!("loud drop");
+LL | |         }
+LL | |     }
+   | |_____^
+note: `x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:207:5
+   |
+LL | /     impl Drop for LoudDropper2 {
+LL | |
+LL | |         fn drop(&mut self) {
+LL | |             println!("loud drop");
+LL | |         }
+LL | |     }
+   | |_____^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order.rs:235:13
+   |
+LL |             LoudDropper.get()
+   |             ^^^^^^^^^^^
+   |             |
+   |             this value will be stored in a temporary; let us call it `#1`
+   |             up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
+...
+LL |             let _x = LoudDropper;
+   |                 --
+   |                 |
+   |                 `_x` calls a custom destructor
+   |                 `_x` will be dropped later as of Edition 2024
+...
+LL |     ));
+   |       - now the temporary value is dropped here, before the local variables in the block or statement
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see issue #123739 <https://github.com/rust-lang/rust/issues/123739>
+note: `#1` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+note: `_x` invokes this custom destructor
+  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+   |
+LL | / impl Drop for LoudDropper {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
+
+error: aborting due to 8 previous errors
 

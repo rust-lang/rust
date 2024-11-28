@@ -1,4 +1,4 @@
-//@ compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver --diagnostic-width=300
 //@ edition: 2021
 //@ revisions: pass fail
 //@[pass] check-pass

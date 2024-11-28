@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:24:20
+  --> $DIR/min_match_ergonomics_fail.rs:23:20
    |
 LL | test_pat_on_type![(&x,): &(T,)];
    |                    ^^    ----- expected due to this
@@ -15,7 +15,7 @@ LL + test_pat_on_type![(x,): &(T,)];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:26:20
+  --> $DIR/min_match_ergonomics_fail.rs:25:20
    |
 LL | test_pat_on_type![(&x,): &(&mut T,)];
    |                    ^^    ---------- expected due to this
@@ -31,7 +31,7 @@ LL + test_pat_on_type![(x,): &(&mut T,)];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:27:20
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
    |
 LL | test_pat_on_type![(&mut x,): &(&T,)];
    |                    ^^^^^^    ------ expected due to this
@@ -41,7 +41,7 @@ LL | test_pat_on_type![(&mut x,): &(&T,)];
    = note:      expected reference `&T`
            found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
-  --> $DIR/min_match_ergonomics_fail.rs:27:20
+  --> $DIR/min_match_ergonomics_fail.rs:26:20
    |
 LL | test_pat_on_type![(&mut x,): &(&T,)];
    |                    ^^^^^^
@@ -52,7 +52,7 @@ LL + test_pat_on_type![(x,): &(&T,)];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:29:20
+  --> $DIR/min_match_ergonomics_fail.rs:28:20
    |
 LL | test_pat_on_type![(&x,): &&mut &(T,)];
    |                    ^^    ----------- expected due to this
@@ -68,7 +68,7 @@ LL + test_pat_on_type![(x,): &&mut &(T,)];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:30:29
+  --> $DIR/min_match_ergonomics_fail.rs:29:29
    |
 LL | test_pat_on_type![Foo { f: (&x,) }: Foo];
    |                             ^^      --- expected due to this
@@ -84,7 +84,7 @@ LL + test_pat_on_type![Foo { f: (x,) }: Foo];
    |
 
 error[E0308]: mismatched types
-  --> $DIR/min_match_ergonomics_fail.rs:31:29
+  --> $DIR/min_match_ergonomics_fail.rs:30:29
    |
 LL | test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
    |                             ^^      -------- expected due to this
@@ -100,7 +100,7 @@ LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
    |
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:25:19
+  --> $DIR/min_match_ergonomics_fail.rs:24:19
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
    |                   -^^^^
@@ -108,7 +108,7 @@ LL | test_pat_on_type![(&x,): &(&T,)];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:28:19
+  --> $DIR/min_match_ergonomics_fail.rs:27:19
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
    |                   -^^^^^^^^
@@ -116,7 +116,7 @@ LL | test_pat_on_type![(&mut x,): &(&mut T,)];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:32:19
+  --> $DIR/min_match_ergonomics_fail.rs:31:19
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
    |                   -^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:33:19
+  --> $DIR/min_match_ergonomics_fail.rs:32:19
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
    |                   -^^^^^^^
@@ -132,7 +132,7 @@ LL | test_pat_on_type![(mut x,): &(T,)];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:34:19
+  --> $DIR/min_match_ergonomics_fail.rs:33:19
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
    |                   -^^^^^^^
@@ -140,7 +140,7 @@ LL | test_pat_on_type![(ref x,): &(T,)];
    |                   help: desugar the match ergonomics: `&`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:35:19
+  --> $DIR/min_match_ergonomics_fail.rs:34:19
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                   -^^^^^^^^^^^
@@ -148,7 +148,7 @@ LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                   help: desugar the match ergonomics: `&mut`
 
 error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:44:9
+  --> $DIR/min_match_ergonomics_fail.rs:43:9
    |
 LL |         (&x,) => x,
    |         -^^^^

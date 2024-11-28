@@ -1,8 +1,8 @@
 error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
-  --> $DIR/assoc-type-const-bound-usage-1.rs:4:39
+  --> $DIR/assoc-type-const-bound-usage-1.rs:4:30
    |
-LL | #![feature(const_trait_impl, effects, generic_const_exprs)]
-   |                                       ^^^^^^^^^^^^^^^^^^^
+LL | #![feature(const_trait_impl, generic_const_exprs)]
+   |                              ^^^^^^^^^^^^^^^^^^^
    |
    = help: remove one of these features
 

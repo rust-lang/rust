@@ -124,8 +124,6 @@ pub struct TestProps {
     // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
     // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
     pub no_prefer_dynamic: bool,
-    // Run -Zunpretty expanded when running pretty printing tests
-    pub pretty_expanded: bool,
     // Which pretty mode are we testing with, default to 'normal'
     pub pretty_mode: String,
     // Only compare pretty output and don't try compiling
@@ -218,7 +216,6 @@ mod directives {
     pub const DONT_CHECK_COMPILER_STDOUT: &'static str = "dont-check-compiler-stdout";
     pub const DONT_CHECK_COMPILER_STDERR: &'static str = "dont-check-compiler-stderr";
     pub const NO_PREFER_DYNAMIC: &'static str = "no-prefer-dynamic";
-    pub const PRETTY_EXPANDED: &'static str = "pretty-expanded";
     pub const PRETTY_MODE: &'static str = "pretty-mode";
     pub const PRETTY_COMPARE_ONLY: &'static str = "pretty-compare-only";
     pub const AUX_BIN: &'static str = "aux-bin";
@@ -278,7 +275,6 @@ impl TestProps {
             dont_check_compiler_stderr: false,
             compare_output_lines_by_subset: false,
             no_prefer_dynamic: false,
-            pretty_expanded: false,
             pretty_mode: "normal".to_string(),
             pretty_compare_only: false,
             forbid_output: vec![],
@@ -425,7 +421,6 @@ impl TestProps {
                         &mut self.dont_check_compiler_stderr,
                     );
                     config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
-                    config.set_name_directive(ln, PRETTY_EXPANDED, &mut self.pretty_expanded);
 
                     if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
                         self.pretty_mode = m;
@@ -1547,6 +1542,20 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
                 };
             }
         } else if let Some(version_string) =
+            config.parse_name_value_directive(line, "max-llvm-major-version")
+        {
+            let max_version = extract_llvm_version(&version_string);
+            // Ignore if actual major version is larger than the maximum required major version.
+            if actual_version.major > max_version.major {
+                return IgnoreDecision::Ignore {
+                    reason: format!(
+                        "ignored when the LLVM version ({actual_version}) is newer than major\
+                        version {}",
+                        max_version.major
+                    ),
+                };
+            }
+        } else if let Some(version_string) =
             config.parse_name_value_directive(line, "min-system-llvm-version")
         {
             let min_version = extract_llvm_version(&version_string);
@@ -1584,6 +1593,19 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
                         ),
                     };
                 }
+            }
+        } else if let Some(version_string) =
+            config.parse_name_value_directive(line, "exact-llvm-major-version")
+        {
+            // Syntax is "exact-llvm-major-version: <version>"
+            let version = extract_llvm_version(&version_string);
+            if actual_version.major != version.major {
+                return IgnoreDecision::Ignore {
+                    reason: format!(
+                        "ignored when the actual LLVM major version is {}, but the test only targets major version {}",
+                        actual_version.major, version.major
+                    ),
+                };
             }
         }
     }

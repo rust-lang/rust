@@ -459,7 +459,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return (err, Vec::new());
         }
 
-        let (found, mut candidates) = self.try_lookup_name_relaxed(
+        let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
             &mut err,
             source,
             path,
@@ -478,7 +478,15 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         let mut fallback = self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
-        fallback |= self.suggest_typo(&mut err, source, path, following_seg, span, &base_error);
+        fallback |= self.suggest_typo(
+            &mut err,
+            source,
+            path,
+            following_seg,
+            span,
+            &base_error,
+            suggested_candidates,
+        );
 
         if fallback {
             // Fallback label.
@@ -589,7 +597,16 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         span: Span,
         res: Option<Res>,
         base_error: &BaseError,
-    ) -> (bool, Vec<ImportSuggestion>) {
+    ) -> (bool, FxHashSet<String>, Vec<ImportSuggestion>) {
+        let span = match following_seg {
+            Some(_) if path[0].ident.span.eq_ctxt(path[path.len() - 1].ident.span) => {
+                // The path `span` that comes in includes any following segments, which we don't
+                // want to replace in the suggestions.
+                path[0].ident.span.to(path[path.len() - 1].ident.span)
+            }
+            _ => span,
+        };
+        let mut suggested_candidates = FxHashSet::default();
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
         let is_expected = &|res| source.is_expected(res);
@@ -646,6 +663,11 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 };
                 let msg = format!("{preamble}try using the variant's enum");
 
+                suggested_candidates.extend(
+                    enum_candidates
+                        .iter()
+                        .map(|(_variant_path, enum_ty_path)| enum_ty_path.clone()),
+                );
                 err.span_suggestions(
                     span,
                     msg,
@@ -658,7 +680,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // Try finding a suitable replacement.
         let typo_sugg = self
             .lookup_typo_candidate(path, following_seg, source.namespace(), is_expected)
-            .to_opt_suggestion();
+            .to_opt_suggestion()
+            .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
         if let [segment] = path
             && !matches!(source, PathSource::Delegation)
             && self.self_type_is_available()
@@ -719,7 +742,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
                 self.r.add_typo_suggestion(err, typo_sugg, ident_span);
-                return (true, candidates);
+                return (true, suggested_candidates, candidates);
             }
 
             // If the first argument in call is `self` suggest calling a method.
@@ -737,7 +760,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     format!("self.{path_str}({args_snippet})"),
                     Applicability::MachineApplicable,
                 );
-                return (true, candidates);
+                return (true, suggested_candidates, candidates);
             }
         }
 
@@ -754,7 +777,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             ) {
                 // We do this to avoid losing a secondary span when we override the main error span.
                 self.r.add_typo_suggestion(err, typo_sugg, ident_span);
-                return (true, candidates);
+                return (true, suggested_candidates, candidates);
             }
         }
 
@@ -772,7 +795,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         ident.span,
                         format!("the binding `{path_str}` is available in a different scope in the same function"),
                     );
-                    return (true, candidates);
+                    return (true, suggested_candidates, candidates);
                 }
             }
         }
@@ -781,7 +804,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
 
-        (false, candidates)
+        (false, suggested_candidates, candidates)
     }
 
     fn suggest_trait_and_bounds(
@@ -869,13 +892,16 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         following_seg: Option<&Segment>,
         span: Span,
         base_error: &BaseError,
+        suggested_candidates: FxHashSet<String>,
     ) -> bool {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg =
             self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
         let mut fallback = false;
-        let typo_sugg = typo_sugg.to_opt_suggestion();
+        let typo_sugg = typo_sugg
+            .to_opt_suggestion()
+            .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
         if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
             fallback = true;
             match self.diag_metadata.current_let_binding {
@@ -894,10 +920,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             // If the trait has a single item (which wasn't matched by the algorithm), suggest it
             let suggestion = self.get_single_associated_item(path, &source, is_expected);
-            if !self.r.add_typo_suggestion(err, suggestion, ident_span) {
-                fallback = !self.let_binding_suggestion(err, ident_span);
-            }
+            self.r.add_typo_suggestion(err, suggestion, ident_span);
         }
+
+        if self.let_binding_suggestion(err, ident_span) {
+            fallback = false;
+        }
+
         fallback
     }
 
@@ -1177,7 +1206,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let PathSource::TupleStruct(_, _) = source else { return };
         let Some(Res::Def(DefKind::Fn, _)) = res else { return };
         err.primary_message("expected a pattern, found a function call");
-        err.note("function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>");
+        err.note("function calls are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>");
     }
 
     fn suggest_changing_type_to_const_param(
@@ -1288,21 +1317,24 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&mut self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
-        let (bounded_ty, bounds, where_span) =
-            if let Some(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                bounded_ty,
-                bound_generic_params,
-                bounds,
-                span,
-            })) = self.diag_metadata.current_where_predicate
-            {
-                if !bound_generic_params.is_empty() {
-                    return false;
-                }
-                (bounded_ty, bounds, span)
-            } else {
+        let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
+            kind:
+                ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+                    bounded_ty,
+                    bound_generic_params,
+                    bounds,
+                }),
+            span,
+            ..
+        }) = self.diag_metadata.current_where_predicate
+        {
+            if !bound_generic_params.is_empty() {
                 return false;
-            };
+            }
+            (bounded_ty, bounds, span)
+        } else {
+            return false;
+        };
 
         // Confirm that the target is an associated type.
         let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
@@ -1443,7 +1475,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
 
             if lhs_span.eq_ctxt(rhs_span) {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     lhs_span.between(rhs_span),
                     MESSAGE,
                     "::",
@@ -2811,9 +2843,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // for<'a, 'b> T: Trait<T> + 'b
                         // ^^^^^^^^^^^  suggest outer binder `for<'a, 'b>`
                         if let LifetimeBinderKind::WhereBound = kind
-                            && let Some(ast::WherePredicate::BoundPredicate(
+                            && let Some(predicate) = self.diag_metadata.current_where_predicate
+                            && let ast::WherePredicateKind::BoundPredicate(
                                 ast::WhereBoundPredicate { bounded_ty, bounds, .. },
-                            )) = self.diag_metadata.current_where_predicate
+                            ) = &predicate.kind
                             && bounded_ty.id == binder
                         {
                             for bound in bounds {
@@ -3444,7 +3477,6 @@ fn mk_where_bound_predicate(
     };
 
     let new_where_bound_predicate = ast::WhereBoundPredicate {
-        span: DUMMY_SP,
         bound_generic_params: ThinVec::new(),
         bounded_ty: ast::ptr::P(ty.clone()),
         bounds: vec![ast::GenericBound::Trait(ast::PolyTraitRef {

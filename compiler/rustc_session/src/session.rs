@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
 use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
@@ -12,11 +11,13 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
+    DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType, stderr_destination};
+use rustc_errors::emitter::{
+    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -32,7 +33,7 @@ use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTriple, TlsModel,
+    TargetTuple, TlsModel,
 };
 
 use crate::code_stats::CodeStats;
@@ -42,16 +43,10 @@ use crate::config::{
     InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
     SwitchWithOptPath,
 };
+use crate::filesearch::FileSearch;
 use crate::parse::{ParseSess, add_feature_diagnostics};
-use crate::search_paths::{PathKind, SearchPath};
+use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
-
-struct OptimizationFuel {
-    /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
-    remaining: u64,
-    /// We're rejecting all further optimizations.
-    out_of_fuel: bool,
-}
 
 /// The behavior of the CTFE engine when an error occurs with regards to backtraces.
 #[derive(Clone, Copy)]
@@ -160,12 +155,6 @@ pub struct Session {
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
 
-    /// Tracks fuel info if `-zfuel=crate=n` is specified.
-    optimization_fuel: Lock<OptimizationFuel>,
-
-    /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: AtomicU64,
-
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver: Client,
@@ -216,6 +205,9 @@ pub struct Session {
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
     pub expanded_args: Vec<String>,
+
+    target_filesearch: FileSearch,
+    host_filesearch: FileSearch,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -300,6 +292,7 @@ impl Session {
         self.opts.test
     }
 
+    /// `feature` must be a language feature.
     #[track_caller]
     pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
@@ -440,23 +433,23 @@ impl Session {
         format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.as_u64())
     }
 
-    pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(&self.opts.search_paths, &self.target_tlib_path, kind)
+    pub fn target_filesearch(&self) -> &filesearch::FileSearch {
+        &self.target_filesearch
     }
-    pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(&self.opts.search_paths, &self.host_tlib_path, kind)
+    pub fn host_filesearch(&self) -> &filesearch::FileSearch {
+        &self.host_filesearch
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
     /// directories are also returned, for example if `--sysroot` is used but tools are missing
     /// (#125246): we also add the bin directories to the sysroot where rustc is located.
     pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
-        let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_triple());
+        let bin_path = filesearch::make_target_bin_path(&self.sysroot, config::host_tuple());
         let fallback_sysroot_paths = filesearch::sysroot_candidates()
             .into_iter()
             // Ignore sysroot candidate if it was the same as the sysroot path we just used.
             .filter(|sysroot| *sysroot != self.sysroot)
-            .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_triple()));
+            .map(|sysroot| filesearch::make_target_bin_path(&sysroot, config::host_tuple()));
         let search_paths = std::iter::once(bin_path).chain(fallback_sysroot_paths);
 
         if self_contained {
@@ -523,41 +516,6 @@ impl Session {
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
         self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
-    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
-    /// This expends fuel if applicable, and records fuel if applicable.
-    pub fn consider_optimizing(
-        &self,
-        get_crate_name: impl Fn() -> Symbol,
-        msg: impl Fn() -> String,
-    ) -> bool {
-        let mut ret = true;
-        if let Some((ref c, _)) = self.opts.unstable_opts.fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                let mut fuel = self.optimization_fuel.lock();
-                ret = fuel.remaining != 0;
-                if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    if self.dcx().can_emit_warnings() {
-                        // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `must_produce_diag` ICE
-                        // (issue #79546).
-                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
-                    }
-                    fuel.out_of_fuel = true;
-                } else if fuel.remaining > 0 {
-                    fuel.remaining -= 1;
-                }
-            }
-        }
-        if let Some(ref c) = self.opts.unstable_opts.print_fuel {
-            if c == get_crate_name().as_str() {
-                assert_eq!(self.threads(), 1);
-                self.print_fuel.fetch_add(1, SeqCst);
-            }
-        }
-        ret
     }
 
     /// Is this edition 2015?
@@ -965,6 +923,11 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
@@ -1023,7 +986,7 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let host_triple = TargetTuple::from_tuple(config::host_tuple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
         early_dcx.early_fatal(format!("Error loading host specification: {e}"))
     });
@@ -1074,8 +1037,8 @@ pub fn build_session(
     let mut psess = ParseSess::with_dcx(dcx, source_map);
     psess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
-    let host_triple = config::host_triple();
-    let target_triple = sopts.target_triple.triple();
+    let host_triple = config::host_tuple();
+    let target_triple = sopts.target_triple.tuple();
     let host_tlib_path = Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
@@ -1084,12 +1047,6 @@ pub fn build_session(
     } else {
         Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
-
-    let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |&(_, i)| i),
-        out_of_fuel: false,
-    });
-    let print_fuel = AtomicU64::new(0);
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1103,7 +1060,9 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
-
+    let target_filesearch =
+        filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
+    let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
     let sess = Session {
         target,
         host,
@@ -1116,8 +1075,6 @@ pub fn build_session(
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
-        optimization_fuel,
-        print_fuel,
         jobserver: jobserver::client(),
         lint_store: None,
         registered_lints: false,
@@ -1130,6 +1087,8 @@ pub fn build_session(
         cfg_version,
         using_internal_features,
         expanded_args,
+        target_filesearch,
+        host_filesearch,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1469,6 +1428,11 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .short_message(short),
             )
         }

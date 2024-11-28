@@ -84,6 +84,6 @@ where
         }
     }
     Err(last_err.unwrap_or_else(|| {
-        io::const_io_error!(ErrorKind::InvalidInput, "could not resolve to any addresses")
+        io::const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses")
     }))
 }

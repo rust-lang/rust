@@ -134,11 +134,7 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::Macro(kind), did) => {
-            let is_doc_hidden = cx.tcx.is_doc_hidden(did)
-                || attrs_without_docs
-                    .map(|(attrs, _)| attrs)
-                    .is_some_and(|attrs| utils::attrs_have_doc_flag(attrs.iter(), sym::hidden));
-            let mac = build_macro(cx, did, name, import_def_id, kind, is_doc_hidden);
+            let mac = build_macro(cx, did, name, kind);
 
             let type_kind = match kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -371,7 +367,7 @@ pub(crate) fn build_impls(
     let tcx = cx.tcx;
 
     // for each implementation of an item represented by `did`, build the clean::Item for that impl
-    for &did in tcx.inherent_impls(did).into_iter() {
+    for &did in tcx.inherent_impls(did).iter() {
         cx.with_param_env(did, |cx| {
             build_impl(cx, did, attrs, ret);
         });
@@ -386,7 +382,7 @@ pub(crate) fn build_impls(
     if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
         let type_ =
             if tcx.is_trait(did) { SimplifiedType::Trait(did) } else { SimplifiedType::Adt(did) };
-        for &did in tcx.incoherent_impls(type_).into_iter() {
+        for &did in tcx.incoherent_impls(type_).iter() {
             cx.with_param_env(did, |cx| {
                 build_impl(cx, did, attrs, ret);
             });
@@ -740,18 +736,14 @@ fn build_macro(
     cx: &mut DocContext<'_>,
     def_id: DefId,
     name: Symbol,
-    import_def_id: Option<LocalDefId>,
     macro_kind: MacroKind,
-    is_doc_hidden: bool,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
         LoadedMacro::MacroDef { def, .. } => match macro_kind {
-            MacroKind::Bang => {
-                let vis = cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
-                clean::MacroItem(clean::Macro {
-                    source: utils::display_macro_source(cx, name, &def, def_id, vis, is_doc_hidden),
-                })
-            }
+            MacroKind::Bang => clean::MacroItem(clean::Macro {
+                source: utils::display_macro_source(cx, name, &def),
+                macro_rules: def.macro_rules,
+            }),
             MacroKind::Derive | MacroKind::Attr => {
                 clean::ProcMacroItem(clean::ProcMacro { kind: macro_kind, helpers: Vec::new() })
             }

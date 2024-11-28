@@ -64,8 +64,6 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_no_mir_inline]
             #[inline]
             #[rustc_nounwind]
-            #[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
-            #[rustc_allow_const_fn_unstable(const_ptr_is_null, const_ub_checks)] // only for UB checks
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(
@@ -95,20 +93,18 @@ pub use intrinsics::ub_checks as check_library_ub;
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn check_language_ub() -> bool {
-    #[inline]
-    fn runtime() -> bool {
-        // Disable UB checks in Miri.
-        !cfg!(miri)
-    }
-
-    #[inline]
-    const fn comptime() -> bool {
-        // Always disable UB checks.
-        false
-    }
-
     // Only used for UB checks so we may const_eval_select.
-    intrinsics::ub_checks() && const_eval_select((), comptime, runtime)
+    intrinsics::ub_checks()
+        && const_eval_select!(
+            @capture { } -> bool:
+            if const {
+                // Always disable UB checks.
+                false
+            } else {
+                // Disable UB checks in Miri.
+                !cfg!(miri)
+            }
+        )
 }
 
 /// Checks whether `ptr` is properly aligned with respect to the given alignment, and
@@ -118,9 +114,21 @@ pub(crate) const fn check_language_ub() -> bool {
 /// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
 /// check is anyway not executed in `const`.
 #[inline]
-#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
-pub(crate) const fn is_aligned_and_not_null(ptr: *const (), align: usize, is_zst: bool) -> bool {
-    ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(crate) const fn maybe_is_aligned_and_not_null(
+    ptr: *const (),
+    align: usize,
+    is_zst: bool,
+) -> bool {
+    // This is just for safety checks so we can const_eval_select.
+    const_eval_select!(
+        @capture { ptr: *const (), align: usize, is_zst: bool } -> bool:
+        if const {
+            is_zst || !ptr.is_null()
+        } else {
+            ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
+        }
+    )
 }
 
 #[inline]
@@ -135,33 +143,30 @@ pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 /// Note that in const-eval this function just returns `true` and therefore must
 /// only be used with `assert_unsafe_precondition!`, similar to `is_aligned_and_not_null`.
 #[inline]
-#[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
-pub(crate) const fn is_nonoverlapping(
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(crate) const fn maybe_is_nonoverlapping(
     src: *const (),
     dst: *const (),
     size: usize,
     count: usize,
 ) -> bool {
-    #[inline]
-    fn runtime(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
-        let src_usize = src.addr();
-        let dst_usize = dst.addr();
-        let Some(size) = size.checked_mul(count) else {
-            crate::panicking::panic_nounwind(
-                "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
-            )
-        };
-        let diff = src_usize.abs_diff(dst_usize);
-        // If the absolute distance between the ptrs is at least as big as the size of the buffer,
-        // they do not overlap.
-        diff >= size
-    }
-
-    #[inline]
-    const fn comptime(_: *const (), _: *const (), _: usize, _: usize) -> bool {
-        true
-    }
-
     // This is just for safety checks so we can const_eval_select.
-    const_eval_select((src, dst, size, count), comptime, runtime)
+    const_eval_select!(
+        @capture { src: *const (), dst: *const (), size: usize, count: usize } -> bool:
+        if const {
+            true
+        } else {
+            let src_usize = src.addr();
+            let dst_usize = dst.addr();
+            let Some(size) = size.checked_mul(count) else {
+                crate::panicking::panic_nounwind(
+                    "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+                )
+            };
+            let diff = src_usize.abs_diff(dst_usize);
+            // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+            // they do not overlap.
+            diff >= size
+        }
+    )
 }

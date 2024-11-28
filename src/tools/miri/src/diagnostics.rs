@@ -1,9 +1,9 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
+use rustc_abi::{Align, Size};
 use rustc_errors::{Diag, DiagMessage, Level};
 use rustc_span::{DUMMY_SP, SpanData, Symbol};
-use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -195,7 +195,7 @@ pub fn prune_stacktrace<'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |frame| !machine.is_local(frame))
+                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame))
                 {
                     stacktrace.pop();
                 }

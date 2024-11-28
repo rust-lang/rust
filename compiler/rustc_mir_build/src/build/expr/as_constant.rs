@@ -114,8 +114,7 @@ fn lit_to_mir_constant<'tcx>(
 ) -> Result<Const<'tcx>, LitToConstError> {
     let LitToConstInput { lit, ty, neg } = lit_input;
     let trunc = |n| {
-        let param_ty = ty::ParamEnv::reveal_all().and(ty);
-        let width = match tcx.layout_of(param_ty) {
+        let width = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
             Ok(layout) => layout.size,
             Err(_) => {
                 tcx.dcx().bug(format!("couldn't compute width of literal: {:?}", lit_input.lit))

@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::FileDescriptionRef;
+use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::*;
@@ -26,6 +26,10 @@ struct Event {
     counter: Cell<u64>,
     is_nonblock: bool,
     clock: RefCell<VClock>,
+    /// A list of thread ids blocked on eventfd::read.
+    blocked_read_tid: RefCell<Vec<ThreadId>>,
+    /// A list of thread ids blocked on eventfd::write.
+    blocked_write_tid: RefCell<Vec<ThreadId>>,
 }
 
 impl FileDescription for Event {
@@ -72,31 +76,8 @@ impl FileDescription for Event {
         // eventfd read at the size of u64.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ty);
 
-        // Block when counter == 0.
-        let counter = self.counter.get();
-        if counter == 0 {
-            if self.is_nonblock {
-                return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
-            }
-
-            throw_unsup_format!("eventfd: blocking is unsupported");
-        } else {
-            // Synchronize with all prior `write` calls to this FD.
-            ecx.acquire_clock(&self.clock.borrow());
-
-            // Give old counter value to userspace, and set counter value to 0.
-            ecx.write_int(counter, &buf_place)?;
-            self.counter.set(0);
-
-            // When any of the event happened, we check and update the status of all supported event
-            // types for current file description.
-            ecx.check_and_update_readiness(self_ref)?;
-
-            // Tell userspace how many bytes we wrote.
-            ecx.write_int(buf_place.layout.size.bytes(), dest)?;
-        }
-
-        interp_ok(())
+        let weak_eventfd = self_ref.downgrade();
+        eventfd_read(buf_place, dest, weak_eventfd, ecx)
     }
 
     /// A write call adds the 8-byte integer value supplied in
@@ -127,7 +108,7 @@ impl FileDescription for Event {
             return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
 
-        // Read the user supplied value from the pointer.
+        // Read the user-supplied value from the pointer.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ty);
         let num = ecx.read_scalar(&buf_place)?.to_u64()?;
 
@@ -137,27 +118,8 @@ impl FileDescription for Event {
         }
         // If the addition does not let the counter to exceed the maximum value, update the counter.
         // Else, block.
-        match self.counter.get().checked_add(num) {
-            Some(new_count @ 0..=MAX_COUNTER) => {
-                // Future `read` calls will synchronize with this write, so update the FD clock.
-                ecx.release_clock(|clock| {
-                    self.clock.borrow_mut().join(clock);
-                });
-                self.counter.set(new_count);
-            }
-            None | Some(u64::MAX) =>
-                if self.is_nonblock {
-                    return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
-                } else {
-                    throw_unsup_format!("eventfd: blocking is unsupported");
-                },
-        };
-        // When any of the event happened, we check and update the status of all supported event
-        // types for current file description.
-        ecx.check_and_update_readiness(self_ref)?;
-
-        // Return how many bytes we read.
-        ecx.write_int(buf_place.layout.size.bytes(), dest)
+        let weak_eventfd = self_ref.downgrade();
+        eventfd_write(num, buf_place, dest, weak_eventfd, ecx)
     }
 }
 
@@ -217,8 +179,151 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             counter: Cell::new(val.into()),
             is_nonblock,
             clock: RefCell::new(VClock::default()),
+            blocked_read_tid: RefCell::new(Vec::new()),
+            blocked_write_tid: RefCell::new(Vec::new()),
         });
 
         interp_ok(Scalar::from_i32(fd_value))
     }
+}
+
+/// Block thread if the value addition will exceed u64::MAX -1,
+/// else just add the user-supplied value to current counter.
+fn eventfd_write<'tcx>(
+    num: u64,
+    buf_place: MPlaceTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+    weak_eventfd: WeakFileDescriptionRef,
+    ecx: &mut MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    let Some(eventfd_ref) = weak_eventfd.upgrade() else {
+        throw_unsup_format!("eventfd FD got closed while blocking.")
+    };
+
+    // Since we pass the weak file description ref, it is guaranteed to be
+    // an eventfd file description.
+    let eventfd = eventfd_ref.downcast::<Event>().unwrap();
+
+    match eventfd.counter.get().checked_add(num) {
+        Some(new_count @ 0..=MAX_COUNTER) => {
+            // Future `read` calls will synchronize with this write, so update the FD clock.
+            ecx.release_clock(|clock| {
+                eventfd.clock.borrow_mut().join(clock);
+            });
+
+            // When this function is called, the addition is guaranteed to not exceed u64::MAX - 1.
+            eventfd.counter.set(new_count);
+
+            // When any of the event happened, we check and update the status of all supported event
+            // types for current file description.
+            ecx.check_and_update_readiness(&eventfd_ref)?;
+
+            // Unblock *all* threads previously blocked on `read`.
+            // We need to take out the blocked thread ids and unblock them together,
+            // because `unblock_threads` may block them again and end up re-adding the
+            // thread to the blocked list.
+            let waiting_threads = std::mem::take(&mut *eventfd.blocked_read_tid.borrow_mut());
+            // FIXME: We can randomize the order of unblocking.
+            for thread_id in waiting_threads {
+                ecx.unblock_thread(thread_id, BlockReason::Eventfd)?;
+            }
+
+            // Return how many bytes we wrote.
+            return ecx.write_int(buf_place.layout.size.bytes(), dest);
+        }
+        None | Some(u64::MAX) => {
+            if eventfd.is_nonblock {
+                return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+            }
+
+            let dest = dest.clone();
+
+            eventfd.blocked_write_tid.borrow_mut().push(ecx.active_thread());
+
+            ecx.block_thread(
+                BlockReason::Eventfd,
+                None,
+                callback!(
+                    @capture<'tcx> {
+                        num: u64,
+                        buf_place: MPlaceTy<'tcx>,
+                        dest: MPlaceTy<'tcx>,
+                        weak_eventfd: WeakFileDescriptionRef,
+                    }
+                    @unblock = |this| {
+                        eventfd_write(num, buf_place, &dest, weak_eventfd, this)
+                    }
+                ),
+            );
+        }
+    };
+    interp_ok(())
+}
+
+/// Block thread if the current counter is 0,
+/// else just return the current counter value to the caller and set the counter to 0.
+fn eventfd_read<'tcx>(
+    buf_place: MPlaceTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+    weak_eventfd: WeakFileDescriptionRef,
+    ecx: &mut MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    let Some(eventfd_ref) = weak_eventfd.upgrade() else {
+        throw_unsup_format!("eventfd FD got closed while blocking.")
+    };
+
+    // Since we pass the weak file description ref to the callback function, it is guaranteed to be
+    // an eventfd file description.
+    let eventfd = eventfd_ref.downcast::<Event>().unwrap();
+
+    // Block when counter == 0.
+    let counter = eventfd.counter.replace(0);
+
+    if counter == 0 {
+        if eventfd.is_nonblock {
+            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+        }
+        let dest = dest.clone();
+
+        eventfd.blocked_read_tid.borrow_mut().push(ecx.active_thread());
+
+        ecx.block_thread(
+            BlockReason::Eventfd,
+            None,
+            callback!(
+                @capture<'tcx> {
+                    buf_place: MPlaceTy<'tcx>,
+                    dest: MPlaceTy<'tcx>,
+                    weak_eventfd: WeakFileDescriptionRef,
+                }
+                @unblock = |this| {
+                    eventfd_read(buf_place, &dest, weak_eventfd, this)
+                }
+            ),
+        );
+    } else {
+        // Synchronize with all prior `write` calls to this FD.
+        ecx.acquire_clock(&eventfd.clock.borrow());
+
+        // Give old counter value to userspace, and set counter value to 0.
+        ecx.write_int(counter, &buf_place)?;
+
+        // When any of the events happened, we check and update the status of all supported event
+        // types for current file description.
+        ecx.check_and_update_readiness(&eventfd_ref)?;
+
+        // Unblock *all* threads previously blocked on `write`.
+        // We need to take out the blocked thread ids and unblock them together,
+        // because `unblock_threads` may block them again and end up re-adding the
+        // thread to the blocked list.
+        let waiting_threads = std::mem::take(&mut *eventfd.blocked_write_tid.borrow_mut());
+        // FIXME: We can randomize the order of unblocking.
+        for thread_id in waiting_threads {
+            ecx.unblock_thread(thread_id, BlockReason::Eventfd)?;
+        }
+
+        // Tell userspace how many bytes we read.
+        return ecx.write_int(buf_place.layout.size.bytes(), dest);
+    }
+    interp_ok(())
 }

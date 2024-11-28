@@ -1,5 +1,5 @@
 Function name: match_or_pattern::main
-Raw bytes (185): 0x[01, 01, 1c, 01, 05, 09, 0d, 23, 11, 09, 0d, 1f, 15, 23, 11, 09, 0d, 23, 11, 09, 0d, 19, 1d, 43, 21, 19, 1d, 3f, 25, 43, 21, 19, 1d, 43, 21, 19, 1d, 29, 2d, 63, 31, 29, 2d, 5f, 35, 63, 31, 29, 2d, 63, 31, 29, 2d, 39, 3d, 6f, 41, 39, 3d, 19, 01, 01, 01, 08, 0f, 05, 08, 10, 03, 06, 02, 03, 06, 00, 07, 01, 01, 0b, 00, 11, 11, 03, 1b, 00, 1d, 23, 01, 0e, 00, 10, 1f, 02, 08, 00, 0f, 15, 00, 10, 03, 06, 12, 03, 06, 00, 07, 1f, 01, 0b, 00, 11, 21, 01, 1b, 00, 1d, 43, 01, 0e, 00, 10, 3f, 02, 08, 00, 0f, 25, 00, 10, 03, 06, 32, 03, 06, 00, 07, 3f, 01, 0b, 00, 11, 31, 01, 1b, 00, 1d, 63, 01, 0e, 00, 10, 5f, 02, 08, 00, 0f, 35, 00, 10, 03, 06, 52, 03, 06, 00, 07, 5f, 01, 0b, 00, 11, 41, 01, 1b, 00, 1d, 6f, 01, 0e, 00, 10, 6b, 02, 01, 00, 02]
+Raw bytes (185): 0x[01, 01, 1c, 01, 05, 09, 0d, 23, 11, 09, 0d, 1f, 15, 23, 11, 09, 0d, 23, 11, 09, 0d, 19, 1d, 43, 21, 19, 1d, 3f, 25, 43, 21, 19, 1d, 43, 21, 19, 1d, 29, 2d, 63, 31, 29, 2d, 5f, 35, 63, 31, 29, 2d, 63, 31, 29, 2d, 39, 3d, 6f, 41, 39, 3d, 19, 01, 01, 01, 08, 0f, 05, 08, 10, 03, 06, 02, 03, 05, 00, 06, 01, 01, 0b, 00, 11, 11, 03, 1b, 00, 1d, 23, 01, 0e, 00, 10, 1f, 02, 08, 00, 0f, 15, 00, 10, 03, 06, 12, 03, 05, 00, 06, 1f, 01, 0b, 00, 11, 21, 01, 1b, 00, 1d, 43, 01, 0e, 00, 10, 3f, 02, 08, 00, 0f, 25, 00, 10, 03, 06, 32, 03, 05, 00, 06, 3f, 01, 0b, 00, 11, 31, 01, 1b, 00, 1d, 63, 01, 0e, 00, 10, 5f, 02, 08, 00, 0f, 35, 00, 10, 03, 06, 52, 03, 05, 00, 06, 5f, 01, 0b, 00, 11, 41, 01, 1b, 00, 1d, 6f, 01, 0e, 00, 10, 6b, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 28
@@ -34,7 +34,7 @@ Number of expressions: 28
 Number of file 0 mappings: 25
 - Code(Counter(0)) at (prev + 1, 1) to (start + 8, 15)
 - Code(Counter(1)) at (prev + 8, 16) to (start + 3, 6)
-- Code(Expression(0, Sub)) at (prev + 3, 6) to (start + 0, 7)
+- Code(Expression(0, Sub)) at (prev + 3, 5) to (start + 0, 6)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 1, 11) to (start + 0, 17)
 - Code(Counter(4)) at (prev + 3, 27) to (start + 0, 29)
@@ -43,7 +43,7 @@ Number of file 0 mappings: 25
 - Code(Expression(7, Add)) at (prev + 2, 8) to (start + 0, 15)
     = ((c2 + c3) + c4)
 - Code(Counter(5)) at (prev + 0, 16) to (start + 3, 6)
-- Code(Expression(4, Sub)) at (prev + 3, 6) to (start + 0, 7)
+- Code(Expression(4, Sub)) at (prev + 3, 5) to (start + 0, 6)
     = (((c2 + c3) + c4) - c5)
 - Code(Expression(7, Add)) at (prev + 1, 11) to (start + 0, 17)
     = ((c2 + c3) + c4)
@@ -53,7 +53,7 @@ Number of file 0 mappings: 25
 - Code(Expression(15, Add)) at (prev + 2, 8) to (start + 0, 15)
     = ((c6 + c7) + c8)
 - Code(Counter(9)) at (prev + 0, 16) to (start + 3, 6)
-- Code(Expression(12, Sub)) at (prev + 3, 6) to (start + 0, 7)
+- Code(Expression(12, Sub)) at (prev + 3, 5) to (start + 0, 6)
     = (((c6 + c7) + c8) - c9)
 - Code(Expression(15, Add)) at (prev + 1, 11) to (start + 0, 17)
     = ((c6 + c7) + c8)
@@ -63,7 +63,7 @@ Number of file 0 mappings: 25
 - Code(Expression(23, Add)) at (prev + 2, 8) to (start + 0, 15)
     = ((c10 + c11) + c12)
 - Code(Counter(13)) at (prev + 0, 16) to (start + 3, 6)
-- Code(Expression(20, Sub)) at (prev + 3, 6) to (start + 0, 7)
+- Code(Expression(20, Sub)) at (prev + 3, 5) to (start + 0, 6)
     = (((c10 + c11) + c12) - c13)
 - Code(Expression(23, Add)) at (prev + 1, 11) to (start + 0, 17)
     = ((c10 + c11) + c12)

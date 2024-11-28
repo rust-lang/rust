@@ -212,6 +212,10 @@ trigger_files = [
     "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
+
+    # Docs
+    "src/doc/rustdoc.md",
+    "src/doc/rustdoc/",
 ]
 exclude_labels = [
     "T-*",
@@ -232,7 +236,21 @@ trigger_files = [
     "compiler",
 
     # Tests
+    "tests/assembly",
+    "tests/auxiliary",
+    "tests/codegen",
+    "tests/codegen-units",
+    "tests/COMPILER_TESTS.md",
+    "tests/coverage",
+    "tests/coverage-run-rustdoc",
+    "tests/crashes",
+    "tests/debuginfo",
+    "tests/incremental",
+    "tests/mir-opt",
+    "tests/pretty",
+    "tests/run-make",
     "tests/ui",
+    "tests/ui-fulldeps",
 ]
 exclude_labels = [
     "T-*",
@@ -349,21 +367,22 @@ trigger_files = [
 
 [autolabel."T-bootstrap"]
 trigger_files = [
-    "x.py",
-    "x",
-    "x.ps1",
+    "Cargo.toml",
+    "configure",
+    "config.example.toml",
     "src/bootstrap",
+    "src/build_helper",
     "src/tools/rust-installer",
     "src/tools/x",
-    "configure",
-    "Cargo.toml",
-    "config.example.toml",
     "src/stage0",
     "src/tools/compiletest",
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
     "src/tools/libcxx-version",
     "src/tools/rustc-perf-wrapper",
+    "x.py",
+    "x",
+    "x.ps1"
 ]
 
 [autolabel."T-infra"]
@@ -409,8 +428,14 @@ trigger_files = [
     "triagebot.toml",
     "rustfmt.toml",
     "LICENSES",
+    "COPYRIGHT",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "CODE_OF_CONDUCT.md",
     "README.md",
     "CONTRIBUTING.md",
+    "INSTALL.md",
+    "REUSE.toml",
     ".reuse",
     ".mailmap",
     ".git-blame-ignore-revs",
@@ -611,6 +636,10 @@ cc = ["@bjorn3"]
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
+[mentions."compiler/rustc_const_eval/src/"]
+message = "Some changes occurred to the CTFE machinery"
+cc = ["@rust-lang/wg-const-eval"]
+
 [mentions."compiler/rustc_const_eval/src/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
@@ -633,7 +662,7 @@ cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
-cc = ["@rust-lang/miri"]
+cc = ["@rust-lang/miri", "@rust-lang/wg-const-eval"]
 
 [mentions."compiler/rustc_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
@@ -706,7 +735,7 @@ message = """
 Some changes occurred to the intrinsics. Make sure the CTFE / Miri interpreter
 gets adapted for the changes, if necessary.
 """
-cc = ["@rust-lang/miri"]
+cc = ["@rust-lang/miri", "@rust-lang/wg-const-eval"]
 
 [mentions."library/portable-simd"]
 message = """
@@ -877,7 +906,7 @@ message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, 
 message = "Changes to the code generated for builtin derived traits."
 cc = ["@nnethercote"]
 
-[mentions."tests/ui/stats/hir-stats.stderr"]
+[mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
 cc = ["@nnethercote"]
 
@@ -966,36 +995,28 @@ cc = ["@kobzol"]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
-    "fmease",
     "jyn514",
     "oli-obk",
 ]
 
 [assign.adhoc_groups]
-compiler-team = [
-    "@cjgillot",
-    "@compiler-errors",
-    "@petrochenkov",
-    "@davidtwco",
-    "@estebank",
-    "@lcnr",
-    "@oli-obk",
-    "@pnkfelix",
-    "@wesleywiser",
-]
-compiler-team-contributors = [
-    "@TaKO8Ki",
-    "@Nadrieril",
-    "@nnethercote",
-    "@fmease",
-    "@fee1-dead",
-    "@jieyouxu",
+compiler = [
     "@BoxyUwU",
     "@chenyukang",
-]
-compiler = [
-    "compiler-team",
-    "compiler-team-contributors",
+    "@cjgillot",
+    "@compiler-errors",
+    "@davidtwco",
+    "@estebank",
+    "@fee1-dead",
+    "@fmease",
+    "@jieyouxu",
+    "@lcnr",
+    "@Nadrieril",
+    "@nnethercote",
+    "@oli-obk",
+    "@petrochenkov",
+    "@pnkfelix",
+    "@wesleywiser",
 ]
 libs = [
     "@cuviper",
@@ -1029,6 +1050,11 @@ docs = [
     "@ehuss",
     "@GuillaumeGomez",
 ]
+
+codegen = [
+    "@saethlin",
+    "@workingjubilee",
+]
 query-system = [
     "@cjgillot",
 ]
@@ -1040,7 +1066,6 @@ diagnostics = [
     "@davidtwco",
     "@estebank",
     "@oli-obk",
-    "@TaKO8Ki",
     "@chenyukang",
 ]
 parser = [
@@ -1124,6 +1149,7 @@ project-exploit-mitigations = [
 "/Cargo.lock" =                                          ["@Mark-Simulacrum"]
 "/Cargo.toml" =                                          ["@Mark-Simulacrum"]
 "/compiler" =                                            ["compiler"]
+"/compiler/rustc_abi" =                                  ["compiler", "codegen"]
 "/compiler/rustc_arena" =                                ["compiler", "arena"]
 "/compiler/rustc_ast" =                                  ["compiler", "parser"]
 "/compiler/rustc_ast_lowering" =                         ["compiler", "ast_lowering"]
@@ -1134,7 +1160,7 @@ project-exploit-mitigations = [
 "/compiler/rustc_lexer" =                                ["compiler", "lexer"]
 "/compiler/rustc_llvm" =                                 ["@cuviper"]
 "/compiler/rustc_codegen_llvm/src/debuginfo" =           ["compiler", "debuginfo"]
-"/compiler/rustc_codegen_ssa" =                          ["compiler", "@saethlin"]
+"/compiler/rustc_codegen_ssa" =                          ["compiler", "codegen"]
 "/compiler/rustc_middle/src/mir" =                       ["compiler", "mir"]
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
@@ -1180,6 +1206,12 @@ project-exploit-mitigations = [
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["@jieyouxu"]
+"/tests/rustdoc" =                                       ["rustdoc"]
+"/tests/rustdoc-gui" =                                   ["rustdoc"]
+"/tests/rustdoc-js-std" =                                ["rustdoc"]
+"/tests/rustdoc-js" =                                    ["rustdoc"]
+"/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
+"/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
 "/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors", "@jieyouxu"]

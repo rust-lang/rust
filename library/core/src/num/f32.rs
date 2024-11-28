@@ -16,6 +16,7 @@ use crate::convert::FloatToInt;
 use crate::intrinsics;
 use crate::mem;
 use crate::num::FpCategory;
+use crate::panic::const_assert;
 
 /// The radix or base of the internal representation of `f32`.
 /// Use [`f32::RADIX`] instead.
@@ -524,15 +525,6 @@ impl f32 {
         self != self
     }
 
-    // FIXME(#50145): `abs` is publicly unavailable in core due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    pub(crate) const fn abs_private(self) -> f32 {
-        // SAFETY: This transmutation is fine just like in `to_bits`/`from_bits`.
-        unsafe { mem::transmute::<u32, f32>(mem::transmute::<f32, u32>(self) & !Self::SIGN_MASK) }
-    }
-
     /// Returns `true` if this value is positive infinity or negative infinity, and
     /// `false` otherwise.
     ///
@@ -580,7 +572,7 @@ impl f32 {
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < Self::INFINITY
+        self.abs() < Self::INFINITY
     }
 
     /// Returns `true` if the number is [subnormal].
@@ -748,7 +740,6 @@ impl f32 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
-    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -797,7 +788,6 @@ impl f32 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
-    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -828,7 +818,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn recip(self) -> f32 {
         1.0 / self
@@ -846,7 +836,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_degrees(self) -> f32 {
         // Use a constant for better precision.
@@ -866,7 +856,7 @@ impl f32 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "f32_deg_rad_conversions", since = "1.7.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_radians(self) -> f32 {
         const RADS_PER_DEG: f32 = consts::PI / 180.0;
@@ -888,7 +878,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn max(self, other: f32) -> f32 {
         intrinsics::maxnumf32(self, other)
@@ -909,7 +899,7 @@ impl f32 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn min(self, other: f32) -> f32 {
         intrinsics::minnumf32(self, other)
@@ -1020,8 +1010,8 @@ impl f32 {
                 const HI: f32 = f32::MAX / 2.;
 
                 let (a, b) = (self, other);
-                let abs_a = a.abs_private();
-                let abs_b = b.abs_private();
+                let abs_a = a.abs();
+                let abs_b = b.abs();
 
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
@@ -1406,19 +1396,17 @@ impl f32 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn clamp(mut self, min: f32, max: f32) -> f32 {
-        const fn assert_at_const(min: f32, max: f32) {
-            // Note that we cannot format in constant expressions.
-            assert!(min <= max, "min > max, or either was NaN");
-        }
-        #[inline] // inline to avoid codegen regression
-        fn assert_at_rt(min: f32, max: f32) {
-            assert!(min <= max, "min > max, or either was NaN. min = {min:?}, max = {max:?}");
-        }
-        // FIXME(const-hack): We would prefer to have streamlined panics when formatters become const-friendly.
-        intrinsics::const_eval_select((min, max), assert_at_const, assert_at_rt);
+        const_assert!(
+            min <= max,
+            "min > max, or either was NaN",
+            "min > max, or either was NaN. min = {min:?}, max = {max:?}",
+            min: f32,
+            max: f32,
+        );
+
         if self < min {
             self = min;
         }
@@ -1426,5 +1414,88 @@ impl f32 {
             self = max;
         }
         self
+    }
+
+    /// Computes the absolute value of `self`.
+    ///
+    /// This function always returns the precise result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = 3.5_f32;
+    /// let y = -3.5_f32;
+    ///
+    /// assert_eq!(x.abs(), x);
+    /// assert_eq!(y.abs(), -y);
+    ///
+    /// assert!(f32::NAN.abs().is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[inline]
+    pub const fn abs(self) -> f32 {
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::fabsf32(self) }
+    }
+
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - NaN if the number is NaN
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let f = 3.5_f32;
+    ///
+    /// assert_eq!(f.signum(), 1.0);
+    /// assert_eq!(f32::NEG_INFINITY.signum(), -1.0);
+    ///
+    /// assert!(f32::NAN.signum().is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[inline]
+    pub const fn signum(self) -> f32 {
+        if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
+    }
+
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `sign`.
+    ///
+    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
+    /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
+    /// returned.
+    ///
+    /// If `sign` is a NaN, then this operation will still carry over its sign into the result. Note
+    /// that IEEE 754 doesn't assign any meaning to the sign bit in case of a NaN, and as Rust
+    /// doesn't guarantee that the bit pattern of NaNs are conserved over arithmetic operations, the
+    /// result of `copysign` with `sign` being a NaN might produce an unexpected or non-portable
+    /// result. See the [specification of NaN bit patterns](primitive@f32#nan-bit-patterns) for more
+    /// info.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let f = 3.5_f32;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f32);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f32);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f32);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f32);
+    ///
+    /// assert!(f32::NAN.copysign(1.0).is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[inline]
+    #[stable(feature = "copysign", since = "1.35.0")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn copysign(self, sign: f32) -> f32 {
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::copysignf32(self, sign) }
     }
 }

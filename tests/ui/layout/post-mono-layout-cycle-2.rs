@@ -45,7 +45,6 @@ where
     T: Blah,
 {
     async fn ice(&mut self) {
-        //~^ ERROR a cycle occurred during layout computation
         let arr: [(); 0] = [];
         self.t.iter(arr.into_iter()).await;
     }

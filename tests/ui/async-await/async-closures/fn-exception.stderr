@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `unsafe fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {unsafety}: AsyncFn<()>` is not satisfied
+error[E0277]: the trait bound `unsafe fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {unsafety}: AsyncFn()` is not satisfied
   --> $DIR/fn-exception.rs:19:10
    |
 LL |     test(unsafety);
-   |     ---- ^^^^^^^^ the trait `AsyncFn<()>` is not implemented for fn item `unsafe fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {unsafety}`
+   |     ---- ^^^^^^^^ the trait `AsyncFn()` is not implemented for fn item `unsafe fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {unsafety}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -12,11 +12,11 @@ note: required by a bound in `test`
 LL | fn test(f: impl async Fn()) {}
    |                 ^^^^^^^^^^ required by this bound in `test`
 
-error[E0277]: the trait bound `extern "C" fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {abi}: AsyncFn<()>` is not satisfied
+error[E0277]: the trait bound `extern "C" fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {abi}: AsyncFn()` is not satisfied
   --> $DIR/fn-exception.rs:20:10
    |
 LL |     test(abi);
-   |     ---- ^^^ the trait `AsyncFn<()>` is not implemented for fn item `extern "C" fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {abi}`
+   |     ---- ^^^ the trait `AsyncFn()` is not implemented for fn item `extern "C" fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {abi}`
    |     |
    |     required by a bound introduced by this call
    |

@@ -347,7 +347,7 @@ fn check_final_expr<'tcx>(
     let peeled_drop_expr = expr.peel_drop_temps();
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
-        ExprKind::Ret(ref inner) => {
+        ExprKind::Ret(inner) => {
             // check if expr return nothing
             let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
                 extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
@@ -391,7 +391,7 @@ fn check_final_expr<'tcx>(
 
             if let Some(inner) = inner {
                 if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
-                    if temporary_ty.has_significant_drop(cx.tcx, cx.param_env)
+                    if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
                         && temporary_ty
                             .walk()
                             .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))

@@ -1,6 +1,5 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use hir::def_id::LocalDefId;
 use hir::{ConstContext, LangItem};
 use rustc_errors::Diag;
 use rustc_errors::codes::*;
@@ -29,6 +28,9 @@ pub enum Status {
     Unstable {
         /// The feature that must be enabled to use this operation.
         gate: Symbol,
+        /// Whether the feature gate was already checked (because the logic is a bit more
+        /// complicated than just checking a single gate).
+        gate_already_checked: bool,
         /// Whether it is allowed to use this operation from stable `const fn`.
         /// This will usually be `false`.
         safe_to_expose_on_stable: bool,
@@ -71,15 +73,45 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
     }
 }
 
+/// A call to a function that is in a trait, or has trait bounds that make it conditionally-const.
+#[derive(Debug)]
+pub(crate) struct ConditionallyConstCall<'tcx> {
+    pub callee: DefId,
+    pub args: GenericArgsRef<'tcx>,
+}
+
+impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        // We use the `const_trait_impl` gate for all conditionally-const calls.
+        Status::Unstable {
+            gate: sym::const_trait_impl,
+            gate_already_checked: false,
+            safe_to_expose_on_stable: false,
+            // We don't want the "mark the callee as `#[rustc_const_stable_indirect]`" hint
+            is_function_call: false,
+        }
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        ccx.tcx.sess.create_feature_err(
+            errors::ConditionallyConstCall {
+                span,
+                def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
+                def_descr: ccx.tcx.def_descr(self.callee),
+                kind: ccx.const_kind(),
+            },
+            sym::const_trait_impl,
+        )
+    }
+}
+
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FnCallNonConst<'tcx> {
-    pub caller: LocalDefId,
     pub callee: DefId,
     pub args: GenericArgsRef<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
-    pub feature: Option<Symbol>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
@@ -87,8 +119,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
-        let FnCallNonConst { caller, callee, args, span, call_source, feature } = *self;
-        let ConstCx { tcx, param_env, body, .. } = *ccx;
+        let FnCallNonConst { callee, args, span, call_source } = *self;
+        let ConstCx { tcx, typing_env, .. } = *ccx;
+        let caller = ccx.def_id();
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
             let trait_ref = TraitRef::from_method(tcx, trait_id, args);
@@ -113,15 +146,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 }
                 ty::Adt(..) => {
+                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
-
-                    let infcx = tcx.infer_ctxt().build(body.typing_mode(tcx));
                     let mut selcx = SelectionContext::new(&infcx);
                     let implsrc = selcx.select(&obligation);
-
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
-                        // FIXME(effects) revisit this
+                        // FIXME(const_trait_impl) revisit this
                         if !tcx.is_const_trait_impl(data.impl_def_id) {
                             let span = tcx.def_span(data.impl_def_id);
                             err.subdiagnostic(errors::NonConstImplNote { span });
@@ -133,7 +164,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         };
 
         let call_kind =
-            call_kind(tcx, ccx.param_env, callee, args, span, call_source.from_hir_call(), None);
+            call_kind(tcx, ccx.typing_env, callee, args, span, call_source.from_hir_call(), None);
 
         debug!(?call_kind);
 
@@ -286,14 +317,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             ccx.const_kind(),
         ));
 
-        if let Some(feature) = feature {
-            ccx.tcx.disabled_nightly_features(
-                &mut err,
-                body.source.def_id().as_local().map(|local| ccx.tcx.local_def_id_to_hir_id(local)),
-                [(String::new(), feature)],
-            );
-        }
-
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note(fluent_generated::const_eval_lazy_lock);
         }
@@ -309,6 +332,9 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 pub(crate) struct FnCallUnstable {
     pub def_id: DefId,
     pub feature: Symbol,
+    /// If this is true, then the feature is enabled, but we need to still check if it is safe to
+    /// expose on stable.
+    pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
 }
 
@@ -316,12 +342,14 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
+            gate_already_checked: self.feature_enabled,
             safe_to_expose_on_stable: self.safe_to_expose_on_stable,
             is_function_call: true,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        assert!(!self.feature_enabled);
         let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
             span,
             def_path: ccx.tcx.def_path_str(self.def_id),
@@ -362,6 +390,7 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
+            gate_already_checked: false,
             safe_to_expose_on_stable: self.const_stable_indirect,
             // We do *not* want to suggest to mark the intrinsic as `const_stable_indirect`,
             // that's not a trivial change!
@@ -389,6 +418,7 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
         {
             Status::Unstable {
                 gate: sym::const_async_blocks,
+                gate_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
             }
@@ -399,15 +429,8 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
-        if let hir::CoroutineKind::Desugared(
-            hir::CoroutineDesugaring::Async,
-            hir::CoroutineSource::Block,
-        ) = self.0
-        {
-            ccx.tcx.sess.create_feature_err(
-                errors::UnallowedOpInConstContext { span, msg },
-                sym::const_async_blocks,
-            )
+        if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
+            ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
         } else {
             ccx.dcx().create_err(errors::UnallowedOpInConstContext { span, msg })
         }
@@ -436,17 +459,43 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
 
 #[derive(Debug)]
 pub(crate) struct LiveDrop<'tcx> {
-    pub dropped_at: Option<Span>,
+    pub dropped_at: Span,
     pub dropped_ty: Ty<'tcx>,
+    pub needs_non_const_drop: bool,
 }
 impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
+    fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
+        if self.needs_non_const_drop {
+            Status::Forbidden
+        } else {
+            Status::Unstable {
+                gate: sym::const_destruct,
+                gate_already_checked: false,
+                safe_to_expose_on_stable: false,
+                is_function_call: false,
+            }
+        }
+    }
+
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.dcx().create_err(errors::LiveDrop {
-            span,
-            dropped_ty: self.dropped_ty,
-            kind: ccx.const_kind(),
-            dropped_at: self.dropped_at,
-        })
+        if self.needs_non_const_drop {
+            ccx.dcx().create_err(errors::LiveDrop {
+                span,
+                dropped_ty: self.dropped_ty,
+                kind: ccx.const_kind(),
+                dropped_at: self.dropped_at,
+            })
+        } else {
+            ccx.tcx.sess.create_feature_err(
+                errors::LiveDrop {
+                    span,
+                    dropped_ty: self.dropped_ty,
+                    kind: ccx.const_kind(),
+                    dropped_at: self.dropped_at,
+                },
+                sym::const_destruct,
+            )
+        }
     }
 }
 

@@ -46,7 +46,7 @@ pub fn find_param_with_region<'tcx>(
         ty::ReLateParam(late_param) => (late_param.scope, late_param.bound_region),
         ty::ReEarlyParam(ebr) => {
             let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;
-            (tcx.parent(region_def), ty::BoundRegionKind::BrNamed(region_def, ebr.name))
+            (tcx.parent(region_def), ty::BoundRegionKind::Named(region_def, ebr.name))
         }
         _ => return None, // not a free region
     };

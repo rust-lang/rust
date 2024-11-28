@@ -55,7 +55,6 @@ where
         &self,
         goal: Goal<I, T>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
-        let param_env_for_debug_assertion = goal.param_env;
         let opaque_types = self.delegate.clone_opaque_types_for_query_response();
         let (goal, opaque_types) =
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
@@ -72,10 +71,7 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        let query_input = ty::CanonicalQueryInput {
-            canonical,
-            typing_mode: self.typing_mode(param_env_for_debug_assertion),
-        };
+        let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }
 

@@ -1,15 +1,14 @@
+use super::USELESS_ATTRIBUTE;
 use super::utils::{extract_clippy_lint, is_lint_level, is_word};
-use super::{Attribute, USELESS_ATTRIBUTE};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, first_line_of_span};
-use rustc_ast::MetaItemInner;
+use rustc_ast::{Attribute, Item, ItemKind, MetaItemInner};
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
-pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) {
+pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
     let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
     for attr in attrs {
@@ -17,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, item: &Item<'_>, attrs: &[Attribute]) 
             return;
         }
         if let Some(lint_list) = &attr.meta_item_list() {
-            if attr.ident().map_or(false, |ident| is_lint_level(ident.name, attr.id)) {
+            if attr.ident().is_some_and(|ident| is_lint_level(ident.name, attr.id)) {
                 for lint in lint_list {
                     match item.kind {
                         ItemKind::Use(..) => {

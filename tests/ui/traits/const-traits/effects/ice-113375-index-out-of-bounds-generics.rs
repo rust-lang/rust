@@ -3,7 +3,7 @@
 // effects ice https://github.com/rust-lang/rust/issues/113375 index out of bounds
 
 #![allow(incomplete_features, unused)]
-#![feature(effects, adt_const_params)]
+#![feature(adt_const_params)]
 
 struct Bar<T>(T);
 

@@ -234,6 +234,9 @@ passes_doc_masked_only_extern_crate =
 passes_doc_rust_logo =
     the `#[doc(rust_logo)]` attribute is used for Rust branding
 
+passes_doc_search_unbox_invalid =
+    `#[doc(search_unbox)]` should be used on generic structs and enums
+
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
 passes_doc_test_takes_list =
@@ -555,6 +558,10 @@ passes_no_mangle_foreign =
 passes_no_patterns =
     patterns not allowed in naked function parameters
 
+passes_no_sanitize =
+    `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
+    .label = not {$accepted_kind}
+
 passes_non_exported_macro_invalid_attrs =
     attribute should be applied to function or closure
     .label = not a function or closure
@@ -678,10 +685,6 @@ passes_rustc_lint_opt_ty =
 passes_rustc_pub_transparent =
     attribute should be applied to `#[repr(transparent)]` types
     .label = not a `#[repr(transparent)]` type
-
-passes_rustc_safe_intrinsic =
-    attribute should be applied to intrinsic functions
-    .label = not an intrinsic function
 
 passes_rustc_std_internal_symbol =
     attribute should be applied to functions or statics

@@ -8,7 +8,7 @@ use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug, ty};
@@ -297,21 +297,25 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
-        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(tcx.types.bool)).unwrap();
+        let layout = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.bool))
+            .unwrap();
         Self::from_scalar(Scalar::from_bool(b), layout)
     }
 
     #[inline]
     pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
         let ty = tcx.ty_ordering_enum(None);
-        let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+        let layout =
+            tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
     }
 
     pub fn from_pair(a: Self, b: Self, tcx: TyCtxt<'tcx>) -> Self {
         let layout = tcx
             .layout_of(
-                ty::ParamEnv::reveal_all().and(Ty::new_tup(tcx, &[a.layout.ty, b.layout.ty])),
+                ty::TypingEnv::fully_monomorphized()
+                    .as_query_input(Ty::new_tup(tcx, &[a.layout.ty, b.layout.ty])),
             )
             .unwrap();
         Self::from_scalar_pair(a.to_scalar(), b.to_scalar(), layout)
@@ -341,7 +345,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_pair(self, cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>)) -> (Self, Self) {
+    pub fn to_pair(self, cx: &(impl HasTyCtxt<'tcx> + HasTypingEnv<'tcx>)) -> (Self, Self) {
         let layout = self.layout;
         let (val0, val1) = self.to_scalar_pair();
         (
@@ -773,8 +777,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )?;
             if !mir_assign_valid_types(
                 *self.tcx,
-                self.typing_mode(),
-                self.param_env,
+                self.typing_env(),
                 self.layout_of(normalized_place_ty)?,
                 op.layout,
             ) {
@@ -833,9 +836,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             })
         };
         let layout =
-            from_known_layout(self.tcx, self.typing_mode(), self.param_env, layout, || {
-                self.layout_of(ty).into()
-            })?;
+            from_known_layout(self.tcx, self.typing_env(), layout, || self.layout_of(ty).into())?;
         let imm = match val_val {
             mir::ConstValue::Indirect { alloc_id, offset } => {
                 // This is const data, no mutation allowed.

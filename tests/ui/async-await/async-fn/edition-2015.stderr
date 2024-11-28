@@ -4,7 +4,7 @@ error: `async` trait bounds are only allowed in Rust 2018 or later
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                ^^^^^
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: `async` trait bounds are only allowed in Rust 2018 or later
@@ -13,7 +13,7 @@ error: `async` trait bounds are only allowed in Rust 2018 or later
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    |                                    ^^^^^
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0658]: async closures are unstable
@@ -38,7 +38,7 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: to use an async block, remove the `||`: `async {`
 
-error[E0658]: use of unstable library feature 'async_closure'
+error[E0658]: use of unstable library feature `async_closure`
   --> $DIR/edition-2015.rs:1:42
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
@@ -48,7 +48,7 @@ LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }
    = help: add `#![feature(async_closure)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'async_closure'
+error[E0658]: use of unstable library feature `async_closure`
   --> $DIR/edition-2015.rs:1:22
    |
 LL | fn foo(x: impl async Fn()) -> impl async Fn() { x }

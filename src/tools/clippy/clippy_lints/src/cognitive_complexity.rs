@@ -30,7 +30,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
     nursery,
-    "functions that should be split up into multiple functions"
+    "functions that should be split up into multiple functions",
     @eval_always = true
 }
 

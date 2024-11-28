@@ -16,9 +16,9 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
+use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
 
 use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -92,9 +92,7 @@ impl Stability {
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    /// This can be `None` for functions that do not have an explicit const feature.
-    /// We still track them for recursive const stability checks.
-    pub feature: Option<Symbol>,
+    pub feature: Symbol,
     /// This is true iff the `const_stable_indirect` attribute is present.
     pub const_stable_indirect: bool,
     /// whether the function has a `#[rustc_promotable]` attribute
@@ -272,23 +270,19 @@ pub fn find_stability(
 
 /// Collects stability info from `rustc_const_stable`/`rustc_const_unstable`/`rustc_promotable`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.
-///
-/// `is_const_fn` indicates whether this is a function marked as `const`. It will always
-/// be false for intrinsics in an `extern` block!
 pub fn find_const_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-    is_const_fn: bool,
 ) -> Option<(ConstStability, Span)> {
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
-    let mut const_stable_indirect = None;
+    let mut const_stable_indirect = false;
 
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_promotable => promotable = true,
-            sym::rustc_const_stable_indirect => const_stable_indirect = Some(attr.span),
+            sym::rustc_const_stable_indirect => const_stable_indirect = true,
             sym::rustc_const_unstable => {
                 if const_stab.is_some() {
                     sess.dcx()
@@ -300,7 +294,7 @@ pub fn find_const_stability(
                     const_stab = Some((
                         ConstStability {
                             level,
-                            feature: Some(feature),
+                            feature,
                             const_stable_indirect: false,
                             promotable: false,
                         },
@@ -318,7 +312,7 @@ pub fn find_const_stability(
                     const_stab = Some((
                         ConstStability {
                             level,
-                            feature: Some(feature),
+                            feature,
                             const_stable_indirect: false,
                             promotable: false,
                         },
@@ -330,7 +324,7 @@ pub fn find_const_stability(
         }
     }
 
-    // Merge promotable and not_exposed_on_stable into stability info
+    // Merge promotable and const_stable_indirect into stability info
     if promotable {
         match &mut const_stab {
             Some((stab, _)) => stab.promotable = promotable,
@@ -341,7 +335,7 @@ pub fn find_const_stability(
             }
         }
     }
-    if const_stable_indirect.is_some() {
+    if const_stable_indirect {
         match &mut const_stab {
             Some((stab, _)) => {
                 if stab.is_const_unstable() {
@@ -353,36 +347,34 @@ pub fn find_const_stability(
                 }
             }
             _ => {
-                // We ignore the `#[rustc_const_stable_indirect]` here, it should be picked up by
-                // the `default_const_unstable` logic.
+                // This function has no const stability attribute, but has `const_stable_indirect`.
+                // We ignore that; unmarked functions are subject to recursive const stability
+                // checks by default so we do carry out the user's intent.
             }
         }
     }
-    // Make sure if `const_stable_indirect` is present, that is recorded. Also make sure all `const
-    // fn` get *some* marker, since we are a staged_api crate and therefore will do recursive const
-    // stability checks for them. We need to do this because the default for whether an unmarked
-    // function enforces recursive stability differs between staged-api crates and force-unmarked
-    // crates: in force-unmarked crates, only functions *explicitly* marked `const_stable_indirect`
-    // enforce recursive stability. Therefore when `lookup_const_stability` is `None`, we have to
-    // assume the function does not have recursive stability. All functions that *do* have recursive
-    // stability must explicitly record this, and so that's what we do for all `const fn` in a
-    // staged_api crate.
-    if (is_const_fn || const_stable_indirect.is_some()) && const_stab.is_none() {
-        let c = ConstStability {
-            feature: None,
-            const_stable_indirect: const_stable_indirect.is_some(),
-            promotable: false,
-            level: StabilityLevel::Unstable {
-                reason: UnstableReason::Default,
-                issue: None,
-                is_soft: false,
-                implied_by: None,
-            },
-        };
-        const_stab = Some((c, const_stable_indirect.unwrap_or(DUMMY_SP)));
-    }
 
     const_stab
+}
+
+/// Calculates the const stability for a const function in a `-Zforce-unstable-if-unmarked` crate
+/// without the `staged_api` feature.
+pub fn unmarked_crate_const_stab(
+    _sess: &Session,
+    attrs: &[Attribute],
+    regular_stab: Stability,
+) -> ConstStability {
+    assert!(regular_stab.level.is_unstable());
+    // The only attribute that matters here is `rustc_const_stable_indirect`.
+    // We enforce recursive const stability rules for those functions.
+    let const_stable_indirect =
+        attrs.iter().any(|a| a.name_or_empty() == sym::rustc_const_stable_indirect);
+    ConstStability {
+        feature: regular_stab.feature,
+        const_stable_indirect,
+        promotable: false,
+        level: regular_stab.level,
+    }
 }
 
 /// Collects stability info from `rustc_default_body_unstable` attributes in `attrs`.

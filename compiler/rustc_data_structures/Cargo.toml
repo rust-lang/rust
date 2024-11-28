@@ -10,11 +10,11 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.3"
-indexmap = { version = "2.4.0" }
+indexmap = { version = "2.4.0", features = ["rustc-rayon"] }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"
 rustc-hash = "2.0.0"
-rustc-rayon = { version = "0.5.0", optional = true }
+rustc-rayon = "0.5.0"
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
@@ -53,8 +53,3 @@ memmap2 = "0.2.1"
 
 [target.'cfg(not(target_has_atomic = "64"))'.dependencies]
 portable-atomic = "1.5.1"
-
-[features]
-# tidy-alphabetical-start
-rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "dep:rustc-rayon"]
-# tidy-alphabetical-end

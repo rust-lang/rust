@@ -480,7 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::Single(def_id) => {
                     let item = self.tcx.associated_item(def_id);
                     // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
-                    assert_eq!(item.container, AssocItemContainer::TraitContainer);
+                    assert_eq!(item.container, AssocItemContainer::Trait);
 
                     let trait_def_id = self.tcx.parent(def_id);
                     let trait_span = self.tcx.def_span(trait_def_id);
@@ -1406,7 +1406,7 @@ impl<'tcx> Pick<'tcx> {
                         tcx.def_path_str(self.item.def_id),
                     ));
                 }
-                (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
+                (ty::AssocKind::Const, ty::AssocItemContainer::Trait) => {
                     let def_id = self.item.container_id(tcx);
                     lint.span_suggestion(
                         span,
@@ -1640,6 +1640,28 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
                 }
+            }
+
+            // FIXME(-Znext-solver): See the linked issue below.
+            // <https://github.com/rust-lang/trait-system-refactor-initiative/issues/134>
+            //
+            // In the new solver, check the well-formedness of the return type.
+            // This emulates, in a way, the predicates that fall out of
+            // normalizing the return type in the old solver.
+            //
+            // We alternatively could check the predicates of the method itself hold,
+            // but we intentionally do not do this in the old solver b/c of cycles,
+            // and doing it in the new solver would be stronger. This should be fixed
+            // in the future, since it likely leads to much better method winnowing.
+            if let Some(xform_ret_ty) = xform_ret_ty
+                && self.infcx.next_trait_solver()
+            {
+                ocx.register_obligation(traits::Obligation::new(
+                    self.tcx,
+                    cause.clone(),
+                    self.param_env,
+                    ty::ClauseKind::WellFormed(xform_ret_ty.into()),
+                ));
             }
 
             // Evaluate those obligations to see if they might possibly hold.

@@ -36,8 +36,3 @@ features = [
     "Win32_Security",
     "Win32_System_Threading",
 ]
-
-[features]
-# tidy-alphabetical-start
-rustc_use_parallel_compiler = ['rustc_error_messages/rustc_use_parallel_compiler']
-# tidy-alphabetical-end

@@ -54,6 +54,7 @@ mod by_move_body;
 use std::{iter, ops};
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -67,15 +68,14 @@ use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+    always_storage_live_locals,
 };
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::sym;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -676,12 +676,11 @@ fn locals_live_across_suspend_points<'tcx>(
 
     let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
-    // Calculate the MIR locals that we actually need to keep storage around
-    // for.
-    let mut requires_storage_cursor =
+    // Calculate the MIR locals that we need to keep storage around for.
+    let mut requires_storage_results =
         MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .iterate_to_fixpoint(tcx, body, None)
-            .into_results_cursor(body);
+            .iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor_mut(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
@@ -697,8 +696,7 @@ fn locals_live_across_suspend_points<'tcx>(
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
-            live_locals.union(liveness.get());
+            let mut live_locals = liveness.get().clone();
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -754,7 +752,7 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        requires_storage_cursor.into_results(),
+        requires_storage_results,
     );
 
     LivenessInfo {
@@ -817,9 +815,9 @@ impl ops::Deref for CoroutineSavedLocals {
 /// computation; see `CoroutineLayout` for more.
 fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
-    saved_locals: &CoroutineSavedLocals,
+    saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: BitSet<Local>,
-    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    mut requires_storage: Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -877,15 +875,13 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: BitSet<Local>,
 }
 
-impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
+impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     for StorageConflictVisitor<'a, 'tcx>
 {
-    type Domain = BitSet<Local>;
-
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        state: &BitSet<Local>,
         _statement: &'a Statement<'tcx>,
         loc: Location,
     ) {
@@ -894,8 +890,8 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
-        state: &Self::Domain,
+        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        state: &BitSet<Local>,
         _terminator: &'a Terminator<'tcx>,
         loc: Location,
     ) {
@@ -1071,11 +1067,9 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // Note that `elaborate_drops` only drops the upvars of a coroutine, and
     // this is ok because `open_drop` can only be reached within that own
     // coroutine's resume function.
+    let typing_env = body.typing_env(tcx);
 
-    let def_id = body.source.def_id();
-    let param_env = tcx.param_env(def_id);
-
-    let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
+    let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, typing_env };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
@@ -1206,9 +1200,9 @@ fn insert_panic_block<'tcx>(
     insert_term_block(body, kind)
 }
 
-fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
     // Returning from a function with an uninhabited return type is undefined behavior.
-    if body.return_ty().is_privately_uninhabited(tcx, param_env) {
+    if body.return_ty().is_privately_uninhabited(tcx, typing_env) {
         return false;
     }
 
@@ -1629,7 +1623,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // `storage_liveness` tells us which locals have live storage at suspension points
         let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
 
-        let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
+        let can_return = can_return(tcx, body, body.typing_env(tcx));
 
         // Run the transformation which converts Places from Local to coroutine struct
         // accesses for locals in `remap`.
@@ -1776,6 +1770,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
     }

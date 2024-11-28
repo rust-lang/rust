@@ -346,7 +346,6 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
         *[other] these lifetimes are
      } in scope but not mentioned in the type's bounds
     .note2 = all lifetimes in scope will be captured by `impl Trait`s in edition 2024
-    .suggestion = use the precise capturing `use<...>` syntax to make the captures explicit
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
@@ -772,9 +771,6 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
-
-lint_tail_expr_drop_order = these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
-    .label = these values have significant drop implementation and will observe changes in drop order under Edition 2024
 
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions

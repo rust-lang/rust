@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/call-generic-method-fail.rs:6:5
+  --> $DIR/call-generic-method-fail.rs:5:5
    |
 LL |     *t == *t
    |     ^^^^^^^^

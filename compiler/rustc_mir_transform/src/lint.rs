@@ -9,8 +9,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive, always_storage_live_locals};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
 pub(super) fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {

@@ -13,6 +13,7 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
+extern crate rustc_middle;
 extern crate rustc_hir;
 #[macro_use]
 extern crate rustc_smir;
@@ -64,7 +65,7 @@ fn check_instance(instance: &Instance) {
     if instance.has_body() {
         let Some(body) = instance.body() else { unreachable!("Expected a body") };
         assert!(!body.blocks.is_empty());
-        assert_eq!(&name, "likely");
+        assert_eq!(&name, "select_unpredictable");
     } else {
         assert!(instance.body().is_none());
         assert_matches!(name.as_str(), "size_of_val" | "vtable_size");
@@ -78,7 +79,7 @@ fn check_def(fn_def: FnDef) {
 
     let name = intrinsic.fn_name();
     match name.as_str() {
-        "likely" => {
+        "select_unpredictable" => {
             assert!(!intrinsic.must_be_overridden());
             assert!(fn_def.has_body());
         }
@@ -132,7 +133,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         pub fn use_intrinsics(init: bool) -> bool {{
             let vtable_sz = unsafe {{ vtable_size(0 as *const ()) }};
             let sz = unsafe {{ size_of_val("hi") }};
-            likely(init && sz == 2)
+            select_unpredictable(init && sz == 2, false, true)
         }}
         "#
     )?;

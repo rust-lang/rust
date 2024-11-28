@@ -19,7 +19,9 @@ use tracing::{debug, instrument};
 use super::errors::GenericsArgsErrExtend;
 use crate::bounds::Bounds;
 use crate::errors;
-use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer, PredicateFilter, RegionInferReason};
+use crate::hir_ty_lowering::{
+    AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
+};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
@@ -67,7 +69,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         search_bounds(hir_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
                     && pred.is_param_bound(self_ty.to_def_id())
                 {
                     search_bounds(pred.bounds);
@@ -152,9 +154,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         'tcx: 'hir,
     {
         for hir_bound in hir_bounds {
-            // In order to avoid cycles, when we're lowering `SelfThatDefines`,
+            // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
-            if let PredicateFilter::SelfThatDefines(assoc_name) = predicate_filter {
+            if let PredicateFilter::SelfTraitThatDefines(assoc_name) = predicate_filter {
                 if let Some(trait_ref) = hir_bound.trait_ref()
                     && let Some(trait_did) = trait_ref.trait_def_id()
                     && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
@@ -346,9 +348,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No).into()
-                    }
+                    hir::Term::Const(ct) => self.lower_const_arg(ct, FeedConstTy::No).into(),
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
@@ -389,7 +389,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match predicate_filter {
                     PredicateFilter::All
                     | PredicateFilter::SelfOnly
-                    | PredicateFilter::SelfThatDefines(_)
                     | PredicateFilter::SelfAndAssociatedTypeBounds => {
                         bounds.push_projection_bound(
                             tcx,
@@ -400,6 +399,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             constraint.span,
                         );
                     }
+                    // SelfTraitThatDefines is only interested in trait predicates.
+                    PredicateFilter::SelfTraitThatDefines(_) => {}
                     // `ConstIfConst` is only interested in `~const` bounds.
                     PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
                 }
@@ -426,7 +427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         );
                     }
                     PredicateFilter::SelfOnly
-                    | PredicateFilter::SelfThatDefines(_)
+                    | PredicateFilter::SelfTraitThatDefines(_)
                     | PredicateFilter::SelfConstIfConst => {}
                 }
             }
@@ -643,7 +644,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::GenericParamDefKind::Lifetime => {
                     ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
                         var: ty::BoundVar::from_usize(num_bound_vars),
-                        kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                        kind: ty::BoundRegionKind::Named(param.def_id, param.name),
                     })
                     .into()
                 }
@@ -829,8 +830,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             }
             ty::ReBound(db, br) if db >= self.depth => {
                 self.vars.insert(match br.kind {
-                    ty::BrNamed(def_id, name) => (def_id, name),
-                    ty::BrAnon | ty::BrEnv => {
+                    ty::BoundRegionKind::Named(def_id, name) => (def_id, name),
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
                         let guar = self
                             .cx
                             .dcx()

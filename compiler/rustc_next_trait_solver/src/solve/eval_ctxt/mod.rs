@@ -214,8 +214,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn typing_mode(&self, param_env_for_debug_assertion: I::ParamEnv) -> TypingMode<I> {
-        self.delegate.typing_mode(param_env_for_debug_assertion)
+    pub(super) fn typing_mode(&self) -> TypingMode<I> {
+        self.delegate.typing_mode()
     }
 
     pub(super) fn set_is_normalizes_to_goal(&mut self) {
@@ -1001,12 +1001,12 @@ where
     // Try to evaluate a const, or return `None` if the const is too generic.
     // This doesn't mean the const isn't evaluatable, though, and should be treated
     // as an ambiguity rather than no-solution.
-    pub(super) fn try_const_eval_resolve(
+    pub(super) fn evaluate_const(
         &self,
         param_env: I::ParamEnv,
-        unevaluated: ty::UnevaluatedConst<I>,
+        uv: ty::UnevaluatedConst<I>,
     ) -> Option<I::Const> {
-        self.delegate.try_const_eval_resolve(param_env, unevaluated)
+        self.delegate.evaluate_const(param_env, uv)
     }
 
     pub(super) fn is_transmutable(

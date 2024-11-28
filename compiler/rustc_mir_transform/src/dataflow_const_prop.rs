@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
@@ -82,7 +82,7 @@ struct ConstAnalysis<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 }
 
 impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
@@ -144,13 +144,13 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
 
 impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: Map<'tcx>) -> Self {
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         Self {
             map,
             tcx,
             local_decls: &body.local_decls,
-            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
-            param_env,
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
+            typing_env,
         }
     }
 
@@ -186,7 +186,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::AscribeUserType(..) => {}
         }
     }
 
@@ -389,7 +390,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.kind()
                     && let Some(len) = Const::Ty(self.tcx.types.usize, *len)
-                        .try_eval_scalar_int(self.tcx, self.param_env)
+                        .try_eval_scalar_int(self.tcx, self.typing_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), &self.map);
                 }
@@ -411,7 +412,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let place_ty = place.ty(self.local_decls, self.tcx);
                 if let ty::Array(_, len) = place_ty.ty.kind() {
                     Const::Ty(self.tcx.types.usize, *len)
-                        .try_eval_scalar(self.tcx, self.param_env)
+                        .try_eval_scalar(self.tcx, self.typing_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } else if let [ProjectionElem::Deref] = place.projection[..] {
                     state.get_len(place.local.into(), &self.map)
@@ -420,7 +421,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
                 match self.eval_operand(operand, state) {
@@ -434,7 +435,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
                 match self.eval_operand(operand, state) {
@@ -470,7 +471,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 FlatSet::Top => FlatSet::Top,
             },
             Rvalue::NullaryOp(null_op, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.param_env.and(*ty)) else {
+                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
                 let val = match null_op {
@@ -479,7 +480,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx
-                        .offset_of_subfield(self.ecx.param_env(), layout, fields.iter())
+                        .offset_of_subfield(self.typing_env, layout, fields.iter())
                         .bytes(),
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
@@ -514,7 +515,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     ) -> FlatSet<Scalar> {
         constant
             .const_
-            .try_eval_scalar(self.tcx, self.param_env)
+            .try_eval_scalar(self.tcx, self.typing_env)
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
@@ -554,7 +555,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 } else if rhs.projection.first() == Some(&PlaceElem::Deref)
                     && let FlatSet::Elem(pointer) = state.get(rhs.local.into(), &self.map)
                     && let rhs_ty = self.local_decls[rhs.local].ty
-                    && let Ok(rhs_layout) = self.tcx.layout_of(self.param_env.and(rhs_ty))
+                    && let Ok(rhs_layout) =
+                        self.tcx.layout_of(self.typing_env.as_query_input(rhs_ty))
                 {
                     let op = ImmTy::from_scalar(pointer, rhs_layout).into();
                     self.assign_constant(state, place, op, rhs.projection);
@@ -614,8 +616,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 TrackElem::DerefLen => {
                     let op: OpTy<'_> = self.ecx.deref_pointer(op).discard_err()?.into();
                     let len_usize = op.len(&self.ecx).discard_err()?;
-                    let layout =
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).unwrap();
+                    let layout = self
+                        .tcx
+                        .layout_of(self.typing_env.as_query_input(self.tcx.types.usize))
+                        .unwrap();
                     Some(ImmTy::from_uint(len_usize, layout).into())
                 }
             },
@@ -662,7 +666,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Exactly one side is known, attempt some algebraic simplifications.
             (FlatSet::Elem(const_arg), _) | (_, FlatSet::Elem(const_arg)) => {
                 let layout = const_arg.layout;
-                if !matches!(layout.backend_repr, rustc_target::abi::BackendRepr::Scalar(..)) {
+                if !matches!(layout.backend_repr, rustc_abi::BackendRepr::Scalar(..)) {
                     return (FlatSet::Top, FlatSet::Top);
                 }
 
@@ -702,9 +706,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Top => FlatSet::Top,
             FlatSet::Elem(scalar) => {
                 let ty = op.ty(self.local_decls, self.tcx);
-                self.tcx.layout_of(self.param_env.and(ty)).map_or(FlatSet::Top, |layout| {
-                    FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
-                })
+                self.tcx
+                    .layout_of(self.typing_env.as_query_input(ty))
+                    .map_or(FlatSet::Top, |layout| {
+                        FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
+                    })
             }
             FlatSet::Bottom => FlatSet::Bottom,
         }
@@ -714,7 +720,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         if !enum_ty.is_enum() {
             return None;
         }
-        let enum_ty_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
+        let enum_ty_layout = self.tcx.layout_of(self.typing_env.as_query_input(enum_ty)).ok()?;
         let discr_value =
             self.ecx.discriminant_for_variant(enum_ty_layout.ty, variant_index).discard_err()?;
         Some(discr_value.to_scalar())
@@ -941,16 +947,12 @@ fn try_write_constant<'tcx>(
     interp_ok(())
 }
 
-impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, Results<'tcx, ConstAnalysis<'_, 'tcx>>>
-    for Collector<'_, 'tcx>
-{
-    type Domain = State<FlatSet<Scalar>>;
-
+impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
     #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_statement_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
-        state: &Self::Domain,
+        state: &State<FlatSet<Scalar>>,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -972,7 +974,7 @@ impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, Results<'tcx, ConstAnalysis<'_, 'tcx
     fn visit_statement_after_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
-        state: &Self::Domain,
+        state: &State<FlatSet<Scalar>>,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
@@ -997,7 +999,7 @@ impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, Results<'tcx, ConstAnalysis<'_, 'tcx
     fn visit_terminator_before_primary_effect(
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
-        state: &Self::Domain,
+        state: &State<FlatSet<Scalar>>,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) {

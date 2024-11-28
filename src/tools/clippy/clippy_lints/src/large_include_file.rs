@@ -1,11 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::root_macro_call_first_node;
-use rustc_ast::LitKind;
+use clippy_utils::source::snippet_opt;
+use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -51,6 +52,24 @@ impl LargeIncludeFile {
 
 impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
 
+impl LargeIncludeFile {
+    fn emit_lint(&self, cx: &LateContext<'_>, span: Span) {
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(
+            cx,
+            LARGE_INCLUDE_FILE,
+            span,
+            "attempted to include a large file",
+            |diag| {
+                diag.note(format!(
+                    "the configuration allows a maximum size of {} bytes",
+                    self.max_file_size
+                ));
+            },
+        );
+    }
+}
+
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(lit) = &expr.kind
@@ -66,19 +85,35 @@ impl LateLintPass<'_> for LargeIncludeFile {
             && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
                 || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
         {
-            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-            span_lint_and_then(
-                cx,
-                LARGE_INCLUDE_FILE,
-                expr.span.source_callsite(),
-                "attempted to include a large file",
-                |diag| {
-                    diag.note(format!(
-                        "the configuration allows a maximum size of {} bytes",
-                        self.max_file_size
-                    ));
-                },
-            );
+            self.emit_lint(cx, expr.span.source_callsite());
+        }
+    }
+
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &Attribute) {
+        if !attr.span.from_expansion()
+            // Currently, rustc limits the usage of macro at the top-level of attributes,
+            // so we don't need to recurse into each level.
+            && let AttrKind::Normal(ref normal) = attr.kind
+            && let Some(doc) = attr.doc_str()
+            && doc.as_str().len() as u64 > self.max_file_size
+            && let AttrArgs::Eq(_, AttrArgsEq::Hir(ref meta)) = normal.item.args
+            && !attr.span.contains(meta.span)
+            // Since the `include_str` is already expanded at this point, we can only take the
+            // whole attribute snippet and then modify for our suggestion.
+            && let Some(snippet) = snippet_opt(cx, attr.span)
+            // We cannot remove this because a `#[doc = include_str!("...")]` attribute can
+            // occupy several lines.
+            && let Some(start) = snippet.find('[')
+            && let Some(end) = snippet.rfind(']')
+            && let snippet = &snippet[start + 1..end]
+            // We check that the expansion actually comes from `include_str!` and not just from
+            // another macro.
+            && let Some(sub_snippet) = snippet.trim().strip_prefix("doc")
+            && let Some(sub_snippet) = sub_snippet.trim().strip_prefix("=")
+            && let sub_snippet = sub_snippet.trim()
+            && (sub_snippet.starts_with("include_str!") || sub_snippet.starts_with("include_bytes!"))
+        {
+            self.emit_lint(cx, attr.span);
         }
     }
 }

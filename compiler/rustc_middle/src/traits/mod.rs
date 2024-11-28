@@ -23,7 +23,7 @@ use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
 // FIXME: Remove this import and import via `solve::`
-pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
+pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -192,6 +192,11 @@ pub enum ObligationCauseCode<'tcx> {
     /// Represents a clause that comes from a specific item.
     /// The span corresponds to the clause.
     WhereClause(DefId, Span),
+
+    /// Represents a bound for an opaque we are checking the well-formedness of.
+    /// The def-id corresponds to a specific definition site that we found the
+    /// hidden type from, if any.
+    OpaqueTypeBound(Span, Option<LocalDefId>),
 
     /// Like `WhereClause`, but also identifies the expression
     /// which requires the `where` clause to be proven, and also
@@ -546,7 +551,7 @@ pub struct DerivedCause<'tcx> {
     pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
-#[derive(Clone, Debug, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq, TypeVisitable)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,
@@ -568,7 +573,7 @@ pub enum SelectionError<'tcx> {
     ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }
 
-#[derive(Clone, Debug, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq, TypeVisitable)]
 pub struct SignatureMismatchData<'tcx> {
     pub found_trait_ref: ty::TraitRef<'tcx>,
     pub expected_trait_ref: ty::TraitRef<'tcx>,

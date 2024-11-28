@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
+use rustc_abi::{self as abi, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
@@ -9,15 +10,14 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::{self, Align, Float, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
 
-use crate::abi::{Abi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
+use crate::abi::{ExternAbi, FnAbi, FnAbiLlvmExt, LlvmType, PassMode};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Metadata};
@@ -163,14 +163,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
             bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
@@ -192,7 +192,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Some(instance),
                 )
             }
-            sym::likely => self.expect(args[0].immediate(), true),
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
                 let kind = self.type_kind(intrinsic_type);
@@ -213,7 +212,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(false)
                 }
             }
-            sym::unlikely => self.expect(args[0].immediate(), false),
             sym::select_unpredictable => {
                 let cond = args[0].immediate();
                 assert_eq!(args[1].layout, args[2].layout);
@@ -1094,7 +1092,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             tcx.types.unit,
             false,
             hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
@@ -1105,7 +1103,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             tcx.types.unit,
             false,
             hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
@@ -1114,7 +1112,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         tcx.types.i32,
         false,
         hir::Safety::Unsafe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
@@ -1154,8 +1152,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     let tcx = bx.tcx();
-    let sig =
-        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
+    let sig = tcx.normalize_erasing_late_bound_regions(bx.typing_env(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
     // Sanity-check: all vector arguments must be immediates.
@@ -2189,7 +2186,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,
@@ -2204,7 +2201,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(metadata.is_unit(), InvalidMonomorphization::CastWidePointer {
                     span,

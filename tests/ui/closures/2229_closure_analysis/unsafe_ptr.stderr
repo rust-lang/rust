@@ -30,7 +30,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
+note: Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
   --> $DIR/unsafe_ptr.rs:32:26
    |
 LL |         println!("{:?}", (*t.0).s);
@@ -48,7 +48,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture t[(0, 0)] -> ImmBorrow
+note: Min Capture t[(0, 0)] -> Immutable
   --> $DIR/unsafe_ptr.rs:32:26
    |
 LL |         println!("{:?}", (*t.0).s);
@@ -66,7 +66,7 @@ LL | |         *x = "s".into();
 LL | |     };
    | |_____^
    |
-note: Capturing p[Deref,(0, 0)] -> ImmBorrow
+note: Capturing p[Deref,(0, 0)] -> Immutable
   --> $DIR/unsafe_ptr.rs:53:31
    |
 LL |         let x = unsafe { &mut (*p).s };
@@ -84,7 +84,7 @@ LL | |         *x = "s".into();
 LL | |     };
    | |_____^
    |
-note: Min Capture p[] -> ImmBorrow
+note: Min Capture p[] -> Immutable
   --> $DIR/unsafe_ptr.rs:53:31
    |
 LL |         let x = unsafe { &mut (*p).s };

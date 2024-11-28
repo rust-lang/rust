@@ -12,7 +12,7 @@ use std::{cmp, mem};
 use rustc_abi::{BackendRepr, Size};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 
 use self::diagnostics::{RetagCause, RetagInfo};
@@ -71,7 +71,7 @@ impl NewPermission {
                         access: None,
                         protector: None,
                     }
-                } else if pointee.is_unpin(*cx.tcx, cx.param_env()) {
+                } else if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
                     // A regular full mutable reference. On `FnEntry` this is `noalias` and `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::Unique,
@@ -129,7 +129,7 @@ impl NewPermission {
     fn from_box_ty<'tcx>(ty: Ty<'tcx>, kind: RetagKind, cx: &crate::MiriInterpCx<'tcx>) -> Self {
         // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
         let pointee = ty.builtin_deref(true).unwrap();
-        if pointee.is_unpin(*cx.tcx, cx.param_env()) {
+        if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
             // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
             // a weak protector).
             NewPermission::Uniform {
@@ -608,7 +608,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 match new_perm {
                     NewPermission::Uniform { perm, .. } =>
                         write!(kind_str, "{perm:?} permission").unwrap(),
-                    NewPermission::FreezeSensitive { freeze_perm, .. } if ty.is_freeze(*this.tcx, this.param_env()) =>
+                    NewPermission::FreezeSensitive { freeze_perm, .. } if ty.is_freeze(*this.tcx, this.typing_env()) =>
                         write!(kind_str, "{freeze_perm:?} permission").unwrap(),
                     NewPermission::FreezeSensitive { freeze_perm, nonfreeze_perm, .. }  =>
                         write!(kind_str, "{freeze_perm:?}/{nonfreeze_perm:?} permission for frozen/non-frozen parts").unwrap(),
@@ -626,7 +626,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(())
             };
 
-            let (_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
+            let alloc_kind = this.get_alloc_info(alloc_id).kind;
             match alloc_kind {
                 AllocKind::LiveData => {
                     // This should have alloc_extra data, but `get_alloc_extra` can still fail
@@ -1017,7 +1017,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        let (_size, _align, kind) = this.get_alloc_info(alloc_id);
+        let kind = this.get_alloc_info(alloc_id).kind;
         match kind {
             AllocKind::LiveData => {
                 // This should have alloc_extra data, but `get_alloc_extra` can still fail

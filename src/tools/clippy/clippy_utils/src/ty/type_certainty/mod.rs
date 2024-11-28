@@ -302,9 +302,9 @@ fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bo
     // Check that all type parameters appear in the functions input types.
     (0..(generics.parent_count + generics.own_params.len()) as u32).all(|index| {
         fn_sig
-                .inputs()
-                .iter()
-                .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
+            .inputs()
+            .iter()
+            .any(|input_ty| contains_param(*input_ty.skip_binder(), index))
     })
 }
 

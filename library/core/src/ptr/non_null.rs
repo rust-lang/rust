@@ -131,7 +131,6 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> &'a MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -155,7 +154,6 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_mut<'a>(self) -> &'a mut MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -230,7 +228,6 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Converts a reference to a `NonNull` pointer.
     #[unstable(feature = "non_null_from_ref", issue = "130823")]
-    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
     #[inline]
     pub const fn from_ref(r: &T) -> Self {
         // SAFETY: A reference cannot be null.
@@ -239,7 +236,6 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Converts a mutable reference to a `NonNull` pointer.
     #[unstable(feature = "non_null_from_ref", issue = "130823")]
-    #[rustc_const_unstable(feature = "non_null_from_ref", issue = "130823")]
     #[inline]
     pub const fn from_mut(r: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -253,10 +249,9 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
     #[unstable(feature = "ptr_metadata", issue = "81513")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn from_raw_parts(
-        data_pointer: NonNull<()>,
+        data_pointer: NonNull<impl super::Thin>,
         metadata: <T as super::Pointee>::Metadata,
     ) -> NonNull<T> {
         // SAFETY: The result of `ptr::from::raw_parts_mut` is non-null because `data_pointer` is.
@@ -269,7 +264,6 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
-    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -635,7 +629,7 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
     #[rustc_const_stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_allow_const_fn_unstable(unchecked_neg)]
+    #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_neg))]
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -676,7 +670,7 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonNull { pointer: self.pointer.byte_sub(count) } }
     }
 
-    /// Calculates the distance between two pointers. The returned value is in
+    /// Calculates the distance between two pointers within the same allocation. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
     /// This is equivalent to `(self as isize - origin as isize) / (mem::size_of::<T>() as isize)`,
@@ -773,7 +767,7 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { self.pointer.offset_from(origin.pointer) }
     }
 
-    /// Calculates the distance between two pointers. The returned value is in
+    /// Calculates the distance between two pointers within the same allocation. The returned value is in
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
@@ -793,7 +787,7 @@ impl<T: ?Sized> NonNull<T> {
 
     // N.B. `wrapping_offset``, `wrapping_add`, etc are not implemented because they can wrap to null
 
-    /// Calculates the distance between two pointers, *where it's known that
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
     /// `self` is equal to or greater than `origin`*. The returned value is in
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
@@ -864,6 +858,25 @@ impl<T: ?Sized> NonNull<T> {
     {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
         unsafe { self.pointer.sub_ptr(subtracted.pointer) }
+    }
+
+    /// Calculates the distance between two pointers within the same allocation, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`sub_ptr`][NonNull::sub_ptr] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: NonNull<U>) -> usize {
+        // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
+        unsafe { self.pointer.byte_sub_ptr(origin.pointer) }
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -1179,8 +1192,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-    pub const fn align_offset(self, align: usize) -> usize
+    pub fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
     {
@@ -1211,98 +1223,10 @@ impl<T: ?Sized> NonNull<T> {
     /// assert!(ptr.is_aligned());
     /// assert!(!NonNull::new(ptr.as_ptr().wrapping_byte_add(1)).unwrap().is_aligned());
     /// ```
-    ///
-    /// # At compiletime
-    /// **Note: Alignment at compiletime is experimental and subject to change. See the
-    /// [tracking issue] for details.**
-    ///
-    /// At compiletime, the compiler may not know where a value will end up in memory.
-    /// Calling this function on a pointer created from a reference at compiletime will only
-    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
-    /// is never aligned if cast to a type with a stricter alignment than the reference's
-    /// underlying allocation.
-    ///
-    /// ```
-    /// #![feature(const_nonnull_new)]
-    /// #![feature(const_pointer_is_aligned)]
-    /// use std::ptr::NonNull;
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// const _: () = {
-    ///     let data = [AlignedI32(42), AlignedI32(42)];
-    ///     let ptr = NonNull::<AlignedI32>::new(&data[0] as *const _ as *mut _).unwrap();
-    ///     assert!(ptr.is_aligned());
-    ///
-    ///     // At runtime either `ptr1` or `ptr2` would be aligned, but at compiletime neither is aligned.
-    ///     let ptr1 = ptr.cast::<AlignedI64>();
-    ///     let ptr2 = unsafe { ptr.add(1).cast::<AlignedI64>() };
-    ///     assert!(!ptr1.is_aligned());
-    ///     assert!(!ptr2.is_aligned());
-    /// };
-    /// ```
-    ///
-    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
-    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
-    ///
-    /// ```
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
-    /// const COMPTIME_PTR: *const AlignedI32 = &AlignedI32(42);
-    /// const _: () = assert!(!COMPTIME_PTR.cast::<AlignedI64>().is_aligned());
-    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).cast::<AlignedI64>().is_aligned());
-    ///
-    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = COMPTIME_PTR;
-    /// assert_ne!(
-    ///     runtime_ptr.cast::<AlignedI64>().is_aligned(),
-    ///     runtime_ptr.wrapping_add(1).cast::<AlignedI64>().is_aligned(),
-    /// );
-    /// ```
-    ///
-    /// If a pointer is created from a fixed address, this function behaves the same during
-    /// runtime and compiletime.
-    ///
-    /// ```
-    /// #![feature(const_pointer_is_aligned)]
-    /// #![feature(const_nonnull_new)]
-    /// use std::ptr::NonNull;
-    ///
-    /// // On some platforms, the alignment of primitives is less than their size.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    /// #[repr(align(8))]
-    /// struct AlignedI64(i64);
-    ///
-    /// const _: () = {
-    ///     let ptr = NonNull::new(40 as *mut AlignedI32).unwrap();
-    ///     assert!(ptr.is_aligned());
-    ///
-    ///     // For pointers with a known address, runtime and compiletime behavior are identical.
-    ///     let ptr1 = ptr.cast::<AlignedI64>();
-    ///     let ptr2 = NonNull::new(ptr.as_ptr().wrapping_add(1)).unwrap().cast::<AlignedI64>();
-    ///     assert!(ptr1.is_aligned());
-    ///     assert!(!ptr2.is_aligned());
-    /// };
-    /// ```
-    ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[inline]
     #[must_use]
     #[stable(feature = "pointer_is_aligned", since = "1.79.0")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
-    pub const fn is_aligned(self) -> bool
+    pub fn is_aligned(self) -> bool
     where
         T: Sized,
     {
@@ -1339,85 +1263,10 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
     /// ```
-    ///
-    /// # At compiletime
-    /// **Note: Alignment at compiletime is experimental and subject to change. See the
-    /// [tracking issue] for details.**
-    ///
-    /// At compiletime, the compiler may not know where a value will end up in memory.
-    /// Calling this function on a pointer created from a reference at compiletime will only
-    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
-    /// cannot be stricter aligned than the reference's underlying allocation.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// const _: () = {
-    ///     let data = AlignedI32(42);
-    ///     let ptr = &data as *const AlignedI32;
-    ///
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///
-    ///     // At compiletime, we know for sure that the pointer isn't aligned to 8.
-    ///     assert!(!ptr.is_aligned_to(8));
-    ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
-    /// };
-    /// ```
-    ///
-    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
-    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// // On some platforms, the alignment of i32 is less than 4.
-    /// #[repr(align(4))]
-    /// struct AlignedI32(i32);
-    ///
-    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
-    /// const COMPTIME_PTR: *const AlignedI32 = &AlignedI32(42);
-    /// const _: () = assert!(!COMPTIME_PTR.is_aligned_to(8));
-    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).is_aligned_to(8));
-    ///
-    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = COMPTIME_PTR;
-    /// assert_ne!(
-    ///     runtime_ptr.is_aligned_to(8),
-    ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
-    /// );
-    /// ```
-    ///
-    /// If a pointer is created from a fixed address, this function behaves the same during
-    /// runtime and compiletime.
-    ///
-    /// ```
-    /// #![feature(pointer_is_aligned_to)]
-    /// #![feature(const_pointer_is_aligned)]
-    ///
-    /// const _: () = {
-    ///     let ptr = 40 as *const u8;
-    ///     assert!(ptr.is_aligned_to(1));
-    ///     assert!(ptr.is_aligned_to(2));
-    ///     assert!(ptr.is_aligned_to(4));
-    ///     assert!(ptr.is_aligned_to(8));
-    ///     assert!(!ptr.is_aligned_to(16));
-    /// };
-    /// ```
-    ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[inline]
     #[must_use]
     #[unstable(feature = "pointer_is_aligned_to", issue = "96284")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
-    pub const fn is_aligned_to(self, align: usize) -> bool {
+    pub fn is_aligned_to(self, align: usize) -> bool {
         self.pointer.is_aligned_to(align)
     }
 }
@@ -1526,7 +1375,6 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_never_returns_null_ptr]
     pub const fn as_mut_ptr(self) -> *mut T {
         self.as_non_null_ptr().as_ptr()
@@ -1572,7 +1420,6 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> &'a [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice`.
         unsafe { slice::from_raw_parts(self.cast().as_ptr(), self.len()) }
@@ -1637,7 +1484,6 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> &'a mut [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice_mut`.
         unsafe { slice::from_raw_parts_mut(self.cast().as_ptr(), self.len()) }

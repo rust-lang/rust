@@ -26,7 +26,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
+    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use tracing::{debug, instrument};
 
@@ -205,7 +205,6 @@ fn compare_method_predicate_entailment<'tcx>(
         trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
     );
 
-    // FIXME(effects): This should be replaced with a more dedicated method.
     let is_conditionally_const = tcx.is_conditionally_const(impl_def_id);
     if is_conditionally_const {
         // Augment the hybrid param-env with the const conditions
@@ -224,7 +223,7 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
@@ -509,7 +508,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -524,8 +523,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &misc_cause,
         param_env,
-        tcx.liberate_late_bound_regions(
-            impl_m.def_id,
+        infcx.instantiate_binder_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity(),
         ),
     );
@@ -537,10 +537,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_def_id);
-    let unnormalized_trait_sig = infcx
-        .instantiate_binder_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
+    let unnormalized_trait_sig = tcx
+        .liberate_late_bound_regions(
+            impl_m.def_id,
             tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
         )
         .fold_with(&mut collector);
@@ -703,8 +702,8 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve((ty, args)) {
-            Ok((ty, args)) => {
+        match infcx.fully_resolve(ty) {
+            Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
                 // contains `def_id`'s early-bound regions.
@@ -884,33 +883,27 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         self.tcx
     }
 
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = *t.kind() {
-            let mut mapped_args = Vec::with_capacity(args.len());
-            for (arg, v) in std::iter::zip(args, self.tcx.variances_of(def_id)) {
-                mapped_args.push(match (arg.unpack(), v) {
-                    // Skip uncaptured opaque args
-                    (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => arg,
-                    _ => arg.try_fold_with(self)?,
-                });
-            }
-            Ok(Ty::new_opaque(self.tcx, def_id, self.tcx.mk_args(&mapped_args)))
-        } else {
-            t.try_super_fold_with(self)
-        }
-    }
-
     fn try_fold_region(
         &mut self,
         region: ty::Region<'tcx>,
     ) -> Result<ty::Region<'tcx>, Self::Error> {
         match region.kind() {
-            // Remap late-bound regions from the function.
+            // Never remap bound regions or `'static`
+            ty::ReBound(..) | ty::ReStatic | ty::ReError(_) => return Ok(region),
+            // We always remap liberated late-bound regions from the function.
             ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyParam(ebr) if ebr.index as usize >= self.num_impl_args => {}
-            _ => return Ok(region),
+            ty::ReEarlyParam(ebr) => {
+                if ebr.index as usize >= self.num_impl_args {
+                    // Remap
+                } else {
+                    return Ok(region);
+                }
+            }
+            ty::ReVar(_) | ty::RePlaceholder(_) | ty::ReErased => unreachable!(
+                "should not have leaked vars or placeholders into hidden type of RPITIT"
+            ),
         }
 
         let e = if let Some(id_region) = self.map.get(&region) {
@@ -1101,7 +1094,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             // FIXME: we could potentially look at the impl's bounds to not point at bounds that
             // *are* present in the impl.
             for p in trait_generics.predicates {
-                if let hir::WherePredicate::BoundPredicate(pred) = p {
+                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                     for b in pred.bounds {
                         if let hir::GenericBound::Outlives(lt) = b {
                             bounds_span.push(lt.ident.span);
@@ -1114,7 +1107,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             {
                 let mut impl_bounds = 0;
                 for p in impl_generics.predicates {
-                    if let hir::WherePredicate::BoundPredicate(pred) = p {
+                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                         for b in pred.bounds {
                             if let hir::GenericBound::Outlives(_) = b {
                                 impl_bounds += 1;
@@ -1190,13 +1183,13 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::ImplContainer => impl_trait_ref.self_ty(),
-            ty::TraitContainer => tcx.types.self_param,
+            ty::AssocItemContainer::Impl => impl_trait_ref.self_ty(),
+            ty::AssocItemContainer::Trait => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
-        let param_env = ty::ParamEnv::reveal_all();
-
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let (infcx, param_env) = tcx
+            .infer_ctxt()
+            .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
@@ -1794,7 +1787,7 @@ fn compare_const_predicate_entailment<'tcx>(
             .map(|(predicate, _)| predicate),
     );
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -1947,7 +1940,7 @@ fn compare_type_predicate_entailment<'tcx>(
         );
     }
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds), Reveal::UserFacing);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
@@ -2084,7 +2077,7 @@ pub(super) fn check_type_bounds<'tcx>(
     // Only in a const implementation do we need to check that the `~const` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(
-            tcx.implied_const_bounds(trait_ty.def_id)
+            tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
                 .map(|(c, span)| {
                     traits::Obligation::new(
@@ -2225,10 +2218,8 @@ fn param_env_with_gat_bounds<'tcx>(
 
     for impl_ty in impl_tys_to_install {
         let trait_ty = match impl_ty.container {
-            ty::AssocItemContainer::TraitContainer => impl_ty,
-            ty::AssocItemContainer::ImplContainer => {
-                tcx.associated_item(impl_ty.trait_item_def_id.unwrap())
-            }
+            ty::AssocItemContainer::Trait => impl_ty,
+            ty::AssocItemContainer::Impl => tcx.associated_item(impl_ty.trait_item_def_id.unwrap()),
         };
 
         let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
@@ -2247,7 +2238,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     .into()
                 }
                 GenericParamDefKind::Lifetime => {
-                    let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                    let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
                     let bound_var = ty::BoundVariableKind::Region(kind);
                     bound_vars.push(bound_var);
                     ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
@@ -2309,7 +2300,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

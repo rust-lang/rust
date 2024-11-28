@@ -32,14 +32,12 @@
 //!
 //! Once you are familiar with the contents of the standard library you may
 //! begin to find the verbosity of the prose distracting. At this stage in your
-//! development you may want to press the <code>
-//! <svg style="width:0.75rem;height:0.75rem" viewBox="0 0 12 12"
-//! stroke="currentColor" fill="none">
-//! <path d="M2,2l4,4l4,-4M2,6l4,4l4,-4"/></svg> Summary</code> button near the
-//! top of the page to collapse it into a more skimmable view.
+//! development you may want to press the
+//! "<svg style="width:0.75rem;height:0.75rem" viewBox="0 0 12 12" stroke="currentColor" fill="none"><path d="M2,2l4,4l4,-4M2,6l4,4l4,-4"/></svg>&nbsp;Summary"
+//! button near the top of the page to collapse it into a more skimmable view.
 //!
 //! While you are looking at the top of the page, also notice the
-//! <code>source</code> link. Rust's API documentation comes with the source
+//! "Source" link. Rust's API documentation comes with the source
 //! code and you are encouraged to read it. The standard library source is
 //! generally high quality and a peek behind the curtains is
 //! often enlightening.
@@ -176,9 +174,6 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//!   - [`thread::scope()`]
-//!   - [`sync::mpmc`]
-//!   - [`sync::mpsc`]
 //! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
 //!
 //!
@@ -290,7 +285,6 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
-#![feature(const_float_methods)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -328,6 +322,7 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
+#![feature(build_hasher_default_const_new)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -345,6 +340,7 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_must_use)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
@@ -415,7 +411,7 @@
 // Only for const-ness:
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
-#![feature(const_hash)]
+#![feature(io_const_error)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
@@ -481,7 +477,7 @@ pub mod prelude;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
-#[stable(feature = "core_array", since = "1.36.0")]
+#[stable(feature = "core_array", since = "1.35.0")]
 pub use core::array;
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub use core::async_iter;
@@ -660,6 +656,8 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
+    #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
+    pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]

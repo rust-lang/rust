@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
                 check_is_ascii(cx, macro_call.span, recv, &range, None);
             }
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
-            && path.ident.name == sym!(contains)
+            && path.ident.name.as_str() == "contains"
             && let Some(higher::Range {
                 start: Some(start),
                 end: Some(end),

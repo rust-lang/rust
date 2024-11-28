@@ -67,7 +67,7 @@ where
         let maximal_certainty = match (impl_polarity, goal.predicate.polarity) {
             // In intercrate mode, this is ambiguous. But outside of intercrate,
             // it's not a real impl.
-            (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode(goal.param_env) {
+            (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Err(NoSolution),
             },
@@ -174,7 +174,7 @@ where
         // ideally we want to avoid, since we can make progress on this goal
         // via an alias bound or a locally-inferred hidden type instead.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            match ecx.typing_mode(goal.param_env) {
+            match ecx.typing_mode() {
                 TypingMode::Coherence | TypingMode::PostAnalysis => {
                     unreachable!("rigid opaque outside of analysis: {goal:?}");
                 }
@@ -248,28 +248,6 @@ where
         )
     }
 
-    fn consider_builtin_pointer_like_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        if goal.predicate.polarity != ty::PredicatePolarity::Positive {
-            return Err(NoSolution);
-        }
-
-        let cx = ecx.cx();
-        // But if there are inference variables, we have to wait until it's resolved.
-        if (goal.param_env, goal.predicate.self_ty()).has_non_region_infer() {
-            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-        }
-
-        if cx.layout_is_pointer_like(goal.param_env, goal.predicate.self_ty()) {
-            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-        } else {
-            Err(NoSolution)
-        }
-    }
-
     fn consider_builtin_fn_ptr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -322,6 +300,9 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
             ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
         });
@@ -331,8 +312,6 @@ where
                 ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
             })
             .upcast(cx);
-        // A built-in `Fn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -360,6 +339,9 @@ where
                 // This region doesn't matter because we're throwing away the coroutine type
                 Region::new_static(cx),
             )?;
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
                 ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
@@ -376,8 +358,6 @@ where
                 ])
             })
             .upcast(cx);
-        // A built-in `AsyncFn` impl only holds if the output is sized.
-        // (FIXME: technically we only need to check this if the type is a fn ptr...)
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -608,8 +588,6 @@ where
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
         }
-
-        // FIXME(effects): Implement this when we get const working in the new solver
 
         // `Destruct` is automatically implemented for every type in
         // non-const environments.

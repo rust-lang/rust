@@ -54,12 +54,14 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-trait-bounds
            min-ident-chars-threshold
            missing-docs-in-crate-items
+           module-item-order-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
            semicolon-inside-block-ignore-singleline
            semicolon-outside-block-ignore-multiline
            single-char-binding-names-threshold
+           source-item-ordering
            stack-size-threshold
            standard-macro-braces
            struct-field-name-threshold
@@ -68,6 +70,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            too-large-for-stack
            too-many-arguments-threshold
            too-many-lines-threshold
+           trait-assoc-item-kinds-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size
@@ -138,12 +141,14 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-trait-bounds
            min-ident-chars-threshold
            missing-docs-in-crate-items
+           module-item-order-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
            semicolon-inside-block-ignore-singleline
            semicolon-outside-block-ignore-multiline
            single-char-binding-names-threshold
+           source-item-ordering
            stack-size-threshold
            standard-macro-braces
            struct-field-name-threshold
@@ -152,6 +157,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            too-large-for-stack
            too-many-arguments-threshold
            too-many-lines-threshold
+           trait-assoc-item-kinds-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size
@@ -222,12 +228,14 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            max-trait-bounds
            min-ident-chars-threshold
            missing-docs-in-crate-items
+           module-item-order-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
            semicolon-inside-block-ignore-singleline
            semicolon-outside-block-ignore-multiline
            single-char-binding-names-threshold
+           source-item-ordering
            stack-size-threshold
            standard-macro-braces
            struct-field-name-threshold
@@ -236,6 +244,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            too-large-for-stack
            too-many-arguments-threshold
            too-many-lines-threshold
+           trait-assoc-item-kinds-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size

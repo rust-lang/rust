@@ -146,7 +146,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
         // Wasm statics with custom link sections get special treatment as they
         // go into custom sections of the wasm executable.
-        if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if self.tcx.sess.target.is_like_wasm {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
@@ -215,7 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
             self.layout_of(ty).gcc_type(self)
         };
 

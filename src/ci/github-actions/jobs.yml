@@ -6,6 +6,8 @@ runners:
 
   - &job-linux-4c
     os: ubuntu-20.04
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
     <<: *base-job
 
   # Large runner used mainly for its bigger disk capacity
@@ -46,7 +48,7 @@ runners:
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -135,7 +137,7 @@ auto:
   - image: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-android
     <<: *job-linux-4c
@@ -156,28 +158,28 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-loongarch64-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-loongarch64-musl
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-ohos
     <<: *job-linux-4c
 
   - image: dist-powerpc-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-powerpc64-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-riscv64-linux
     <<: *job-linux-4c
 
   - image: dist-s390x-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - image: dist-various-1
     <<: *job-linux-4c
@@ -205,7 +207,7 @@ auto:
   - image: dist-x86_64-musl
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c
+    <<: *job-linux-4c
 
   - image: dist-x86_64-netbsd
     <<: *job-linux-4c
@@ -382,13 +384,12 @@ auto:
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
-  - image: x86_64-msvc-ext
+  # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
+  - image: x86_64-msvc-ext1
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
-      HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
-      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-    <<: *job-windows-8c
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+    <<: *job-windows
 
   # Temporary builder to workaround CI issues
   # See <https://github.com/rust-lang/rust/issues/127883>
@@ -402,6 +403,15 @@ auto:
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+    <<: *job-windows
+
+  # Run `checktools.sh` and upload the toolstate file.
+  - image: x86_64-msvc-ext3
+    env:
+      SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows
 
   # 32/64-bit MinGW builds.
@@ -463,7 +473,7 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-aarch64-msvc
     env:
@@ -475,7 +485,7 @@ auto:
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
-    <<: *job-windows-8c
+    <<: *job-windows
 
   - image: dist-i686-mingw
     env:

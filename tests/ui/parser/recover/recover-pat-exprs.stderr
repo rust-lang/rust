@@ -4,7 +4,7 @@ error: expected a pattern, found an expression
 LL |         x.y => (),
    |         ^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.y => (),
@@ -27,7 +27,7 @@ error: expected a pattern, found an expression
 LL |         x.0 => (),
    |         ^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.0 => (),
@@ -51,7 +51,7 @@ error: expected a pattern, found an expression
 LL |         x._0 => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x._0 => (),
@@ -76,7 +76,7 @@ error: expected a pattern, found an expression
 LL |         x.0.1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.0.1 => (),
@@ -101,7 +101,7 @@ error: expected a pattern, found an expression
 LL |         x.4.y.17.__z => (),
    |         ^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.4.y.17.__z => (),
@@ -156,7 +156,7 @@ error: expected a pattern, found an expression
 LL |         x[0] => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x[0] => (),
@@ -178,7 +178,7 @@ error: expected a pattern, found an expression
 LL |         x[..] => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x[..] => (),
@@ -228,7 +228,7 @@ error: expected a pattern, found an expression
 LL |         x.f() => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.f() => (),
@@ -250,7 +250,7 @@ error: expected a pattern, found an expression
 LL |         x._f() => (),
    |         ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x._f() => (),
@@ -273,7 +273,7 @@ error: expected a pattern, found an expression
 LL |         x? => (),
    |         ^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x? => (),
@@ -297,7 +297,7 @@ error: expected a pattern, found an expression
 LL |         ().f() => (),
    |         ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == ().f() => (),
@@ -322,7 +322,7 @@ error: expected a pattern, found an expression
 LL |         (0, x)?.f() => (),
    |         ^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == (0, x)?.f() => (),
@@ -347,7 +347,7 @@ error: expected a pattern, found an expression
 LL |         x.f().g() => (),
    |         ^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.f().g() => (),
@@ -372,7 +372,7 @@ error: expected a pattern, found an expression
 LL |         0.f()?.g()?? => (),
    |         ^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == 0.f()?.g()?? => (),
@@ -397,7 +397,7 @@ error: expected a pattern, found an expression
 LL |         x as usize => (),
    |         ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x as usize => (),
@@ -419,7 +419,7 @@ error: expected a pattern, found an expression
 LL |         0 as usize => (),
    |         ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == 0 as usize => (),
@@ -442,7 +442,7 @@ error: expected a pattern, found an expression
 LL |         x.f().0.4 as f32 => (),
    |         ^^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == x.f().0.4 as f32 => (),
@@ -466,7 +466,7 @@ error: expected a pattern, found an expression
 LL |         1 + 1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == 1 + 1 => (),
@@ -488,7 +488,7 @@ error: expected a pattern, found an expression
 LL |         (1 + 2) * 3 => (),
    |         ^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == (1 + 2) * 3 => (),
@@ -511,7 +511,7 @@ error: expected a pattern, found an expression
 LL |         x.0 > 2 => (),
    |         ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == (x.0 > 2) => (),
@@ -536,7 +536,7 @@ error: expected a pattern, found an expression
 LL |         x.0 == 2 => (),
    |         ^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == (x.0 == 2) => (),
@@ -561,7 +561,7 @@ error: expected a pattern, found an expression
 LL |         (x, y.0 > 2) if x != 0 => (),
    |             ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
 LL |         (x, val) if x != 0 && val == (y.0 > 2) => (),
@@ -583,7 +583,7 @@ error: expected a pattern, found an expression
 LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    |             ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
 LL |         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
@@ -623,7 +623,7 @@ error: expected a pattern, found an expression
 LL |         u8::MAX.abs() => (),
    |         ^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == u8::MAX.abs() => (),
@@ -645,7 +645,7 @@ error: expected a pattern, found an expression
 LL |         z @ w @ v.u() => (),
    |                 ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         z @ w @ val if val == v.u() => (),
@@ -670,7 +670,7 @@ error: expected a pattern, found an expression
 LL |         y.ilog(3) => (),
    |         ^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == y.ilog(3) => (),
@@ -695,7 +695,7 @@ error: expected a pattern, found an expression
 LL |         n + 1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == n + 1 => (),
@@ -720,7 +720,7 @@ error: expected a pattern, found an expression
 LL |         ("".f() + 14 * 8) => (),
    |          ^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         (val) if val == "".f() + 14 * 8 => (),
@@ -745,7 +745,7 @@ error: expected a pattern, found an expression
 LL |         f?() => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL |         val if val == f?() => (),
@@ -770,7 +770,7 @@ error: expected a pattern, found an expression
 LL |     let 1 + 1 = 2;
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected one of `)`, `,`, `@`, or `|`, found `*`
   --> $DIR/recover-pat-exprs.rs:104:28
@@ -787,7 +787,7 @@ error: expected a pattern, found an expression
 LL |         (1 + 2) * 3 => (),
    |          ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:75:5
@@ -795,7 +795,7 @@ error: expected a pattern, found an expression
 LL |     1 + 2 * PI.cos() => 2,
    |     ^^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:83:9
@@ -803,7 +803,7 @@ error: expected a pattern, found an expression
 LL |         x.sqrt() @ .. => (),
    |         ^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch18-00-patterns.html>
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: aborting due to 45 previous errors
 

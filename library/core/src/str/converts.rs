@@ -82,7 +82,6 @@ use crate::{mem, ptr};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_str_from_utf8_shared", since = "1.63.0")]
-#[rustc_allow_const_fn_unstable(str_internals)]
 #[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
@@ -218,7 +217,6 @@ pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
 #[inline]
 #[must_use]
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
-#[rustc_const_unstable(feature = "str_from_raw_parts", issue = "119206")]
 pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe { &*ptr::from_raw_parts(ptr, len) }
@@ -237,7 +235,6 @@ pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
 #[inline]
 #[must_use]
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
-#[rustc_const_unstable(feature = "const_str_from_raw_parts_mut", issue = "119206")]
 pub const unsafe fn from_raw_parts_mut<'a>(ptr: *mut u8, len: usize) -> &'a mut str {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe { &mut *ptr::from_raw_parts_mut(ptr, len) }

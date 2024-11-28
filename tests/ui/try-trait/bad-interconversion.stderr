@@ -67,7 +67,7 @@ LL |     ControlFlow::Continue(Err("hello")?)
    |                                       ^ this `?` produces `Result<Infallible, &str>`, which is incompatible with `ControlFlow<String>`
    |
    = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `ControlFlow<String>`
-   = help: the trait `FromResidual<ControlFlow<String, Infallible>>` is implemented for `ControlFlow<String>`
+           but trait `FromResidual<ControlFlow<String, Infallible>>` is implemented for it
    = help: for that trait implementation, expected `ControlFlow<String, Infallible>`, found `Result<Infallible, &str>`
 
 error[E0277]: the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
@@ -79,7 +79,7 @@ LL |     Some(3)?;
    |            ^ this `?` produces `Option<Infallible>`, which is incompatible with `ControlFlow<u64>`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `ControlFlow<u64>`
-   = help: the trait `FromResidual<ControlFlow<u64, Infallible>>` is implemented for `ControlFlow<u64>`
+           but trait `FromResidual<ControlFlow<u64, Infallible>>` is implemented for it
    = help: for that trait implementation, expected `ControlFlow<u64, Infallible>`, found `Option<Infallible>`
 
 error[E0277]: the `?` operator in a function that returns `ControlFlow<B, _>` can only be used on other `ControlFlow<B, _>`s (with the same Break type)
@@ -90,9 +90,9 @@ LL | fn control_flow_to_control_flow() -> ControlFlow<i64> {
 LL |     ControlFlow::Break(4_u8)?;
    |                             ^ this `?` produces `ControlFlow<u8, Infallible>`, which is incompatible with `ControlFlow<i64>`
    |
-   = help: the trait `FromResidual<ControlFlow<u8, Infallible>>` is not implemented for `ControlFlow<i64>`
    = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
-   = help: the trait `FromResidual<ControlFlow<i64, Infallible>>` is implemented for `ControlFlow<i64>`
+   = help: the trait `FromResidual<ControlFlow<u8, _>>` is not implemented for `ControlFlow<i64>`
+           but trait `FromResidual<ControlFlow<i64, _>>` is implemented for it
    = help: for that trait implementation, expected `i64`, found `u8`
 
 error: aborting due to 8 previous errors

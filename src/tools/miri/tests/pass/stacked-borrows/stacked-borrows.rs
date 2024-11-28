@@ -8,6 +8,7 @@ fn main() {
     mut_raw_then_mut_shr();
     mut_shr_then_mut_raw();
     mut_raw_mut();
+    mut_raw_mut2();
     partially_invalidate_mut();
     drop_after_sharing();
     // direct_mut_to_const_raw();
@@ -94,6 +95,18 @@ fn mut_raw_mut() {
         // we cannot use xref2; see `compile-fail/stacked-borrows/illegal_read4.rs`
     }
     assert_eq!(x, 4);
+}
+
+// A variant of `mut_raw_mut` that does *not* get accepted by Tree Borrows.
+// It's kind of an accident that we accept it in Stacked Borrows...
+fn mut_raw_mut2() {
+    unsafe {
+        let mut root = 0;
+        let to = &mut root as *mut i32;
+        *to = 0;
+        let _val = root;
+        *to = 0;
+    }
 }
 
 fn partially_invalidate_mut() {

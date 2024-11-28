@@ -427,11 +427,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks if the first line in the documentation of items listed in module page is too long.
+    /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
     ///
     /// ### Why is this bad?
-    /// Documentation will show the first paragraph of the doscstring in the summary page of a
-    /// module, so having a nice, short summary in the first paragraph is part of writing good docs.
+    /// Documentation will show the first paragraph of the docstring in the summary page of a
+    /// module. Having a nice, short summary in the first paragraph is part of writing good docs.
     ///
     /// ### Example
     /// ```no_run
@@ -453,7 +453,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.82.0"]
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
     nursery,
-    "ensure that the first line of a documentation paragraph isn't too long"
+    "ensure the first documentation paragraph is short"
 }
 
 declare_clippy_lint! {

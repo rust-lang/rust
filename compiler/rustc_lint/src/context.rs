@@ -14,12 +14,11 @@ use rustc_feature::Features;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_infer::traits::Reveal;
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
-use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
 use rustc_session::lint::{
     BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
 };
@@ -702,10 +701,13 @@ impl<'tcx> LateContext<'tcx> {
     /// The typing mode of the currently visited node. Use this when
     /// building a new `InferCtxt`.
     pub fn typing_mode(&self) -> TypingMode<'tcx> {
-        debug_assert_eq!(self.param_env.reveal(), Reveal::UserFacing);
         // FIXME(#132279): In case we're in a body, we should use a typing
         // mode which reveals the opaque types defined by that body.
         TypingMode::non_body_analysis()
+    }
+
+    pub fn typing_env(&self) -> TypingEnv<'tcx> {
+        TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
     }
 
     /// Gets the type-checking results for the current body,
@@ -906,7 +908,7 @@ impl<'tcx> LateContext<'tcx> {
             .find_by_name_and_kind(tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
             .and_then(|assoc| {
                 let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
-                tcx.try_normalize_erasing_regions(self.param_env, proj).ok()
+                tcx.try_normalize_erasing_regions(self.typing_env(), proj).ok()
             })
     }
 
@@ -1010,10 +1012,10 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for LateContext<'tcx> {
     }
 }
 
-impl<'tcx> ty::layout::HasParamEnv<'tcx> for LateContext<'tcx> {
+impl<'tcx> ty::layout::HasTypingEnv<'tcx> for LateContext<'tcx> {
     #[inline]
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env()
     }
 }
 

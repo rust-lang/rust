@@ -41,14 +41,15 @@ pub use libc;
 pub use object;
 pub use regex;
 pub use serde_json;
+pub use similar;
 pub use wasmparser;
 // tidy-alphabetical-end
 
 // Re-exports of external dependencies.
-pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rustdoc};
+pub use external_deps::{c_build, c_cxx_compiler, clang, htmldocck, llvm, python, rustc, rustdoc};
 
 // These rely on external dependencies.
-pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
+pub use c_cxx_compiler::{Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, gcc};
 pub use c_build::{
     build_native_dynamic_lib, build_native_static_lib, build_native_static_lib_cxx,
     build_native_static_lib_optimized,
@@ -77,7 +78,7 @@ pub use env::{env_var, env_var_os, set_current_dir};
 pub use run::{cmd, run, run_fail, run_with_args};
 
 /// Helpers for checking target information.
-pub use targets::{is_darwin, is_msvc, is_windows, llvm_components_contain, target, uname, apple_os};
+pub use targets::{is_aix, is_darwin, is_msvc, is_windows, llvm_components_contain, target, uname, apple_os};
 
 /// Helpers for building names of output artifacts that are potentially target-specific.
 pub use artifact_names::{

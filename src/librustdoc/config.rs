@@ -17,7 +17,7 @@ use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
@@ -96,7 +96,7 @@ pub(crate) struct Options {
     /// Unstable (`-Z`) options strings to pass to the compiler.
     pub(crate) unstable_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
-    pub(crate) target: TargetTriple,
+    pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
@@ -178,7 +178,7 @@ impl fmt::Debug for Options {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct FmtExterns<'a>(&'a Externs);
 
-        impl<'a> fmt::Debug for FmtExterns<'a> {
+        impl fmt::Debug for FmtExterns<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_map().entries(self.0.iter()).finish()
             }
@@ -508,7 +508,7 @@ impl Options {
         };
 
         let parts_out_dir =
-            match matches.opt_str("parts-out-dir").map(|p| PathToParts::from_flag(p)).transpose() {
+            match matches.opt_str("parts-out-dir").map(PathToParts::from_flag).transpose() {
                 Ok(parts_out_dir) => parts_out_dir,
                 Err(e) => dcx.fatal(e),
             };

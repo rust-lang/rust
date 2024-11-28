@@ -40,16 +40,17 @@ use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
     LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo, current_apple_deployment_target,
+    SplitDebuginfo,
 };
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder, ImportLibraryItem};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
+use super::{apple, versioned_llvm_target};
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
     looks_like_rust_object_file,
@@ -68,7 +69,7 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
 pub fn link_binary(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
+    codegen_results: CodegenResults,
     outputs: &OutputFilenames,
 ) -> Result<(), ErrorGuaranteed> {
     let _timer = sess.timer("link_binary");
@@ -84,11 +85,7 @@ pub fn link_binary(
         }
 
         if invalid_output_for_target(sess, crate_type) {
-            bug!(
-                "invalid output type `{:?}` for target os `{}`",
-                crate_type,
-                sess.opts.target_triple
-            );
+            bug!("invalid output type `{:?}` for target `{}`", crate_type, sess.opts.target_triple);
         }
 
         sess.time("link_binary_check_files_are_writeable", || {
@@ -119,7 +116,7 @@ pub fn link_binary(
                     link_rlib(
                         sess,
                         archive_builder_builder,
-                        codegen_results,
+                        &codegen_results,
                         RlibFlavor::Normal,
                         &path,
                     )?
@@ -129,7 +126,7 @@ pub fn link_binary(
                     link_staticlib(
                         sess,
                         archive_builder_builder,
-                        codegen_results,
+                        &codegen_results,
                         &out_filename,
                         &path,
                     )?;
@@ -140,7 +137,7 @@ pub fn link_binary(
                         archive_builder_builder,
                         crate_type,
                         &out_filename,
-                        codegen_results,
+                        &codegen_results,
                         path.as_ref(),
                     )?;
                 }
@@ -498,16 +495,35 @@ fn create_dll_import_libs<'a>(
 
             let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
 
-            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+            let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
                     if sess.target.arch == "x86" {
-                        (
-                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
-                            import.ordinal(),
-                        )
+                        ImportLibraryItem {
+                            name: common::i686_decorated_name(
+                                import,
+                                mingw_gnu_toolchain,
+                                false,
+                                false,
+                            ),
+                            ordinal: import.ordinal(),
+                            symbol_name: import.is_missing_decorations().then(|| {
+                                common::i686_decorated_name(
+                                    import,
+                                    mingw_gnu_toolchain,
+                                    false,
+                                    true,
+                                )
+                            }),
+                            is_data: !import.is_fn,
+                        }
                     } else {
-                        (import.name.to_string(), import.ordinal())
+                        ImportLibraryItem {
+                            name: import.name.to_string(),
+                            ordinal: import.ordinal(),
+                            symbol_name: None,
+                            is_data: !import.is_fn,
+                        }
                     }
                 })
                 .collect();
@@ -515,7 +531,7 @@ fn create_dll_import_libs<'a>(
             archive_builder_builder.create_dll_import_lib(
                 sess,
                 &raw_dylib_name,
-                import_name_and_ordinal_vector,
+                items,
                 &output_path,
             );
 
@@ -761,6 +777,16 @@ fn link_natively(
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
     let self_contained_components = self_contained_components(sess, crate_type);
+
+    // On AIX, we ship all libraries as .a big_af archive
+    // the expected format is lib<name>.a(libname.so) for the actual
+    // dynamic library. So we link to a temporary .so file to be archived
+    // at the final out_filename location
+    let should_archive = crate_type != CrateType::Executable && sess.target.is_like_aix;
+    let archive_member =
+        should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
+    let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
+
     let mut cmd = linker_with_args(
         &linker_path,
         flavor,
@@ -768,7 +794,7 @@ fn link_natively(
         archive_builder_builder,
         crate_type,
         tmpdir,
-        out_filename,
+        temp_filename,
         codegen_results,
         self_contained_components,
     )?;
@@ -995,8 +1021,9 @@ fn link_natively(
                         && (code < 1000 || code > 9999)
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
+                        // FIXME(cc-rs#1265) pass only target arch to find_tool()
                         let has_linker = windows_registry::find_tool(
-                            sess.opts.target_triple.triple(),
+                            sess.opts.target_triple.tuple(),
                             "link.exe",
                         )
                         .is_some();
@@ -1087,33 +1114,34 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        // Use system `strip` when running on host macOS.
-        // <https://github.com/rust-lang/rust/pull/130781>
-        let stripcmd = if cfg!(target_os = "macos") { "/usr/bin/strip" } else { "strip" };
+        let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-S"])
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, None)
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[])
             }
             (Strip::None, _) => {}
         }
     }
 
-    if sess.target.os == "illumos" {
+    if sess.target.is_like_solaris {
         // Many illumos systems will have both the native 'strip' utility and
         // the GNU one. Use the native version explicitly and do not rely on
         // what's in the path.
-        let stripcmd = "/usr/bin/strip";
+        //
+        // If cross-compiling and there is not a native version, then use
+        // `llvm-strip` and hope.
+        let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
             }
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
@@ -1122,18 +1150,32 @@ fn link_natively(
     }
 
     if sess.target.is_like_aix {
+        // `llvm-strip` doesn't work for AIX - their strip must be used.
+        if !sess.host.is_like_aix {
+            sess.dcx().emit_warn(errors::AixStripNotUsed);
+        }
         let stripcmd = "/usr/bin/strip";
         match strip {
             Strip::Debuginfo => {
                 // FIXME: AIX's strip utility only offers option to strip line number information.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-l"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
+                    "-X32_64", "-l",
+                ])
             }
             Strip::Symbols => {
                 // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-r"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
+                    "-X32_64", "-r",
+                ])
             }
             Strip::None => {}
         }
+    }
+
+    if should_archive {
+        let mut ab = archive_builder_builder.new_archive_builder(sess);
+        ab.add_file(temp_filename);
+        ab.build(out_filename);
     }
 
     Ok(())
@@ -1143,12 +1185,17 @@ fn strip_symbols_with_external_utility(
     sess: &Session,
     util: &str,
     out_filename: &Path,
-    option: Option<&str>,
+    options: &[&str],
 ) {
     let mut cmd = Command::new(util);
-    if let Some(option) = option {
-        cmd.arg(option);
+    cmd.args(options);
+
+    let mut new_path = sess.get_tools_search_paths(false);
+    if let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
     }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
     let prog = cmd.arg(out_filename).output();
     match prog {
         Ok(prog) => {
@@ -1322,10 +1369,8 @@ fn link_sanitizer_runtime(
         } else {
             let default_sysroot =
                 filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
-            let default_tlib = filesearch::make_target_lib_path(
-                &default_sysroot,
-                sess.opts.target_triple.triple(),
-            );
+            let default_tlib =
+                filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.tuple());
             default_tlib
         }
     }
@@ -1620,7 +1665,7 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
             return file_path;
         }
     }
-    for search_path in sess.target_filesearch(PathKind::Native).search_paths() {
+    for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
             return file_path;
@@ -2447,7 +2492,7 @@ fn add_order_independent_options(
     if flavor == LinkerFlavor::Llbc {
         cmd.link_args(&[
             "--target",
-            sess.target.llvm_target.as_ref(),
+            &versioned_llvm_target(sess),
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
@@ -3039,7 +3084,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
         };
 
-        let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+        let (major, minor, patch) = apple::deployment_target(sess);
         let min_version = format!("{major}.{minor}.{patch}");
 
         // The SDK version is used at runtime when compiling with a newer SDK / version of Xcode:
@@ -3109,7 +3154,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 
             // The presence of `-mmacosx-version-min` makes CC default to
             // macOS, and it sets the deployment target.
-            let (major, minor, patch) = current_apple_deployment_target(&sess.target);
+            let (major, minor, patch) = apple::deployment_target(sess);
             // Intentionally pass this as a single argument, Clang doesn't
             // seem to like it otherwise.
             cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));
@@ -3119,7 +3164,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
             //
             // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
         } else {
-            cmd.cc_args(&["-target", &sess.target.llvm_target]);
+            cmd.cc_args(&["-target", &versioned_llvm_target(sess)]);
         }
     }
 }
@@ -3278,23 +3323,6 @@ fn add_lld_args(
     let self_contained_cli = sess.opts.cg.link_self_contained.is_linker_enabled();
     let self_contained_target = self_contained_components.is_linker_enabled();
 
-    // FIXME: in the future, codegen backends may need to have more control over this process: they
-    // don't always support all the features the linker expects here, and vice versa. For example,
-    // at the time of writing this, lld expects a newer style of aarch64 TLS relocations that
-    // cranelift doesn't implement yet. That in turn can impact whether linking would succeed on
-    // such a target when using the `cg_clif` backend and lld.
-    //
-    // Until interactions between backends and linker features are expressible, we limit target
-    // specs to opt-in to lld only when we're on the llvm backend, where it's expected to work and
-    // tested on CI. As usual, the CLI still has precedence over this, so that users and developers
-    // can still override this default when needed (e.g. for tests).
-    let uses_llvm_backend =
-        matches!(sess.opts.unstable_opts.codegen_backend.as_deref(), None | Some("llvm"));
-    if !uses_llvm_backend && !self_contained_cli && sess.opts.cg.linker_flavor.is_none() {
-        // We bail if we're not using llvm and lld was not explicitly requested on the CLI.
-        return;
-    }
-
     let self_contained_linker = self_contained_cli || self_contained_target;
     if self_contained_linker && !sess.opts.cg.link_self_contained.is_linker_disabled() {
         let mut linker_path_exists = false;
@@ -3345,7 +3373,7 @@ fn add_lld_args(
         // targeting a different linker flavor on macOS, and that's also always
         // the case when targeting WASM.
         if sess.target.linker_flavor != sess.host.linker_flavor {
-            cmd.cc_arg(format!("--target={}", sess.target.llvm_target));
+            cmd.cc_arg(format!("--target={}", versioned_llvm_target(sess)));
         }
     }
 }

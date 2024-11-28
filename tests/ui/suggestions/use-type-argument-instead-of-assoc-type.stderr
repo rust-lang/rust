@@ -14,19 +14,6 @@ help: replace the generic bounds with the associated types
 LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
    |                                +++        +++
 
-error[E0191]: the value of the associated types `C` and `A` in `T` must be specified
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
-   |
-LL |     type A;
-   |     ------ `A` defined here
-LL |     type B;
-LL |     type C;
-   |     ------ `C` defined here
-...
-LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated types `A`, `C` must be specified
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0107, E0191.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.

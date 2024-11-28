@@ -1,5 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, effects, try_trait_v2, const_try)]
+#![feature(const_trait_impl, try_trait_v2, const_try)]
 use std::ops::{FromResidual, Try};
 
 struct TryMe;

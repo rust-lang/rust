@@ -1,6 +1,7 @@
 use std::assert_matches::assert_matches;
 
 use libc::{c_char, c_uint};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
@@ -9,7 +10,6 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Pos, Span, Symbol, sym};
-use rustc_target::abi::*;
 use rustc_target::asm::*;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -45,7 +45,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
                     let is_target_supported = |reg_class: InlineAsmRegClass| {
-                        for &(_, feature) in reg_class.supported_types(asm_arch) {
+                        for &(_, feature) in reg_class.supported_types(asm_arch, true) {
                             if let Some(feature) = feature {
                                 if self
                                     .tcx
@@ -85,7 +85,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         }
                         continue;
                     } else if !is_target_supported(reg.reg_class())
-                        || reg.reg_class().is_clobber_only(asm_arch)
+                        || reg.reg_class().is_clobber_only(asm_arch, true)
                     {
                         // We turn discarded outputs into clobber constraints
                         // if the target feature needed by the register class is
@@ -268,6 +268,15 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::S390x => {
                     constraints.push("~{cc}".to_string());
                 }
+                InlineAsmArch::Sparc | InlineAsmArch::Sparc64 => {
+                    // In LLVM, ~{icc} represents icc and xcc in 64-bit code.
+                    // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/SparcRegisterInfo.td#L64
+                    constraints.push("~{icc}".to_string());
+                    constraints.push("~{fcc0}".to_string());
+                    constraints.push("~{fcc1}".to_string());
+                    constraints.push("~{fcc2}".to_string());
+                    constraints.push("~{fcc3}".to_string());
+                }
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
@@ -333,24 +342,32 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
-        // Switch to the 'normal' basic block if we did an `invoke` instead of a `call`
-        if let Some(dest) = dest {
-            self.switch_to_block(dest);
-        }
+        // Write results to outputs. We need to do this for all possible control flow.
+        //
+        // Note that `dest` maybe populated with unreachable_block when asm goto with outputs
+        // is used (because we need to codegen callbr which always needs a destination), so
+        // here we use the NORETURN option to determine if `dest` should be used.
+        for block in (if options.contains(InlineAsmOptions::NORETURN) { None } else { Some(dest) })
+            .into_iter()
+            .chain(labels.iter().copied().map(Some))
+        {
+            if let Some(block) = block {
+                self.switch_to_block(block);
+            }
 
-        // Write results to outputs
-        for (idx, op) in operands.iter().enumerate() {
-            if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
-            | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
-            {
-                let value = if output_types.len() == 1 {
-                    result
-                } else {
-                    self.extract_value(result, op_idx[&idx] as u64)
-                };
-                let value =
-                    llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
-                OperandValue::Immediate(value).store(self, place);
+            for (idx, op) in operands.iter().enumerate() {
+                if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
+                | InlineAsmOperandRef::InOut { reg, out_place: Some(place), .. } = *op
+                {
+                    let value = if output_types.len() == 1 {
+                        result
+                    } else {
+                        self.extract_value(result, op_idx[&idx] as u64)
+                    };
+                    let value =
+                        llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);
+                    OperandValue::Immediate(value).store(self, place);
+                }
             }
         }
     }
@@ -638,7 +655,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
             PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
             PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
-            PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+            PowerPC(PowerPCInlineAsmRegClass::cr)
+            | PowerPC(PowerPCInlineAsmRegClass::xer)
+            | PowerPC(PowerPCInlineAsmRegClass::vreg) => {
                 unreachable!("clobber-only")
             }
             RiscV(RiscVInlineAsmRegClass::reg) => "r",
@@ -667,9 +686,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::reg) => "r",
             S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             S390x(S390xInlineAsmRegClass::freg) => "f",
-            S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+            S390x(S390xInlineAsmRegClass::vreg) => "v",
+            S390x(S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
+            Sparc(SparcInlineAsmRegClass::reg) => "r",
+            Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
             Msp430(Msp430InlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg) => "r",
             M68k(M68kInlineAsmRegClass::reg_addr) => "a",
@@ -763,6 +785,7 @@ fn modifier_to_llvm(
         },
         Avr(_) => None,
         S390x(_) => None,
+        Sparc(_) => None,
         Msp430(_) => None,
         SpirV(SpirVInlineAsmRegClass::reg) => bug!("LLVM backend does not support SPIR-V"),
         M68k(_) => None,
@@ -800,7 +823,9 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         PowerPC(PowerPCInlineAsmRegClass::reg) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
-        PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
+        PowerPC(PowerPCInlineAsmRegClass::cr)
+        | PowerPC(PowerPCInlineAsmRegClass::xer)
+        | PowerPC(PowerPCInlineAsmRegClass::vreg) => {
             unreachable!("clobber-only")
         }
         RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
@@ -828,9 +853,12 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         S390x(S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr) => cx.type_i32(),
         S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
-        S390x(S390xInlineAsmRegClass::vreg | S390xInlineAsmRegClass::areg) => {
+        S390x(S390xInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),
+        S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
+        Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),

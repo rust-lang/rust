@@ -10,19 +10,20 @@ use std::{fmt, process};
 
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use rustc_abi::{Align, ExternAbi, Size};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{
+    HasTyCtxt, HasTypingEnv, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
+};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
@@ -692,7 +693,7 @@ impl<'tcx> MiriMachine<'tcx> {
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
-                let target_triple = tcx.sess.opts.target_triple.triple();
+                let target_triple = tcx.sess.opts.target_triple.tuple();
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
                     panic!(
@@ -731,20 +732,20 @@ impl<'tcx> MiriMachine<'tcx> {
     }
 
     pub(crate) fn late_init(
-        this: &mut MiriInterpCx<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
         config: &MiriConfig,
         on_main_stack_empty: StackEmptyCallback<'tcx>,
     ) -> InterpResult<'tcx> {
-        EnvVars::init(this, config)?;
-        MiriMachine::init_extern_statics(this)?;
-        ThreadManager::init(this, on_main_stack_empty);
+        EnvVars::init(ecx, config)?;
+        MiriMachine::init_extern_statics(ecx)?;
+        ThreadManager::init(ecx, on_main_stack_empty);
         interp_ok(())
     }
 
-    pub(crate) fn add_extern_static(this: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
+    pub(crate) fn add_extern_static(ecx: &mut MiriInterpCx<'tcx>, name: &str, ptr: Pointer) {
         // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
-        this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
+        ecx.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }
 
     pub(crate) fn communicate(&self) -> bool {
@@ -1006,7 +1007,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn find_mir_or_eval_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         instance: ty::Instance<'tcx>,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1033,7 +1034,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'tcx>,
         fn_val: DynSym,
-        abi: Abi,
+        abi: ExternAbi,
         args: &[FnArg<'tcx, Provenance>],
         dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
@@ -1075,7 +1076,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(panic, Abi::Rust, &[], None, StackPopCleanup::Goto {
+        ecx.call_function(panic, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
             ret: None,
             unwind: mir::UnwindAction::Unreachable,
         })?;
@@ -1126,10 +1127,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             let Provenance::Concrete { alloc_id, .. } = ptr.provenance else {
                 panic!("extern_statics cannot contain wildcards")
             };
-            let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
+            let info = ecx.get_alloc_info(alloc_id);
             let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
-            let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
-            if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
+            let extern_decl_layout =
+                ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
+            if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
                 throw_unsup_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \
                     with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
@@ -1139,8 +1141,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                     krate = ecx.tcx.crate_name(def_id.krate),
                     decl_size = extern_decl_layout.size.bytes(),
                     decl_align = extern_decl_layout.align.abi.bytes(),
-                    shim_size = shim_size.bytes(),
-                    shim_align = shim_align.bytes(),
+                    shim_size = info.size.bytes(),
+                    shim_align = info.align.bytes(),
                 )
             }
             interp_ok(ptr)

@@ -831,8 +831,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.
         if tcx.features().generic_const_exprs() {
-            value =
-                value.fold_with(&mut EagerlyNormalizeConsts { tcx, param_env: self.fcx.param_env });
+            value = value.fold_with(&mut EagerlyNormalizeConsts::new(self.fcx));
         }
 
         value
@@ -873,14 +872,22 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
 
 struct EagerlyNormalizeConsts<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
 }
+impl<'tcx> EagerlyNormalizeConsts<'tcx> {
+    fn new(fcx: &FnCtxt<'_, 'tcx>) -> Self {
+        // FIXME(#132279, generic_const_exprs): Using `try_normalize_erasing_regions` here
+        // means we can't handle opaque types in their defining scope.
+        EagerlyNormalizeConsts { tcx: fcx.tcx, typing_env: fcx.typing_env(fcx.param_env) }
+    }
+}
+
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        self.tcx.try_normalize_erasing_regions(self.param_env, ct).unwrap_or(ct)
+        self.tcx.try_normalize_erasing_regions(self.typing_env, ct).unwrap_or(ct)
     }
 }

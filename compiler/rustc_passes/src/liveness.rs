@@ -468,7 +468,7 @@ const ACC_USE: u32 = 4;
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: rwu_table::RWUTable,
@@ -491,7 +491,8 @@ struct Liveness<'a, 'tcx> {
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
-        let param_env = ir.tcx.param_env(body_owner);
+        // FIXME(#132279): we're in a body here.
+        let typing_env = ty::TypingEnv::non_body_analysis(ir.tcx, body_owner);
         let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner);
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -502,7 +503,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         Liveness {
             ir,
             typeck_results,
-            param_env,
+            typing_env,
             closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
@@ -1297,7 +1298,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
+        if ty.is_inhabited_from(self.ir.tcx, m, self.typing_env) {
             return succ;
         }
         match self.ir.lnks[succ] {

@@ -294,12 +294,12 @@ fn clone_to_uninit() {
     let a = OsStr::new("hello.txt");
 
     let mut storage = vec![MaybeUninit::<u8>::uninit(); size_of_val::<OsStr>(a)];
-    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()) as *mut OsStr) };
+    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()).cast()) };
     assert_eq!(a.as_encoded_bytes(), unsafe { MaybeUninit::slice_assume_init_ref(&storage) });
 
     let mut b: Box<OsStr> = OsStr::new("world.exe").into();
     assert_eq!(size_of_val::<OsStr>(a), size_of_val::<OsStr>(&b));
     assert_ne!(a, &*b);
-    unsafe { a.clone_to_uninit(ptr::from_mut::<OsStr>(&mut b)) };
+    unsafe { a.clone_to_uninit(ptr::from_mut::<OsStr>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }

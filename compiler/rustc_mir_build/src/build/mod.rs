@@ -148,6 +148,10 @@ struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    // FIXME(@lcnr): Why does this use an `infcx`, there should be
+    // no shared type inference going on here. I feel like it would
+    // clearer to manually construct one where necessary or to provide
+    // a nice API for non-type inference trait system checks.
     infcx: InferCtxt<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
@@ -230,6 +234,10 @@ struct Capture<'tcx> {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.infcx.typing_env(self.param_env)
+    }
+
     fn is_bound_var_in_guard(&self, id: LocalVarId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
@@ -791,12 +799,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn finish(self) -> Body<'tcx> {
-        for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
-                span_bug!(self.fn_span, "no terminator on block {:?}", index);
-            }
-        }
-
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
@@ -810,6 +812,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             None,
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
+
+        for (index, block) in body.basic_blocks.iter().enumerate() {
+            if block.terminator.is_none() {
+                use rustc_middle::mir::pretty;
+                let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
+                pretty::write_mir_fn(
+                    self.tcx,
+                    &body,
+                    &mut |_, _| Ok(()),
+                    &mut std::io::stdout(),
+                    options,
+                )
+                .unwrap();
+                span_bug!(self.fn_span, "no terminator on block {:?}", index);
+            }
+        }
+
         body
     }
 

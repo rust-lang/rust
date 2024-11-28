@@ -203,7 +203,7 @@
 /// [nomicon]: ../../nomicon/phantom-data.html#an-exception-the-special-case-of-the-standard-library-and-its-unstable-may_dangle
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
-// FIXME(effects) #[const_trait]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Drop {
     /// Executes the destructor for this type.
     ///

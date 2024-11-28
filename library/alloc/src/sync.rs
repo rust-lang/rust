@@ -235,6 +235,7 @@ macro_rules! acquire {
 /// counting in general.
 ///
 /// [rc_examples]: crate::rc#examples
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
@@ -290,7 +291,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 }
 
 /// `Weak` is a version of [`Arc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation.
+///
+/// The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an <code>[Option]<[Arc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
@@ -2269,7 +2272,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
 
             let initialized_clone = unsafe {
                 // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
                 // Cast type of pointer, now that it is initialized.
                 in_progress.into_arc()
             };
@@ -3615,6 +3618,26 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> From<&mut [T]> for Arc<[T]> {
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let mut original = [1, 2, 3];
+    /// let original: &mut [i32] = &mut original;
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut [T]) -> Arc<[T]> {
+        Arc::from(&*v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Arc<str> {
     /// Allocates a reference-counted `str` and copies `v` into it.
@@ -3630,6 +3653,26 @@ impl From<&str> for Arc<str> {
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const str) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl From<&mut str> for Arc<str> {
+    /// Allocates a reference-counted `str` and copies `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let mut original = String::from("eggplant");
+    /// let original: &mut str = &mut original;
+    /// let shared: Arc<str> = Arc::from(original);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut str) -> Arc<str> {
+        Arc::from(&*v)
     }
 }
 

@@ -87,7 +87,7 @@ fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<HirId> {
 }
 
 fn check_arg(cx: &LateContext<'_>, raw_ptrs: &HirIdSet, arg: &hir::Expr<'_>) {
-    if path_to_local(arg).map_or(false, |id| raw_ptrs.contains(&id)) {
+    if path_to_local(arg).is_some_and(|id| raw_ptrs.contains(&id)) {
         span_lint(
             cx,
             NOT_UNSAFE_PTR_ARG_DEREF,

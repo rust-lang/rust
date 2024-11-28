@@ -3,10 +3,10 @@
 
 use std::cmp;
 
+use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_target::abi::{HasDataLayout, Size};
 use tracing::trace;
 
 use super::{AllocError, AllocRange, AllocResult, CtfeProvenance, Provenance, alloc_range};

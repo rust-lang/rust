@@ -46,7 +46,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -66,20 +66,7 @@ impl<'tcx> MonoItem<'tcx> {
     // change NON_INCR_MIN_CGU_SIZE as well.
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
-            MonoItem::Fn(instance) => {
-                match instance.def {
-                    // "Normal" functions size estimate: the number of
-                    // statements, plus one for the terminator.
-                    InstanceKind::Item(..)
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        let mir = tcx.instance_mir(instance.def);
-                        mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-                    }
-                    // Other compiler-generated shims size estimate: 1
-                    _ => 1,
-                }
-            }
+            MonoItem::Fn(instance) => tcx.size_estimate(instance),
             // Conservatively estimate the size of a static declaration or
             // assembly item to be 1.
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
@@ -555,4 +542,22 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 
         Symbol::intern(&cgu_name)
     }
+}
+
+/// See module-level docs of `rustc_monomorphize::collector` on some context for "mentioned" items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum CollectionMode {
+    /// Collect items that are used, i.e., actually needed for codegen.
+    ///
+    /// Which items are used can depend on optimization levels, as MIR optimizations can remove
+    /// uses.
+    UsedItems,
+    /// Collect items that are mentioned. The goal of this mode is that it is independent of
+    /// optimizations: the set of "mentioned" items is computed before optimizations are run.
+    ///
+    /// The exact contents of this set are *not* a stable guarantee. (For instance, it is currently
+    /// computed after drop-elaboration. If we ever do some optimizations even in debug builds, we
+    /// might decide to run them before computing mentioned items.) The key property of this set is
+    /// that it is optimization-independent.
+    MentionedItems,
 }

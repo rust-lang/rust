@@ -1,5 +1,5 @@
 Function name: panic_unwind::main
-Raw bytes (65): 0x[01, 01, 08, 01, 1b, 05, 1f, 09, 0d, 03, 11, 16, 05, 03, 11, 05, 1f, 09, 0d, 09, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 16, 01, 0c, 00, 1a, 05, 00, 1b, 02, 0a, 12, 02, 13, 00, 20, 09, 00, 21, 02, 0a, 0d, 02, 0a, 00, 0b, 1b, 01, 09, 00, 17, 11, 02, 05, 01, 02]
+Raw bytes (65): 0x[01, 01, 08, 01, 1b, 05, 1f, 09, 0d, 03, 11, 16, 05, 03, 11, 05, 1f, 09, 0d, 09, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 16, 01, 0c, 00, 1a, 05, 00, 1b, 02, 0a, 12, 02, 13, 00, 20, 09, 00, 21, 02, 0a, 0d, 02, 09, 00, 0a, 1b, 01, 09, 00, 17, 11, 02, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 8
@@ -21,7 +21,7 @@ Number of file 0 mappings: 9
 - Code(Expression(4, Sub)) at (prev + 2, 19) to (start + 0, 32)
     = (((c0 + (c1 + (c2 + c3))) - c4) - c1)
 - Code(Counter(2)) at (prev + 0, 33) to (start + 2, 10)
-- Code(Counter(3)) at (prev + 2, 10) to (start + 0, 11)
+- Code(Counter(3)) at (prev + 2, 9) to (start + 0, 10)
 - Code(Expression(6, Add)) at (prev + 1, 9) to (start + 0, 23)
     = (c1 + (c2 + c3))
 - Code(Counter(4)) at (prev + 2, 5) to (start + 1, 2)

@@ -1,9 +1,9 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, layout};
 use rustc_target::spec::PanicStrategy;
-use rustc_target::spec::abi::Abi;
 
 /// A pass that runs which is targeted at ensuring that codegen guarantees about
 /// unwinding are upheld for compilations of panic=abort programs.
@@ -38,9 +38,9 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         let body_ty = tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
-            ty::Closure(..) => Abi::RustCall,
-            ty::CoroutineClosure(..) => Abi::RustCall,
-            ty::Coroutine(..) => Abi::Rust,
+            ty::Closure(..) => ExternAbi::RustCall,
+            ty::CoroutineClosure(..) => ExternAbi::RustCall,
+            ty::Coroutine(..) => ExternAbi::Rust,
             ty::Error(_) => return,
             _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
         };
@@ -79,10 +79,10 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
                 }
                 TerminatorKind::Drop { .. } => {
                     tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
-                        && layout::fn_can_unwind(tcx, None, Abi::Rust)
+                        && layout::fn_can_unwind(tcx, None, ExternAbi::Rust)
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
-                    layout::fn_can_unwind(tcx, None, Abi::Rust)
+                    layout::fn_can_unwind(tcx, None, ExternAbi::Rust)
                 }
                 TerminatorKind::InlineAsm { options, .. } => {
                     options.contains(InlineAsmOptions::MAY_UNWIND)

@@ -1,10 +1,10 @@
+use rustc_abi::{HasDataLayout, Size, TagEncoding, Variants};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 
 /// A pass that seeks to optimize unnecessary moves of large enum types, if there is a large
 /// enough discrepancy between them.
@@ -39,8 +39,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
         // platform, but it will still be valid.
 
         let mut alloc_cache = FxHashMap::default();
-        let body_did = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(body_did);
+        let typing_env = body.typing_env(tcx);
 
         let blocks = body.basic_blocks.as_mut();
         let local_decls = &mut body.local_decls;
@@ -58,7 +57,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                 let ty = lhs.ty(local_decls, tcx).ty;
 
                 let (adt_def, num_variants, alloc_id) =
-                    self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
+                    self.candidate(tcx, typing_env, ty, &mut alloc_cache)?;
 
                 let source_info = st.source_info;
                 let span = source_info.span;
@@ -207,7 +206,7 @@ impl EnumSizeOpt {
     fn candidate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
         alloc_cache: &mut FxHashMap<Ty<'tcx>, AllocId>,
     ) -> Option<(AdtDef<'tcx>, usize, AllocId)> {
@@ -215,7 +214,7 @@ impl EnumSizeOpt {
             ty::Adt(adt_def, _args) if adt_def.is_enum() => adt_def,
             _ => return None,
         };
-        let layout = tcx.layout_of(param_env.and(ty)).ok()?;
+        let layout = tcx.layout_of(typing_env.as_query_input(ty)).ok()?;
         let variants = match &layout.variants {
             Variants::Single { .. } => return None,
             Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => return None,
@@ -249,8 +248,8 @@ impl EnumSizeOpt {
         macro_rules! encode_store {
             ($curr_idx: expr, $endian: expr, $bytes: expr) => {
                 let bytes = match $endian {
-                    rustc_target::abi::Endian::Little => $bytes.to_le_bytes(),
-                    rustc_target::abi::Endian::Big => $bytes.to_be_bytes(),
+                    rustc_abi::Endian::Little => $bytes.to_le_bytes(),
+                    rustc_abi::Endian::Big => $bytes.to_be_bytes(),
                 };
                 for (i, b) in bytes.into_iter().enumerate() {
                     data[$curr_idx + i] = b;
@@ -263,10 +262,10 @@ impl EnumSizeOpt {
                 target_bytes * adt_def.discriminant_for_variant(tcx, var_idx).val as usize;
             let sz = layout.size;
             match ptr_sized_int {
-                rustc_target::abi::Integer::I32 => {
+                rustc_abi::Integer::I32 => {
                     encode_store!(curr_idx, data_layout.endian, sz.bytes() as u32);
                 }
-                rustc_target::abi::Integer::I64 => {
+                rustc_abi::Integer::I64 => {
                     encode_store!(curr_idx, data_layout.endian, sz.bytes());
                 }
                 _ => unreachable!(),

@@ -4,10 +4,10 @@
 // the // ~ form.
 
 //@ aux-build:internal_unstable.rs
-//@ error-pattern:use of unstable library feature 'function'
-//@ error-pattern:use of unstable library feature 'struct_field'
-//@ error-pattern:use of unstable library feature 'method'
-//@ error-pattern:use of unstable library feature 'struct2_field'
+//@ error-pattern:use of unstable library feature `function`
+//@ error-pattern:use of unstable library feature `struct_field`
+//@ error-pattern:use of unstable library feature `method`
+//@ error-pattern:use of unstable library feature `struct2_field`
 
 #[macro_use]
 extern crate internal_unstable;

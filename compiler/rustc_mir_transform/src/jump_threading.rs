@@ -35,6 +35,7 @@
 //! Likewise, applying the optimisation can create a lot of new MIR, so we bound the instruction
 //! cost by `MAX_COST`.
 
+use rustc_abi::{TagEncoding, Variants};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
@@ -50,7 +51,6 @@ use rustc_middle::ty::{self, ScalarInt, TyCtxt};
 use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
-use rustc_target::abi::{TagEncoding, Variants};
 use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
@@ -77,13 +77,12 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             return;
         }
 
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
+        let typing_env = body.typing_env(tcx);
         let arena = &DroplessArena::default();
         let mut finder = TOFinder {
             tcx,
-            param_env,
-            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
+            typing_env,
+            ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             body,
             arena,
             map: Map::new(tcx, body, Some(MAX_PLACES)),
@@ -119,7 +118,7 @@ struct ThreadingOpportunity {
 
 struct TOFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
     body: &'a Body<'tcx>,
     map: Map<'tcx>,
@@ -207,7 +206,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         let Some(discr) = self.map.find(discr.as_ref()) else { return };
         debug!(?discr);
 
-        let cost = CostChecker::new(self.tcx, self.param_env, None, self.body);
+        let cost = CostChecker::new(self.tcx, self.typing_env, None, self.body);
         let mut state = State::new_reachable();
 
         let conds = if let Some((value, then, else_)) = targets.as_static_if() {
@@ -353,6 +352,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => None,
         }
     }
@@ -528,7 +528,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     // Avoid handling them, though this could be extended in the future.
                     return;
                 }
-                let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.param_env) else {
+                let Some(value) = value.const_.try_eval_scalar_int(self.tcx, self.typing_env)
+                else {
                     return;
                 };
                 let conds = conditions.map(self.arena, |c| Condition {

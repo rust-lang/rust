@@ -8,8 +8,8 @@ use clap::CommandFactory;
 use serde::Deserialize;
 
 use super::flags::Flags;
-use super::{ChangeIdWrapper, Config};
-use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use super::{ChangeIdWrapper, Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
@@ -135,6 +135,7 @@ change-id = 0
 [rust]
 lto = "off"
 deny-warnings = true
+download-rustc=false
 
 [build]
 gdb = "foo"
@@ -200,6 +201,8 @@ runner = "x86_64-runner"
             .collect(),
         "setting dictionary value"
     );
+    assert!(!config.llvm_from_ci);
+    assert!(!config.download_rustc());
 }
 
 #[test]
@@ -306,9 +309,10 @@ fn order_of_clippy_rules() {
     ];
     let config = Config::parse(Flags::parse(&args));
 
-    let actual = match &config.cmd {
+    let actual = match config.cmd.clone() {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
-            get_clippy_rules_in_order(&args, &allow, &deny, &warn, &forbid)
+            let cfg = LintConfig { allow, deny, warn, forbid };
+            get_clippy_rules_in_order(&args, &cfg)
         }
         _ => panic!("invalid subcommand"),
     };
@@ -320,6 +324,24 @@ fn order_of_clippy_rules() {
         "-Aclippy::foo2".to_string(),
     ];
 
+    assert_eq!(expected, actual);
+}
+
+#[test]
+fn clippy_rule_separate_prefix() {
+    let args =
+        vec!["clippy".to_string(), "-A clippy:all".to_string(), "-W clippy::style".to_string()];
+    let config = Config::parse(Flags::parse(&args));
+
+    let actual = match config.cmd.clone() {
+        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+            let cfg = LintConfig { allow, deny, warn, forbid };
+            get_clippy_rules_in_order(&args, &cfg)
+        }
+        _ => panic!("invalid subcommand"),
+    };
+
+    let expected = vec!["-A clippy:all".to_string(), "-W clippy::style".to_string()];
     assert_eq!(expected, actual);
 }
 
@@ -409,4 +431,19 @@ fn jobs_precedence() {
         },
     );
     assert_eq!(config.jobs, Some(123));
+}
+
+#[test]
+fn check_rustc_if_unchanged_paths() {
+    let config = parse("");
+    let normalised_allowed_paths: Vec<_> = RUSTC_IF_UNCHANGED_ALLOWED_PATHS
+        .iter()
+        .map(|t| {
+            t.strip_prefix(":!").expect(&format!("{t} doesn't have ':!' prefix, but it should."))
+        })
+        .collect();
+
+    for p in normalised_allowed_paths {
+        assert!(config.src.join(p).exists(), "{p} doesn't exist.");
+    }
 }

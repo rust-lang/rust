@@ -12,7 +12,7 @@ env_logger = "0.11"
 mdbook-trpl-listing = { path = "../../doc/book/packages/mdbook-trpl-listing" }
 mdbook-trpl-note = { path = "../../doc/book/packages/mdbook-trpl-note" }
 mdbook-i18n-helpers = "0.3.3"
-mdbook-spec = { path = "../../doc/reference/mdbook-spec"}
+mdbook-spec = { path = "../../doc/reference/mdbook-spec" }
 
 [dependencies.mdbook]
 version = "0.4.37"

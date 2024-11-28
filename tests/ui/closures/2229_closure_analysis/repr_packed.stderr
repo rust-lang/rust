@@ -40,12 +40,12 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Capturing foo[] -> ImmBorrow
+note: Capturing foo[] -> Immutable
   --> $DIR/repr_packed.rs:21:24
    |
 LL |         let z1: &u8 = &foo.x;
    |                        ^^^^^
-note: Capturing foo[] -> MutBorrow
+note: Capturing foo[] -> Mutable
   --> $DIR/repr_packed.rs:23:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
@@ -63,7 +63,7 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Min Capture foo[] -> MutBorrow
+note: Min Capture foo[] -> Mutable
   --> $DIR/repr_packed.rs:23:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
@@ -81,12 +81,12 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Capturing foo[] -> ImmBorrow
+note: Capturing foo[] -> Immutable
   --> $DIR/repr_packed.rs:52:28
    |
 LL |         let z1: &String = &foo.x;
    |                            ^^^^^
-note: Capturing foo[] -> MutBorrow
+note: Capturing foo[] -> Mutable
   --> $DIR/repr_packed.rs:54:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
@@ -104,7 +104,7 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
-note: Min Capture foo[] -> MutBorrow
+note: Min Capture foo[] -> Mutable
   --> $DIR/repr_packed.rs:54:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
@@ -122,7 +122,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing foo[] -> ImmBorrow
+note: Capturing foo[] -> Immutable
   --> $DIR/repr_packed.rs:88:24
    |
 LL |         println!("{}", foo.x);

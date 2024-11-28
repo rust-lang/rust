@@ -1203,8 +1203,8 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         DefKind::AssocTy => {
             let assoc_item = tcx.associated_item(def_id);
             match assoc_item.container {
-                ty::AssocItemContainer::ImplContainer => true,
-                ty::AssocItemContainer::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+                ty::AssocItemContainer::Impl => true,
+                ty::AssocItemContainer::Trait => assoc_item.defaultness(tcx).has_value(),
             }
         }
         DefKind::TyParam => {
@@ -1336,7 +1336,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 
 fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     if let Some(assoc_item) = tcx.opt_associated_item(def_id)
-        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.container == ty::AssocItemContainer::Trait
         && assoc_item.kind == ty::AssocKind::Fn
     {
         true
@@ -1463,8 +1463,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
                 if self.tcx.is_const_trait(def_id) {
-                    record_defaulted_array!(self.tables.implied_const_bounds[def_id]
-                        <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                        <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
             }
             if let DefKind::TraitAlias = def_kind {
@@ -1532,6 +1532,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_explicit_item_super_predicates(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
+                if tcx.is_conditionally_const(def_id) {
+                    record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                        <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
+                }
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
@@ -1595,6 +1599,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 f.did.index
             }));
 
+            for field in &variant.fields {
+                self.tables.safety.set_some(field.did.index, field.safety);
+            }
+
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
                 let fn_sig = tcx.fn_sig(ctor_def_id);
                 // FIXME only encode signature for ctor_def_id
@@ -1649,17 +1657,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.tables.assoc_container.set_some(def_id.index, item.container);
 
         match item.container {
-            AssocItemContainer::TraitContainer => {
+            AssocItemContainer::Trait => {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
                     self.encode_explicit_item_super_predicates(def_id);
                     if tcx.is_conditionally_const(def_id) {
-                        record_defaulted_array!(self.tables.implied_const_bounds[def_id]
-                            <- self.tcx.implied_const_bounds(def_id).skip_binder());
+                        record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
+                            <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
                     }
                 }
             }
-            AssocItemContainer::ImplContainer => {
+            AssocItemContainer::Impl => {
                 if let Some(trait_item_def_id) = item.trait_item_def_id {
                     self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
                 }

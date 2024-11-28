@@ -1,6 +1,5 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
@@ -9,6 +8,12 @@ use crate::build::expr::category::Category;
 use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Construct a temporary lifetime restricted to just the local scope
+    pub(crate) fn local_temp_lifetime(&self) -> TempLifetime {
+        let local_scope = self.local_scope();
+        TempLifetime { temp_lifetime: Some(local_scope), backwards_incompatible: None }
+    }
+
     /// Returns an operand suitable for use until the end of the current
     /// scope expression.
     ///
@@ -21,8 +26,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr_id, LocalInfo::Boring, NeedsTemporary::Maybe)
+        self.as_operand(
+            block,
+            self.local_temp_lifetime(),
+            expr_id,
+            LocalInfo::Boring,
+            NeedsTemporary::Maybe,
+        )
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -80,8 +90,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         expr: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        let local_scope = self.local_scope();
-        self.as_call_operand(block, Some(local_scope), expr)
+        self.as_call_operand(block, self.local_temp_lifetime(), expr)
     }
 
     /// Compile `expr` into a value that can be used as an operand.
@@ -102,7 +111,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_operand(
         &mut self,
         mut block: BasicBlock,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         expr_id: ExprId,
         local_info: LocalInfo<'tcx>,
         needs_temporary: NeedsTemporary,
@@ -123,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match category {
             Category::Constant
                 if matches!(needs_temporary, NeedsTemporary::No)
-                    || !expr.ty.needs_drop(this.tcx, this.param_env) =>
+                    || !expr.ty.needs_drop(this.tcx, this.typing_env()) =>
             {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))
@@ -146,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_call_operand(
         &mut self,
         mut block: BasicBlock,
-        scope: Option<region::Scope>,
+        scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
@@ -165,11 +174,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if tcx.features().unsized_fn_params() {
             let ty = expr.ty;
-            let param_env = this.param_env;
-
-            if !ty.is_sized(tcx, param_env) {
+            if !ty.is_sized(tcx, this.typing_env()) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!ty.is_copy_modulo_regions(tcx, param_env));
+                assert!(!ty.is_copy_modulo_regions(tcx, this.typing_env()));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

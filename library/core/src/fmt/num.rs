@@ -65,11 +65,11 @@ unsafe trait GenericRadix: Sized {
         if is_nonnegative {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
-            for byte in buf.iter_mut().rev() {
+            loop {
                 let n = x % base; // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
+                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
@@ -77,18 +77,21 @@ unsafe trait GenericRadix: Sized {
             }
         } else {
             // Do the same as above, but accounting for two's complement.
-            for byte in buf.iter_mut().rev() {
+            loop {
                 let n = zero - (x % base); // Get the current place value.
                 x = x / base; // Deaccumulate the number.
-                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
+                buf[curr].write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 if x == zero {
                     // No more digits left to accumulate.
                     break;
                 };
             }
         }
-        let buf = &buf[curr..];
+        // SAFETY: `curr` is initialized to `buf.len()` and is only decremented, so it can't overflow. It is
+        // decremented exactly once for each digit. Since u128 is the widest fixed width integer format supported,
+        // the maximum number of digits (bits) is 128 for base-2, so `curr` won't underflow as well.
+        let buf = unsafe { buf.get_unchecked(curr..) };
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe {
@@ -196,32 +199,12 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
       8081828384858687888990919293949596979899";
 
 macro_rules! impl_Display {
-    ($($t:ident $(as $positive:ident)? named $name:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
+    ($($signed:ident, $unsigned:ident,)* ; as $u:ident via $conv_fn:ident named $gen_name:ident) => {
 
         $(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Display for $t {
+        impl fmt::Display for $unsigned {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // If it's a signed integer.
-                $(
-                    let is_nonnegative = *self >= 0;
-
-                    #[cfg(not(feature = "optimize_for_size"))]
-                    {
-                        if !is_nonnegative {
-                            // convert the negative num to positive by summing 1 to its 2s complement
-                            return (!self as $positive).wrapping_add(1)._fmt(false, f);
-                        }
-                    }
-                    #[cfg(feature = "optimize_for_size")]
-                    {
-                        if !is_nonnegative {
-                            // convert the negative num to positive by summing 1 to its 2s complement
-                            return $gen_name((!self.$conv_fn()).wrapping_add(1), false, f);
-                        }
-                    }
-                )?
-                // If it's a positive integer.
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
                     self._fmt(true, f)
@@ -233,10 +216,24 @@ macro_rules! impl_Display {
             }
         }
 
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Display for $signed {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    return self.unsigned_abs()._fmt(*self >= 0, f);
+                }
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    return $gen_name(self.unsigned_abs().$conv_fn(), *self >= 0, f);
+                }
+            }
+        }
+
         #[cfg(not(feature = "optimize_for_size"))]
-        impl $t {
-            fn _fmt(mut self: $t, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                const SIZE: usize = $t::MAX.ilog(10) as usize + 1;
+        impl $unsigned {
+            fn _fmt(mut self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                const SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
                 let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
                 let mut curr = SIZE;
                 let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
@@ -255,7 +252,7 @@ macro_rules! impl_Display {
                     #[allow(unused_comparisons)]
                     // This block will be removed for smaller types at compile time and in the worst
                     // case, it will prevent to have the `10000` literal to overflow for `i8` and `u8`.
-                    if core::mem::size_of::<$t>() >= 2 {
+                    if core::mem::size_of::<$unsigned>() >= 2 {
                         // eagerly decode 4 characters at a time
                         while self >= 10000 {
                             let rem = (self % 10000) as usize;
@@ -309,8 +306,8 @@ macro_rules! impl_Display {
 
         #[cfg(feature = "optimize_for_size")]
         fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
-            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
+            const SIZE: usize = $u::MAX.ilog(10) as usize + 1;
+            let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
             let mut curr = buf.len();
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
 
@@ -520,16 +517,11 @@ impl_Debug! {
 mod imp {
     use super::*;
     impl_Display!(
-        i8 as u8 named fmt_i8,
-        u8 named fmt_u8,
-        i16 as u16  named fmt_i16,
-        u16 named fmt_u16,
-        i32 as u32 named fmt_i32,
-        u32 named fmt_u32,
-        i64 as u64 named fmt_i64,
-        u64 named fmt_u64,
-        isize as usize named fmt_isize,
-        usize named fmt_usize,
+        i8, u8,
+        i16, u16,
+        i32, u32,
+        i64, u64,
+        isize, usize,
         ; as u64 via to_u64 named fmt_u64
     );
     impl_Exp!(
@@ -542,18 +534,13 @@ mod imp {
 mod imp {
     use super::*;
     impl_Display!(
-        i8 as u8 named fmt_i8,
-        u8 named fmt_u8,
-        i16 as u16  named fmt_i16,
-        u16 named fmt_u16,
-        i32 as u32 named fmt_i32,
-        u32 named fmt_u32,
-        isize as usize named fmt_isize,
-        usize named fmt_usize,
+        i8, u8,
+        i16, u16,
+        i32, u32,
+        isize, usize,
         ; as u32 via to_u32 named fmt_u32);
     impl_Display!(
-        i64 as u64 named fmt_i64,
-        u64 named fmt_u64,
+        i64, u64,
         ; as u64 via to_u64 named fmt_u64);
 
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);

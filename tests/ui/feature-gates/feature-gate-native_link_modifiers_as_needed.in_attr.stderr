@@ -1,0 +1,13 @@
+error[E0658]: linking modifier `as-needed` is unstable
+  --> $DIR/feature-gate-native_link_modifiers_as_needed.rs:5:50
+   |
+LL | #[link(name = "foo", kind = "dylib", modifiers = "+as-needed")]
+   |                                                  ^^^^^^^^^^^^
+   |
+   = note: see issue #81490 <https://github.com/rust-lang/rust/issues/81490> for more information
+   = help: add `#![feature(native_link_modifiers_as_needed)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

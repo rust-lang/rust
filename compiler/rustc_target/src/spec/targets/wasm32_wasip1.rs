@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
 
     options.os = "wasi".into();
     options.env = "p1".into();
-    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasip1"]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
@@ -47,7 +47,7 @@ pub(crate) fn target() -> Target {
     options.entry_name = "__main_void".into();
 
     Target {
-        llvm_target: "wasm32-wasi".into(),
+        llvm_target: "wasm32-wasip1".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("WebAssembly with WASI".into()),
             tier: Some(2),

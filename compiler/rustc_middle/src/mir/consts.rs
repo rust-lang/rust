@@ -1,17 +1,17 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
-use either::Either;
+use rustc_abi::{HasDataLayout, Size};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, Size};
+use rustc_type_ir::visit::TypeVisitableExt;
 
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::{self, GenericArgsRef, ScalarInt, Ty, TyCtxt};
+use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -102,10 +102,13 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn try_to_bits_for_ty(
         &self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+        let size = tcx
+            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(ty))
+            .ok()?
+            .size;
         self.try_to_bits(size)
     }
 
@@ -314,25 +317,26 @@ impl<'tcx> Const<'tcx> {
     pub fn eval(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         span: Span,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
-                // We want to consistently have a "clean" value for type system constants (i.e., no
-                // data hidden in the padding), so we always go through a valtree here.
-                match c.eval_valtree(tcx, param_env, span) {
-                    Ok((ty, val)) => Ok(tcx.valtree_to_const_val((ty, val))),
-                    Err(Either::Left(_bad_ty)) => Err(tcx
-                        .dcx()
-                        .delayed_bug("`mir::Const::eval` called on a non-valtree-compatible type")
-                        .into()),
-                    Err(Either::Right(e)) => Err(e),
+                if c.has_non_region_param() {
+                    return Err(ErrorHandled::TooGeneric(span));
+                }
+
+                match c.kind() {
+                    ConstKind::Value(ty, val) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    ConstKind::Expr(_) => {
+                        bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
+                    }
+                    _ => Err(tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body").into()),
                 }
             }
             Const::Unevaluated(uneval, _) => {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
-                tcx.const_eval_resolve(param_env, uneval, span)
+                tcx.const_eval_resolve(typing_env, uneval, span)
             }
             Const::Val(val, _) => Ok(val),
         }
@@ -342,7 +346,7 @@ impl<'tcx> Const<'tcx> {
     pub fn try_eval_scalar(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Scalar> {
         if let Const::Ty(_, c) = self
             && let ty::ConstKind::Value(ty, val) = c.kind()
@@ -353,7 +357,7 @@ impl<'tcx> Const<'tcx> {
             // pointer here, which valtrees don't represent.)
             Some(val.unwrap_leaf().into())
         } else {
-            self.eval(tcx, param_env, DUMMY_SP).ok()?.try_to_scalar()
+            self.eval(tcx, typing_env, DUMMY_SP).ok()?.try_to_scalar()
         }
     }
 
@@ -361,23 +365,29 @@ impl<'tcx> Const<'tcx> {
     pub fn try_eval_scalar_int(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<ScalarInt> {
-        self.try_eval_scalar(tcx, param_env)?.try_to_scalar_int().ok()
+        self.try_eval_scalar(tcx, typing_env)?.try_to_scalar_int().ok()
     }
 
     #[inline]
-    pub fn try_eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u128> {
-        let int = self.try_eval_scalar_int(tcx, param_env)?;
-        let size =
-            tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(self.ty())).ok()?.size;
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> Option<u128> {
+        let int = self.try_eval_scalar_int(tcx, typing_env)?;
+        let size = tcx
+            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty()))
+            .ok()?
+            .size;
         Some(int.to_bits(size))
     }
 
     /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
     #[inline]
-    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env)
+    pub fn eval_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, typing_env)
             .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", self.ty(), self))
     }
 
@@ -385,21 +395,21 @@ impl<'tcx> Const<'tcx> {
     pub fn try_eval_target_usize(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<u64> {
-        Some(self.try_eval_scalar_int(tcx, param_env)?.to_target_usize(tcx))
+        Some(self.try_eval_scalar_int(tcx, typing_env)?.to_target_usize(tcx))
     }
 
     #[inline]
     /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
-    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u64 {
-        self.try_eval_target_usize(tcx, param_env)
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, typing_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 
     #[inline]
-    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_scalar_int(tcx, param_env)?.try_into().ok()
+    pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<bool> {
+        self.try_eval_scalar_int(tcx, typing_env)?.try_into().ok()
     }
 
     #[inline]
@@ -410,17 +420,16 @@ impl<'tcx> Const<'tcx> {
     pub fn from_bits(
         tcx: TyCtxt<'tcx>,
         bits: u128,
-        param_env_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Self {
         let size = tcx
-            .layout_of(param_env_ty)
-            .unwrap_or_else(|e| {
-                bug!("could not compute layout for {:?}: {:?}", param_env_ty.value, e)
-            })
+            .layout_of(typing_env.as_query_input(ty))
+            .unwrap_or_else(|e| bug!("could not compute layout for {ty:?}: {e:?}"))
             .size;
         let cv = ConstValue::Scalar(Scalar::from_uint(bits, size));
 
-        Self::Val(cv, param_env_ty.value)
+        Self::Val(cv, ty)
     }
 
     #[inline]
@@ -437,7 +446,8 @@ impl<'tcx> Const<'tcx> {
 
     pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
         let ty = tcx.types.usize;
-        Self::from_bits(tcx, n as u128, ty::ParamEnv::empty().and(ty))
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        Self::from_bits(tcx, n as u128, typing_env, ty)
     }
 
     #[inline]

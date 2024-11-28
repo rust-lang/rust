@@ -2,6 +2,7 @@ use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -23,7 +24,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::misc::{
@@ -604,7 +604,7 @@ fn augment_param_env<'tcx>(
     );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    ty::ParamEnv::new(bounds, param_env.reveal())
+    ty::ParamEnv::new(bounds)
 }
 
 /// We use the following trait as an example throughout this function.
@@ -1048,8 +1048,10 @@ fn check_associated_item(
             .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
 
         let self_ty = match item.container {
-            ty::TraitContainer => tcx.types.self_param,
-            ty::ImplContainer => tcx.type_of(item.container_id(tcx)).instantiate_identity(),
+            ty::AssocItemContainer::Trait => tcx.types.self_param,
+            ty::AssocItemContainer::Impl => {
+                tcx.type_of(item.container_id(tcx)).instantiate_identity()
+            }
         };
 
         match item.kind {
@@ -1072,7 +1074,7 @@ fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type => {
-                if let ty::AssocItemContainer::TraitContainer = item.container {
+                if let ty::AssocItemContainer::Trait = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {
@@ -1124,7 +1126,7 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     assert!(!ty.has_infer());
-                    ty.needs_drop(tcx, tcx.param_env(item.owner_id))
+                    ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }
             };
             // All fields (except for possibly the last) should be sized.
@@ -1279,7 +1281,8 @@ fn check_item_type(
             UnsizedHandling::Forbid => true,
             UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
-                let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.param_env);
+                let tail =
+                    tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
                 !matches!(tail.kind(), ty::Foreign(_))
             }
         };
@@ -1425,16 +1428,6 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let predicates = tcx.predicates_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
-    let is_our_default = |def: &ty::GenericParamDef| match def.kind {
-        GenericParamDefKind::Type { has_default, .. }
-        | GenericParamDefKind::Const { has_default, .. } => {
-            has_default && def.index >= generics.parent_count as u32
-        }
-        GenericParamDefKind::Lifetime => {
-            span_bug!(tcx.def_span(def.def_id), "lifetime params can have no default")
-        }
-    };
-
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
     // For example, this forbids the declaration:
     //
@@ -1442,40 +1435,21 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     //
     // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.own_params {
-        match param.kind {
-            GenericParamDefKind::Type { .. } => {
-                if is_our_default(param) {
-                    let ty = tcx.type_of(param.def_id).instantiate_identity();
-                    // Ignore dependent defaults -- that is, where the default of one type
-                    // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
-                    // be sure if it will error or not as user might always specify the other.
-                    if !ty.has_param() {
-                        wfcx.register_wf_obligation(
-                            tcx.def_span(param.def_id),
-                            Some(WellFormedLoc::Ty(param.def_id.expect_local())),
-                            ty.into(),
-                        );
-                    }
-                }
+        if let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity) {
+            // Ignore dependent defaults -- that is, where the default of one type
+            // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
+            // be sure if it will error or not as user might always specify the other.
+            // FIXME(generic_const_exprs): This is incorrect when dealing with unused const params.
+            // E.g: `struct Foo<const N: usize, const M: usize = { 1 - 2 }>;`. Here, we should
+            // eagerly error but we don't as we have `ConstKind::Unevaluated(.., [N, M])`.
+            if !default.has_param() {
+                wfcx.register_wf_obligation(
+                    tcx.def_span(param.def_id),
+                    matches!(param.kind, GenericParamDefKind::Type { .. })
+                        .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
+                    default,
+                );
             }
-            GenericParamDefKind::Const { .. } => {
-                if is_our_default(param) {
-                    // FIXME(const_generics_defaults): This
-                    // is incorrect when dealing with unused args, for example
-                    // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
-                    // we should eagerly error.
-                    let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
-                    if !default_ct.has_param() {
-                        wfcx.register_wf_obligation(
-                            tcx.def_span(param.def_id),
-                            None,
-                            default_ct.into(),
-                        );
-                    }
-                }
-            }
-            // Doesn't have defaults.
-            GenericParamDefKind::Lifetime => {}
         }
     }
 
@@ -1488,39 +1462,16 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     //
     // First we build the defaulted generic parameters.
     let args = GenericArgs::for_item(tcx, def_id.to_def_id(), |param, _| {
-        match param.kind {
-            GenericParamDefKind::Lifetime => {
-                // All regions are identity.
-                tcx.mk_param_from_def(param)
-            }
-
-            GenericParamDefKind::Type { .. } => {
-                // If the param has a default, ...
-                if is_our_default(param) {
-                    let default_ty = tcx.type_of(param.def_id).instantiate_identity();
-                    // ... and it's not a dependent default, ...
-                    if !default_ty.has_param() {
-                        // ... then instantiate it with the default.
-                        return default_ty.into();
-                    }
-                }
-
-                tcx.mk_param_from_def(param)
-            }
-            GenericParamDefKind::Const { .. } => {
-                // If the param has a default, ...
-                if is_our_default(param) {
-                    let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
-                    // ... and it's not a dependent default, ...
-                    if !default_ct.has_param() {
-                        // ... then instantiate it with the default.
-                        return default_ct.into();
-                    }
-                }
-
-                tcx.mk_param_from_def(param)
-            }
+        if param.index >= generics.parent_count as u32
+            // If the param has a default, ...
+            && let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity)
+            // ... and it's not a dependent default, ...
+            && !default.has_param()
+        {
+            // ... then instantiate it with the default.
+            return default;
         }
+        tcx.mk_param_from_def(param)
     });
 
     // Now we build the instantiated predicates.
@@ -1644,7 +1595,7 @@ fn check_fn_or_method<'tcx>(
 
     check_where_clauses(wfcx, span, def_id);
 
-    if sig.abi == Abi::RustCall {
+    if sig.abi == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
         let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
@@ -1970,8 +1921,8 @@ fn check_variances_for_type_defn<'tcx>(
         hir_generics
             .predicates
             .iter()
-            .filter_map(|predicate| match predicate {
-                hir::WherePredicate::BoundPredicate(predicate) => {
+            .filter_map(|predicate| match predicate.kind {
+                hir::WherePredicateKind::BoundPredicate(predicate) => {
                     match icx.lower_ty(predicate.bounded_ty).kind() {
                         ty::Param(data) => Some(Parameter(data.index)),
                         _ => None,
@@ -2251,8 +2202,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                     span = predicates
                         .iter()
                         // There seems to be no better way to find out which predicate we are in
-                        .find(|pred| pred.span().contains(obligation_span))
-                        .map(|pred| pred.span())
+                        .find(|pred| pred.span.contains(obligation_span))
+                        .map(|pred| pred.span)
                         .unwrap_or(obligation_span);
                 }
 

@@ -368,7 +368,7 @@ impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
             .cx
             .typeck_results()
             .expr_ty(expr)
-            .has_significant_drop(self.cx.tcx, self.cx.param_env)
+            .has_significant_drop(self.cx.tcx, self.cx.typing_env())
         {
             return ControlFlow::Break(expr.span);
         }

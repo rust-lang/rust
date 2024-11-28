@@ -5,22 +5,20 @@ use std::path::{Path, PathBuf};
 use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
+use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
-use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt,
-    Visibility,
+    self, AdtKind, CoroutineArgsExt, Instance, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -302,9 +300,8 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         .insert(unique_type_id, recursion_marker_type_di_node(cx));
 
     let fn_ty = unique_type_id.expect_ty();
-    let signature = cx
-        .tcx
-        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), fn_ty.fn_sig(cx.tcx));
+    let signature =
+        cx.tcx.normalize_erasing_late_bound_regions(cx.typing_env(), fn_ty.fn_sig(cx.tcx));
 
     let signature_di_nodes: SmallVec<_> = iter::once(
         // return type
@@ -979,33 +976,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             debug_name_table_kind,
         );
 
-        if tcx.sess.opts.unstable_opts.profile {
-            let default_gcda_path = &output_filenames.with_extension("gcda");
-            let gcda_path =
-                tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
-
-            let gcov_cu_info = [
-                path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
-                path_to_mdstring(debug_context.llcontext, gcda_path),
-                unit_metadata,
-            ];
-            let gcov_metadata = llvm::LLVMMDNodeInContext2(
-                debug_context.llcontext,
-                gcov_cu_info.as_ptr(),
-                gcov_cu_info.len(),
-            );
-            let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
-
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
-        }
-
         return unit_metadata;
     };
-
-    fn path_to_mdstring<'ll>(llcx: &'ll llvm::Context, path: &Path) -> &'ll llvm::Metadata {
-        let path_str = path_to_c_string(path);
-        unsafe { llvm::LLVMMDStringInContext2(llcx, path_str.as_ptr(), path_str.as_bytes().len()) }
-    }
 }
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
@@ -1135,9 +1107,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    assert!(
-        up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
-    );
+    assert!(up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(cx.typing_env(), t)));
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_coroutine_ty);
@@ -1298,8 +1268,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let template_params: SmallVec<_> = iter::zip(args, names)
                 .filter_map(|(kind, name)| {
                     kind.as_type().map(|ty| {
-                        let actual_type =
-                            cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                        let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
                         unsafe {
@@ -1367,7 +1336,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
     if nested {
         return;
     }
-    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();

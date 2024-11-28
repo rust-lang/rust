@@ -1,13 +1,13 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{Float, Integer, Primitive};
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
@@ -103,11 +103,11 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a wide ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    if ty.is_sized(tcx, ParamEnv::reveal_all()) {
+    if ty.is_sized(tcx, ty::TypingEnv::fully_monomorphized()) {
         return false;
     }
 
-    let tail = tcx.struct_tail_for_codegen(ty, ParamEnv::reveal_all());
+    let tail = tcx.struct_tail_for_codegen(ty, ty::TypingEnv::fully_monomorphized());
     match tail.kind() {
         ty::Foreign(..) => false,
         ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -162,8 +162,8 @@ pub(crate) fn codegen_icmp_imm(
 pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
     let mut flags = MemFlags::new();
     flags.set_endianness(match fx.tcx.data_layout.endian {
-        rustc_target::abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
-        rustc_target::abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
+        rustc_abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
+        rustc_abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
     });
     fx.bcx.ins().bitcast(dst_ty, flags, val)
 }
@@ -311,7 +311,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        RevealAllLayoutCx(self.tcx).handle_layout_err(err, span, ty)
+        FullyMonomorphizedLayoutCx(self.tcx).handle_layout_err(err, span, ty)
     }
 }
 
@@ -323,7 +323,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        RevealAllLayoutCx(self.tcx).handle_fn_abi_err(err, span, fn_abi_request)
+        FullyMonomorphizedLayoutCx(self.tcx).handle_fn_abi_err(err, span, fn_abi_request)
     }
 }
 
@@ -333,15 +333,15 @@ impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> rustc_target::abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
-    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
+impl<'tcx> rustc_abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'tcx> layout::HasParamEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx> layout::HasTypingEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 
@@ -358,7 +358,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::ParamEnv::reveal_all(),
+            ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(value),
         )
     }
@@ -443,9 +443,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 }
 
-pub(crate) struct RevealAllLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
+pub(crate) struct FullyMonomorphizedLayoutCx<'tcx>(pub(crate) TyCtxt<'tcx>);
 
-impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
@@ -459,7 +459,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
     }
 }
 
-impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
+impl<'tcx> FnAbiOfHelpers<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
     #[inline]
     fn handle_fn_abi_err(
         &self,
@@ -485,25 +485,25 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
     }
 }
 
-impl<'tcx> layout::HasTyCtxt<'tcx> for RevealAllLayoutCx<'tcx> {
+impl<'tcx> layout::HasTyCtxt<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.0
     }
 }
 
-impl<'tcx> rustc_target::abi::HasDataLayout for RevealAllLayoutCx<'tcx> {
-    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
+impl<'tcx> rustc_abi::HasDataLayout for FullyMonomorphizedLayoutCx<'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         &self.0.data_layout
     }
 }
 
-impl<'tcx> layout::HasParamEnv<'tcx> for RevealAllLayoutCx<'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx> layout::HasTypingEnv<'tcx> for FullyMonomorphizedLayoutCx<'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 
-impl<'tcx> HasTargetSpec for RevealAllLayoutCx<'tcx> {
+impl<'tcx> HasTargetSpec for FullyMonomorphizedLayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
         &self.0.sess.target
     }

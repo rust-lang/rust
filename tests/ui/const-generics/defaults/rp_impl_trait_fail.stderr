@@ -18,7 +18,8 @@ LL |
 LL |     1_u32
    |     ----- return type was inferred to be `u32` here
    |
-   = help: the trait `Traitor<N, 2>` is implemented for `u32`
+   = help: the trait `Traitor<N, N>` is not implemented for `u32`
+           but trait `Traitor<N, 2>` is implemented for it
 
 error[E0277]: the trait bound `u64: Traitor` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:21:13
@@ -29,7 +30,8 @@ LL |
 LL |     1_u64
    |     ----- return type was inferred to be `u64` here
    |
-   = help: the trait `Traitor<1, 2>` is implemented for `u64`
+   = help: the trait `Traitor<1, 1>` is not implemented for `u64`
+           but trait `Traitor<1, 2>` is implemented for it
 
 error[E0284]: type annotations needed
   --> $DIR/rp_impl_trait_fail.rs:28:5

@@ -5,12 +5,14 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use itertools::Itertools;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
     Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
     SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope, elf, pe,
     xcoff,
 };
+use rustc_abi::Endian;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{OwnedSlice, try_slice_owned};
 use rustc_metadata::EncodedMetadata;
@@ -19,8 +21,10 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
+use tracing::debug;
+
+use super::apple;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -51,6 +55,7 @@ fn load_metadata_with(
 
 impl MetadataLoader for DefaultMetadataLoader {
     fn get_rlib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting rlib metadata for {}", path.display());
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -75,8 +80,26 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting dylib metadata for {}", path.display());
         if target.is_like_aix {
-            load_metadata_with(path, |data| get_metadata_xcoff(path, data))
+            load_metadata_with(path, |data| {
+                let archive = object::read::archive::ArchiveFile::parse(&*data).map_err(|e| {
+                    format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                })?;
+
+                match archive.members().exactly_one() {
+                    Ok(lib) => {
+                        let lib = lib.map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        let data = lib.data(data).map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        get_metadata_xcoff(path, data)
+                    }
+                    Err(e) => Err(format!("failed to parse aix dylib '{}': {}", path.display(), e)),
+                }
+            })
         } else {
             load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
         }
@@ -209,7 +232,15 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "powerpc64" => (Architecture::PowerPc64, None),
         "riscv32" => (Architecture::Riscv32, None),
         "riscv64" => (Architecture::Riscv64, None),
-        "sparc" => (Architecture::Sparc32Plus, None),
+        "sparc" => {
+            if sess.unstable_target_features.contains(&sym::v8plus) {
+                // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                (Architecture::Sparc32Plus, None)
+            } else {
+                // Target uses V7 or V8, aka EM_SPARC
+                (Architecture::Sparc, None)
+            }
+        }
         "sparc64" => (Architecture::Sparc64, None),
         "avr" => (Architecture::Avr, None),
         "msp430" => (Architecture::Msp430, None),
@@ -238,7 +269,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
 
-        file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
+        file.set_macho_build_version(macho_object_build_version_for_target(sess))
     }
     if binary_format == BinaryFormat::Coff {
         // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
@@ -392,7 +423,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 ///
 /// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
 /// returns the `MachOBuildVersion` for the target to do so.
-fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
+fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
     fn pack_version((major, minor, patch): (u16, u8, u8)) -> u32 {
@@ -400,9 +431,8 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
         (major << 16) | (minor << 8) | patch
     }
 
-    let platform =
-        rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target);
+    let platform = apple::macho_platform(&sess.target);
+    let min_os = apple::deployment_target(sess);
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;

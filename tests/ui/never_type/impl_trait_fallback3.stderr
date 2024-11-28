@@ -3,6 +3,9 @@ error[E0277]: the trait bound `(): T` is not satisfied
    |
 LL | fn a() -> Foo {
    |           ^^^ the trait `T` is not implemented for `()`
+...
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/impl_trait_fallback3.rs:5:1

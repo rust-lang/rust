@@ -844,7 +844,6 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_allow_const_fn_unstable(const_mut_refs)]
 #[rustc_never_returns_null_ptr]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
@@ -1104,9 +1103,9 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             count: usize = count,
         ) => {
             let zero_size = size == 0 || count == 0;
-            ub_checks::is_aligned_and_not_null(x, align, zero_size)
-                && ub_checks::is_aligned_and_not_null(y, align, zero_size)
-                && ub_checks::is_nonoverlapping(x, y, size, count)
+            ub_checks::maybe_is_aligned_and_not_null(x, align, zero_size)
+                && ub_checks::maybe_is_aligned_and_not_null(y, align, zero_size)
+                && ub_checks::maybe_is_nonoverlapping(x, y, size, count)
         }
     );
 
@@ -1217,7 +1216,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
                 is_zst: bool = T::IS_ZST,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         mem::replace(&mut *dst, src)
     }
@@ -1370,7 +1369,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
                 is_zst: bool = T::IS_ZST,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1408,9 +1407,8 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead you must use the [`ptr::addr_of!`](addr_of) macro to
-/// create the pointer. You may use that returned pointer together with this
-/// function.
+/// Instead you must use the `&raw const` syntax to create the pointer.
+/// You may use that constructed pointer together with this function.
 ///
 /// An example of what not to do and how this relates to `read_unaligned` is:
 ///
@@ -1428,7 +1426,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *const _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of!(packed.unaligned);
+/// let unaligned = &raw const packed.unaligned;
 ///
 /// let v = unsafe { std::ptr::read_unaligned(unaligned) };
 /// assert_eq!(v, 0x01020304);
@@ -1575,7 +1573,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
                 is_zst: bool = T::IS_ZST,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1616,9 +1614,8 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead, you must use the [`ptr::addr_of_mut!`](addr_of_mut)
-/// macro to create the pointer. You may use that returned pointer together with
-/// this function.
+/// Instead, you must use the `&raw mut` syntax to create the pointer.
+/// You may use that constructed pointer together with this function.
 ///
 /// An example of how to do it and how this relates to `write_unaligned` is:
 ///
@@ -1633,7 +1630,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// // Take the address of a 32-bit integer which is not aligned.
 /// // In contrast to `&packed.unaligned as *mut _`, this has no undefined behavior.
-/// let unaligned = std::ptr::addr_of_mut!(packed.unaligned);
+/// let unaligned = &raw mut packed.unaligned;
 ///
 /// unsafe { std::ptr::write_unaligned(unaligned, 42) };
 ///
@@ -1748,7 +1745,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
                 is_zst: bool = T::IS_ZST,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_load(src)
     }
@@ -1828,7 +1825,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
                 is_zst: bool = T::IS_ZST,
-            ) => ub_checks::is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
         );
         intrinsics::volatile_store(dst, src);
     }
@@ -1853,9 +1850,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[allow(ptr_to_integer_transmute_in_consts)]
-#[lang = "align_offset"]
-#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
+pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
@@ -1916,11 +1911,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 
     let stride = mem::size_of::<T>();
 
-    // SAFETY: This is just an inlined `p.addr()` (which is not
-    // a `const fn` so we cannot call it).
-    // During const eval, we hook this function to ensure that the pointer never
-    // has provenance, making this sound.
-    let addr: usize = unsafe { mem::transmute(p) };
+    let addr: usize = p.addr();
 
     // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };

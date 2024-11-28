@@ -40,11 +40,11 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -60,7 +60,7 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
 };
-use crate::mir::mono::CodegenUnit;
+use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem};
 use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::{
     CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
@@ -81,8 +81,8 @@ use crate::ty::layout::ValidityRequirement;
 use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
-    self, CrateInherentImpls, GenericArg, GenericArgsRef, ParamEnvAnd, Ty, TyCtxt, TyCtxtFeed,
-    UnusedGenericParams,
+    self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
+    TyCtxtFeed, UnusedGenericParams,
 };
 use crate::{dep_graph, mir, thir};
 
@@ -464,7 +464,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
+    /// Fetch the THIR for a given body.
     query thir_body(key: LocalDefId) -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed> {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
@@ -697,7 +697,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query implied_const_bounds(
+    query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
         desc { |tcx| "computing the implied `~const` bounds for `{}`",
@@ -1095,7 +1095,7 @@ rustc_queries! {
     /// Evaluates a constant and returns the computed allocation.
     ///
     /// **Do not use this** directly, use the `eval_to_const_value` or `eval_to_valtree` instead.
-    query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_allocation_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
             "const-evaluating + checking `{}`",
@@ -1121,7 +1121,7 @@ rustc_queries! {
     ///
     /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
     /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
-    query eval_to_const_value_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+    query eval_to_const_value_raw(key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>)
         -> EvalToConstValueResult<'tcx> {
         desc { |tcx|
             "simplifying constant for the type system `{}`",
@@ -1133,7 +1133,7 @@ rustc_queries! {
     /// Evaluate a constant and convert it to a type level constant or
     /// return `None` if that is not possible.
     query eval_to_valtree(
-        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
+        key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
         desc { "evaluating type-level constant" }
     }
@@ -1341,10 +1341,10 @@ rustc_queries! {
     }
 
     query codegen_select_candidate(
-        key: (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>)
+        key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>
     ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
         cache_on_disk_if { true }
-        desc { |tcx| "computing candidate for `{}`", key.1 }
+        desc { |tcx| "computing candidate for `{}`", key.value }
     }
 
     /// Return all `impl` blocks in the current crate.
@@ -1373,48 +1373,50 @@ rustc_queries! {
     /// Gets the ParameterEnvironment for a given item; this environment
     /// will be in "user-facing" mode, meaning that it is suitable for
     /// type-checking etc, and it does not normalize specializable
-    /// associated types. This is almost always what you want,
-    /// unless you are doing MIR optimizations, in which case you
-    /// might want to use `reveal_all()` method to change modes.
+    /// associated types.
+    ///
+    /// You should almost certainly not use this. If you already have an InferCtxt, then
+    /// you should also probably have a `ParamEnv` from when it was built. If you don't,
+    /// then you should take a `TypingEnv` to ensure that you handle opaque types correctly.
     query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
     }
 
-    /// Like `param_env`, but returns the `ParamEnv` in `Reveal::All` mode.
-    /// Prefer this over `tcx.param_env(def_id).with_reveal_all_normalized(tcx)`,
-    /// as this method is more efficient.
-    query param_env_reveal_all_normalized(def_id: DefId) -> ty::ParamEnv<'tcx> {
+    /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
+    /// replaced with their hidden type. This is used in the old trait solver
+    /// when in `PostAnalysis` mode and should not be called directly.
+    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { |tcx| "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
     /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
-    query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
     }
     /// Query backing `Ty::is_sized`.
-    query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
     }
     /// Query backing `Ty::is_freeze`.
-    query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_freeze_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
     /// Query backing `Ty::is_unpin`.
-    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query is_unpin_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
     /// Query backing `Ty::needs_drop`.
-    query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query needs_drop_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
     }
     /// Query backing `Ty::needs_async_drop`.
-    query needs_async_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query needs_async_drop_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs async drop", env.value }
     }
     /// Query backing `Ty::has_significant_drop_raw`.
-    query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+    query has_significant_drop_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
     }
 
@@ -1448,10 +1450,32 @@ rustc_queries! {
         cache_on_disk_if { false }
     }
 
+    /// Returns a list of types which (a) have a potentially significant destructor
+    /// and (b) may be dropped as a result of dropping a value of some type `ty`
+    /// (in the given environment).
+    ///
+    /// The idea of "significant" drop is somewhat informal and is used only for
+    /// diagnostics and edition migrations. The idea is that a significant drop may have
+    /// some visible side-effect on execution; freeing memory is NOT considered a side-effect.
+    /// The rules are as follows:
+    /// * Type with no explicit drop impl do not have significant drop.
+    /// * Types with a drop impl are assumed to have significant drop unless they have a `#[rustc_insignificant_dtor]` annotation.
+    ///
+    /// Note that insignificant drop is a "shallow" property. A type like `Vec<LockGuard>` does not
+    /// have significant drop but the type `LockGuard` does, and so if `ty  = Vec<LockGuard>`
+    /// then the return value would be `&[LockGuard]`.
+    /// *IMPORTANT*: *DO NOT* run this query before promoted MIR body is constructed,
+    /// because this query partially depends on that query.
+    /// Otherwise, there is a risk of query cycles.
+    query list_significant_drop_tys(ty: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> &'tcx ty::List<Ty<'tcx>> {
+        desc { |tcx| "computing when `{}` has a significant destructor", ty.value }
+        cache_on_disk_if { false }
+    }
+
     /// Computes the layout of a type. Note that this implicitly
-    /// executes in "reveal all" mode, and will normalize the input type.
+    /// executes in `TypingMode::PostAnalysis`, and will normalize the input type.
     query layout_of(
-        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+        key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, &'tcx ty::layout::LayoutError<'tcx>> {
         depth_limit
         desc { "computing layout of `{}`", key.value }
@@ -1464,8 +1488,8 @@ rustc_queries! {
     /// NB: this doesn't handle virtual calls - those should use `fn_abi_of_instance`
     /// instead, where the instance is an `InstanceKind::Virtual`.
     query fn_abi_of_fn_ptr(
-        key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+        key: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
     }
 
@@ -1475,8 +1499,8 @@ rustc_queries! {
     /// NB: that includes virtual calls, which are represented by "direct calls"
     /// to an `InstanceKind::Virtual` instance (of `<dyn Trait as Trait>::fn`).
     query fn_abi_of_instance(
-        key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
-    ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
+        key: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
+    ) -> Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, &'tcx ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
     }
 
@@ -1845,6 +1869,16 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// Gets the number of definitions in a foreign crate.
+    ///
+    /// This allows external tools to iterate over all definitions in a foreign crate.
+    ///
+    /// This should never be used for the local crate, instead use `iter_local_def_id`.
+    query num_extern_def_ids(_: CrateNum) -> usize {
+        desc { "fetching the number of definitions in a crate" }
+        separate_provide_extern
+    }
+
     query lib_features(_: CrateNum) -> &'tcx LibFeatures {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
@@ -2078,7 +2112,7 @@ rustc_queries! {
 
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
     query try_normalize_generic_arg_after_erasing_regions(
-        goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
+        goal: PseudoCanonicalInput<'tcx, GenericArg<'tcx>>
     ) -> Result<GenericArg<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
     }
@@ -2201,10 +2235,11 @@ rustc_queries! {
         desc { "computing autoderef types for `{}`", goal.canonical.value.value }
     }
 
-    query supported_target_features(_: CrateNum) -> &'tcx UnordMap<String, Option<Symbol>> {
+    /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
+    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
         arena_cache
         eval_always
-        desc { "looking up supported target features" }
+        desc { "looking up Rust target features" }
     }
 
     query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
@@ -2234,7 +2269,7 @@ rustc_queries! {
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
     ///    has already been/will be emitted, for the original cause.
     query resolve_instance_raw(
-        key: ty::ParamEnvAnd<'tcx, (DefId, GenericArgsRef<'tcx>)>
+        key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
     }
@@ -2272,7 +2307,7 @@ rustc_queries! {
         desc { "computing the backend features for CLI flags" }
     }
 
-    query check_validity_requirement(key: (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
+    query check_validity_requirement(key: (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>)) -> Result<bool, &'tcx ty::layout::LayoutError<'tcx>> {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 
@@ -2314,6 +2349,30 @@ rustc_queries! {
     query cross_crate_inlinable(def_id: DefId) -> bool {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
+    }
+
+    /// Perform monomorphization-time checking on this item.
+    /// This is used for lints/errors that can only be checked once the instance is fully
+    /// monomorphized.
+    query check_mono_item(key: ty::Instance<'tcx>) {
+        desc { "monomorphization-time checking" }
+        cache_on_disk_if { true }
+    }
+
+    /// Builds the set of functions that should be skipped for the move-size check.
+    query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
+        arena_cache
+        desc { "functions to skip for move-size check" }
+    }
+
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]) {
+        desc { "collecting items used by `{}`", key.0 }
+        cache_on_disk_if { true }
+    }
+
+    query size_estimate(key: ty::Instance<'tcx>) -> usize {
+        desc { "estimating codegen size of `{}`", key }
+        cache_on_disk_if { true }
     }
 }
 

@@ -81,7 +81,7 @@
 # Indicates whether the LLVM plugin is enabled or not
 #plugins = false
 
-# Wheter to build Enzyme as AutoDiff backend.
+# Whether to build Enzyme as AutoDiff backend.
 #enzyme = false
 
 # Whether to build LLVM with support for it's gpu offload runtime.
@@ -496,13 +496,17 @@
 #
 #debug = false
 
-# Whether to download the stage 1 and 2 compilers from CI.
-# This is useful if you are working on tools, doc-comments, or library (you will be able to build
-# the standard library without needing to build the compiler).
+# Whether to download the stage 1 and 2 compilers from CI. This is useful if you
+# are working on tools, doc-comments, or library (you will be able to build the
+# standard library without needing to build the compiler).
 #
-# Set this to "if-unchanged" to only download if the compiler (and library if running on CI) have
-# not been modified.
-# Set this to `true` to download unconditionally.
+# Set this to "if-unchanged" if you are working on `src/tools`, `tests` or
+# `library` (on CI, `library` changes triggers in-tree compiler build) to speed
+# up the build process if you don't need to build a compiler from the latest
+# commit from `master`.
+#
+# Set this to `true` to always download or `false` to always use the in-tree
+# compiler.
 #download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
@@ -594,8 +598,7 @@
 
 # Build a multi-threaded rustc. This allows users to use parallel rustc
 # via the unstable option `-Z threads=n`.
-# Since stable/beta channels only allow using stable features,
-# `parallel-compiler = false` should be set for these channels.
+# This option is deprecated and always true.
 #parallel-compiler = true
 
 # The default linker that will be hard-coded into the generated
@@ -668,8 +671,6 @@
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 # Having the git information can cause a lot of rebuilds during development.
-#
-# FIXME(#76720): this can causes bugs if different compilers reuse the same metadata cache.
 #omit-git-hash = if rust.channel == "dev" { true } else { false }
 
 # Whether to create a source tarball by default when running `x dist`.
@@ -772,6 +773,7 @@
 #validate-mir-opts = 3
 
 # Configure `std` features used during bootstrap.
+#
 # Default features will be expanded in the following cases:
 #  - If `rust.llvm-libunwind` or `target.llvm-libunwind` is enabled:
 #    - "llvm-libunwind" will be added for in-tree LLVM builds.
@@ -779,6 +781,9 @@
 #  - If `rust.backtrace` is enabled, "backtrace" will be added.
 #  - If `rust.profiler` or `target.profiler` is enabled, "profiler" will be added.
 #  - If building for a zkvm target, "compiler-builtins-mem" will be added.
+#
+# Since libstd also builds libcore and liballoc as dependencies and all their features are mirrored
+# as libstd features, this option can also be used to configure features such as optimize_for_size.
 #std-features = ["panic_unwind"]
 
 # =============================================================================

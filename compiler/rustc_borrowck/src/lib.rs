@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::Diag;
@@ -36,26 +36,33 @@ use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
 };
+use rustc_mir_dataflow::{Analysis, EntrySets, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::FieldIdx;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
-use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
-use self::location::LocationTable;
-use self::path_utils::*;
-use self::prefixes::PrefixSet;
+use crate::borrow_set::{BorrowData, BorrowSet};
+use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
+use crate::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
+use crate::location::LocationTable;
+use crate::nll::PoloniusOutput;
+use crate::path_utils::*;
+use crate::place_ext::PlaceExt;
+use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::prefixes::PrefixSet;
+use crate::region_infer::RegionInferenceContext;
+use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
 
-pub mod borrow_set;
+mod borrow_set;
 mod borrowck_errors;
 mod constraints;
 mod dataflow;
@@ -81,18 +88,11 @@ mod util;
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
-use borrow_set::{BorrowData, BorrowSet};
-use dataflow::{BorrowIndex, BorrowckDomain, BorrowckResults, Borrows};
-use nll::PoloniusOutput;
-use place_ext::PlaceExt;
-use places_conflict::{PlaceConflictBias, places_conflict};
-use region_infer::RegionInferenceContext;
-use renumber::RegionCtxt;
-
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Associate some local constants with the `'tcx` lifetime
 struct TyCtxtConsts<'tcx>(PhantomData<&'tcx ()>);
+
 impl<'tcx> TyCtxtConsts<'tcx> {
     const DEREF_PROJECTION: &'tcx [PlaceElem<'tcx>; 1] = &[ProjectionElem::Deref];
 }
@@ -140,7 +140,6 @@ fn do_mir_borrowck<'tcx>(
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
     let infcx = BorrowckInferCtxt::new(tcx, def);
-    let param_env = tcx.param_env(def);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -162,7 +161,7 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut diags = diags::BorrowckDiags::new();
+    let diags = &mut diags::BorrowckDiags::new();
 
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
@@ -175,8 +174,7 @@ fn do_mir_borrowck<'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
     let mut promoted = input_promoted.to_owned();
-    let free_regions =
-        nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
     // FIXME(-Znext-solver): A bit dubious that we're only registering
@@ -192,7 +190,7 @@ fn do_mir_borrowck<'tcx>(
         .iter_enumerated()
         .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
-    let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+    let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .iterate_to_fixpoint(tcx, body, Some("borrowck"))
         .into_results_cursor(body);
 
@@ -213,11 +211,9 @@ fn do_mir_borrowck<'tcx>(
         body,
         &promoted,
         &location_table,
-        param_env,
-        &mut flow_inits,
+        flow_inits,
         &move_data,
         &borrow_set,
-        tcx.closure_captures(def),
         consumer_options,
     );
 
@@ -227,35 +223,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    nll::dump_annotation(
-        &infcx,
-        body,
-        &regioncx,
-        &opt_closure_req,
-        &opaque_type_values,
-        &mut diags,
-    );
-
-    // The various `flow_*` structures can be large. We drop `flow_inits` here
-    // so it doesn't overlap with the others below. This reduces peak memory
-    // usage significantly on some benchmarks.
-    drop(flow_inits);
-
-    let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
-    let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
-    let flow_ever_inits = EverInitializedPlaces::new(body, &move_data).iterate_to_fixpoint(
-        tcx,
-        body,
-        Some("borrowck"),
-    );
+    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     let movable_coroutine =
         // The first argument is the coroutine type passed by value
@@ -275,7 +243,6 @@ fn do_mir_borrowck<'tcx>(
         let promoted_body = &promoted[idx];
         let mut promoted_mbcx = MirBorrowckCtxt {
             infcx: &infcx,
-            param_env,
             body: promoted_body,
             move_data: &move_data,
             location_table: &location_table, // no need to create a real one for the promoted, it is not used
@@ -299,7 +266,6 @@ fn do_mir_borrowck<'tcx>(
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
-        diags = promoted_mbcx.diags;
 
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -316,7 +282,6 @@ fn do_mir_borrowck<'tcx>(
 
     let mut mbcx = MirBorrowckCtxt {
         infcx: &infcx,
-        param_env,
         body,
         move_data: &move_data,
         location_table: &location_table,
@@ -342,16 +307,11 @@ fn do_mir_borrowck<'tcx>(
     // Compute and report region errors, if any.
     mbcx.report_region_errors(nll_errors);
 
-    let mut results = BorrowckResults {
-        ever_inits: flow_ever_inits,
-        uninits: flow_uninits,
-        borrows: flow_borrows,
-    };
-
-    rustc_mir_dataflow::visit_results(
+    let mut flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut results,
+        &mut flow_results,
         &mut mbcx,
     );
 
@@ -434,15 +394,58 @@ fn do_mir_borrowck<'tcx>(
     (result, body_with_facts)
 }
 
-pub struct BorrowckInferCtxt<'tcx> {
+fn get_flow_results<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    move_data: &'a MoveData<'tcx>,
+    borrow_set: &'a BorrowSet<'tcx>,
+    regioncx: &RegionInferenceContext<'tcx>,
+) -> Results<'tcx, Borrowck<'a, 'tcx>> {
+    // We compute these three analyses individually, but them combine them into
+    // a single results so that `mbcx` can visit them all together.
+    let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+    let ever_inits = EverInitializedPlaces::new(body, move_data).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("borrowck"),
+    );
+
+    let analysis = Borrowck {
+        borrows: borrows.analysis,
+        uninits: uninits.analysis,
+        ever_inits: ever_inits.analysis,
+    };
+
+    assert_eq!(borrows.entry_sets.len(), uninits.entry_sets.len());
+    assert_eq!(borrows.entry_sets.len(), ever_inits.entry_sets.len());
+    let entry_sets: EntrySets<'_, Borrowck<'_, '_>> =
+        itertools::izip!(borrows.entry_sets, uninits.entry_sets, ever_inits.entry_sets)
+            .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
+            .collect();
+
+    Results { analysis, entry_sets }
+}
+
+pub(crate) struct BorrowckInferCtxt<'tcx> {
     pub(crate) infcx: InferCtxt<'tcx>,
     pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
+    pub(crate) param_env: ParamEnv<'tcx>,
 }
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let infcx = tcx.infer_ctxt().build(TypingMode::analysis_in_body(tcx, def_id));
-        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
+        let param_env = tcx.param_env(def_id);
+        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
     }
 
     pub(crate) fn next_region_var<F>(
@@ -521,7 +524,6 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 
 struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 
@@ -587,7 +589,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: diags::BorrowckDiags<'infcx, 'tcx>,
+    diags: &'a mut diags::BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -596,14 +598,10 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
-    for MirBorrowckCtxt<'a, '_, 'tcx>
-{
-    type Domain = BorrowckDomain<'a, 'tcx>;
-
+impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
     fn visit_statement_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         stmt: &'a Statement<'tcx>,
         location: Location,
@@ -638,7 +636,9 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
                 );
             }
             StatementKind::Intrinsic(box kind) => match kind {
-                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), state),
+                NonDivergingIntrinsic::Assume(op) => {
+                    self.consume_operand(location, (op, span), state);
+                }
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
@@ -652,6 +652,8 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
             | StatementKind::Coverage(..)
             // These do not actually affect borrowck
             | StatementKind::ConstEvalCounter
+            // This do not affect borrowck
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -673,7 +675,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
@@ -786,7 +788,7 @@ impl<'a, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'a, 'tcx, R>
 
     fn visit_terminator_after_primary_effect(
         &mut self,
-        _results: &mut R,
+        _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain<'a, 'tcx>,
         term: &'a Terminator<'tcx>,
         loc: Location,
@@ -2105,7 +2107,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: mut_borrow_kind })) => {
                 let is_local_mutation_allowed = match mut_borrow_kind {
                     // `ClosureCapture` is used for mutable variable with an immutable binding.
-                    // This is only behaviour difference between `ClosureCapture` and mutable borrows.
+                    // This is only behaviour difference between `ClosureCapture` and mutable
+                    // borrows.
                     MutBorrowKind::ClosureCapture => LocalMutationIsAllowed::Yes,
                     MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow => {
                         is_local_mutation_allowed
@@ -2350,23 +2353,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                 ) => Err(place),
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
-                                    // Subtle: this is an upvar
-                                    // reference, so it looks like
-                                    // `self.foo` -- we want to double
-                                    // check that the location `*self`
-                                    // is mutable (i.e., this is not a
-                                    // `Fn` closure). But if that
-                                    // check succeeds, we want to
-                                    // *blame* the mutability on
-                                    // `place` (that is,
-                                    // `self.foo`). This is used to
-                                    // propagate the info about
-                                    // whether mutability declarations
-                                    // are used outwards, so that we register
-                                    // the outer variable as mutable. Otherwise a
-                                    // test like this fails to record the `mut`
-                                    // as needed:
-                                    //
+                                    // Subtle: this is an upvar reference, so it looks like
+                                    // `self.foo` -- we want to double check that the location
+                                    // `*self` is mutable (i.e., this is not a `Fn` closure). But
+                                    // if that check succeeds, we want to *blame* the mutability on
+                                    // `place` (that is, `self.foo`). This is used to propagate the
+                                    // info about whether mutability declarations are used
+                                    // outwards, so that we register the outer variable as mutable.
+                                    // Otherwise a test like this fails to record the `mut` as
+                                    // needed:
                                     // ```
                                     // fn foo<F: FnOnce()>(_f: F) { }
                                     // fn main() {
@@ -2511,7 +2506,7 @@ mod diags {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
@@ -2519,7 +2514,7 @@ mod diags {
                     #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+                self.diags.buffer_error(diag);
             }
 
             if !self.diags.buffered_diags.is_empty() {

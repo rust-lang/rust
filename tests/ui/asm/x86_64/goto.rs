@@ -3,7 +3,7 @@
 //@ needs-asm-support
 
 #![deny(unreachable_code)]
-#![feature(asm_goto)]
+#![feature(asm_goto, asm_goto_with_outputs)]
 
 use std::arch::asm;
 
@@ -31,10 +31,6 @@ fn goto_jump() {
     }
 }
 
-// asm goto with outputs cause miscompilation in LLVM. UB can be triggered
-// when outputs are used inside the label block when optimisation is enabled.
-// See: https://github.com/llvm/llvm-project/issues/74483
-/*
 fn goto_out_fallthrough() {
     unsafe {
         let mut out: usize;
@@ -68,7 +64,57 @@ fn goto_out_jump() {
         assert!(value);
     }
 }
-*/
+
+fn goto_out_jump_noreturn() {
+    unsafe {
+        let mut value = false;
+        let mut out: usize;
+        asm!(
+            "lea {}, [{} + 1]",
+            "jmp {}",
+            out(reg) out,
+            in(reg) 0x12345678usize,
+            label {
+                value = true;
+                assert_eq!(out, 0x12345679);
+            },
+            options(noreturn)
+        );
+        assert!(value);
+    }
+}
+
+// asm goto with outputs cause miscompilation in LLVM when multiple outputs are present.
+// The code sample below is adapted from https://github.com/llvm/llvm-project/issues/74483
+// and does not work with `-C opt-level=0`
+#[expect(unused)]
+fn goto_multi_out() {
+    #[inline(never)]
+    #[allow(unused)]
+    fn goto_multi_out(a: usize, b: usize) -> usize {
+        let mut x: usize;
+        let mut y: usize;
+        let mut z: usize;
+        unsafe {
+            core::arch::asm!(
+                "mov {x}, {a}",
+                "test {a}, {a}",
+                "jnz {label1}",
+                "/* {y} {z} {b} {label2} */",
+                x = out(reg) x,
+                y = out(reg) y,
+                z = out(reg) z,
+                a = in(reg) a,
+                b = in(reg) b,
+                label1 = label { return x },
+                label2 = label { return 1 },
+            );
+            0
+        }
+    }
+
+    assert_eq!(goto_multi_out(11, 22), 11);
+}
 
 fn goto_noreturn() {
     unsafe {
@@ -102,8 +148,10 @@ fn goto_noreturn_diverge() {
 fn main() {
     goto_fallthough();
     goto_jump();
-    // goto_out_fallthrough();
-    // goto_out_jump();
+    goto_out_fallthrough();
+    goto_out_jump();
+    goto_out_jump_noreturn();
+    // goto_multi_out();
     goto_noreturn();
     goto_noreturn_diverge();
 }

@@ -19,8 +19,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bar() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: if there were a single returned type, you could use `impl Trait` instead
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn bar() -> impl Trait {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bar() -> Box<dyn Trait> {
 LL |     if true {

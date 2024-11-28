@@ -602,6 +602,11 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
             .into_iter()
             .map(|(_, v)| v)
     }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.inner.clear()
+    }
 }
 
 impl<K, Q: ?Sized, V> Index<&Q> for UnordMap<K, V>

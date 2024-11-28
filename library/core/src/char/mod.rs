@@ -18,7 +18,7 @@
 //! functions that convert various types to `char`.
 
 #![allow(non_snake_case)]
-#![stable(feature = "core_char", since = "1.2.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 mod convert;
 mod decode;

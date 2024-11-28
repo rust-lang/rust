@@ -307,6 +307,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 /// `value.get_mut()`. This avoids conflicts with methods of the inner type `T`.
 ///
 /// [get_mut]: Rc::get_mut
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
@@ -1875,7 +1876,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
             // Initialize with clone of this.
             let initialized_clone = unsafe {
                 // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
                 // Cast type of pointer, now that it is initialized.
                 in_progress.into_rc()
             };
@@ -2658,6 +2659,26 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Clone> From<&mut [T]> for Rc<[T]> {
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = [1, 2, 3];
+    /// let original: &mut [i32] = &mut original;
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut [T]) -> Rc<[T]> {
+        Rc::from(&*v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
@@ -2673,6 +2694,26 @@ impl From<&str> for Rc<str> {
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+impl From<&mut str> for Rc<str> {
+    /// Allocates a reference-counted string slice and copies `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = String::from("statue");
+    /// let original: &mut str = &mut original;
+    /// let shared: Rc<str> = Rc::from(original);
+    /// assert_eq!("statue", &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut str) -> Rc<str> {
+        Rc::from(&*v)
     }
 }
 
@@ -2891,7 +2932,9 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation.
+///
+/// The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an <code>[Option]<[Rc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not

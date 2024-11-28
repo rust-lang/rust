@@ -11,10 +11,6 @@ note: closure cannot be moved more than once as it is not `Copy` due to moving t
    |
 LL |         a += 1;
    |         ^
-help: consider mutably borrowing `hello`
-   |
-LL |     let b = &mut hello;
-   |             ++++
 
 error: aborting due to 1 previous error
 

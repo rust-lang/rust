@@ -290,4 +290,24 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
     },
+    ChangeInfo {
+        change_id: 132282,
+        severity: ChangeSeverity::Warning,
+        summary: "Deprecated `rust.parallel_compiler` as the compiler now always defaults to being parallel (with 1 thread)",
+    },
+    ChangeInfo {
+        change_id: 132494,
+        severity: ChangeSeverity::Info,
+        summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
+    },
+    ChangeInfo {
+        change_id: 133207,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.llvm-tools` is now enabled by default when no `config.toml` is provided.",
+    },
+    ChangeInfo {
+        change_id: 133068,
+        severity: ChangeSeverity::Warning,
+        summary: "Revert `rust.download-rustc` global default to `false` and only use `rust.download-rustc = \"if-unchanged\"` default for library and tools profile. As alt CI rustc is built without debug assertions, `rust.debug-assertions = true` will now inhibit downloading CI rustc.",
+    },
 ];

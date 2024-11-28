@@ -77,18 +77,35 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {
+                let is_let = self.token.is_keyword(kw::Let);
+                let is_let_mut = is_let && self.look_ahead(1, |t| t.is_keyword(kw::Mut));
+                let let_has_ident = is_let && !is_let_mut && self.is_kw_followed_by_ident(kw::Let);
+
                 let msg = format!("expected item, found {token_str}");
                 let mut err = self.dcx().struct_span_err(self.token.span, msg);
-                let span = self.token.span;
-                if self.is_kw_followed_by_ident(kw::Let) {
-                    err.span_label(
-                        span,
-                        "consider using `const` or `static` instead of `let` for global variables",
-                    );
+
+                let label = if is_let {
+                    "`let` cannot be used for global variables"
                 } else {
-                    err.span_label(span, "expected item")
-                        .note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
+                    "expected item"
                 };
+                err.span_label(self.token.span, label);
+
+                if is_let {
+                    if is_let_mut {
+                        err.help("consider using `static` and a `Mutex` instead of `let mut`");
+                    } else if let_has_ident {
+                        err.span_suggestion_short(
+                            self.token.span,
+                            "consider using `static` or `const` instead of `let`",
+                            "static",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.help("consider using `static` or `const` instead of `let`");
+                    }
+                }
+                err.note("for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>");
                 return Err(err);
             }
         }
@@ -1774,6 +1791,17 @@ impl<'a> Parser<'a> {
         Ok((fields, recovered))
     }
 
+    fn parse_unsafe_field(&mut self) -> Safety {
+        // not using parse_safety as that also accepts `safe`.
+        if self.eat_keyword(kw::Unsafe) {
+            let span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::unsafe_fields, span);
+            Safety::Unsafe(span)
+        } else {
+            Safety::Default
+        }
+    }
+
     pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
@@ -1797,6 +1825,8 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                // Unsafe fields are not supported in tuple structs, as doing so would result in a
+                // parsing ambiguity for `struct X(unsafe fn())`.
                 let ty = match p.parse_ty() {
                     Ok(ty) => ty,
                     Err(err) => {
@@ -1811,6 +1841,7 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
+                        safety: Safety::Default,
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
@@ -1833,7 +1864,8 @@ impl<'a> Parser<'a> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+            let safety = this.parse_unsafe_field();
+            this.parse_single_struct_field(adt_ty, lo, vis, safety, attrs)
                 .map(|field| (field, Trailing::No, UsePreAttrPos::No))
         })
     }
@@ -1844,10 +1876,11 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        safety: Safety,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
-        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, safety, attrs)?;
         if self.token == token::Comma {
             seen_comma = true;
         }
@@ -1975,6 +2008,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        safety: Safety,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
@@ -2000,6 +2034,7 @@ impl<'a> Parser<'a> {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
             vis,
+            safety,
             id: DUMMY_NODE_ID,
             ty,
             attrs,

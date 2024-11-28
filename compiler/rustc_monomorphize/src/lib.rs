@@ -2,6 +2,7 @@
 #![feature(array_windows)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(let_chains)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -16,6 +17,7 @@ use rustc_span::ErrorGuaranteed;
 
 mod collector;
 mod errors;
+mod mono_checks;
 mod partitioning;
 mod polymorphize;
 mod util;
@@ -33,7 +35,9 @@ fn custom_coerce_unsize_info<'tcx>(
         [source_ty, target_ty],
     );
 
-    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
+    match tcx
+        .codegen_select_candidate(ty::TypingEnv::fully_monomorphized().as_query_input(trait_ref))
+    {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {
             impl_def_id,
             ..
@@ -47,4 +51,5 @@ fn custom_coerce_unsize_info<'tcx>(
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
     polymorphize::provide(providers);
+    mono_checks::provide(providers);
 }

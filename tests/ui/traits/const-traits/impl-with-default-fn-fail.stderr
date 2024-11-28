@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `req`
-  --> $DIR/impl-with-default-fn-fail.rs:13:1
+  --> $DIR/impl-with-default-fn-fail.rs:12:1
    |
 LL |     fn req(&self);
    |     -------------- `req` from trait

@@ -80,11 +80,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),
-    (Some(Mode::Rustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
-    (Some(Mode::Codegen), "parallel_compiler", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
     // in the appropriate `library/{std,alloc,core}/Cargo.toml`
@@ -695,9 +692,6 @@ impl Build {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rustc_parallel && check("rustc_use_parallel_compiler") {
-            features.push("rustc_use_parallel_compiler");
-        }
         if self.config.rust_randomize_layout {
             features.push("rustc_randomized_layouts");
         }

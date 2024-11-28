@@ -81,7 +81,7 @@ fn is_path_self(e: &Expr<'_>) -> bool {
 fn contains_trait_object(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Ref(_, ty, _) => contains_trait_object(*ty),
-        ty::Adt(def, args) => def.is_box() && args[0].as_type().map_or(false, contains_trait_object),
+        ty::Adt(def, args) => def.is_box() && args[0].as_type().is_some_and(contains_trait_object),
         ty::Dynamic(..) => true,
         _ => false,
     }
@@ -187,7 +187,7 @@ fn check_enum<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>, func_expr: &Ex
 impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
+            of_trait: Some(trait_ref),
             items: [child],
             self_ty,
             ..

@@ -28,7 +28,7 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", pent.points[5].x);
-        //~^ NOTE: Capturing pent[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture pent[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing pent[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture pent[(0, 0)] -> Immutable
     };
 }

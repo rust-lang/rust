@@ -6,7 +6,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{DynEmitter, HumanEmitter, stderr_destination};
+use rustc_errors::emitter::{
+    DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::{ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
@@ -17,7 +19,7 @@ use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
@@ -86,6 +88,13 @@ impl<'tcx> DocContext<'tcx> {
         ret
     }
 
+    pub(crate) fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv {
+            typing_mode: ty::TypingMode::non_body_analysis(),
+            param_env: self.param_env,
+        }
+    }
+
     /// Call the closure with the given parameters set as
     /// the generic parameters for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(
@@ -121,6 +130,13 @@ impl<'tcx> DocContext<'tcx> {
             _ => None,
         }
     }
+
+    /// Returns `true` if the JSON output format is enabled for generating the crate content.
+    ///
+    /// If another option like `--show-coverage` is enabled, it will return `false`.
+    pub(crate) fn is_json_output(&self) -> bool {
+        self.output_format.is_json() && !self.show_coverage
+    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
@@ -147,6 +163,11 @@ pub(crate) fn new_dcx(
                     .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ui_testing(unstable_opts.ui_testing),
             )
         }

@@ -3,10 +3,9 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
     CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, MappingKind, Op,
-    SourceRegion,
 };
 use rustc_middle::ty::Instance;
-use rustc_span::Symbol;
+use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
@@ -180,7 +179,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
 }
 
 pub(crate) struct FunctionCoverage<'tcx> {
-    function_coverage_info: &'tcx FunctionCoverageInfo,
+    pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
 
     counters_seen: BitSet<CounterId>,
@@ -197,11 +196,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
-    }
-
-    /// Returns an iterator over all filenames used by this function's mappings.
-    pub(crate) fn all_file_names(&self) -> impl Iterator<Item = Symbol> + Captures<'_> {
-        self.function_coverage_info.mappings.iter().map(|mapping| mapping.source_region.file_name)
     }
 
     /// Convert this function's coverage expression data into a form that can be
@@ -226,16 +220,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
         })
     }
 
-    /// Converts this function's coverage mappings into an intermediate form
-    /// that will be used by `mapgen` when preparing for FFI.
-    pub(crate) fn counter_regions(
+    /// Yields all this function's coverage mappings, after simplifying away
+    /// unused counters and counter expressions.
+    pub(crate) fn mapping_spans(
         &self,
-    ) -> impl Iterator<Item = (MappingKind, &SourceRegion)> + ExactSizeIterator {
+    ) -> impl Iterator<Item = (MappingKind, Span)> + ExactSizeIterator + Captures<'_> {
         self.function_coverage_info.mappings.iter().map(move |mapping| {
-            let Mapping { kind, source_region } = mapping;
+            let &Mapping { ref kind, span } = mapping;
             let kind =
                 kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
-            (kind, source_region)
+            (kind, span)
         })
     }
 

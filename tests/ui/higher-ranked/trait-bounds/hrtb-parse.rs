@@ -2,7 +2,6 @@
 // Test that we can parse all the various places that a `for` keyword
 // can appear representing universal quantification.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

@@ -1,5 +1,5 @@
 //@ known-bug: #121411
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Foo {

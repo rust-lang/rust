@@ -12,6 +12,9 @@ pub use crate::marker::{Send, Sized, Sync, Unpin};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
+#[unstable(feature = "async_closure", issue = "62290")]
+#[doc(no_inline)]
+pub use crate::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 
 // Re-exported functions
 #[stable(feature = "rust1", since = "1.0.0")]

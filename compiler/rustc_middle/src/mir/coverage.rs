@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
@@ -155,26 +155,6 @@ impl Debug for CoverageKind {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct SourceRegion {
-    pub file_name: Symbol,
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-}
-
-impl Debug for SourceRegion {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            fmt,
-            "{}:{}:{} - {}:{}",
-            self.file_name, self.start_line, self.start_col, self.end_line, self.end_col
-        )
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum Op {
@@ -236,7 +216,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub source_region: SourceRegion,
+    pub span: Span,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,
@@ -246,6 +226,7 @@ pub struct Mapping {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
+    pub body_span: Span,
     pub num_counters: usize,
     pub mcdc_bitmap_bits: usize,
     pub expressions: IndexVec<ExpressionId, Expression>,

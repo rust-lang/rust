@@ -86,6 +86,7 @@ trivially_parameterized_over_tcx! {
     rustc_attr::Stability,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
+    rustc_hir::Safety,
     rustc_hir::CoroutineKind,
     rustc_hir::IsAsync,
     rustc_hir::LangItem,

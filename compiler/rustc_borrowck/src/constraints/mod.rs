@@ -210,7 +210,7 @@ impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
 
 rustc_index::newtype_index! {
     #[debug_format = "OutlivesConstraintIndex({})"]
-    pub struct OutlivesConstraintIndex {}
+    pub(crate) struct OutlivesConstraintIndex {}
 }
 
 rustc_index::newtype_index! {

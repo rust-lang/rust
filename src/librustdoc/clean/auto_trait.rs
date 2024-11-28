@@ -21,7 +21,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    let param_env = tcx.param_env(item_def_id);
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity();
 
     let finder = auto_trait::AutoTraitFinder::new(tcx);
@@ -34,7 +34,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
                 cx,
                 ty,
                 trait_def_id,
-                param_env,
+                typing_env,
                 item_def_id,
                 &finder,
                 DiscardPositiveImpls::No,
@@ -42,13 +42,13 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
         })
         .collect();
     // We are only interested in case the type *doesn't* implement the `Sized` trait.
-    if !ty.is_sized(tcx, param_env)
+    if !ty.is_sized(tcx, typing_env)
         && let Some(sized_trait_def_id) = tcx.lang_items().sized_trait()
         && let Some(impl_item) = synthesize_auto_trait_impl(
             cx,
             ty,
             sized_trait_def_id,
-            param_env,
+            typing_env,
             item_def_id,
             &finder,
             DiscardPositiveImpls::Yes,
@@ -64,7 +64,7 @@ fn synthesize_auto_trait_impl<'tcx>(
     cx: &mut DocContext<'tcx>,
     ty: Ty<'tcx>,
     trait_def_id: DefId,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     item_def_id: DefId,
     finder: &auto_trait::AutoTraitFinder<'tcx>,
     discard_positive_impls: DiscardPositiveImpls,
@@ -76,7 +76,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         return None;
     }
 
-    let result = finder.find_auto_trait_generics(ty, param_env, trait_def_id, |info| {
+    let result = finder.find_auto_trait_generics(ty, typing_env, trait_def_id, |info| {
         clean_param_env(cx, item_def_id, info.full_user_env, info.region_data, info.vid_to_region)
     });
 

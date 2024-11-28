@@ -1,11 +1,12 @@
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
+use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{
@@ -17,7 +18,6 @@ use rustc_session::utils::NativeLibKind;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_target::spec::LinkSelfContainedComponents;
-use rustc_target::spec::abi::Abi;
 
 use crate::{errors, fluent_generated};
 
@@ -28,10 +28,10 @@ pub fn walk_native_lib_search_dirs<R>(
     mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
 ) -> ControlFlow<R> {
     // Library search paths explicitly supplied by user (`-L` on the command line).
-    for search_path in sess.target_filesearch(PathKind::Native).cli_search_paths() {
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Native) {
         f(&search_path.dir, false)?;
     }
-    for search_path in sess.target_filesearch(PathKind::Framework).cli_search_paths() {
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Framework) {
         // Frameworks are looked up strictly in framework-specific paths.
         if search_path.kind != PathKind::All {
             f(&search_path.dir, true)?;
@@ -203,7 +203,7 @@ impl<'tcx> Collector<'tcx> {
 
         let sess = self.tcx.sess;
 
-        if matches!(abi, Abi::Rust | Abi::RustIntrinsic) {
+        if matches!(abi, ExternAbi::Rust | ExternAbi::RustIntrinsic) {
             return;
         }
 
@@ -613,7 +613,7 @@ impl<'tcx> Collector<'tcx> {
             .map(|ty| {
                 let layout = self
                     .tcx
-                    .layout_of(ParamEnvAnd { param_env: ParamEnv::empty(), value: ty })
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                     .expect("layout")
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
@@ -625,7 +625,7 @@ impl<'tcx> Collector<'tcx> {
 
     fn build_dll_import(
         &self,
-        abi: Abi,
+        abi: ExternAbi,
         import_name_type: Option<PeImportNameType>,
         item: DefId,
     ) -> DllImport {
@@ -634,12 +634,14 @@ impl<'tcx> Collector<'tcx> {
         // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
-                Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
-                Abi::Stdcall { .. } => DllCallingConvention::Stdcall(self.i686_arg_list_size(item)),
+                ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
+                ExternAbi::Stdcall { .. } => {
+                    DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                }
                 // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
                 // `__stdcall` only applies on x86 and on non-variadic functions:
                 // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-                Abi::System { .. } => {
+                ExternAbi::System { .. } => {
                     let c_variadic =
                         self.tcx.type_of(item).instantiate_identity().fn_sig(self.tcx).c_variadic();
 
@@ -649,10 +651,10 @@ impl<'tcx> Collector<'tcx> {
                         DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
                     }
                 }
-                Abi::Fastcall { .. } => {
+                ExternAbi::Fastcall { .. } => {
                     DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
                 }
-                Abi::Vectorcall { .. } => {
+                ExternAbi::Vectorcall { .. } => {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
@@ -661,7 +663,9 @@ impl<'tcx> Collector<'tcx> {
             }
         } else {
             match abi {
-                Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
+                ExternAbi::C { .. } | ExternAbi::Win64 { .. } | ExternAbi::System { .. } => {
+                    DllCallingConvention::C
+                }
                 _ => {
                     self.tcx.dcx().emit_fatal(errors::UnsupportedAbi { span });
                 }

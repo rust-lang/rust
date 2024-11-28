@@ -18,12 +18,12 @@
    LL|      6|        }
    LL|       |        // See discussion (below the `Notes` section) on coverage results for the closing brace.
    LL|     10|        if countdown < 5 { might_abort(false); } // Counts for different regions on one line.
-                                       ^4                     ^6
+                                       ^4                    ^6
    LL|       |        // For the following example, the closing brace is the last character on the line.
    LL|       |        // This shows the character after the closing brace is highlighted, even if that next
    LL|       |        // character is a newline.
    LL|     10|        if countdown < 5 { might_abort(false); }
-                                       ^4                     ^6
+                                       ^4                    ^6
    LL|     10|        countdown -= 1;
    LL|       |    }
    LL|      1|    Ok(())

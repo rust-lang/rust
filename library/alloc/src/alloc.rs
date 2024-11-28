@@ -61,7 +61,7 @@ pub use std::alloc::Global;
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `alloc` method
+/// This function is expected to be deprecated in favor of the `allocate` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -106,7 +106,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `dealloc` method
+/// This function is expected to be deprecated in favor of the `deallocate` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -125,7 +125,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `realloc` method
+/// This function is expected to be deprecated in favor of the `grow` and `shrink` methods
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -145,7 +145,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// of the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
-/// This function is expected to be deprecated in favor of the `alloc_zeroed` method
+/// This function is expected to be deprecated in favor of the `allocate_zeroed` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
 ///
 /// # Safety
@@ -155,11 +155,14 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+/// use std::alloc::{alloc_zeroed, dealloc, handle_alloc_error, Layout};
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();
 ///     let ptr = alloc_zeroed(layout);
+///     if ptr.is_null() {
+///         handle_alloc_error(layout);
+///     }
 ///
 ///     assert_eq!(*(ptr as *mut u16), 0);
 ///

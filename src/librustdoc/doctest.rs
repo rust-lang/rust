@@ -15,6 +15,7 @@ pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -24,7 +25,7 @@ use rustc_session::lint;
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
@@ -414,10 +415,10 @@ pub(crate) struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
-fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     let exe_suffix = match target {
-        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
-        TargetTriple::TargetJson { contents, .. } => {
+        TargetTuple::TargetTuple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTuple::TargetJson { contents, .. } => {
             Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
         }
     };
@@ -513,16 +514,20 @@ fn run_test(
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match &rustdoc_options.target {
-        TargetTriple::TargetTriple(s) => s,
-        TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+        TargetTuple::TargetTuple(s) => s,
+        TargetTuple::TargetJson { path_for_rustdoc, .. } => {
             path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
     if let ErrorOutputType::HumanReadable(kind, color_config) = rustdoc_options.error_format {
         let short = kind.short();
+        let unicode = kind == HumanReadableErrorType::Unicode;
 
         if short {
             compiler.arg("--error-format").arg("short");
+        }
+        if unicode {
+            compiler.arg("--error-format").arg("human-unicode");
         }
 
         match color_config {
@@ -695,7 +700,7 @@ impl IndividualTestOptions {
     fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
+            path.push(test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");

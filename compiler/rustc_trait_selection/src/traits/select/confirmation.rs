@@ -403,7 +403,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut assume = predicate.trait_ref.args.const_at(2);
         // FIXME(min_generic_const_exprs): We should shallowly normalize this.
         if self.tcx().features().generic_const_exprs() {
-            assume = assume.normalize_internal(self.tcx(), obligation.param_env);
+            assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
         }
         let Some(assume) =
             rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
@@ -660,7 +660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .into()
                         }
                         GenericParamDefKind::Lifetime => {
-                            let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                            let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
                             let bound_var = ty::BoundVariableKind::Region(kind);
                             bound_vars.push(bound_var);
                             ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
@@ -951,18 +951,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
 
                 // We must additionally check that the return type impls `Future`.
-
-                // FIXME(async_closures): Investigate this before stabilization.
-                // We instantiate this binder eagerly because the `confirm_future_candidate`
-                // method doesn't support higher-ranked futures, which the `AsyncFn`
-                // traits expressly allow the user to write. To fix this correctly,
-                // we'd need to instantiate trait bounds before we get to selection,
-                // like the new trait solver does.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
-                let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
-                    ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
+                    sig.output().map_bound(|output_ty| {
+                        ty::TraitRef::new(tcx, future_trait_def_id, [output_ty])
+                    }),
                 ));
 
                 (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))

@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
             let (expr_ty, expr_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(expr));
             let (indexed_ty, indexed_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(indexed));
             let parent_expr = get_parent_expr(cx, expr);
-            let needs_parens_for_prefix = parent_expr.map_or(false, |parent| parent.precedence().order() > PREC_PREFIX);
+            let needs_parens_for_prefix = parent_expr.is_some_and(|parent| parent.precedence() > PREC_PREFIX);
 
             if expr_ty == indexed_ty {
                 if expr_ref_count > indexed_ref_count {
@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
                         ..
                     })
-                ) || cx.typeck_results().expr_adjustments(expr).first().map_or(false, |a| {
+                ) || cx.typeck_results().expr_adjustments(expr).first().is_some_and(|a| {
                     matches!(
                         a.kind,
                         Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. }))
@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 });
             } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                 if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
-                    cx.param_env,
+                    cx.typing_env(),
                     Ty::new_projection_from_args(cx.tcx, target_id, cx.tcx.mk_args(&[GenericArg::from(indexed_ty)])),
                 ) {
                     if deref_ty == expr_ty {

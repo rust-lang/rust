@@ -1,5 +1,6 @@
 use hir::HirId;
 use rustc_abi::Primitive::Pointer;
+use rustc_abi::VariantIdx;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -7,7 +8,6 @@ use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_target::abi::VariantIdx;
 use tracing::trace;
 
 use super::FnCtxt;
@@ -46,7 +46,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let span = tcx.hir().span(hir_id);
         let normalize = |ty| {
             let ty = self.resolve_vars_if_possible(ty);
-            self.tcx.normalize_erasing_regions(self.param_env, ty)
+            self.tcx.normalize_erasing_regions(self.typing_env(self.param_env), ty)
         };
         let from = normalize(from);
         let to = normalize(to);
@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let skel = |ty| SizeSkeleton::compute(ty, tcx, self.param_env);
+        let skel = |ty| SizeSkeleton::compute(ty, tcx, self.typing_env(self.param_env));
         let sk_from = skel(from);
         let sk_to = skel(to);
         trace!(?sk_from, ?sk_to);

@@ -49,7 +49,7 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 serde_json = "1.0.59"
 shlex = "1.0"
-time = { version = "0.3.36", default-features = false, features = ["alloc", "formatting", "parsing", "macros"] }
+time = { version = "0.3.36", default-features = false, features = ["alloc", "formatting", "macros"] }
 tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
@@ -76,10 +76,5 @@ max_level_info = ['rustc_log/max_level_info']
 rustc_randomized_layouts = [
     'rustc_index/rustc_randomized_layouts',
     'rustc_middle/rustc_randomized_layouts'
-]
-rustc_use_parallel_compiler = [
-    'rustc_data_structures/rustc_use_parallel_compiler',
-    'rustc_interface/rustc_use_parallel_compiler',
-    'rustc_middle/rustc_use_parallel_compiler'
 ]
 # tidy-alphabetical-end

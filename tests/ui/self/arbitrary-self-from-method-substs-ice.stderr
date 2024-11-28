@@ -1,10 +1,12 @@
-error[E0015]: cannot call non-const fn `<R as Deref>::deref` in constant functions
+error[E0658]: cannot call conditionally-const method `<R as Deref>::deref` in constant functions
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:13:9
    |
 LL |         self.0
    |         ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `R` cannot be evaluated at compile-time
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:43
@@ -26,5 +28,5 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0015, E0493, E0801.
-For more information about an error, try `rustc --explain E0015`.
+Some errors have detailed explanations: E0493, E0658, E0801.
+For more information about an error, try `rustc --explain E0493`.

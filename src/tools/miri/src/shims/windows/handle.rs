@@ -1,7 +1,8 @@
 use std::mem::variant_count;
 
-use rustc_target::abi::HasDataLayout;
+use rustc_abi::HasDataLayout;
 
+use crate::concurrency::thread::ThreadNotFound;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -34,6 +35,14 @@ impl PseudoHandle {
     }
 }
 
+/// Errors that can occur when constructing a [`Handle`] from a Scalar.
+pub enum HandleError {
+    /// There is no thread with the given ID.
+    ThreadNotFound(ThreadNotFound),
+    /// Can't convert scalar to handle because it is structurally invalid.
+    InvalidHandle,
+}
+
 impl Handle {
     const NULL_DISCRIMINANT: u32 = 0;
     const PSEUDO_DISCRIMINANT: u32 = 1;
@@ -63,7 +72,7 @@ impl Handle {
         let floor_log2 = variant_count.ilog2();
 
         // we need to add one for non powers of two to compensate for the difference
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
     }
 
@@ -88,15 +97,14 @@ impl Handle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
-        return discriminant << data_size | data;
+        discriminant << data_size | data
     }
 
     fn new(discriminant: u32, data: u32) -> Option<Self> {
         match discriminant {
             Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
             Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
-            Self::THREAD_DISCRIMINANT => Some(Self::Thread(data.into())),
+            Self::THREAD_DISCRIMINANT => Some(Self::Thread(ThreadId::new_unchecked(data))),
             _ => None,
         }
     }
@@ -107,11 +115,10 @@ impl Handle {
         let data_size = u32::BITS.strict_sub(disc_size);
 
         // the lower `data_size` bits of this mask are 1
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         let data_mask = 2u32.pow(data_size) - 1;
 
         // the discriminant is stored right above the lower `data_size` bits
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         let discriminant = handle >> data_size;
 
         // the data is stored in the lower `data_size` bits
@@ -123,26 +130,40 @@ impl Handle {
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
-        #[allow(clippy::cast_possible_wrap)] // we want it to wrap
+        #[expect(clippy::cast_possible_wrap)] // we want it to wrap
         let signed_handle = self.to_packed() as i32;
         Scalar::from_target_isize(signed_handle.into(), cx)
     }
 
-    pub fn from_scalar<'tcx>(
+    /// Convert a scalar into a structured `Handle`.
+    /// Structurally invalid handles return [`HandleError::InvalidHandle`].
+    /// If the handle is structurally valid but semantically invalid, e.g. a for non-existent thread
+    /// ID, returns [`HandleError::ThreadNotFound`].
+    pub fn try_from_scalar<'tcx>(
         handle: Scalar,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Option<Self>> {
+        cx: &MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<Self, HandleError>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
 
-        #[allow(clippy::cast_sign_loss)] // we want to lose the sign
+        #[expect(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
             signed_handle as u32
         } else {
             // if a handle doesn't fit in an i32, it isn't valid.
-            return interp_ok(None);
+            return interp_ok(Err(HandleError::InvalidHandle));
         };
 
-        interp_ok(Self::from_packed(handle))
+        match Self::from_packed(handle) {
+            Some(Self::Thread(thread)) => {
+                // validate the thread id
+                match cx.machine.threads.thread_id_try_from(thread.to_u32()) {
+                    Ok(id) => interp_ok(Ok(Self::Thread(id))),
+                    Err(e) => interp_ok(Err(HandleError::ThreadNotFound(e))),
+                }
+            }
+            Some(handle) => interp_ok(Ok(handle)),
+            None => interp_ok(Err(HandleError::InvalidHandle)),
+        }
     }
 }
 
@@ -156,17 +177,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )))
     }
 
-    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let handle = this.read_scalar(handle_op)?;
-
-        match Handle::from_scalar(handle, this)? {
-            Some(Handle::Thread(thread)) =>
-                this.detach_thread(thread, /*allow_terminated_joined*/ true)?,
+        let ret = match Handle::try_from_scalar(handle, this)? {
+            Ok(Handle::Thread(thread)) => {
+                this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
+                this.eval_windows("c", "TRUE")
+            }
             _ => this.invalid_handle("CloseHandle")?,
-        }
+        };
 
-        interp_ok(())
+        interp_ok(ret)
     }
 }

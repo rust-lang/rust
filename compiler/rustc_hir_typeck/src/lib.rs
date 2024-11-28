@@ -4,6 +4,7 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -239,7 +240,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
-            && let ty::ImplContainer = item.container
+            && let ty::AssocItemContainer::Impl = item.container
             && let Some(trait_item_def_id) = item.trait_item_def_id
         {
             let impl_def_id = item.container_id(tcx);
@@ -363,7 +364,7 @@ fn report_unexpected_variant_res(
         .with_code(err_code);
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
-            let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
+            let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
             err.with_span_label(span, "`fn` calls are not allowed in patterns")
                 .with_help(format!("for more information, visit {patterns_url}"))
         }
@@ -493,7 +494,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
+    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_tuple(),));
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
         diag.note(format!("compiler flags: {}", flags.join(" ")));
         if excluded_cargo_defaults {

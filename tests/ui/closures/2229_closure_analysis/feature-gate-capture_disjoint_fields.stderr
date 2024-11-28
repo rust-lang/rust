@@ -20,7 +20,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing s[] -> ImmBorrow
+note: Capturing s[] -> Immutable
   --> $DIR/feature-gate-capture_disjoint_fields.rs:15:69
    |
 LL |         println!("This uses new capture analyysis to capture s={}", s);
@@ -38,7 +38,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture s[] -> ImmBorrow
+note: Min Capture s[] -> Immutable
   --> $DIR/feature-gate-capture_disjoint_fields.rs:15:69
    |
 LL |         println!("This uses new capture analyysis to capture s={}", s);

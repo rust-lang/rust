@@ -6,7 +6,6 @@
 // know not to stop at the blanket, we have to recursively evaluate
 // the `T:Foo` bound.
 
-//@ pretty-expanded FIXME #23616
 
 use std::marker::Sized;
 

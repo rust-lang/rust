@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::panic::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, intrinsics, mem};
@@ -114,7 +115,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -142,7 +142,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -170,7 +169,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -196,7 +194,6 @@ macro_rules! midpoint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(7), 3);")]
         /// ```
         #[unstable(feature = "num_midpoint", issue = "110840")]
-        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -229,7 +226,6 @@ macro_rules! widening_impl {
         /// assert_eq!(1_000_000_000u32.widening_mul(10), (1410065408, 2));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -320,7 +316,6 @@ macro_rules! widening_impl {
         /// );
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
-        #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -533,7 +528,7 @@ impl isize {
     midpoint_impl! { isize, signed }
 }
 
-/// If the 6th bit is set ascii is lower case.
+/// If the bit selected by this mask is set, ascii is lower case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
@@ -915,7 +910,6 @@ impl u8 {
     /// ```
     #[must_use]
     #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
-    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
     #[inline]
     pub const fn is_ascii_octdigit(&self) -> bool {
         matches!(*self, b'0'..=b'7')
@@ -1195,7 +1189,6 @@ impl u16 {
     /// ```
     #[must_use]
     #[unstable(feature = "utf16_extra", issue = "94919")]
-    #[rustc_const_unstable(feature = "utf16_extra_const", issue = "94919")]
     #[inline]
     pub const fn is_utf16_surrogate(self) -> bool {
         matches!(self, 0xD800..=0xDFFF)
@@ -1440,6 +1433,7 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseIntError;
+            #[inline]
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
                 <$t>::from_str_radix(src, 10)
             }
@@ -1460,24 +1454,16 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-#[track_caller]
-const fn from_str_radix_panic_ct(_radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]`");
-}
-
-#[track_caller]
-fn from_str_radix_panic_rt(radix: u32) -> ! {
-    panic!("from_str_radix_int: must lie in the range `[2, 36]` - found {}", radix);
-}
-
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-#[rustc_allow_const_fn_unstable(const_eval_select)]
-const fn from_str_radix_panic(radix: u32) {
-    // The only difference between these two functions is their panic message.
-    intrinsics::const_eval_select((radix,), from_str_radix_panic_ct, from_str_radix_panic_rt);
+const fn from_str_radix_panic(radix: u32) -> ! {
+    const_panic!(
+        "from_str_radix_int: must lie in the range `[2, 36]`",
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
+        radix: u32 = radix,
+    )
 }
 
 macro_rules! from_str_radix {
@@ -1520,6 +1506,7 @@ macro_rules! from_str_radix {
             /// ```
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+            #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
@@ -1664,6 +1651,7 @@ macro_rules! from_str_radix_size_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
+        #[inline]
         pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
             match <$t>::from_str_radix(src, radix) {
                 Ok(x) => Ok(x as $size),

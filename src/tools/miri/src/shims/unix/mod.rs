@@ -21,7 +21,7 @@ pub use self::fs::{DirTable, EvalContextExt as _};
 pub use self::linux::epoll::EpollInterestTable;
 pub use self::mem::EvalContextExt as _;
 pub use self::sync::EvalContextExt as _;
-pub use self::thread::EvalContextExt as _;
+pub use self::thread::{EvalContextExt as _, ThreadNameResult};
 pub use self::unnamed_socket::EvalContextExt as _;
 
 // Make up some constants.

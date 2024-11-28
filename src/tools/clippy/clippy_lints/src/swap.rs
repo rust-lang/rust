@@ -392,7 +392,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
         for stmt in self.block.stmts {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
-                StmtKind::Let(LetStmt { ref init, .. }) => {
+                StmtKind::Let(LetStmt { init, .. }) => {
                     if let Some(init) = init.as_ref() {
                         v.visit_expr(init);
                     }
@@ -412,9 +412,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
                 }
                 Self::is_used_slice_indexed(lhs, idx_ident) || Self::is_used_slice_indexed(rhs, idx_ident)
             },
-            ExprKind::Path(QPath::Resolved(_, path)) => {
-                path.segments.first().map_or(false, |idx| idx.ident == idx_ident)
-            },
+            ExprKind::Path(QPath::Resolved(_, path)) => path.segments.first().is_some_and(|idx| idx.ident == idx_ident),
             _ => false,
         }
     }

@@ -282,6 +282,8 @@ trait_selection_precise_capturing_new = add a `use<...>` bound to explicitly cap
 
 trait_selection_precise_capturing_new_but_apit = add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
 
+trait_selection_precise_capturing_overcaptures = use the precise capturing `use<...>` syntax to make the captures explicit
+
 trait_selection_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 trait_selection_prlf_defined_without_sub = the lifetime defined here...
 trait_selection_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
@@ -455,7 +457,9 @@ trait_selection_unable_to_construct_constant_value = unable to construct a const
 trait_selection_unknown_format_parameter_for_on_unimplemented_attr = there is no parameter `{$argument_name}` on trait `{$trait_name}`
     .help = expect either a generic argument name or {"`{Self}`"} as format argument
 
-trait_selection_warn_removing_apit_params = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
+trait_selection_warn_removing_apit_params_for_overcapture = you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+
+trait_selection_warn_removing_apit_params_for_undercapture = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
 
 trait_selection_where_copy_predicates = copy the `where` clause predicates from the trait
 

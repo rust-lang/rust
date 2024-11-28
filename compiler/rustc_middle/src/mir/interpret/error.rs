@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::{convert, fmt, mem, ops};
 
 use either::Either;
+use rustc_abi::{Align, Size, VariantIdx, WrappingRange};
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
@@ -11,7 +12,6 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::abi::{Align, Size, VariantIdx, WrappingRange, call};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::error;
@@ -59,22 +59,33 @@ impl ErrorHandled {
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
     is_tainted_by_errors: bool,
+    /// Whether this is the kind of error that can sometimes occur, and sometimes not.
+    /// Used for resource exhaustion errors.
+    can_be_spurious: bool,
 }
 
 impl ReportedErrorInfo {
     #[inline]
     pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: true, error }
+        ReportedErrorInfo { is_tainted_by_errors: true, can_be_spurious: false, error }
     }
+    #[inline]
+    pub fn spurious(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { can_be_spurious: true, is_tainted_by_errors: false, error }
+    }
+
     pub fn is_tainted_by_errors(&self) -> bool {
         self.is_tainted_by_errors
+    }
+    pub fn can_be_spurious(&self) -> bool {
+        self.can_be_spurious
     }
 }
 
 impl From<ErrorGuaranteed> for ReportedErrorInfo {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: false, error }
+        ReportedErrorInfo { is_tainted_by_errors: false, can_be_spurious: false, error }
     }
 }
 
@@ -217,7 +228,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
-    FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
+    FnAbiAdjustForForeignAbi(rustc_target::callconv::AdjustForForeignAbiError),
 }
 
 /// Details of why a pointer had to be in-bounds.

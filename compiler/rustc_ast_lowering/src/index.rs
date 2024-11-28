@@ -381,15 +381,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {
-        match predicate {
-            WherePredicate::BoundPredicate(pred) => {
-                self.insert(pred.span, pred.hir_id, Node::WhereBoundPredicate(pred));
-                self.with_parent(pred.hir_id, |this| {
-                    intravisit::walk_where_predicate(this, predicate)
-                })
-            }
-            _ => intravisit::walk_where_predicate(self, predicate),
-        }
+        self.insert(predicate.span, predicate.hir_id, Node::WherePredicate(predicate));
+        self.with_parent(predicate.hir_id, |this| {
+            intravisit::walk_where_predicate(this, predicate)
+        });
     }
 
     fn visit_array_length(&mut self, len: &'hir ArrayLen<'hir>) {

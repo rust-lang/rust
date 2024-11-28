@@ -1,0 +1,11 @@
+warning: the feature `unsafe_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/feature-gate-unsafe_fields.rs:5:32
+   |
+LL | #![cfg_attr(with_gate, feature(unsafe_fields))]
+   |                                ^^^^^^^^^^^^^
+   |
+   = note: see issue #132922 <https://github.com/rust-lang/rust/issues/132922> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

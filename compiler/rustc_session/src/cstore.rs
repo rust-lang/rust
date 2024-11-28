@@ -5,6 +5,7 @@
 use std::any::Any;
 use std::path::PathBuf;
 
+use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
 use rustc_hir::def_id::{
@@ -14,7 +15,6 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::abi::Abi;
 
 use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
@@ -130,6 +130,11 @@ impl DllImport {
             None
         }
     }
+
+    pub fn is_missing_decorations(&self) -> bool {
+        self.import_name_type == Some(PeImportNameType::Undecorated)
+            || self.import_name_type == Some(PeImportNameType::NoPrefix)
+    }
 }
 
 /// Calling convention for a function defined in an external library.
@@ -148,7 +153,7 @@ pub enum DllCallingConvention {
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
-    pub abi: Abi,
+    pub abi: ExternAbi,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

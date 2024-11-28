@@ -191,6 +191,8 @@ use core::error::{self, Error};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
+#[cfg(not(bootstrap))]
+use core::marker::PointerLike;
 use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
@@ -225,6 +227,7 @@ pub use thin::ThinBox;
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 // The declaration of the `Box` struct must be kept in sync with the
 // compiler or ICEs will happen.
 pub struct Box<
@@ -1499,6 +1502,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_ptr`]: Self::as_ptr
     #[unstable(feature = "box_as_ptr", issue = "129090")]
     #[rustc_never_returns_null_ptr]
+    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
     #[inline]
     pub fn as_mut_ptr(b: &mut Self) -> *mut T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
@@ -1547,6 +1551,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`as_ptr`]: Self::as_ptr
     #[unstable(feature = "box_as_ptr", issue = "129090")]
     #[rustc_never_returns_null_ptr]
+    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
     #[inline]
     pub fn as_ptr(b: &Self) -> *const T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
@@ -1734,7 +1739,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
         // Pre-allocate memory to allow writing the cloned value directly.
         let mut boxed = Self::new_uninit_in(self.1.clone());
         unsafe {
-            (**self).clone_to_uninit(boxed.as_mut_ptr());
+            (**self).clone_to_uninit(boxed.as_mut_ptr().cast());
             boxed.assume_init()
         }
     }
@@ -2128,3 +2133,7 @@ impl<E: Error> Error for Box<E> {
         Error::provide(&**self, request);
     }
 }
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+impl<T> PointerLike for Box<T> {}

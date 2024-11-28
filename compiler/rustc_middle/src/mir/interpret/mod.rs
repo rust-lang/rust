@@ -12,15 +12,16 @@ use std::io::{Read, Write};
 use std::num::NonZero;
 use std::{fmt, io};
 
-use rustc_ast::LitKind;
+use rustc_abi::{AddressSpace, Align, Endian, HasDataLayout, Size};
+use rustc_ast::{LitKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
 pub use {
@@ -307,6 +308,89 @@ impl<'tcx> GlobalAlloc<'tcx> {
             GlobalAlloc::Function { .. } => cx.data_layout().instruction_address_space,
             GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
                 AddressSpace::DATA
+            }
+        }
+    }
+
+    pub fn mutability(&self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Mutability {
+        // Let's see what kind of memory we are.
+        match self {
+            GlobalAlloc::Static(did) => {
+                let DefKind::Static { safety: _, mutability, nested } = tcx.def_kind(did) else {
+                    bug!()
+                };
+                if nested {
+                    // Nested statics in a `static` are never interior mutable,
+                    // so just use the declared mutability.
+                    if cfg!(debug_assertions) {
+                        let alloc = tcx.eval_static_initializer(did).unwrap();
+                        assert_eq!(alloc.0.mutability, mutability);
+                    }
+                    mutability
+                } else {
+                    let mutability = match mutability {
+                        Mutability::Not
+                            if !tcx
+                                .type_of(did)
+                                .no_bound_vars()
+                                .expect("statics should not have generic parameters")
+                                .is_freeze(tcx, typing_env) =>
+                        {
+                            Mutability::Mut
+                        }
+                        _ => mutability,
+                    };
+                    mutability
+                }
+            }
+            GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
+            GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..) => {
+                // These are immutable.
+                Mutability::Not
+            }
+        }
+    }
+
+    pub fn size_and_align(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+    ) -> (Size, Align) {
+        match self {
+            GlobalAlloc::Static(def_id) => {
+                let DefKind::Static { nested, .. } = tcx.def_kind(def_id) else {
+                    bug!("GlobalAlloc::Static is not a static")
+                };
+
+                if nested {
+                    // Nested anonymous statics are untyped, so let's get their
+                    // size and alignment from the allocation itself. This always
+                    // succeeds, as the query is fed at DefId creation time, so no
+                    // evaluation actually occurs.
+                    let alloc = tcx.eval_static_initializer(def_id).unwrap();
+                    (alloc.0.size(), alloc.0.align)
+                } else {
+                    // Use size and align of the type for everything else. We need
+                    // to do that to
+                    // * avoid cycle errors in case of self-referential statics,
+                    // * be able to get information on extern statics.
+                    let ty = tcx
+                        .type_of(def_id)
+                        .no_bound_vars()
+                        .expect("statics should not have generic parameters");
+                    let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
+                    assert!(layout.is_sized());
+                    (layout.size, layout.align.abi)
+                }
+            }
+            GlobalAlloc::Memory(alloc) => {
+                let alloc = alloc.inner();
+                (alloc.size(), alloc.align)
+            }
+            GlobalAlloc::Function { .. } => (Size::ZERO, Align::ONE),
+            GlobalAlloc::VTable(..) => {
+                // No data to be accessed here. But vtables are pointer-aligned.
+                return (Size::ZERO, tcx.data_layout.pointer_align.abi);
             }
         }
     }

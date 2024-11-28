@@ -115,6 +115,12 @@ impl FileLoader for RealFileLoader {
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
+        if path.metadata().is_ok_and(|metadata| metadata.len() > SourceFile::MAX_FILE_SIZE.into()) {
+            return Err(io::Error::other(format!(
+                "text files larger than {} bytes are unsupported",
+                SourceFile::MAX_FILE_SIZE
+            )));
+        }
         fs::read_to_string(path)
     }
 
@@ -297,7 +303,10 @@ impl SourceMap {
     /// unmodified.
     pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         self.try_new_source_file(filename, src).unwrap_or_else(|OffsetOverflowError| {
-            eprintln!("fatal error: rustc does not support files larger than 4GB");
+            eprintln!(
+                "fatal error: rustc does not support text files larger than {} bytes",
+                SourceFile::MAX_FILE_SIZE
+            );
             crate::fatal_error::FatalError.raise()
         })
     }
@@ -534,7 +543,7 @@ impl SourceMap {
     /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
-    fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
+    pub fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
     where
         F: Fn(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {

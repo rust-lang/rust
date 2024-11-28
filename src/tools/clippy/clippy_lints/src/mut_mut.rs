@@ -80,7 +80,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
-                if ty.peel_refs().is_sized(self.cx.tcx, self.cx.param_env) {
+                if ty.peel_refs().is_sized(self.cx.tcx, self.cx.typing_env()) {
                     span_lint_hir(
                         self.cx,
                         MUT_MUT,

@@ -103,9 +103,11 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 mod intrinsics {
     use super::Sized;
 
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn abort() -> ! {
+        loop {}
     }
 }
 

@@ -19,7 +19,6 @@ rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_session = { path = "../rustc_session", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
-rustc_target = { path = "../rustc_target", optional = true }
 smallvec = { version = "1.8.1", features = ["union"] }
 tracing = "0.1"
 # tidy-alphabetical-end
@@ -41,7 +40,6 @@ rustc = [
     "dep:rustc_middle",
     "dep:rustc_session",
     "dep:rustc_span",
-    "dep:rustc_target",
     "smallvec/may_dangle",
     "rustc_index/nightly",
 ]

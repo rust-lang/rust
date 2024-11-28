@@ -4,7 +4,6 @@
 // Async>::Cancel` be WF. This normalizes to `Receipt<Complete>`
 // again, leading to an infinite cycle. Issue #23003.
 
-//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

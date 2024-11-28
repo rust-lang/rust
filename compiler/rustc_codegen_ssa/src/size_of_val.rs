@@ -1,10 +1,10 @@
 //! Computing the size and alignment of a value.
 
+use rustc_abi::WrappingRange;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::WrappingRange;
 use tracing::{debug, trace};
 
 use crate::common::IntPredicate;

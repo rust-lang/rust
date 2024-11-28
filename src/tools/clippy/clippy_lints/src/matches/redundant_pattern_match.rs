@@ -319,10 +319,9 @@ fn found_good_method<'tcx>(
     node: (&PatKind<'_>, &PatKind<'_>),
 ) -> Option<(&'static str, Option<&'tcx Expr<'tcx>>)> {
     match node {
-        (
-            PatKind::TupleStruct(ref path_left, patterns_left, _),
-            PatKind::TupleStruct(ref path_right, patterns_right, _),
-        ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
+        (PatKind::TupleStruct(path_left, patterns_left, _), PatKind::TupleStruct(path_right, patterns_right, _))
+            if patterns_left.len() == 1 && patterns_right.len() == 1 =>
+        {
             if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
                 find_good_method_for_match(
                     cx,
@@ -350,8 +349,8 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Path(ref path_right))
-        | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, patterns, _))
+        (PatKind::TupleStruct(path_left, patterns, _), PatKind::Path(path_right))
+        | (PatKind::Path(path_left), PatKind::TupleStruct(path_right, patterns, _))
             if patterns.len() == 1 =>
         {
             if let PatKind::Wild = patterns[0].kind {
@@ -381,14 +380,14 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
+        (PatKind::TupleStruct(path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
             if let PatKind::Wild = patterns[0].kind {
                 get_good_method(cx, arms, path_left)
             } else {
                 None
             }
         },
-        (PatKind::Path(ref path_left), PatKind::Wild) => get_good_method(cx, arms, path_left),
+        (PatKind::Path(path_left), PatKind::Wild) => get_good_method(cx, arms, path_left),
         _ => None,
     }
 }
@@ -448,7 +447,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
             .tcx
             .lang_items()
             .get(expected_lang_item)
-            .map_or(false, |expected_id| cx.tcx.parent(id) == expected_id),
+            .is_some_and(|expected_id| cx.tcx.parent(id) == expected_id),
         Item::Diag(expected_ty, expected_variant) => {
             let ty = cx.typeck_results().pat_ty(pat);
 

@@ -16,6 +16,7 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
+        ABI_UNSUPPORTED_VECTOR_TYPES,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -100,6 +101,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TRIVIAL_CASTS,
@@ -3184,6 +3186,7 @@ declare_lint! {
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -4184,7 +4187,7 @@ declare_lint! {
     Warn,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
         reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
     };
     @edition Edition2024 => Deny;
@@ -4238,7 +4241,7 @@ declare_lint! {
     Warn,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
         reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
     };
     report_in_external_macro
@@ -4993,6 +4996,83 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
+    /// that runs a custom `Drop` destructor.
+    /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
+    /// This lint detects those cases and provides you information on those values and their custom destructor implementations.
+    /// Your discretion on this information is required.
+    ///
+    /// ### Example
+    /// ```rust,edition2021
+    /// #![warn(tail_expr_drop_order)]
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// impl Drop for Droppy {
+    ///     fn drop(&mut self) {
+    ///         // This is a custom destructor and it induces side-effects that is observable
+    ///         // especially when the drop order at a tail expression changes.
+    ///         println!("loud drop {}", self.0);
+    ///     }
+    /// }
+    /// fn edition_2021() -> i32 {
+    ///     let another_droppy = Droppy(0);
+    ///     Droppy(1).get()
+    /// }
+    /// fn main() {
+    ///     edition_2021();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In tail expression of blocks or function bodies,
+    /// values of type with significant `Drop` implementation has an ill-specified drop order
+    /// before Edition 2024 so that they are dropped only after dropping local variables.
+    /// Edition 2024 introduces a new rule with drop orders for them,
+    /// so that they are dropped first before dropping local variables.
+    ///
+    /// A significant `Drop::drop` destructor here refers to an explicit, arbitrary
+    /// implementation of the `Drop` trait on the type, with exceptions including `Vec`,
+    /// `Box`, `Rc`, `BTreeMap` and `HashMap` that are marked by the compiler otherwise
+    /// so long that the generic types have no significant destructor recursively.
+    /// In other words, a type has a significant drop destructor when it has a `Drop` implementation
+    /// or its destructor invokes a significant destructor on a type.
+    /// Since we cannot completely reason about the change by just inspecting the existence of
+    /// a significant destructor, this lint remains only a suggestion and is set to `allow` by default.
+    ///
+    /// This lint only points out the issue with `Droppy`, which will be dropped before `another_droppy`
+    /// does in Edition 2024.
+    /// No fix will be proposed by this lint.
+    /// However, the most probable fix is to hoist `Droppy` into its own local variable binding.
+    /// ```rust
+    /// struct Droppy(i32);
+    /// impl Droppy {
+    ///     fn get(&self) -> i32 {
+    ///         self.0
+    ///     }
+    /// }
+    /// fn edition_2024() -> i32 {
+    ///     let value = Droppy(0);
+    ///     let another_droppy = Droppy(1);
+    ///     value.get()
+    /// }
+    /// ```
+    pub TAIL_EXPR_DROP_ORDER,
+    Allow,
+    "Detect and warn on significant change in drop order in tail expression location",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "issue #123739 <https://github.com/rust-lang/rust/issues/123739>",
+    };
+}
+
+declare_lint! {
     /// The `rust_2024_guarded_string_incompatible_syntax` lint detects `#` tokens
     /// that will be parsed as part of a guarded string literal in Rust 2024.
     ///
@@ -5030,4 +5110,70 @@ declare_lint! {
         reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `abi_unsupported_vector_types` lint detects function definitions and calls
+    /// whose ABI depends on enabling certain target features, but those features are not enabled.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (fails on non-x86_64)
+    /// extern "C" fn missing_target_feature(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// #[target_feature(enable = "avx")]
+    /// unsafe extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
+    ///   todo!()
+    /// }
+    ///
+    /// fn main() {
+    ///   let v = unsafe { std::mem::zeroed() };
+    ///   unsafe { with_target_feature(v); }
+    /// }
+    /// ```
+    ///
+    /// ```text
+    /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
+    ///  --> lint_example.rs:18:12
+    ///   |
+    ///   |   unsafe { with_target_feature(v); }
+    ///   |            ^^^^^^^^^^^^^^^^^^^^^^ function called here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    ///   = note: `#[warn(abi_unsupported_vector_types)]` on by default
+    ///
+    ///
+    /// warning: ABI error: this function definition uses a avx vector type, which is not enabled
+    ///  --> lint_example.rs:3:1
+    ///   |
+    ///   | pub extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
+    ///   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    /// ```
+    ///
+    ///
+    ///
+    /// ### Explanation
+    ///
+    /// The C ABI for `__m256` requires the value to be passed in an AVX register,
+    /// which is only possible when the `avx` target feature is enabled.
+    /// Therefore, `missing_target_feature` cannot be compiled without that target feature.
+    /// A similar (but complementary) message is triggered when `with_target_feature` is called
+    /// by a function that does not enable the `avx` target feature.
+    ///
+    /// Note that this lint is very similar to the `-Wpsabi` warning in `gcc`/`clang`.
+    pub ABI_UNSUPPORTED_VECTOR_TYPES,
+    Warn,
+    "this function call or definition uses a vector type which is not enabled",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+    };
 }

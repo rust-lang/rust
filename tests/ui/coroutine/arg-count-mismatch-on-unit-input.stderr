@@ -5,7 +5,10 @@ LL | fn foo() -> impl Coroutine<u8> {
    |             ^^^^^^^^^^^^^^^^^^ expected due to this
 ...
 LL |     |_: ()| {}
-   |     ------- found signature defined here
+   |     ----------
+   |     |
+   |     found signature defined here
+   |     return type was inferred to be `{coroutine@$DIR/arg-count-mismatch-on-unit-input.rs:8:5: 8:12}` here
    |
    = note: expected coroutine signature `fn(u8) -> _`
               found coroutine signature `fn(()) -> _`

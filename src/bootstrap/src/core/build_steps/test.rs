@@ -3,12 +3,14 @@
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
+use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
 use clap_complete::shells;
 
+use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
@@ -800,7 +802,7 @@ impl Step for RustdocTheme {
             .arg(builder.src.join("src/librustdoc/html/static/css/rustdoc.css").to_str().unwrap())
             .env("RUSTC_STAGE", self.compiler.stage.to_string())
             .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
-            .env("RUSTDOC_LIBDIR", builder.sysroot_libdir(self.compiler, self.compiler.host))
+            .env("RUSTDOC_LIBDIR", builder.sysroot_target_libdir(self.compiler, self.compiler.host))
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
@@ -1354,7 +1356,7 @@ impl Step for CrateBuildHelper {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/build_helper")
+        run.path("src/build_helper")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1372,7 +1374,7 @@ impl Step for CrateBuildHelper {
             Mode::ToolBootstrap,
             host,
             Kind::Test,
-            "src/tools/build_helper",
+            "src/build_helper",
             SourceType::InTree,
             &[],
         );
@@ -1722,7 +1724,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // of them!
 
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
-        cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
+        cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
         // Minicore auxiliary lib for `no_core` tests that need `core` stubs in cross-compilation
@@ -1938,9 +1940,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--json");
 
-        if builder.config.rust_debug_assertions_std {
-            cmd.arg("--with-debug-assertions");
-        };
+        if builder.config.rustc_debug_assertions {
+            cmd.arg("--with-rustc-debug-assertions");
+        }
+
+        if builder.config.std_debug_assertions {
+            cmd.arg("--with-std-debug-assertions");
+        }
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -2181,6 +2187,7 @@ struct BookTest {
     path: PathBuf,
     name: &'static str,
     is_ext_doc: bool,
+    dependencies: Vec<&'static str>,
 }
 
 impl Step for BookTest {
@@ -2233,6 +2240,57 @@ impl BookTest {
         // Books often have feature-gated example text.
         rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
+
+        // Books may also need to build dependencies. For example, `TheBook` has
+        // code samples which use the `trpl` crate. For the `rustdoc` invocation
+        // to find them them successfully, they need to be built first and their
+        // paths used to generate the
+        let libs = if !self.dependencies.is_empty() {
+            let mut lib_paths = vec![];
+            for dep in self.dependencies {
+                let mode = Mode::ToolRustc;
+                let target = builder.config.build;
+                let cargo = tool::prepare_tool_cargo(
+                    builder,
+                    compiler,
+                    mode,
+                    target,
+                    Kind::Build,
+                    dep,
+                    SourceType::Submodule,
+                    &[],
+                );
+
+                let stamp = builder
+                    .cargo_out(compiler, mode, target)
+                    .join(PathBuf::from(dep).file_name().unwrap())
+                    .with_extension("stamp");
+
+                let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
+                let directories = output_paths
+                    .into_iter()
+                    .filter_map(|p| p.parent().map(ToOwned::to_owned))
+                    .fold(HashSet::new(), |mut set, dir| {
+                        set.insert(dir);
+                        set
+                    });
+
+                lib_paths.extend(directories);
+            }
+            lib_paths
+        } else {
+            vec![]
+        };
+
+        if !libs.is_empty() {
+            let paths = libs
+                .into_iter()
+                .map(|path| path.into_os_string())
+                .collect::<Vec<OsString>>()
+                .join(OsStr::new(","));
+            rustbook_cmd.args([OsString::from("--library-path"), paths]);
+        }
+
         builder.add_rust_test_threads(&mut rustbook_cmd);
         let _guard = builder.msg(
             Kind::Test,
@@ -2291,6 +2349,7 @@ macro_rules! test_book {
         $name:ident, $path:expr, $book_name:expr,
         default=$default:expr
         $(,submodules = $submodules:expr)?
+        $(,dependencies=$dependencies:expr)?
         ;
     )+) => {
         $(
@@ -2320,11 +2379,21 @@ macro_rules! test_book {
                             builder.require_submodule(submodule, None);
                         }
                     )*
+
+                    let dependencies = vec![];
+                    $(
+                        let mut dependencies = dependencies;
+                        for dep in $dependencies {
+                            dependencies.push(dep);
+                        }
+                    )?
+
                     builder.ensure(BookTest {
                         compiler: self.compiler,
                         path: PathBuf::from($path),
                         name: $book_name,
                         is_ext_doc: !$default,
+                        dependencies,
                     });
                 }
             }
@@ -2339,7 +2408,7 @@ test_book!(
     RustcBook, "src/doc/rustc", "rustc", default=true;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
-    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"];
+    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"], dependencies=["src/doc/book/packages/trpl"];
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
     EditionGuide, "src/doc/edition-guide", "edition-guide", default=false, submodules=["src/doc/edition-guide"];
 );
@@ -2583,7 +2652,7 @@ fn prepare_cargo_test(
     // by `Cargo::new` and that actually makes things go wrong.
     if builder.kind != Kind::Miri {
         let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_target_libdir(compiler, target)));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
     }
 
@@ -2818,7 +2887,7 @@ impl Step for CrateRustdoc {
         let libdir = if builder.download_rustc() {
             builder.rustc_libdir(compiler)
         } else {
-            builder.sysroot_libdir(compiler, target).to_path_buf()
+            builder.sysroot_target_libdir(compiler, target).to_path_buf()
         };
         let mut dylib_path = dylib_path();
         dylib_path.insert(0, PathBuf::from(&*libdir));
@@ -2943,10 +3012,9 @@ impl Step for RemoteCopyLibs {
         cmd.run(builder);
 
         // Push all our dylibs to the emulator
-        for f in t!(builder.sysroot_libdir(compiler, target).read_dir()) {
+        for f in t!(builder.sysroot_target_libdir(compiler, target).read_dir()) {
             let f = t!(f);
-            let name = f.file_name().into_string().unwrap();
-            if helpers::is_dylib(&name) {
+            if helpers::is_dylib(&f.path()) {
                 command(&tool).arg("push").arg(f.path()).run(builder);
             }
         }
@@ -3401,7 +3469,6 @@ impl Step for CodegenCranelift {
             // FIXME remove once vendoring is handled
             .arg("--skip-test")
             .arg("testsuite.extended_sysroot");
-        cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
     }
@@ -3596,14 +3663,42 @@ impl Step for TestFloatParse {
             &[],
         );
 
-        cargo_run.arg("--");
-        if builder.config.args().is_empty() {
-            // By default, exclude tests that take longer than ~1m.
-            cargo_run.arg("--skip-huge");
-        } else {
-            cargo_run.args(builder.config.args());
+        if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
+            cargo_run.args(["--", "--skip-huge"]);
         }
 
         cargo_run.into_cmd().run(builder);
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct CollectLicenseMetadata;
+
+impl Step for CollectLicenseMetadata {
+    type Output = PathBuf;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/collect-license-metadata")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CollectLicenseMetadata);
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let Some(reuse) = &builder.config.reuse else {
+            panic!("REUSE is required to collect the license metadata");
+        };
+
+        let dest = builder.src.join("license-metadata.json");
+
+        let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
+        cmd.env("REUSE_EXE", reuse);
+        cmd.env("DEST", &dest);
+        cmd.env("ONLY_CHECK", "1");
+        cmd.run(builder);
+
+        dest
     }
 }

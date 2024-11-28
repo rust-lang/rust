@@ -24,12 +24,12 @@ error: First Pass analysis includes:
 LL |         || p.y += incr;
    |         ^^^^^^^^^^^^^^
    |
-note: Capturing p[(1, 0)] -> MutBorrow
+note: Capturing p[(1, 0)] -> Mutable
   --> $DIR/nested-closure.rs:34:12
    |
 LL |         || p.y += incr;
    |            ^^^
-note: Capturing incr[] -> ImmBorrow
+note: Capturing incr[] -> Immutable
   --> $DIR/nested-closure.rs:34:19
    |
 LL |         || p.y += incr;
@@ -41,12 +41,12 @@ error: Min Capture analysis includes:
 LL |         || p.y += incr;
    |         ^^^^^^^^^^^^^^
    |
-note: Min Capture p[(1, 0)] -> MutBorrow
+note: Min Capture p[(1, 0)] -> Mutable
   --> $DIR/nested-closure.rs:34:12
    |
 LL |         || p.y += incr;
    |            ^^^
-note: Min Capture incr[] -> ImmBorrow
+note: Min Capture incr[] -> Immutable
   --> $DIR/nested-closure.rs:34:19
    |
 LL |         || p.y += incr;
@@ -64,17 +64,17 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing p[(0, 0)] -> ImmBorrow
+note: Capturing p[(0, 0)] -> Immutable
   --> $DIR/nested-closure.rs:26:24
    |
 LL |         println!("{}", p.x);
    |                        ^^^
-note: Capturing p[(1, 0)] -> MutBorrow
+note: Capturing p[(1, 0)] -> Mutable
   --> $DIR/nested-closure.rs:34:12
    |
 LL |         || p.y += incr;
    |            ^^^
-note: Capturing p[(1, 0)] -> ImmBorrow
+note: Capturing p[(1, 0)] -> Immutable
   --> $DIR/nested-closure.rs:44:24
    |
 LL |         println!("{}", p.y);
@@ -92,12 +92,12 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture p[(0, 0)] -> ImmBorrow
+note: Min Capture p[(0, 0)] -> Immutable
   --> $DIR/nested-closure.rs:26:24
    |
 LL |         println!("{}", p.x);
    |                        ^^^
-note: Min Capture p[(1, 0)] -> MutBorrow
+note: Min Capture p[(1, 0)] -> Mutable
   --> $DIR/nested-closure.rs:34:12
    |
 LL |         || p.y += incr;

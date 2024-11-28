@@ -5,7 +5,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
-use rustc_hir::WherePredicate::BoundPredicate;
+use rustc_hir::WherePredicateKind::BoundPredicate;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -189,7 +189,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReLateParam(late_param)) = self.to_error_region(fr).as_deref()
-            && let ty::BoundRegionKind::BrEnv = late_param.bound_region
+            && let ty::BoundRegionKind::ClosureEnv = late_param.bound_region
             && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
         {
             return args.as_closure().kind() == ty::ClosureKind::FnMut;
@@ -236,7 +236,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut hrtb_bounds = vec![];
         gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
             for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
+                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                    pred.kind
                 else {
                     continue;
                 };
@@ -267,12 +268,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             };
             debug!(?generics_fn);
             generics_fn.predicates.iter().for_each(|predicate| {
-                let BoundPredicate(WhereBoundPredicate {
-                    span: bounded_span,
-                    bounded_ty,
-                    bounds,
-                    ..
-                }) = predicate
+                let BoundPredicate(WhereBoundPredicate { bounded_ty, bounds, .. }) = predicate.kind
                 else {
                     return;
                 };
@@ -287,7 +283,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             .rfind(|param| param.def_id.to_def_id() == defid)
                             .is_some()
                     {
-                        suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
+                        suggestions.push((predicate.span.shrink_to_hi(), " + 'static".to_string()));
                     }
                 });
             });
@@ -952,7 +948,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             if let Ok(Some(instance)) = ty::Instance::try_resolve(
                 tcx,
-                self.param_env,
+                self.infcx.typing_env(self.infcx.param_env),
                 *fn_did,
                 self.infcx.resolve_vars_if_possible(args),
             ) {
@@ -1091,7 +1087,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             peeled_ty = ref_ty;
             count += 1;
         }
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, peeled_ty) {
+        if !self.infcx.type_is_copy_modulo_regions(self.infcx.param_env, peeled_ty) {
             return;
         }
 
@@ -1103,7 +1099,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 peeled_ty,
                 liberated_sig.c_variadic,
                 hir::Safety::Safe,
-                rustc_target::spec::abi::Abi::Rust,
+                rustc_abi::ExternAbi::Rust,
             )),
         );
         let closure_ty = Ty::new_closure(
@@ -1160,7 +1156,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(preds.iter().map(|(pred, span)| {
             trace!(?pred);
-            Obligation::misc(tcx, span, self.mir_def_id(), self.param_env, pred)
+            Obligation::misc(tcx, span, self.mir_def_id(), self.infcx.param_env, pred)
         }));
 
         if ocx.select_all_or_error().is_empty() && count > 0 {

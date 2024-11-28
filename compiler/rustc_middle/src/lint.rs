@@ -290,12 +290,7 @@ pub fn lint_level(
         let has_future_breakage = future_incompatible.map_or(
             // Default allow lints trigger too often for testing.
             sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
-            |incompat| {
-                matches!(
-                    incompat.reason,
-                    FutureIncompatibilityReason::FutureReleaseErrorReportInDeps
-                )
-            },
+            |incompat| incompat.reason.has_future_breakage(),
         );
 
         // Convert lint level to error level.
@@ -381,6 +376,17 @@ pub fn lint_level(
                 }
                 FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
                     format!("this changes meaning in Rust {edition}")
+                }
+                FutureIncompatibilityReason::EditionAndFutureReleaseError(edition) => {
+                    format!(
+                        "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in Rust {edition} and in a future release in all editions!"
+                    )
+                }
+                FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(edition) => {
+                    format!(
+                        "this changes meaning in Rust {edition} and in a future release in all editions!"
+                    )
                 }
                 FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };

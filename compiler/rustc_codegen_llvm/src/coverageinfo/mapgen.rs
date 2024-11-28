@@ -1,25 +1,30 @@
+mod spans;
+
 use std::ffi::CString;
+use std::sync::Arc;
 
 use itertools::Itertools as _;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::mir::coverage::MappingKind;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::Symbol;
+use rustc_session::RemapFileNameExt;
+use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
+use rustc_span::{SourceFile, StableSourceFileId};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::ffi;
 use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
-use crate::{coverageinfo, llvm};
+use crate::coverageinfo::{ffi, llvm_cov};
+use crate::llvm;
 
 /// Generates and exports the coverage map, which is embedded in special
 /// linker sections in the final binary.
@@ -33,7 +38,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     // agrees with our Rust-side code. Expected versions (encoded as n-1) are:
     // - `CovMapVersion::Version7` (6) used by LLVM 18-19
     let covmap_version = {
-        let llvm_covmap_version = coverageinfo::mapping_version();
+        let llvm_covmap_version = llvm_cov::mapping_version();
         let expected_versions = 6..=6;
         assert!(
             expected_versions.contains(&llvm_covmap_version),
@@ -69,16 +74,18 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
         .collect::<Vec<_>>();
 
-    let all_file_names =
-        function_coverage_entries.iter().flat_map(|(_, fn_cov)| fn_cov.all_file_names());
-    let global_file_table = GlobalFileTable::new(all_file_names);
+    let all_files = function_coverage_entries
+        .iter()
+        .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
+        .map(|span| tcx.sess.source_map().lookup_source_file(span.lo()));
+    let global_file_table = GlobalFileTable::new(all_files);
 
     // Encode all filenames referenced by coverage mappings in this CGU.
     let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
 
     let filenames_size = filenames_buffer.len();
     let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
+    let filenames_ref = llvm_cov::hash_bytes(&filenames_buffer);
 
     // Generate the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
@@ -95,18 +102,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         let is_used = function_coverage.is_used();
 
         let coverage_mapping_buffer =
-            encode_mappings_for_function(&global_file_table, &function_coverage);
+            encode_mappings_for_function(tcx, &global_file_table, &function_coverage);
 
         if coverage_mapping_buffer.is_empty() {
-            if function_coverage.is_used() {
-                bug!(
-                    "A used function should have had coverage mapping data but did not: {}",
-                    mangled_function_name
-                );
-            } else {
-                debug!("unused function had no coverage mapping data: {}", mangled_function_name);
-                continue;
-            }
+            debug!("function has no mappings to embed; skipping");
+            continue;
         }
 
         if !is_used {
@@ -143,61 +143,74 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 }
 
-/// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
+/// Maps "global" (per-CGU) file ID numbers to their underlying source files.
 struct GlobalFileTable {
-    /// This "raw" table doesn't include the working dir, so a filename's
+    /// This "raw" table doesn't include the working dir, so a file's
     /// global ID is its index in this set **plus one**.
-    raw_file_table: FxIndexSet<Symbol>,
+    raw_file_table: FxIndexMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
 impl GlobalFileTable {
-    fn new(all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
-        // Collect all of the filenames into a set. Filenames usually come in
-        // contiguous runs, so we can dedup adjacent ones to save work.
-        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<FxIndexSet<Symbol>>();
+    fn new(all_files: impl IntoIterator<Item = Arc<SourceFile>>) -> Self {
+        // Collect all of the files into a set. Files usually come in contiguous
+        // runs, so we can dedup adjacent ones to save work.
+        let mut raw_file_table = all_files
+            .into_iter()
+            .dedup_by(|a, b| a.stable_id == b.stable_id)
+            .map(|f| (f.stable_id, f))
+            .collect::<FxIndexMap<StableSourceFileId, Arc<SourceFile>>>();
 
-        // Sort the file table by its actual string values, not the arbitrary
-        // ordering of its symbols.
-        raw_file_table.sort_unstable_by(|a, b| a.as_str().cmp(b.as_str()));
+        // Sort the file table by its underlying filenames.
+        raw_file_table.sort_unstable_by(|_, a, _, b| {
+            Ord::cmp(&a.name, &b.name).then_with(|| Ord::cmp(&a.stable_id, &b.stable_id))
+        });
 
         Self { raw_file_table }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> u32 {
-        let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
-            bug!("file name not found in prepared global file table: {file_name}");
+    fn global_file_id_for_file(&self, file: &SourceFile) -> GlobalFileId {
+        let raw_id = self.raw_file_table.get_index_of(&file.stable_id).unwrap_or_else(|| {
+            bug!("file not found in prepared global file table: {:?}", file.name);
         });
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
-        (raw_id + 1) as u32
+        GlobalFileId::from_usize(raw_id + 1)
     }
 
     fn make_filenames_buffer(&self, tcx: TyCtxt<'_>) -> Vec<u8> {
+        let mut table = Vec::with_capacity(self.raw_file_table.len() + 1);
+
         // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
         // requires setting the first filename to the compilation directory.
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::RemapFileNameExt;
-        use rustc_session::config::RemapPathScopeComponents;
-        let working_dir: &str = &tcx
-            .sess
-            .opts
-            .working_dir
-            .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
-            .to_string_lossy();
+        table.push(
+            tcx.sess
+                .opts
+                .working_dir
+                .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+                .to_string_lossy(),
+        );
 
-        llvm::build_byte_buffer(|buffer| {
-            coverageinfo::write_filenames_section_to_buffer(
-                // Insert the working dir at index 0, before the other filenames.
-                std::iter::once(working_dir).chain(self.raw_file_table.iter().map(Symbol::as_str)),
-                buffer,
-            );
-        })
+        // Add the regular entries after the base directory.
+        table.extend(self.raw_file_table.values().map(|file| {
+            file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy()
+        }));
+
+        llvm_cov::write_filenames_to_buffer(table.iter().map(|f| f.as_ref()))
     }
 }
 
 rustc_index::newtype_index! {
+    /// An index into the CGU's overall list of file paths. The underlying paths
+    /// will be embedded in the `__llvm_covmap` linker section.
+    struct GlobalFileId {}
+}
+rustc_index::newtype_index! {
+    /// An index into a function's list of global file IDs. That underlying list
+    /// of local-to-global mappings will be embedded in the function's record in
+    /// the `__llvm_covfun` linker section.
     struct LocalFileId {}
 }
 
@@ -205,12 +218,12 @@ rustc_index::newtype_index! {
 /// file IDs.
 #[derive(Default)]
 struct VirtualFileMapping {
-    local_to_global: IndexVec<LocalFileId, u32>,
-    global_to_local: FxIndexMap<u32, LocalFileId>,
+    local_to_global: IndexVec<LocalFileId, GlobalFileId>,
+    global_to_local: FxIndexMap<GlobalFileId, LocalFileId>,
 }
 
 impl VirtualFileMapping {
-    fn local_id_for_global(&mut self, global_file_id: u32) -> LocalFileId {
+    fn local_id_for_global(&mut self, global_file_id: GlobalFileId) -> LocalFileId {
         *self
             .global_to_local
             .entry(global_file_id)
@@ -218,7 +231,9 @@ impl VirtualFileMapping {
     }
 
     fn into_vec(self) -> Vec<u32> {
-        self.local_to_global.raw
+        // This conversion should be optimized away to ~zero overhead.
+        // In any case, it's probably not hot enough to worry about.
+        self.local_to_global.into_iter().map(|global| global.as_u32()).collect()
     }
 }
 
@@ -228,13 +243,16 @@ impl VirtualFileMapping {
 ///
 /// Newly-encountered filenames will be added to the global file table.
 fn encode_mappings_for_function(
+    tcx: TyCtxt<'_>,
     global_file_table: &GlobalFileTable,
     function_coverage: &FunctionCoverage<'_>,
 ) -> Vec<u8> {
-    let counter_regions = function_coverage.counter_regions();
-    if counter_regions.is_empty() {
+    let mapping_spans = function_coverage.mapping_spans();
+    if mapping_spans.is_empty() {
         return Vec::new();
     }
+
+    let fn_cov_info = function_coverage.function_coverage_info;
 
     let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
 
@@ -244,69 +262,63 @@ fn encode_mappings_for_function(
     let mut mcdc_branch_regions = vec![];
     let mut mcdc_decision_regions = vec![];
 
-    // Group mappings into runs with the same filename, preserving the order
-    // yielded by `FunctionCoverage`.
-    // Prepare file IDs for each filename, and prepare the mapping data so that
-    // we can pass it through FFI to LLVM.
-    for (file_name, counter_regions_for_file) in
-        &counter_regions.group_by(|(_, region)| region.file_name)
-    {
-        // Look up the global file ID for this filename.
-        let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Currently a function's mappings must all be in the same file as its body span.
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
-        // Associate that global file ID with a local file ID for this function.
-        let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
-        debug!("  file id: {local_file_id:?} => global {global_file_id} = '{file_name:?}'");
+    // Look up the global file ID for that file.
+    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
 
-        // For each counter/region pair in this function+file, convert it to a
-        // form suitable for FFI.
-        for (mapping_kind, region) in counter_regions_for_file {
-            debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-            let span = ffi::CoverageSpan::from_source_region(local_file_id.as_u32(), region);
-            match mapping_kind {
-                MappingKind::Code(term) => {
-                    code_regions
-                        .push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
-                }
-                MappingKind::Branch { true_term, false_term } => {
-                    branch_regions.push(ffi::BranchRegion {
-                        span,
-                        true_counter: ffi::Counter::from_term(true_term),
-                        false_counter: ffi::Counter::from_term(false_term),
-                    });
-                }
-                MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
-                    mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                        span,
-                        true_counter: ffi::Counter::from_term(true_term),
-                        false_counter: ffi::Counter::from_term(false_term),
-                        mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
-                    });
-                }
-                MappingKind::MCDCDecision(mcdc_decision_params) => {
-                    mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                        span,
-                        mcdc_decision_params: ffi::mcdc::DecisionParameters::from(
-                            mcdc_decision_params,
-                        ),
-                    });
-                }
+    // Associate that global file ID with a local file ID for this function.
+    let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
+
+    let make_cov_span = |span| {
+        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    };
+
+    // For each coverage mapping span in this function+file, convert it to a
+    // form suitable for FFI.
+    for (mapping_kind, span) in mapping_spans {
+        debug!("Adding counter {mapping_kind:?} to map for {span:?}");
+        let Some(cov_span) = make_cov_span(span) else { continue };
+        match mapping_kind {
+            MappingKind::Code(term) => {
+                code_regions
+                    .push(ffi::CodeRegion { cov_span, counter: ffi::Counter::from_term(term) });
+            }
+            MappingKind::Branch { true_term, false_term } => {
+                branch_regions.push(ffi::BranchRegion {
+                    cov_span,
+                    true_counter: ffi::Counter::from_term(true_term),
+                    false_counter: ffi::Counter::from_term(false_term),
+                });
+            }
+            MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
+                mcdc_branch_regions.push(ffi::MCDCBranchRegion {
+                    cov_span,
+                    true_counter: ffi::Counter::from_term(true_term),
+                    false_counter: ffi::Counter::from_term(false_term),
+                    mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
+                });
+            }
+            MappingKind::MCDCDecision(mcdc_decision_params) => {
+                mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
+                    cov_span,
+                    mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
+                });
             }
         }
     }
 
     // Encode the function's coverage mappings into a buffer.
-    llvm::build_byte_buffer(|buffer| {
-        coverageinfo::write_mapping_to_buffer(
-            virtual_file_mapping.into_vec(),
-            expressions,
-            &code_regions,
-            &branch_regions,
-            &mcdc_branch_regions,
-            &mcdc_decision_regions,
-            buffer,
-        );
-    })
+    llvm_cov::write_function_mappings_to_buffer(
+        &virtual_file_mapping.into_vec(),
+        &expressions,
+        &code_regions,
+        &branch_regions,
+        &mcdc_branch_regions,
+        &mcdc_decision_regions,
+    )
 }
 
 /// Generates the contents of the covmap record for this CGU, which mostly
@@ -335,23 +347,11 @@ fn generate_covmap_record<'ll>(
     let covmap_data =
         cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false);
 
-    let covmap_var_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMappingVarNameToString(s);
-    }))
-    .unwrap();
-    debug!("covmap var name: {:?}", covmap_var_name);
-
-    let covmap_section_name = CString::new(llvm::build_byte_buffer(|s| unsafe {
-        llvm::LLVMRustCoverageWriteMapSectionNameToString(cx.llmod, s);
-    }))
-    .expect("covmap section name should not contain NUL");
-    debug!("covmap section name: {:?}", covmap_section_name);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &covmap_var_name);
+    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &llvm_cov::covmap_var_name());
     llvm::set_initializer(llglobal, covmap_data);
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-    llvm::set_section(llglobal, &covmap_section_name);
+    llvm::set_section(llglobal, &llvm_cov::covmap_section_name(cx.llmod));
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     // <https://llvm.org/docs/CoverageMappingFormat.html>
     llvm::set_alignment(llglobal, Align::EIGHT);
@@ -373,7 +373,7 @@ fn generate_covfun_record(
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
-    let func_name_hash = coverageinfo::hash_bytes(mangled_function_name.as_bytes());
+    let func_name_hash = llvm_cov::hash_bytes(mangled_function_name.as_bytes());
     let func_name_hash_val = cx.const_u64(func_name_hash);
     let coverage_mapping_size_val = cx.const_u32(coverage_mapping_size as u32);
     let source_hash_val = cx.const_u64(source_hash);

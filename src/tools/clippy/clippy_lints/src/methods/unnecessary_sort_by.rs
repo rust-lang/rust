@@ -166,9 +166,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             },
         )) = &left_expr.kind
             && left_name == left_ident
-            && cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
-                implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
-            })
+            && cx
+                .tcx
+                .get_diagnostic_item(sym::Ord)
+                .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[]))
         {
             return Some(LintTrigger::Sort(SortDetection { vec_name }));
         }

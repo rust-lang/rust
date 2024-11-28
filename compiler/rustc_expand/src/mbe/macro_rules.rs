@@ -693,7 +693,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                     && let mbe::TokenTree::Token(bang) = bang
                     && let TokenKind::Not = bang.kind
                     && let mbe::TokenTree::Delimited(.., del) = args
-                    && del.delim != Delimiter::Invisible
+                    && !del.delim.skip()
                 {
                     true
                 } else {

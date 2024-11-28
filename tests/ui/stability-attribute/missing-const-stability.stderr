@@ -1,26 +1,8 @@
-warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/missing-const-stability.rs:3:30
-   |
-LL | #![feature(const_trait_impl, effects, rustc_attrs, intrinsics)]
-   |                              ^^^^^^^
-   |
-   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: function has missing const stability attribute
   --> $DIR/missing-const-stability.rs:7:1
    |
 LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
-
-error: implementation has missing const stability attribute
-  --> $DIR/missing-const-stability.rs:29:1
-   |
-LL | / impl const Bar for Foo {
-LL | |
-LL | |     fn fun() {}
-LL | | }
-   | |_^
 
 error: function has missing const stability attribute
   --> $DIR/missing-const-stability.rs:36:1
@@ -34,5 +16,5 @@ error: associated function has missing const stability attribute
 LL |     pub const fn foo() {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 

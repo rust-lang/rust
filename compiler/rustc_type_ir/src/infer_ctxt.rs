@@ -1,12 +1,11 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
-use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::Reveal;
 use crate::{self as ty, Interner};
 
 /// The current typing mode of an inference context. We unfortunately have some
@@ -20,6 +19,7 @@ use crate::{self as ty, Interner};
 /// If neither of these functions are available, feel free to reach out to
 /// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
@@ -39,9 +39,38 @@ pub enum TypingMode<I: Interner> {
     ///
     /// We only normalize opaque types which may get defined by the current body,
     /// which are stored in `defining_opaque_types`.
+    ///
+    /// We also refuse to project any associated type that is marked `default`.
+    /// Non-`default` ("final") types are always projected. This is necessary in
+    /// general for soundness of specialization. However, we *could* allow projections
+    /// in fully-monomorphic cases. We choose not to, because we prefer for `default type`
+    /// to force the type definition to be treated abstractly by any consumers of the
+    /// impl. Concretely, that means that the following example will
+    /// fail to compile:
+    ///
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     default type Output = bool;
+    /// }
+    ///
+    /// fn main() {
+    ///     let x: <() as Assoc>::Output = true;
+    /// }
+    /// ```
     Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
-    /// reveal all opaque types.
+    /// reveal all opaque types. As the concrete type should *never* be observable
+    /// directly by the user, this should not be used by checks which may expose
+    /// such details to the user.
+    ///
+    /// There are some exceptions to this as for example `layout_of` and const-evaluation
+    /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
+    /// some information about the underlying type to users, but not the type itself.
     PostAnalysis,
 }
 
@@ -55,18 +84,6 @@ impl<I: Interner> TypingMode<I> {
     /// types defined by that body.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
-    }
-
-    /// FIXME(#132279): Using this function is questionable as the `param_env`
-    /// does not track `defining_opaque_types` and whether we're in coherence mode.
-    /// Many uses of this function should also use a not-yet implemented typing mode
-    /// which reveals already defined opaque types in the future. This function will
-    /// get completely removed at some point.
-    pub fn from_param_env(param_env: I::ParamEnv) -> TypingMode<I> {
-        match param_env.reveal() {
-            Reveal::UserFacing => TypingMode::non_body_analysis(),
-            Reveal::All => TypingMode::PostAnalysis,
-        }
     }
 }
 
@@ -82,10 +99,7 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn typing_mode(
-        &self,
-        param_env_for_debug_assertion: <Self::Interner as Interner>::ParamEnv,
-    ) -> TypingMode<Self::Interner>;
+    fn typing_mode(&self) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;
     fn create_next_universe(&self) -> ty::UniverseIndex;

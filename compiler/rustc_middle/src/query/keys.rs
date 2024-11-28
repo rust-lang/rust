@@ -2,12 +2,13 @@
 
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::hir_id::{HirId, OwnerId};
+use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi;
 
 use crate::infer::canonical::CanonicalQueryInput;
+use crate::mir::mono::CollectionMode;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{TyAndLayout, ValidityRequirement};
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
@@ -111,7 +112,7 @@ impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
 }
 
 impl Key for CrateNum {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
@@ -128,7 +129,7 @@ impl AsLocalKey for CrateNum {
 }
 
 impl Key for OwnerId {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
@@ -140,7 +141,7 @@ impl Key for OwnerId {
 }
 
 impl Key for LocalDefId {
-    type Cache<V> = VecCache<Self, V>;
+    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
@@ -359,6 +360,14 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>) {
     }
 }
 
+impl<'tcx> Key for ty::ParamEnvAnd<'tcx, Ty<'tcx>> {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for ty::TraitRef<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 
@@ -455,7 +464,7 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
+impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -509,7 +518,7 @@ impl<'tcx> Key for (DefId, Ty<'tcx>, GenericArgsRef<'tcx>, ty::ParamEnv<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (Ty<'tcx>, abi::VariantIdx) {
+impl<'tcx> Key for (Ty<'tcx>, rustc_abi::VariantIdx) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
@@ -575,7 +584,7 @@ impl Key for (LocalDefId, HirId) {
     }
 }
 
-impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
+impl<'tcx> Key for (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) {
     type Cache<V> = DefaultCache<Self, V>;
 
     // Just forward to `Ty<'tcx>`
@@ -589,5 +598,13 @@ impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
             ty::Adt(adt, _) => Some(adt.did()),
             _ => None,
         }
+    }
+}
+
+impl<'tcx> Key for (ty::Instance<'tcx>, CollectionMode) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
     }
 }

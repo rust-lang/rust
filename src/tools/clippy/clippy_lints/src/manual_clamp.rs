@@ -226,7 +226,7 @@ impl TypeClampability {
         } else if cx
             .tcx
             .get_diagnostic_item(sym::Ord)
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
         {
             Some(TypeClampability::Ord)
         } else {

@@ -136,6 +136,13 @@ impl Attribute {
         }
     }
 
+    /// Returns a list of meta items if the attribute is delimited with parenthesis:
+    ///
+    /// ```text
+    /// #[attr(a, b = "c")] // Returns `Some()`.
+    /// #[attr = ""] // Returns `None`.
+    /// #[attr] // Returns `None`.
+    /// ```
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
@@ -143,6 +150,21 @@ impl Attribute {
         }
     }
 
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases, including doc comments if they
+    /// are not under the form `#[doc = "..."]`.
+    ///
+    /// It also returns `None` for:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     pub fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
@@ -232,6 +254,18 @@ impl AttrItem {
         }
     }
 
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases like:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     fn value_str(&self) -> Option<Symbol> {
         match &self.args {
             AttrArgs::Eq(_, args) => args.value_str(),
@@ -315,6 +349,18 @@ impl MetaItem {
         Some(self.name_value_literal()?.span)
     }
 
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases like:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     pub fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             MetaItemKind::NameValue(v) => v.kind.str(),
@@ -411,7 +457,7 @@ impl MetaItemKind {
         tokens: &mut impl Iterator<Item = &'a TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
-            Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
             }
             Some(TokenTree::Token(token, _)) => {
@@ -559,7 +605,7 @@ impl MetaItemInner {
                 tokens.next();
                 return Some(MetaItemInner::Lit(lit));
             }
-            Some(TokenTree::Delimited(.., Delimiter::Invisible, inner_tokens)) => {
+            Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 tokens.next();
                 return MetaItemInner::from_tokens(&mut inner_tokens.trees().peekable());
             }
