@@ -130,7 +130,7 @@ impl<T> HashSet<T, RandomState> {
     ///
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
+    /// `capacity`. If `capacity` is zero, the hash set will not allocate.
     ///
     /// # Examples
     ///
@@ -379,7 +379,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
+    /// `capacity`. If `capacity` is zero, the hash set will not allocate.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow `HashSet`s to be resistant to attacks that
