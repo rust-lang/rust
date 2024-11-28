@@ -488,7 +488,7 @@ pub fn suggest_constraining_type_params<'a>(
         .into_iter()
         .filter(|(span, _, _, _)| !span.in_derive_expansion())
         .collect::<Vec<_>>();
-
+    let suggested = !suggestions.is_empty();
     if suggestions.len() == 1 {
         let (span, constraint, suggestion, msg) = suggestions.pop().unwrap();
         let post = format!(
@@ -524,7 +524,7 @@ pub fn suggest_constraining_type_params<'a>(
         );
     }
 
-    true
+    suggested
 }
 
 /// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
