@@ -227,18 +227,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             };
 
                             // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_def_id_parent;
+                            let parent_def_id = self.current_hir_id_owner.def_id;
                             let node_id = self.next_node_id();
-                            // HACK(min_generic_const_args): see lower_anon_const
-                            if !expr.is_potential_trivial_const_arg(true) {
-                                self.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    kw::Empty,
-                                    DefKind::AnonConst,
-                                    *op_sp,
-                                );
-                            }
+                            self.create_def(
+                                parent_def_id,
+                                node_id,
+                                kw::Empty,
+                                DefKind::AnonConst,
+                                *op_sp,
+                            );
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const_to_anon_const(&anon_const),

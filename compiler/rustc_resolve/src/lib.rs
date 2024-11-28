@@ -174,7 +174,6 @@ impl<'ra> ParentScope<'ra> {
 #[derive(Copy, Debug, Clone)]
 struct InvocationParent {
     parent_def: LocalDefId,
-    pending_anon_const_info: Option<PendingAnonConstInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
 }
@@ -182,21 +181,9 @@ struct InvocationParent {
 impl InvocationParent {
     const ROOT: Self = Self {
         parent_def: CRATE_DEF_ID,
-        pending_anon_const_info: None,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
     };
-}
-
-#[derive(Copy, Debug, Clone)]
-struct PendingAnonConstInfo {
-    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
-    // around the argument. We track whether we have stripped an outter brace so that
-    // if a macro expands to a braced expression *and* the macro was itself inside of
-    // some braces then we can consider it to be a non-trivial const argument.
-    block_was_stripped: bool,
-    id: NodeId,
-    span: Span,
 }
 
 #[derive(Copy, Debug, Clone)]
