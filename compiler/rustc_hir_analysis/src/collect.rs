@@ -150,11 +150,11 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
             _ => {}
         }
     }
-    fn visit_array_length(&mut self, length: &'v hir::ArrayLen<'v>) {
-        if let hir::ArrayLen::Infer(inf) = length {
-            self.0.push(inf.span);
+    fn visit_const_arg(&mut self, const_arg: &'v hir::ConstArg<'v>) {
+        if let hir::ConstArgKind::Infer(span) = const_arg.kind {
+            self.0.push(span);
         }
-        intravisit::walk_array_len(self, length)
+        intravisit::walk_const_arg(self, const_arg)
     }
 }
 

@@ -102,7 +102,7 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
+    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
     PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
@@ -921,7 +921,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, ArrayLen::Body(len)) => {
+        ExprKind::Repeat(x, len) => {
             if let ConstArgKind::Anon(anon_const) = len.kind
                 && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
@@ -951,7 +951,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
                 ..
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
-            ExprKind::Repeat(_, ArrayLen::Body(len)) => {
+            ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node

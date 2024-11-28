@@ -486,24 +486,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
-        match length {
-            hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
-            hir::ArrayLen::Body(const_arg) => {
-                let span = const_arg.span();
-                let c = self.lowerer().lower_const_arg(const_arg, FeedConstTy::No);
-                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
-                self.normalize(span, c)
-            }
-        }
-    }
-
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        param_def_id: DefId,
+        feed: FeedConstTy,
     ) -> ty::Const<'tcx> {
-        let ct = self.lowerer().lower_const_arg(const_arg, FeedConstTy::Param(param_def_id));
+        let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir().span(const_arg.hir_id),
@@ -1278,7 +1266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(ct, param.def_id).into()
+                        self.fcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()

@@ -30,6 +30,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg32`        | None\*                             | `r`                  |
 | NVPTX        | `reg64`        | None\*                             | `l`                  |
 | Hexagon      | `reg`          | `r[0-28]`                          | `r`                  |
+| Hexagon      | `preg`         | `p[0-3]`                           | Only clobbers        |
 | PowerPC      | `reg`          | `r0`, `r[3-12]`, `r[14-28]`        | `r`                  |
 | PowerPC      | `reg_nonzero`  | `r[3-12]`, `r[14-28]`              | `b`                  |
 | PowerPC      | `freg`         | `f[0-31]`                          | `f`                  |
@@ -70,6 +71,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg32`                         | None           | `i8`, `i16`, `i32`, `f32`               |
 | NVPTX        | `reg64`                         | None           | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | Hexagon      | `reg`                           | None           | `i8`, `i16`, `i32`, `f32`               |
+| Hexagon      | `preg`                          | N/A            | Only clobbers                           |
 | PowerPC      | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `freg`                          | None           | `f32`, `f64`                            |

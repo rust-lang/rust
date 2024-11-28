@@ -181,7 +181,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ArrayLen::Body(ct)), .. })
+                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ct), .. })
                         if ct.anon_const_hir_id() == Some(hir_id) =>
                     {
                         Some(parent_did)
