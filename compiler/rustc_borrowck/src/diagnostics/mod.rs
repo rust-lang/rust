@@ -1062,8 +1062,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         && let spans = hir_generics
                             .predicates
                             .iter()
-                            .filter_map(|pred| match pred {
-                                hir::WherePredicate::BoundPredicate(pred) => Some(pred),
+                            .filter_map(|pred| match pred.kind {
+                                hir::WherePredicateKind::BoundPredicate(pred) => Some(pred),
                                 _ => None,
                             })
                             .filter(|pred| {

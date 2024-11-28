@@ -423,8 +423,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn async_drop_glue_morphology(self, did: DefId) -> AsyncDropGlueMorphology {
         let ty: Ty<'tcx> = self.type_of(did).instantiate_identity();
 
-        // Async drop glue morphology is an internal detail, so reveal_all probably
-        // should be fine
+        // Async drop glue morphology is an internal detail, so
+        // using `TypingMode::PostAnalysis` probably should be fine.
         let typing_env = ty::TypingEnv::fully_monomorphized();
         if ty.needs_async_drop(self, typing_env) {
             AsyncDropGlueMorphology::Custom
@@ -1053,7 +1053,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                     // This is because for default trait methods with RPITITs, we
                     // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
                     // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `ParamEnv::with_reveal_all_normalized`.
+                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
                     term: projection_pred.term,
                 })
                 .upcast(self.tcx)
@@ -1669,45 +1669,6 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..) => Ok(smallvec![ty]),
-    }
-}
-
-pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
-        ty::Bool
-        | ty::Char
-        | ty::Int(_)
-        | ty::Uint(_)
-        | ty::Float(_)
-        | ty::Infer(ty::IntVar(_))
-        | ty::Infer(ty::FloatVar(_))
-        | ty::Str
-        | ty::RawPtr(_, _)
-        | ty::Ref(..)
-        | ty::FnDef(..)
-        | ty::FnPtr(..)
-        | ty::Never
-        | ty::Foreign(_) => true,
-
-        ty::Alias(..)
-        | ty::Dynamic(..)
-        | ty::Error(_)
-        | ty::Bound(..)
-        | ty::Param(_)
-        | ty::Placeholder(_)
-        | ty::Infer(_) => false,
-
-        // Not trivial because they have components, and instead of looking inside,
-        // we'll just perform trait selection.
-        ty::Closure(..)
-        | ty::CoroutineClosure(..)
-        | ty::Coroutine(..)
-        | ty::CoroutineWitness(..)
-        | ty::Adt(..) => false,
-
-        ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => is_trivially_const_drop(ty),
-
-        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
     }
 }
 

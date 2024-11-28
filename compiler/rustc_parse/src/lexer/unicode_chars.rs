@@ -4,7 +4,7 @@
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Pos, Span};
 
-use super::StringReader;
+use super::Lexer;
 use crate::errors::TokenSubstitution;
 use crate::token::{self, Delimiter};
 
@@ -338,7 +338,7 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
 ];
 
 pub(super) fn check_for_substitution(
-    reader: &StringReader<'_, '_>,
+    lexer: &Lexer<'_, '_>,
     pos: BytePos,
     ch: char,
     count: usize,
@@ -351,11 +351,11 @@ pub(super) fn check_for_substitution(
 
     let Some((_, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(s, _, _)| s == ascii_str) else {
         let msg = format!("substitution character not found for '{ch}'");
-        reader.dcx().span_bug(span, msg);
+        lexer.dcx().span_bug(span, msg);
     };
 
     // special help suggestion for "directed" double quotes
-    let sugg = if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
+    let sugg = if let Some(s) = peek_delimited(&lexer.src[lexer.src_index(pos)..], '“', '”') {
         let span = Span::with_root_ctxt(
             pos,
             pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),

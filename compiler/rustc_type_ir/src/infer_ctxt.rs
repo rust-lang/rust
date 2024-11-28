@@ -39,9 +39,38 @@ pub enum TypingMode<I: Interner> {
     ///
     /// We only normalize opaque types which may get defined by the current body,
     /// which are stored in `defining_opaque_types`.
+    ///
+    /// We also refuse to project any associated type that is marked `default`.
+    /// Non-`default` ("final") types are always projected. This is necessary in
+    /// general for soundness of specialization. However, we *could* allow projections
+    /// in fully-monomorphic cases. We choose not to, because we prefer for `default type`
+    /// to force the type definition to be treated abstractly by any consumers of the
+    /// impl. Concretely, that means that the following example will
+    /// fail to compile:
+    ///
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     default type Output = bool;
+    /// }
+    ///
+    /// fn main() {
+    ///     let x: <() as Assoc>::Output = true;
+    /// }
+    /// ```
     Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
-    /// reveal all opaque types.
+    /// reveal all opaque types. As the concrete type should *never* be observable
+    /// directly by the user, this should not be used by checks which may expose
+    /// such details to the user.
+    ///
+    /// There are some exceptions to this as for example `layout_of` and const-evaluation
+    /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
+    /// some information about the underlying type to users, but not the type itself.
     PostAnalysis,
 }
 
@@ -70,10 +99,7 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn typing_mode(
-        &self,
-        param_env_for_debug_assertion: <Self::Interner as Interner>::ParamEnv,
-    ) -> TypingMode<Self::Interner>;
+    fn typing_mode(&self) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;
     fn create_next_universe(&self) -> ty::UniverseIndex;

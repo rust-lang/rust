@@ -653,19 +653,28 @@ pub fn home_dir() -> Option<PathBuf> {
 /// may result in "insecure temporary file" security vulnerabilities. Consider
 /// using a crate that securely creates temporary files or directories.
 ///
+/// Note that the returned value may be a symbolic link, not a directory.
+///
 /// # Platform-specific behavior
 ///
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
-/// set, otherwise for non-Android it returns `/tmp`. On Android, since there
-/// is no global temporary folder (it is usually allocated per-app), it returns
-/// `/data/local/tmp`.
+/// set, otherwise the value is OS-specific:
+/// - On Android, there is no global temporary folder (it is usually allocated
+///   per-app), it returns `/data/local/tmp`.
+/// - On Darwin-based OSes (macOS, iOS, etc) it returns the directory provided
+///   by `confstr(_CS_DARWIN_USER_TEMP_DIR, ...)`, as recommended by [Apple's
+///   security guidelines][appledoc].
+/// - On all other unix-based OSes, it returns `/tmp`.
+///
 /// On Windows, the behavior is equivalent to that of [`GetTempPath2`][GetTempPath2] /
 /// [`GetTempPath`][GetTempPath], which this function uses internally.
+///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 /// [GetTempPath2]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppath2a
 /// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
+/// [appledoc]: https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html#//apple_ref/doc/uid/TP40002585-SW10
 ///
 /// ```no_run
 /// use std::env;

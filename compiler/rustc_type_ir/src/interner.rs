@@ -225,6 +225,7 @@ pub trait Interner:
 
     fn impl_is_const(self, def_id: Self::DefId) -> bool;
     fn fn_is_const(self, def_id: Self::DefId) -> bool;
+    fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,
         def_id: Self::DefId,

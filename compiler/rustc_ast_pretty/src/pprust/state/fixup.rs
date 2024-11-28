@@ -191,6 +191,6 @@ impl FixupContext {
     ///     "let chain".
     pub(crate) fn needs_par_as_let_scrutinee(self, expr: &Expr) -> bool {
         self.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
-            || parser::needs_par_as_let_scrutinee(expr.precedence().order())
+            || parser::needs_par_as_let_scrutinee(expr.precedence())
     }
 }

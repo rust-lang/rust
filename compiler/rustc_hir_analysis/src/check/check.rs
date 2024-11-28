@@ -6,7 +6,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{Node, intravisit};
+use rustc_hir::{Node, Safety, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
@@ -70,6 +70,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
+    check_unsafe_fields(tcx, def_id);
 }
 
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -81,37 +82,44 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_packed(tcx, span, def);
 }
 
+fn allowed_union_or_unsafe_field<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    span: Span,
+) -> bool {
+    // We don't just accept all !needs_drop fields, due to semver concerns.
+    let allowed = match ty.kind() {
+        ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+        ty::Tuple(tys) => {
+            // allow tuples of allowed types
+            tys.iter().all(|ty| allowed_union_or_unsafe_field(tcx, ty, typing_env, span))
+        }
+        ty::Array(elem, _len) => {
+            // Like `Copy`, we do *not* special-case length 0.
+            allowed_union_or_unsafe_field(tcx, *elem, typing_env, span)
+        }
+        _ => {
+            // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
+            // also no need to report an error if the type is unresolved.
+            ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
+                || ty.is_copy_modulo_regions(tcx, typing_env)
+                || ty.references_error()
+        }
+    };
+    if allowed && ty.needs_drop(tcx, typing_env) {
+        // This should never happen. But we can get here e.g. in case of name resolution errors.
+        tcx.dcx()
+            .span_delayed_bug(span, "we should never accept maybe-dropping union or unsafe fields");
+    }
+    allowed
+}
+
 /// Check that the fields of the `union` do not need dropping.
 fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
     let item_type = tcx.type_of(item_def_id).instantiate_identity();
     if let ty::Adt(def, args) = item_type.kind() {
         assert!(def.is_union());
-
-        fn allowed_union_field<'tcx>(
-            ty: Ty<'tcx>,
-            tcx: TyCtxt<'tcx>,
-            typing_env: ty::TypingEnv<'tcx>,
-        ) -> bool {
-            // We don't just accept all !needs_drop fields, due to semver concerns.
-            match ty.kind() {
-                ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
-                ty::Tuple(tys) => {
-                    // allow tuples of allowed types
-                    tys.iter().all(|ty| allowed_union_field(ty, tcx, typing_env))
-                }
-                ty::Array(elem, _len) => {
-                    // Like `Copy`, we do *not* special-case length 0.
-                    allowed_union_field(*elem, tcx, typing_env)
-                }
-                _ => {
-                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
-                    // also no need to report an error if the type is unresolved.
-                    ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx, typing_env)
-                        || ty.references_error()
-                }
-            }
-        }
 
         let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
         for field in &def.non_enum_variant().fields {
@@ -121,7 +129,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 continue;
             };
 
-            if !allowed_union_field(field_ty, tcx, typing_env) {
+            if !allowed_union_or_unsafe_field(tcx, field_ty, typing_env, span) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
                     Some(Node::Field(field)) => (field.span, field.ty.span),
@@ -136,16 +144,47 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     note: (),
                 });
                 return false;
-            } else if field_ty.needs_drop(tcx, typing_env) {
-                // This should never happen. But we can get here e.g. in case of name resolution errors.
-                tcx.dcx()
-                    .span_delayed_bug(span, "we should never accept maybe-dropping union fields");
             }
         }
     } else {
         span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind());
     }
     true
+}
+
+/// Check that the unsafe fields do not need dropping.
+fn check_unsafe_fields(tcx: TyCtxt<'_>, item_def_id: LocalDefId) {
+    let span = tcx.def_span(item_def_id);
+    let item_type = tcx.type_of(item_def_id).instantiate_identity();
+    let ty::Adt(def, args) = item_type.kind() else {
+        span_bug!(span, "structs/enums must be ty::Adt, but got {:?}", item_type.kind());
+    };
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
+    for field in def.all_fields() {
+        if field.safety != Safety::Unsafe {
+            continue;
+        }
+        let Ok(field_ty) = tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
+        else {
+            tcx.dcx().span_delayed_bug(span, "could not normalize field type");
+            continue;
+        };
+
+        if !allowed_union_or_unsafe_field(tcx, field_ty, typing_env, span) {
+            let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.expect_local()) else {
+                unreachable!("field has to correspond to hir field")
+            };
+            let ty_span = field.ty.span;
+            tcx.dcx().emit_err(errors::InvalidUnsafeField {
+                field_span: field.span,
+                sugg: errors::InvalidUnsafeFieldSuggestion {
+                    lo: ty_span.shrink_to_lo(),
+                    hi: ty_span.shrink_to_hi(),
+                },
+                note: (),
+            });
+        }
+    }
 }
 
 /// Check that a `static` is inhabited.
@@ -1464,6 +1503,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     detect_discriminant_duplicate(tcx, def);
     check_transparent(tcx, def);
+    check_unsafe_fields(tcx, def_id);
 }
 
 /// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal

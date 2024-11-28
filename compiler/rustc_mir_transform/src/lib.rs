@@ -163,7 +163,7 @@ declare_passes! {
     mod remove_unneeded_drops : RemoveUnneededDrops;
     mod remove_zsts : RemoveZsts;
     mod required_consts : RequiredConstsVisitor;
-    mod reveal_all : RevealAll;
+    mod post_analysis_normalize : PostAnalysisNormalize;
     mod sanity_check : SanityCheck;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod simplify :
@@ -604,8 +604,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // These next passes must be executed together.
         &add_call_guards::CriticalCallEdges,
         // Must be done before drop elaboration because we need to drop opaque types, too.
-        &reveal_all::RevealAll,
-        // Calling this after reveal_all ensures that we don't deal with opaque types.
+        &post_analysis_normalize::PostAnalysisNormalize,
+        // Calling this after `PostAnalysisNormalize` ensures that we don't deal with opaque types.
         &add_subtyping_projections::Subtyper,
         &elaborate_drops::ElaborateDrops,
         // This will remove extraneous landing pads which are no longer

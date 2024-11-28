@@ -150,8 +150,8 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                     .predicates
                     .iter()
                     .filter_map(|pred| {
-                        match pred {
-                            hir::WherePredicate::BoundPredicate(pred)
+                        match pred.kind {
+                            hir::WherePredicateKind::BoundPredicate(pred)
                                 if pred.bounded_ty.hir_id.owner.to_def_id() == trait_def_id =>
                             {
                                 // Fetch spans for trait bounds that are Sized:
@@ -707,7 +707,7 @@ fn receiver_is_dispatchable<'tcx>(
         let caller_bounds =
             param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds), param_env.reveal())
+        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>

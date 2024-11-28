@@ -2051,6 +2051,25 @@ extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
   return llvm::compression::zstd::isAvailable();
 }
 
+extern "C" void LLVMRustSetNoSanitizeAddress(LLVMValueRef Global) {
+  GlobalValue &GV = *unwrap<GlobalValue>(Global);
+  GlobalValue::SanitizerMetadata MD;
+  if (GV.hasSanitizerMetadata())
+    MD = GV.getSanitizerMetadata();
+  MD.NoAddress = true;
+  MD.IsDynInit = false;
+  GV.setSanitizerMetadata(MD);
+}
+
+extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
+  GlobalValue &GV = *unwrap<GlobalValue>(Global);
+  GlobalValue::SanitizerMetadata MD;
+  if (GV.hasSanitizerMetadata())
+    MD = GV.getSanitizerMetadata();
+  MD.NoHWAddress = true;
+  GV.setSanitizerMetadata(MD);
+}
+
 // Operations on composite constants.
 // These are clones of LLVM api functions that will become available in future
 // releases. They can be removed once Rust's minimum supported LLVM version

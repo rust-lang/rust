@@ -1,6 +1,3 @@
-//@ pretty-expanded FIXME #23616
-
-
 //@ run-pass
 #![allow(dead_code)]
 

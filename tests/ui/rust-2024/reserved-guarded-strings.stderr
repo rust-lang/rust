@@ -1,5 +1,5 @@
 error: prefix `blah` is unknown
-  --> $DIR/reserved-guarded-strings.rs:45:12
+  --> $DIR/reserved-guarded-strings.rs:44:12
    |
 LL |     demo2!(blah"xx");
    |            ^^^^ unknown prefix
@@ -11,7 +11,7 @@ LL |     demo2!(blah "xx");
    |                +
 
 error: prefix `blah` is unknown
-  --> $DIR/reserved-guarded-strings.rs:46:12
+  --> $DIR/reserved-guarded-strings.rs:45:12
    |
 LL |     demo2!(blah#"xx"#);
    |            ^^^^ unknown prefix
@@ -23,7 +23,7 @@ LL |     demo2!(blah #"xx"#);
    |                +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:46:16
+  --> $DIR/reserved-guarded-strings.rs:45:16
    |
 LL |     demo2!(blah#"xx"#);
    |                ^^^^^^
@@ -35,7 +35,7 @@ LL |     demo2!(blah# "xx"#);
    |                 +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:50:12
+  --> $DIR/reserved-guarded-strings.rs:49:12
    |
 LL |     demo2!(## "foo");
    |            ^^
@@ -47,7 +47,7 @@ LL |     demo2!(# # "foo");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:51:17
+  --> $DIR/reserved-guarded-strings.rs:50:17
    |
 LL |     demo3!("foo"###);
    |                 ^^
@@ -59,7 +59,7 @@ LL |     demo3!("foo"# ##);
    |                  +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:52:12
+  --> $DIR/reserved-guarded-strings.rs:51:12
    |
 LL |     demo3!(### "foo");
    |            ^^
@@ -71,7 +71,7 @@ LL |     demo3!(# ## "foo");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:53:12
+  --> $DIR/reserved-guarded-strings.rs:52:12
    |
 LL |     demo3!(## "foo"#);
    |            ^^
@@ -83,7 +83,7 @@ LL |     demo3!(# # "foo"#);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:54:12
+  --> $DIR/reserved-guarded-strings.rs:53:12
    |
 LL |     demo5!(### "foo"###);
    |            ^^
@@ -95,7 +95,7 @@ LL |     demo5!(# ## "foo"###);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:54:21
+  --> $DIR/reserved-guarded-strings.rs:53:21
    |
 LL |     demo5!(### "foo"###);
    |                     ^^
@@ -107,7 +107,7 @@ LL |     demo5!(### "foo"# ##);
    |                      +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:58:12
+  --> $DIR/reserved-guarded-strings.rs:57:12
    |
 LL |     demo1!(#"");
    |            ^^^
@@ -119,7 +119,7 @@ LL |     demo1!(# "");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:59:12
+  --> $DIR/reserved-guarded-strings.rs:58:12
    |
 LL |     demo1!(#""#);
    |            ^^^^
@@ -131,7 +131,7 @@ LL |     demo1!(# ""#);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:60:12
+  --> $DIR/reserved-guarded-strings.rs:59:12
    |
 LL |     demo1!(####"");
    |            ^^^^^^
@@ -143,7 +143,7 @@ LL |     demo1!(# ###"");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:61:12
+  --> $DIR/reserved-guarded-strings.rs:60:12
    |
 LL |     demo1!(#"foo");
    |            ^^^^^^
@@ -155,7 +155,7 @@ LL |     demo1!(# "foo");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:62:12
+  --> $DIR/reserved-guarded-strings.rs:61:12
    |
 LL |     demo1!(###"foo");
    |            ^^^^^^^^
@@ -167,7 +167,7 @@ LL |     demo1!(# ##"foo");
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:63:12
+  --> $DIR/reserved-guarded-strings.rs:62:12
    |
 LL |     demo1!(#"foo"#);
    |            ^^^^^^^
@@ -179,7 +179,7 @@ LL |     demo1!(# "foo"#);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:64:12
+  --> $DIR/reserved-guarded-strings.rs:63:12
    |
 LL |     demo1!(###"foo"#);
    |            ^^^^^^^^^
@@ -191,7 +191,7 @@ LL |     demo1!(# ##"foo"#);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:65:12
+  --> $DIR/reserved-guarded-strings.rs:64:12
    |
 LL |     demo1!(###"foo"##);
    |            ^^^^^^^^^^
@@ -203,7 +203,7 @@ LL |     demo1!(# ##"foo"##);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:66:12
+  --> $DIR/reserved-guarded-strings.rs:65:12
    |
 LL |     demo1!(###"foo"###);
    |            ^^^^^^^^^^^
@@ -215,7 +215,7 @@ LL |     demo1!(# ##"foo"###);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:67:12
+  --> $DIR/reserved-guarded-strings.rs:66:12
    |
 LL |     demo2!(#"foo"###);
    |            ^^^^^^^
@@ -227,7 +227,7 @@ LL |     demo2!(# "foo"###);
    |             +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:67:19
+  --> $DIR/reserved-guarded-strings.rs:66:19
    |
 LL |     demo2!(#"foo"###);
    |                   ^^
@@ -239,7 +239,7 @@ LL |     demo2!(#"foo"## #);
    |                    +
 
 error: invalid string literal
-  --> $DIR/reserved-guarded-strings.rs:72:12
+  --> $DIR/reserved-guarded-strings.rs:71:12
    |
 LL | ...n!(####################################################################################################################################################################################################################################################################"foo...
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -2,7 +2,7 @@
 // FIXME check-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_precise_live_drops)]
+#![feature(const_precise_live_drops, const_destruct)]
 
 use std::marker::Destruct;
 

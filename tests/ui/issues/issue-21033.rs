@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_mut)]
 #![allow(unused_variables)]
-//@ pretty-expanded FIXME #23616
 
 #![feature(box_patterns)]
 

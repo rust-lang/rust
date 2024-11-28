@@ -1,6 +1,5 @@
 //@ check-fail
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 #![deny(rust_2024_incompatible_pat)]
 
 fn main() {}

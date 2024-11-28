@@ -13,7 +13,7 @@ use r_efi::efi::{self, Guid};
 use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
-use crate::io::{self, const_io_error};
+use crate::io::{self, const_error};
 use crate::mem::{MaybeUninit, size_of};
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
@@ -30,7 +30,7 @@ type BootUninstallMultipleProtocolInterfaces =
     unsafe extern "efiapi" fn(_: r_efi::efi::Handle, _: ...) -> r_efi::efi::Status;
 
 const BOOT_SERVICES_UNAVAILABLE: io::Error =
-    const_io_error!(io::ErrorKind::Other, "Boot Services are no longer available");
+    const_error!(io::ErrorKind::Other, "Boot Services are no longer available");
 
 /// Locates Handles with a particular Protocol GUID.
 ///
@@ -114,7 +114,7 @@ pub(crate) fn open_protocol<T>(
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
         NonNull::new(unsafe { protocol.assume_init() })
-            .ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+            .ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 
@@ -134,7 +134,7 @@ pub(crate) fn create_event(
     if r.is_error() {
         Err(crate::io::Error::from_raw_os_error(r.as_usize()))
     } else {
-        NonNull::new(event).ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
+        NonNull::new(event).ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 
@@ -155,10 +155,8 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 ///
 /// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
 pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
-    let system_handle = uefi::env::try_image_handle().ok_or(io::const_io_error!(
-        io::ErrorKind::NotFound,
-        "Protocol not found in Image handle"
-    ))?;
+    let system_handle = uefi::env::try_image_handle()
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "Protocol not found in Image handle"))?;
     open_protocol(system_handle, protocol_guid)
 }
 
@@ -178,7 +176,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         };
 
         let path = os_string_from_raw(path_ptr)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -213,7 +211,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         }
     }
 
-    Err(io::const_io_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
 }
 
 /// Gets RuntimeServices.
@@ -234,7 +232,7 @@ impl DevicePath {
         ) -> io::Result<DevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
             if path_vec[..path_vec.len() - 1].contains(&0) {
-                return Err(const_io_error!(
+                return Err(const_error!(
                     io::ErrorKind::InvalidInput,
                     "strings passed to UEFI cannot contain NULs",
                 ));
@@ -243,9 +241,9 @@ impl DevicePath {
             let path =
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
-            NonNull::new(path).map(DevicePath).ok_or_else(|| {
-                const_io_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path")
-            })
+            NonNull::new(path)
+                .map(DevicePath)
+                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path"))
         }
 
         static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
@@ -271,7 +269,7 @@ impl DevicePath {
             }
         }
 
-        io::Result::Err(const_io_error!(
+        io::Result::Err(const_error!(
             io::ErrorKind::NotFound,
             "DevicePathFromText Protocol not found"
         ))
@@ -326,7 +324,7 @@ impl<T> OwnedProtocol<T> {
         };
 
         let handle = NonNull::new(handle)
-            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
+            .ok_or(io::const_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
 
         Ok(Self { guid, handle, protocol })
     }

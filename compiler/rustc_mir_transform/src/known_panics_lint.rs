@@ -258,7 +258,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Normalization needed b/c known panics lint runs in
         // `mir_drops_elaborated_and_const_checked`, which happens before
         // optimized MIR. Only after optimizing the MIR can we guarantee
-        // that the `RevealAll` pass has happened and that the body's consts
+        // that the `PostAnalysisNormalize` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;

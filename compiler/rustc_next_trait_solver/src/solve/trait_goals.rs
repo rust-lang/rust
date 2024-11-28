@@ -67,7 +67,7 @@ where
         let maximal_certainty = match (impl_polarity, goal.predicate.polarity) {
             // In intercrate mode, this is ambiguous. But outside of intercrate,
             // it's not a real impl.
-            (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode(goal.param_env) {
+            (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
                 TypingMode::Coherence => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Err(NoSolution),
             },
@@ -174,7 +174,7 @@ where
         // ideally we want to avoid, since we can make progress on this goal
         // via an alias bound or a locally-inferred hidden type instead.
         if let ty::Alias(ty::Opaque, opaque_ty) = goal.predicate.self_ty().kind() {
-            match ecx.typing_mode(goal.param_env) {
+            match ecx.typing_mode() {
                 TypingMode::Coherence | TypingMode::PostAnalysis => {
                     unreachable!("rigid opaque outside of analysis: {goal:?}");
                 }

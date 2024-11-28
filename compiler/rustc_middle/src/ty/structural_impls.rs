@@ -237,7 +237,6 @@ TrivialTypeTraversalImpls! {
     crate::mir::coverage::ConditionId,
     crate::mir::Local,
     crate::mir::Promoted,
-    crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
     crate::ty::BoundRegion,

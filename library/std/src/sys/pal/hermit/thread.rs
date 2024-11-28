@@ -41,7 +41,7 @@ impl Thread {
             unsafe {
                 drop(Box::from_raw(p));
             }
-            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
+            Err(io::const_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
         };

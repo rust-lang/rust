@@ -191,7 +191,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Const(..) => DefKind::Const,
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(def) => {
-                let edition = self.resolver.tcx.sess.edition();
+                let edition = i.span.edition();
                 let macro_data =
                     self.resolver.compile_macro(def, i.ident, &i.attrs, i.span, i.id, edition);
                 let macro_kind = macro_data.ext.macro_kind();

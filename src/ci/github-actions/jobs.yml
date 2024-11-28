@@ -48,7 +48,7 @@ runners:
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -384,13 +384,12 @@ auto:
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
-  - image: x86_64-msvc-ext
+  # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
+  - image: x86_64-msvc-ext1
     env:
-      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
-      HOST_TARGET: x86_64-pc-windows-msvc
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
-      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-    <<: *job-windows-8c
+      SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+    <<: *job-windows
 
   # Temporary builder to workaround CI issues
   # See <https://github.com/rust-lang/rust/issues/127883>
@@ -404,6 +403,15 @@ auto:
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+    <<: *job-windows
+
+  # Run `checktools.sh` and upload the toolstate file.
+  - image: x86_64-msvc-ext3
+    env:
+      SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+      HOST_TARGET: x86_64-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
+      DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
     <<: *job-windows
 
   # 32/64-bit MinGW builds.

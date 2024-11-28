@@ -160,6 +160,9 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    #[deprecated = "This callback will likely be removed or stop giving access \
+                    to the TyCtxt in the future. Use either the after_expansion \
+                    or the after_analysis callback instead."]
     fn after_crate_root_parsing<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
@@ -181,7 +184,7 @@ pub trait Callbacks {
     fn after_analysis<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -335,19 +338,12 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Err(reported) => return Err(reported),
-        Ok(Some(input)) => {
+    let has_input = match make_input(&default_early_dcx, &matches.free)? {
+        Some(input) => {
             config.input = input;
             true // has input: normal compilation
         }
-        Ok(None) => match matches.free.as_slice() {
-            [] => false, // no input: we will exit early
-            [_] => panic!("make_input should have provided valid inputs"),
-            [fst, snd, ..] => default_early_dcx.early_fatal(format!(
-                "multiple input filenames provided (first two filenames are `{fst}` and `{snd}`)"
-            )),
-        },
+        None => false, // no input: we will exit early
     };
 
     drop(default_early_dcx);
@@ -405,10 +401,6 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
                         pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        Ok(())
-                    })?;
-
-                    queries.global_ctxt()?.enter(|tcx| {
                         passes::write_dep_info(tcx);
                     });
                 } else {
@@ -421,6 +413,7 @@ fn run_compiler(
                 return early_exit();
             }
 
+            #[allow(deprecated)]
             if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
@@ -442,25 +435,23 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| {
                 passes::write_dep_info(tcx);
-            });
 
-            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                && sess.opts.output_types.len() == 1
-            {
-                return early_exit();
-            }
+                if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                    && sess.opts.output_types.len() == 1
+                {
+                    return early_exit();
+                }
 
-            if sess.opts.unstable_opts.no_analysis {
-                return early_exit();
-            }
+                if sess.opts.unstable_opts.no_analysis {
+                    return early_exit();
+                }
 
-            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
+                tcx.analysis(())?;
 
-            if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
+                if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                    return early_exit();
+                }
 
-            queries.global_ctxt()?.enter(|tcx| {
                 Ok(Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)?))
             })
         })?;
@@ -470,10 +461,6 @@ fn run_compiler(
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
             linker.link(sess, codegen_backend)?
-        }
-
-        if let Some(fuel) = sess.opts.unstable_opts.print_fuel.as_deref() {
-            eprintln!("Fuel used by {}: {}", fuel, sess.print_fuel.load(Ordering::SeqCst));
         }
 
         Ok(())
@@ -513,37 +500,40 @@ fn make_input(
     early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
-    let [input_file] = free_matches else { return Ok(None) };
+    match free_matches {
+        [] => Ok(None), // no input: we will exit early,
+        [ifile] if ifile == "-" => {
+            // read from stdin as `Input::Str`
+            let mut input = String::new();
+            if io::stdin().read_to_string(&mut input).is_err() {
+                // Immediately stop compilation if there was an issue reading
+                // the input (for example if the input stream is not UTF-8).
+                let reported = early_dcx
+                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
+                return Err(reported);
+            }
 
-    if input_file != "-" {
-        // Normal `Input::File`
-        return Ok(Some(Input::File(PathBuf::from(input_file))));
-    }
-
-    // read from stdin as `Input::Str`
-    let mut input = String::new();
-    if io::stdin().read_to_string(&mut input).is_err() {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
-        let reported =
-            early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-        return Err(reported);
-    }
-
-    let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
-        Ok(path) => {
-            let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
-                "when UNSTABLE_RUSTDOC_TEST_PATH is set \
+            let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+                Ok(path) => {
+                    let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
+                        "when UNSTABLE_RUSTDOC_TEST_PATH is set \
                                     UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
-            );
-            let line = isize::from_str_radix(&line, 10)
-                .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
-            FileName::doc_test_source_code(PathBuf::from(path), line)
-        }
-        Err(_) => FileName::anon_source_code(&input),
-    };
+                    );
+                    let line = isize::from_str_radix(&line, 10)
+                        .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+                    FileName::doc_test_source_code(PathBuf::from(path), line)
+                }
+                Err(_) => FileName::anon_source_code(&input),
+            };
 
-    Ok(Some(Input::Str { name, input }))
+            Ok(Some(Input::Str { name, input }))
+        }
+        [ifile] => Ok(Some(Input::File(PathBuf::from(ifile)))),
+        [ifile1, ifile2, ..] => early_dcx.early_fatal(format!(
+            "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+            ifile1, ifile2
+        )),
+    }
 }
 
 /// Whether to stop or continue compilation.

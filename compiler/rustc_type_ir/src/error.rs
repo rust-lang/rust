@@ -12,12 +12,8 @@ pub struct ExpectedFound<T> {
 }
 
 impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
+    pub fn new(expected: T, found: T) -> Self {
+        ExpectedFound { expected, found }
     }
 }
 
@@ -33,7 +29,7 @@ pub enum TypeError<I: Interner> {
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
-    FixedArraySize(ExpectedFound<u64>),
+    ArraySize(ExpectedFound<I::Const>),
     ArgCount,
 
     RegionsDoesNotOutlive(I::Region, I::Region),
@@ -73,7 +69,7 @@ impl<I: Interner> TypeError<I> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | SafetyMismatch(_) | PolarityMismatch(_) | Mismatch
-            | AbiMismatch(_) | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_)
+            | AbiMismatch(_) | ArraySize(_) | ArgumentSorts(..) | Sorts(_)
             | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability

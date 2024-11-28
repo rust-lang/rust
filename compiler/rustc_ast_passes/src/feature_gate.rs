@@ -345,8 +345,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         for predicate in &g.where_clause.predicates {
-            match predicate {
-                ast::WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
                     // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }
@@ -557,6 +557,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
+    gate_all!(unsafe_fields, "`unsafe` fields are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

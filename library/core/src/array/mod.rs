@@ -10,11 +10,13 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
+use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
+use crate::ptr::{null, null_mut};
 use crate::slice::{Iter, IterMut};
 
 mod ascii;
@@ -577,7 +579,8 @@ impl<T, const N: usize> [T; N] {
     /// Returns a mutable slice containing the entire array. Equivalent to
     /// `&mut s[..]`.
     #[stable(feature = "array_as_slice", since = "1.57.0")]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_array_as_mut_slice", issue = "133333")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
 
@@ -606,8 +609,20 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(strings.len(), 3);
     /// ```
     #[stable(feature = "array_methods", since = "1.77.0")]
-    pub fn each_ref(&self) -> [&T; N] {
-        from_trusted_iterator(self.iter())
+    #[rustc_const_unstable(feature = "const_array_each_ref", issue = "133289")]
+    pub const fn each_ref(&self) -> [&T; N] {
+        let mut buf = [null::<T>(); N];
+
+        // FIXME(const-hack): We would like to simply use iterators for this (as in the original implementation), but this is not allowed in constant expressions.
+        let mut i = 0;
+        while i < N {
+            buf[i] = &raw const self[i];
+
+            i += 1;
+        }
+
+        // SAFETY: `*const T` has the same layout as `&T`, and we've also initialised each pointer as a valid reference.
+        unsafe { transmute_unchecked(buf) }
     }
 
     /// Borrows each element mutably and returns an array of mutable references
@@ -625,8 +640,20 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(floats, [0.0, 2.7, -1.0]);
     /// ```
     #[stable(feature = "array_methods", since = "1.77.0")]
-    pub fn each_mut(&mut self) -> [&mut T; N] {
-        from_trusted_iterator(self.iter_mut())
+    #[rustc_const_unstable(feature = "const_array_each_ref", issue = "133289")]
+    pub const fn each_mut(&mut self) -> [&mut T; N] {
+        let mut buf = [null_mut::<T>(); N];
+
+        // FIXME(const-hack): We would like to simply use iterators for this (as in the original implementation), but this is not allowed in constant expressions.
+        let mut i = 0;
+        while i < N {
+            buf[i] = &raw mut self[i];
+
+            i += 1;
+        }
+
+        // SAFETY: `*mut T` has the same layout as `&mut T`, and we've also initialised each pointer as a valid reference.
+        unsafe { transmute_unchecked(buf) }
     }
 
     /// Divides one array reference into two at an index.

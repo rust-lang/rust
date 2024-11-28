@@ -11,7 +11,8 @@
     rustc_attrs,
     fundamental,
     marker_trait_attr,
-    const_trait_impl
+    const_trait_impl,
+    const_destruct
 )]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
@@ -444,12 +445,12 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
 
 #[lang = "clone"]
 #[rustc_trivial_field_reads]
-// FIXME: #[const_trait]
+#[const_trait]
 pub trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
     where
-    // FIXME: Self: ~const Destruct,
+        Self: ~const Destruct,
     {
         *self = source.clone()
     }
@@ -458,7 +459,7 @@ pub trait Clone: Sized {
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
 
-// FIXME: const fn drop<T: ~const Destruct>(_: T) {}
+pub const fn drop<T: ~const Destruct>(_: T) {}
 
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_intrinsic]

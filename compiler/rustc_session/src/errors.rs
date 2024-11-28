@@ -464,12 +464,6 @@ pub fn report_lit_error(
 }
 
 #[derive(Diagnostic)]
-#[diag(session_optimization_fuel_exhausted)]
-pub(crate) struct OptimisationFuelExhausted {
-    pub(crate) msg: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
 pub(crate) struct IncompatibleLinkerFlavor {

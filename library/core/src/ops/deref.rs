@@ -133,6 +133,7 @@
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -147,8 +148,20 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+#[cfg(bootstrap)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &T {
+    type Target = T;
+
+    #[rustc_diagnostic_item = "noop_method_deref"]
+    fn deref(&self) -> &T {
+        *self
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
     #[rustc_diagnostic_item = "noop_method_deref"]
@@ -160,8 +173,19 @@ impl<T: ?Sized> Deref for &T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !DerefMut for &T {}
 
+#[cfg(bootstrap)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &mut T {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        *self
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -258,9 +282,23 @@ impl<T: ?Sized> Deref for &mut T {
 /// *x = 'b';
 /// assert_eq!('b', x.value);
 /// ```
+#[cfg(not(bootstrap))]
 #[lang = "deref_mut"]
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
+pub trait DerefMut: ~const Deref {
+    /// Mutably dereferences the value.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_mut_method"]
+    fn deref_mut(&mut self) -> &mut Self::Target;
+}
+
+/// Bootstrap
+#[lang = "deref_mut"]
+#[doc(alias = "*")]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 pub trait DerefMut: Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -268,8 +306,17 @@ pub trait DerefMut: Deref {
     fn deref_mut(&mut self) -> &mut Self::Target;
 }
 
+#[cfg(bootstrap)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for &mut T {
+    fn deref_mut(&mut self) -> &mut T {
+        *self
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         *self
     }

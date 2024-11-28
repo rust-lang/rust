@@ -638,7 +638,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let proj = match proj {
             ProjectionElem::Deref => {
                 let ty = place.ty(self.local_decls, self.tcx).ty;
-                if let Some(Mutability::Not) = ty.ref_mutability()
+                // unsound: https://github.com/rust-lang/rust/issues/130853
+                if self.tcx.sess.opts.unstable_opts.unsound_mir_opts
+                    && let Some(Mutability::Not) = ty.ref_mutability()
                     && let Some(pointee_ty) = ty.builtin_deref(true)
                     && pointee_ty.is_freeze(self.tcx, self.typing_env())
                 {

@@ -84,7 +84,10 @@ ENV RUST_CONFIGURE_ARGS \
   --enable-new-symbol-mangling
 
 ENV HOST_TARGET x86_64-unknown-linux-gnu
-ENV FORCE_CI_RUSTC 1
+
+# FIXME(#133381): currently rustc alt builds do *not* have rustc debug
+# assertions enabled! Therefore, we cannot force download CI rustc.
+#ENV FORCE_CI_RUSTC 1
 
 COPY host-x86_64/dist-x86_64-linux/shared.sh /scripts/
 COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/

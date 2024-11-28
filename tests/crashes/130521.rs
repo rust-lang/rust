@@ -1,12 +1,12 @@
 //@ known-bug: #130521
 
 #![feature(dyn_compatible_for_dispatch)]
-struct Vtable(dyn Cap);
+struct Vtable(dyn Cap<'static>);
 
 trait Cap<'a> {}
 
 union Transmute {
-    t: u64,
+    t: u128,
     u: &'static Vtable,
 }
 

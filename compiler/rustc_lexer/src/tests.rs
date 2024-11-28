@@ -77,61 +77,51 @@ fn test_too_many_hashes() {
     check_raw_str(&s2, Err(RawStrError::TooManyDelimiters { found: u32::from(max_count) + 1 }));
 }
 
+// https://github.com/rust-lang/rust/issues/70528
 #[test]
 fn test_valid_shebang() {
-    // https://github.com/rust-lang/rust/issues/70528
-    let input = "#!/usr/bin/rustrun\nlet x = 5;";
-    assert_eq!(strip_shebang(input), Some(18));
-}
+    let input = "#!/bin/bash";
+    assert_eq!(strip_shebang(input), Some(input.len()));
 
-#[test]
-fn test_invalid_shebang_valid_rust_syntax() {
-    // https://github.com/rust-lang/rust/issues/70528
-    let input = "#!    [bad_attribute]";
+    let input = "#![attribute]";
     assert_eq!(strip_shebang(input), None);
-}
 
-#[test]
-fn test_shebang_second_line() {
+    let input = "#!    /bin/bash";
+    assert_eq!(strip_shebang(input), Some(input.len()));
+
+    let input = "#!    [attribute]";
+    assert_eq!(strip_shebang(input), None);
+
+    let input = "#! /* blah */  /bin/bash";
+    assert_eq!(strip_shebang(input), Some(input.len()));
+
+    let input = "#! /* blah */  [attribute]";
+    assert_eq!(strip_shebang(input), None);
+
+    let input = "#! // blah\n/bin/bash";
+    assert_eq!(strip_shebang(input), Some(10)); // strip up to the newline
+
+    let input = "#! // blah\n[attribute]";
+    assert_eq!(strip_shebang(input), None);
+
+    let input = "#! /* blah\nblah\nblah */  /bin/bash";
+    assert_eq!(strip_shebang(input), Some(10));
+
+    let input = "#! /* blah\nblah\nblah */  [attribute]";
+    assert_eq!(strip_shebang(input), None);
+
+    let input = "#!\n/bin/sh";
+    assert_eq!(strip_shebang(input), Some(2));
+
+    let input = "#!\n[attribute]";
+    assert_eq!(strip_shebang(input), None);
+
     // Because shebangs are interpreted by the kernel, they must be on the first line
     let input = "\n#!/bin/bash";
     assert_eq!(strip_shebang(input), None);
-}
 
-#[test]
-fn test_shebang_space() {
-    let input = "#!    /bin/bash";
-    assert_eq!(strip_shebang(input), Some(input.len()));
-}
-
-#[test]
-fn test_shebang_empty_shebang() {
-    let input = "#!    \n[attribute(foo)]";
+    let input = "\n#![attribute]";
     assert_eq!(strip_shebang(input), None);
-}
-
-#[test]
-fn test_invalid_shebang_comment() {
-    let input = "#!//bin/ami/a/comment\n[";
-    assert_eq!(strip_shebang(input), None)
-}
-
-#[test]
-fn test_invalid_shebang_another_comment() {
-    let input = "#!/*bin/ami/a/comment*/\n[attribute";
-    assert_eq!(strip_shebang(input), None)
-}
-
-#[test]
-fn test_shebang_valid_rust_after() {
-    let input = "#!/*bin/ami/a/comment*/\npub fn main() {}";
-    assert_eq!(strip_shebang(input), Some(23))
-}
-
-#[test]
-fn test_shebang_followed_by_attrib() {
-    let input = "#!/bin/rust-scripts\n#![allow_unused(true)]";
-    assert_eq!(strip_shebang(input), Some(19));
 }
 
 fn check_lexing(src: &str, expect: Expect) {

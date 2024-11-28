@@ -1,6 +1,5 @@
 //! Computes a normalizes-to (projection) goal for opaque types. This goal
-//! behaves differently depending on the param-env's reveal mode and whether
-//! the opaque is in a defining scope.
+//! behaves differently depending on the current `TypingMode`.
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_type_ir::inherent::*;
@@ -22,7 +21,7 @@ where
         let opaque_ty = goal.predicate.alias;
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
-        match self.typing_mode(goal.param_env) {
+        match self.typing_mode() {
             TypingMode::Coherence => {
                 // An impossible opaque type bound is the only way this goal will fail
                 // e.g. assigning `impl Copy := NotCopy`

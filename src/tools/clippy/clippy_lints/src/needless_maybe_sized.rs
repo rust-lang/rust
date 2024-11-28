@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicate};
+use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicateKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{ClauseKind, PredicatePolarity};
 use rustc_session::declare_lint_pass;
@@ -52,7 +52,7 @@ fn type_param_bounds<'tcx>(generics: &'tcx Generics<'tcx>) -> impl Iterator<Item
         .iter()
         .enumerate()
         .filter_map(|(predicate_pos, predicate)| {
-            let WherePredicate::BoundPredicate(bound_predicate) = predicate else {
+            let WherePredicateKind::BoundPredicate(bound_predicate) = &predicate.kind else {
                 return None;
             };
 

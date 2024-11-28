@@ -727,7 +727,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         // FIXME: Marked `mut` so that we can replace the spans further below with a more
         // appropriate one, but this should be handled earlier in the span assignment.
-        let mut associated_types: FxIndexMap<Span, Vec<_>> = associated_types
+        let associated_types: FxIndexMap<Span, Vec<_>> = associated_types
             .into_iter()
             .map(|(span, def_ids)| {
                 (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
@@ -769,39 +769,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::Node::Expr(_) | hir::Node::Pat(_) => true,
                 _ => false,
             };
-            match bound.trait_ref.path.segments {
-                // FIXME: `trait_ref.path.span` can point to a full path with multiple
-                // segments, even though `trait_ref.path.segments` is of length `1`. Work
-                // around that bug here, even though it should be fixed elsewhere.
-                // This would otherwise cause an invalid suggestion. For an example, look at
-                // `tests/ui/issues/issue-28344.rs` where instead of the following:
-                //
-                //   error[E0191]: the value of the associated type `Output`
-                //                 (from trait `std::ops::BitXor`) must be specified
-                //   --> $DIR/issue-28344.rs:4:17
-                //    |
-                // LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-                //    |                 ^^^^^^ help: specify the associated type:
-                //    |                              `BitXor<Output = Type>`
-                //
-                // we would output:
-                //
-                //   error[E0191]: the value of the associated type `Output`
-                //                 (from trait `std::ops::BitXor`) must be specified
-                //   --> $DIR/issue-28344.rs:4:17
-                //    |
-                // LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-                //    |                 ^^^^^^^^^^^^^ help: specify the associated type:
-                //    |                                     `BitXor::bitor<Output = Type>`
-                [segment] if segment.args.is_none() => {
-                    trait_bound_spans = vec![segment.ident.span];
-                    associated_types = associated_types
-                        .into_values()
-                        .map(|items| (segment.ident.span, items))
-                        .collect();
-                }
-                _ => {}
-            }
         }
 
         // We get all the associated items that _are_ set,

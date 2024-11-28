@@ -327,7 +327,7 @@ pub(crate) fn make_bat_command_line(
     force_quotes: bool,
 ) -> io::Result<Vec<u16>> {
     const INVALID_ARGUMENT_ERROR: io::Error =
-        io::const_io_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
+        io::const_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
@@ -340,7 +340,7 @@ pub(crate) fn make_bat_command_line(
     // Windows file names cannot contain a `"` character or end with `\\`.
     // If the script name does then return an error.
     if script.contains(&(b'"' as u16)) || script.last() == Some(&(b'\\' as u16)) {
-        return Err(io::const_io_error!(
+        return Err(io::const_error!(
             io::ErrorKind::InvalidInput,
             "Windows file names may not contain `\"` or end with `\\`"
         ));

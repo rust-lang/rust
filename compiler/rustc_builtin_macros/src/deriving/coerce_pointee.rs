@@ -288,19 +288,18 @@ pub(crate) fn expand_deriving_coerce_pointee(
     //
     // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
     // as well as any bound that indirectly involves the `#[pointee] T` type.
-    for bound in &generics.where_clause.predicates {
-        if let ast::WherePredicate::BoundPredicate(bound) = bound {
+    for predicate in &generics.where_clause.predicates {
+        if let ast::WherePredicateKind::BoundPredicate(bound) = &predicate.kind {
             let mut substitution = TypeSubstitution {
                 from_name: pointee_ty_ident.name,
                 to_ty: &s_ty,
                 rewritten: false,
             };
-            let mut predicate = ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                span: bound.span,
-                bound_generic_params: bound.bound_generic_params.clone(),
-                bounded_ty: bound.bounded_ty.clone(),
-                bounds: bound.bounds.clone(),
-            });
+            let mut predicate = ast::WherePredicate {
+                kind: ast::WherePredicateKind::BoundPredicate(bound.clone()),
+                span: predicate.span,
+                id: ast::DUMMY_NODE_ID,
+            };
             substitution.visit_where_predicate(&mut predicate);
             if substitution.rewritten {
                 impl_generics.where_clause.predicates.push(predicate);
@@ -319,7 +318,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
 fn contains_maybe_sized_bound_on_pointee(predicates: &[WherePredicate], pointee: Symbol) -> bool {
     for bound in predicates {
-        if let ast::WherePredicate::BoundPredicate(bound) = bound
+        if let ast::WherePredicateKind::BoundPredicate(bound) = &bound.kind
             && bound.bounded_ty.kind.is_simple_path().is_some_and(|name| name == pointee)
         {
             for bound in &bound.bounds {
@@ -385,8 +384,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
     }
 
     fn visit_where_predicate(&mut self, where_predicate: &mut ast::WherePredicate) {
-        match where_predicate {
-            rustc_ast::WherePredicate::BoundPredicate(bound) => {
+        match &mut where_predicate.kind {
+            rustc_ast::WherePredicateKind::BoundPredicate(bound) => {
                 bound
                     .bound_generic_params
                     .flat_map_in_place(|param| self.flat_map_generic_param(param));
@@ -395,8 +394,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
                     self.visit_param_bound(bound, BoundKind::Bound)
                 }
             }
-            rustc_ast::WherePredicate::RegionPredicate(_)
-            | rustc_ast::WherePredicate::EqPredicate(_) => {}
+            rustc_ast::WherePredicateKind::RegionPredicate(_)
+            | rustc_ast::WherePredicateKind::EqPredicate(_) => {}
         }
     }
 }

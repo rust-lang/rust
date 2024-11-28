@@ -103,7 +103,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let block_map: IndexVec<BasicBlock, Block> =
         (0..mir.basic_blocks.len()).map(|_| bcx.create_block()).collect();
 
-    let fn_abi = RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
+    let fn_abi = FullyMonomorphizedLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty());
 
     // Make FunctionCx
     let target_config = module.target_config();

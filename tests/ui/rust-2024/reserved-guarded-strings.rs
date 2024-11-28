@@ -1,4 +1,3 @@
-//@ compile-flags: -Zunstable-options
 //@ edition:2024
 // ignore-tidy-linelength
 

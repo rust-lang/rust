@@ -1,6 +1,5 @@
 //@ run-pass
 
-//@ pretty-expanded FIXME #23616
 
 fn main() {
     let _ = test(Some(0).into_iter());

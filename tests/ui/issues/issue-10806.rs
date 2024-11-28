@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_imports)]
 
-//@ pretty-expanded FIXME #23616
 
 pub fn foo() -> isize {
     3

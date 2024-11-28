@@ -4,7 +4,7 @@
 
 pub mod tls;
 
-use std::assert_matches::assert_matches;
+use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -377,10 +377,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn impl_is_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true });
         self.is_conditionally_const(def_id)
     }
 
     fn fn_is_const(self, def_id: DefId) -> bool {
+        debug_assert_matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
+        self.is_conditionally_const(def_id)
+    }
+
+    fn alias_has_const_conditions(self, def_id: DefId) -> bool {
+        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::OpaqueTy);
         self.is_conditionally_const(def_id)
     }
 
@@ -663,6 +670,7 @@ bidirectional_lang_item_map! {
     CoroutineYield,
     Destruct,
     DiscriminantKind,
+    Drop,
     DynMetadata,
     Fn,
     FnMut,
@@ -1318,12 +1326,12 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
-    pub selection_cache: traits::SelectionCache<'tcx>,
+    pub selection_cache: traits::SelectionCache<'tcx, ty::TypingEnv<'tcx>>,
 
     /// Caches the results of trait evaluation. This cache is used
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
-    pub evaluation_cache: traits::EvaluationCache<'tcx>,
+    pub evaluation_cache: traits::EvaluationCache<'tcx, ty::TypingEnv<'tcx>>,
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
@@ -1363,8 +1371,17 @@ impl<'tcx> GlobalCtxt<'tcx> {
         tls::enter_context(&icx, || f(icx.tcx))
     }
 
-    pub fn finish(&self) -> FileEncodeResult {
-        self.dep_graph.finish_encoding()
+    pub fn finish(&'tcx self) {
+        // We assume that no queries are run past here. If there are new queries
+        // after this point, they'll show up as "<unknown>" in self-profiling data.
+        self.enter(|tcx| tcx.alloc_self_profile_query_strings());
+
+        self.enter(|tcx| tcx.save_dep_graph());
+        self.enter(|tcx| tcx.query_key_hash_verify_all());
+
+        if let Err((path, error)) = self.dep_graph.finish_encoding() {
+            self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
     }
 }
 
@@ -1556,10 +1573,6 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             current_gcx,
         }
-    }
-
-    pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
-        self.sess.consider_optimizing(|| self.crate_name(LOCAL_CRATE), msg)
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)

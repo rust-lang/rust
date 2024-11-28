@@ -558,6 +558,10 @@ passes_no_mangle_foreign =
 passes_no_patterns =
     patterns not allowed in naked function parameters
 
+passes_no_sanitize =
+    `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
+    .label = not {$accepted_kind}
+
 passes_non_exported_macro_invalid_attrs =
     attribute should be applied to function or closure
     .label = not a function or closure

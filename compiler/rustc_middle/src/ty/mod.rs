@@ -32,11 +32,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
-use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::{LangItem, Safety};
 use rustc_index::IndexVec;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
@@ -104,7 +103,6 @@ use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::{IntoQueryParam, Providers};
-use crate::traits::{self, Reveal};
 use crate::ty;
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
@@ -960,147 +958,50 @@ impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
 /// [dev guide chapter][param_env_guide] for more information.
 ///
 /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
-    /// This packs both caller bounds and the reveal enum into one pointer.
-    ///
     /// Caller bounds are `Obligation`s that the caller must satisfy. This is
     /// basically the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
     ///
     /// Use the `caller_bounds()` method to access.
-    ///
-    /// Typically, this is `Reveal::UserFacing`, but during codegen we
-    /// want `Reveal::All`.
-    ///
-    /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<Clauses<'tcx>, ParamTag, true>,
+    caller_bounds: Clauses<'tcx>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn reveal(self) -> Reveal {
-        self.reveal()
-    }
-
     fn caller_bounds(self) -> impl IntoIterator<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }
 }
 
-#[derive(Copy, Clone)]
-struct ParamTag {
-    reveal: traits::Reveal,
-}
-
-rustc_data_structures::impl_tag! {
-    impl Tag for ParamTag;
-    ParamTag { reveal: traits::Reveal::UserFacing },
-    ParamTag { reveal: traits::Reveal::All },
-}
-
-impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ParamEnv")
-            .field("caller_bounds", &self.caller_bounds())
-            .field("reveal", &self.reveal())
-            .finish()
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.caller_bounds().hash_stable(hcx, hasher);
-        self.reveal().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn try_fold_with<F: ty::fold::FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(ParamEnv::new(
-            self.caller_bounds().try_fold_with(folder)?,
-            self.reveal().try_fold_with(folder)?,
-        ))
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.caller_bounds().visit_with(visitor));
-        self.reveal().visit_with(visitor)
-    }
-}
-
 impl<'tcx> ParamEnv<'tcx> {
-    /// Construct a trait environment suitable for contexts where
-    /// there are no where-clauses in scope. Hidden types (like `impl
-    /// Trait`) are left hidden. In majority of cases it is incorrect
+    /// Construct a trait environment suitable for contexts where there are
+    /// no where-clauses in scope. In the majority of cases it is incorrect
     /// to use an empty environment. See the [dev guide section][param_env_guide]
     /// for information on what a `ParamEnv` is and how to acquire one.
     ///
     /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
     #[inline]
     pub fn empty() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty(), Reveal::UserFacing)
+        Self::new(ListWithCachedTypeInfo::empty())
     }
 
     #[inline]
     pub fn caller_bounds(self) -> Clauses<'tcx> {
-        self.packed.pointer()
-    }
-
-    #[inline]
-    pub fn reveal(self) -> traits::Reveal {
-        self.packed.tag().reveal
-    }
-
-    /// Construct a trait environment with no where-clauses in scope
-    /// where the values of all `impl Trait` and other hidden types
-    /// are revealed. This is suitable for monomorphized, post-typeck
-    /// environments like codegen or doing optimizations.
-    ///
-    /// N.B., if you want to have predicates in scope, use `ParamEnv::new`,
-    /// or invoke `param_env.with_reveal_all()`.
-    #[inline]
-    pub fn reveal_all() -> Self {
-        Self::new(ListWithCachedTypeInfo::empty(), Reveal::All)
+        self.caller_bounds
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: Clauses<'tcx>, reveal: Reveal) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal }) }
-    }
-
-    /// Returns a new parameter environment with the same clauses, but
-    /// which "reveals" the true results of projections in all cases
-    /// (even for associated types that are specializable). This is
-    /// the desired behavior during codegen and certain other special
-    /// contexts; normally though we want to use `Reveal::UserFacing`,
-    /// which is the default.
-    /// All opaque types in the caller_bounds of the `ParamEnv`
-    /// will be normalized to their underlying types.
-    /// See PR #65989 and issue #65918 for more details
-    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.packed.tag().reveal == traits::Reveal::All {
-            return self;
-        }
-
-        // No need to reveal opaques with the new solver enabled,
-        // since we have lazy norm.
-        if tcx.next_trait_solver_globally() {
-            return ParamEnv::new(self.caller_bounds(), Reveal::All);
-        }
-
-        ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds()), Reveal::All)
+    pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
+        ParamEnv { caller_bounds }
     }
 
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(ListWithCachedTypeInfo::empty(), self.reveal())
+        Self::new(ListWithCachedTypeInfo::empty())
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1148,7 +1049,7 @@ impl<'tcx> TypingEnv<'tcx> {
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
     pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::reveal_all() }
+        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::empty() }
     }
 
     /// Create a typing environment for use during analysis outside of a body.
@@ -1166,15 +1067,25 @@ impl<'tcx> TypingEnv<'tcx> {
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryParam<DefId>) -> TypingEnv<'tcx> {
         TypingEnv {
             typing_mode: TypingMode::PostAnalysis,
-            param_env: tcx.param_env_reveal_all_normalized(def_id),
+            param_env: tcx.param_env_normalized_for_post_analysis(def_id),
         }
     }
 
     /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
     /// opaque types in the `param_env`.
-    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        let TypingEnv { typing_mode: _, param_env } = self;
-        let param_env = param_env.with_reveal_all_normalized(tcx);
+    pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+        let TypingEnv { typing_mode, param_env } = self;
+        if let TypingMode::PostAnalysis = typing_mode {
+            return self;
+        }
+
+        // No need to reveal opaques with the new solver enabled,
+        // since we have lazy norm.
+        let param_env = if tcx.next_trait_solver_globally() {
+            ParamEnv::new(param_env.caller_bounds())
+        } else {
+            ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
+        };
         TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
     }
 
@@ -1365,6 +1276,11 @@ impl VariantDef {
     pub fn tail(&self) -> &FieldDef {
         self.tail_opt().expect("expected unsized ADT to have a tail field")
     }
+
+    /// Returns whether this variant has unsafe fields.
+    pub fn has_unsafe_fields(&self) -> bool {
+        self.fields.iter().any(|x| x.safety == Safety::Unsafe)
+    }
 }
 
 impl PartialEq for VariantDef {
@@ -1447,6 +1363,7 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility<DefId>,
+    pub safety: hir::Safety,
 }
 
 impl PartialEq for FieldDef {
@@ -1459,15 +1376,16 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, safety: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, safety: _ } = other;
 
         let res = lhs_did == rhs_did;
 
         // Double check that implicit assumption detailed above.
         if cfg!(debug_assertions) && res {
-            let deep = self.name == other.name && self.vis == other.vis;
+            let deep =
+                self.name == other.name && self.vis == other.vis && self.safety == other.safety;
             assert!(deep, "FieldDef for the same def-id has differing data");
         }
 
@@ -1487,7 +1405,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _ } = &self;
+        let Self { did, name: _, vis: _, safety: _ } = &self;
 
         did.hash(s)
     }
@@ -1640,10 +1558,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_box = self.is_lang_item(did.to_def_id(), LangItem::OwnedBox);
 
         // This is here instead of layout because the choice must make it into metadata.
-        if is_box
-            || !self
-                .consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did)))
-        {
+        if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
         }
 

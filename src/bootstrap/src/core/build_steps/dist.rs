@@ -1023,7 +1023,7 @@ impl Step for PlainSourceTarball {
             let mut cmd = command(&builder.initial_cargo);
             cmd.arg("vendor").arg("--versioned-dirs");
 
-            for p in default_paths_to_vendor(builder) {
+            for (p, _) in default_paths_to_vendor(builder) {
                 cmd.arg("--sync").arg(p);
             }
 

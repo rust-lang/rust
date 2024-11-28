@@ -1,14 +1,11 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::trace;
 
 use super::ConstCx;
-use super::check::Qualifs;
-use super::ops::{self, NonConstOp};
-use super::qualifs::{NeedsNonConstDrop, Qualif};
+use crate::check_consts::check::Checker;
 use crate::check_consts::rustc_allow_const_fn_unstable;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
@@ -45,29 +42,16 @@ pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
         return;
     }
 
-    let mut visitor = CheckLiveDrops { ccx: &ccx, qualifs: Qualifs::default() };
+    // I know it's not great to be creating a new const checker, but I'd
+    // rather use it so we can deduplicate the error emitting logic that
+    // it contains.
+    let mut visitor = CheckLiveDrops { checker: Checker::new(&ccx) };
 
     visitor.visit_body(body);
 }
 
 struct CheckLiveDrops<'mir, 'tcx> {
-    ccx: &'mir ConstCx<'mir, 'tcx>,
-    qualifs: Qualifs<'mir, 'tcx>,
-}
-
-// So we can access `body` and `tcx`.
-impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
-    type Target = ConstCx<'mir, 'tcx>;
-
-    fn deref(&self) -> &Self::Target {
-        self.ccx
-    }
-}
-
-impl<'tcx> CheckLiveDrops<'_, 'tcx> {
-    fn check_live_drop(&self, span: Span, dropped_ty: Ty<'tcx>) {
-        ops::LiveDrop { dropped_at: None, dropped_ty }.build_error(self.ccx, span).emit();
-    }
+    checker: Checker<'mir, 'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
@@ -87,28 +71,11 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
 
         match &terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
-                let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
-
-                if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
-                    // Instead of throwing a bug, we just return here. This is because we have to
-                    // run custom `const Drop` impls.
-                    return;
-                }
-
-                if dropped_place.is_indirect() {
-                    self.check_live_drop(terminator.source_info.span, dropped_ty);
-                    return;
-                }
-
-                // Drop elaboration is not precise enough to accept code like
-                // `tests/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
-                // initialized with `None` and never changed, it still emits drop glue.
-                // Hence we additionally check the qualifs here to allow more code to pass.
-                if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {
-                    // Use the span where the dropped local was declared for the error.
-                    let span = self.body.local_decls[dropped_place.local].source_info.span;
-                    self.check_live_drop(span, dropped_ty);
-                }
+                self.checker.check_drop_terminator(
+                    *dropped_place,
+                    location,
+                    terminator.source_info.span,
+                );
             }
 
             mir::TerminatorKind::UnwindTerminate(_)

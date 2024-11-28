@@ -151,10 +151,6 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
-    fn try_to_target_usize(self, interner: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_target_usize(interner)
-    }
-
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst) -> Self {
         Const::new_infer(tcx, infer)
     }
@@ -336,7 +332,7 @@ impl<'tcx> Const<'tcx> {
     pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
         let (scalar, ty) = self.try_to_scalar()?;
         let scalar = scalar.try_to_scalar_int().ok()?;
-        let input = typing_env.with_reveal_all_normalized(tcx).as_query_input(ty);
+        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(ty);
         let size = tcx.layout_of(input).ok()?.size;
         Some(scalar.to_bits(size))
     }

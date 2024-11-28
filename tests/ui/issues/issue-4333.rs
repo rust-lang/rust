@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(unused_must_use)]
-//@ pretty-expanded FIXME #23616
 
 use std::io;
 

@@ -300,7 +300,7 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         let affect_object_lifetime_defaults = self
             .preds
             .iter()
-            .filter(|pred| pred.in_where_clause() == self.in_where_clause)
+            .filter(|pred| pred.kind.in_where_clause() == self.in_where_clause)
             .any(|pred| TypeAliasBounds::affects_object_lifetime_defaults(pred));
 
         // If there are any shorthand assoc tys, then the bounds can't be removed automatically.

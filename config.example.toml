@@ -496,15 +496,18 @@
 #
 #debug = false
 
-# Whether to download the stage 1 and 2 compilers from CI.
-# This is useful if you are working on tools, doc-comments, or library (you will be able to build
-# the standard library without needing to build the compiler).
+# Whether to download the stage 1 and 2 compilers from CI. This is useful if you
+# are working on tools, doc-comments, or library (you will be able to build the
+# standard library without needing to build the compiler).
 #
-# Set this to "if-unchanged" if you are working on `src/tools`, `tests` or `library` (on CI, `library`
-# changes triggers in-tree compiler build) to speed up the build process.
+# Set this to "if-unchanged" if you are working on `src/tools`, `tests` or
+# `library` (on CI, `library` changes triggers in-tree compiler build) to speed
+# up the build process if you don't need to build a compiler from the latest
+# commit from `master`.
 #
-# Set this to `true` to always download or `false` to always use the in-tree compiler.
-#download-rustc = "if-unchanged"
+# Set this to `true` to always download or `false` to always use the in-tree
+# compiler.
+#download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
@@ -770,6 +773,7 @@
 #validate-mir-opts = 3
 
 # Configure `std` features used during bootstrap.
+#
 # Default features will be expanded in the following cases:
 #  - If `rust.llvm-libunwind` or `target.llvm-libunwind` is enabled:
 #    - "llvm-libunwind" will be added for in-tree LLVM builds.
@@ -777,6 +781,9 @@
 #  - If `rust.backtrace` is enabled, "backtrace" will be added.
 #  - If `rust.profiler` or `target.profiler` is enabled, "profiler" will be added.
 #  - If building for a zkvm target, "compiler-builtins-mem" will be added.
+#
+# Since libstd also builds libcore and liballoc as dependencies and all their features are mirrored
+# as libstd features, this option can also be used to configure features such as optimize_for_size.
 #std-features = ["panic_unwind"]
 
 # =============================================================================

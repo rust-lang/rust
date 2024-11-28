@@ -1802,7 +1802,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut is_mutbl = bm.1;
 
         for pointer_ty in place.deref_tys() {
-            match pointer_ty.kind() {
+            match self.structurally_resolve_type(self.tcx.hir().span(var_hir_id), pointer_ty).kind()
+            {
                 // We don't capture derefs of raw ptrs
                 ty::RawPtr(_, _) => unreachable!(),
 
@@ -1816,7 +1817,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Dereferencing a box doesn't change mutability
                 ty::Adt(def, ..) if def.is_box() => {}
 
-                unexpected_ty => bug!("deref of unexpected pointer type {:?}", unexpected_ty),
+                unexpected_ty => span_bug!(
+                    self.tcx.hir().span(var_hir_id),
+                    "deref of unexpected pointer type {:?}",
+                    unexpected_ty
+                ),
             }
         }
 

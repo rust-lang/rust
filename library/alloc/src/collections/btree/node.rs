@@ -739,7 +739,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
-    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
+    pub unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         debug_assert!(self.height == 0);
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
@@ -1173,11 +1173,25 @@ impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> 
     /// The node that the handle refers to must not yet have been deallocated.
     #[inline]
     pub unsafe fn drop_key_val(mut self) {
+        // Run the destructor of the value even if the destructor of the key panics.
+        struct Dropper<'a, T>(&'a mut MaybeUninit<T>);
+        impl<T> Drop for Dropper<'_, T> {
+            #[inline]
+            fn drop(&mut self) {
+                unsafe {
+                    self.0.assume_init_drop();
+                }
+            }
+        }
+
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.as_leaf_dying();
         unsafe {
-            leaf.keys.get_unchecked_mut(self.idx).assume_init_drop();
-            leaf.vals.get_unchecked_mut(self.idx).assume_init_drop();
+            let key = leaf.keys.get_unchecked_mut(self.idx);
+            let val = leaf.vals.get_unchecked_mut(self.idx);
+            let _guard = Dropper(val);
+            key.assume_init_drop();
+            // dropping the guard will drop the value
         }
     }
 }

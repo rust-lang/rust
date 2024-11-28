@@ -58,12 +58,9 @@ impl<'tcx> TypeError<'tcx> {
                 pluralize!(values.found)
             )
             .into(),
-            TypeError::FixedArraySize(values) => format!(
-                "expected an array with a fixed size of {} element{}, found one with {} element{}",
-                values.expected,
-                pluralize!(values.expected),
-                values.found,
-                pluralize!(values.found)
+            TypeError::ArraySize(values) => format!(
+                "expected an array with a size of {}, found one with a size of {}",
+                values.expected, values.found,
             )
             .into(),
             TypeError::ArgCount => "incorrect number of function parameters".into(),

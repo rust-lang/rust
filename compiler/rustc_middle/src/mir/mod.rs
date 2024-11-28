@@ -629,8 +629,7 @@ impl<'tcx> Body<'tcx> {
     ) -> Option<(u128, &'a SwitchTargets)> {
         // There are two places here we need to evaluate a constant.
         let eval_mono_const = |constant: &ConstOperand<'tcx>| {
-            // FIXME(#132279): what is this, why are we using an empty environment with
-            // `RevealAll` here.
+            // FIXME(#132279): what is this, why are we using an empty environment here.
             let typing_env = ty::TypingEnv::fully_monomorphized();
             let mono_literal = instance.instantiate_mir_and_normalize_erasing_regions(
                 tcx,

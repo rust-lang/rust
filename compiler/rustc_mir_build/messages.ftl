@@ -125,6 +125,16 @@ mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed 
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_initializing_type_with_unsafe_field_requires_unsafe =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
+mir_build_initializing_type_with_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
 mir_build_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -203,7 +213,7 @@ mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
 
 mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
 
-mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 
 mir_build_moved = value is moved into `{$name}` here
 
@@ -338,7 +348,24 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_covered_by_catchall = matches any value
     .unreachable_covered_by_one = matches all the relevant values
     .unreachable_covered_by_many = multiple earlier patterns match some of the same values
+    .unreachable_pattern_const_reexport_accessible = there is a constant of the same name imported in another scope, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it needs to be imported in the pattern's scope
+    .unreachable_pattern_wanted_const = you might have meant to pattern match against the value of {$is_typo ->
+        [true] similarly named constant
+        *[false] constant
+        } `{$const_name}` instead of introducing a new catch-all binding
+    .unreachable_pattern_const_inaccessible = there is a constant of the same name, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it is not accessible from this scope
+    .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
     .suggestion = remove the match arm
+
+mir_build_unsafe_field_requires_unsafe =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
+
+mir_build_unsafe_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
@@ -388,6 +415,11 @@ mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_unsafe_field_requires_unsafe =
+    initializing type with an unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = initialization of struct with unsafe field
+
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -407,6 +439,11 @@ mir_build_unsafe_op_in_unsafe_fn_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block
     .note = the field may not be properly initialized: using uninitialized data will cause undefined behavior
     .label = access to union field
+
+mir_build_unsafe_op_in_unsafe_fn_unsafe_field_requires_unsafe =
+    use of unsafe field is unsafe and requires unsafe block
+    .note = unsafe fields may carry library invariants
+    .label = use of unsafe field
 
 mir_build_unsized_pattern = cannot use unsized non-slice type `{$non_sm_ty}` in constant patterns
 

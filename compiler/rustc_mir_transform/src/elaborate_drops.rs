@@ -3,7 +3,6 @@ use std::fmt;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::traits::Reveal;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -13,7 +12,7 @@ use rustc_mir_dataflow::elaborate_drops::{
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{
-    Analysis, MoveDataParamEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
+    Analysis, MoveDataTypingEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
@@ -61,7 +60,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         // init/uninit for types that do need dropping.
         let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, typing_env));
         let elaborate_patch = {
-            let env = MoveDataParamEnv { move_data, param_env: typing_env.param_env };
+            let env = MoveDataTypingEnv { move_data, typing_env };
 
             let mut inits = MaybeInitializedPlaces::new(tcx, body, &env.move_data)
                 .skipping_unreachable_unwind()
@@ -149,7 +148,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
     }
 
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        self.typing_env()
+        self.env.typing_env
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -230,7 +229,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
 struct ElaborateDropsCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
-    env: &'a MoveDataParamEnv<'tcx>,
+    env: &'a MoveDataTypingEnv<'tcx>,
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: IndexVec<MovePathIndex, Option<Local>>,
     patch: MirPatch<'tcx>,
@@ -245,15 +244,6 @@ impl fmt::Debug for ElaborateDropsCtxt<'_, '_> {
 impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
     fn move_data(&self) -> &'a MoveData<'tcx> {
         &self.env.move_data
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.env.param_env
-    }
-
-    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        debug_assert_eq!(self.param_env().reveal(), Reveal::All);
-        ty::TypingEnv { typing_mode: ty::TypingMode::PostAnalysis, param_env: self.param_env() }
     }
 
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {

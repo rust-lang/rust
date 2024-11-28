@@ -118,7 +118,7 @@ use crate::mem;
 use crate::ptr::{self, NonNull, null_mut, without_provenance_mut};
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
 use crate::sync::atomic::{AtomicBool, AtomicPtr};
-use crate::thread::{self, Thread, ThreadId};
+use crate::thread::{self, Thread};
 
 /// The atomic lock state.
 type AtomicState = AtomicPtr<()>;
@@ -217,9 +217,7 @@ impl Node {
     /// Prepare this node for waiting.
     fn prepare(&mut self) {
         // Fall back to creating an unnamed `Thread` handle to allow locking in TLS destructors.
-        self.thread.get_or_init(|| {
-            thread::try_current().unwrap_or_else(|| Thread::new_unnamed(ThreadId::new()))
-        });
+        self.thread.get_or_init(thread::current_or_unnamed);
         self.completed = AtomicBool::new(false);
     }
 

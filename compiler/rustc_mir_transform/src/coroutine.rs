@@ -70,8 +70,8 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+    always_storage_live_locals,
 };
-use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -676,12 +676,11 @@ fn locals_live_across_suspend_points<'tcx>(
 
     let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
 
-    // Calculate the MIR locals that we actually need to keep storage around
-    // for.
-    let mut requires_storage_cursor =
+    // Calculate the MIR locals that we need to keep storage around for.
+    let mut requires_storage_results =
         MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .iterate_to_fixpoint(tcx, body, None)
-            .into_results_cursor(body);
+            .iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor_mut(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
@@ -697,8 +696,7 @@ fn locals_live_across_suspend_points<'tcx>(
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
-            live_locals.union(liveness.get());
+            let mut live_locals = liveness.get().clone();
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -754,7 +752,7 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        requires_storage_cursor.into_results(),
+        requires_storage_results,
     );
 
     LivenessInfo {

@@ -5,7 +5,6 @@
 //@ aux-crate: no_use_pm=no-use-pm.rs
 //@ aux-crate: no_use_macro=no-use-macro.rs
 //@ edition: 2024
-//@ compile-flags:-Z unstable-options
 //@ check-pass
 
 no_use_pm::pm_rpit!{}

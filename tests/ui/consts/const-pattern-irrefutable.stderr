@@ -8,7 +8,7 @@ LL |     let a = 4;
    |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
@@ -25,7 +25,7 @@ LL |     let c = 4;
    |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
@@ -42,7 +42,7 @@ LL |     let d = (4, 4);
    |         ^ patterns `(0_u8..=1_u8, _)` and `(3_u8..=u8::MAX, _)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `(u8, u8)`
 help: introduce a variable instead
    |
@@ -59,7 +59,7 @@ LL |     let e = S {
    |         ^ pattern `S { foo: 1_u8..=u8::MAX }` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `S` defined here
   --> $DIR/const-pattern-irrefutable.rs:15:8
    |

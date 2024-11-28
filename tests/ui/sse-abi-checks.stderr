@@ -11,3 +11,15 @@ LL | pub unsafe extern "C" fn f(_: SseVector) {
 
 warning: 1 warning emitted
 
+Future incompatibility report: Future breakage diagnostic:
+warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `sse` target feature, which is not enabled
+  --> $DIR/sse-abi-checks.rs:21:1
+   |
+LL | pub unsafe extern "C" fn f(_: SseVector) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
+   = help: consider enabling it globally (`-C target-feature=+sse`) or locally (`#[target_feature(enable="sse")]`)
+   = note: `#[warn(abi_unsupported_vector_types)]` on by default
+

@@ -376,8 +376,12 @@ declare_features! (
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
+    /// Enables experimental register support in inline assembly.
+    (unstable, asm_experimental_reg, "CURRENT_RUSTC_VERSION", Some(133416)),
     /// Allows using `label` operands in inline assembly.
     (unstable, asm_goto, "1.78.0", Some(119364)),
+    /// Allows using `label` operands in inline assembly together with output operands.
+    (unstable, asm_goto_with_outputs, "CURRENT_RUSTC_VERSION", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
@@ -426,6 +430,8 @@ declare_features! (
     (unstable, const_async_blocks, "1.53.0", Some(85368)),
     /// Allows `const || {}` closures in const contexts.
     (incomplete, const_closures, "1.68.0", Some(106003)),
+    /// Allows using `~const Destruct` bounds and calling drop impls in const contexts.
+    (unstable, const_destruct, "CURRENT_RUSTC_VERSION", Some(133214)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Be more precise when looking for live drops in a const context.
@@ -627,6 +633,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
+    /// Allows declaring fields `unsafe`.
+    (incomplete, unsafe_fields, "CURRENT_RUSTC_VERSION", Some(132922)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "1.82.0", Some(95174)),

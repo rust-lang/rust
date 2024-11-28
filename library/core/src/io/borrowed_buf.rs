@@ -108,6 +108,26 @@ impl<'data> BorrowedBuf<'data> {
         }
     }
 
+    /// Returns a shared reference to the filled portion of the buffer with its original lifetime.
+    #[inline]
+    pub fn into_filled(self) -> &'data [u8] {
+        // SAFETY: We only slice the filled part of the buffer, which is always valid
+        unsafe {
+            let buf = self.buf.get_unchecked(..self.filled);
+            MaybeUninit::slice_assume_init_ref(buf)
+        }
+    }
+
+    /// Returns a mutable reference to the filled portion of the buffer with its original lifetime.
+    #[inline]
+    pub fn into_filled_mut(self) -> &'data mut [u8] {
+        // SAFETY: We only slice the filled part of the buffer, which is always valid
+        unsafe {
+            let buf = self.buf.get_unchecked_mut(..self.filled);
+            MaybeUninit::slice_assume_init_mut(buf)
+        }
+    }
+
     /// Returns a cursor over the unfilled part of the buffer.
     #[inline]
     pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {

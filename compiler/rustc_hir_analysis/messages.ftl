@@ -253,6 +253,13 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
+hir_analysis_invalid_unsafe_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
+    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`
+
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
     .label = const parameter declared here
 
@@ -423,6 +430,9 @@ hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is 
 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
+
+hir_analysis_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
 
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 

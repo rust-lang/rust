@@ -174,9 +174,6 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//!   - [`thread::scope()`]
-//!   - [`sync::mpmc`]
-//!   - [`sync::mpsc`]
 //! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
 //!
 //!
@@ -288,7 +285,6 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
-#![feature(const_float_methods)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
@@ -344,6 +340,7 @@
 #![feature(fmt_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_must_use)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
@@ -414,6 +411,7 @@
 // Only for const-ness:
 // tidy-alphabetical-start
 #![feature(const_collections_with_hasher)]
+#![feature(io_const_error)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
@@ -658,6 +656,8 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
+    #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
+    pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
