@@ -531,6 +531,12 @@ pub fn suggest_constraining_type_params<'a>(
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
                 format!("consider further restricting this bound with {post}")
             }
+            SuggestChangingConstraintsMessage::RestrictTypeFurther { ty }
+            | SuggestChangingConstraintsMessage::RestrictType { ty }
+                if ty.starts_with("impl ") =>
+            {
+                format!("consider restricting opaque type `{ty}` with {post}")
+            }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
                 format!("consider restricting type parameter `{ty}` with {post}")
             }
