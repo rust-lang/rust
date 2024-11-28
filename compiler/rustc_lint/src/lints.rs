@@ -3059,3 +3059,10 @@ pub(crate) struct ReservedString {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_multihash)]
+pub(crate) struct ReservedMultihash {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}

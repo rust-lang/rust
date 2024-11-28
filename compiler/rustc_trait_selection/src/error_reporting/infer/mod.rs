@@ -1837,11 +1837,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         if let Some(tykind) = tykind
             && let hir::TyKind::Array(_, length) = tykind
-            && let hir::ArrayLen::Body(ct) = length
             && let Some((scalar, ty)) = sz.found.try_to_scalar()
             && ty == self.tcx.types.usize
         {
-            let span = ct.span();
+            let span = length.span();
             Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
                 span,
                 length: scalar.to_target_usize(&self.tcx).unwrap(),

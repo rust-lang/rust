@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*x.__pointer` as mutable more than once at a time
-  --> $DIR/pin-reborrow-once.rs:12:14
+  --> $DIR/reborrow-once.rs:12:14
    |
 LL |     twice(x, x);
    |     ----- -  ^ second mutable borrow occurs here

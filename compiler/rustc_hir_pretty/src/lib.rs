@@ -118,7 +118,6 @@ impl<'a> State<'a> {
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
-            Node::ArrayLenInfer(_) => self.word("_"),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
@@ -315,7 +314,7 @@ impl<'a> State<'a> {
                 self.word("[");
                 self.print_type(ty);
                 self.word("; ");
-                self.print_array_length(length);
+                self.print_const_arg(length);
                 self.word("]");
             }
             hir::TyKind::Typeof(ref e) => {
@@ -986,13 +985,6 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    fn print_array_length(&mut self, len: &hir::ArrayLen<'_>) {
-        match len {
-            hir::ArrayLen::Infer(..) => self.word("_"),
-            hir::ArrayLen::Body(ct) => self.print_const_arg(ct),
-        }
-    }
-
     fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
@@ -1001,6 +993,7 @@ impl<'a> State<'a> {
         match &const_arg.kind {
             ConstArgKind::Path(qpath) => self.print_qpath(qpath, true),
             ConstArgKind::Anon(anon) => self.print_anon_const(anon),
+            ConstArgKind::Infer(..) => self.word("_"),
         }
     }
 
@@ -1077,12 +1070,12 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen<'_>) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ConstArg<'_>) {
         self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element);
         self.word_space(";");
-        self.print_array_length(count);
+        self.print_const_arg(count);
         self.word("]");
         self.end()
     }

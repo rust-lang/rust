@@ -2152,6 +2152,15 @@ pub(crate) enum UnknownPrefixSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_reserved_multihash)]
+#[note]
+pub(crate) struct ReservedMultihash {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<GuardedStringSugg>,
+}
+#[derive(Diagnostic)]
 #[diag(parse_reserved_string)]
 #[note]
 pub(crate) struct ReservedString {
@@ -2611,8 +2620,9 @@ pub(crate) enum InvalidMutInPattern {
 #[diag(parse_repeated_mut_in_pattern)]
 pub(crate) struct RepeatedMutInPattern {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]

@@ -144,7 +144,7 @@ fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span
         // Easy case: arrays repeat expressions.
         Node::Ty(&hir::Ty { kind: TyKind::Array(_, ref constant), .. })
         | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
-            if constant.hir_id() == arg_hir_id =>
+            if constant.hir_id == arg_hir_id =>
         {
             return tcx.types.usize;
         }
@@ -577,8 +577,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             | GenericParamKind::Const { ty, .. } => icx.lower_ty(ty),
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
-
-        Node::ArrayLenInfer(_) => tcx.types.usize,
 
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);

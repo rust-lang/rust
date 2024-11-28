@@ -235,8 +235,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
+        self.insert(constant.span, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
@@ -252,8 +251,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir>) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, const_arg.hir_id, Node::ConstArg(const_arg));
+        self.insert(const_arg.span(), const_arg.hir_id, Node::ConstArg(const_arg));
 
         self.with_parent(const_arg.hir_id, |this| {
             intravisit::walk_const_arg(this, const_arg);
@@ -385,13 +383,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(predicate.hir_id, |this| {
             intravisit::walk_where_predicate(this, predicate)
         });
-    }
-
-    fn visit_array_length(&mut self, len: &'hir ArrayLen<'hir>) {
-        match len {
-            ArrayLen::Infer(inf) => self.insert(inf.span, inf.hir_id, Node::ArrayLenInfer(inf)),
-            ArrayLen::Body(..) => intravisit::walk_array_len(self, len),
-        }
     }
 
     fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {

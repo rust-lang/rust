@@ -228,6 +228,12 @@ const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rcpc3", Unstable(sym::aarch64_unstable_target_feature), &["rcpc2"]),
     // FEAT_RDM
     ("rdm", Stable, &["neon"]),
+    // This is needed for inline assembly, but shouldn't be stabilized as-is
+    // since it should be enabled globally using -Zfixed-x18, not
+    // #[target_feature].
+    // Note that cfg(target_feature = "reserve-x18") is currently not set for
+    // targets that reserve x18 by default.
+    ("reserve-x18", Unstable(sym::aarch64_unstable_target_feature), &[]),
     // FEAT_SB
     ("sb", Stable, &[]),
     // FEAT_SHA1 & FEAT_SHA256
