@@ -37,7 +37,7 @@ fn is_item_reachable(
     }
 }
 
-impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
+impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.kind {
             clean::StrippedItem(..) => {
@@ -171,7 +171,7 @@ pub(crate) struct ImplStripper<'a, 'tcx> {
     pub(crate) document_hidden: bool,
 }
 
-impl<'a> ImplStripper<'a, '_> {
+impl ImplStripper<'_, '_> {
     #[inline]
     fn should_keep_impl(&self, item: &Item, for_def_id: DefId) -> bool {
         if !for_def_id.is_local() || self.retained.contains(&for_def_id.into()) {
@@ -193,7 +193,7 @@ impl<'a> ImplStripper<'a, '_> {
     }
 }
 
-impl<'a> DocFolder for ImplStripper<'a, '_> {
+impl DocFolder for ImplStripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
@@ -259,7 +259,7 @@ pub(crate) struct ImportStripper<'tcx> {
     pub(crate) document_hidden: bool,
 }
 
-impl<'tcx> ImportStripper<'tcx> {
+impl ImportStripper<'_> {
     fn import_should_be_hidden(&self, i: &Item, imp: &clean::Import) -> bool {
         if self.is_json_output {
             // FIXME: This should be handled the same way as for HTML output.
@@ -270,11 +270,11 @@ impl<'tcx> ImportStripper<'tcx> {
     }
 }
 
-impl<'tcx> DocFolder for ImportStripper<'tcx> {
+impl DocFolder for ImportStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match &i.kind {
             clean::ImportItem(imp)
-                if !self.document_hidden && self.import_should_be_hidden(&i, &imp) =>
+                if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
             {
                 None
             }

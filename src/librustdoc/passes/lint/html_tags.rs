@@ -15,7 +15,7 @@ use crate::html::markdown::main_body_opts;
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &str) {
     let tcx = cx.tcx;
     let report_diag = |msg: String, range: &Range<usize>, is_open_tag: bool| {
-        let sp = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs.doc_strings) {
+        let sp = match source_span_for_markdown_range(tcx, dox, range, &item.attrs.doc_strings) {
             Some(sp) => sp,
             None => item.attr_span(tcx),
         };
@@ -30,7 +30,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             let mut generics_end = range.end;
             if let Some(Some(mut generics_start)) = (is_open_tag
                 && dox[..generics_end].ends_with('>'))
-            .then(|| extract_path_backwards(&dox, range.start))
+            .then(|| extract_path_backwards(dox, range.start))
             {
                 while generics_start != 0
                     && generics_end < dox.len()
@@ -39,19 +39,19 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 {
                     generics_end += 1;
                     generics_start -= 1;
-                    if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
+                    if let Some(new_start) = extract_path_backwards(dox, generics_start) {
                         generics_start = new_start;
                     }
-                    if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                    if let Some(new_end) = extract_path_forward(dox, generics_end) {
                         generics_end = new_end;
                     }
                 }
-                if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                if let Some(new_end) = extract_path_forward(dox, generics_end) {
                     generics_end = new_end;
                 }
                 let generics_sp = match source_span_for_markdown_range(
                     tcx,
-                    &dox,
+                    dox,
                     &(generics_start..generics_end),
                     &item.attrs.doc_strings,
                 ) {
@@ -125,7 +125,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         }
     };
 
-    let p = Parser::new_with_broken_link_callback(&dox, main_body_opts(), Some(&mut replacer))
+    let p = Parser::new_with_broken_link_callback(dox, main_body_opts(), Some(&mut replacer))
         .into_offset_iter();
 
     for (event, range) in p {
@@ -233,7 +233,7 @@ fn extract_path_forward(text: &str, start_pos: usize) -> Option<usize> {
                 break;
             }
         }
-        while let Some(c) = chars.next() {
+        for c in chars {
             if is_id_continue(c) {
                 current_pos += c.len_utf8();
             } else {

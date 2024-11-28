@@ -30,7 +30,7 @@ struct StabilityPropagator<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> DocFolder for StabilityPropagator<'a, 'tcx> {
+impl DocFolder for StabilityPropagator<'_, '_> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let parent_stability = self.parent_stability;
 

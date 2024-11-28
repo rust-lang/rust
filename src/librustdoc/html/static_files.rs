@@ -57,7 +57,7 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
 
 pub(crate) fn static_filename(filename: &str, sha256: &str) -> PathBuf {
     let filename = filename.rsplit('/').next().unwrap();
-    suffix_path(filename, &sha256)
+    suffix_path(filename, sha256)
 }
 
 macro_rules! static_files {

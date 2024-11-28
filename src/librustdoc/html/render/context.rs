@@ -200,7 +200,7 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
+        let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
         let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
@@ -739,7 +739,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &shared.layout,
                 &page,
                 "",
-                scrape_examples_help(&*shared),
+                scrape_examples_help(&shared),
                 &shared.style_files,
             );
             shared.fs.write(scrape_examples_help_file, v)?;
@@ -779,7 +779,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
         let item_name = item.name.unwrap();
-        self.dst.push(&*item_name.as_str());
+        self.dst.push(item_name.as_str());
         self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());
@@ -812,7 +812,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 unreachable!()
             };
             let items = self.build_sidebar_items(module);
-            let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
+            let js_dst = self.dst.join(format!("sidebar-items{}.js", self.shared.resource_suffix));
             let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());
             self.shared.fs.write(js_dst, v)?;
         }

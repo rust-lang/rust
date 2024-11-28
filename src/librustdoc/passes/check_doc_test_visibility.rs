@@ -34,7 +34,7 @@ pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
     krate
 }
 
-impl<'a, 'tcx> DocVisitor<'_> for DocTestVisibilityLinter<'a, 'tcx> {
+impl DocVisitor<'_> for DocTestVisibilityLinter<'_, '_> {
     fn visit_item(&mut self, item: &Item) {
         look_for_tests(self.cx, &item.doc_value(), item);
 
@@ -106,7 +106,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
-pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
+pub(crate) fn look_for_tests(cx: &DocContext<'_>, dox: &str, item: &Item) {
     let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
         // If non-local, no need to check anything.
         return;

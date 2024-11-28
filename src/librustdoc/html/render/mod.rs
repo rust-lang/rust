@@ -151,13 +151,13 @@ impl RenderType {
             string.push('{');
             write_optional_id(self.id, string);
             string.push('{');
-            for generic in &self.generics.as_deref().unwrap_or_default()[..] {
+            for generic in self.generics.as_deref().unwrap_or_default() {
                 generic.write_to_string(string);
             }
             string.push('}');
             if self.bindings.is_some() {
                 string.push('{');
-                for binding in &self.bindings.as_deref().unwrap_or_default()[..] {
+                for binding in self.bindings.as_deref().unwrap_or_default() {
                     string.push('{');
                     binding.0.write_to_string(string);
                     string.push('{');
@@ -1963,7 +1963,7 @@ fn render_impl(
                 w,
                 "<div class=\"docblock\">{}</div>",
                 Markdown {
-                    content: &*dox,
+                    content: dox,
                     links: &i.impl_item.links(cx),
                     ids: &mut cx.id_map,
                     error_codes: cx.shared.codes,
@@ -2093,9 +2093,7 @@ pub(crate) fn small_url_encode(s: String) -> String {
     // and https://url.spec.whatwg.org/#urlencoded-parsing
     // and https://url.spec.whatwg.org/#url-code-points
     fn dont_escape(c: u8) -> bool {
-        (b'a' <= c && c <= b'z')
-            || (b'A' <= c && c <= b'Z')
-            || (b'0' <= c && c <= b'9')
+        c.is_ascii_alphanumeric()
             || c == b'-'
             || c == b'_'
             || c == b'.'
@@ -2150,7 +2148,7 @@ pub(crate) fn small_url_encode(s: String) -> String {
     }
 }
 
-fn get_id_for_impl<'tcx>(tcx: TyCtxt<'tcx>, impl_id: ItemId) -> String {
+fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
     use rustc_middle::ty::print::with_forced_trimmed_paths;
     let (type_, trait_) = match impl_id {
         ItemId::Auto { trait_, for_ } => {
@@ -2381,7 +2379,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(join_with_double_colon(&path));
+            out.push(join_with_double_colon(path));
         }
     };
 
@@ -2462,8 +2460,8 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
     };
 
     // Generate the HTML for a single example, being the title and code block
-    let write_example = |mut w: &mut W, (path, call_data): (&PathBuf, &CallData)| -> bool {
-        let contents = match fs::read_to_string(&path) {
+    let write_example = |w: &mut W, (path, call_data): (&PathBuf, &CallData)| -> bool {
+        let contents = match fs::read_to_string(path) {
             Ok(contents) => contents,
             Err(err) => {
                 let span = item.span(tcx).map_or(DUMMY_SP, |span| span.inner());
@@ -2532,7 +2530,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
         decoration_info.insert("highlight", byte_ranges);
 
         sources::print_src(
-            &mut w,
+            w,
             contents_subset,
             file_span,
             cx,
@@ -2581,7 +2579,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
     // An example may fail to write if its source can't be read for some reason, so this method
     // continues iterating until a write succeeds
     let write_and_skip_failure = |w: &mut W, it: &mut Peekable<_>| {
-        while let Some(example) = it.next() {
+        for example in it.by_ref() {
             if write_example(&mut *w, example) {
                 break;
             }

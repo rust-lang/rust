@@ -499,7 +499,7 @@ struct HeadingLinks<'a, 'b, 'ids, I> {
     heading_offset: HeadingOffset,
 }
 
-impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
+impl<'b, 'ids, I> HeadingLinks<'_, 'b, 'ids, I> {
     fn new(
         iter: I,
         toc: Option<&'b mut TocBuilder>,
@@ -510,9 +510,7 @@ impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
     }
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
-    for HeadingLinks<'a, 'b, 'ids, I>
-{
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_, '_, I> {
     type Item = SpannedEvent<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -908,7 +906,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     }
 
     fn parse_string(&mut self, start: usize) -> Option<Indices> {
-        while let Some((pos, c)) = self.inner.next() {
+        for (pos, c) in self.inner.by_ref() {
             if c == '"' {
                 return Some(Indices { start: start + 1, end: pos });
             }
@@ -1032,7 +1030,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
 
     /// Returns `false` if an error was emitted.
     fn skip_paren_block(&mut self) -> bool {
-        while let Some((_, c)) = self.inner.next() {
+        for (_, c) in self.inner.by_ref() {
             if c == ')' {
                 return true;
             }
@@ -1074,9 +1072,8 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
                 }
                 return self.next();
-            } else if pos == start && is_leading_char(c) {
-                continue;
-            } else if pos != start && is_bareword_char(c) {
+            } else if (pos == start && is_leading_char(c)) || (pos != start && is_bareword_char(c))
+            {
                 continue;
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
@@ -1088,7 +1085,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
+impl<'a> Iterator for TagIterator<'a, '_> {
     type Item = LangStringToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1324,7 +1321,7 @@ impl Markdown<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1358,7 +1355,7 @@ impl MarkdownWithToc<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1428,7 +1425,7 @@ impl MarkdownSummaryLine<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1475,7 +1472,7 @@ fn markdown_summary_with_limit(
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| &*link.original_text == &*broken_link.reference)
+            .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
@@ -1556,7 +1553,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| &*link.original_text == &*broken_link.reference)
+            .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
@@ -1751,7 +1748,7 @@ pub(crate) fn markdown_links<'md, R>(
     };
 
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
-    let mut event_iter = Parser::new_with_broken_link_callback(
+    let event_iter = Parser::new_with_broken_link_callback(
         md,
         main_body_opts(),
         Some(&mut broken_link_callback),
@@ -1759,7 +1756,7 @@ pub(crate) fn markdown_links<'md, R>(
     .into_offset_iter();
     let mut links = Vec::new();
 
-    while let Some((event, span)) = event_iter.next() {
+    for (event, span) in event_iter {
         match event {
             Event::Start(Tag::Link { link_type, dest_url, .. }) if may_be_doc_link(link_type) => {
                 let range = match link_type {
@@ -1821,7 +1818,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
                     let lang_string = if syntax.is_empty() {
                         Default::default()
                     } else {
-                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
+                        LangString::parse(syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
                     if !lang_string.rust {
                         continue;
