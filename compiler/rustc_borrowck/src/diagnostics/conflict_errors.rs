@@ -1450,6 +1450,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_trait_sugared().to_string(),
+                            Some(predicate.trait_ref.def_id),
                         )),
                         _ => Err(()),
                     }
@@ -1463,9 +1464,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 tcx,
                 hir_generics,
                 err,
-                predicates
-                    .iter()
-                    .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+                predicates.iter().map(|(param, constraint, def_id)| {
+                    (param.name.as_str(), &**constraint, *def_id)
+                }),
                 None,
             );
         }

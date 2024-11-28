@@ -162,7 +162,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     true
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum SuggestChangingConstraintsMessage<'a> {
     RestrictBoundFurther,
     RestrictType { ty: &'a str },
@@ -319,6 +319,11 @@ pub fn suggest_constraining_type_params<'a>(
                 suggest_changing_unsized_bound(generics, &mut suggestions, param, def_id);
             }
         }
+        let bound_message = if constraints.iter().any(|(_, def_id, _)| def_id.is_none()) {
+            SuggestChangingConstraintsMessage::RestrictBoundFurther
+        } else {
+            SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name }
+        };
 
         // in the scenario like impl has stricter requirements than trait,
         // we should not suggest restrict bound on the impl, here we double check
@@ -389,23 +394,11 @@ pub fn suggest_constraining_type_params<'a>(
                 format!(" {constraint}")
             };
 
-            use SuggestChangingConstraintsMessage::RestrictBoundFurther;
-
             if let Some(open_paren_sp) = open_paren_sp {
-                suggestions.push((
-                    open_paren_sp,
-                    post.clone(),
-                    "(".to_string(),
-                    RestrictBoundFurther,
-                ));
-                suggestions.push((
-                    span,
-                    post.clone(),
-                    format!("){suggestion}"),
-                    RestrictBoundFurther,
-                ));
+                suggestions.push((open_paren_sp, post.clone(), "(".to_string(), bound_message));
+                suggestions.push((span, post.clone(), format!("){suggestion}"), bound_message));
             } else {
-                suggestions.push((span, post.clone(), suggestion, RestrictBoundFurther));
+                suggestions.push((span, post.clone(), suggestion, bound_message));
             }
         };
 

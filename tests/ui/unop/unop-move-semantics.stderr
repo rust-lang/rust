@@ -15,7 +15,7 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     !x.clone();
    |       ++++++++
-help: consider further restricting this bound with trait `Copy`
+help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {
    |                                              ++++++

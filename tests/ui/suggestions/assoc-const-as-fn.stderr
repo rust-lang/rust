@@ -4,7 +4,7 @@ error[E0277]: the trait bound `T: GlUniformScalar` is not satisfied
 LL |     <T as GlUniformScalar>::FACTORY(1, value);
    |      ^ the trait `GlUniformScalar` is not implemented for `T`
    |
-help: consider further restricting this bound with trait `GlUniformScalar`
+help: consider further restricting type parameter `T` with trait `GlUniformScalar`
    |
 LL | pub fn foo<T: UniformScalar + GlUniformScalar>(value: T) {
    |                             +++++++++++++++++

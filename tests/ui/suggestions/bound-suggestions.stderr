@@ -5,7 +5,7 @@ LL |     println!("{:?}", t);
    |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting this bound with trait `Debug`
+help: consider further restricting type parameter `impl Sized` with trait `Debug`
    |
 LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
    |                            +++++++++++++++++
@@ -29,7 +29,7 @@ LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting this bound with trait `Debug`
+help: consider further restricting type parameter `T` with trait `Debug`
    |
 LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
    |                            +++++++++++++++++
@@ -53,7 +53,7 @@ LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting this bound with trait `Debug`
+help: consider further restricting type parameter `X` with trait `Debug`
    |
 LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
    |                                                 +++++++++++++++++
@@ -65,7 +65,7 @@ LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting this bound with trait `Debug`
+help: consider further restricting type parameter `X` with trait `Debug`
    |
 LL | fn test_many_bounds_where<X>(x: X) where X: Sized + std::fmt::Debug, X: Sized {
    |                                                   +++++++++++++++++

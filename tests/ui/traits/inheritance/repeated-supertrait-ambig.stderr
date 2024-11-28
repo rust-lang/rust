@@ -18,7 +18,7 @@ LL |     c.same_as(22)
    |       |
    |       required by a bound introduced by this call
    |
-help: consider further restricting this bound with trait `CompareTo`
+help: consider further restricting type parameter `C` with trait `CompareTo`
    |
 LL | fn with_trait<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
    |                               ++++++++++++++++
@@ -41,7 +41,7 @@ LL |     CompareTo::same_as(c, 22)
    |     |
    |     required by a bound introduced by this call
    |
-help: consider further restricting this bound with trait `CompareTo`
+help: consider further restricting type parameter `C` with trait `CompareTo`
    |
 LL | fn with_ufcs2<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
    |                               ++++++++++++++++
