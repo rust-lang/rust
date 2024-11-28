@@ -733,6 +733,9 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
 
+lint_reserved_multihash = reserved token in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
