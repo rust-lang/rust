@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
+use rustc_ast::ast::BinOpKind::{Add, BitAnd, BitOr, BitXor, Div, Mul, Rem, Shl, Shr, Sub};
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -12,6 +13,7 @@ declare_clippy_lint! {
     /// and suggests to add parentheses. Currently it catches the following:
     /// * mixed usage of arithmetic and bit shifting/combining operators without
     /// parentheses
+    /// * mixed usage of bitmasking and bit shifting operators without parentheses
     ///
     /// ### Why is this bad?
     /// Not everyone knows the precedence of those operators by
@@ -20,6 +22,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
+    /// * `0x2345 & 0xF000 >> 12` equals 5, while `(0x2345 & 0xF000) >> 12` equals 2
     #[clippy::version = "pre 1.29.0"]
     pub PRECEDENCE,
     complexity,
@@ -51,8 +54,13 @@ impl EarlyLintPass for Precedence {
                 return;
             }
             let mut applicability = Applicability::MachineApplicable;
-            match (is_arith_expr(left), is_arith_expr(right)) {
-                (true, true) => {
+            match (op, get_bin_opt(left), get_bin_opt(right)) {
+                (
+                    BitAnd | BitOr | BitXor,
+                    Some(Shl | Shr | Add | Div | Mul | Rem | Sub),
+                    Some(Shl | Shr | Add | Div | Mul | Rem | Sub),
+                )
+                | (Shl | Shr, Some(Add | Div | Mul | Rem | Sub), Some(Add | Div | Mul | Rem | Sub)) => {
                     let sugg = format!(
                         "({}) {} ({})",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
@@ -61,7 +69,8 @@ impl EarlyLintPass for Precedence {
                     );
                     span_sugg(expr, sugg, applicability);
                 },
-                (true, false) => {
+                (BitAnd | BitOr | BitXor, Some(Shl | Shr | Add | Div | Mul | Rem | Sub), _)
+                | (Shl | Shr, Some(Add | Div | Mul | Rem | Sub), _) => {
                     let sugg = format!(
                         "({}) {} {}",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
@@ -70,7 +79,8 @@ impl EarlyLintPass for Precedence {
                     );
                     span_sugg(expr, sugg, applicability);
                 },
-                (false, true) => {
+                (BitAnd | BitOr | BitXor, _, Some(Shl | Shr | Add | Div | Mul | Rem | Sub))
+                | (Shl | Shr, _, Some(Add | Div | Mul | Rem | Sub)) => {
                     let sugg = format!(
                         "{} {} ({})",
                         snippet_with_applicability(cx, left.span, "..", &mut applicability),
@@ -79,27 +89,20 @@ impl EarlyLintPass for Precedence {
                     );
                     span_sugg(expr, sugg, applicability);
                 },
-                (false, false) => (),
+                _ => (),
             }
         }
     }
 }
 
-fn is_arith_expr(expr: &Expr) -> bool {
+fn get_bin_opt(expr: &Expr) -> Option<BinOpKind> {
     match expr.kind {
-        ExprKind::Binary(Spanned { node: op, .. }, _, _) => is_arith_op(op),
-        _ => false,
+        ExprKind::Binary(Spanned { node: op, .. }, _, _) => Some(op),
+        _ => None,
     }
 }
 
 #[must_use]
 fn is_bit_op(op: BinOpKind) -> bool {
-    use rustc_ast::ast::BinOpKind::{BitAnd, BitOr, BitXor, Shl, Shr};
     matches!(op, BitXor | BitAnd | BitOr | Shl | Shr)
-}
-
-#[must_use]
-fn is_arith_op(op: BinOpKind) -> bool {
-    use rustc_ast::ast::BinOpKind::{Add, Div, Mul, Rem, Sub};
-    matches!(op, Add | Sub | Mul | Div | Rem)
 }
