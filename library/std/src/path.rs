@@ -1158,6 +1158,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// Note that `PathBuf` does not always sanitize arguments, for example
 /// [`push`] allows paths built from strings which include separators:
 ///
+/// ```
 /// use std::path::PathBuf;
 ///
 /// let mut path = PathBuf::new();
@@ -1166,6 +1167,7 @@ impl FusedIterator for Ancestors<'_> {}
 /// path.push("windows");
 /// path.push(r"..\otherdir");
 /// path.push("system32");
+/// ```
 ///
 /// The behavior of `PathBuf` may be changed to a panic on such inputs
 /// in the future. [`Extend::extend`] should be used to add multi-part paths.
