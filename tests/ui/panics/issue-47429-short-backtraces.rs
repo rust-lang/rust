@@ -6,6 +6,12 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=1
 
+// This is needed to avoid test output differences across std being built with v0 symbols vs legacy
+// symbols.
+//@ normalize-stderr-test: "begin_panic::<&str>" -> "begin_panic"
+// And this is for differences between std with and without debuginfo.
+//@ normalize-stderr-test: "\n +at [^\n]+" -> ""
+
 //@ ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
 //@ ignore-android FIXME #17520
 //@ ignore-openbsd no support for libbacktrace without filename
@@ -13,11 +19,6 @@
 //@ ignore-emscripten no panic or subprocess support
 //@ ignore-sgx no subprocess support
 //@ ignore-fuchsia Backtraces not symbolized
-
-// NOTE(eddyb) output differs between symbol mangling schemes
-//@ revisions: legacy v0
-//@ [legacy] compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
-//@     [v0] compile-flags: -Csymbol-mangling-version=v0
 
 fn main() {
     panic!()

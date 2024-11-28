@@ -10,6 +10,11 @@
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
 
+// This is needed to avoid test output differences across std being built with v0 symbols vs legacy
+// symbols.
+//@ normalize-stderr-test: "begin_panic::<&str>" -> "begin_panic"
+// And this is for differences between std with and without debuginfo.
+//@ normalize-stderr-test: "\n +at [^\n]+" -> ""
 
 #[inline(never)]
 fn __rust_begin_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {

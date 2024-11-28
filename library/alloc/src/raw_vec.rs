@@ -757,7 +757,9 @@ impl<A: Allocator> RawVecInner<A> {
     }
 }
 
-#[inline(never)]
+// not marked inline(never) since we want optimizers to be able to observe the specifics of this
+// function, see tests/codegen/vec-reserve-extend.rs.
+#[cold]
 fn finish_grow<A>(
     new_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
