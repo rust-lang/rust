@@ -12,7 +12,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |         |
    |         unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `std::marker::Send`
+help: consider restricting type parameter `T` with trait `Send`
    |
 LL | fn f<T: std::marker::Send>(val: T) {
    |       +++++++++++++++++++
@@ -31,7 +31,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                |
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `std::marker::Copy`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | fn f<T: std::marker::Copy>(val: T) {
    |       +++++++++++++++++++
@@ -50,7 +50,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |         |
    |         unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `std::marker::Send`
+help: consider restricting type parameter `T` with trait `Send`
    |
 LL | fn g<T: std::marker::Send>(val: T) {
    |       +++++++++++++++++++
@@ -69,7 +69,7 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                |
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `std::marker::Copy`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | fn g<T: std::marker::Copy>(val: T) {
    |       +++++++++++++++++++

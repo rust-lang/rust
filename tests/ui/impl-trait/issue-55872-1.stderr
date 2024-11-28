@@ -17,7 +17,7 @@ LL |         (S::default(), T::default())
    |         ---------------------------- return type was inferred to be `(S, T)` here
    |
    = note: required because it appears within the type `(S, T)`
-help: consider further restricting this bound with trait `std::marker::Copy`
+help: consider further restricting this bound with trait `Copy`
    |
 LL | impl<S: Default + std::marker::Copy> Bar for S {
    |                 +++++++++++++++++++
@@ -32,7 +32,7 @@ LL |         (S::default(), T::default())
    |         ---------------------------- return type was inferred to be `(S, T)` here
    |
    = note: required because it appears within the type `(S, T)`
-help: consider further restricting this bound with trait `std::marker::Copy`
+help: consider further restricting this bound with trait `Copy`
    |
 LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
    |                       +++++++++++++++++++

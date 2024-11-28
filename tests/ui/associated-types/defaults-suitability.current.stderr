@@ -47,7 +47,7 @@ note: required by a bound in `Foo::Bar`
    |
 LL |     type Bar: Clone = Vec<T>;
    |               ^^^^^ required by this bound in `Foo::Bar`
-help: consider restricting type parameter `T` with trait `std::clone::Clone`
+help: consider restricting type parameter `T` with trait `Clone`
    |
 LL | trait Foo<T: std::clone::Clone> {
    |            +++++++++++++++++++
@@ -132,7 +132,7 @@ LL |     Self::Baz: Clone,
 ...
 LL |     type Baz = T;
    |          --- required by a bound in this associated type
-help: consider further restricting type parameter `T` with trait `std::clone::Clone`
+help: consider further restricting type parameter `T` with trait `Clone`
    |
 LL |     Self::Baz: Clone, T: std::clone::Clone
    |                     ~~~~~~~~~~~~~~~~~~~~~~

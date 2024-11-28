@@ -81,7 +81,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider restricting type parameter `T` with traits `Copy + Trait`
+help: consider restricting type parameter `T` with traits `Copy` and `Trait`
    |
 LL | fn duplicate_custom<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) {
    |                      ++++++++++++++
@@ -97,7 +97,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider restricting type parameter `T` with traits `Copy + Trait`
+help: consider restricting type parameter `T` with traits `Copy` and `Trait`
    |
 LL | fn duplicate_custom_1<T: Copy + Trait>(t: S<T>) -> (S<T>, S<T>) where {
    |                        ++++++++++++++
@@ -113,7 +113,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider further restricting this bound with traits `Copy + Trait`
+help: consider further restricting this bound with traits `Copy` and `Trait`
    |
 LL |     T: A + Copy + Trait,
    |          ++++++++++++++
@@ -129,7 +129,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider further restricting this bound with traits `Copy + Trait`
+help: consider further restricting this bound with traits `Copy` and `Trait`
    |
 LL |     T: A + Copy + Trait,
    |          ++++++++++++++
@@ -145,7 +145,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider further restricting this bound with traits `Copy + Trait`
+help: consider further restricting this bound with traits `Copy` and `Trait`
    |
 LL | fn duplicate_custom_4<T: A + Copy + Trait>(t: S<T>) -> (S<T>, S<T>)
    |                            ++++++++++++++

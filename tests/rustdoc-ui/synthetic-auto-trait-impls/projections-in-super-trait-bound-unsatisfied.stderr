@@ -4,7 +4,7 @@ error[E0277]: the trait bound `C: Bar<5>` is not satisfied
 LL | pub struct Structure<C: Tec> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
    |
-help: consider further restricting this bound with trait `Bar<5>`
+help: consider further restricting this bound with trait `Bar`
    |
 LL | pub struct Structure<C: Tec + Bar<5>> {
    |                             ++++++++
@@ -15,7 +15,7 @@ error[E0277]: the trait bound `C: Bar<5>` is not satisfied
 LL |     _field: C::BarType,
    |             ^^^^^^^^^^ the trait `Bar<5>` is not implemented for `C`
    |
-help: consider further restricting this bound with trait `Bar<5>`
+help: consider further restricting this bound with trait `Bar`
    |
 LL | pub struct Structure<C: Tec + Bar<5>> {
    |                             ++++++++
