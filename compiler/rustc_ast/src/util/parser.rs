@@ -235,7 +235,6 @@ pub const PREC_RANGE: i8 = -10;
 // The range 2..=14 is reserved for AssocOp binary operator precedences.
 pub const PREC_PREFIX: i8 = 50;
 pub const PREC_UNAMBIGUOUS: i8 = 60;
-pub const PREC_FORCE_PAREN: i8 = 100;
 
 /// In `let p = e`, operators with precedence `<=` this one requires parentheses in `e`.
 pub fn prec_let_scrutinee_needs_par() -> usize {

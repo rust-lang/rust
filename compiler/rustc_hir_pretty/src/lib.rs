@@ -1132,12 +1132,12 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-        let prec = match func.kind {
-            hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_UNAMBIGUOUS,
+        let needs_paren = match func.kind {
+            hir::ExprKind::Field(..) => true,
+            _ => func.precedence() < parser::PREC_UNAMBIGUOUS,
         };
 
-        self.print_expr_cond_paren(func, func.precedence() < prec);
+        self.print_expr_cond_paren(func, needs_paren);
         self.print_call_post(args)
     }
 

@@ -212,9 +212,9 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
-        let prec = match func.kind {
-            ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_UNAMBIGUOUS,
+        let needs_paren = match func.kind {
+            ast::ExprKind::Field(..) => true,
+            _ => func.precedence() < parser::PREC_UNAMBIGUOUS,
         };
 
         // Independent of parenthesization related to precedence, we must
@@ -233,7 +233,7 @@ impl<'a> State<'a> {
         // because the latter is valid syntax but with the incorrect meaning.
         // It's a match-expression followed by tuple-expression, not a function
         // call.
-        self.print_expr_cond_paren(func, func.precedence() < prec, fixup.leftmost_subexpression());
+        self.print_expr_cond_paren(func, needs_paren, fixup.leftmost_subexpression());
 
         self.print_call_post(args)
     }
