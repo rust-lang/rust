@@ -71,11 +71,11 @@ pub trait CodegenBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any>;
 
-    /// This is called on the returned `Box<dyn Any>` from `codegen_backend`
+    /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
     ///
     /// # Panics
     ///
-    /// Panics when the passed `Box<dyn Any>` was not returned by `codegen_backend`.
+    /// Panics when the passed `Box<dyn Any>` was not returned by [`codegen_crate`](Self::codegen_crate).
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
