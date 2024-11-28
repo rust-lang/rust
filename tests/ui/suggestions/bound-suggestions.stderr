@@ -5,7 +5,7 @@ LL |     println!("{:?}", t);
    |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider further restricting type parameter `impl Sized` with trait `Debug`
+help: consider restricting opaque type `impl Sized` with trait `Debug`
    |
 LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
    |                            +++++++++++++++++
