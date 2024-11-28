@@ -1,5 +1,5 @@
 error: expected one of `!`, `(`, `::`, `;`, `<`, or `=`, found `i32`
-  --> $DIR/pin-sugar-no-const.rs:7:18
+  --> $DIR/sugar-no-const.rs:7:18
    |
 LL |     let _x: &pin i32 = todo!();
    |           -      ^^^ expected one of `!`, `(`, `::`, `;`, `<`, or `=`
