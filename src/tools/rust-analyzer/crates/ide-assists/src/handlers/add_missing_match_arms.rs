@@ -30,8 +30,8 @@ use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
 //
 // fn handle(action: Action) {
 //     match action {
-//         $0Action::Move { distance } => todo!(),
-//         Action::Stop => todo!(),
+//         Action::Move { distance } => ${1:todo!()},
+//         Action::Stop => ${2:todo!()},$0
 //     }
 // }
 // ```
@@ -234,10 +234,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            let mut first_new_arm = None;
+            let mut added_arms = Vec::new();
+            let mut todo_placeholders = Vec::new();
             for arm in missing_arms {
-                first_new_arm.get_or_insert_with(|| arm.clone());
-                new_match_arm_list.add_arm(arm);
+                todo_placeholders.push(arm.expr().unwrap());
+                added_arms.push(arm);
             }
 
             if needs_catch_all_arm && !has_catch_all_arm {
@@ -248,14 +249,28 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     make::ext::expr_todo(),
                 )
                 .clone_for_update();
-                first_new_arm.get_or_insert_with(|| arm.clone());
+                todo_placeholders.push(arm.expr().unwrap());
+                added_arms.push(arm);
+            }
+
+            let first_new_arm = added_arms.first().cloned();
+            let last_new_arm = added_arms.last().cloned();
+
+            for arm in added_arms {
                 new_match_arm_list.add_arm(arm);
             }
 
-            if let (Some(first_new_arm), Some(cap)) = (first_new_arm, ctx.config.snippet_cap) {
-                match first_new_arm.syntax().descendants().find_map(ast::WildcardPat::cast) {
-                    Some(it) => edit.add_placeholder_snippet(cap, it),
-                    None => edit.add_tabstop_before(cap, first_new_arm),
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(it) = first_new_arm.and_then(|arm| arm.syntax().descendants().find_map(ast::WildcardPat::cast)) {
+                    edit.add_placeholder_snippet(cap, it);
+                }
+
+                for placeholder in todo_placeholders {
+                    edit.add_placeholder_snippet(cap, placeholder);
+                }
+
+                if let Some(arm) = last_new_arm {
+                    edit.add_tabstop_after(cap, arm);
                 }
             }
 
@@ -581,8 +596,8 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match a {
-        $0true => todo!(),
-        false => todo!(),
+        true => ${1:todo!()},
+        false => ${2:todo!()},$0
     }
 }
 "#,
@@ -604,7 +619,7 @@ fn foo(a: bool) {
 fn foo(a: bool) {
     match a {
         true => {}
-        $0false => todo!(),
+        false => ${1:todo!()},$0
     }
 }
 "#,
@@ -654,10 +669,10 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match (a, a) {
-        $0(true, true) => todo!(),
-        (true, false) => todo!(),
-        (false, true) => todo!(),
-        (false, false) => todo!(),
+        (true, true) => ${1:todo!()},
+        (true, false) => ${2:todo!()},
+        (false, true) => ${3:todo!()},
+        (false, false) => ${4:todo!()},$0
     }
 }
 "#,
@@ -677,8 +692,8 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match [a] {
-        $0[true] => todo!(),
-        [false] => todo!(),
+        [true] => ${1:todo!()},
+        [false] => ${2:todo!()},$0
     }
 }
 "#,
@@ -695,8 +710,8 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match [a,] {
-        $0[true] => todo!(),
-        [false] => todo!(),
+        [true] => ${1:todo!()},
+        [false] => ${2:todo!()},$0
     }
 }
 "#,
@@ -715,9 +730,9 @@ fn foo(a: bool) {
 fn foo(a: bool) {
     match [a, a] {
         [true, true] => todo!(),
-        $0[true, false] => todo!(),
-        [false, true] => todo!(),
-        [false, false] => todo!(),
+        [true, false] => ${1:todo!()},
+        [false, true] => ${2:todo!()},
+        [false, false] => ${3:todo!()},$0
     }
 }
 "#,
@@ -734,10 +749,10 @@ fn foo(a: bool) {
             r#"
 fn foo(a: bool) {
     match [a, a] {
-        $0[true, true] => todo!(),
-        [true, false] => todo!(),
-        [false, true] => todo!(),
-        [false, false] => todo!(),
+        [true, true] => ${1:todo!()},
+        [true, false] => ${2:todo!()},
+        [false, true] => ${3:todo!()},
+        [false, false] => ${4:todo!()},$0
     }
 }
 "#,
@@ -759,8 +774,8 @@ fn foo(a: bool) {
 fn foo(a: bool) {
     match (a, a) {
         (true | false, true) => {}
-        $0(true, false) => todo!(),
-        (false, false) => todo!(),
+        (true, false) => ${1:todo!()},
+        (false, false) => ${2:todo!()},$0
     }
 }
 "#,
@@ -779,9 +794,9 @@ fn foo(a: bool) {
 fn foo(a: bool) {
     match (a, a) {
         (false, true) => {}
-        $0(true, true) => todo!(),
-        (true, false) => todo!(),
-        (false, false) => todo!(),
+        (true, true) => ${1:todo!()},
+        (true, false) => ${2:todo!()},
+        (false, false) => ${3:todo!()},$0
     }
 }
 "#,
@@ -815,7 +830,7 @@ fn main() {
     match A::As {
         A::Bs { x, y: Some(_) } => {}
         A::Cs(_, Some(_)) => {}
-        $0A::As => todo!(),
+        A::As => ${1:todo!()},$0
     }
 }
 "#,
@@ -838,7 +853,7 @@ fn main() {
 fn main() {
     match None {
         None => {}
-        Some(${0:_}) => todo!(),
+        Some(${1:_}) => ${2:todo!()},$0
     }
 }
 "#,
@@ -862,7 +877,7 @@ enum A { As, Bs, Cs(Option<i32>) }
 fn main() {
     match A::As {
         A::Cs(_) | A::Bs => {}
-        $0A::As => todo!(),
+        A::As => ${1:todo!()},$0
     }
 }
 "#,
@@ -892,8 +907,8 @@ fn main() {
         A::Bs if 0 < 1 => {}
         A::Ds(_value) => { let x = 1; }
         A::Es(B::Xs) => (),
-        $0A::As => todo!(),
-        A::Cs => todo!(),
+        A::As => ${1:todo!()},
+        A::Cs => ${2:todo!()},$0
     }
 }
 "#,
@@ -919,7 +934,7 @@ fn main() {
     match A::As {
         A::As(_) => {}
         a @ A::Bs(_) => {}
-        A::Cs(${0:_}) => todo!(),
+        A::Cs(${1:_}) => ${2:todo!()},$0
     }
 }
 "#,
@@ -945,11 +960,11 @@ enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 fn main() {
     let a = A::As;
     match a {
-        $0A::As => todo!(),
-        A::Bs => todo!(),
-        A::Cs(_) => todo!(),
-        A::Ds(_, _) => todo!(),
-        A::Es { x, y } => todo!(),
+        A::As => ${1:todo!()},
+        A::Bs => ${2:todo!()},
+        A::Cs(_) => ${3:todo!()},
+        A::Ds(_, _) => ${4:todo!()},
+        A::Es { x, y } => ${5:todo!()},$0
     }
 }
 "#,
@@ -982,9 +997,9 @@ fn main() {
     let b = B::One;
     match (a, b) {
         (A::Two, B::One) => {},
-        $0(A::One, B::One) => todo!(),
-        (A::One, B::Two) => todo!(),
-        (A::Two, B::Two) => todo!(),
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::Two) => ${3:todo!()},$0
     }
 }
 "#,
@@ -1013,10 +1028,10 @@ fn main() {
     let a = A::One;
     let b = B::One;
     match (a, b) {
-        $0(A::One, B::One) => todo!(),
-        (A::One, B::Two) => todo!(),
-        (A::Two, B::One) => todo!(),
-        (A::Two, B::Two) => todo!(),
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::One) => ${3:todo!()},
+        (A::Two, B::Two) => ${4:todo!()},$0
     }
 }
 "#,
@@ -1045,10 +1060,10 @@ fn main() {
     let a = A::One;
     let b = B::One;
     match (&a, &b) {
-        $0(A::One, B::One) => todo!(),
-        (A::One, B::Two) => todo!(),
-        (A::Two, B::One) => todo!(),
-        (A::Two, B::Two) => todo!(),
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::One) => ${3:todo!()},
+        (A::Two, B::Two) => ${4:todo!()},$0
     }
 }
 "#,
@@ -1080,9 +1095,9 @@ fn main() {
     let b = B::One;
     match (a, b) {
         (A::Two, B::One) => {}
-        $0(A::One, B::One) => todo!(),
-        (A::One, B::Two) => todo!(),
-        (A::Two, B::Two) => todo!(),
+        (A::One, B::One) => ${1:todo!()},
+        (A::One, B::Two) => ${2:todo!()},
+        (A::Two, B::Two) => ${3:todo!()},$0
     }
 }
 "#,
@@ -1107,9 +1122,9 @@ fn main() {
     match (A, B, C) {
         (A | B , A, A | B | C) => (),
         (A | B | C , B | C, A | B | C) => (),
-        $0(C, A, A) => todo!(),
-        (C, A, B) => todo!(),
-        (C, A, C) => todo!(),
+        (C, A, A) => ${1:todo!()},
+        (C, A, B) => ${2:todo!()},
+        (C, A, C) => ${3:todo!()},$0
     }
 }
 "#,
@@ -1138,7 +1153,7 @@ fn main() {
     match (a, b) {
         (Some(_), _) => {}
         (None, Some(_)) => {}
-        $0(None, None) => todo!(),
+        (None, None) => ${1:todo!()},$0
     }
 }
 "#,
@@ -1203,8 +1218,8 @@ enum A { One, Two }
 fn main() {
     let a = A::One;
     match (a, ) {
-        $0(A::One,) => todo!(),
-        (A::Two,) => todo!(),
+        (A::One,) => ${1:todo!()},
+        (A::Two,) => ${2:todo!()},$0
     }
 }
 "#,
@@ -1228,7 +1243,7 @@ enum A { As }
 
 fn foo(a: &A) {
     match a {
-        $0A::As => todo!(),
+        A::As => ${1:todo!()},$0
     }
 }
 "#,
@@ -1253,7 +1268,7 @@ enum A {
 
 fn foo(a: &mut A) {
     match a {
-        $0A::Es { x, y } => todo!(),
+        A::Es { x, y } => ${1:todo!()},$0
     }
 }
 "#,
@@ -1313,8 +1328,8 @@ enum E { X, Y }
 
 fn main() {
     match E::X {
-        $0E::X => todo!(),
-        E::Y => todo!(),
+        E::X => ${1:todo!()},
+        E::Y => ${2:todo!()},$0
     }
 }
 "#,
@@ -1360,8 +1375,8 @@ use foo::E::X;
 
 fn main() {
     match X {
-        $0X => todo!(),
-        foo::E::Y => todo!(),
+        X => ${1:todo!()},
+        foo::E::Y => ${2:todo!()},$0
     }
 }
 "#,
@@ -1388,7 +1403,7 @@ fn foo(a: A) {
     match a  {
         // foo bar baz
         A::One => {}
-        $0A::Two => todo!(),
+        A::Two => ${1:todo!()},$0
         // This is where the rest should be
     }
 }
@@ -1412,8 +1427,8 @@ fn foo(a: A) {
 enum A { One, Two }
 fn foo(a: A) {
     match a {
-        $0A::One => todo!(),
-        A::Two => todo!(),
+        A::One => ${1:todo!()},
+        A::Two => ${2:todo!()},$0
         // foo bar baz
     }
 }
@@ -1437,8 +1452,8 @@ fn foo(a: A) {
 enum A { One, Two, }
 fn foo(a: A) {
     match a {
-        $0A::One => todo!(),
-        A::Two => todo!(),
+        A::One => ${1:todo!()},
+        A::Two => ${2:todo!()},$0
     }
 }
 "#,
@@ -1460,8 +1475,8 @@ fn foo(opt: Option<i32>) {
             r#"
 fn foo(opt: Option<i32>) {
     match opt {
-        Some(${0:_}) => todo!(),
-        None => todo!(),
+        Some(${1:_}) => ${2:todo!()},
+        None => ${3:todo!()},$0
     }
 }
 "#,
@@ -1493,9 +1508,9 @@ enum Test {
 
 fn foo(t: Test) {
     m!(match t {
-    $0Test::A => todo!(),
-    Test::B => todo!(),
-    Test::C => todo!(),
+    Test::A => ${1:todo!()},
+    Test::B => ${2:todo!()},
+    Test::C => ${3:todo!()},$0
 });
 }"#,
         );
@@ -1530,7 +1545,7 @@ fn foo(t: bool) {
 fn foo(t: bool) {
     match t {
         true => 1 + 2,
-        $0false => todo!(),
+        false => ${1:todo!()},$0
     }
 }"#,
         );
@@ -1550,7 +1565,7 @@ fn foo(t: bool) {
 fn foo(t: bool) {
     match t {
         true => 1 + 2,
-        $0false => todo!(),
+        false => ${1:todo!()},$0
     }
 }"#,
         );
@@ -1571,8 +1586,8 @@ fn foo(t: bool) {
 fn foo(t: bool) {
     match t {
         _ => 1 + 2,
-        $0true => todo!(),
-        false => todo!(),
+        true => ${1:todo!()},
+        false => ${2:todo!()},$0
     }
 }"#,
         );
@@ -1595,8 +1610,8 @@ pub enum E { A, #[doc(hidden)] B, }
             r#"
 fn foo(t: ::e::E) {
     match t {
-        $0e::E::A => todo!(),
-        _ => todo!(),
+        e::E::A => ${1:todo!()},
+        _ => ${2:todo!()},$0
     }
 }
 "#,
@@ -1620,9 +1635,9 @@ pub enum E { A, #[doc(hidden)] B, }
             r#"
 fn foo(t: (bool, ::e::E)) {
     match t {
-        $0(true, e::E::A) => todo!(),
-        (false, e::E::A) => todo!(),
-        _ => todo!(),
+        (true, e::E::A) => ${1:todo!()},
+        (false, e::E::A) => ${2:todo!()},
+        _ => ${3:todo!()},$0
     }
 }
 "#,
@@ -1646,7 +1661,7 @@ pub enum E { #[doc(hidden)] A, }
             r#"
 fn foo(t: ::e::E) {
     match t {
-        ${0:_} => todo!(),
+        ${1:_} => ${2:todo!()},$0
     }
 }
 "#,
@@ -1707,7 +1722,7 @@ pub enum E { A, }
 fn foo(t: ::e::E) {
     match t {
         e::E::A => todo!(),
-        ${0:_} => todo!(),
+        ${1:_} => ${2:todo!()},$0
     }
 }
 "#,
@@ -1732,8 +1747,8 @@ pub enum E { A, }
             r#"
 fn foo(t: ::e::E) {
     match t {
-        $0e::E::A => todo!(),
-        _ => todo!(),
+        e::E::A => ${1:todo!()},
+        _ => ${2:todo!()},$0
     }
 }
 "#,
@@ -1757,8 +1772,8 @@ pub enum E { A, #[doc(hidden)] B }"#,
             r#"
 fn foo(t: ::e::E) {
     match t {
-        $0e::E::A => todo!(),
-        _ => todo!(),
+        e::E::A => ${1:todo!()},
+        _ => ${2:todo!()},$0
     }
 }
 "#,
@@ -1784,7 +1799,7 @@ pub enum E { A, #[doc(hidden)] B }"#,
 fn foo(t: ::e::E) {
     match t {
         e::E::A => todo!(),
-        ${0:_} => todo!(),
+        ${1:_} => ${2:todo!()},$0
     }
 }
 "#,
@@ -1809,7 +1824,7 @@ pub enum E { #[doc(hidden)] A, }"#,
 fn foo(t: ::e::E, b: bool) {
     match t {
         _ if b => todo!(),
-        ${0:_} => todo!(),
+        ${1:_} => ${2:todo!()},$0
     }
 }
 "#,
@@ -1850,8 +1865,8 @@ pub enum E { A, #[doc(hidden)] B, }"#,
             r#"
 fn foo(t: ::e::E) {
     match t {
-        $0e::E::A => todo!(),
-        _ => todo!(),
+        e::E::A => ${1:todo!()},
+        _ => ${2:todo!()},$0
     }
 }
 "#,
@@ -1874,8 +1889,8 @@ enum E { A, #[doc(hidden)] B, }
 
 fn foo(t: E) {
     match t {
-        $0E::A => todo!(),
-        E::B => todo!(),
+        E::A => ${1:todo!()},
+        E::B => ${2:todo!()},$0
     }
 }"#,
         );
@@ -1899,8 +1914,8 @@ enum E { A, B, }
 
 fn foo(t: E) {
     match t {
-        $0E::A => todo!(),
-        E::B => todo!(),
+        E::A => ${1:todo!()},
+        E::B => ${2:todo!()},$0
     }
 }"#,
         );
@@ -1924,8 +1939,8 @@ enum E { A, #[doc(hidden)] B, }
 
 fn foo(t: E) {
     match t {
-        $0E::A => todo!(),
-        E::B => todo!(),
+        E::A => ${1:todo!()},
+        E::B => ${2:todo!()},$0
     }
 }"#,
         );
@@ -1975,8 +1990,8 @@ enum A {
 fn a() {
     let b = A::A;
     match b {
-        $0A::A => todo!(),
-        A::Missing { a, u32, c } => todo!(),
+        A::A => ${1:todo!()},
+        A::Missing { a, u32, c } => ${2:todo!()},$0
     }
 }"#,
         )
@@ -2013,8 +2028,8 @@ pub enum E {
 fn f() {
     let value = E::A;
     match value {
-        $0E::A => todo!(),
-        E::B(s) => todo!(),
+        E::A => ${1:todo!()},
+        E::B(s) => ${2:todo!()},$0
     }
 }
 "#,
@@ -2051,8 +2066,8 @@ pub enum E {
 fn f() {
     let value = E::A;
     match value {
-        $0E::A => todo!(),
-        E::B(s1, s2) => todo!(),
+        E::A => ${1:todo!()},
+        E::B(s1, s2) => ${2:todo!()},$0
     }
 }
 "#,
