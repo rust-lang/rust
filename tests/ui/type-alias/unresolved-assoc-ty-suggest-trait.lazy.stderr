@@ -30,7 +30,7 @@ error[E0220]: associated type `Proj` not found for `T`
 LL | type ProjOf<T> = T::Proj;
    |                     ^^^^ there is an associated type `Proj` in the trait `Parametrized`
    |
-help: consider restricting type parameter `T` with trait `Parametrized</* 'a, T, N */>`
+help: consider restricting type parameter `T` with trait `Parametrized`
    |
 LL | type ProjOf<T: Parametrized</* 'a, T, N */>> = T::Proj;
    |              ++++++++++++++++++++++++++++++

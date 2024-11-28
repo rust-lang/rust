@@ -20,7 +20,7 @@ LL |         Ok(self)
    |            this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-help: consider further restricting this bound with trait `<Output = T>`
+help: consider further restricting this bound with  `<Output = T>`
    |
 LL | impl<T: TryAdd<Output = T>> TryAdd for Option<T> {
    |               ++++++++++++
@@ -47,7 +47,7 @@ LL |         Ok(self)
    |            this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-help: consider further restricting this bound with trait `, Output = T`
+help: consider further restricting this bound with  `, Output = T`
    |
 LL | impl<T: TryAdd<Error = X, Output = T>> TryAdd for Other<T> {
    |                         ++++++++++++

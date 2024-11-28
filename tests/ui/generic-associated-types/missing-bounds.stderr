@@ -35,7 +35,7 @@ note: tuple struct defined here
    |
 LL | struct A<B>(B);
    |        ^
-help: consider further restricting this bound with trait `<Output = B>`
+help: consider further restricting this bound with  `<Output = B>`
    |
 LL | impl<B> Add for A<B> where B: Add<Output = B> {
    |                                  ++++++++++++
@@ -58,7 +58,7 @@ note: tuple struct defined here
    |
 LL | struct C<B>(B);
    |        ^
-help: consider further restricting this bound with trait `<Output = B>`
+help: consider further restricting this bound with  `<Output = B>`
    |
 LL | impl<B: Add<Output = B>> Add for C<B> {
    |            ++++++++++++
@@ -94,7 +94,7 @@ note: tuple struct defined here
    |
 LL | struct E<B>(B);
    |        ^
-help: consider further restricting this bound with trait `<Output = B>`
+help: consider further restricting this bound with  `<Output = B>`
    |
 LL | impl<B: Add<Output = B>> Add for E<B> where <B as Add>::Output = B {
    |            ++++++++++++

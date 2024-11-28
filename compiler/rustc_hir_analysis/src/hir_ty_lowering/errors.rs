@@ -279,7 +279,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     } else {
                         let mut err = self.dcx().create_err(err);
                         if suggest_constraining_type_param(
-                            tcx, generics, &mut err, &qself_str, &trait_ref, None, None,
+                            tcx,
+                            generics,
+                            &mut err,
+                            &qself_str,
+                            &trait_ref,
+                            Some(best_trait),
+                            None,
                         ) && !identically_named
                         {
                             // We suggested constraining a type parameter, but the associated item on it

@@ -11,7 +11,7 @@ LL |     return a.bar();
    = note: expected type parameter `B`
              found associated type `<A as MyTrait>::T`
    = note: the caller chooses a type for `B` which can be different from `<A as MyTrait>::T`
-help: consider further restricting this bound with trait `<T = B>`
+help: consider further restricting this bound with  `<T = B>`
    |
 LL | pub fn foo<A: MyTrait<T = B>, B>(a: A) -> B {
    |                      +++++++
