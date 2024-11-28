@@ -26,10 +26,9 @@ fn main() {
     let _ = Ok::<Vec<i32>, i32>(vec![5]).map_or(false, |n| n == [5]);
     let _ = Ok::<i32, i32>(5).map_or(false, |n| n == 5);
     let _ = Some(5).map_or(false, |n| n == 5).then(|| 1);
-
-    // shouldnt trigger
     let _ = Some(5).map_or(true, |n| n == 5);
     let _ = Some(5).map_or(true, |n| 5 == n);
+
     macro_rules! x {
         () => {
             Some(1)
@@ -54,14 +53,31 @@ fn main() {
     let r: Result<i32, S> = Ok(3);
     let _ = r.map_or(false, |x| x == 7);
 
+    // lint constructs that are not comparaisons as well
+    let func = |_x| true;
+    let r: Result<i32, S> = Ok(3);
+    let _ = r.map_or(false, func);
+    let _ = Some(5).map_or(false, func);
+    let _ = Some(5).map_or(true, func);
+
     #[derive(PartialEq)]
     struct S2;
     let r: Result<i32, S2> = Ok(4);
     let _ = r.map_or(false, |x| x == 8);
+
+    // do not lint `Result::map_or(true, …)`
+    let r: Result<i32, S2> = Ok(4);
+    let _ = r.map_or(true, |x| x == 8);
 }
 
 #[clippy::msrv = "1.69.0"]
 fn msrv_1_69() {
     // is_some_and added in 1.70.0
     let _ = Some(5).map_or(false, |n| n == if 2 > 1 { n } else { 0 });
+}
+
+#[clippy::msrv = "1.81.0"]
+fn msrv_1_81() {
+    // is_none_or added in 1.82.0
+    let _ = Some(5).map_or(true, |n| n == if 2 > 1 { n } else { 0 });
 }

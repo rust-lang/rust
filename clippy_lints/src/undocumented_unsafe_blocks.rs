@@ -337,7 +337,7 @@ fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
         .src
         .as_deref()
         .and_then(|src| src.get(file_pos.pos.to_usize()..))
-        .map_or(true, |src| !src.starts_with("unsafe"))
+        .is_none_or(|src| !src.starts_with("unsafe"))
 }
 
 // Checks if any parent {expression, statement, block, local, const, static}

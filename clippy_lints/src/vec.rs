@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;

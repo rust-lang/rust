@@ -1,7 +1,7 @@
-use clippy_config::msrvs::Msrv;
-use clippy_config::{Conf, msrvs};
+use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_errors::Applicability;

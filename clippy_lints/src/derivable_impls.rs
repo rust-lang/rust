@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
 use rustc_errors::Applicability;
@@ -132,17 +132,15 @@ fn check_struct<'tcx>(
 
     if should_emit {
         let struct_span = cx.tcx.def_span(adt_def.did());
+        let suggestions = vec![
+            (item.span, String::new()), // Remove the manual implementation
+            (struct_span.shrink_to_lo(), "#[derive(Default)]\n".to_string()), // Add the derive attribute
+        ];
+
         span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
-            diag.span_suggestion_hidden(
-                item.span,
-                "remove the manual implementation...",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-            diag.span_suggestion(
-                struct_span.shrink_to_lo(),
-                "...and instead derive it",
-                "#[derive(Default)]\n".to_string(),
+            diag.multipart_suggestion(
+                "replace the manual implementation with a derive attribute",
+                suggestions,
                 Applicability::MachineApplicable,
             );
         });
@@ -161,23 +159,23 @@ fn check_enum<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>, func_expr: &Ex
         let indent_enum = indent_of(cx, enum_span).unwrap_or(0);
         let variant_span = cx.tcx.def_span(variant_def.def_id);
         let indent_variant = indent_of(cx, variant_span).unwrap_or(0);
-        span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
-            diag.span_suggestion_hidden(
-                item.span,
-                "remove the manual implementation...",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-            diag.span_suggestion(
+
+        let suggestions = vec![
+            (item.span, String::new()), // Remove the manual implementation
+            (
                 enum_span.shrink_to_lo(),
-                "...and instead derive it...",
-                format!("#[derive(Default)]\n{indent}", indent = " ".repeat(indent_enum),),
-                Applicability::MachineApplicable,
-            );
-            diag.span_suggestion(
+                format!("#[derive(Default)]\n{}", " ".repeat(indent_enum)),
+            ), // Add the derive attribute
+            (
                 variant_span.shrink_to_lo(),
-                "...and mark the default variant",
-                format!("#[default]\n{indent}", indent = " ".repeat(indent_variant),),
+                format!("#[default]\n{}", " ".repeat(indent_variant)),
+            ), // Mark the default variant
+        ];
+
+        span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
+            diag.multipart_suggestion(
+                "replace the manual implementation with a derive attribute and mark the default variant",
+                suggestions,
                 Applicability::MachineApplicable,
             );
         });

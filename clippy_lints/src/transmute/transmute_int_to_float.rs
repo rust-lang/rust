@@ -1,6 +1,6 @@
 use super::TRANSMUTE_INT_TO_FLOAT;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
