@@ -34,7 +34,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`          | `r0`, `r[3-12]`, `r[14-28]`        | `r`                  |
 | PowerPC      | `reg_nonzero`  | `r[3-12]`, `r[14-28]`              | `b`                  |
 | PowerPC      | `freg`         | `f[0-31]`                          | `f`                  |
-| PowerPC      | `vreg`         | `v[0-31]`                          | Only clobbers        |
+| PowerPC      | `vreg`         | `v[0-31]`                          | `v`                  |
 | PowerPC      | `cr`           | `cr[0-7]`, `cr`                    | Only clobbers        |
 | PowerPC      | `xer`          | `xer`                              | Only clobbers        |
 | wasm32       | `local`        | None\*                             | `r`                  |
@@ -75,7 +75,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `freg`                          | None           | `f32`, `f64`                            |
-| PowerPC      | `vreg`                          | N/A            | Only clobbers                           |
+| PowerPC      | `vreg`                          | `altivec`      | `i8x16`, `i16x8`, `i32x4`, `f32x4`      |
+| PowerPC      | `vreg`                          | `vsx`          | `i64x2`, `f64x2`                        |
 | PowerPC      | `cr`                            | N/A            | Only clobbers                           |
 | PowerPC      | `xer`                           | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
@@ -181,6 +182,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg`          | None     | `0`            | None          |
 | PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
 | PowerPC      | `freg`         | None     | `0`            | None          |
+| PowerPC      | `vreg`         | None     | `0`            | None          |
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |
