@@ -2399,6 +2399,8 @@ pub(crate) enum ConstantKind {
     Extern { def_id: DefId },
     /// `const FOO: u32 = ...;`
     Local { def_id: DefId, body: BodyId },
+    /// An inferred constant as in `[10u8; _]`.
+    Infer,
 }
 
 impl Constant {
@@ -2424,6 +2426,7 @@ impl ConstantKind {
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
             }
+            ConstantKind::Infer { .. } => "_".to_string(),
         }
     }
 
@@ -2431,7 +2434,8 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. }
             | ConstantKind::Path { .. }
-            | ConstantKind::Anonymous { .. } => None,
+            | ConstantKind::Anonymous { .. }
+            | ConstantKind::Infer => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
                 print_evaluated_const(tcx, def_id, true, true)
             }
@@ -2442,7 +2446,8 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. }
             | ConstantKind::Extern { .. }
-            | ConstantKind::Path { .. } => false,
+            | ConstantKind::Path { .. }
+            | ConstantKind::Infer => false,
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }
