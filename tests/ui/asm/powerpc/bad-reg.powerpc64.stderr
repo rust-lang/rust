@@ -186,7 +186,7 @@ error: type `i32` cannot be used with this register class
 LL |         asm!("", in("v0") x); // FIXME: should be ok if vsx is available
    |                           ^
    |
-   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, i64x2, f64x2
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: type `i32` cannot be used with this register class
   --> $DIR/bad-reg.rs:79:28
@@ -194,7 +194,7 @@ error: type `i32` cannot be used with this register class
 LL |         asm!("", out("v0") x); // FIXME: should be ok if vsx is available
    |                            ^
    |
-   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, i64x2, f64x2
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: `vsx` target feature is not enabled
   --> $DIR/bad-reg.rs:84:35
@@ -210,7 +210,7 @@ error: type `i32` cannot be used with this register class
 LL |         asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is available
    |                                   ^
    |
-   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, i64x2, f64x2
+   = note: register class `vreg` supports these types: i8x16, i16x8, i32x4, f32x4, f32, f64, i64x2, f64x2
 
 error: type `i32` cannot be used with this register class
   --> $DIR/bad-reg.rs:109:27

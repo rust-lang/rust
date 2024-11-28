@@ -225,6 +225,28 @@ check!(vreg_f32x4, f32x4, vreg, "vmr");
 #[cfg(vsx)]
 check!(vreg_f64x2, f64x2, vreg, "vmr");
 
+// powerpc_vsx-LABEL: vreg_f32:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f32:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vreg_f32, f32, vreg, "vmr");
+
+// powerpc_vsx-LABEL: vreg_f64:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f64:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vreg_f64, f64, vreg, "vmr");
+
 // CHECK-LABEL: reg_i8_r0:
 // CHECK: #APP
 // CHECK: mr 0, 0
@@ -365,6 +387,28 @@ check_reg!(vreg_f32x4_v0, f32x4, "0", "v0", "vmr");
 #[cfg(vsx)]
 check_reg!(vreg_f64x2_v0, f64x2, "0", "v0", "vmr");
 
+// powerpc_vsx-LABEL: vreg_f32_v0:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f32_v0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vreg_f32_v0, f32, "0", "v0", "vmr");
+
+// powerpc_vsx-LABEL: vreg_f64_v0:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f64_v0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vreg_f64_v0, f64, "0", "v0", "vmr");
+
 // powerpc_altivec-LABEL: vreg_i8x16_v18:
 // powerpc_altivec: #APP
 // powerpc_altivec: vmr 18, 18
@@ -430,3 +474,25 @@ check_reg!(vreg_f32x4_v18, f32x4, "18", "v18", "vmr");
 // powerpc64_vsx: #NO_APP
 #[cfg(vsx)]
 check_reg!(vreg_f64x2_v18, f64x2, "18", "v18", "vmr");
+
+// powerpc_vsx-LABEL: vreg_f32_v18:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr 18, 18
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f32_v18:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr 18, 18
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vreg_f32_v18, f32, "18", "v18", "vmr");
+
+// powerpc_vsx-LABEL: vreg_f64_v18:
+// powerpc_vsx: #APP
+// powerpc_vsx: vmr 18, 18
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vreg_f64_v18:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: vmr 18, 18
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vreg_f64_v18, f64, "18", "v18", "vmr");

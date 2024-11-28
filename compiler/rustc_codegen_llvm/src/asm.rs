@@ -1040,6 +1040,26 @@ fn llvm_fixup_input<'ll, 'tcx>(
             let value = bx.or(value, bx.const_u32(0xFFFF_0000));
             bx.bitcast(value, bx.type_f32())
         }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            let value = bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_f32(), 4)),
+                value,
+                bx.const_usize(0),
+            );
+            bx.bitcast(value, bx.type_vector(bx.type_f32(), 4))
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            let value = bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_f64(), 2)),
+                value,
+                bx.const_usize(0),
+            );
+            bx.bitcast(value, bx.type_vector(bx.type_f64(), 2))
+        }
         _ => value,
     }
 }
@@ -1175,6 +1195,18 @@ fn llvm_fixup_output<'ll, 'tcx>(
             let value = bx.trunc(value, bx.type_i16());
             bx.bitcast(value, bx.type_f16())
         }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            let value = bx.bitcast(value, bx.type_vector(bx.type_f32(), 4));
+            bx.extract_element(value, bx.const_usize(0))
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            let value = bx.bitcast(value, bx.type_vector(bx.type_f64(), 2));
+            bx.extract_element(value, bx.const_usize(0))
+        }
         _ => value,
     }
 }
@@ -1298,6 +1330,16 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 && !any_target_feature_enabled(cx, instance, &[sym::zfhmin, sym::zfh]) =>
         {
             cx.type_f32()
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            cx.type_vector(cx.type_f32(), 4)
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            cx.type_vector(cx.type_f64(), 2)
         }
         _ => layout.llvm_type(cx),
     }

@@ -76,7 +76,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | PowerPC      | `reg_nonzero`                   | None           | `i8`, `i16`, `i32`, `i64` (powerpc64 only) |
 | PowerPC      | `freg`                          | None           | `f32`, `f64`                            |
 | PowerPC      | `vreg`                          | `altivec`      | `i8x16`, `i16x8`, `i32x4`, `f32x4`      |
-| PowerPC      | `vreg`                          | `vsx`          | `i64x2`, `f64x2`                        |
+| PowerPC      | `vreg`                          | `vsx`          | `f32`, `f64`, `i64x2`, `f64x2`          |
 | PowerPC      | `cr`                            | N/A            | Only clobbers                           |
 | PowerPC      | `xer`                           | N/A            | Only clobbers                           |
 | wasm32       | `local`                         | None           | `i8` `i16` `i32` `i64` `f32` `f64`      |
