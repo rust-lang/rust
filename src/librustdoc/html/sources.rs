@@ -35,8 +35,8 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
     Ok(())
 }
 
-pub(crate) fn collect_local_sources<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn collect_local_sources(
+    tcx: TyCtxt<'_>,
     src_root: &Path,
     krate: &clean::Crate,
 ) -> FxIndexMap<PathBuf, String> {
@@ -80,7 +80,7 @@ impl LocalSourcesCollector<'_, '_> {
 
         let href = RefCell::new(PathBuf::new());
         clean_path(
-            &self.src_root,
+            self.src_root,
             &p,
             |component| {
                 href.borrow_mut().push(component);

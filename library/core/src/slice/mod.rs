@@ -855,6 +855,44 @@ impl<T> [T] {
         start..end
     }
 
+    /// Gets a reference to the underlying array.
+    ///
+    /// If `N` is not exactly equal to slice's the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
+        if self.len() == N {
+            let ptr = self.as_ptr() as *const [T; N];
+
+            // SAFETY: The underlying array of a slice can be reinterpreted as an actual array `[T; N]` if `N` is not greater than the slice's length.
+            let me = unsafe { &*ptr };
+            Some(me)
+        } else {
+            None
+        }
+    }
+
+    /// Gets a mutable reference to the slice's underlying array.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
+        if self.len() == N {
+            let ptr = self.as_mut_ptr() as *mut [T; N];
+
+            // SAFETY: The underlying array of a slice can be reinterpreted as an actual array `[T; N]` if `N` is not greater than the slice's length.
+            let me = unsafe { &mut *ptr };
+            Some(me)
+        } else {
+            None
+        }
+    }
+
     /// Swaps two elements in the slice.
     ///
     /// If `a` equals to `b`, it's guaranteed that elements won't change value.

@@ -1064,7 +1064,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
-            if let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind() {
+            if !self.infcx.next_trait_solver()
+                && let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind()
+            {
                 // There is nothing that we can compare here if we go through an opaque type.
                 // We're always in its defining scope as we can otherwise not project through
                 // it, so we're constraining it anyways.
@@ -1075,7 +1077,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 proj,
                 |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
-                    self.normalize(ty, locations)
+                    self.structurally_resolve(ty, locations)
                 },
                 |_, _| unreachable!(),
             );

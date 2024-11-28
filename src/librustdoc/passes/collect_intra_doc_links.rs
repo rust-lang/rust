@@ -53,12 +53,12 @@ pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
     (krate, collector)
 }
 
-fn filter_assoc_items_by_name_and_namespace<'a>(
-    tcx: TyCtxt<'a>,
+fn filter_assoc_items_by_name_and_namespace(
+    tcx: TyCtxt<'_>,
     assoc_items_of: DefId,
     ident: Ident,
     ns: Namespace,
-) -> impl Iterator<Item = &'a ty::AssocItem> + 'a {
+) -> impl Iterator<Item = &ty::AssocItem> + '_ {
     tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
         item.kind.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
@@ -232,7 +232,7 @@ impl UrlFragment {
                 s.push_str(kind);
                 s.push_str(tcx.item_name(def_id).as_str());
             }
-            UrlFragment::UserWritten(raw) => s.push_str(&raw),
+            UrlFragment::UserWritten(raw) => s.push_str(raw),
         }
     }
 }
@@ -307,7 +307,7 @@ pub(crate) struct AmbiguousLinks {
     resolved: Vec<(Res, Option<UrlFragment>)>,
 }
 
-impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
+impl<'tcx> LinkCollector<'_, 'tcx> {
     /// Given a full link, parse it as an [enum struct variant].
     ///
     /// In particular, this will return an error whenever there aren't three
@@ -339,7 +339,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // If there's no third component, we saw `[a::b]` before and it failed to resolve.
         // So there's no partial res.
         let path = split.next().ok_or_else(no_res)?;
-        let ty_res = self.resolve_path(&path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
+        let ty_res = self.resolve_path(path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
             Res::Def(DefKind::Enum, did) => match tcx.type_of(did).instantiate_identity().kind() {
@@ -628,7 +628,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 .map(|item| (root_res, item.def_id))
                                 .collect::<Vec<_>>()
                         })
-                        .unwrap_or(Vec::new())
+                        .unwrap_or_default()
                 }
             }
             Res::Def(DefKind::TyAlias, did) => {
@@ -693,7 +693,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // Checks if item_name belongs to `impl SomeItem`
                 let mut assoc_items: Vec<_> = tcx
                     .inherent_impls(did)
-                    .into_iter()
+                    .iter()
                     .flat_map(|&imp| {
                         filter_assoc_items_by_name_and_namespace(
                             tcx,
@@ -878,7 +878,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<Vec<(Res, T)>, ResolutionFailu
     }
 }
 
-impl<'a, 'tcx> DocVisitor<'_> for LinkCollector<'a, 'tcx> {
+impl DocVisitor<'_> for LinkCollector<'_, '_> {
     fn visit_item(&mut self, item: &Item) {
         self.resolve_links(item);
         self.visit_item_recur(item)
@@ -1152,7 +1152,7 @@ impl LinkCollector<'_, '_> {
         }
 
         cache.paths.get(&did).is_some()
-            || cache.external_paths.get(&did).is_some()
+            || cache.external_paths.contains_key(&did)
             || !did.is_local()
     }
 
@@ -1271,7 +1271,7 @@ impl LinkCollector<'_, '_> {
                 }
 
                 res.def_id(self.cx.tcx).map(|page_id| ItemLink {
-                    link: Box::<str>::from(&*diag_info.ori_link),
+                    link: Box::<str>::from(diag_info.ori_link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,
@@ -1293,7 +1293,7 @@ impl LinkCollector<'_, '_> {
 
                 let page_id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink {
-                    link: Box::<str>::from(&*diag_info.ori_link),
+                    link: Box::<str>::from(diag_info.ori_link),
                     link_text: link_text.clone(),
                     page_id,
                     fragment,
@@ -1387,7 +1387,7 @@ impl LinkCollector<'_, '_> {
         )
         .unwrap_or_else(|| item.attr_span(self.cx.tcx));
         rustc_session::parse::feature_err(
-            &self.cx.tcx.sess,
+            self.cx.tcx.sess,
             sym::intra_doc_pointers,
             span,
             "linking to associated items of raw pointers is experimental",
@@ -1414,7 +1414,7 @@ impl LinkCollector<'_, '_> {
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
-        if let Some(candidate) = candidates.get(0)
+        if let Some(candidate) = candidates.first()
             && candidate.0 == Res::Primitive(PrimitiveType::RawPointer)
             && key.path_str.contains("::")
         // We only want to check this if this is an associated item.
@@ -1493,7 +1493,7 @@ impl LinkCollector<'_, '_> {
                             }
                         }
                         resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
-                        return vec![];
+                        vec![]
                     }
                 }
             }
@@ -1509,15 +1509,12 @@ impl LinkCollector<'_, '_> {
                     type_ns: candidate(TypeNS),
                     value_ns: candidate(ValueNS).and_then(|v_res| {
                         for (res, _) in v_res.iter() {
-                            match res {
-                                // Constructors are picked up in the type namespace.
-                                Res::Def(DefKind::Ctor(..), _) => {
-                                    return Err(ResolutionFailure::WrongNamespace {
-                                        res: *res,
-                                        expected_ns: TypeNS,
-                                    });
-                                }
-                                _ => {}
+                            // Constructors are picked up in the type namespace.
+                            if let Res::Def(DefKind::Ctor(..), _) = res {
+                                return Err(ResolutionFailure::WrongNamespace {
+                                    res: *res,
+                                    expected_ns: TypeNS,
+                                });
                             }
                         }
                         Ok(v_res)
@@ -1536,7 +1533,7 @@ impl LinkCollector<'_, '_> {
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
-                    return vec![];
+                    vec![]
                 } else if len == 1 {
                     candidates.into_iter().filter_map(|res| res.ok()).flatten().collect::<Vec<_>>()
                 } else {
@@ -1850,7 +1847,7 @@ fn report_diagnostic(
                 (sp, MarkdownLinkRange::Destination(md_range))
             }
             MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings),
+                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings),
                 link_range.clone(),
             ),
         };
@@ -1985,8 +1982,7 @@ fn resolution_failure(
                                     .tcx
                                     .resolutions(())
                                     .all_macro_rules
-                                    .get(&Symbol::intern(path_str))
-                                    .is_some()
+                                    .contains_key(&Symbol::intern(path_str))
                             {
                                 diag.note(format!(
                                     "`macro_rules` named `{path_str}` exists in this crate, \

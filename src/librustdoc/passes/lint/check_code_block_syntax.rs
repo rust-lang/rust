@@ -150,7 +150,7 @@ impl Translate for BufferEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
