@@ -176,6 +176,8 @@ pub use core::sync::Exclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+pub use alloc_crate::sync::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};
 
