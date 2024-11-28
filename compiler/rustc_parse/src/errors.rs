@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::token::Token;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2686,7 +2687,7 @@ pub(crate) struct UnexpectedExpressionInPattern {
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
     /// The unexpected expr's precedence (used in match arm guard suggestions).
-    pub expr_precedence: i8,
+    pub expr_precedence: ExprPrecedence,
 }
 
 #[derive(Subdiagnostic)]
