@@ -83,7 +83,7 @@ pub trait CodegenBackend {
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>);
 
-    /// This is called on the returned `CodegenResults` from `join_codegen`
+    /// This is called on the returned [`CodegenResults`] from [`join_codegen`](Self::join_codegen).
     fn link(
         &self,
         sess: &Session,
