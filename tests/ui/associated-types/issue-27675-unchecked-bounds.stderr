@@ -9,7 +9,7 @@ note: required by a bound in `copy`
    |
 LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
    |            ^^^^^ required by this bound in `copy`
-help: consider restricting type parameter `T` with trait `std::marker::Copy`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
    |                  +++++++++++++++++++

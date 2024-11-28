@@ -71,7 +71,7 @@ LL |         Self(self.0 + rhs.0)
    |              |
    |              B
    |
-help: consider restricting type parameter `B` with trait `std::ops::Add<Output = B>`
+help: consider restricting type parameter `B` with trait `Add`
    |
 LL | impl<B: std::ops::Add<Output = B>> Add for D<B> {
    |       +++++++++++++++++++++++++++

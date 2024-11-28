@@ -9,7 +9,7 @@ note: required by a bound in `ConstrainedStruct`
    |
 LL | struct ConstrainedStruct<X: Copy> {
    |                             ^^^^ required by this bound in `ConstrainedStruct`
-help: consider further restricting type parameter `X` with trait `std::marker::Copy`
+help: consider further restricting type parameter `X` with trait `Copy`
    |
 LL | trait InsufficientlyConstrainedGeneric<X=()> where Self: Sized, X: std::marker::Copy {
    |                                                               ++++++++++++++++++++++
@@ -25,7 +25,7 @@ note: required by a bound in `ConstrainedStruct`
    |
 LL | struct ConstrainedStruct<X: Copy> {
    |                             ^^^^ required by this bound in `ConstrainedStruct`
-help: consider further restricting type parameter `X` with trait `std::marker::Copy`
+help: consider further restricting type parameter `X` with trait `Copy`
    |
 LL | trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where Self: Sized, X: std::marker::Copy {
    |                                                                             ++++++++++++++++++++++
@@ -41,7 +41,7 @@ note: required by a bound in `ConstrainedStruct`
    |
 LL | struct ConstrainedStruct<X: Copy> {
    |                             ^^^^ required by this bound in `ConstrainedStruct`
-help: consider further restricting type parameter `X` with trait `std::marker::Copy`
+help: consider further restricting type parameter `X` with trait `Copy`
    |
 LL | trait InsufficientlyConstrainedGeneric<X=()> where Self: Sized, X: std::marker::Copy {
    |                                                               ++++++++++++++++++++++
@@ -57,7 +57,7 @@ note: required by a bound in `ConstrainedStruct`
    |
 LL | struct ConstrainedStruct<X: Copy> {
    |                             ^^^^ required by this bound in `ConstrainedStruct`
-help: consider further restricting type parameter `X` with trait `std::marker::Copy`
+help: consider further restricting type parameter `X` with trait `Copy`
    |
 LL | trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where Self: Sized, X: std::marker::Copy {
    |                                                                             ++++++++++++++++++++++

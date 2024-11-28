@@ -9,7 +9,7 @@ note: required by a bound in `UncheckedCopy::Output`
    |
 LL |     type Output: From<Self> + Copy + Into<Self>;
    |                               ^^^^ required by this bound in `UncheckedCopy::Output`
-help: consider restricting type parameter `T` with trait `std::marker::Copy`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | impl<T: std::marker::Copy> UncheckedCopy for T {
    |       +++++++++++++++++++

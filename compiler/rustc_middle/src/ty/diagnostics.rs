@@ -4,7 +4,9 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
+use rustc_errors::{
+    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, pluralize,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicateKind};
@@ -288,7 +290,11 @@ pub fn suggest_constraining_type_params<'a>(
             None => true,
         };
         if stable || tcx.sess.is_nightly_build() {
-            grouped.entry(param_name).or_insert(Vec::new()).push((constraint, def_id));
+            grouped.entry(param_name).or_insert(Vec::new()).push((
+                constraint,
+                def_id,
+                if stable { "" } else { "unstable " },
+            ));
             if !stable {
                 unstable_suggestion = true;
             }
@@ -303,10 +309,10 @@ pub fn suggest_constraining_type_params<'a>(
         let Some(param) = param else { return false };
 
         {
-            let mut sized_constraints = constraints.extract_if(|(_, def_id)| {
+            let mut sized_constraints = constraints.extract_if(|(_, def_id, _)| {
                 def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized))
             });
-            if let Some((_, def_id)) = sized_constraints.next() {
+            if let Some((_, def_id, _)) = sized_constraints.next() {
                 applicability = Applicability::MaybeIncorrect;
 
                 err.span_label(param.span, "this type parameter needs to be `Sized`");
@@ -325,15 +331,52 @@ pub fn suggest_constraining_type_params<'a>(
             .collect();
 
         constraints
-            .retain(|(_, def_id)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
+            .retain(|(_, def_id, _)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
 
         if constraints.is_empty() {
             continue;
         }
 
-        let mut constraint = constraints.iter().map(|&(c, _)| c).collect::<Vec<_>>();
+        let mut constraint = constraints.iter().map(|&(c, _, _)| c).collect::<Vec<_>>();
         constraint.sort();
         constraint.dedup();
+        let all_stable = constraints.iter().all(|&(_, _, stable)| stable.is_empty());
+        let all_unstable = constraints.iter().all(|&(_, _, stable)| !stable.is_empty());
+        let post = if all_stable || all_unstable {
+            // Don't redundantly say "trait `X`, trait `Y`", instead "traits `X` and `Y`"
+            let mut trait_names = constraints
+                .iter()
+                .map(|&(c, def_id, _)| match def_id {
+                    None => format!("`{c}`"),
+                    Some(def_id) => format!("`{}`", tcx.item_name(def_id)),
+                })
+                .collect::<Vec<_>>();
+            trait_names.sort();
+            trait_names.dedup();
+            let n = trait_names.len();
+            let stable = if all_stable { "" } else { "unstable " };
+            format!("{stable}trait{} {}", pluralize!(n), match &trait_names[..] {
+                [t] => t.to_string(),
+                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
+                [] => return false,
+            },)
+        } else {
+            // We're more explicit when there's a mix of stable and unstable traits.
+            let mut trait_names = constraints
+                .iter()
+                .map(|&(c, def_id, stable)| match def_id {
+                    None => format!("{stable}trait `{c}`"),
+                    Some(def_id) => format!("{stable}trait `{}`", tcx.item_name(def_id)),
+                })
+                .collect::<Vec<_>>();
+            trait_names.sort();
+            trait_names.dedup();
+            match &trait_names[..] {
+                [t] => t.to_string(),
+                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
+                [] => return false,
+            }
+        };
         let constraint = constraint.join(" + ");
         let mut suggest_restrict = |span, bound_list_non_empty, open_paren_sp| {
             let suggestion = if span_to_replace.is_some() {
@@ -351,18 +394,18 @@ pub fn suggest_constraining_type_params<'a>(
             if let Some(open_paren_sp) = open_paren_sp {
                 suggestions.push((
                     open_paren_sp,
-                    constraint.clone(),
+                    post.clone(),
                     "(".to_string(),
                     RestrictBoundFurther,
                 ));
                 suggestions.push((
                     span,
-                    constraint.clone(),
+                    post.clone(),
                     format!("){suggestion}"),
                     RestrictBoundFurther,
                 ));
             } else {
-                suggestions.push((span, constraint.clone(), suggestion, RestrictBoundFurther));
+                suggestions.push((span, post.clone(), suggestion, RestrictBoundFurther));
             }
         };
 
@@ -420,8 +463,8 @@ pub fn suggest_constraining_type_params<'a>(
             //                                           - insert: `, X: Bar`
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                constraint.clone(),
-                constraints.iter().fold(String::new(), |mut string, &(constraint, _)| {
+                post,
+                constraints.iter().fold(String::new(), |mut string, &(constraint, _, _)| {
                     write!(string, ", {param_name}: {constraint}").unwrap();
                     string
                 }),
@@ -450,7 +493,7 @@ pub fn suggest_constraining_type_params<'a>(
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                constraint.clone(),
+                post,
                 format!("{where_prefix} {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
@@ -464,7 +507,7 @@ pub fn suggest_constraining_type_params<'a>(
         if let Some(colon_span) = param.colon_span {
             suggestions.push((
                 colon_span.shrink_to_hi(),
-                constraint.clone(),
+                post,
                 format!(" {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
             ));
@@ -477,7 +520,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          - help: consider restricting this type parameter with `T: Foo`
         suggestions.push((
             param.span.shrink_to_hi(),
-            constraint.clone(),
+            post,
             format!(": {constraint}"),
             SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
         ));
@@ -490,21 +533,16 @@ pub fn suggest_constraining_type_params<'a>(
         .collect::<Vec<_>>();
     let suggested = !suggestions.is_empty();
     if suggestions.len() == 1 {
-        let (span, constraint, suggestion, msg) = suggestions.pop().unwrap();
-        let post = format!(
-            " with {}trait{} `{constraint}`",
-            if unstable_suggestion { "unstable " } else { "" },
-            if constraint.contains('+') { "s" } else { "" },
-        );
+        let (span, post, suggestion, msg) = suggestions.pop().unwrap();
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                format!("consider further restricting this bound{post}")
+                format!("consider further restricting this bound with {post}")
             }
             SuggestChangingConstraintsMessage::RestrictType { ty } => {
-                format!("consider restricting type parameter `{ty}`{post}")
+                format!("consider restricting type parameter `{ty}` with {post}")
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty } => {
-                format!("consider further restricting type parameter `{ty}`{post}")
+                format!("consider further restricting type parameter `{ty}` with {post}")
             }
             SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
                 format!("consider removing the `?Sized` bound to make the type parameter `Sized`")

@@ -4,7 +4,7 @@ error[E0277]: the trait bound `for<'a> T: SomeTrait<'a>` is not satisfied
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> SomeTrait<'a>` is not implemented for `T`
    |
-help: consider restricting type parameter `T` with trait `for<'a> SomeTrait<'a>`
+help: consider restricting type parameter `T` with trait `SomeTrait`
    |
 LL | fn give_me_ice<T: for<'a> SomeTrait<'a>>() {
    |                 +++++++++++++++++++++++
@@ -15,7 +15,7 @@ error[E0277]: the trait bound `for<'a> T: SomeTrait<'a>` is not satisfied
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> SomeTrait<'a>` is not implemented for `T`
    |
-help: consider restricting type parameter `T` with trait `for<'a> SomeTrait<'a>`
+help: consider restricting type parameter `T` with trait `SomeTrait`
    |
 LL | fn give_me_ice<T: for<'a> SomeTrait<'a>>() {
    |                 +++++++++++++++++++++++

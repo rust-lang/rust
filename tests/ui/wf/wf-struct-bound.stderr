@@ -9,7 +9,7 @@ note: required by a bound in `ExtraCopy`
    |
 LL | trait ExtraCopy<T:Copy> { }
    |                   ^^^^ required by this bound in `ExtraCopy`
-help: consider further restricting type parameter `U` with trait `std::marker::Copy`
+help: consider further restricting type parameter `U` with trait `Copy`
    |
 LL |     where T: ExtraCopy<U>, U: std::marker::Copy
    |                          ++++++++++++++++++++++

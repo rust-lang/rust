@@ -12,7 +12,7 @@ note: the `Copy` impl for `OnlyCopyIfDisplay<S>` requires that `S: std::fmt::Dis
    |
 LL | struct Wrapper<T>(T);
    |                   ^
-help: consider restricting type parameter `S` with trait `std::fmt::Display`
+help: consider restricting type parameter `S` with trait `Display`
    |
 LL | impl<S: std::fmt::Display> Copy for Wrapper<OnlyCopyIfDisplay<S>> {}
    |       +++++++++++++++++++
