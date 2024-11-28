@@ -281,10 +281,10 @@ pub trait Analysis<'tcx> {
             );
         }
 
-        let results = Results { analysis: self, entry_sets };
+        let mut results = Results { analysis: self, entry_sets };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &results, pass_name);
+            let res = write_graphviz_results(tcx, body, &mut results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }

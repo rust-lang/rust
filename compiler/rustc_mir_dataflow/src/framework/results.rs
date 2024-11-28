@@ -95,7 +95,7 @@ where
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    results: &Results<'tcx, A>,
+    results: &mut Results<'tcx, A>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where
