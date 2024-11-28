@@ -43,7 +43,7 @@ Libraries
 - [Document that `catch_unwind` can deal with foreign exceptions without UB, although the exact behavior is unspecified.](https://github.com/rust-lang/rust/pull/128321)
 - [Implement `Default` for `HashMap`/`HashSet` iterators that don't already have it.](https://github.com/rust-lang/rust/pull/128711)
 - [Bump Unicode to version 16.0.0.](https://github.com/rust-lang/rust/pull/130183)
-- [Change documentation of `ptr::add`/`sub` to not claim equivalence with `offset`.](https://github.com/rust-lang/rust/pull/130229).
+- [Change documentation of `ptr::add`/`sub` to not claim equivalence with `offset`.](https://github.com/rust-lang/rust/pull/130229)
 
 
 <a id="1.83.0-Stabilized-APIs"></a>
