@@ -1937,8 +1937,9 @@ options! {
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
         "panic strategy for panics in drops"),
-    parse_only: bool = (false, parse_bool, [UNTRACKED],
-        "parse only; do not compile, assemble, or link (default: no)"),
+    parse_crate_root_only: bool = (false, parse_bool, [UNTRACKED],
+        "parse the crate root file only; do not parse other files, compile, assemble, or link \
+        (default: no)"),
     patchable_function_entry: PatchableFunctionEntry = (PatchableFunctionEntry::default(), parse_patchable_function_entry, [TRACKED],
         "nop padding at function entry"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
