@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// let y: i32 = 4;
     /// let div = x.div_ceil(y);
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.83.0"]
     pub MANUAL_DIV_CEIL,
     complexity,
     "manually reimplementing `div_ceil`"
