@@ -1089,7 +1089,9 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        self.dcx().emit_err(RepeatedMutInPattern { span: lo.to(self.prev_token.span) });
+        let span = lo.to(self.prev_token.span);
+        let suggestion = span.with_hi(self.token.span.lo());
+        self.dcx().emit_err(RepeatedMutInPattern { span, suggestion });
     }
 
     /// Parse macro invocation

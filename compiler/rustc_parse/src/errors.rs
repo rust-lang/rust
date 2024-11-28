@@ -2611,8 +2611,9 @@ pub(crate) enum InvalidMutInPattern {
 #[diag(parse_repeated_mut_in_pattern)]
 pub(crate) struct RepeatedMutInPattern {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
