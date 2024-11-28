@@ -22,6 +22,11 @@ fn main() {
     .required(false)
     .value_parser(clap::value_parser!(String));
 
+    let n_arg = arg!(-n --"name" <NAME>
+"The book name")
+    .required(false)
+    .value_parser(clap::value_parser!(String));
+
     let root_arg = arg!(--"rust-root" <ROOT_DIR>
 "Path to the root of the rust source tree")
     .required(false)
@@ -56,6 +61,7 @@ fn main() {
                 .about("Build the book from the markdown files")
                 .arg(d_arg)
                 .arg(l_arg)
+                .arg(n_arg)
                 .arg(root_arg)
                 .arg(&dir_arg),
         )
@@ -121,7 +127,53 @@ pub fn build(args: &ArgMatches) -> Result3<()> {
         book.with_preprocessor(Spec::new(rust_root)?);
     }
 
+    let mut cleanup = Vec::new();
+    if let Some(rust_root) = args.get_one::<PathBuf>("rust-root") {
+        if let Some(name) = args.get_one::<String>("name") {
+            let translation_path = rust_root.join(format!("src/doc/translations/{name}"));
+            if translation_path.exists() {
+                let css_file = "theme/language-picker.css";
+                let js_file = "theme/language-picker.js";
+
+                let css_path = translation_path.join(css_file);
+                let js_path = translation_path.join(js_file);
+                let po_path = translation_path.join("po");
+
+                let theme_dir = book_dir.join("theme");
+                if !theme_dir.exists() {
+                    std::fs::create_dir(theme_dir)?;
+                }
+                let css_target = book_dir.join(css_file);
+                let js_target = book_dir.join(js_file);
+                std::fs::copy(css_path, &css_target)?;
+                std::fs::copy(js_path, &js_target)?;
+                cleanup.push(css_target);
+                cleanup.push(js_target);
+
+                let css_file: toml::Value = css_file.into();
+                let js_file: toml::Value = js_file.into();
+                let po_path: toml::Value = po_path.to_string_lossy().as_ref().into();
+
+                if let Some(additional_css) = book.config.get_mut("output.html.additional-css") {
+                    additional_css.as_array_mut().unwrap().push(css_file.into());
+                } else {
+                    book.config.set("output.html.additional-css", vec![css_file])?;
+                }
+                if let Some(additional_js) = book.config.get_mut("output.html.additional-js") {
+                    additional_js.as_array_mut().unwrap().push(js_file.into());
+                } else {
+                    book.config.set("output.html.additional-js", vec![js_file])?;
+                }
+                book.config.set("preprocessor.gettext.po-dir", po_path)?;
+            }
+        }
+    }
+
     book.build()?;
+
+    for file in cleanup {
+        std::fs::remove_file(file)?;
+    }
 
     Ok(())
 }

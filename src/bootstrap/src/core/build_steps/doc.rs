@@ -177,6 +177,8 @@ impl<P: Step> Step for RustbookSrc<P> {
                 .arg(&out)
                 .arg("--rust-root")
                 .arg(&builder.src)
+                .arg("-n")
+                .arg(&name)
                 .run(builder);
 
             for lang in &self.languages {
@@ -191,6 +193,10 @@ impl<P: Step> Step for RustbookSrc<P> {
                     .arg(&src)
                     .arg("-d")
                     .arg(&out)
+                    .arg("--rust-root")
+                    .arg(&builder.src)
+                    .arg("-n")
+                    .arg(&name)
                     .arg("-l")
                     .arg(lang)
                     .run(builder);

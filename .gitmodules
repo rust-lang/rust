@@ -55,3 +55,6 @@
 	path = src/gcc
 	url = https://github.com/rust-lang/gcc.git
 	shallow = true
+[submodule "src/doc/translations"]
+	path = src/doc/translations
+	url = https://github.com/dalance/translations

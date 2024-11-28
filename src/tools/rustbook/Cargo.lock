@@ -1146,6 +1146,7 @@ dependencies = [
  "mdbook-spec",
  "mdbook-trpl-listing",
  "mdbook-trpl-note",
+ "toml 0.5.11",
 ]
 
 [[package]]
