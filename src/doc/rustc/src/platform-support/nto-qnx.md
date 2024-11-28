@@ -22,10 +22,14 @@ Currently, the following QNX Neutrino versions and compilation targets are suppo
 
 | QNX Neutrino Version | Target Architecture | Full support | `no_std` support |
 |----------------------|---------------------|:------------:|:----------------:|
-| 7.1 | AArch64 | ✓ | ✓ |
+| 7.1 with io-pkt | AArch64 | ✓ | ✓ |
+| 7.1 with io-sock | AArch64 | ✓ | ✓ |
 | 7.1 | x86_64  | ✓ | ✓ |
 | 7.0 | AArch64 | ? | ✓ |
 | 7.0 | x86     |   | ✓ |
+
+On QNX 7.0 and 7.1, `io-pkt` is used as network stack by default. QNX 7.1 includes
+the optional network stack `io-sock`.
 
 Adding other architectures that are supported by QNX Neutrino is possible.
 
@@ -107,7 +111,8 @@ There are no further known requirements.
 For conditional compilation, following QNX Neutrino specific attributes are defined:
 
 - `target_os` = `"nto"`
-- `target_env` = `"nto71"` (for QNX Neutrino 7.1)
+- `target_env` = `"nto71"` (for QNX Neutrino 7.1 with "classic" network stack "io_pkt")
+- `target_env` = `"nto71_iosock"` (for QNX Neutrino 7.1 with network stack "io_sock")
 - `target_env` = `"nto70"` (for QNX Neutrino 7.0)
 
 ## Building the target
@@ -134,6 +139,10 @@ export build_env='
     CFLAGS_aarch64-unknown-nto-qnx710=-Vgcc_ntoaarch64le_cxx
     CXX_aarch64-unknown-nto-qnx710=qcc
     AR_aarch64_unknown_nto_qnx710=ntoaarch64-ar
+    CC_aarch64-unknown-nto-qnx710_iosock=qcc
+    CFLAGS_aarch64-unknown-nto-qnx710_iosock=-Vgcc_ntoaarch64le_cxx
+    CXX_aarch64-unknown-nto-qnx710_iosock=qcc
+    AR_aarch64_unknown_nto_qnx710_iosock=ntoaarch64-ar
     CC_x86_64-pc-nto-qnx710=qcc
     CFLAGS_x86_64-pc-nto-qnx710=-Vgcc_ntox86_64_cxx
     CXX_x86_64-pc-nto-qnx710=qcc
@@ -141,7 +150,7 @@ export build_env='
 
 env $build_env \
     ./x.py build \
-        --target aarch64-unknown-nto-qnx710,x86_64-pc-nto-qnx710,x86_64-unknown-linux-gnu \
+        --target aarch64-unknown-nto-qnx710_iosock,aarch64-unknown-nto-qnx710,x86_64-pc-nto-qnx710,x86_64-unknown-linux-gnu \
         rustc library/core library/alloc library/std
 ```
 

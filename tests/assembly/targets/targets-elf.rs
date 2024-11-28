@@ -57,6 +57,9 @@
 //@ revisions: aarch64_unknown_nto_qnx710
 //@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
 //@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] compile-flags: --target aarch64-unknown-nto-qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_openbsd
 //@ [aarch64_unknown_openbsd] compile-flags: --target aarch64-unknown-openbsd
 //@ [aarch64_unknown_openbsd] needs-llvm-components: aarch64

@@ -139,7 +139,8 @@ test = true
 level = "warn"
 check-cfg = [
     'cfg(bootstrap)',
-    'cfg(target_arch, values("xtensa"))',
+    'cfg(target_arch, values("xtensa", "aarch64-unknown-nto-qnx710_iosock"))',
+    'cfg(target_env, values("nto71_iosock"))',
     # std use #[path] imports to portable-simd `std_float` crate
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg

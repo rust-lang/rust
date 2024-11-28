@@ -20,7 +20,7 @@ use crate::{fmt, mem, sys};
 
 cfg_if::cfg_if! {
     // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
-    if #[cfg(any(target_env = "nto70", target_env = "nto71"))] {
+    if #[cfg(any(target_env = "nto70", target_env = "nto71", target_env = "nto71_iosock"))] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
@@ -191,7 +191,8 @@ impl Command {
         target_os = "watchos",
         target_os = "tvos",
         target_env = "nto70",
-        target_env = "nto71"
+        target_env = "nto71",
+        target_env = "nto71_iosock",
     )))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         cvt(libc::fork())
@@ -202,7 +203,7 @@ impl Command {
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
-    #[cfg(any(target_env = "nto70", target_env = "nto71"))]
+    #[cfg(any(target_env = "nto70", target_env = "nto71", target_env = "nto71_iosock"))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::os::errno;
 
