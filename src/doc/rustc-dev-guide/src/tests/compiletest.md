@@ -113,20 +113,6 @@ The directives for pretty-printing tests are:
   expanded output to type check it. This is needed for a pretty-mode that does
   not expand to valid Rust, or for other situations where the expanded output
   cannot be compiled.
-- `pretty-expanded` allows a pretty test to also check that the expanded output
-  can be type checked. That is, after the steps above, it does two more steps:
-
-  > 5. Run `rustc -Zunpretty=expanded` on the original source
-  > 6. Run `rustc -Zno-codegen` on the expanded output to make sure that it can type check
-
-  This is needed because not all code can be compiled after being expanded.
-  Pretty tests should specify this if they can. An example where this cannot be
-  used is if the test includes `println!`. That macro expands to reference
-  private internal functions of the standard library that cannot be called
-  directly without the `fmt_internals` feature gate.
-
-  More history about this may be found in
-  [#23616](https://github.com/rust-lang/rust/issues/23616#issuecomment-484999901).
 - `pp-exact` is used to ensure a pretty-print test results in specific output.
   If specified without a value, then it means the pretty-print output should
   match the original source. If specified with a value, as in `//@
