@@ -304,3 +304,34 @@ impl Step for UnicodeTableGenerator {
         cmd.run(builder);
     }
 }
+
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct FeaturesStatusDump;
+
+impl Step for FeaturesStatusDump {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/features-status-dump")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(FeaturesStatusDump);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mut cmd = builder.tool_cmd(Tool::FeaturesStatusDump);
+
+        cmd.arg("--library-path");
+        cmd.arg(builder.src.join("library"));
+
+        cmd.arg("--compiler-path");
+        cmd.arg(builder.src.join("compiler"));
+
+        cmd.arg("--output-path");
+        cmd.arg(builder.out.join("features-status-dump.json"));
+
+        cmd.run(builder);
+    }
+}

@@ -359,6 +359,7 @@ bootstrap_tool!(
     RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
+    FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
 );
 
 /// These are the submodules that are required for rustbook to work due to
