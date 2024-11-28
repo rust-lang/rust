@@ -140,7 +140,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             err,
                             param_ty.name.as_str(),
                             &constraint,
-                            None,
+                            Some(trait_ref.def_id),
                             None,
                         );
                     }

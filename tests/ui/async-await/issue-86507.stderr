@@ -14,7 +14,7 @@ note: captured value is not `Send` because `&` references cannot be sent unless 
 LL |                     let x = x;
    |                             ^ has type `&T` which is not `Send`, because `T` is not `Sync`
    = note: required for the cast from `Pin<Box<{async block@$DIR/issue-86507.rs:18:17: 18:27}>>` to `Pin<Box<(dyn Future<Output = ()> + Send + 'async_trait)>>`
-help: consider further restricting this bound with trait `Sync`
+help: consider further restricting type parameter `T` with trait `Sync`
    |
 LL |     fn bar<'me, 'async_trait, T: Send + std::marker::Sync>(x: &'me T)
    |                                       +++++++++++++++++++

@@ -15,7 +15,7 @@ help: use parentheses to call this type parameter
    |
 LL |     take_const_owned(f());
    |                       ++
-help: consider further restricting this bound with trait `Sync`
+help: consider further restricting type parameter `F` with trait `Sync`
    |
 LL | fn give_owned<F>(f: F) where F: FnOnce() + Send + std::marker::Sync {
    |                                                 +++++++++++++++++++

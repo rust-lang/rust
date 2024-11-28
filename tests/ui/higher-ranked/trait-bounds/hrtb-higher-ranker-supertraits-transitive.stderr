@@ -13,7 +13,7 @@ LL | fn want_bar_for_any_ccx<B>(b: &B)
    |    -------------------- required by a bound in this function
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `want_bar_for_any_ccx`
-help: consider further restricting this bound with trait `Bar`
+help: consider further restricting type parameter `B` with trait `Bar`
    |
 LL |     where B : Qux + for<'ccx> Bar<'ccx>
    |                   +++++++++++++++++++++
