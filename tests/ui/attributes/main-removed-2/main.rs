@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:tokyo.rs
+//@ proc-macro: tokyo.rs
 //@ compile-flags:--extern tokyo
 //@ edition:2021
 

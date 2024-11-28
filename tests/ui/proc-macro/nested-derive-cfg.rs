@@ -1,5 +1,5 @@
 //@ compile-flags: -Z span-debug --error-format human
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ check-pass
 
 #![no_std] // Don't load unnecessary hygiene information from std
