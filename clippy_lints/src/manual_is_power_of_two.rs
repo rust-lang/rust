@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// let a: u32 = 4;
     /// let result = a.is_power_of_two();
     /// ```
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.83.0"]
     pub MANUAL_IS_POWER_OF_TWO,
     pedantic,
     "manually reimplementing `is_power_of_two`"

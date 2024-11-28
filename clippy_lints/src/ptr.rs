@@ -541,9 +541,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .collect();
         if let Some(args) = args
             && !args.is_empty()
-            && body.map_or(true, |body| {
-                sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value)
-            })
+            && body.is_none_or(|body| sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,

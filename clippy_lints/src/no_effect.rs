@@ -238,7 +238,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Struct(_, fields, ref base) => {
             !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
-                && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
+                && base.as_ref().is_none_or(|base| has_no_effect(cx, base))
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {

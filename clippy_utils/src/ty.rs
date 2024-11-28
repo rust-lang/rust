@@ -226,7 +226,14 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     args: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env_from_iter(cx.tcx, cx.typing_env(), ty, trait_id, None, args.iter().map(|&x| Some(x)))
+    implements_trait_with_env_from_iter(
+        cx.tcx,
+        cx.typing_env(),
+        ty,
+        trait_id,
+        None,
+        args.iter().map(|&x| Some(x)),
+    )
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -1262,7 +1269,8 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         }
         let cause = ObligationCause::dummy();
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-        match infcx.at(&cause, param_env)
+        match infcx
+            .at(&cause, param_env)
             .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
         {
             Ok(ty) => Some(ty.value),
@@ -1278,7 +1286,10 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 pub fn normalize_with_regions<'tcx>(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let cause = ObligationCause::dummy();
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-    infcx.at(&cause, param_env).query_normalize(ty).map_or(ty, |ty| ty.value)
+    infcx
+        .at(&cause, param_env)
+        .query_normalize(ty)
+        .map_or(ty, |ty| ty.value)
 }
 
 /// Checks if the type is `core::mem::ManuallyDrop<_>`

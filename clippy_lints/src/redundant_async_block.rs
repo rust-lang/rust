@@ -88,7 +88,7 @@ fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
         cx.typeck_results()
             .closure_min_captures
             .get(def_id)
-            .map_or(true, |m| {
+            .is_none_or(|m| {
                 m.values().all(|places| {
                     places
                         .iter()

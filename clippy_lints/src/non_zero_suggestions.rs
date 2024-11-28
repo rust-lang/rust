@@ -39,7 +39,7 @@ declare_clippy_lint! {
     ///     let r2 = x % NonZeroU64::from(y);
     /// }
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.83.0"]
     pub NON_ZERO_SUGGESTIONS,
     restriction,
     "suggests using `NonZero#` from `u#` or `i#` for more efficient and type-safe conversions"

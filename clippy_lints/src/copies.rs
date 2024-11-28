@@ -212,7 +212,7 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).map_or(true, |e| !contains_let(e)) {
+            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).is_none_or(|e| !contains_let(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -470,7 +470,7 @@ fn scan_block_for_eq<'tcx>(
                 b.stmts
                     // the bounds check will catch the underflow
                     .get(b.stmts.len().wrapping_sub(offset + 1))
-                    .map_or(true, |s| hash != hash_stmt(cx, s))
+                    .is_none_or(|s| hash != hash_stmt(cx, s))
             })
         })
         .map_or(block.stmts.len() - start_end_eq, |(i, _)| i);
