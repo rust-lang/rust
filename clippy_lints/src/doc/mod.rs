@@ -948,7 +948,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                             );
                             refdefrange.start - range.start
                         } else {
-                            next_range.start - range.start
+							let mut start = next_range.start;
+							if start > 0 && doc.as_bytes().get(start - 1) == Some(&b'\\') {
+								// backslashes aren't in the event stream...
+								start -= 1;
+							}
+                            start - range.start
                         }
                     } else {
                         0

@@ -75,3 +75,9 @@ fn seven() {}
 ///  ]
 //~^ ERROR: doc list item without indentation
 fn eight() {}
+
+#[rustfmt::skip]
+// https://github.com/rust-lang/rust-clippy/issues/13705
+/// - \[text in square brackets\] with a long following description
+///   that goes over multiple lines
+pub fn backslash_escaped_square_braces() {}
