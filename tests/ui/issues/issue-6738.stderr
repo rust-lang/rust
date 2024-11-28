@@ -6,7 +6,7 @@ LL |         self.x += v.x;
    |         |
    |         cannot use `+=` on type `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::ops::AddAssign`
    |
 LL | impl<T: std::ops::AddAssign> Foo<T> {
    |       +++++++++++++++++++++

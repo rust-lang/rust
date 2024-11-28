@@ -9,7 +9,7 @@ note: required by a bound in `MustBeCopy`
    |
 LL | struct MustBeCopy<T:Copy> {
    |                     ^^^^ required by this bound in `MustBeCopy`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | struct Bar<T: std::marker::Copy> {
    |             +++++++++++++++++++

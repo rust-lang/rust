@@ -17,7 +17,7 @@ LL |     lhs + rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -40,7 +40,7 @@ LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs + rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn add<A: Add<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -64,7 +64,7 @@ LL |     lhs - rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -87,7 +87,7 @@ LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs - rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn sub<A: Sub<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -111,7 +111,7 @@ LL |     lhs * rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -134,7 +134,7 @@ LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs * rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn mul<A: Mul<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -158,7 +158,7 @@ LL |     lhs / rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -181,7 +181,7 @@ LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs / rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn div<A: Div<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -205,7 +205,7 @@ LL |     lhs % rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -228,7 +228,7 @@ LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs % rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn rem<A: Rem<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -252,7 +252,7 @@ LL |     lhs & rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                   ++++++
@@ -275,7 +275,7 @@ LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    ^ consider constraining this type parameter with `Clone`
 LL |     lhs & rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn bitand<A: BitAnd<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                                     ++++++
@@ -299,7 +299,7 @@ LL |     lhs | rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                 ++++++
@@ -322,7 +322,7 @@ LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                  ^ consider constraining this type parameter with `Clone`
 LL |     lhs | rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn bitor<A: BitOr<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                                   ++++++
@@ -346,7 +346,7 @@ LL |     lhs ^ rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                   ++++++
@@ -369,7 +369,7 @@ LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    ^ consider constraining this type parameter with `Clone`
 LL |     lhs ^ rhs;
    |           --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn bitxor<A: BitXor<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                                     ++++++
@@ -393,7 +393,7 @@ LL |     lhs << rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -416,7 +416,7 @@ LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs << rhs;
    |            --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn shl<A: Shl<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++
@@ -440,7 +440,7 @@ LL |     lhs >> rhs;
    |     --- you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
@@ -463,7 +463,7 @@ LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              ^ consider constraining this type parameter with `Clone`
 LL |     lhs >> rhs;
    |            --- you could clone this value
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Copy`
    |
 LL | fn shr<A: Shr<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
    |                               ++++++

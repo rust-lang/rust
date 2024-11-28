@@ -53,7 +53,7 @@ note: required by a bound in `Super`
    |
 LL | trait Super<T: Copy> { }
    |                ^^^^ required by this bound in `Super`
-help: consider further restricting type parameter `T`
+help: consider further restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | trait Base<T = String>: Super<T> where T: std::marker::Copy { }
    |                                  ++++++++++++++++++++++++++

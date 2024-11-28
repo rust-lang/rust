@@ -9,7 +9,7 @@ pub trait Unstable {}
 fn foo<T: Unstable>(_: T) {}
 
 #[stable(feature = "unit_test", since = "1.0.0")]
-pub fn demo<T>(t: T) { //~ HELP consider restricting type parameter `T` but it is an `unstable` trait
+pub fn demo<T>(t: T) { //~ HELP consider restricting type parameter `T` with unstable trait `Unstable`
     foo(t) //~ ERROR E0277
 }
 fn main() {}

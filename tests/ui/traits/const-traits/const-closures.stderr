@@ -61,7 +61,7 @@ LL |     f() + f()
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const Fn()`
    |
 LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
    |                                      +++++++++++++
@@ -73,7 +73,7 @@ LL |     f() + f()
    |           ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const Fn()`
    |
 LL | const fn answer<F: ~const Fn() -> u8 + ~const Fn()>(f: &F) -> u8 {
    |                                      +++++++++++++
@@ -85,7 +85,7 @@ LL |     f() * 7
    |     ^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const Fn()`
    |
 LL |         F: ~const FnOnce() -> u8 + ~const Fn(),
    |                                  +++++++++++++

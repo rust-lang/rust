@@ -19,7 +19,7 @@ LL |     x(())
    |     ^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `~const FnOnce(())`
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32 + ~const FnOnce(())>(x: T) -> i32 {
    |                                                         +++++++++++++++++++

@@ -12,7 +12,7 @@ LL |
 LL |     drop(cloned_items);
    |          ------------ immutable borrow later used here
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Clone`
    |
 LL | fn foo<T: Default + Clone>(list: &mut Vec<T>) {
    |                   +++++++
@@ -39,7 +39,7 @@ LL | fn bar<T: std::fmt::Display>(x: T) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     let a = &x;
    |              - you could clone this value
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Clone`
    |
 LL | fn bar<T: std::fmt::Display + Clone>(x: T) {
    |                             +++++++

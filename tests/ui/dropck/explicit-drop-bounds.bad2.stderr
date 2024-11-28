@@ -9,7 +9,7 @@ note: required by a bound in `DropMe`
    |
 LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | impl<T: std::marker::Copy> Drop for DropMe<T>
    |       +++++++++++++++++++
@@ -25,7 +25,7 @@ note: required by a bound in `DropMe`
    |
 LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | impl<T: std::marker::Copy> Drop for DropMe<T>
    |       +++++++++++++++++++

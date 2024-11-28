@@ -12,7 +12,7 @@ LL |     fn unsatisfied(self)
 LL |     where
 LL |         T: Bar<N>,
    |            ^^^^^^ required by this bound in `Foo::<T, N>::unsatisfied`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Bar<N>`
    |
 LL | impl<T: Bar<N>, const N: usize> Foo<T, N> {
    |       ++++++++

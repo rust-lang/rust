@@ -9,7 +9,7 @@ note: captured value is not `Send`
    |
 LL |     async { (ty, ty1) }
    |                  ^^^ has type `U` which is not `Send`
-help: consider restricting type parameter `U`
+help: consider restricting type parameter `U` with trait `std::marker::Send`
    |
 LL | fn foo<T: Send, U: std::marker::Send>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
    |                  +++++++++++++++++++

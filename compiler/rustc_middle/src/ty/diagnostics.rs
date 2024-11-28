@@ -171,7 +171,7 @@ enum SuggestChangingConstraintsMessage<'a> {
 
 fn suggest_changing_unsized_bound(
     generics: &hir::Generics<'_>,
-    suggestions: &mut Vec<(Span, String, SuggestChangingConstraintsMessage<'_>)>,
+    suggestions: &mut Vec<(Span, String, String, SuggestChangingConstraintsMessage<'_>)>,
     param: &hir::GenericParam<'_>,
     def_id: Option<DefId>,
 ) {
@@ -206,7 +206,8 @@ fn suggest_changing_unsized_bound(
             continue;
         }
 
-        let mut push_suggestion = |sp, msg| suggestions.push((sp, String::new(), msg));
+        let mut push_suggestion =
+            |sp, msg| suggestions.push((sp, "Sized".to_string(), String::new(), msg));
 
         if predicate.bounds.len() == unsized_bounds.len() {
             // All the bounds are unsized bounds, e.g.
@@ -348,10 +349,20 @@ pub fn suggest_constraining_type_params<'a>(
             use SuggestChangingConstraintsMessage::RestrictBoundFurther;
 
             if let Some(open_paren_sp) = open_paren_sp {
-                suggestions.push((open_paren_sp, "(".to_string(), RestrictBoundFurther));
-                suggestions.push((span, format!("){suggestion}"), RestrictBoundFurther));
+                suggestions.push((
+                    open_paren_sp,
+                    constraint.clone(),
+                    "(".to_string(),
+                    RestrictBoundFurther,
+                ));
+                suggestions.push((
+                    span,
+                    constraint.clone(),
+                    format!("){suggestion}"),
+                    RestrictBoundFurther,
+                ));
             } else {
-                suggestions.push((span, suggestion, RestrictBoundFurther));
+                suggestions.push((span, constraint.clone(), suggestion, RestrictBoundFurther));
             }
         };
 
@@ -409,6 +420,7 @@ pub fn suggest_constraining_type_params<'a>(
             //                                           - insert: `, X: Bar`
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
+                constraint.clone(),
                 constraints.iter().fold(String::new(), |mut string, &(constraint, _)| {
                     write!(string, ", {param_name}: {constraint}").unwrap();
                     string
@@ -438,6 +450,7 @@ pub fn suggest_constraining_type_params<'a>(
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
+                constraint.clone(),
                 format!("{where_prefix} {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
@@ -451,6 +464,7 @@ pub fn suggest_constraining_type_params<'a>(
         if let Some(colon_span) = param.colon_span {
             suggestions.push((
                 colon_span.shrink_to_hi(),
+                constraint.clone(),
                 format!(" {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
             ));
@@ -463,6 +477,7 @@ pub fn suggest_constraining_type_params<'a>(
         //          - help: consider restricting this type parameter with `T: Foo`
         suggestions.push((
             param.span.shrink_to_hi(),
+            constraint.clone(),
             format!(": {constraint}"),
             SuggestChangingConstraintsMessage::RestrictType { ty: param_name },
         ));
@@ -471,12 +486,16 @@ pub fn suggest_constraining_type_params<'a>(
     // FIXME: remove the suggestions that are from derive, as the span is not correct
     suggestions = suggestions
         .into_iter()
-        .filter(|(span, _, _)| !span.in_derive_expansion())
+        .filter(|(span, _, _, _)| !span.in_derive_expansion())
         .collect::<Vec<_>>();
 
     if suggestions.len() == 1 {
-        let (span, suggestion, msg) = suggestions.pop().unwrap();
-        let post = if unstable_suggestion { " but it is an `unstable` trait" } else { "" };
+        let (span, constraint, suggestion, msg) = suggestions.pop().unwrap();
+        let post = format!(
+            " with {}trait{} `{constraint}`",
+            if unstable_suggestion { "unstable " } else { "" },
+            if constraint.contains('+') { "s" } else { "" },
+        );
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
                 format!("consider further restricting this bound{post}")
@@ -488,21 +507,19 @@ pub fn suggest_constraining_type_params<'a>(
                 format!("consider further restricting type parameter `{ty}`{post}")
             }
             SuggestChangingConstraintsMessage::RemoveMaybeUnsized => {
-                format!(
-                    "consider removing the `?Sized` bound to make the type parameter `Sized`{post}"
-                )
+                format!("consider removing the `?Sized` bound to make the type parameter `Sized`")
             }
             SuggestChangingConstraintsMessage::ReplaceMaybeUnsizedWithSized => {
-                format!("consider replacing `?Sized` with `Sized`{post}")
+                format!("consider replacing `?Sized` with `Sized`")
             }
         };
 
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
     } else if suggestions.len() > 1 {
-        let post = if unstable_suggestion { " but some of them are `unstable` traits" } else { "" };
+        let post = if unstable_suggestion { " (some of them are unstable traits)" } else { "" };
         err.multipart_suggestion_verbose(
             format!("consider restricting type parameters{post}"),
-            suggestions.into_iter().map(|(span, suggestion, _)| (span, suggestion)).collect(),
+            suggestions.into_iter().map(|(span, _, suggestion, _)| (span, suggestion)).collect(),
             applicability,
         );
     }

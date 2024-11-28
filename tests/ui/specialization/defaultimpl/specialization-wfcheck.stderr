@@ -19,7 +19,7 @@ note: required by a bound in `Foo`
    |
 LL | trait Foo<'a, T: Eq + 'a> { }
    |                  ^^ required by this bound in `Foo`
-help: consider restricting type parameter `U`
+help: consider restricting type parameter `U` with trait `std::cmp::Eq`
    |
 LL | default impl<U: std::cmp::Eq> Foo<'static, U> for () {}
    |               ++++++++++++++

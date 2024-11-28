@@ -11,7 +11,7 @@ note: required by a bound in `Bar::bar`
    |
 LL |     fn bar<T:Send>(&self);
    |              ^^^^ required by this bound in `Bar::bar`
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `std::marker::Send`
    |
 LL | fn foo<T:'static + std::marker::Send>() {
    |                  +++++++++++++++++++

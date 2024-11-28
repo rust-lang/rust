@@ -7,7 +7,7 @@ LL | |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
    | |______________________________________________^ the trait `Foo` is not implemented for `Bug`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Foo`
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
@@ -24,7 +24,7 @@ LL | |
 LL | | }
    | |_^ the trait `Foo` is not implemented for `Bug`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Foo`
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
@@ -38,7 +38,7 @@ LL | |         &self,
 LL | |     ) -> Self::AssocType;
    | |_________________________^ the trait `Foo` is not implemented for `Bug`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Foo`
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
@@ -61,7 +61,7 @@ error[E0277]: the trait bound `Bug: Foo` is not satisfied
 LL |     ) -> Self::AssocType;
    |          ^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Foo`
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++

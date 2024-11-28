@@ -20,7 +20,7 @@ LL |     x
    |     - you could clone this value
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {
    |                                  ++++++
@@ -40,7 +40,7 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     x.clone()
    |      ++++++++
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Copy`
    |
 LL | fn move_then_borrow<T: Add<Output=()> + Clone + Copy>(x: T) {
    |                                               ++++++

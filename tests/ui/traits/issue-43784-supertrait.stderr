@@ -14,7 +14,7 @@ note: required by a bound in `Complete`
    |
 LL | pub trait Complete: Partial {
    |                     ^^^^^^^ required by this bound in `Complete`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `std::marker::Copy`
    |
 LL | impl<T: std::marker::Copy> Complete for T {}
    |       +++++++++++++++++++

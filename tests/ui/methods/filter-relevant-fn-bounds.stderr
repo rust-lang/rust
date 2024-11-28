@@ -8,7 +8,7 @@ LL | |     where
 LL | |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    | |___________________________________________________^ the trait `for<'a> Output<'a>` is not implemented for `F`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `for<'a> Output<'a>`
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
@@ -19,7 +19,7 @@ error[E0277]: the trait bound `for<'a> F: Output<'a>` is not satisfied
 LL |     fn do_something_wrapper<O, F>(self, _: F)
    |        ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Output<'a>` is not implemented for `F`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `for<'a> Output<'a>`
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
@@ -30,7 +30,7 @@ error[E0277]: the trait bound `F: Output<'_>` is not satisfied
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Output<'_>` is not implemented for `F`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Output<'_>`
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + Output<'_>,
    |                                                    ++++++++++++
@@ -41,7 +41,7 @@ error[E0277]: the trait bound `F: Output<'_>` is not satisfied
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type),
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Output<'_>` is not implemented for `F`
    |
-help: consider further restricting this bound
+help: consider further restricting this bound with trait `Output<'_>`
    |
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + Output<'_>,
    |                                                    ++++++++++++
