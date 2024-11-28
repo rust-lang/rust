@@ -25,7 +25,7 @@ use crate::html::markdown::IdMap;
 use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::passes::{self, Condition};
-use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
+use crate::scrape_examples::{AllCallLocations, AllExampleFiles, ScrapeExamplesOptions};
 use crate::{html, opts, theme};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -287,6 +287,8 @@ pub(crate) struct RenderOptions {
     pub(crate) generate_link_to_definition: bool,
     /// Set of function-call locations to include as examples
     pub(crate) call_locations: AllCallLocations,
+    /// Set of function-call locations to include as examples
+    pub(crate) examples_files: AllExampleFiles,
     /// If `true`, Context::init will not emit shared files.
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
@@ -773,7 +775,8 @@ impl Options {
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
+        let (call_locations, examples_files) =
+            crate::scrape_examples::load_call_locations(with_examples, dcx);
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
@@ -846,6 +849,7 @@ impl Options {
             emit,
             generate_link_to_definition,
             call_locations,
+            examples_files,
             no_emit_shared: false,
             html_no_source,
             output_to_stdout,

@@ -1,4 +1,8 @@
+mod sub;
+
 fn main() {
+    sub::foo();
+
     for i in 0..9 {
         println!("hello world!");
         println!("hello world!");
