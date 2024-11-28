@@ -476,9 +476,14 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
 
         // Allocate stack slots for saving clobbered registers
-        let abi_clobber = InlineAsmClobberAbi::parse(self.arch, &self.tcx.sess.target, sym::C)
-            .unwrap()
-            .clobbered_regs();
+        let abi_clobber = InlineAsmClobberAbi::parse(
+            self.arch,
+            &self.tcx.sess.target,
+            &self.tcx.sess.unstable_target_features,
+            sym::C,
+        )
+        .unwrap()
+        .clobbered_regs();
         for (i, reg) in self.registers.iter().enumerate().filter_map(|(i, r)| r.map(|r| (i, r))) {
             let mut need_save = true;
             // If the register overlaps with a register clobbered by function call, then
