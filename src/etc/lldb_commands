@@ -1,4 +1,24 @@
-type synthetic add -l lldb_lookup.synthetic_lookup -x ".*" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)String$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?str$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?\\[.+\\]$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Vec<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)VecDeque<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)BTreeSet<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)BTreeMap<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::collections::([a-z_]+::)+)HashMap<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::collections::([a-z_]+::)+)HashSet<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Rc<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)Arc<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)Cell<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)Ref<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)RefMut<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)RefCell<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)NonZero<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::([a-z_]+::)+)PathBuf$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
+type summary add -F _ -e -x -h "^.*$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?\\[.+\\]$" --category Rust
