@@ -2,7 +2,8 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
+    DirBuilder, File, FileType, Metadata, OpenOptions, ReadDir, read_dir, remove_dir, remove_file,
+    rename,
 };
 use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -98,6 +99,10 @@ impl FileDescription for FileHandle {
             drop(*self);
             interp_ok(Ok(()))
         }
+    }
+
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+        interp_ok(self.file.metadata())
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -1698,16 +1703,7 @@ impl FileMetadata {
             return interp_ok(Err(LibcError("EBADF")));
         };
 
-        let file = &fd
-            .downcast::<FileHandle>()
-            .ok_or_else(|| {
-                err_unsup_format!(
-                    "obtaining metadata is only supported on file-backed file descriptors"
-                )
-            })?
-            .file;
-
-        let metadata = file.metadata();
+        let metadata = fd.metadata()?;
         drop(fd);
         FileMetadata::from_meta(ecx, metadata)
     }

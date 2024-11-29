@@ -1,9 +1,9 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::io;
 use std::io::{IsTerminal, Read, SeekFrom, Write};
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
+use std::{fs, io};
 
 use rustc_abi::Size;
 
@@ -60,6 +60,10 @@ pub trait FileDescription: std::fmt::Debug + Any {
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         throw_unsup_format!("cannot close {}", self.name());
+    }
+
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<fs::Metadata>> {
+        throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");
     }
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
@@ -273,8 +277,8 @@ impl VisitProvenance for WeakFileDescriptionRef {
 
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
-/// for sorting things. So instead we generate a unique id per file description that stays
-/// the same even if a file descriptor is duplicated and gets a new integer file descriptor.
+/// for sorting things. So instead we generate a unique id per file description is the name
+/// for all `dup`licates and is never reused.
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FdId(usize);
 
