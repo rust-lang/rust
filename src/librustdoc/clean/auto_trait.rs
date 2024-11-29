@@ -2,6 +2,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Region, Ty};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Symbol, kw};
@@ -182,7 +183,7 @@ fn clean_param_env<'tcx>(
                     .is_some_and(|pred| tcx.lang_items().sized_trait() == Some(pred.def_id()))
         })
         .map(|pred| {
-            tcx.fold_regions(pred, |r, _| match *r {
+            fold_regions(tcx, pred, |r, _| match *r {
                 // FIXME: Don't `unwrap_or`, I think we should panic if we encounter an infer var that
                 // we can't map to a concrete region. However, `AutoTraitFinder` *does* leak those kinds
                 // of `ReVar`s for some reason at the time of writing. See `rustdoc-ui/` tests.
