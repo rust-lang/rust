@@ -5,8 +5,7 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::{FdId, FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::*;
+use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::*;
 
 /// An `Epoll` file descriptor connects file handles and epoll events

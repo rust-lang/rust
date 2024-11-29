@@ -11,12 +11,10 @@ use std::time::SystemTime;
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
-use self::fd::FlockOp;
 use self::shims::time::system_time_to_duration;
 use crate::helpers::check_min_arg_count;
+use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef, FlockOp};
 use crate::shims::os_str::bytes_to_os_str;
-use crate::shims::unix::fd::FileDescriptionRef;
-use crate::shims::unix::*;
 use crate::*;
 
 #[derive(Debug)]
