@@ -1,0 +1,20 @@
+error: expected one of `extern` or `fn`, found keyword `unsafe`
+  --> $DIR/incompatible-safe-unsafe-keywords-extern-fn-in-extern-block.rs:7:14
+   |
+LL | unsafe extern {
+   |               - while parsing this item list starting here
+LL |
+LL |     pub safe unsafe extern fn foo() {}
+   |              ^^^^^^ expected one of `extern` or `fn`
+...
+LL | }
+   | - the item list ends here
+   |
+help: `safe` and `unsafe` are incompatible, use only one of the keywords
+  --> $DIR/incompatible-safe-unsafe-keywords-extern-fn-in-extern-block.rs:7:9
+   |
+LL |     pub safe unsafe extern fn foo() {}
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

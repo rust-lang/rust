@@ -2620,6 +2620,8 @@ impl<'a> Parser<'a> {
                     enum WrongKw {
                         Duplicated(Span),
                         Misplaced(Span),
+                        // E.g. `safe` *and* `unsafe`
+                        Incompatible { first: Span, second: Span },
                     }
 
                     // We may be able to recover
@@ -2666,8 +2668,8 @@ impl<'a> Parser<'a> {
                         match safety {
                             Safety::Unsafe(sp) => Some(WrongKw::Duplicated(sp)),
                             Safety::Safe(sp) => {
-                                recover_safety = Safety::Unsafe(self.token.span);
-                                Some(WrongKw::Misplaced(sp))
+                                // `safe unsafe` -- well which one is it?
+                                Some(WrongKw::Incompatible { first: sp, second: self.token.span })
                             }
                             Safety::Default => {
                                 recover_safety = Safety::Unsafe(self.token.span);
@@ -2678,8 +2680,8 @@ impl<'a> Parser<'a> {
                         match safety {
                             Safety::Safe(sp) => Some(WrongKw::Duplicated(sp)),
                             Safety::Unsafe(sp) => {
-                                recover_safety = Safety::Safe(self.token.span);
-                                Some(WrongKw::Misplaced(sp))
+                                // `unsafe safe` -- well which one is it?
+                                Some(WrongKw::Incompatible { first: sp, second: self.token.span })
                             }
                             Safety::Default => {
                                 recover_safety = Safety::Safe(self.token.span);
@@ -2717,6 +2719,17 @@ impl<'a> Parser<'a> {
                                     format!("{misplaced_qual} {current_qual}"),
                                     Applicability::MachineApplicable,
                                 ).note("keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`");
+                        }
+                    }
+                    // The user wrote incompatible keywords like `safe unsafe` or `unsafe safe`
+                    else if let Some(WrongKw::Incompatible { first, second }) = wrong_kw {
+                        if let Ok(first_kw) = self.span_to_snippet(first)
+                            && let Ok(second_kw) = self.span_to_snippet(second)
+                        {
+                            err.span_help(
+                                first.to(second),
+                                format!("`{first_kw}` and `{second_kw}` are incompatible, use only one of the keywords"),
+                            );
                         }
                     }
                     // Recover incorrect visibility order such as `async pub`
