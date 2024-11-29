@@ -202,6 +202,21 @@ pub fn futex_wake_all(futex: &AtomicU32) {
     }
 }
 
+/// Wakes one waiter on `futex` and requeue the remaining waiters to `futex2`.
+#[cfg(target_os = "openbsd")]
+pub fn futex_requeue(futex: &AtomicU32, futex2: &AtomicU32) {
+    use crate::ptr::null;
+    unsafe {
+        libc::futex(
+            futex as *const AtomicU32 as *mut u32,
+            libc::FUTEX_REQUEUE,
+            1,
+            null::<libc::timespec>().with_addr(i32::MAX as usize),
+            futex2 as *const AtomicU32 as *mut u32,
+        );
+    }
+}
+
 #[cfg(target_os = "dragonfly")]
 pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
     // A timeout of 0 means infinite.
