@@ -62,6 +62,7 @@ use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{VarNeedNotMut,VarNeedsMut};
+use crate::borrowck_errors::BError;
 
 mod borrow_set;
 mod borrowck_errors;
@@ -2195,7 +2196,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 bug!("Re-assignment of locals should be non-fatal");
             }
 
-            self.report_mutability_error(place, span, the_place_err, error_access, location);
+            self.report_mutability_error::<BError>(
+                place, span, the_place_err, error_access, location);
             true
         } else {
             false
@@ -2265,6 +2267,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             // at this point, we have set up the error reporting state.
             if let Some(init_index) = previously_initialized {
+/*
                 let local_decl = &self.body.local_decls[place.local];
                 if let ClearCrossCrate::Set(SourceScopeLocalData{ lint_root, .. })
                     = self.body.source_scopes[local_decl.source_info.scope].local_data
@@ -2274,17 +2277,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     self.tcx.emit_node_span_lint(MUT_NON_MUT,
                         lint_root, local_decl.source_info.span, VarNeedsMut{});
                 }
-/*
+*/
+
                 if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                     // If this is a mutate access to an immutable local variable with no projections
                     // report the error as an illegal reassignment
                     let init = &self.move_data.inits[init_index];
                     let assigned_span = init.span(self.body);
-                    self.report_illegal_reassignment((place, span), assigned_span, place);
+                    let err = self.report_illegal_reassignment((place, span), assigned_span, place);
+                    self.buffer_non_error(err);
                 } else {
-                    self.report_mutability_error(place, span, the_place_err, error_access, location, false);
+                    self.report_mutability_error::<BError>(
+                        place, span, the_place_err, error_access, location);
                 }
-*/
             }
         }
     }

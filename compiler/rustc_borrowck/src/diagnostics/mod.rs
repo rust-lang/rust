@@ -1,7 +1,7 @@
 //! Borrow checker diagnostics.
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
@@ -626,9 +626,9 @@ impl UseSpans<'_> {
 
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub(super) fn var_subdiag(
+    pub(super) fn var_subdiag<G: EmissionGuarantee>(
         self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(hir::ClosureKind, Span) -> CaptureVarCause,
     ) {

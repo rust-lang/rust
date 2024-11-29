@@ -3707,10 +3707,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn suggest_derive(
+    pub fn suggest_derive<G: EmissionGuarantee>(
         &self,
         obligation: &PredicateObligation<'tcx>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
         if trait_pred.polarity() == ty::PredicatePolarity::Negative {

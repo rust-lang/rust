@@ -2,11 +2,66 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Diag,
+    DiagCtxtHandle, DiagMessage,
+    ErrorGuaranteed, MultiSpan,
+    struct_span_code_err, struct_span_code_warn
+};
 use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+
+pub(crate) trait BorrowckDiag {
+    type Guarantee: rustc_errors::EmissionGuarantee;
+
+    fn take_existing<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, span: Span)
+        -> Option<(Diag<'infcx, Self::Guarantee>, usize)>;
+
+    fn struct_span_diag<'a>(cx: DiagCtxtHandle<'a>, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>)
+        -> Diag<'a, Self::Guarantee>;
+
+    fn buffer_error<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, err: Diag<'infcx, Self::Guarantee>);
+
+    fn buffer_mut_error<'infcx>(
+        cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>,
+        span: Span, diag: Diag<'infcx, Self::Guarantee>, count: usize);
+}
+
+pub(crate) struct BError;
+impl BorrowckDiag for BError {
+    type Guarantee = ErrorGuaranteed;
+    fn take_existing<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, span: Span)
+        -> Option<(Diag<'infcx>, usize)>
+    {
+        cx.get_buffered_mut_error(span)
+    }
+
+    fn struct_span_diag<'a>(cx: DiagCtxtHandle<'a>, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>)
+        -> Diag<'a, Self::Guarantee>
+    {
+        cx.struct_span_err(span, msg)
+    }
+
+    fn buffer_error<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, err: Diag<'infcx, Self::Guarantee>){
+        cx.buffer_error(err);
+    }
+
+    fn buffer_mut_error<'infcx>(
+        cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>,
+        span: Span, diag: Diag<'infcx, Self::Guarantee>, count: usize)
+    {
+        cx.buffer_mut_error(span, diag, count);
+    }
+}
+
+#[macro_export]
+macro_rules! struct_span_code_diag {
+    ($t:ty, $dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
+        <$t>::struct_span_diag($dcx, $span, format!($($message)*)).with_code($code)
+    })
+}
 
 impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'infcx> {
@@ -258,13 +313,13 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         span: Span,
         desc: &str,
         is_arg: bool,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'infcx, ()> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_code_err!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
+        struct_span_code_warn!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
     }
 
-    pub(crate) fn cannot_assign(&self, span: Span, desc: &str) -> Diag<'infcx> {
-        struct_span_code_err!(self.dcx(), span, E0594, "cannot assign to {}", desc)
+    pub(crate) fn cannot_assign<T: BorrowckDiag>(&self, span: Span, desc: &str) -> Diag<'infcx, T::Guarantee> {
+        struct_span_code_diag!(T, self.dcx(), span, E0594, "cannot assign to {}", desc)
     }
 
     pub(crate) fn cannot_move_out_of(
@@ -341,13 +396,14 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         )
     }
 
-    pub(crate) fn cannot_borrow_path_as_mutable_because(
+    pub(crate) fn cannot_borrow_path_as_mutable_because<T: BorrowckDiag>(
         &self,
         span: Span,
         path: &str,
         reason: &str,
-    ) -> Diag<'infcx> {
-        struct_span_code_err!(
+    ) -> Diag<'infcx, T::Guarantee> {
+        struct_span_code_diag!(
+            T,
             self.dcx(),
             span,
             E0596,

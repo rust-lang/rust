@@ -3856,7 +3856,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         assigned_span: Span,
         err_place: Place<'tcx>,
-    ) {
+    ) -> Diag<'infcx, ()> {
         let (from_arg, local_decl) = match err_place.as_local() {
             Some(local) => {
                 (self.body.local_kind(local) == LocalKind::Arg, Some(&self.body.local_decls[local]))
@@ -3884,11 +3884,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             Some(decl) => (self.describe_any_place(err_place.as_ref()), decl.source_info.span),
         };
         let mut err = self.cannot_reassign_immutable(span, &place_description, from_arg);
-        let msg = if from_arg {
-            "cannot assign to immutable argument"
-        } else {
-            "cannot assign twice to immutable variable"
-        };
         if span != assigned_span && !from_arg {
             err.span_label(assigned_span, format!("first assignment to {place_description}"));
         }
@@ -3918,8 +3913,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 );
             }
         }
+        let msg =
+            if from_arg { "cannot assign to immutable argument" }
+            else        { "cannot assign twice to immutable variable" };
         err.span_label(span, msg);
-        self.buffer_error(err);
+        err
     }
 
     fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {

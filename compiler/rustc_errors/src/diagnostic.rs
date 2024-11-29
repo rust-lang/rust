@@ -1397,3 +1397,10 @@ macro_rules! struct_span_code_err {
         $dcx.struct_span_err($span, format!($($message)*)).with_code($code)
     })
 }
+
+#[macro_export]
+macro_rules! struct_span_code_warn {
+    ($dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
+        $dcx.struct_span_warn($span, format!($($message)*)).with_code($code)
+    })
+}

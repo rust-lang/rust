@@ -5,7 +5,7 @@ use core::ops::ControlFlow;
 
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
@@ -21,6 +21,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use tracing::debug;
+use crate::borrowck_errors::BorrowckDiag;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;
@@ -33,7 +34,7 @@ pub(crate) enum AccessKind {
 }
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
-    pub(crate) fn report_mutability_error(
+    pub(crate) fn report_mutability_error<T: BorrowckDiag>(
         &mut self,
         access_place: Place<'tcx>,
         span: Span,
@@ -48,7 +49,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             access_place, span, the_place_err, error_access, location,
         );
 
-        let mut err;
+        let mut err: Diag<'_, T::Guarantee>;
         let item_msg;
         let reason;
         let mut opt_source = None;
@@ -185,7 +186,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let span = match error_access {
             AccessKind::Mutate => {
-                err = self.cannot_assign(span, &(item_msg + &reason));
+                err = self.cannot_assign::<T>(span, &(item_msg + &reason));
                 act = "assign";
                 acted_on = "written";
                 span
@@ -202,7 +203,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     {
                         let span = self.body.local_decls[local].source_info.span;
                         mut_error = Some(span);
-                        if let Some((buffered_err, c)) = self.get_buffered_mut_error(span) {
+                        if let Some((buffered_err, c)) = T::take_existing(self, span) {
                             // We've encountered a second (or more) attempt to mutably borrow an
                             // immutable binding, so the likely problem is with the binding
                             // declaration, not the use. We collect these in a single diagnostic
@@ -215,7 +216,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             }
                             suggest = false;
                         } else {
-                            err = self.cannot_borrow_path_as_mutable_because(
+                            err = self.cannot_borrow_path_as_mutable_because::<T>(
                                 borrow_span,
                                 &item_msg,
                                 &reason,
@@ -223,7 +224,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         }
                     }
                     _ => {
-                        err = self.cannot_borrow_path_as_mutable_because(
+                        err = self.cannot_borrow_path_as_mutable_because::<T>(
                             borrow_span,
                             &item_msg,
                             &reason,
@@ -376,10 +377,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     err.span_label(span, format!("cannot {act}"));
                 }
                 if suggest {
-                    self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
+                    self.construct_mut_suggestion_for_local_binding_patterns::<T>(&mut err, local);
                     let tcx = self.infcx.tcx;
                     if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
-                        self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
+                        self.show_mutating_upvar::<T>(tcx, id.expect_local(), the_place_err, &mut err);
                     }
                 }
             }
@@ -434,7 +435,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
                     && let ty::Closure(id, _) = *ty.kind()
                 {
-                    self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
+                    self.show_mutating_upvar::<T>(tcx, id.expect_local(), the_place_err, &mut err);
                 }
             }
 
@@ -491,8 +492,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             ),
                         );
 
-                        self.suggest_using_iter_mut(&mut err);
-                        self.suggest_make_local_mut(&mut err, local, name);
+                        self.suggest_using_iter_mut::<T>(&mut err);
+                        self.suggest_make_local_mut::<T>(&mut err, local, name);
                     }
                     _ => {
                         err.span_label(
@@ -506,7 +507,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if local == ty::CAPTURE_STRUCT_LOCAL && !self.upvars.is_empty() =>
             {
-                self.expected_fn_found_fn_mut_call(&mut err, span, act);
+                self.expected_fn_found_fn_mut_call::<T>(&mut err, span, act);
             }
 
             PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
@@ -524,7 +525,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             "trait `IndexMut` is required to modify indexed content, \
                              but it is not implemented for `{ty}`",
                         ));
-                        self.suggest_map_index_mut_alternatives(ty, &mut err, span);
+                        self.suggest_map_index_mut_alternatives::<T>(ty, &mut err, span);
                     }
                     _ => (),
                 }
@@ -536,14 +537,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         if let Some(span) = mut_error {
-            self.buffer_mut_error(span, err, count);
+            T::buffer_mut_error(self, span, err, count);
         } else {
-            self.buffer_error(err);
+            T::buffer_error(self, err);
         }
     }
 
     /// Suggest `map[k] = v` => `map.insert(k, v)` and the like.
-    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'infcx>, span: Span) {
+    fn suggest_map_index_mut_alternatives<T: BorrowckDiag>(
+        &self, ty: Ty<'tcx>, err: &mut Diag<'infcx, T::Guarantee>, span: Span
+    ) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -552,13 +555,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             /// Walks through the HIR, looking for the corresponding span for this error.
             /// When it finds it, see if it corresponds to assignment operator whose LHS
             /// is an index expr.
-            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx, G: EmissionGuarantee> {
                 assign_span: Span,
-                err: &'a mut Diag<'infcx>,
+                err: &'a mut Diag<'infcx, G>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
-            impl<'a, 'infcx, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
+            impl<'a, 'infcx, 'tcx, G: EmissionGuarantee> Visitor<'tcx>
+            for SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx, G> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
@@ -721,9 +725,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         )
     }
 
-    fn construct_mut_suggestion_for_local_binding_patterns(
+    fn construct_mut_suggestion_for_local_binding_patterns<T: BorrowckDiag>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, T::Guarantee>,
         local: Local,
     ) {
         let local_decl = &self.body.local_decls[local];
@@ -781,12 +785,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     // point to span of upvar making closure call require mutable borrow
-    fn show_mutating_upvar(
+    fn show_mutating_upvar<T: BorrowckDiag>(
         &self,
         tcx: TyCtxt<'_>,
         closure_local_def_id: hir::def_id::LocalDefId,
         the_place_err: PlaceRef<'tcx>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, T::Guarantee>,
     ) {
         let tables = tcx.typeck(closure_local_def_id);
         if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
@@ -849,7 +853,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diag<'_>, span: Span) {
+    fn suggest_similar_mut_method_for_for_loop<T: BorrowckDiag>(
+        &self, err: &mut Diag<'_, T::Guarantee>, span: Span
+    ) {
         use hir::ExprKind::{AddrOf, Block, Call, MethodCall};
         use hir::{BorrowKind, Expr};
 
@@ -930,7 +936,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call<T: BorrowckDiag>(&self, err: &mut Diag<'_, T::Guarantee>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
 
         let hir = self.infcx.tcx.hir();
@@ -1041,7 +1047,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
+    fn suggest_using_iter_mut<T: BorrowckDiag>(&self, err: &mut Diag<'_, T::Guarantee>) {
         let source = self.body.source;
         let hir = self.infcx.tcx.hir();
         if let InstanceKind::Item(def_id) = source.instance
@@ -1082,7 +1088,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn suggest_make_local_mut(&self, err: &mut Diag<'_>, local: Local, name: Symbol) {
+    fn suggest_make_local_mut<T: BorrowckDiag>(
+        &self, err: &mut Diag<'_, T::Guarantee>, local: Local, name: Symbol
+    ) {
         let local_decl = &self.body.local_decls[local];
 
         let (pointer_sigil, pointer_desc) =
@@ -1134,7 +1142,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // on for loops, RHS points to the iterator part
                     Some(DesugaringKind::ForLoop) => {
                         let span = opt_assignment_rhs_span.unwrap();
-                        self.suggest_similar_mut_method_for_for_loop(err, span);
+                        self.suggest_similar_mut_method_for_for_loop::<T>(err, span);
                         err.span_label(
                             span,
                             format!("this iterator yields `{pointer_sigil}` {pointer_desc}s",),
