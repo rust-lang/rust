@@ -17,6 +17,7 @@ use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
 use crate::mir;
+use crate::ty::fold::fold_regions;
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
 rustc_index::newtype_index! {
@@ -315,7 +316,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     /// All regions of `ty` must be of kind `ReVar` and must represent
     /// universal regions *external* to the closure.
     pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
+        let inner = fold_regions(tcx, ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::new(vid.index()),
@@ -334,7 +335,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
-        tcx.fold_regions(self.inner, |r, depth| match r.kind() {
+        fold_regions(tcx, self.inner, |r, depth| match r.kind() {
             ty::ReBound(debruijn, br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::new(br.var.index()))

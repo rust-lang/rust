@@ -21,6 +21,7 @@ use tracing::{debug, instrument};
 use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::Providers;
+use crate::ty::fold::fold_regions;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
@@ -735,7 +736,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|decl| !decl.ignore_for_traits)
             .map(move |decl| {
                 let mut vars = vec![];
-                let ty = self.fold_regions(decl.ty, |re, debruijn| {
+                let ty = fold_regions(self, decl.ty, |re, debruijn| {
                     assert_eq!(re, self.lifetimes.re_erased);
                     let var = ty::BoundVar::from_usize(vars.len());
                     vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));

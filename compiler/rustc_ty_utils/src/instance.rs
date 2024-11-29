@@ -149,7 +149,8 @@ fn resolve_associated_item<'tcx>(
                 // get a result which isn't correct for all monomorphizations.
                 match typing_env.typing_mode {
                     ty::TypingMode::Coherence
-                    | ty::TypingMode::Analysis { defining_opaque_types: _ } => false,
+                    | ty::TypingMode::Analysis { .. }
+                    | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
                     ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
                 }
             };

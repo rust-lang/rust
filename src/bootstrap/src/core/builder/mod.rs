@@ -258,11 +258,11 @@ impl PathSet {
 
     // internal use only
     fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        if let Some(p_kind) = &p.kind {
-            p.path.ends_with(needle) && *p_kind == module
-        } else {
-            p.path.ends_with(needle)
-        }
+        let check_path = || {
+            // This order is important for retro-compatibility, as `starts_with` was introduced later.
+            p.path.ends_with(needle) || p.path.starts_with(needle)
+        };
+        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -1262,7 +1262,7 @@ impl<'a> Builder<'a> {
     pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
         match self.config.libdir_relative() {
             Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-            _ if compiler.stage == 0 => &self.build.initial_libdir,
+            _ if compiler.stage == 0 => &self.build.initial_relative_libdir,
             _ => Path::new("lib"),
         }
     }

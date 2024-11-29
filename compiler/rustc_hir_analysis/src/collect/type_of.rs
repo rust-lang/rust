@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::plumbing::CyclePlaceholder;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -113,7 +114,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         // so no need for ConstArg.
         Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
             let ty = tcx.typeck(def_id).node_type(tcx.local_def_id_to_hir_id(def_id));
-            let ty = tcx.fold_regions(ty, |r, _| {
+            let ty = fold_regions(tcx, ty, |r, _| {
                 if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
             });
             let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {

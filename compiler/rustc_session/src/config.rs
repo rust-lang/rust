@@ -1208,7 +1208,7 @@ impl Options {
 
     /// Returns `true` if there will be an output file generated.
     pub fn will_create_output_file(&self) -> bool {
-        !self.unstable_opts.parse_only && // The file is just being parsed
+        !self.unstable_opts.parse_crate_root_only && // The file is just being parsed
             self.unstable_opts.ls.is_empty() // The file is just being queried
     }
 
@@ -1864,7 +1864,7 @@ fn parse_output_types(
     matches: &getopts::Matches,
 ) -> OutputTypes {
     let mut output_types = BTreeMap::new();
-    if !unstable_opts.parse_only {
+    if !unstable_opts.parse_crate_root_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
                 let (shorthand, path) = split_out_file_name(output_type);
