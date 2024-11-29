@@ -1,8 +1,9 @@
 cfg_if::cfg_if! {
-    if #[cfg(any(
+    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+        mod futex_requeue;
+        pub use futex_requeue::Condvar;
+    } else if #[cfg(any(
         all(target_os = "windows", not(target_vendor="win7")),
-        target_os = "linux",
-        target_os = "android",
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "dragonfly",
