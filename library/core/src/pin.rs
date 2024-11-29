@@ -373,9 +373,9 @@
 //! exactly what we did with our `AddrTracker` example above. Without doing this, you *must not*
 //! rely on pinning-related guarantees to apply to your type!
 //!
-//! If need to truly pin a value of a foreign or built-in type that implements [`Unpin`], you'll
-//! need to create your own wrapper type around the [`Unpin`] type you want to pin and then
-//! opts-out of [`Unpin`] using [`PhantomPinned`].
+//! If you really need to pin a value of a foreign or built-in type that implements [`Unpin`],
+//! you'll need to create your own wrapper type around the [`Unpin`] type you want to pin and then
+//! opt-out of [`Unpin`] using [`PhantomPinned`].
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
