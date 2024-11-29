@@ -1,5 +1,5 @@
 warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:17:1
+  --> $DIR/never-type-fallback-breaking.rs:16:1
    |
 LL | fn m() {
    | ^^^^^^
@@ -8,7 +8,7 @@ LL | fn m() {
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:21:17
+  --> $DIR/never-type-fallback-breaking.rs:20:17
    |
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let x: () = match true {
    |          ++++
 
 warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:29:1
+  --> $DIR/never-type-fallback-breaking.rs:28:1
    |
 LL | fn q() -> Option<()> {
    | ^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | fn q() -> Option<()> {
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Default` will fail
-  --> $DIR/never-type-fallback-breaking.rs:36:5
+  --> $DIR/never-type-fallback-breaking.rs:35:5
    |
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |     deserialize::<()>()?;
    |                ++++++
 
 warning: this function depends on never type fallback being `()`
-  --> $DIR/never-type-fallback-breaking.rs:46:1
+  --> $DIR/never-type-fallback-breaking.rs:45:1
    |
 LL | fn meow() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | fn meow() -> Result<(), ()> {
    = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `(): From<!>` will fail
-  --> $DIR/never-type-fallback-breaking.rs:49:5
+  --> $DIR/never-type-fallback-breaking.rs:48:5
    |
 LL |     help(1)?;
    |     ^^^^^^^
