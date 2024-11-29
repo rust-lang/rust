@@ -297,3 +297,33 @@ impl From<Foo<'a'>> for Foo<'b'> {
         Foo
     }
 }
+
+fn direct_application() {
+    let _: Result<(), std::io::Error> = test_issue_3913().map(Into::into);
+    //~^ useless_conversion
+    let _: Result<(), std::io::Error> = test_issue_3913().map_err(Into::into);
+    //~^ useless_conversion
+    let _: Result<(), std::io::Error> = test_issue_3913().map(From::from);
+    //~^ useless_conversion
+    let _: Result<(), std::io::Error> = test_issue_3913().map_err(From::from);
+    //~^ useless_conversion
+
+    struct Absorb;
+    impl From<()> for Absorb {
+        fn from(_: ()) -> Self {
+            Self
+        }
+    }
+    impl From<std::io::Error> for Absorb {
+        fn from(_: std::io::Error) -> Self {
+            Self
+        }
+    }
+
+    // No lint for those
+    let _: Result<Absorb, std::io::Error> = test_issue_3913().map(Into::into);
+    let _: Result<(), Absorb> = test_issue_3913().map_err(Into::into);
+    let _: Result<Absorb, std::io::Error> = test_issue_3913().map(From::from);
+    let _: Result<(), Absorb> = test_issue_3913().map_err(From::from);
+    let _: Vec<u32> = [1u32].into_iter().map(Into::into).collect();
+}

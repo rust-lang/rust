@@ -226,5 +226,29 @@ note: this parameter accepts any `IntoIterator`, so you don't need to call `.int
 LL |                 J: IntoIterator,
    |                    ^^^^^^^^^^^^
 
-error: aborting due to 28 previous errors
+error: useless conversion to the same type: `()`
+  --> tests/ui/useless_conversion.rs:302:58
+   |
+LL |     let _: Result<(), std::io::Error> = test_issue_3913().map(Into::into);
+   |                                                          ^^^^^^^^^^^^^^^^ help: consider removing
+
+error: useless conversion to the same type: `std::io::Error`
+  --> tests/ui/useless_conversion.rs:304:58
+   |
+LL |     let _: Result<(), std::io::Error> = test_issue_3913().map_err(Into::into);
+   |                                                          ^^^^^^^^^^^^^^^^^^^^ help: consider removing
+
+error: useless conversion to the same type: `()`
+  --> tests/ui/useless_conversion.rs:306:58
+   |
+LL |     let _: Result<(), std::io::Error> = test_issue_3913().map(From::from);
+   |                                                          ^^^^^^^^^^^^^^^^ help: consider removing
+
+error: useless conversion to the same type: `std::io::Error`
+  --> tests/ui/useless_conversion.rs:308:58
+   |
+LL |     let _: Result<(), std::io::Error> = test_issue_3913().map_err(From::from);
+   |                                                          ^^^^^^^^^^^^^^^^^^^^ help: consider removing
+
+error: aborting due to 32 previous errors
 
