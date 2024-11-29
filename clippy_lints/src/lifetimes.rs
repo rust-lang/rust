@@ -658,12 +658,6 @@ fn report_elidable_impl_lifetimes<'tcx>(
                     lifetime,
                     in_where_predicate: false,
                     ..
-                }
-                | Usage {
-                    lifetime,
-                    in_bounded_ty: false,
-                    in_generics_arg: false,
-                    ..
                 },
             ] = usages.as_slice()
             {
