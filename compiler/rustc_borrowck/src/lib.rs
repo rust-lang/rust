@@ -63,6 +63,7 @@ use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{VarNeedNotMut,VarNeedsMut};
 use crate::borrowck_errors::BError;
+use crate::borrowck_errors::BWarn;
 
 mod borrow_set;
 mod borrowck_errors;
@@ -2287,7 +2288,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     let err = self.report_illegal_reassignment((place, span), assigned_span, place);
                     self.buffer_non_error(err);
                 } else {
-                    self.report_mutability_error::<BError>(
+                    self.report_mutability_error::<BWarn>(
                         place, span, the_place_err, error_access, location);
                 }
             }
@@ -2498,6 +2499,8 @@ mod diags {
 
         buffered_mut_errors: FxIndexMap<Span, (Diag<'infcx>, usize)>,
 
+        buffered_mut_non_errors: FxIndexMap<Span, (Diag<'infcx, ()>, usize)>,
+
         /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
         buffered_diags: Vec<BufferedDiag<'infcx>>,
     }
@@ -2507,6 +2510,7 @@ mod diags {
             BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
                 buffered_mut_errors: Default::default(),
+                buffered_mut_non_errors: Default::default(),
                 buffered_diags: Default::default(),
             }
         }
@@ -2549,12 +2553,23 @@ mod diags {
             &mut self,
             span: Span,
         ) -> Option<(Diag<'infcx>, usize)> {
-            // FIXME(#120456) - is `swap_remove` correct?
+            // FIXME(#120456) - is `swap_remove` correct? (also below)
             self.diags.buffered_mut_errors.swap_remove(&span)
+        }
+
+        pub(crate) fn get_buffered_mut_non_error(
+            &mut self,
+            span: Span,
+        ) -> Option<(Diag<'infcx, ()>, usize)> {
+            self.diags.buffered_mut_non_errors.swap_remove(&span)
         }
 
         pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
             self.diags.buffered_mut_errors.insert(span, (diag, count));
+        }
+
+        pub(crate) fn buffer_mut_non_error(&mut self, span: Span, diag: Diag<'infcx, ()>, count: usize) {
+            self.diags.buffered_mut_non_errors.insert(span, (diag, count));
         }
 
         pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
@@ -2565,6 +2580,7 @@ mod diags {
                 // We have already set tainted for this error, so just buffer it.
                 self.diags.buffer_error(diag);
             }
+
             for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
                     #[allow(rustc::diagnostic_outside_of_impl)]
@@ -2572,6 +2588,15 @@ mod diags {
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
                 self.diags.buffer_error(diag);
+            }
+
+            for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_non_errors) {
+                if count > 10 {
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    diag.note(format!("...and {} other attempted mutable borrows", count - 10));
+                }
+                self.diags.buffer_non_error(diag);
             }
 
             if !self.diags.buffered_diags.is_empty() {

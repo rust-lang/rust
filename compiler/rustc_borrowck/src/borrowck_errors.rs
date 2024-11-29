@@ -56,6 +56,33 @@ impl BorrowckDiag for BError {
     }
 }
 
+pub(crate) struct BWarn;
+impl BorrowckDiag for BWarn {
+    type Guarantee = ();
+    fn take_existing<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, span: Span)
+        -> Option<(Diag<'infcx, Self::Guarantee>, usize)>
+    {
+        cx.get_buffered_mut_non_error(span)
+    }
+
+    fn struct_span_diag<'a>(cx: DiagCtxtHandle<'a>, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>)
+        -> Diag<'a, Self::Guarantee>
+    {
+        cx.struct_span_warn(span, msg)
+    }
+
+    fn buffer_error<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, err: Diag<'infcx, Self::Guarantee>){
+        cx.buffer_non_error(err);
+    }
+
+    fn buffer_mut_error<'infcx>(
+        cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>,
+        span: Span, diag: Diag<'infcx, Self::Guarantee>, count: usize)
+    {
+        cx.buffer_mut_non_error(span, diag, count);
+    }
+}
+
 #[macro_export]
 macro_rules! struct_span_code_diag {
     ($t:ty, $dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
