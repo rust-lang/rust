@@ -79,6 +79,11 @@ hir_typeck_field_multiply_specified_in_initializer =
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
 
+hir_typeck_fn_item_to_variadic_function = can't pass a function item to a variadic function
+    .suggestion = use a function pointer instead
+    .help = a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+    .note = for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
+
 hir_typeck_fru_expr = this expression does not end in a comma...
 hir_typeck_fru_expr2 = ... so this is interpreted as a `..` range expression, instead of functional record update syntax
 hir_typeck_fru_note = this expression may have been misinterpreted as a `..` range expression
