@@ -153,8 +153,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     fn needs_location(&self, ty: Ty<'tcx>) -> bool {
         if let &ty::FnDef(did, substs) = ty.kind() {
             let instance =
-                ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP)
-                    .polymorphize(self.tcx);
+                ty::Instance::expect_resolve(self.tcx, self.typing_env, did, substs, DUMMY_SP);
 
             instance.def.requires_caller_location(self.tcx)
         } else {
