@@ -3577,6 +3577,8 @@ impl Step for CodegenGCC {
         let mut cargo = build_cargo();
 
         cargo
+            // cg_gcc's build system ignores RUSTFLAGS. pass some flags through CG_RUSTFLAGS instead.
+            .env("CG_RUSTFLAGS", "-Alinker-messages")
             .arg("--")
             .arg("test")
             .arg("--use-system-gcc")
