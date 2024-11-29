@@ -28,16 +28,18 @@ error[E0617]: can't pass `u16` to variadic function
 LL |         printf(::std::ptr::null(), 0u16);
    |                                    ^^^^ help: cast the value to `c_uint`: `0u16 as c_uint`
 
-error[E0617]: can't pass `unsafe extern "C" fn(*const i8, ...) {printf}` to variadic function
+error[E0617]: can't pass a function item to a variadic function
   --> $DIR/E0617.rs:22:36
    |
 LL |         printf(::std::ptr::null(), printf);
    |                                    ^^^^^^
    |
-help: cast the value to `unsafe extern "C" fn(*const i8, ...)`
+   = help: a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+   = note: for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
+help: use a function pointer instead
    |
 LL |         printf(::std::ptr::null(), printf as unsafe extern "C" fn(*const i8, ...));
-   |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                                           +++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 6 previous errors
 
