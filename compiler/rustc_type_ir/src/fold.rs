@@ -49,7 +49,7 @@ use std::mem;
 
 use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use crate::data_structures::Lrc;
 use crate::inherent::*;
@@ -429,5 +429,77 @@ where
         value
     } else {
         value.fold_with(&mut Shifter::new(cx, amount))
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Region folder
+
+pub fn fold_regions<I: Interner, T>(
+    cx: I,
+    value: T,
+    mut f: impl FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+) -> T
+where
+    T: TypeFoldable<I>,
+{
+    value.fold_with(&mut RegionFolder::new(cx, &mut f))
+}
+
+/// Folds over the substructure of a type, visiting its component
+/// types and all regions that occur *free* within it.
+///
+/// That is, function pointer types and trait object can introduce
+/// new bound regions which are not visited by this visitors as
+/// they are not free; only regions that occur free will be
+/// visited by `fld_r`.
+pub struct RegionFolder<'a, I: Interner> {
+    cx: I,
+
+    /// Stores the index of a binder *just outside* the stuff we have
+    /// visited. So this begins as INNERMOST; when we pass through a
+    /// binder, it is incremented (via `shift_in`).
+    current_index: ty::DebruijnIndex,
+
+    /// Callback invokes for each free region. The `DebruijnIndex`
+    /// points to the binder *just outside* the ones we have passed
+    /// through.
+    fold_region_fn: &'a mut (dyn FnMut(I::Region, ty::DebruijnIndex) -> I::Region + 'a),
+}
+
+impl<'a, I: Interner> RegionFolder<'a, I> {
+    #[inline]
+    pub fn new(
+        cx: I,
+        fold_region_fn: &'a mut dyn FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+    ) -> RegionFolder<'a, I> {
+        RegionFolder { cx, current_index: ty::INNERMOST, fold_region_fn }
+    }
+}
+
+impl<'a, I: Interner> TypeFolder<I> for RegionFolder<'a, I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    #[instrument(skip(self), level = "debug", ret)]
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        match r.kind() {
+            ty::ReBound(debruijn, _) if debruijn < self.current_index => {
+                debug!(?self.current_index, "skipped bound region");
+                r
+            }
+            _ => {
+                debug!(?self.current_index, "folding free region");
+                (self.fold_region_fn)(r, self.current_index)
+            }
+        }
     }
 }

@@ -26,6 +26,7 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
@@ -213,7 +214,7 @@ pub(crate) fn type_check<'a, 'tcx>(
 
             // Convert all regions to nll vars.
             let (opaque_type_key, hidden_type) =
-                infcx.tcx.fold_regions((opaque_type_key, hidden_type), |region, _| {
+                fold_regions(infcx.tcx, (opaque_type_key, hidden_type), |region, _| {
                     match region.kind() {
                         ty::ReVar(_) => region,
                         ty::RePlaceholder(placeholder) => {
@@ -2073,7 +2074,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
-                        let unsize_to = tcx.fold_regions(ty, |r, _| {
+                        let unsize_to = fold_regions(tcx, ty, |r, _| {
                             if let ty::ReVar(_) = r.kind() { tcx.lifetimes.re_erased } else { r }
                         });
                         self.prove_trait_ref(

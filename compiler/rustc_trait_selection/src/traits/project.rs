@@ -975,7 +975,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // transmute checking and polymorphic MIR optimizations could
                     // get a result which isn't correct for all monomorphizations.
                     match selcx.infcx.typing_mode() {
-                        TypingMode::Coherence | TypingMode::Analysis { .. } => {
+                        TypingMode::Coherence
+                        | TypingMode::Analysis { .. }
+                        | TypingMode::PostBorrowckAnalysis { .. } => {
                             debug!(
                                 assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
                                 ?obligation.predicate,

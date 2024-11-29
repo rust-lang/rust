@@ -34,6 +34,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
@@ -1415,7 +1416,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 GenericParamKind::Lifetime { .. } => true,
                 _ => false,
             });
-            let fn_sig = tcx.fold_regions(fn_sig, |r, _| match *r {
+            let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
                 ty::ReErased => {
                     if has_region_params {
                         ty::Region::new_error_with_message(

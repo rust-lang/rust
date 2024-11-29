@@ -37,6 +37,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
@@ -1569,7 +1570,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
                                 );
 
-                                let value = tcx.fold_regions(qself_ty, |_, _| tcx.lifetimes.re_erased);
+                                let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
                                 // FIXME: Don't bother dealing with non-lifetime binders here...
                                 if value.has_escaping_bound_vars() {
                                     return false;

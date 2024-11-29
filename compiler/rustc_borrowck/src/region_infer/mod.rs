@@ -18,6 +18,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -1100,7 +1101,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let ty = ty.fold_with(&mut OpaqueFolder { tcx });
         let mut failed = false;
 
-        let ty = tcx.fold_regions(ty, |r, _depth| {
+        let ty = fold_regions(tcx, ty, |r, _depth| {
             let r_vid = self.to_region_vid(r);
             let r_scc = self.constraint_sccs.scc(r_vid);
 
@@ -1273,7 +1274,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |r, _db| {
+        fold_regions(tcx, value, |r, _db| {
             let vid = self.to_region_vid(r);
             let scc = self.constraint_sccs.scc(vid);
             let repr = self.scc_representative(scc);
