@@ -54,6 +54,9 @@ pub fn walk_native_lib_search_dirs<R>(
     // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
     // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
     // and sanitizers to self-contained directory, and stop adding this search path.
+    // FIXME: On AIX this also has the side-effect of making the list of library search paths
+    // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
+    // defined, as the search path instead of appending the default search paths.
     if sess.target.vendor == "fortanix"
         || sess.target.os == "linux"
         || sess.target.os == "fuchsia"
