@@ -122,6 +122,10 @@ impl Cargo {
         cargo
     }
 
+    pub fn compiler(&self) -> Compiler {
+        self.compiler
+    }
+
     pub fn into_cmd(self) -> BootstrapCommand {
         self.into()
     }
@@ -307,7 +311,7 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            let cflags = builder.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            let cflags = builder.extra_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
             self.command.env(format!("CFLAGS_{triple_underscored}"), &cflags);
 
             if let Some(ar) = builder.ar(target) {
@@ -319,7 +323,7 @@ impl Cargo {
 
             if let Ok(cxx) = builder.cxx(target) {
                 let cxx = ccacheify(&cxx);
-                let cxxflags = builder.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                let cxxflags = builder.extra_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 self.command
                     .env(format!("CXX_{triple_underscored}"), &cxx)
                     .env(format!("CXXFLAGS_{triple_underscored}"), cxxflags);
