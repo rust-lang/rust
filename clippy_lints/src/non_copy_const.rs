@@ -278,7 +278,12 @@ impl<'tcx> NonCopyConst<'tcx> {
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.typing_env(), ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
+        let result = Self::const_eval_resolve(
+            cx.tcx,
+            cx.typing_env(),
+            ty::UnevaluatedConst::new(def_id, args),
+            DUMMY_SP,
+        );
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
@@ -335,7 +340,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 // i.e. having an enum doesn't necessary mean a type has a frozen variant.
                 // And, implementing it isn't a trivial task; it'll probably end up
                 // re-implementing the trait predicate evaluation specific to `Freeze`.
-                && body_id_opt.map_or(true, |body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
+                && body_id_opt.is_none_or(|body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
             {
                 lint(cx, Source::Assoc { item: trait_item.span });
             }

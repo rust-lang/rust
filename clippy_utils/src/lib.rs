@@ -50,6 +50,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
+extern crate smallvec;
 
 #[macro_use]
 pub mod sym_helper;
@@ -65,6 +66,7 @@ pub mod higher;
 mod hir_utils;
 pub mod macros;
 pub mod mir;
+pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
@@ -89,7 +91,6 @@ use std::hash::BuildHasherDefault;
 use std::iter::{once, repeat};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use clippy_config::types::DisallowedPath;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
@@ -97,7 +98,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
@@ -116,8 +117,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy,
-    Ty, TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, Ty, TyCtxt,
+    TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -746,18 +747,6 @@ pub fn def_path_res_with_base(tcx: TyCtxt<'_>, mut base: Vec<Res>, mut path: &[&
 /// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
 pub fn def_path_def_ids(tcx: TyCtxt<'_>, path: &[&str]) -> impl Iterator<Item = DefId> + use<> {
     def_path_res(tcx, path).into_iter().filter_map(|res| res.opt_def_id())
-}
-
-/// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map(
-    tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, Option<&'static str>)> {
-    disallowed
-        .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
-        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
-        .collect()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -1581,7 +1570,7 @@ pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Option<&Path<'_>>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     if let Some(Range { start, end, limits }) = Range::hir(expr) {
-        let start_is_none_or_min = start.map_or(true, |start| {
+        let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
@@ -1593,7 +1582,7 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 false
             }
         });
-        let end_is_none_or_max = end.map_or(true, |end| match limits {
+        let end_is_none_or_max = end.is_none_or(|end| match limits {
             RangeLimits::Closed => {
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
@@ -2715,10 +2704,10 @@ pub enum DefinedTy<'tcx> {
     /// Used for function signatures, and constant and static values. The type is
     /// in the context of its definition site. We also track the `def_id` of its
     /// definition site.
-    /// 
+    ///
     /// WARNING: As the `ty` in in the scope of the definition, not of the function
     /// using it, you must be very careful with how you use it. Using it in the wrong
-    /// scope easily results in ICEs. 
+    /// scope easily results in ICEs.
     Mir {
         def_site_def_id: Option<DefId>,
         ty: Binder<'tcx, Ty<'tcx>>,
@@ -2844,7 +2833,7 @@ impl<'tcx> ExprUseNode<'tcx> {
             Self::ConstStatic(id) => Some(DefinedTy::Mir {
                 def_site_def_id: Some(id.def_id.to_def_id()),
                 ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity()),
-        }),
+            }),
             Self::Return(id) => {
                 if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
@@ -2857,7 +2846,10 @@ impl<'tcx> ExprUseNode<'tcx> {
                     }
                 } else {
                     let ty = cx.tcx.fn_sig(id).instantiate_identity().output();
-                    Some(DefinedTy::Mir { def_site_def_id: Some(id.def_id.to_def_id()), ty })
+                    Some(DefinedTy::Mir {
+                        def_site_def_id: Some(id.def_id.to_def_id()),
+                        ty,
+                    })
                 }
             },
             Self::Field(field) => match get_parent_expr_for_hir(cx, field.hir_id) {
@@ -2874,8 +2866,8 @@ impl<'tcx> ExprUseNode<'tcx> {
                             .map(|f| (adt, f))
                     })
                     .map(|(adt, field_def)| DefinedTy::Mir {
-                            def_site_def_id: Some(adt.did()),
-                            ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity()),
+                        def_site_def_id: Some(adt.did()),
+                        ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity()),
                     }),
                 _ => None,
             },
@@ -2885,9 +2877,9 @@ impl<'tcx> ExprUseNode<'tcx> {
                 Some(match hir_ty {
                     Some(hir_ty) => DefinedTy::Hir(hir_ty),
                     None => DefinedTy::Mir {
-                        def_site_def_id:  sig.predicates_id(),
+                        def_site_def_id: sig.predicates_id(),
                         ty,
-                    }
+                    },
                 })
             },
             Self::MethodArg(id, _, i) => {

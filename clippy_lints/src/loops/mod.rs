@@ -23,8 +23,8 @@ mod while_let_loop;
 mod while_let_on_iterator;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
+use clippy_utils::msrvs::Msrv;
 use rustc_ast::Label;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};

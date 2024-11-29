@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -91,7 +91,7 @@ impl ApproxConstant {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, s, min_digits) && msrv.map_or(true, |msrv| self.msrv.meets(msrv)) {
+                if is_approx_const(constant, s, min_digits) && msrv.is_none_or(|msrv| self.msrv.meets(msrv)) {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,

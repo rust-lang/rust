@@ -44,7 +44,8 @@ pub(super) fn check<'tcx>(
     };
 
     if let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
-        && parent.precedence() > AssocOp::As.precedence() as i8
+        && parent.precedence()
+            > i8::try_from(AssocOp::As.precedence()).expect("AssocOp always returns a precedence < 128")
     {
         sugg = format!("({sugg})");
     }
