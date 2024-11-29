@@ -1,15 +1,70 @@
 //! General management of file descriptors, and support for
 //! standard file descriptors (stdin/stdout/stderr).
 
+use std::io;
 use std::io::ErrorKind;
 
 use rustc_abi::Size;
 
 use crate::helpers::check_min_arg_count;
-use crate::shims::files::FlockOp;
+use crate::shims::files::FileDescription;
 use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum FlockOp {
+    SharedLock { nonblocking: bool },
+    ExclusiveLock { nonblocking: bool },
+    Unlock,
+}
+
+/// Represents unix-specific file descriptions.
+pub trait UnixFileDescription: FileDescription {
+    /// Reads as much as possible into the given buffer `ptr` from a given offset.
+    /// `len` indicates how many bytes we should try to read.
+    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
+    fn pread<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _offset: u64,
+        _ptr: Pointer,
+        _len: usize,
+        _dest: &MPlaceTy<'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("cannot pread from {}", self.name());
+    }
+
+    /// Writes as much as possible from the given buffer `ptr` starting at a given offset.
+    /// `ptr` is the pointer to the user supplied read buffer.
+    /// `len` indicates how many bytes we should try to write.
+    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
+    fn pwrite<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: usize,
+        _offset: u64,
+        _dest: &MPlaceTy<'tcx>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("cannot pwrite to {}", self.name());
+    }
+
+    fn flock<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _op: FlockOp,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        throw_unsup_format!("cannot flock {}", self.name());
+    }
+
+    /// Check the readiness of file description.
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        throw_unsup_format!("{}: epoll does not support this file description", self.name());
+    }
+}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -66,7 +121,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags {:#x}", op);
         };
 
-        let result = fd.flock(this.machine.communicate(), parsed_op)?;
+        let result = fd.as_unix().flock(this.machine.communicate(), parsed_op)?;
         drop(fd);
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
@@ -196,7 +251,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.pread(communicate, offset, buf, count, dest, this)?
+                fd.as_unix().pread(communicate, offset, buf, count, dest, this)?
             }
         };
         interp_ok(())
@@ -236,7 +291,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.pwrite(communicate, buf, count, offset, dest, this)?
+                fd.as_unix().pwrite(communicate, buf, count, offset, dest, this)?
             }
         };
         interp_ok(())

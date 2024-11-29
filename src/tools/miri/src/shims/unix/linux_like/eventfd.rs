@@ -5,6 +5,7 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::*;
 
@@ -34,17 +35,6 @@ struct Event {
 impl FileDescription for Event {
     fn name(&self) -> &'static str {
         "event"
-    }
-
-    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
-        // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
-        // need to be supported in the future, the check should be added here.
-
-        interp_ok(EpollReadyEvents {
-            epollin: self.counter.get() != 0,
-            epollout: self.counter.get() != MAX_COUNTER,
-            ..EpollReadyEvents::new()
-        })
     }
 
     fn close<'tcx>(
@@ -119,6 +109,23 @@ impl FileDescription for Event {
         // Else, block.
         let weak_eventfd = self_ref.downgrade();
         eventfd_write(num, buf_place, dest, weak_eventfd, ecx)
+    }
+
+    fn as_unix(&self) -> &dyn UnixFileDescription {
+        self
+    }
+}
+
+impl UnixFileDescription for Event {
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
+        // need to be supported in the future, the check should be added here.
+
+        interp_ok(EpollReadyEvents {
+            epollin: self.counter.get() != 0,
+            epollout: self.counter.get() != MAX_COUNTER,
+            ..EpollReadyEvents::new()
+        })
     }
 }
 

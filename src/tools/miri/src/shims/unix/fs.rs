@@ -13,8 +13,9 @@ use rustc_data_structures::fx::FxHashMap;
 
 use self::shims::time::system_time_to_duration;
 use crate::helpers::check_min_arg_count;
-use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef, FlockOp};
+use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef};
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
 
 #[derive(Debug)]
@@ -64,6 +65,51 @@ impl FileDescription for FileHandle {
         }
     }
 
+    fn seek<'tcx>(
+        &self,
+        communicate_allowed: bool,
+        offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        interp_ok((&mut &self.file).seek(offset))
+    }
+
+    fn close<'tcx>(
+        self: Box<Self>,
+        communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // We sync the file if it was opened in a mode different than read-only.
+        if self.writable {
+            // `File::sync_all` does the checks that are done when closing a file. We do this to
+            // to handle possible errors correctly.
+            let result = self.file.sync_all();
+            // Now we actually close the file and return the result.
+            drop(*self);
+            interp_ok(result)
+        } else {
+            // We drop the file, this closes it but ignores any errors
+            // produced when closing it. This is done because
+            // `File::sync_all` cannot be done over files like
+            // `/dev/urandom` which are read-only. Check
+            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
+            // for a deeper discussion.
+            drop(*self);
+            interp_ok(Ok(()))
+        }
+    }
+
+    fn is_tty(&self, communicate_allowed: bool) -> bool {
+        communicate_allowed && self.file.is_terminal()
+    }
+
+    fn as_unix(&self) -> &dyn UnixFileDescription {
+        self
+    }
+}
+
+impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
         &self,
         communicate_allowed: bool,
@@ -123,41 +169,6 @@ impl FileDescription for FileHandle {
         match result {
             Ok(write_size) => ecx.return_write_success(write_size, dest),
             Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
-    }
-
-    fn seek<'tcx>(
-        &self,
-        communicate_allowed: bool,
-        offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        interp_ok((&mut &self.file).seek(offset))
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        // We sync the file if it was opened in a mode different than read-only.
-        if self.writable {
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = self.file.sync_all();
-            // Now we actually close the file and return the result.
-            drop(*self);
-            interp_ok(result)
-        } else {
-            // We drop the file, this closes it but ignores any errors
-            // produced when closing it. This is done because
-            // `File::sync_all` cannot be done over files like
-            // `/dev/urandom` which are read-only. Check
-            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
-            // for a deeper discussion.
-            drop(*self);
-            interp_ok(Ok(()))
         }
     }
 
@@ -254,10 +265,6 @@ impl FileDescription for FileHandle {
             let _ = op;
             compile_error!("flock is supported only on UNIX and Windows hosts");
         }
-    }
-
-    fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.file.is_terminal()
     }
 }
 
