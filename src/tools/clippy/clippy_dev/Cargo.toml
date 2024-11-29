@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 aho-corasick = "1.0"
+chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 clap = { version = "4.4", features = ["derive"] }
 indoc = "1.0"
 itertools = "0.12"

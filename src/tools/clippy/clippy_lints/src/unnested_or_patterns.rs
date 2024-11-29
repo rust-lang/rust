@@ -1,9 +1,9 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;

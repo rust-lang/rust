@@ -1,3 +1,6 @@
+use clippy_utils::def_path_def_ids;
+use rustc_hir::def_id::DefIdMap;
+use rustc_middle::ty::TyCtxt;
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;
@@ -29,6 +32,18 @@ impl DisallowedPath {
             Self::Simple(_) => None,
         }
     }
+}
+
+/// Creates a map of disallowed items to the reason they were disallowed.
+pub fn create_disallowed_map(
+    tcx: TyCtxt<'_>,
+    disallowed: &'static [DisallowedPath],
+) -> DefIdMap<(&'static str, Option<&'static str>)> {
+    disallowed
+        .iter()
+        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
+        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]

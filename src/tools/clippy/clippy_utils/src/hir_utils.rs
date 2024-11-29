@@ -545,7 +545,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     fn eq_path_parameters(&mut self, left: &GenericArgs<'_>, right: &GenericArgs<'_>) -> bool {
         if left.parenthesized == right.parenthesized {
             over(left.args, right.args, |l, r| self.eq_generic_arg(l, r)) // FIXME(flip1995): may not work
-                && over(left.constraints, right.constraints, |l, r| self.eq_assoc_type_binding(l, r))
+                && over(left.constraints, right.constraints, |l, r| self.eq_assoc_eq_constraint(l, r))
         } else {
             false
         }
@@ -602,12 +602,13 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    fn eq_assoc_type_binding(&mut self, left: &AssocItemConstraint<'_>, right: &AssocItemConstraint<'_>) -> bool {
+    /// Checks whether two constraints designate the same equality constraint (same name, and same
+    /// type or const).
+    fn eq_assoc_eq_constraint(&mut self, left: &AssocItemConstraint<'_>, right: &AssocItemConstraint<'_>) -> bool {
+        // TODO: this could be extended to check for identical associated item bound constraints
         left.ident.name == right.ident.name
-            && self.eq_ty(
-                left.ty().expect("expected assoc type binding"),
-                right.ty().expect("expected assoc type binding"),
-            )
+            && (both_some_and(left.ty(), right.ty(), |l, r| self.eq_ty(l, r))
+                || both_some_and(left.ct(), right.ct(), |l, r| self.eq_const_arg(l, r)))
     }
 
     fn check_ctxt(&mut self, left: SyntaxContext, right: SyntaxContext) -> bool {
@@ -725,6 +726,11 @@ fn swap_binop<'a>(
 pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
         .map_or_else(|| r.is_none(), |x| r.as_ref().is_some_and(|y| eq_fn(x, y)))
+}
+
+/// Checks if the two `Option`s are both `Some` and pass the predicate function.
+pub fn both_some_and<X, Y>(l: Option<X>, r: Option<Y>, mut pred: impl FnMut(X, Y) -> bool) -> bool {
+    l.is_some_and(|l| r.is_some_and(|r| pred(l, r)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.

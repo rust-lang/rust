@@ -1,5 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
+use crate::get_unique_attr;
 use crate::visitors::{Descend, for_each_expr_without_closures};
 
 use arrayvec::ArrayVec;
@@ -7,7 +8,7 @@ use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lrc, OnceLock};
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol, sym};
@@ -36,7 +37,9 @@ pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
         FORMAT_MACRO_DIAG_ITEMS.contains(&name)
     } else {
-        false
+        // Allow users to tag any macro as being format!-like
+        // TODO: consider deleting FORMAT_MACRO_DIAG_ITEMS and using just this method
+        get_unique_attr(cx.sess(), cx.tcx.get_attrs_unchecked(macro_def_id), "format_args").is_some()
     }
 }
 
@@ -93,7 +96,7 @@ pub fn expn_is_local(expn: ExpnId) -> bool {
     std::iter::once((expn, data))
         .chain(backtrace)
         .find_map(|(_, data)| data.macro_def_id)
-        .map_or(true, DefId::is_local)
+        .is_none_or(DefId::is_local)
 }
 
 /// Returns an iterator of macro expansions that created the given span.

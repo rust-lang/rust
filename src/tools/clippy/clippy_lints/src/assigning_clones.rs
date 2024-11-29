@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;
@@ -100,13 +100,13 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             // TODO: This check currently bails if the local variable has no initializer.
             // That is overly conservative - the lint should fire even if there was no initializer,
             // but the variable has been initialized before `lhs` was evaluated.
-            && path_to_local(lhs).map_or(true, |lhs| local_is_initialized(cx, lhs))
+            && path_to_local(lhs).is_none_or(|lhs| local_is_initialized(cx, lhs))
             && let Some(resolved_impl) = cx.tcx.impl_of_method(resolved_fn.def_id())
             // Derived forms don't implement `clone_from`/`clone_into`.
             // See https://github.com/rust-lang/rust/pull/98445#issuecomment-1190681305
             && !cx.tcx.is_builtin_derived(resolved_impl)
             // Don't suggest calling a function we're implementing.
-            && resolved_impl.as_local().map_or(true, |block_id| {
+            && resolved_impl.as_local().is_none_or(|block_id| {
                 cx.tcx.hir().parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
             })
             && let resolved_assoc_items = cx.tcx.associated_items(resolved_impl)

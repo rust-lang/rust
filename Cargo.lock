@@ -536,7 +536,7 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
 name = "clippy"
-version = "0.1.84"
+version = "0.1.85"
 dependencies = [
  "anstream",
  "cargo_metadata",
@@ -567,8 +567,9 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.84"
+version = "0.1.85"
 dependencies = [
+ "clippy_utils",
  "itertools",
  "serde",
  "toml 0.7.8",
@@ -580,6 +581,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "aho-corasick",
+ "chrono",
  "clap",
  "indoc",
  "itertools",
@@ -590,7 +592,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.84"
+version = "0.1.85"
 dependencies = [
  "arrayvec",
  "cargo_metadata",
@@ -613,12 +615,12 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.84"
+version = "0.1.85"
 dependencies = [
  "arrayvec",
- "clippy_config",
  "itertools",
  "rustc_apfloat",
+ "serde",
 ]
 
 [[package]]
