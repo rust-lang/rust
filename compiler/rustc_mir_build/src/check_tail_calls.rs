@@ -117,6 +117,14 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
             }
 
+            // FIXME(explicit_tail_calls): this currenly fails for cases where opaques are used.
+            // e.g.
+            // ```
+            // fn a() -> impl Sized { become b() } // ICE
+            // fn b() -> u8 { 0 }
+            // ```
+            // we should think what is the expected behavior here.
+            // (we should probably just accept this by revealing opaques?)
             if caller_sig.output() != callee_sig.output() {
                 span_bug!(expr.span, "hir typeck should have checked the return type already");
             }
