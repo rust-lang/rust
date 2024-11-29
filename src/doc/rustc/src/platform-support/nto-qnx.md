@@ -22,11 +22,12 @@ Currently, the following QNX Neutrino versions and compilation targets are suppo
 
 | QNX Neutrino Version | Target Architecture | Full support | `no_std` support |
 |----------------------|---------------------|:------------:|:----------------:|
-| 7.1 with io-pkt | AArch64 | ✓ | ✓ |
-| 7.1 with io-sock | AArch64 | ✓ | ✓ |
-| 7.1 | x86_64  | ✓ | ✓ |
-| 7.0 | AArch64 | ? | ✓ |
-| 7.0 | x86     |   | ✓ |
+| 7.1 with io-pkt  | AArch64  | ✓ | ✓ |
+| 7.1 with io-sock | AArch64  | ? | ✓ |
+| 7.1 with io-pkt  | x86_64   | ✓ | ✓ |
+| 7.1 with io-sock | x86_64   | ? | ✓ |
+| 7.0              | AArch64  | ? | ✓ |
+| 7.0              | x86      |   | ✓ |
 
 On QNX 7.0 and 7.1, `io-pkt` is used as network stack by default. QNX 7.1 includes
 the optional network stack `io-sock`.

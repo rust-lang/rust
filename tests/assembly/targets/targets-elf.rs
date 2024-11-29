@@ -567,6 +567,9 @@
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] compile-flags: --target x86_64-pc-nto-qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] needs-llvm-components: x86
 //@ revisions: x86_64_pc_solaris
 //@ [x86_64_pc_solaris] compile-flags: --target x86_64-pc-solaris
 //@ [x86_64_pc_solaris] needs-llvm-components: x86
