@@ -229,6 +229,13 @@ pub(crate) struct BuiltinConstNoMangle {
 pub(crate) struct BuiltinMutablesTransmutes;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_builtin_transmute_to_interior_mutability)]
+#[help]
+pub(crate) struct BuiltinTransmuteInteriorMutability<'tcx> {
+    pub output_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_builtin_unstable_features)]
 pub(crate) struct BuiltinUnstableFeatures;
 

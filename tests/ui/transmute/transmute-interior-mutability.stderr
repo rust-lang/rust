@@ -1,0 +1,27 @@
+warning: transmuting from a type without interior mutability to a type with interior mutability is undefined behaviour if you modify the content
+  --> $DIR/transmute-interior-mutability.rs:6:9
+   |
+LL |         mem::transmute::<&i32, &UnsafeCell<i32>>(&42);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `UnsafeCell<i32>` has interior mutability
+   = note: `#[warn(transmute_to_interior_mutability)]` on by default
+
+warning: transmuting from a type without interior mutability to a type with interior mutability is undefined behaviour if you modify the content
+  --> $DIR/transmute-interior-mutability.rs:10:9
+   |
+LL |         mem::transmute::<&i32, &AtomicI32>(&42);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `AtomicI32` has interior mutability
+
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/transmute-interior-mutability.rs:16:9
+   |
+LL |         mem::transmute::<&i32, &mut UnsafeCell<i32>>(&42);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(mutable_transmutes)]` on by default
+
+error: aborting due to 1 previous error; 2 warnings emitted
+

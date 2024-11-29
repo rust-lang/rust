@@ -57,7 +57,6 @@ macro_rules! late_lint_methods {
 //
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
-
 macro_rules! declare_late_lint_pass {
     ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait LateLintPass<'tcx>: LintPass {

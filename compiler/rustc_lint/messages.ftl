@@ -142,6 +142,10 @@ lint_builtin_special_module_name_used_lib = found module declaration for lib.rs
 lint_builtin_special_module_name_used_main = found module declaration for main.rs
     .note = a binary crate cannot be used as library
 
+lint_builtin_transmute_to_interior_mutability =
+    transmuting from a type without interior mutability to a type with interior mutability is undefined behaviour if you modify the content
+    .help = `{$output_ty}` has interior mutability
+
 lint_builtin_trivial_bounds = {$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters
 
 lint_builtin_type_alias_bounds_enable_feat_help = add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics

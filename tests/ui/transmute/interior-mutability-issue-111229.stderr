@@ -1,0 +1,11 @@
+warning: transmuting from a type without interior mutability to a type with interior mutability is undefined behaviour if you modify the content
+  --> $DIR/interior-mutability-issue-111229.rs:9:17
+   |
+LL |         let f = std::mem::transmute::<&Bar, &Foo>(f);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `Foo` has interior mutability
+   = note: `#[warn(transmute_to_interior_mutability)]` on by default
+
+warning: 1 warning emitted
+

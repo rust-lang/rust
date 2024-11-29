@@ -3,6 +3,7 @@
 // Test that we can handle newtypes wrapping extern types
 
 #![feature(extern_types)]
+#![allow(transmute_to_interior_mutability)]
 
 use std::marker::PhantomData;
 

@@ -56,10 +56,10 @@ use crate::lints::{
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
     BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
     BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
-    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
-    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
-    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-    BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinTransmuteInteriorMutability, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
+    BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
+    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
 use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
@@ -1103,41 +1103,68 @@ declare_lint! {
     "transmuting &T to &mut T is undefined behavior, even if the reference is unused"
 }
 
+declare_lint! {
+    /// The `transmute_to_interior_mutability` lint catches transmuting from `&T` or `*const T` to another type
+    /// with interior mutability because changing its value is [undefined behavior].
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// unsafe {
+    ///     let x = std::mem::transmute::<&i32, UnsafeCell<i32>>(&5);
+    ///     let y = std::mem::transmute::<&i32, AtomicI32>(&5);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It's probably a mistake to transmute a type without interior mutability to a type with it.
+    TRANSMUTE_TO_INTERIOR_MUTABILITY,
+    Warn,
+    "transmuting from a type without interior mutability to a type with interior mutability is undefined behaviour if you modify the content"
+}
+
+declare_lint_pass!(TransmuteToInteriorMutability => [TRANSMUTE_TO_INTERIOR_MUTABILITY]);
 declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
-            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
-        {
-            if from_mutbl < to_mutbl {
+        // Is our expr mem::transmute?
+        let hir::ExprKind::Path(ref qpath) = expr.kind else { return };
+        let def: Res = cx.qpath_res(qpath, expr.hir_id);
+        let Res::Def(DefKind::Fn, def_id) = def else { return };
+        if !cx.tcx.is_intrinsic(def_id, sym::transmute) {
+            return;
+        }
+        let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
+        let input = sig.inputs().skip_binder()[0];
+        let output = sig.output().skip_binder();
+
+        // For both checks we only care if the input is an immutable ref
+        let &ty::Ref(_, input_deref, Mutability::Not) = input.kind() else { return };
+        match output.kind() {
+            // If the output is a mutable reference that's bad
+            &ty::Ref(_, _, Mutability::Mut) => {
                 cx.emit_span_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
             }
-        }
-
-        fn get_transmute_from_to<'tcx>(
-            cx: &LateContext<'tcx>,
-            expr: &hir::Expr<'_>,
-        ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-            let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.qpath_res(qpath, expr.hir_id)
-            } else {
-                return None;
-            };
-            if let Res::Def(DefKind::Fn, did) = def {
-                if !def_id_is_transmute(cx, did) {
-                    return None;
+            &ty::Ref(_, output_deref, Mutability::Not) => {
+                // If the input type doesn't have interior mutability but the output type does:
+                if input_deref.is_freeze(cx.tcx, cx.typing_env())
+                    && !output_deref.is_freeze(cx.tcx, cx.typing_env())
+                {
+                    cx.emit_span_lint(
+                        TRANSMUTE_TO_INTERIOR_MUTABILITY,
+                        expr.span,
+                        BuiltinTransmuteInteriorMutability { output_ty: output_deref },
+                    );
                 }
-                let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
-                let from = sig.inputs().skip_binder()[0];
-                let to = sig.output().skip_binder();
-                return Some((from, to));
             }
-            None
-        }
-
-        fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            cx.tcx.is_intrinsic(def_id, sym::transmute)
+            // The user is transmuting a reference into something else, warn...?
+            _ => (),
         }
     }
 }
@@ -1596,6 +1623,7 @@ declare_lint_pass!(
         NO_MANGLE_CONST_ITEMS,
         NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
+        TRANSMUTE_TO_INTERIOR_MUTABILITY,
         UNSTABLE_FEATURES,
         UNREACHABLE_PUB,
         TYPE_ALIAS_BOUNDS,
