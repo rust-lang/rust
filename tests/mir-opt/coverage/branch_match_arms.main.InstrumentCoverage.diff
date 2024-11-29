@@ -30,15 +30,12 @@
 +     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Add, rhs: Counter(3) };
 +     coverage ExpressionId(2) => Expression { lhs: Counter(0), op: Subtract, rhs: Expression(1) };
-+     coverage ExpressionId(3) => Expression { lhs: Counter(3), op: Add, rhs: Counter(2) };
-+     coverage ExpressionId(4) => Expression { lhs: Expression(3), op: Add, rhs: Counter(1) };
-+     coverage ExpressionId(5) => Expression { lhs: Expression(4), op: Add, rhs: Expression(2) };
 +     coverage Code(Counter(0)) => 14:1 - 15:21;
-+     coverage Code(Counter(3)) => 16:17 - 16:33;
++     coverage Code(Counter(1)) => 16:17 - 16:33;
 +     coverage Code(Counter(2)) => 17:17 - 17:33;
-+     coverage Code(Counter(1)) => 18:17 - 18:33;
++     coverage Code(Counter(3)) => 18:17 - 18:33;
 +     coverage Code(Expression(2)) => 19:17 - 19:33;
-+     coverage Code(Expression(5)) => 21:1 - 21:2;
++     coverage Code(Counter(0)) => 21:1 - 21:2;
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);
@@ -55,7 +52,7 @@
       }
   
       bb2: {
-+         Coverage::CounterIncrement(3);
++         Coverage::CounterIncrement(1);
           falseEdge -> [real: bb8, imaginary: bb3];
       }
   
@@ -65,7 +62,7 @@
       }
   
       bb4: {
-+         Coverage::CounterIncrement(1);
++         Coverage::CounterIncrement(3);
           falseEdge -> [real: bb6, imaginary: bb5];
       }
   
@@ -127,7 +124,6 @@
       }
   
       bb13: {
-+         Coverage::ExpressionUsed(5);
           StorageDead(_1);
           return;
       }

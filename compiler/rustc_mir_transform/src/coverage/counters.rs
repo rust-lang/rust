@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 
 use rustc_data_structures::captures::Captures;
@@ -10,9 +11,12 @@ use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
 
+#[cfg(test)]
+mod tests;
+
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
@@ -44,7 +48,7 @@ struct BcbExpression {
 }
 
 /// Enum representing either a node or an edge in the coverage graph.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(super) enum Site {
     Node { bcb: BasicCoverageBlock },
     Edge { from_bcb: BasicCoverageBlock, to_bcb: BasicCoverageBlock },
@@ -84,7 +88,7 @@ impl CoverageCounters {
         let mut builder = CountersBuilder::new(graph, bcb_needs_counter);
         builder.make_bcb_counters();
 
-        builder.counters
+        builder.into_coverage_counters()
     }
 
     fn with_num_bcbs(num_bcbs: usize) -> Self {
@@ -496,4 +500,126 @@ impl<'a> CountersBuilder<'a> {
 
         None
     }
+
+    fn into_coverage_counters(self) -> CoverageCounters {
+        Transcriber::new(&self).transcribe_counters()
+    }
+}
+
+/// Helper struct for converting `CountersBuilder` into a final `CoverageCounters`.
+struct Transcriber<'a> {
+    old: &'a CountersBuilder<'a>,
+    new: CoverageCounters,
+    phys_counter_for_site: FxHashMap<Site, BcbCounter>,
+}
+
+impl<'a> Transcriber<'a> {
+    fn new(old: &'a CountersBuilder<'a>) -> Self {
+        Self {
+            old,
+            new: CoverageCounters::with_num_bcbs(old.graph.num_nodes()),
+            phys_counter_for_site: FxHashMap::default(),
+        }
+    }
+
+    fn transcribe_counters(mut self) -> CoverageCounters {
+        for bcb in self.old.bcb_needs_counter.iter() {
+            let site = Site::Node { bcb };
+            let Some(old_counter) = self.old.counters.node_counters[bcb] else { continue };
+
+            // Resolve the old counter into flat lists of nodes/edges whose
+            // physical counts contribute to the counter for this node.
+            // Distinguish between counts that will be added vs subtracted.
+            let mut pos = vec![];
+            let mut neg = vec![];
+            self.push_resolved_sites(old_counter, &mut pos, &mut neg);
+
+            // Simplify by cancelling out sites that appear on both sides.
+            let (mut pos, mut neg) = sort_and_cancel(pos, neg);
+
+            if pos.is_empty() {
+                // If we somehow end up with no positive terms after cancellation,
+                // fall back to creating a physical counter. There's no known way
+                // for this to happen, but it's hard to confidently rule it out.
+                debug_assert!(false, "{site:?} has no positive counter terms");
+                pos = vec![Some(site)];
+                neg = vec![];
+            }
+
+            let mut new_counters_for_sites = |sites: Vec<Option<Site>>| {
+                sites
+                    .into_iter()
+                    .filter_map(|id| try { self.ensure_phys_counter(id?) })
+                    .collect::<Vec<_>>()
+            };
+            let mut pos = new_counters_for_sites(pos);
+            let mut neg = new_counters_for_sites(neg);
+
+            pos.sort();
+            neg.sort();
+
+            let pos_counter = self.new.make_sum(&pos).expect("`pos` should not be empty");
+            let new_counter = self.new.make_subtracted_sum(pos_counter, &neg);
+            self.new.set_node_counter(bcb, new_counter);
+        }
+
+        self.new
+    }
+
+    fn ensure_phys_counter(&mut self, site: Site) -> BcbCounter {
+        *self.phys_counter_for_site.entry(site).or_insert_with(|| self.new.make_phys_counter(site))
+    }
+
+    /// Resolves the given counter into flat lists of nodes/edges, whose counters
+    /// will then be added and subtracted to form a counter expression.
+    fn push_resolved_sites(&self, counter: BcbCounter, pos: &mut Vec<Site>, neg: &mut Vec<Site>) {
+        match counter {
+            BcbCounter::Counter { id } => pos.push(self.old.counters.counter_increment_sites[id]),
+            BcbCounter::Expression { id } => {
+                let BcbExpression { lhs, op, rhs } = self.old.counters.expressions[id];
+                self.push_resolved_sites(lhs, pos, neg);
+                match op {
+                    Op::Add => self.push_resolved_sites(rhs, pos, neg),
+                    // Swap `neg` and `pos` so that the counter is subtracted.
+                    Op::Subtract => self.push_resolved_sites(rhs, neg, pos),
+                }
+            }
+        }
+    }
+}
+
+/// Given two lists:
+/// - Sorts each list.
+/// - Converts each list to `Vec<Option<T>>`.
+/// - Scans for values that appear in both lists, and cancels them out by
+///   replacing matching pairs of values with `None`.
+fn sort_and_cancel<T: Ord>(mut pos: Vec<T>, mut neg: Vec<T>) -> (Vec<Option<T>>, Vec<Option<T>>) {
+    pos.sort();
+    neg.sort();
+
+    // Convert to `Vec<Option<T>>`. If `T` has a niche, this should be zero-cost.
+    let mut pos = pos.into_iter().map(Some).collect::<Vec<_>>();
+    let mut neg = neg.into_iter().map(Some).collect::<Vec<_>>();
+
+    // Scan through the lists using two cursors. When either cursor reaches the
+    // end of its list, there can be no more equal pairs, so stop.
+    let mut p = 0;
+    let mut n = 0;
+    while p < pos.len() && n < neg.len() {
+        // If the values are equal, remove them and advance both cursors.
+        // Otherwise, advance whichever cursor points to the lesser value.
+        // (Choosing which cursor to advance relies on both lists being sorted.)
+        match pos[p].cmp(&neg[n]) {
+            Ordering::Less => p += 1,
+            Ordering::Equal => {
+                pos[p] = None;
+                neg[n] = None;
+                p += 1;
+                n += 1;
+            }
+            Ordering::Greater => n += 1,
+        }
+    }
+
+    (pos, neg)
 }

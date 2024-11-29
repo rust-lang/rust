@@ -1,12 +1,12 @@
 Function name: match_arms::guards
-Raw bytes (88): 0x[01, 01, 08, 07, 15, 0b, 11, 0f, 0d, 00, 09, 17, 25, 1b, 21, 1f, 1d, 03, 19, 0c, 01, 30, 01, 01, 10, 29, 03, 0b, 00, 10, 19, 01, 11, 00, 29, 20, 19, 09, 00, 17, 00, 1b, 1d, 01, 11, 00, 29, 20, 1d, 0d, 00, 17, 00, 1b, 21, 01, 11, 00, 29, 20, 21, 11, 00, 17, 00, 1b, 25, 01, 11, 00, 29, 20, 25, 15, 00, 17, 00, 1b, 03, 01, 0e, 00, 18, 13, 03, 05, 01, 02]
+Raw bytes (88): 0x[01, 01, 08, 07, 00, 0b, 11, 0f, 0d, 05, 09, 17, 25, 1b, 21, 1f, 1d, 03, 19, 0c, 01, 30, 01, 01, 10, 29, 03, 0b, 00, 10, 19, 01, 11, 00, 29, 20, 19, 05, 00, 17, 00, 1b, 1d, 01, 11, 00, 29, 20, 1d, 09, 00, 17, 00, 1b, 21, 01, 11, 00, 29, 20, 21, 0d, 00, 17, 00, 1b, 25, 01, 11, 00, 29, 20, 25, 11, 00, 17, 00, 1b, 03, 01, 0e, 00, 18, 13, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 8
-- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(5)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Zero
 - expression 1 operands: lhs = Expression(2, Add), rhs = Counter(4)
 - expression 2 operands: lhs = Expression(3, Add), rhs = Counter(3)
-- expression 3 operands: lhs = Zero, rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 4 operands: lhs = Expression(5, Add), rhs = Counter(9)
 - expression 5 operands: lhs = Expression(6, Add), rhs = Counter(8)
 - expression 6 operands: lhs = Expression(7, Add), rhs = Counter(7)
@@ -15,81 +15,67 @@ Number of file 0 mappings: 12
 - Code(Counter(0)) at (prev + 48, 1) to (start + 1, 16)
 - Code(Counter(10)) at (prev + 3, 11) to (start + 0, 16)
 - Code(Counter(6)) at (prev + 1, 17) to (start + 0, 41)
-- Branch { true: Counter(6), false: Counter(2) } at (prev + 0, 23) to (start + 0, 27)
+- Branch { true: Counter(6), false: Counter(1) } at (prev + 0, 23) to (start + 0, 27)
     true  = c6
-    false = c2
+    false = c1
 - Code(Counter(7)) at (prev + 1, 17) to (start + 0, 41)
-- Branch { true: Counter(7), false: Counter(3) } at (prev + 0, 23) to (start + 0, 27)
+- Branch { true: Counter(7), false: Counter(2) } at (prev + 0, 23) to (start + 0, 27)
     true  = c7
-    false = c3
+    false = c2
 - Code(Counter(8)) at (prev + 1, 17) to (start + 0, 41)
-- Branch { true: Counter(8), false: Counter(4) } at (prev + 0, 23) to (start + 0, 27)
+- Branch { true: Counter(8), false: Counter(3) } at (prev + 0, 23) to (start + 0, 27)
     true  = c8
-    false = c4
+    false = c3
 - Code(Counter(9)) at (prev + 1, 17) to (start + 0, 41)
-- Branch { true: Counter(9), false: Counter(5) } at (prev + 0, 23) to (start + 0, 27)
+- Branch { true: Counter(9), false: Counter(4) } at (prev + 0, 23) to (start + 0, 27)
     true  = c9
-    false = c5
+    false = c4
 - Code(Expression(0, Add)) at (prev + 1, 14) to (start + 0, 24)
-    = ((((Zero + c2) + c3) + c4) + c5)
+    = ((((c1 + c2) + c3) + c4) + Zero)
 - Code(Expression(4, Add)) at (prev + 3, 5) to (start + 1, 2)
-    = ((((((((Zero + c2) + c3) + c4) + c5) + c6) + c7) + c8) + c9)
+    = ((((((((c1 + c2) + c3) + c4) + Zero) + c6) + c7) + c8) + c9)
 Highest counter ID seen: c10
 
 Function name: match_arms::match_arms
-Raw bytes (51): 0x[01, 01, 06, 05, 07, 0b, 11, 09, 0d, 13, 02, 17, 09, 11, 0d, 07, 01, 18, 01, 01, 10, 05, 03, 0b, 00, 10, 11, 01, 11, 00, 21, 0d, 01, 11, 00, 21, 09, 01, 11, 00, 21, 02, 01, 11, 00, 21, 0f, 03, 05, 01, 02]
+Raw bytes (45): 0x[01, 01, 03, 05, 07, 0b, 11, 09, 0d, 07, 01, 18, 01, 01, 10, 05, 03, 0b, 00, 10, 09, 01, 11, 00, 21, 0d, 01, 11, 00, 21, 11, 01, 11, 00, 21, 02, 01, 11, 00, 21, 05, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 6
+Number of expressions: 3
 - expression 0 operands: lhs = Counter(1), rhs = Expression(1, Add)
 - expression 1 operands: lhs = Expression(2, Add), rhs = Counter(4)
 - expression 2 operands: lhs = Counter(2), rhs = Counter(3)
-- expression 3 operands: lhs = Expression(4, Add), rhs = Expression(0, Sub)
-- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(2)
-- expression 5 operands: lhs = Counter(4), rhs = Counter(3)
 Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 24, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 3, 11) to (start + 0, 16)
-- Code(Counter(4)) at (prev + 1, 17) to (start + 0, 33)
-- Code(Counter(3)) at (prev + 1, 17) to (start + 0, 33)
 - Code(Counter(2)) at (prev + 1, 17) to (start + 0, 33)
+- Code(Counter(3)) at (prev + 1, 17) to (start + 0, 33)
+- Code(Counter(4)) at (prev + 1, 17) to (start + 0, 33)
 - Code(Expression(0, Sub)) at (prev + 1, 17) to (start + 0, 33)
     = (c1 - ((c2 + c3) + c4))
-- Code(Expression(3, Add)) at (prev + 3, 5) to (start + 1, 2)
-    = (((c4 + c3) + c2) + (c1 - ((c2 + c3) + c4)))
+- Code(Counter(1)) at (prev + 3, 5) to (start + 1, 2)
 Highest counter ID seen: c4
 
 Function name: match_arms::or_patterns
-Raw bytes (75): 0x[01, 01, 0d, 11, 0d, 05, 2f, 33, 11, 09, 0d, 09, 2a, 05, 2f, 33, 11, 09, 0d, 03, 27, 09, 2a, 05, 2f, 33, 11, 09, 0d, 09, 01, 25, 01, 01, 10, 05, 03, 0b, 00, 10, 11, 01, 11, 00, 12, 0d, 00, 1e, 00, 1f, 03, 00, 24, 00, 2e, 09, 01, 11, 00, 12, 2a, 00, 1e, 00, 1f, 27, 00, 24, 00, 2e, 23, 03, 05, 01, 02]
+Raw bytes (57): 0x[01, 01, 04, 09, 0d, 05, 0b, 03, 11, 05, 03, 09, 01, 25, 01, 01, 10, 05, 03, 0b, 00, 10, 09, 01, 11, 00, 12, 0d, 00, 1e, 00, 1f, 03, 00, 24, 00, 2e, 11, 01, 11, 00, 12, 06, 00, 1e, 00, 1f, 0e, 00, 24, 00, 2e, 05, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 13
-- expression 0 operands: lhs = Counter(4), rhs = Counter(3)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(11, Add)
-- expression 2 operands: lhs = Expression(12, Add), rhs = Counter(4)
-- expression 3 operands: lhs = Counter(2), rhs = Counter(3)
-- expression 4 operands: lhs = Counter(2), rhs = Expression(10, Sub)
-- expression 5 operands: lhs = Counter(1), rhs = Expression(11, Add)
-- expression 6 operands: lhs = Expression(12, Add), rhs = Counter(4)
-- expression 7 operands: lhs = Counter(2), rhs = Counter(3)
-- expression 8 operands: lhs = Expression(0, Add), rhs = Expression(9, Add)
-- expression 9 operands: lhs = Counter(2), rhs = Expression(10, Sub)
-- expression 10 operands: lhs = Counter(1), rhs = Expression(11, Add)
-- expression 11 operands: lhs = Expression(12, Add), rhs = Counter(4)
-- expression 12 operands: lhs = Counter(2), rhs = Counter(3)
+Number of expressions: 4
+- expression 0 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Expression(0, Add), rhs = Counter(4)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(0, Add)
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 37, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 3, 11) to (start + 0, 16)
-- Code(Counter(4)) at (prev + 1, 17) to (start + 0, 18)
+- Code(Counter(2)) at (prev + 1, 17) to (start + 0, 18)
 - Code(Counter(3)) at (prev + 0, 30) to (start + 0, 31)
 - Code(Expression(0, Add)) at (prev + 0, 36) to (start + 0, 46)
-    = (c4 + c3)
-- Code(Counter(2)) at (prev + 1, 17) to (start + 0, 18)
-- Code(Expression(10, Sub)) at (prev + 0, 30) to (start + 0, 31)
+    = (c2 + c3)
+- Code(Counter(4)) at (prev + 1, 17) to (start + 0, 18)
+- Code(Expression(1, Sub)) at (prev + 0, 30) to (start + 0, 31)
     = (c1 - ((c2 + c3) + c4))
-- Code(Expression(9, Add)) at (prev + 0, 36) to (start + 0, 46)
-    = (c2 + (c1 - ((c2 + c3) + c4)))
-- Code(Expression(8, Add)) at (prev + 3, 5) to (start + 1, 2)
-    = ((c4 + c3) + (c2 + (c1 - ((c2 + c3) + c4))))
+- Code(Expression(3, Sub)) at (prev + 0, 36) to (start + 0, 46)
+    = (c1 - (c2 + c3))
+- Code(Counter(1)) at (prev + 3, 5) to (start + 1, 2)
 Highest counter ID seen: c4
 
