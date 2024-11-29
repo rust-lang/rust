@@ -91,22 +91,16 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         // Closures in thir look something akin to
         // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
         // So we have to check for them in this weird way...
-        if let &ty::FnDef(did, substs) = ty.kind() {
+        if let &ty::FnDef(did, args) = ty.kind() {
             let parent = self.tcx.parent(did);
-            let fn_ = self.tcx.require_lang_item(LangItem::Fn, Some(expr.span));
-            let fn_once = self.tcx.require_lang_item(LangItem::FnOnce, Some(expr.span));
-            let fn_mut = self.tcx.require_lang_item(LangItem::FnMut, Some(expr.span));
-            if [fn_, fn_once, fn_mut].contains(&parent) {
-                if substs.first().and_then(|arg| arg.as_type()).is_some_and(|t| t.is_closure()) {
-                    self.report_calling_closure(
-                        &self.thir[fun],
-                        substs[1].as_type().unwrap(),
-                        expr,
-                    );
+            if self.tcx.fn_trait_kind_from_def_id(parent).is_some()
+                && args.first().and_then(|arg| arg.as_type()).is_some_and(Ty::is_closure)
+            {
+                self.report_calling_closure(&self.thir[fun], args[1].as_type().unwrap(), expr);
 
-                    // Tail calling is likely to cause unrelated errors (ABI, argument mismatches)
-                    return;
-                }
+                // Tail calling is likely to cause unrelated errors (ABI, argument mismatches),
+                // skip them, producing an error about calling a closure is enough.
+                return;
             };
         }
 
