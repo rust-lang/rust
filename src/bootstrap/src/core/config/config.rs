@@ -1663,7 +1663,7 @@ impl Config {
         }
 
         config.llvm_assertions =
-            toml.llvm.as_ref().map_or(false, |llvm| llvm.assertions.unwrap_or(false));
+            toml.llvm.as_ref().is_some_and(|llvm| llvm.assertions.unwrap_or(false));
 
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later

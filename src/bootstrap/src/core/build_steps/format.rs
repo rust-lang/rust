@@ -56,10 +56,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     let stamp_file = build.out.join("rustfmt.stamp");
 
-    let mut cmd = command(match build.initial_rustfmt() {
-        Some(p) => p,
-        None => return None,
-    });
+    let mut cmd = command(build.initial_rustfmt()?);
     cmd.arg("--version");
 
     let output = cmd.allow_failure().run_capture(build);
@@ -279,7 +276,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         Box::new(move |entry| {
             let cwd = std::env::current_dir();
             let entry = t!(entry);
-            if entry.file_type().map_or(false, |t| t.is_file()) {
+            if entry.file_type().is_some_and(|t| t.is_file()) {
                 formatted_paths_ref.lock().unwrap().push({
                     // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
                     // relative path.

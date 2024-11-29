@@ -263,12 +263,16 @@ pub struct Cargo {
     host: TargetSelection,
 }
 
+impl Cargo {
+    const CRATE_PATH: &str = "src/tools/cargo";
+}
+
 impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/cargo")
+        run.path(Self::CRATE_PATH)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -286,7 +290,7 @@ impl Step for Cargo {
             Mode::ToolRustc,
             self.host,
             Kind::Test,
-            "src/tools/cargo",
+            Self::CRATE_PATH,
             SourceType::Submodule,
             &[],
         );
@@ -301,6 +305,9 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
         cargo.env("PATH", path_for_cargo(builder, compiler));
+        // Cargo's test suite requires configurations from its own `.cargo/config.toml`.
+        // Change to the directory so Cargo can read from it.
+        cargo.current_dir(builder.src.join(Self::CRATE_PATH));
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(

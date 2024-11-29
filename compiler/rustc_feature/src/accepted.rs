@@ -225,7 +225,7 @@ declare_features! (
     /// Allows the use of `if let` expressions.
     (accepted, if_let, "1.0.0", None),
     /// Rescoping temporaries in `if let` to align with Rust 2024.
-    (accepted, if_let_rescope, "CURRENT_RUSTC_VERSION", Some(124085)),
+    (accepted, if_let_rescope, "1.84.0", Some(124085)),
     /// Allows top level or-patterns (`p | q`) in `if let` and `while let`.
     (accepted, if_while_or_patterns, "1.33.0", Some(48215)),
     /// Allows lifetime elision in `impl` headers. For example:
@@ -357,7 +357,7 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036)),
     /// Allows enums like Result<T, E> to be used across FFI, if T's niche value can
     /// be used to describe E or vice-versa.
-    (accepted, result_ffi_guarantees, "CURRENT_RUSTC_VERSION", Some(110503)),
+    (accepted, result_ffi_guarantees, "1.84.0", Some(110503)),
     /// Allows return-position `impl Trait` in traits.
     (accepted, return_position_impl_trait_in_trait, "1.75.0", Some(91611)),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
@@ -367,7 +367,7 @@ declare_features! (
     /// Allows `Self` struct constructor (RFC 2302).
     (accepted, self_struct_ctor, "1.32.0", Some(51994)),
     /// Shortern the tail expression lifetime
-    (accepted, shorter_tail_lifetimes, "CURRENT_RUSTC_VERSION", Some(123739)),
+    (accepted, shorter_tail_lifetimes, "1.84.0", Some(123739)),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254)),
     /// Allows use of `&foo[a..b]` as a slicing syntax.

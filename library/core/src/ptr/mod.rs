@@ -591,8 +591,8 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -613,8 +613,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
 }
@@ -634,8 +634,8 @@ pub const fn dangling<T>() -> *const T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -656,8 +656,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
@@ -695,7 +695,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
 #[inline(always)]
-#[stable(feature = "exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn with_exposed_provenance<T>(addr: usize) -> *const T {
@@ -735,7 +735,7 @@ pub fn with_exposed_provenance<T>(addr: usize) -> *const T {
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
 #[inline(always)]
-#[stable(feature = "exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {

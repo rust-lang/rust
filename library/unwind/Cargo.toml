@@ -37,7 +37,4 @@ system-llvm-libunwind = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [
-    # #[cfg(bootstrap)] rtems
-    'cfg(target_os, values("rtems"))',
-]
+check-cfg = []

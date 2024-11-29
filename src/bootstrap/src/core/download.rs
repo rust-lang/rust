@@ -829,7 +829,7 @@ download-rustc = false
 
 fn path_is_dylib(path: &Path) -> bool {
     // The .so is not necessarily the extension, it might be libLLVM.so.18.1
-    path.to_str().map_or(false, |path| path.contains(".so"))
+    path.to_str().is_some_and(|path| path.contains(".so"))
 }
 
 /// Checks whether the CI rustc is available for the given target triple.

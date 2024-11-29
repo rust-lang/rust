@@ -405,18 +405,15 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// }
 /// ```
 #[lang = "receiver"]
-#[cfg(not(bootstrap))]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
 pub trait Receiver {
     /// The target type on which the method may be called.
-    #[cfg(not(bootstrap))]
     #[rustc_diagnostic_item = "receiver_target"]
     #[lang = "receiver_target"]
     #[unstable(feature = "arbitrary_self_types", issue = "44874")]
     type Target: ?Sized;
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
 impl<P: ?Sized, T: ?Sized> Receiver for P
 where
@@ -433,8 +430,7 @@ where
 /// facility based around the current "arbitrary self types" unstable feature.
 /// That new facility will use the replacement trait above called `Receiver`
 /// which is why this is now named `LegacyReceiver`.
-#[cfg_attr(bootstrap, lang = "receiver")]
-#[cfg_attr(not(bootstrap), lang = "legacy_receiver")]
+#[lang = "legacy_receiver"]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 #[doc(hidden)]
 pub trait LegacyReceiver {

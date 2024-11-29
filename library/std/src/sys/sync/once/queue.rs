@@ -116,7 +116,6 @@ fn to_state(current: StateAndQueue) -> usize {
 
 impl Once {
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_once_new", since = "1.32.0"))]
     pub const fn new() -> Once {
         Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(INCOMPLETE)) }
     }

@@ -144,6 +144,4 @@ check-cfg = [
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg
     'cfg(feature, values(any()))',
-    # #[cfg(bootstrap)] rtems
-    'cfg(target_os, values("rtems"))',
 ]
