@@ -452,7 +452,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The binary heap will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the binary heap will not allocate.
+    /// `capacity`. If `capacity` is zero, the binary heap will not allocate.
     ///
     /// # Examples
     ///
@@ -496,7 +496,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     ///
     /// The binary heap will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the binary heap will not allocate.
+    /// `capacity`. If `capacity` is zero, the binary heap will not allocate.
     ///
     /// # Examples
     ///

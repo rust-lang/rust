@@ -1877,7 +1877,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2034,7 +2034,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2063,7 +2063,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2091,7 +2091,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2121,7 +2121,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2545,7 +2545,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2576,7 +2576,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2604,7 +2604,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2635,7 +2635,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2872,7 +2872,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2900,7 +2900,7 @@ macro_rules! uint_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
