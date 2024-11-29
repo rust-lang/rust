@@ -235,7 +235,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the hash map will not allocate.
+    /// `capacity`. If `capacity` is zero, the hash map will not allocate.
     ///
     /// # Examples
     ///
@@ -287,7 +287,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the hash map will not allocate.
+    /// `capacity`. If `capacity` is zero, the hash map will not allocate.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that

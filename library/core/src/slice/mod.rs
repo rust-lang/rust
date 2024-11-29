@@ -1077,7 +1077,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `size` is 0.
+    /// Panics if `size` is zero.
     ///
     /// # Examples
     ///
@@ -1133,7 +1133,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1168,7 +1168,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1210,7 +1210,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1249,7 +1249,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1326,7 +1326,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1372,7 +1372,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1410,7 +1410,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1486,7 +1486,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1527,7 +1527,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1571,7 +1571,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1606,7 +1606,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1642,7 +1642,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1677,7 +1677,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1720,7 +1720,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1760,7 +1760,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
