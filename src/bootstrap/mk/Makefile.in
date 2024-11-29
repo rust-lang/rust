@@ -108,11 +108,13 @@ ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders
 
-# test both x and bootstrap entrypoints
+# Set of tests that should represent half of the time of the test suite.
+# Used to split tests across multiple CI runners.
+# Test both x and bootstrap entrypoints.
 ci-mingw-x:
-	$(Q)$(CFG_SRC_DIR)/x test --stage 2 tidy
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 --skip=compiler --skip=src
 ci-mingw-bootstrap:
-	$(Q)$(BOOTSTRAP) test --stage 2 --skip tidy
+	$(Q)$(BOOTSTRAP) test --stage 2 --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
 ci-mingw: ci-mingw-x ci-mingw-bootstrap
 
 .PHONY: dist

@@ -439,14 +439,24 @@ auto:
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows-8c
 
-  - image: x86_64-mingw
+  # x86_64-mingw is split into two jobs to run tests in parallel.
+  - image: x86_64-mingw-1
     env:
-      SCRIPT: make ci-mingw
+      SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
-    <<: *job-windows-8c
+    <<: *job-windows
+
+  - image: x86_64-mingw-2
+    env:
+      SCRIPT: make ci-mingw-bootstrap
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows
 
   - image: dist-x86_64-msvc
     env:
