@@ -1,6 +1,6 @@
 //@ revisions: become return
 //@ [become] run-pass
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
 // This is an identity function (`|x| x`), but implemented using recursion.

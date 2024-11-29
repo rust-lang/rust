@@ -1,5 +1,5 @@
 //@ check-pass
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(explicit_tail_calls, decl_macro)]
 
 macro call($f:expr $(, $args:expr)* $(,)?) {

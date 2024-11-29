@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 #![allow(unused)]
 use std::num::Wrapping;
