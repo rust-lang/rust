@@ -427,9 +427,8 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let bin_root = self.out.join(host).join("stage0");
-        let clippy_stamp = bin_root.join(".clippy-stamp");
-        let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
+        let clippy_stamp = self.initial_sysroot.join(".clippy-stamp");
+        let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
             return cargo_clippy;
         }

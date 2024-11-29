@@ -379,6 +379,7 @@ pub struct Config {
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
     pub initial_cargo_clippy: Option<PathBuf>,
+    pub initial_sysroot: PathBuf,
 
     #[cfg(not(test))]
     initial_rustfmt: RefCell<RustfmtState>,
@@ -1563,8 +1564,6 @@ impl Config {
             );
         }
 
-        config.initial_cargo_clippy = cargo_clippy;
-
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags.skip_stage0_validation {
                 config.check_stage0_version(&rustc, "rustc");
@@ -1580,6 +1579,10 @@ impl Config {
                 .join(exe("rustc", config.build))
         };
 
+        config.initial_sysroot = config.initial_rustc.ancestors().nth(2).unwrap().into();
+
+        config.initial_cargo_clippy = cargo_clippy;
+
         config.initial_cargo = if let Some(cargo) = cargo {
             if !flags.skip_stage0_validation {
                 config.check_stage0_version(&cargo, "cargo");
@@ -1587,12 +1590,7 @@ impl Config {
             cargo
         } else {
             config.download_beta_toolchain();
-            config
-                .out
-                .join(config.build)
-                .join("stage0")
-                .join("bin")
-                .join(exe("cargo", config.build))
+            config.initial_sysroot.join("bin").join(exe("cargo", config.build))
         };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.

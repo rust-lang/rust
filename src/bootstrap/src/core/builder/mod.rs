@@ -1262,7 +1262,7 @@ impl<'a> Builder<'a> {
     pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
         match self.config.libdir_relative() {
             Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-            _ if compiler.stage == 0 => &self.build.initial_libdir,
+            _ if compiler.stage == 0 => &self.build.initial_relative_libdir,
             _ => Path::new("lib"),
         }
     }
