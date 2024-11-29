@@ -1,7 +1,7 @@
 #![warn(clippy::zombie_processes)]
-#![allow(clippy::if_same_then_else, clippy::ifs_same_cond)]
+#![allow(clippy::if_same_then_else, clippy::ifs_same_cond, clippy::needless_return)]
 
-use std::process::{Child, Command};
+use std::process::{Child, Command, ExitStatus};
 
 fn main() {
     {
@@ -12,7 +12,7 @@ fn main() {
 
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         x.kill();
         x.id();
     }
@@ -39,7 +39,7 @@ fn main() {
     }
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         let v = &x;
         // (allow shared refs is fine because one cannot call `.wait()` through that)
     }
@@ -64,14 +64,14 @@ fn main() {
     // It should assume that it might not exit and still lint
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         if true {
             std::process::exit(0);
         }
     }
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         if true {
             while false {}
             // Calling `exit()` after leaving a while loop should still be linted.
@@ -97,7 +97,7 @@ fn main() {
 
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         if true {
             return;
         }
@@ -106,8 +106,28 @@ fn main() {
 
     {
         let mut x = Command::new("").spawn().unwrap();
-        //~^ ERROR: spawned process is never `wait()`ed on
+        //~^ zombie_processes
         if true {
+            x.wait().unwrap();
+        }
+    }
+
+    {
+        let mut x = Command::new("").spawn().unwrap();
+        //~^ zombie_processes
+        if true {
+            x.wait().unwrap();
+        } else {
+            // this else block exists to test the other help message
+        }
+    }
+
+    {
+        let mut x = Command::new("").spawn().unwrap();
+        //~^ zombie_processes
+        if true {
+            // this else block exists to test the other help message
+        } else {
             x.wait().unwrap();
         }
     }
@@ -142,4 +162,9 @@ fn main() {
 
 fn process_child(c: Child) {
     todo!()
+}
+
+fn return_wait() -> ExitStatus {
+    let mut x = Command::new("").spawn().unwrap();
+    return x.wait().unwrap();
 }
