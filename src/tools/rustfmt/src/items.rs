@@ -528,21 +528,21 @@ impl<'a> FmtVisitor<'a> {
         self.push_rewrite(struct_parts.span, rewrite);
     }
 
-    pub(crate) fn visit_enum(
+    fn format_enum(
         &mut self,
         ident: symbol::Ident,
         vis: &ast::Visibility,
         enum_def: &ast::EnumDef,
         generics: &ast::Generics,
         span: Span,
-    ) {
+    ) -> Option<String> {
         let enum_header =
             format_header(&self.get_context(), "enum ", ident, vis, self.block_indent);
-        self.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
         let brace_pos = enum_snippet.find_uncommented("{").unwrap();
         let body_start = span.lo() + BytePos(brace_pos as u32 + 1);
+
         let generics_str = format_generics(
             &self.get_context(),
             generics,
@@ -556,23 +556,34 @@ impl<'a> FmtVisitor<'a> {
             // make a span that starts right after `enum Foo`
             mk_sp(ident.span.hi(), body_start),
             last_line_width(&enum_header, self.get_context().config.tab_spaces()),
-        );
-
-        if let Some(generics_str) = generics_str {
-            self.push_str(&generics_str);
-        } else {
-            self.push_str(self.snippet(mk_sp(ident.span.hi(), body_start)));
-        }
-
-        self.last_pos = body_start;
+        )?;
 
         match self.format_variant_list(enum_def, body_start, span.hi()) {
-            Some(ref s) if enum_def.variants.is_empty() => self.push_str(s),
-            rw => {
-                self.push_rewrite(mk_sp(body_start, span.hi()), rw);
+            Some(ref s) if enum_def.variants.is_empty() => {
+                Some(format!("{enum_header}{generics_str}{s}"))
+            }
+            Some(rw) => {
+                let indent = self.block_indent.to_string(self.config);
                 self.block_indent = self.block_indent.block_unindent(self.config);
+                Some(format!("{enum_header}{generics_str}\n{indent}{rw}"))
+            }
+            None => {
+                self.block_indent = self.block_indent.block_unindent(self.config);
+                None
             }
         }
+    }
+
+    pub(crate) fn visit_enum(
+        &mut self,
+        ident: symbol::Ident,
+        vis: &ast::Visibility,
+        enum_def: &ast::EnumDef,
+        generics: &ast::Generics,
+        span: Span,
+    ) {
+        let rewrite = self.format_enum(ident, vis, enum_def, generics, span);
+        self.push_rewrite(span, rewrite);
     }
 
     // Format the body of an enum definition

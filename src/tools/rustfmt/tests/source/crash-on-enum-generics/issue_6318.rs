@@ -8,6 +8,7 @@ fn my_fn() {
                 Option<[u8; 4]>,
             >>::Archived,
         >,
+    // left unformatted since formatting where clause fails 
     {
     }
 }

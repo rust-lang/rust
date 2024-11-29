@@ -8,6 +8,6 @@ where
 {
     V0,
     V1,
-    V2,
+        V2, // left unformatted since formatting where clause fails
     V3,
 }
