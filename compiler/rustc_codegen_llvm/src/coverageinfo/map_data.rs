@@ -3,9 +3,9 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
     CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, MappingKind, Op,
+    SourceRegion,
 };
 use rustc_middle::ty::Instance;
-use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
@@ -220,16 +220,16 @@ impl<'tcx> FunctionCoverage<'tcx> {
         })
     }
 
-    /// Yields all this function's coverage mappings, after simplifying away
-    /// unused counters and counter expressions.
-    pub(crate) fn mapping_spans(
+    /// Converts this function's coverage mappings into an intermediate form
+    /// that will be used by `mapgen` when preparing for FFI.
+    pub(crate) fn counter_regions(
         &self,
-    ) -> impl Iterator<Item = (MappingKind, Span)> + ExactSizeIterator + Captures<'_> {
+    ) -> impl Iterator<Item = (MappingKind, &SourceRegion)> + ExactSizeIterator {
         self.function_coverage_info.mappings.iter().map(move |mapping| {
-            let &Mapping { ref kind, span } = mapping;
+            let Mapping { kind, source_region } = mapping;
             let kind =
                 kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
-            (kind, span)
+            (kind, source_region)
         })
     }
 

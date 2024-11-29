@@ -155,6 +155,22 @@ impl Debug for CoverageKind {
     }
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct SourceRegion {
+    pub start_line: u32,
+    pub start_col: u32,
+    pub end_line: u32,
+    pub end_col: u32,
+}
+
+impl Debug for SourceRegion {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        let &Self { start_line, start_col, end_line, end_col } = self;
+        write!(fmt, "{start_line}:{start_col} - {end_line}:{end_col}")
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum Op {
@@ -216,7 +232,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub span: Span,
+    pub source_region: SourceRegion,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,
