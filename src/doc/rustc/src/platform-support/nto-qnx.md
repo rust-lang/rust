@@ -136,18 +136,31 @@ To compile for QNX Neutrino (aarch64 and x86_64) and Linux (x86_64):
 
 ```bash
 export build_env='
-    CC_aarch64-unknown-nto-qnx710=qcc
-    CFLAGS_aarch64-unknown-nto-qnx710=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64-unknown-nto-qnx710=qcc
+    CC_i586_pc_nto_qnx700=qcc
+    CFLAGS_i586_pc_nto_qnx700=-Vgcc_ntox86_cxx
+    CXX_i586_pc_nto_qnx700=qcc
+    AR_i586_pc_nto_qnx700=ntox86-ar
+
+    CC_aarch64_unknown_nto_qnx710=qcc
+    CFLAGS_aarch64_unknown_nto_qnx710=-Vgcc_ntoaarch64le_cxx
+    CXX_aarch64_unknown_nto_qnx710=qcc
     AR_aarch64_unknown_nto_qnx710=ntoaarch64-ar
-    CC_aarch64-unknown-nto-qnx710_iosock=qcc
-    CFLAGS_aarch64-unknown-nto-qnx710_iosock=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64-unknown-nto-qnx710_iosock=qcc
+
+    CC_aarch64_unknown_nto_qnx710_iosock=qcc
+    CFLAGS_aarch64_unknown_nto_qnx710_iosock=-Vgcc_ntoaarch64le_cxx
+    CXX_aarch64_unknown_nto_qnx710_iosock=qcc
     AR_aarch64_unknown_nto_qnx710_iosock=ntoaarch64-ar
-    CC_x86_64-pc-nto-qnx710=qcc
-    CFLAGS_x86_64-pc-nto-qnx710=-Vgcc_ntox86_64_cxx
-    CXX_x86_64-pc-nto-qnx710=qcc
-    AR_x86_64_pc_nto_qnx710=ntox86_64-ar'
+
+    CC_aarch64_unknown_nto_qnx700=qcc
+    CFLAGS_aarch64_unknown_nto_qnx700=-Vgcc_ntoaarch64le_cxx
+    CXX_aarch64_unknown_nto_qnx700=qcc
+    AR_aarch64_unknown_nto_qnx700=ntoaarch64-ar
+
+    CC_x86_64_pc_nto_qnx710=qcc
+    CFLAGS_x86_64_pc_nto_qnx710=-Vgcc_ntox86_64_cxx
+    CXX_x86_64_pc_nto_qnx710=qcc
+    AR_x86_64_pc_nto_qnx710=ntox86_64-ar
+    '
 
 env $build_env \
     ./x.py build \
@@ -167,15 +180,7 @@ To run all tests on a x86_64 QNX Neutrino target:
 
 ```bash
 export TEST_DEVICE_ADDR="localhost:12345" # must address the test target, can be a SSH tunnel
-export build_env='
-    CC_aarch64-unknown-nto-qnx710=qcc
-    CFLAGS_aarch64-unknown-nto-qnx710=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64-unknown-nto-qnx710=qcc
-    AR_aarch64_unknown_nto_qnx710=ntoaarch64-ar
-    CC_x86_64-pc-nto-qnx710=qcc
-    CFLAGS_x86_64-pc-nto-qnx710=-Vgcc_ntox86_64_cxx
-    CXX_x86_64-pc-nto-qnx710=qcc
-    AR_x86_64_pc_nto_qnx710=ntox86_64-ar'
+export build_env=<see above>
 
 # Disable tests that only work on the host or don't make sense for this target.
 # See also:
