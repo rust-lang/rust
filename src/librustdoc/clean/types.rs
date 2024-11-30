@@ -491,20 +491,17 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
                 debug!(?id);
-                if let Ok((mut href, ..)) = href(*id, cx) {
-                    debug!(?href);
-                    if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut href, cx.tcx())
-                    }
-                    Some(RenderedLink {
-                        original_text: s.clone(),
-                        new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx),
-                        href,
-                    })
-                } else {
-                    None
+                let (mut href, ..) = href(*id, cx).unwrap();
+                debug!(?href);
+                if let Some(ref fragment) = *fragment {
+                    fragment.render(&mut href, cx.tcx())
                 }
+                Some(RenderedLink {
+                    original_text: s.clone(),
+                    new_text: link_text.clone(),
+                    tooltip: link_tooltip(*id, fragment, cx),
+                    href,
+                })
             })
             .collect()
     }

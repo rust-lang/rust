@@ -735,17 +735,22 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
 
                 search_for_field()
             }
-            Res::Def(DefKind::Trait, did) => filter_assoc_items_by_name_and_namespace(
-                tcx,
-                did,
-                Ident::with_dummy_span(item_name),
-                ns,
-            )
-            .map(|item| {
-                let res = Res::Def(item.kind.as_def_kind(), item.def_id);
-                (res, item.def_id)
-            })
-            .collect::<Vec<_>>(),
+            Res::Def(DefKind::Trait, did) => {
+                let item_ident = Ident::with_dummy_span(item_name);
+                let dyn_impls = tcx.inherent_impls(did);
+                let assoc_items = filter_assoc_items_by_name_and_namespace(
+                    tcx, did, item_ident, ns,
+                )
+                .chain(dyn_impls.iter().flat_map(|d| {
+                    filter_assoc_items_by_name_and_namespace(tcx, *d, item_ident, ns)
+                }));
+                assoc_items
+                    .map(|item| {
+                        let res = Res::Def(item.kind.as_def_kind(), item.def_id);
+                        (res, item.def_id)
+                    })
+                    .collect::<Vec<_>>()
+            }
             _ => Vec::new(),
         }
     }
@@ -1058,6 +1063,7 @@ impl LinkCollector<'_, '_> {
     /// This is the entry point for resolving an intra-doc link.
     ///
     /// FIXME(jynelson): this is way too many arguments
+    #[instrument(level = "debug", skip(self, pp_link, ori_link), ret)]
     fn resolve_link(
         &mut self,
         dox: &String,
@@ -1217,6 +1223,7 @@ impl LinkCollector<'_, '_> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, diag_info), ret)]
     fn compute_link(
         &mut self,
         mut res: Res,
