@@ -428,11 +428,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let mut sz: u32 = 0;
+        #[expect(deprecated)]
         libc::_NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 {
             return Err(io::Error::last_os_error());
         }
         let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
+        #[expect(deprecated)]
         let err = libc::_NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 {
             return Err(io::Error::last_os_error());
