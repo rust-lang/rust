@@ -207,8 +207,6 @@ fn prefix_and_suffix<'tcx>(
             }
             writeln!(begin, "{asm_name}:").unwrap();
 
-            eprintln!("{}", &begin);
-
             writeln!(end).unwrap();
             writeln!(end, ".size {asm_name}, . - {asm_name}").unwrap();
             writeln!(end, ".popsection").unwrap();

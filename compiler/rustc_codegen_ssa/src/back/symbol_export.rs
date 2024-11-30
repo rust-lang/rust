@@ -283,7 +283,7 @@ fn exported_symbols_provider_local(
     }
 
     if tcx.local_crate_exports_generics() {
-        use rustc_middle::mir::mono::{MonoItem, Visibility};
+        use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
         // Normally, we require that shared monomorphizations are not hidden,
@@ -298,7 +298,7 @@ fn exported_symbols_provider_local(
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
-            if !data.linkage_info.is_external() {
+            if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise
                 // we'll get a linker error
                 continue;

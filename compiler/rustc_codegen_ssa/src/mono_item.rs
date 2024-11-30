@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::mono::{LinkageInfo, MonoItem, Visibility};
+use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{span_bug, ty};
@@ -15,7 +15,7 @@ pub trait MonoItemExt<'a, 'tcx> {
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
-        linkage_info: LinkageInfo,
+        linkage: Linkage,
         visibility: Visibility,
     );
     fn to_raw_string(&self) -> String;
@@ -117,7 +117,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
-        linkage_info: LinkageInfo,
+        linkage: Linkage,
         visibility: Visibility,
     ) {
         debug!(
@@ -133,7 +133,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         match *self {
             MonoItem::Static(def_id) => {
-                cx.predefine_static(def_id, linkage_info.into_linkage(), visibility, symbol_name);
+                cx.predefine_static(def_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
                 let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
@@ -141,7 +141,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     // do not define this function; it will become a global assembly block
                 } else {
-                    cx.predefine_fn(instance, linkage_info.into_linkage(), visibility, symbol_name);
+                    cx.predefine_fn(instance, linkage, visibility, symbol_name);
                 };
             }
             MonoItem::GlobalAsm(..) => {}

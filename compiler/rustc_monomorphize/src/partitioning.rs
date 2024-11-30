@@ -109,8 +109,8 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{
-    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, LinkageInfo, MonoItem,
-    MonoItemData, Visibility,
+    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
+    Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::visit::TypeVisitableExt;
@@ -245,7 +245,7 @@ where
         let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
 
         let mut can_be_internalized = true;
-        let (linkage_info, visibility) = mono_item_linkage_info_and_visibility(
+        let (linkage, visibility) = mono_item_linkage_and_visibility(
             cx.tcx,
             &mono_item,
             &mut can_be_internalized,
@@ -259,7 +259,7 @@ where
 
         cgu.items_mut().insert(mono_item, MonoItemData {
             inlined: false,
-            linkage_info,
+            linkage,
             visibility,
             size_estimate,
         });
@@ -278,7 +278,7 @@ where
             // This is a CGU-private copy.
             cgu.items_mut().entry(inlined_item).or_insert_with(|| MonoItemData {
                 inlined: true,
-                linkage_info: LinkageInfo::ImplicitInternal,
+                linkage: Linkage::Internal,
                 visibility: Visibility::Default,
                 size_estimate: inlined_item.size_estimate(cx.tcx),
             });
@@ -589,8 +589,7 @@ fn internalize_symbols<'tcx>(
 
             // If we got here, we did not find any uses from other CGUs, so
             // it's fine to make this monomorphization internal.
-            debug_assert_eq!(data.linkage_info, LinkageInfo::ImplicitExternal);
-            data.linkage_info = LinkageInfo::ImplicitInternal;
+            data.linkage = Linkage::Internal;
             data.visibility = Visibility::Default;
         }
     }
@@ -608,7 +607,7 @@ fn mark_code_coverage_dead_code_cgu<'tcx>(codegen_units: &mut [CodegenUnit<'tcx>
     // function symbols to be included via `-u` or `/include` linker args.
     let dead_code_cgu = codegen_units
         .iter_mut()
-        .filter(|cgu| cgu.items().iter().any(|(_, data)| data.linkage_info.is_external()))
+        .filter(|cgu| cgu.items().iter().any(|(_, data)| data.linkage == Linkage::External))
         .min_by_key(|cgu| cgu.size_estimate());
 
     // If there are no CGUs that have externally linked items, then we just
@@ -737,26 +736,24 @@ fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
-fn mono_item_linkage_info_and_visibility<'tcx>(
+fn mono_item_linkage_and_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
     can_export_generics: bool,
     always_export_generics: bool,
-) -> (LinkageInfo, Visibility) {
+) -> (Linkage, Visibility) {
     if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
-        (LinkageInfo::Explicit(explicit_linkage), Visibility::Default)
-    } else {
-        let vis = mono_item_visibility(
-            tcx,
-            mono_item,
-            can_be_internalized,
-            can_export_generics,
-            always_export_generics,
-        );
-
-        (LinkageInfo::ImplicitExternal, vis)
+        return (explicit_linkage, Visibility::Default);
     }
+    let vis = mono_item_visibility(
+        tcx,
+        mono_item,
+        can_be_internalized,
+        can_export_generics,
+        always_export_generics,
+    );
+    (Linkage::External, vis)
 }
 
 type CguNameCache = UnordMap<(DefId, bool), Symbol>;
@@ -1036,7 +1033,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
                 writeln!(s, "  - items: {num_items}, mean size: {mean_size:.1}, sizes: {sizes}",);
 
             for (item, data) in cgu.items_in_deterministic_order(tcx) {
-                let linkage_info = data.linkage_info;
+                let linkage = data.linkage;
                 let symbol_name = item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
@@ -1044,7 +1041,7 @@ fn debug_dump<'a, 'tcx: 'a>(tcx: TyCtxt<'tcx>, label: &str, cgus: &[CodegenUnit<
                 let size = data.size_estimate;
                 let _ = with_no_trimmed_paths!(writeln!(
                     s,
-                    "  - {item} [{linkage_info:?}] [{symbol_hash}] ({kind}, size: {size})"
+                    "  - {item} [{linkage:?}] [{symbol_hash}] ({kind}, size: {size})"
                 ));
             }
 
@@ -1197,7 +1194,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
 
         for cgu in codegen_units {
             for (&mono_item, &data) in cgu.items() {
-                item_to_cgus.entry(mono_item).or_default().push((cgu.name(), data.linkage_info));
+                item_to_cgus.entry(mono_item).or_default().push((cgu.name(), data.linkage));
             }
         }
 
@@ -1210,11 +1207,11 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.sort_by_key(|(name, _)| *name);
                 cgus.dedup();
-                for &(ref cgu_name, linkage_info) in cgus.iter() {
+                for &(ref cgu_name, linkage) in cgus.iter() {
                     output.push(' ');
                     output.push_str(cgu_name.as_str());
 
-                    let linkage_abbrev = match linkage_info.into_linkage() {
+                    let linkage_abbrev = match linkage {
                         Linkage::External => "External",
                         Linkage::AvailableExternally => "Available",
                         Linkage::LinkOnceAny => "OnceAny",

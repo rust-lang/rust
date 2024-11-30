@@ -30,7 +30,7 @@ fn predefine_mono_items<'tcx>(
                         get_function_sig(tcx, module.target_config().default_call_conv, instance);
                     let linkage = crate::linkage::get_clif_linkage(
                         mono_item,
-                        data.linkage_info.into_linkage(),
+                        data.linkage,
                         data.visibility,
                         is_compiler_builtins,
                     );
