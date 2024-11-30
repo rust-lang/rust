@@ -666,7 +666,7 @@ impl<'a> InferenceTable<'a> {
             highest_known_var: InferenceVar,
         }
         impl TypeFolder<Interner> for VarFudger<'_, '_> {
-            fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+            fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
                 self
             }
 
@@ -1004,7 +1004,7 @@ mod resolve {
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     {
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
         }
 
