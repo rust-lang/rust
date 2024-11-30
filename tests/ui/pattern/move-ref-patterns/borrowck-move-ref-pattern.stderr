@@ -11,7 +11,7 @@ LL |     _x1 = U;
 LL |     drop(hold_all);
    |          -------- borrow later used here
 
-error[E0384]: cannot assign twice to immutable variable `_x1`
+warning[E0384]: cannot assign twice to immutable variable `_x1`
   --> $DIR/borrowck-move-ref-pattern.rs:9:5
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
@@ -19,6 +19,7 @@ LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
 LL |     _x1 = U;
    |     ^^^^^^^ cannot assign twice to immutable variable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider making this binding mutable
    |
 LL |     let [ref _x0_hold, mut _x1, ref xs_hold @ ..] = arr;
@@ -75,7 +76,7 @@ LL |     let [_, _, ref mut _x2, _x3, mut _x4] = arr;
 LL |     drop(xs_hold);
    |          ------- borrow later used here
 
-error[E0384]: cannot assign twice to immutable variable `_x1`
+warning[E0384]: cannot assign twice to immutable variable `_x1`
   --> $DIR/borrowck-move-ref-pattern.rs:23:5
    |
 LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
@@ -224,7 +225,7 @@ LL |
 LL |         let (ref mut _x0, _, _x2) = tup;
    |                                     --- use occurs due to use in closure
 
-error: aborting due to 18 previous errors
+error: aborting due to 16 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0382, E0384, E0499, E0502, E0505, E0594.
 For more information about an error, try `rustc --explain E0382`.

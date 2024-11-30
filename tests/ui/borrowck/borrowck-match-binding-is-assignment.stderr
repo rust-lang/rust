@@ -1,11 +1,12 @@
-error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:14:13
+warning[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:15:13
    |
 LL |         x => {
    |         - first assignment to `x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider making this binding mutable
    |
 LL |         mut x => {
@@ -15,8 +16,8 @@ help: to modify the original value, take a borrow instead
 LL |         ref mut x => {
    |         +++++++
 
-error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:20:13
+warning[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:21:13
    |
 LL |         E::Foo(x) => {
    |                - first assignment to `x`
@@ -32,8 +33,8 @@ help: to modify the original value, take a borrow instead
 LL |         E::Foo(ref mut x) => {
    |                +++++++
 
-error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:26:13
+warning[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:27:13
    |
 LL |         S { bar: x } => {
    |                  - first assignment to `x`
@@ -49,8 +50,8 @@ help: to modify the original value, take a borrow instead
 LL |         S { bar: ref mut x } => {
    |                  +++++++
 
-error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:32:13
+warning[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:33:13
    |
 LL |         (x,) => {
    |          - first assignment to `x`
@@ -66,8 +67,8 @@ help: to modify the original value, take a borrow instead
 LL |         (ref mut x,) => {
    |          +++++++
 
-error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-match-binding-is-assignment.rs:38:13
+warning[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:39:13
    |
 LL |         [x,_,_] => {
    |          - first assignment to `x`
@@ -83,6 +84,6 @@ help: to modify the original value, take a borrow instead
 LL |         [ref mut x,_,_] => {
    |          +++++++
 
-error: aborting due to 5 previous errors
+warning: 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0384`.

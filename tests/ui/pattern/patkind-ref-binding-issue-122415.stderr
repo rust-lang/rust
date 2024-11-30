@@ -1,14 +1,15 @@
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/patkind-ref-binding-issue-122415.rs:7:12
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/patkind-ref-binding-issue-122415.rs:8:12
    |
 LL |     mutate(&mut x);
    |            ^^^^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn foo(&(mut x): &i32) {
    |        ~~~~~  +
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
 For more information about this error, try `rustc --explain E0596`.

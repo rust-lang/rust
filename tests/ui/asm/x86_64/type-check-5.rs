@@ -19,7 +19,7 @@ fn main() {
         // Outputs require mutable places
 
         let v: Vec<u64> = vec![0, 1, 2];
-        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
+        //~^ WARNING cannot borrow `v` as mutable, as it is not declared as mutable
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);

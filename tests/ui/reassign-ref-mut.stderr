@@ -1,13 +1,15 @@
-error[E0384]: cannot assign twice to immutable variable `a`
-  --> $DIR/reassign-ref-mut.rs:12:5
+warning[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/reassign-ref-mut.rs:13:5
    |
 LL |     let &mut (ref a, ref mut b) = &mut one_two;
    |               ----- first assignment to `a`
 LL |     a = &three_four.0;
    |     ^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
+   |
+   = note: `#[warn(mut_non_mut)]` on by default
 
-error[E0384]: cannot assign twice to immutable variable `b`
-  --> $DIR/reassign-ref-mut.rs:14:5
+warning[E0384]: cannot assign twice to immutable variable `b`
+  --> $DIR/reassign-ref-mut.rs:15:5
    |
 LL |     let &mut (ref a, ref mut b) = &mut one_two;
    |                      --------- first assignment to `b`
@@ -15,6 +17,6 @@ LL |     let &mut (ref a, ref mut b) = &mut one_two;
 LL |     b = &mut three_four.1;
    |     ^^^^^^^^^^^^^^^^^^^^^ cannot assign twice to immutable variable
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0384`.

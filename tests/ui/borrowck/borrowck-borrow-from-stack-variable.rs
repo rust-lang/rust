@@ -117,7 +117,7 @@ fn borrow_mut_and_imm() {
 
 fn borrow_mut_from_imm() {
     let foo = make_foo();
-    let bar1 = &mut foo.bar1; //~ ERROR cannot borrow
+    let bar1 = &mut foo.bar1; //~ WARNING cannot borrow
     *bar1;
 }
 

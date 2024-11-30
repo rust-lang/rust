@@ -12,7 +12,7 @@ fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
 fn a() {
     let n = 0;
     let mut f = to_fn_mut(|| {
-        n += 1; //~ ERROR cannot assign to `n`, as it is not declared as mutable
+        n += 1; //~ WARNING cannot assign to `n`, as it is not declared as mutable
     });
 }
 
@@ -29,7 +29,7 @@ fn c() {
         // If we just did a straight-forward desugaring, this would
         // compile, but we do something a bit more subtle, and hence
         // we get an error.
-        n += 1; //~ ERROR cannot assign
+        n += 1; //~ WARNING cannot assign
     });
 }
 
@@ -43,6 +43,8 @@ fn d() {
 fn e() {
     let n = 0;
     let mut f = to_fn(move || {
+        // Cannot assign to n, but this time
+        // because we're in a `Fn` closure
         n += 1; //~ ERROR cannot assign
     });
 }

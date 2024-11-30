@@ -26,7 +26,7 @@ fn deref_imm(x: Own<isize>) {
 }
 
 fn deref_mut1(x: Own<isize>) {
-    let __isize = &mut *x; //~ ERROR cannot borrow
+    let __isize = &mut *x; //~ WARNING cannot borrow
 }
 
 fn deref_mut2(mut x: Own<isize>) {
@@ -46,7 +46,7 @@ fn deref_extend_mut2<'a>(x: &'a mut Own<isize>) -> &'a mut isize {
 }
 
 fn assign1<'a>(x: Own<isize>) {
-    *x = 3; //~ ERROR cannot borrow
+    *x = 3; //~ WARNING cannot borrow
 }
 
 fn assign2<'a>(x: &'a Own<isize>) {

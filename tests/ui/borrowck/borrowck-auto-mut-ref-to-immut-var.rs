@@ -1,3 +1,4 @@
+//@ check-pass
 // Tests that auto-ref can't create mutable aliases to immutable memory.
 
 struct Foo {
@@ -12,5 +13,5 @@ impl Foo {
 
 fn main() {
     let x = Foo { x: 3 };
-    x.printme();    //~ ERROR cannot borrow
+    x.printme();    //~ WARNING cannot borrow
 }

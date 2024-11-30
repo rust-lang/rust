@@ -1,16 +1,17 @@
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:10:46
    |
 LL |         let mut c1 = |y: &'static mut isize| x = y;
    |                                              ^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     pub fn e(mut x: &'static mut isize) {
    |              +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:21:50
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:22:50
    |
 LL |             let mut c2 = |y: &'static mut isize| x = y;
    |                                                  ^^^^^ cannot assign
@@ -20,8 +21,8 @@ help: consider changing this to be mutable
 LL |     pub fn ee(mut x: &'static mut isize) {
    |               +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:35:13
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:36:13
    |
 LL |             x = (1,);
    |             ^^^^^^^^ cannot assign
@@ -31,8 +32,8 @@ help: consider changing this to be mutable
 LL |     pub fn capture_assign_whole(mut x: (i32,)) {
    |                                 +++
 
-error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:41:13
+warning[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:42:13
    |
 LL |             x.0 = 1;
    |             ^^^^^^^ cannot assign
@@ -42,8 +43,8 @@ help: consider changing this to be mutable
 LL |     pub fn capture_assign_part(mut x: (i32,)) {
    |                                +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:47:13
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:48:13
    |
 LL |             &mut x;
    |             ^^^^^^ cannot borrow as mutable
@@ -53,8 +54,8 @@ help: consider changing this to be mutable
 LL |     pub fn capture_reborrow_whole(mut x: (i32,)) {
    |                                   +++
 
-error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:53:13
+warning[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:54:13
    |
 LL |             &mut x.0;
    |             ^^^^^^^^ cannot borrow as mutable
@@ -64,7 +65,47 @@ help: consider changing this to be mutable
 LL |     pub fn capture_reborrow_part(mut x: (i32,)) {
    |                                  +++
 
-error: aborting due to 6 previous errors
+warning: creating a mutable reference to mutable static is discouraged
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:63:37
+   |
+LL |         borrowck_closures_unique::e(&mut X);
+   |                                     ^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+   = note: `#[warn(static_mut_refs)]` on by default
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |         borrowck_closures_unique::e(&raw mut X);
+   |                                     ~~~~~~~~
+
+warning: creating a mutable reference to mutable static is discouraged
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:13:16
+   |
+LL |             c1(&mut Y);
+   |                ^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |             c1(&raw mut Y);
+   |                ~~~~~~~~
+
+warning: creating a mutable reference to mutable static is discouraged
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:27:16
+   |
+LL |             c1(&mut Z);
+   |                ^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+help: use `&raw mut` instead to create a raw pointer
+   |
+LL |             c1(&raw mut Z);
+   |                ~~~~~~~~
+
+warning: 9 warnings emitted
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

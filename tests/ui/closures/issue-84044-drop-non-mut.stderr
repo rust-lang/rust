@@ -1,14 +1,30 @@
-error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
-  --> $DIR/issue-84044-drop-non-mut.rs:5:10
+warning[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+  --> $DIR/issue-84044-drop-non-mut.rs:6:10
    |
 LL |     drop(&mut f);
    |          ^^^^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut f = || {};
    |         +++
 
-error: aborting due to 1 previous error
+warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/issue-84044-drop-non-mut.rs:6:5
+   |
+LL |     drop(&mut f);
+   |     ^^^^^------^
+   |          |
+   |          argument has type `&mut {closure@$DIR/issue-84044-drop-non-mut.rs:5:13: 5:15}`
+   |
+   = note: `#[warn(dropping_references)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&mut f);
+LL +     let _ = &mut f;
+   |
+
+warning: 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0596`.

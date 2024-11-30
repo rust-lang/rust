@@ -1,3 +1,5 @@
+//@ check-pass
+
 #[derive(Copy, Clone)]
 struct S;
 
@@ -10,7 +12,7 @@ fn func(arg: S) {
     //~^ HELP consider changing this to be mutable
     //~| SUGGESTION mut
     arg.mutate();
-    //~^ ERROR cannot borrow `arg` as mutable, as it is not declared as mutable
+    //~^ WARNING cannot borrow `arg` as mutable, as it is not declared as mutable
 }
 
 fn main() {
@@ -18,5 +20,5 @@ fn main() {
     //~^ HELP consider changing this to be mutable
     //~| SUGGESTION mut
     local.mutate();
-    //~^ ERROR cannot borrow `local` as mutable, as it is not declared as mutable
+    //~^ WARNING cannot borrow `local` as mutable, as it is not declared as mutable
 }

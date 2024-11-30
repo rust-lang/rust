@@ -24,7 +24,8 @@ fn fn_mut() -> _ {
         //~^ ERROR: does not live long enough
         //~| NOTE: does not live long enough
         //~| NOTE: cannot borrow as mutable
-        //~| ERROR: not declared as mutable
+        //~| WARNING: not declared as mutable
+        //~| NOTE: on by default
     }
 } //~ NOTE: borrow later used here
 //~^ NOTE: dropped here

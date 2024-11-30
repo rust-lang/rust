@@ -4,19 +4,19 @@
 
 fn one_closure(x: i32) {
     ||
-    x = 1; //~ ERROR
+    x = 1; //~ WARNING
     move ||
-    x = 1; //~ ERROR
+    x = 1; //~ WARNING
 }
 
 fn two_closures(x: i32) {
     || {
         ||
-        x = 1; //~ ERROR
+        x = 1; //~ WARNING
     };
     move || {
         ||
-        x = 1; //~ ERROR
+        x = 1; //~ WARNING
     };
 }
 
@@ -36,11 +36,11 @@ fn two_closures_ref_mut(mut x: i32) {
 fn two_closures_ref(x: i32) {
     fn_ref(|| {
         || //~ ERROR
-         x = 1;} //~ ERROR
+         x = 1;} //~ WARNING
     );
     fn_ref(move || {
         ||  //~ ERROR
-    x = 1;}); //~ ERROR
+    x = 1;}); //~ WARNING
 }
 
 fn two_closures_two_refs(x: &mut i32) {

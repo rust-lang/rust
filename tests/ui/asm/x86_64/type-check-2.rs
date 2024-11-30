@@ -22,7 +22,7 @@ fn main() {
         // Outputs require mutable places
 
         let v: Vec<u64> = vec![0, 1, 2];
-        //~^ ERROR is not declared as mutable
+        //~^ WARNING is not declared as mutable
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);

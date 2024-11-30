@@ -1,3 +1,4 @@
+//@ check-pass
 trait Modify {
     fn modify(&mut self) ;
 }
@@ -8,7 +9,7 @@ impl<T> Modify for T  {
 
 trait Foo {
     fn mute(&mut self) {
-        self.modify(); //~ ERROR cannot borrow `self` as mutable
+        self.modify(); //~ WARNING cannot borrow `self` as mutable
     }
 }
 

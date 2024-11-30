@@ -1,10 +1,12 @@
+//@ check-pass
 // Suggest not mutably borrowing a mutable reference
 #![crate_type = "rlib"]
 
 pub fn f(b: &mut i32) {
-    //~^ ERROR cannot borrow
+    //~^ WARNING cannot borrow
     //~| NOTE not mutable
     //~| NOTE the binding is already a mutable borrow
+    //~| NOTE on by default
     h(&mut b);
     //~^ NOTE cannot borrow as mutable
     //~| HELP try removing `&mut` here
@@ -15,7 +17,7 @@ pub fn f(b: &mut i32) {
 
 pub fn g(b: &mut i32) { //~ NOTE the binding is already a mutable borrow
     h(&mut &mut b);
-    //~^ ERROR cannot borrow
+    //~^ WARNING cannot borrow
     //~| NOTE cannot borrow as mutable
     //~| HELP try removing `&mut` here
 }
@@ -31,6 +33,6 @@ impl Foo for &mut String {
 }
 
 pub fn baz(f: &mut String) { //~ HELP consider making the binding mutable
-    f.bar(); //~ ERROR cannot borrow `f` as mutable, as it is not declared as mutable
+    f.bar(); //~ WARNING cannot borrow `f` as mutable, as it is not declared as mutable
     //~^ NOTE cannot borrow as mutable
 }

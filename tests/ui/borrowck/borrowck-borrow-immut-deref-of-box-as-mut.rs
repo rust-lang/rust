@@ -1,3 +1,4 @@
+//@ check-pass
 struct A;
 
 impl A {
@@ -10,5 +11,5 @@ impl A {
 pub fn main() {
     let a: Box<_> = Box::new(A);
     a.foo();
-    //~^ ERROR cannot borrow `*a` as mutable, as `a` is not declared as mutable [E0596]
+    //~^ WARNING cannot borrow `*a` as mutable, as `a` is not declared as mutable [E0596]
 }

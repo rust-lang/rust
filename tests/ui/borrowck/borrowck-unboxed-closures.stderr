@@ -8,12 +8,13 @@ LL |     f(1, 2);
 LL |     use_mut(g);
    |             - mutable borrow later used here
 
-error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-unboxed-closures.rs:7:5
    |
 LL |     f(1, 2);
    |     ^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn b<F:FnMut(isize, isize) -> isize>(mut f: F) {
@@ -37,7 +38,7 @@ LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
 LL |     f(1, 2);
    |     ------- this value implements `FnOnce`, which causes it to be moved when called
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0382, E0502, E0596.
 For more information about an error, try `rustc --explain E0382`.

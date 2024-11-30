@@ -40,18 +40,19 @@ LL |     let c2 = || set(x);
 LL |     c1;
    |     -- first borrow later used here
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/borrowck-closures-unique.rs:43:38
    |
 LL |     let c1 = |y: &'static mut isize| x = y;
    |                                      ^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn e(mut x: &'static mut isize) {
    |      +++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0500, E0524, E0594.
 For more information about an error, try `rustc --explain E0500`.

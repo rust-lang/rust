@@ -244,7 +244,7 @@ LL |     fn_ref(move || {
 LL |         &mut x.0;
    |         ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:53:14
    |
 LL | fn imm_local(x: (i32,)) {
@@ -254,12 +254,13 @@ LL |     &mut x;
 LL |     &mut x.0;
    |     -------- cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn imm_local(mut x: (i32,)) {
    |              +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:60:9
    |
 LL |         x = (1,);
@@ -270,7 +271,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+warning[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:61:9
    |
 LL |         x.0 = 1;
@@ -281,7 +282,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:62:9
    |
 LL |         &mut x;
@@ -292,7 +293,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+warning[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:63:9
    |
 LL |         &mut x.0;
@@ -303,7 +304,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:66:9
    |
 LL |         x = (1,);
@@ -314,7 +315,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+warning[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:67:9
    |
 LL |         x.0 = 1;
@@ -325,7 +326,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/mutability-errors.rs:68:9
    |
 LL |         &mut x;
@@ -336,7 +337,7 @@ help: consider changing this to be mutable
 LL | fn imm_capture(mut x: (i32,)) {
    |                +++
 
-error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
+warning[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
   --> $DIR/mutability-errors.rs:69:9
    |
 LL |         &mut x.0;
@@ -371,7 +372,7 @@ error[E0596]: cannot borrow `X.0` as mutable, as `X` is an immutable static item
 LL |     &mut X.0;
    |     ^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 37 previous errors
+error: aborting due to 28 previous errors; 9 warnings emitted
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

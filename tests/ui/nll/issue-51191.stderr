@@ -10,7 +10,7 @@ LL |         (&mut self).bar();
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:7:9
    |
 LL |         (&mut self).bar();
@@ -26,8 +26,9 @@ help: try removing `&mut` here
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
+   = note: `#[warn(mut_non_mut)]` on by default
 
-error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:13:9
    |
 LL |         (&mut self).bar();
@@ -38,7 +39,7 @@ help: consider changing this to be mutable
 LL |     fn imm(mut self) {
    |            +++
 
-error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:22:9
    |
 LL |         (&mut self).bar();
@@ -50,7 +51,7 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:28:9
    |
 LL |         (&mut self).bar();
@@ -67,6 +68,6 @@ help: try removing `&mut` here
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 1 previous error; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0596`.

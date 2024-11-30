@@ -15,7 +15,7 @@ fn borrowed_mut_receiver(x: &mut dyn Foo) {
 
 fn owned_receiver(x: Box<dyn Foo>) {
     x.borrowed();
-    x.borrowed_mut(); //~ ERROR cannot borrow
+    x.borrowed_mut(); //~ WARNING cannot borrow
 }
 
 fn mut_owned_receiver(mut x: Box<dyn Foo>) {

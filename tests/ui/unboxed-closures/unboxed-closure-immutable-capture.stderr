@@ -1,16 +1,17 @@
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:9:13
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:10:13
    |
 LL |     move || x = 1;
    |             ^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:10:17
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:11:17
    |
 LL |     move || set(&mut x);
    |                 ^^^^^^ cannot borrow as mutable
@@ -20,8 +21,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:11:13
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:12:13
    |
 LL |     move || x = 1;
    |             ^^^^^ cannot assign
@@ -31,8 +32,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:12:17
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:13:17
    |
 LL |     move || set(&mut x);
    |                 ^^^^^^ cannot borrow as mutable
@@ -42,8 +43,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:13:8
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:14:8
    |
 LL |     || x = 1;
    |        ^^^^^ cannot assign
@@ -53,8 +54,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:14:12
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:15:12
    |
 LL |     || set(&mut x);
    |            ^^^^^^ cannot borrow as mutable
@@ -64,8 +65,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:15:8
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:16:8
    |
 LL |     || x = 1;
    |        ^^^^^ cannot assign
@@ -75,8 +76,8 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/unboxed-closure-immutable-capture.rs:16:12
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closure-immutable-capture.rs:17:12
    |
 LL |     || set(&mut x);
    |            ^^^^^^ cannot borrow as mutable
@@ -86,7 +87,7 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error: aborting due to 8 previous errors
+warning: 8 warnings emitted
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

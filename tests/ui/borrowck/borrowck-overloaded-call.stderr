@@ -8,12 +8,13 @@ LL |     s(3);
 LL |     use_mut(sp);
    |             -- mutable borrow later used here
 
-error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-overloaded-call.rs:67:5
    |
 LL |     s(3);
    |     ^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut s = SFnMut {
@@ -39,7 +40,7 @@ LL | struct SFnOnce {
 LL |     s(" world".to_string());
    |     - you could clone this value
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0382, E0502, E0596.
 For more information about an error, try `rustc --explain E0382`.

@@ -50,23 +50,23 @@ fn ref_closure(mut x: (i32,)) {
     });
 }
 
-fn imm_local(x: (i32,)) { //~ ERROR
+fn imm_local(x: (i32,)) { //~ WARNING
     &mut x;
     &mut x.0;
 }
 
 fn imm_capture(x: (i32,)) {
     || {
-        x = (1,); //~ ERROR
-        x.0 = 1; //~ ERROR
-        &mut x; //~ ERROR
-        &mut x.0; //~ ERROR
+        x = (1,); //~ WARNING
+        x.0 = 1; //~ WARNING
+        &mut x; //~ WARNING
+        &mut x.0; //~ WARNING
     };
     move || {
-        x = (1,); //~ ERROR
-        x.0 = 1; //~ ERROR
-        &mut x; //~ ERROR
-        &mut x.0; //~ ERROR
+        x = (1,); //~ WARNING
+        x.0 = 1; //~ WARNING
+        &mut x; //~ WARNING
+        &mut x.0; //~ WARNING
     };
 }
 

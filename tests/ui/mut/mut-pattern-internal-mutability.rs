@@ -2,7 +2,7 @@ fn main() {
     let foo = &mut 1;
 
     let &mut x = foo;
-    x += 1; //~ ERROR cannot assign twice to immutable variable `x`
+    x += 1; //~ WARNING cannot assign twice to immutable variable `x`
 
     // explicitly mut-ify internals
     let &mut mut x = foo;

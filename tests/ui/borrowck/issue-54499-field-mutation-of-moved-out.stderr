@@ -1,9 +1,10 @@
-error[E0594]: cannot assign to `t.0`, as `t` is not declared as mutable
+warning[E0594]: cannot assign to `t.0`, as `t` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:13:9
    |
 LL |         t.0 = S(1);
    |         ^^^^^^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |         let mut t: Tuple = (S(0), 0);
@@ -19,7 +20,7 @@ LL |         drop(t);
 LL |         t.0 = S(1);
    |         ^^^^^^^^^^ value partially assigned here after move
 
-error[E0594]: cannot assign to `t.1`, as `t` is not declared as mutable
+warning[E0594]: cannot assign to `t.1`, as `t` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:16:9
    |
 LL |         t.1 = 2;
@@ -30,7 +31,7 @@ help: consider changing this to be mutable
 LL |         let mut t: Tuple = (S(0), 0);
    |             +++
 
-error[E0594]: cannot assign to `u.0`, as `u` is not declared as mutable
+warning[E0594]: cannot assign to `u.0`, as `u` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:24:9
    |
 LL |         u.0 = S(1);
@@ -51,7 +52,7 @@ LL |         drop(u);
 LL |         u.0 = S(1);
    |         ^^^^^^^^^^ value partially assigned here after move
 
-error[E0594]: cannot assign to `u.1`, as `u` is not declared as mutable
+warning[E0594]: cannot assign to `u.1`, as `u` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:27:9
    |
 LL |         u.1 = 2;
@@ -62,7 +63,7 @@ help: consider changing this to be mutable
 LL |         let mut u: Tpair = Tpair(S(0), 0);
    |             +++
 
-error[E0594]: cannot assign to `v.x`, as `v` is not declared as mutable
+warning[E0594]: cannot assign to `v.x`, as `v` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:35:9
    |
 LL |         v.x = S(1);
@@ -83,7 +84,7 @@ LL |         drop(v);
 LL |         v.x = S(1);
    |         ^^^^^^^^^^ value partially assigned here after move
 
-error[E0594]: cannot assign to `v.y`, as `v` is not declared as mutable
+warning[E0594]: cannot assign to `v.y`, as `v` is not declared as mutable
   --> $DIR/issue-54499-field-mutation-of-moved-out.rs:38:9
    |
 LL |         v.y = 2;
@@ -94,7 +95,7 @@ help: consider changing this to be mutable
 LL |         let mut v: Spair = Spair { x: S(0), y: 0 };
    |             +++
 
-error: aborting due to 9 previous errors
+error: aborting due to 3 previous errors; 6 warnings emitted
 
 Some errors have detailed explanations: E0382, E0594.
 For more information about an error, try `rustc --explain E0382`.

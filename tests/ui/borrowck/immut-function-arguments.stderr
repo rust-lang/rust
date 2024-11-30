@@ -1,16 +1,17 @@
-error[E0594]: cannot assign to `*y`, as `y` is not declared as mutable
-  --> $DIR/immut-function-arguments.rs:2:5
+warning[E0594]: cannot assign to `*y`, as `y` is not declared as mutable
+  --> $DIR/immut-function-arguments.rs:3:5
    |
 LL |     *y = 5;
    |     ^^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn f(mut y: Box<isize>) {
    |      +++
 
-error[E0594]: cannot assign to `*q`, as `q` is not declared as mutable
-  --> $DIR/immut-function-arguments.rs:6:35
+warning[E0594]: cannot assign to `*q`, as `q` is not declared as mutable
+  --> $DIR/immut-function-arguments.rs:7:35
    |
 LL |     let _frob = |q: Box<isize>| { *q = 2; };
    |                                   ^^^^^^ cannot assign
@@ -20,6 +21,6 @@ help: consider changing this to be mutable
 LL |     let _frob = |mut q: Box<isize>| { *q = 2; };
    |                  +++
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0594`.

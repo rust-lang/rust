@@ -3,12 +3,12 @@ struct Foo {}
 impl Foo {
     pub fn foo(&mut self) {
         || bar(&mut self);
-        //~^ ERROR cannot borrow `self` as mutable, as it is not declared as mutable
+        //~^ WARNING cannot borrow `self` as mutable, as it is not declared as mutable
     }
 
     pub fn baz(&self) {
         || bar(&mut self);
-        //~^ ERROR cannot borrow `self` as mutable, as it is not declared as mutable
+        //~^ WARNING cannot borrow `self` as mutable, as it is not declared as mutable
         //~| ERROR cannot borrow data in a `&` reference as mutable
     }
 
@@ -19,7 +19,7 @@ impl Foo {
 
     pub fn quux(self) {
         || bar(&mut self);
-        //~^ ERROR cannot borrow `self` as mutable, as it is not declared as mutable
+        //~^ WARNING cannot borrow `self` as mutable, as it is not declared as mutable
     }
 }
 

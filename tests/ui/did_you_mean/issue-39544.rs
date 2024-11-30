@@ -8,7 +8,7 @@ pub struct Z {
 
 fn main() {
     let z = Z { x: X::Y };
-    let _ = &mut z.x; //~ ERROR cannot borrow
+    let _ = &mut z.x; //~ WARNING cannot borrow
 }
 
 impl Z {
@@ -38,7 +38,7 @@ impl Z {
 }
 
 pub fn with_arg(z: Z, w: &Z) {
-    let _ = &mut z.x; //~ ERROR cannot borrow
+    let _ = &mut z.x; //~ WARNING cannot borrow
     let _ = &mut w.x; //~ ERROR cannot borrow
 }
 

@@ -1,12 +1,12 @@
 fn mutable_address_of() {
     let x = 0;
-    let y = &raw mut x;                 //~ ERROR cannot borrow
+    let y = &raw mut x;                 //~ WARNING cannot borrow
 }
 
 fn mutable_address_of_closure() {
     let x = 0;
     let mut f = || {
-        let y = &raw mut x;             //~ ERROR cannot borrow
+        let y = &raw mut x;             //~ WARNING cannot borrow
     };
     f();
 }
@@ -16,7 +16,7 @@ fn mutable_address_of_imm_closure() {
     let f = || {
         let y = &raw mut x;
     };
-    f();                                //~ ERROR cannot borrow
+    f();                                //~ WARNING cannot borrow
 }
 
 fn make_fn<F: Fn()>(f: F) -> F { f }

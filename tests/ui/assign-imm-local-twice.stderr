@@ -1,5 +1,5 @@
-error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/assign-imm-local-twice.rs:7:5
+warning[E0384]: cannot assign twice to immutable variable `v`
+  --> $DIR/assign-imm-local-twice.rs:8:5
    |
 LL |     v = 1;
    |     ----- first assignment to `v`
@@ -7,11 +7,12 @@ LL |     println!("v={}", v);
 LL |     v = 2;
    |     ^^^^^ cannot assign twice to immutable variable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider making this binding mutable
    |
 LL |     let mut v: isize;
    |         +++
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
 For more information about this error, try `rustc --explain E0384`.

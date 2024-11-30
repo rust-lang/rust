@@ -10,7 +10,7 @@ fn main() {
     match Ok(0) {
         Ok(a @ b @ a)
         //~^ ERROR identifier `a` is bound more than once in the same pattern
-        | Err(a @ b @ a) //~ ERROR cannot assign twice to immutable variable `a`
+        | Err(a @ b @ a) //~ WARNING cannot assign twice to immutable variable `a`
         //~^ ERROR identifier `a` is bound more than once in the same pattern
         => {}
     }

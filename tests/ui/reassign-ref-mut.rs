@@ -1,3 +1,4 @@
+//@ check-pass
 // Tests how we behave when the user attempts to mutate an immutable
 // binding that was introduced by either `ref` or `ref mut`
 // patterns.
@@ -10,7 +11,7 @@ fn main() {
     let (mut one_two, mut three_four) = ((1, 2), (3, 4));
     let &mut (ref a, ref mut b) = &mut one_two;
     a = &three_four.0;
-    //~^ ERROR cannot assign twice to immutable variable `a` [E0384]
+    //~^ WARNING cannot assign twice to immutable variable `a` [E0384]
     b = &mut three_four.1;
-    //~^ ERROR cannot assign twice to immutable variable `b` [E0384]
+    //~^ WARNING cannot assign twice to immutable variable `b` [E0384]
 }

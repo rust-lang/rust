@@ -1,4 +1,4 @@
-error[E0384]: cannot assign twice to immutable variable `x`
+warning[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/mut-pattern-internal-mutability.rs:5:5
    |
 LL |     let &mut x = foo;
@@ -6,6 +6,7 @@ LL |     let &mut x = foo;
 LL |     x += 1;
    |     ^^^^^^ cannot assign twice to immutable variable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider making this binding mutable
    |
 LL |     let &mut mut x = foo;
@@ -25,7 +26,7 @@ LL |     *foo += 1;
 LL |     drop(x);
    |          - borrow later used here
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error; 1 warning emitted
 
 Some errors have detailed explanations: E0384, E0506.
 For more information about an error, try `rustc --explain E0384`.

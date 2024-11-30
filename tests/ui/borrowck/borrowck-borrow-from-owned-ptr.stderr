@@ -102,18 +102,19 @@ LL |     let _foo2 = &mut *foo;
 LL |     *bar1;
    |     ----- immutable borrow later used here
 
-error[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
+warning[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
   --> $DIR/borrowck-borrow-from-owned-ptr.rs:122:16
    |
 LL |     let bar1 = &mut foo.bar1;
    |                ^^^^^^^^^^^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut foo = make_foo();
    |         +++
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0499, E0502, E0596.
 For more information about an error, try `rustc --explain E0499`.

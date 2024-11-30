@@ -1,16 +1,17 @@
-error[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
-  --> $DIR/issue-35937.rs:7:5
+warning[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
+  --> $DIR/issue-35937.rs:8:5
    |
 LL |     f.v.push("cat".to_string());
    |     ^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut f = Foo { v: Vec::new() };
    |         +++
 
-error[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
-  --> $DIR/issue-35937.rs:16:5
+warning[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
+  --> $DIR/issue-35937.rs:17:5
    |
 LL |     s.x += 1;
    |     ^^^^^^^^ cannot assign
@@ -20,8 +21,8 @@ help: consider changing this to be mutable
 LL |     let mut s = S { x: 42 };
    |         +++
 
-error[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
-  --> $DIR/issue-35937.rs:20:5
+warning[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
+  --> $DIR/issue-35937.rs:21:5
    |
 LL |     s.x += 1;
    |     ^^^^^^^^ cannot assign
@@ -31,7 +32,7 @@ help: consider changing this to be mutable
 LL | fn bar(mut s: S) {
    |        +++
 
-error: aborting due to 3 previous errors
+warning: 3 warnings emitted
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

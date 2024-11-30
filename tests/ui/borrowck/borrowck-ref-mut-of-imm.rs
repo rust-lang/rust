@@ -1,7 +1,8 @@
+//@ check-pass
 fn destructure(x: Option<isize>) -> isize {
     match x {
       None => 0,
-      Some(ref mut v) => *v //~ ERROR cannot borrow
+      Some(ref mut v) => *v //~ WARNING cannot borrow
     }
 }
 

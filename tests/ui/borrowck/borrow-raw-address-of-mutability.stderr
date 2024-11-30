@@ -1,15 +1,16 @@
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrow-raw-address-of-mutability.rs:3:13
    |
 LL |     let y = &raw mut x;
    |             ^^^^^^^^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrow-raw-address-of-mutability.rs:9:17
    |
 LL |         let y = &raw mut x;
@@ -20,7 +21,7 @@ help: consider changing this to be mutable
 LL |     let mut x = 0;
    |         +++
 
-error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
   --> $DIR/borrow-raw-address-of-mutability.rs:19:5
    |
 LL |         let y = &raw mut x;
@@ -60,6 +61,6 @@ LL |     let f = make_fn(move || {
 LL |         let y = &raw mut x;
    |                 ^^^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0596`.

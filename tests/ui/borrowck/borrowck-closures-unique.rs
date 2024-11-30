@@ -41,7 +41,7 @@ fn d(x: &mut isize) {
 
 fn e(x: &'static mut isize) {
     let c1 = |y: &'static mut isize| x = y;
-    //~^ ERROR cannot assign to `x`, as it is not declared as mutable
+    //~^ WARNING cannot assign to `x`, as it is not declared as mutable
     c1;
 }
 

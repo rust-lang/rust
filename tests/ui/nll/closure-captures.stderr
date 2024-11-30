@@ -1,15 +1,16 @@
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:7:5
    |
 LL |     x = 1;
    |     ^^^^^ cannot assign
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL | fn one_closure(mut x: i32) {
    |                +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:9:5
    |
 LL |     x = 1;
@@ -20,7 +21,7 @@ help: consider changing this to be mutable
 LL | fn one_closure(mut x: i32) {
    |                +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:15:9
    |
 LL |         x = 1;
@@ -31,7 +32,7 @@ help: consider changing this to be mutable
 LL | fn two_closures(mut x: i32) {
    |                 +++
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:19:9
    |
 LL |         x = 1;
@@ -72,7 +73,7 @@ LL |         ||
 LL |     x = 1;});
    |     - mutable borrow occurs due to use of `x` in closure
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:39:10
    |
 LL |          x = 1;}
@@ -98,7 +99,7 @@ LL |         ||
 LL |          x = 1;}
    |          - mutable borrow occurs due to use of `x` in closure
 
-error[E0594]: cannot assign to `x`, as it is not declared as mutable
+warning[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/closure-captures.rs:43:5
    |
 LL |     x = 1;});
@@ -154,7 +155,7 @@ LL |         ||
 LL |         *x = 1;});
    |         -- mutable borrow occurs due to use of `x` in closure
 
-error: aborting due to 12 previous errors
+error: aborting due to 6 previous errors; 6 warnings emitted
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

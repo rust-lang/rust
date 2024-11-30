@@ -6,7 +6,7 @@ fn slice() {
     let mut arr = [U, U, U, U, U];
     let hold_all = &arr;
     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr; //~ ERROR cannot move out of `arr[..]`
-    _x1 = U; //~ ERROR cannot assign twice to immutable variable `_x1`
+    _x1 = U; //~ WARNING cannot assign twice to immutable variable `_x1`
     drop(hold_all);
     let [_x0, ..] = arr; //~ ERROR cannot move out of `arr[..]`
     drop(_x0_hold);
@@ -20,7 +20,7 @@ fn slice() {
 fn tuple() {
     let mut tup = (U, U, U, U);
     let (ref _x0, _x1, ref _x2, ..) = tup;
-    _x1 = U; //~ ERROR cannot assign twice to immutable variable
+    _x1 = U; //~ WARNING cannot assign twice to immutable variable
     let _x0_hold = &mut tup.0; //~ ERROR cannot borrow `tup.0` as mutable because it is also
     let (ref mut _x0_hold, ..) = tup; //~ ERROR cannot borrow `tup.0` as mutable because it is also
     *_x0 = U; //~ ERROR cannot assign to `*_x0`, which is behind a `&` reference

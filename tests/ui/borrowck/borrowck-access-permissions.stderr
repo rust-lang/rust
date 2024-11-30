@@ -1,9 +1,10 @@
-error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-access-permissions.rs:10:19
    |
 LL |         let _y1 = &mut x;
    |                   ^^^^^^ cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |     let mut x = 1;
@@ -15,7 +16,7 @@ error[E0596]: cannot borrow immutable static item `static_x` as mutable
 LL |         let _y1 = &mut static_x;
    |                   ^^^^^^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow `*box_x` as mutable, as `box_x` is not declared as mutable
+warning[E0596]: cannot borrow `*box_x` as mutable, as `box_x` is not declared as mutable
   --> $DIR/borrowck-access-permissions.rs:27:19
    |
 LL |         let _y1 = &mut *box_x;
@@ -59,6 +60,6 @@ help: consider changing this to be a mutable reference
 LL |         let foo_ref = &mut foo;
    |                        +++
 
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0596`.

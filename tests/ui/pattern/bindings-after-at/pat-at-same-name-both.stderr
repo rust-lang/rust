@@ -66,7 +66,7 @@ LL |     let ref mut a @ ref mut a = ();
    |         |
    |         value is mutably borrowed by `a` here
 
-error[E0384]: cannot assign twice to immutable variable `a`
+warning[E0384]: cannot assign twice to immutable variable `a`
   --> $DIR/pat-at-same-name-both.rs:13:15
    |
 LL |         Ok(a @ b @ a)
@@ -75,6 +75,7 @@ LL |
 LL |         | Err(a @ b @ a)
    |               ^ cannot assign twice to immutable variable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider making this binding mutable
    |
 LL |         Ok(a @ b @ mut a)
@@ -84,7 +85,7 @@ help: to modify the original value, take a borrow instead
 LL |         Ok(a @ b @ ref mut a)
    |                    +++++++
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0384, E0415, E0416.
 For more information about an error, try `rustc --explain E0384`.

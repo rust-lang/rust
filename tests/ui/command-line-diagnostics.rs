@@ -1,3 +1,4 @@
+//@ check-pass
 // This test checks the output format without the intermediate json representation
 //@ compile-flags: --error-format=human
 

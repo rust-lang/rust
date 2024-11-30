@@ -81,7 +81,7 @@ help: consider assigning a value
 LL |         let mut y: u64 = 42;
    |                        ++++
 
-error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+warning[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
   --> $DIR/type-check-2.rs:24:13
    |
 LL |         let v: Vec<u64> = vec![0, 1, 2];
@@ -92,12 +92,13 @@ LL |         asm!("{}", out(reg) v[0]);
 LL |         asm!("{}", inout(reg) v[0]);
    |                               - cannot borrow as mutable
    |
+   = note: `#[warn(mut_non_mut)]` on by default
 help: consider changing this to be mutable
    |
 LL |         let mut v: Vec<u64> = vec![0, 1, 2];
    |             +++
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0381, E0596.
 For more information about an error, try `rustc --explain E0381`.

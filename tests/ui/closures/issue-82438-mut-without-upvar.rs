@@ -1,3 +1,4 @@
+//@ check-pass
 use std::error::Error;
 struct A {
 }
@@ -19,10 +20,10 @@ impl A {
 
 
 fn main() {
-    let A = A::new();
+    let a = A::new();
     let participant_name = "A";
 
     let c = |a, b, c, d| {};
 
-    A.f(participant_name, &mut c); //~ ERROR cannot borrow
+    a.f(participant_name, &mut c); //~ WARNING cannot borrow
 }

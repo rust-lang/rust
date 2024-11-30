@@ -12,9 +12,9 @@ fn main() {
         drop(t);
         t.0 = S(1);
         //~^ ERROR assign to part of moved value: `t` [E0382]
-        //~| ERROR cannot assign to `t.0`, as `t` is not declared as mutable [E0594]
+        //~| WARNING cannot assign to `t.0`, as `t` is not declared as mutable [E0594]
         t.1 = 2;
-        //~^ ERROR cannot assign to `t.1`, as `t` is not declared as mutable [E0594]
+        //~^ WARNING cannot assign to `t.1`, as `t` is not declared as mutable [E0594]
         println!("{:?} {:?}", t.0, t.1);
     }
 
@@ -23,9 +23,9 @@ fn main() {
         drop(u);
         u.0 = S(1);
         //~^ ERROR assign to part of moved value: `u` [E0382]
-        //~| ERROR cannot assign to `u.0`, as `u` is not declared as mutable [E0594]
+        //~| WARNING cannot assign to `u.0`, as `u` is not declared as mutable [E0594]
         u.1 = 2;
-        //~^ ERROR cannot assign to `u.1`, as `u` is not declared as mutable [E0594]
+        //~^ WARNING cannot assign to `u.1`, as `u` is not declared as mutable [E0594]
         println!("{:?} {:?}", u.0, u.1);
     }
 
@@ -34,9 +34,9 @@ fn main() {
         drop(v);
         v.x = S(1);
         //~^ ERROR assign to part of moved value: `v` [E0382]
-        //~| ERROR cannot assign to `v.x`, as `v` is not declared as mutable [E0594]
+        //~| WARNING cannot assign to `v.x`, as `v` is not declared as mutable [E0594]
         v.y = 2;
-        //~^ ERROR cannot assign to `v.y`, as `v` is not declared as mutable [E0594]
+        //~^ WARNING cannot assign to `v.y`, as `v` is not declared as mutable [E0594]
         println!("{:?} {:?}", v.x, v.y);
     }
 }

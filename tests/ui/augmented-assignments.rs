@@ -21,8 +21,9 @@ fn main() {
     let y = Int(2);
     //~^ HELP consider changing this to be mutable
     //~| SUGGESTION mut
-    y   //~ ERROR cannot borrow `y` as mutable, as it is not declared as mutable
+    y   //~ WARNING cannot borrow `y` as mutable, as it is not declared as mutable
         //~| cannot borrow as mutable
+        //~| on by default
     +=
     Int(1);
 }

@@ -1,3 +1,4 @@
+//@ check-pass
 // Check that coroutines respect the muatability of their upvars.
 
 #![feature(coroutines)]
@@ -8,7 +9,7 @@ fn mutate_upvar() {
     #[coroutine]
     move || {
         x = 1;
-        //~^ ERROR
+        //~^ WARNING
         yield;
     };
 }

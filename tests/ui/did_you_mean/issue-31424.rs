@@ -1,10 +1,11 @@
 //@ forbid-output: &mut mut self
+//@ check-pass
 
 struct Struct;
 
 impl Struct {
     fn foo(&mut self) {
-        (&mut self).bar(); //~ ERROR cannot borrow
+        (&mut self).bar(); //~ WARNING cannot borrow
         //~^ HELP try removing `&mut` here
     }
 
@@ -13,7 +14,8 @@ impl Struct {
     fn bar(self: &mut Self) {
         //~^ WARN function cannot return without recursing
         //~^^ HELP a `loop` may express intention better if this is on purpose
-        (&mut self).bar(); //~ ERROR cannot borrow
+
+        (&mut self).bar(); //~ WARNING cannot borrow
         //~^ HELP try removing `&mut` here
     }
 }

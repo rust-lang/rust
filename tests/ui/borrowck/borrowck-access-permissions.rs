@@ -7,7 +7,7 @@ fn main() {
 
     {
         // borrow of local
-        let _y1 = &mut x; //~ ERROR [E0596]
+        let _y1 = &mut x; //~ WARNING [E0596]
         let _y2 = &mut x_mut; // No error
     }
 
@@ -24,7 +24,7 @@ fn main() {
         let box_x = Box::new(1);
         let mut box_x_mut = Box::new(1);
 
-        let _y1 = &mut *box_x; //~ ERROR [E0596]
+        let _y1 = &mut *box_x; //~ WARNING [E0596]
         let _y2 = &mut *box_x_mut; // No error
     }
 

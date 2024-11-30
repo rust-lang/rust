@@ -1,7 +1,8 @@
+//@ check-pass
 fn main() {
     let mut my_var = false;
     let callback = || {
         &mut my_var;
     };
-    callback(); //~ ERROR E0596
+    callback(); //~ WARNING E0596
 }

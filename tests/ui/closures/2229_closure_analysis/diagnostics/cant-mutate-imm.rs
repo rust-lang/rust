@@ -1,3 +1,4 @@
+//@ check-pass
 //@ edition:2021
 
 // Ensure that diagnostics for mutability error (because the root variable
@@ -10,7 +11,7 @@ fn mut_error_struct() {
 
     let mut c = || {
         z.0.0.0 = 20;
-        //~^ ERROR: cannot assign to `z.0.0.0`, as it is not declared as mutable
+        //~^ WARNING: cannot assign to `z.0.0.0`, as it is not declared as mutable
     };
 
     c();
@@ -22,7 +23,7 @@ fn mut_error_box() {
 
     let mut c = || {
         bx.0 = 20;
-        //~^ ERROR: cannot assign to `*bx.0`, as it is not declared as mutable
+        //~^ WARNING: cannot assign to `*bx.0`, as it is not declared as mutable
     };
 
     c();

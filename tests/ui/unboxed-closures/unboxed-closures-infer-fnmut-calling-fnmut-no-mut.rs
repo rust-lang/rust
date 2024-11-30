@@ -1,3 +1,4 @@
+//@ check-pass
 // Test that we are able to infer a suitable kind for this closure
 // that is just called (`FnMut`).
 
@@ -13,8 +14,8 @@ fn main() {
     // In turn, tick2 must be inferred to FnMut so that it can call
     // tick1, but we forgot the mut.
     let tick2 = || {
-        tick1(); //~ ERROR cannot borrow `tick1` as mutable
+        tick1(); //~ WARNING cannot borrow `tick1` as mutable
     };
 
-    tick2(); //~ ERROR cannot borrow
+    tick2(); //~ WARNING cannot borrow
 }
