@@ -70,7 +70,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if ty.is_enum() {
                     // Hilariously, `Single` is used even for 0-variant enums.
                     // (See https://github.com/rust-lang/rust/issues/89765).
-                    if matches!(ty.kind(), ty::Adt(def, ..) if def.variants().is_empty()) {
+                    if ty.ty_adt_def().unwrap().variants().is_empty() {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
                     // For consistency with `write_discriminant`, and to make sure that

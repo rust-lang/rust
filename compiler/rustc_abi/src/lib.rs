@@ -1505,7 +1505,11 @@ impl BackendRepr {
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: VariantIdx },
+    Single {
+        /// Always 0 for non-enums/generators.
+        /// For enums without a variant, this is an invalid index!
+        index: VariantIdx,
+    },
 
     /// Enum-likes with more than one variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
