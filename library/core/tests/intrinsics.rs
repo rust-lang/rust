@@ -153,6 +153,7 @@ fn carrying_mul_add_fallback_i32() {
 
 #[test]
 fn carrying_mul_add_fallback_u128() {
+    assert_eq!(fallback_cma::<u128>(u128::MAX, u128::MAX, 0, 0), (1, u128::MAX - 1));
     assert_eq!(fallback_cma::<u128>(1, 1, 1, 1), (3, 0));
     assert_eq!(fallback_cma::<u128>(0, 0, u128::MAX, u128::MAX), (u128::MAX - 1, 1));
     assert_eq!(
@@ -178,8 +179,17 @@ fn carrying_mul_add_fallback_u128() {
 
 #[test]
 fn carrying_mul_add_fallback_i128() {
+    assert_eq!(fallback_cma::<i128>(-1, -1, 0, 0), (1, 0));
     let r = fallback_cma::<i128>(-1, -1, -1, -1);
     assert_eq!(r, (u128::MAX, -1));
     let r = fallback_cma::<i128>(1, -1, 1, 1);
     assert_eq!(r, (1, 0));
+    assert_eq!(
+        fallback_cma::<i128>(i128::MAX, i128::MAX, i128::MAX, i128::MAX),
+        (u128::MAX, i128::MAX / 2),
+    );
+    assert_eq!(
+        fallback_cma::<i128>(i128::MIN, i128::MIN, i128::MAX, i128::MAX),
+        (u128::MAX - 1, -(i128::MIN / 2)),
+    );
 }

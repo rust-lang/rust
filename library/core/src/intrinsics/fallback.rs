@@ -100,8 +100,8 @@ impl const CarryingMulAdd for i128 {
     fn carrying_mul_add(self, b: i128, c: i128, d: i128) -> (u128, i128) {
         let (low, high) = wide_mul_u128(self as u128, b as u128);
         let mut high = high as i128;
-        high = high.wrapping_add((self >> 127) * b);
-        high = high.wrapping_add(self * (b >> 127));
+        high = high.wrapping_add(i128::wrapping_mul(self >> 127, b));
+        high = high.wrapping_add(i128::wrapping_mul(self, b >> 127));
         let (low, carry) = u128::overflowing_add(low, c as u128);
         high = high.wrapping_add((carry as i128) + (c >> 127));
         let (low, carry) = u128::overflowing_add(low, d as u128);
