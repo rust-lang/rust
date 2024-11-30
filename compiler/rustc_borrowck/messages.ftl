@@ -273,9 +273,6 @@ borrowck_var_does_not_need_mut =
     variable does not need to be mutable
     .suggestion = remove this `mut`
 
-borrowck_var_needs_mut = 
-    variable should be marked mutable
-
 borrowck_var_first_borrow_by_use_place_in_closure =
     first borrow occurs due to use of {$place} in closure
 

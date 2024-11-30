@@ -53,14 +53,6 @@ pub(crate) struct VarNeedNotMut {
     #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(borrowck_var_needs_mut)]
-pub(crate) struct VarNeedsMut {
-    //#[suggestion(style = "short", applicability = "machine-applicable", code = "mut")]
-    //pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag(borrowck_var_cannot_escape_closure)]
 #[note]

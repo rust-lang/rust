@@ -13,7 +13,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
-#![allow(dead_code, unused_variables, unused_imports, unused_assignments)]
 // tidy-alphabetical-end
 
 use std::cell::RefCell;
@@ -61,7 +60,7 @@ use crate::places_conflict::{PlaceConflictBias, places_conflict};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
-use crate::session_diagnostics::{VarNeedNotMut,VarNeedsMut};
+use crate::session_diagnostics::VarNeedNotMut;
 use crate::borrowck_errors::BError;
 use crate::borrowck_errors::BWarn;
 
@@ -354,7 +353,6 @@ fn do_mir_borrowck<'tcx>(
 
     mbcx.report_move_errors();
 
-//if false {//EMY(relevant)
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
     // Note that this set is expected to be small - only upvars from closures
@@ -402,7 +400,6 @@ fn do_mir_borrowck<'tcx>(
 
         tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }
-//}// EMY(relevant)
 
     let tainted_by_errors = mbcx.emit_errors();
 
@@ -2100,8 +2097,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             place, kind, is_local_mutation_allowed
         );
 
-        //EMY(relevant)
-
         let error_access;
         let the_place_err;
 
@@ -2185,6 +2180,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
         }
 
+        //Note: logic is somewhat duplicated between here and add_used_mut
+
         // rust-lang/rust#21232, #54986: during period where we reject
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
@@ -2192,7 +2189,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let previously_initialized = self.is_local_ever_initialized(place.local, state);
 
         // at this point, we have set up the error reporting state.
-        if let Some(init_index) = previously_initialized {
+        if let Some(_) = previously_initialized {
             if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                 bug!("Re-assignment of locals should be non-fatal");
             }
@@ -2256,9 +2253,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
         }
 
-        //TODO(EMY) better place for this?
-
-        //TODO(EMY) duplicating the logic in check_access_permissions
+        //Note: logic is somewhat duplicated between here and check_access_permissions
         if let Some(the_place_err) = root_place.is_non_mut_local {
             // rust-lang/rust#21232, #54986: during period where we reject
             // partial initialization, do not complain about mutability
@@ -2268,18 +2263,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             // at this point, we have set up the error reporting state.
             if let Some(init_index) = previously_initialized {
-/*
-                let local_decl = &self.body.local_decls[place.local];
-                if let ClearCrossCrate::Set(SourceScopeLocalData{ lint_root, .. })
-                    = self.body.source_scopes[local_decl.source_info.scope].local_data
-                {
-
-                    // A local variable is mutated which was not declared as mutable
-                    self.tcx.emit_node_span_lint(MUT_NON_MUT,
-                        lint_root, local_decl.source_info.span, VarNeedsMut{});
-                }
-*/
-
                 if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                     // If this is a mutate access to an immutable local variable with no projections
                     // report the error as an illegal reassignment
@@ -2411,7 +2394,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => None,
                             };
-                            // TODO(EMY) old code checked `ExceptUpvars`, does that make this problematic?
                             // Subtle: this is an upvar reference, so it looks like
                             // `self.foo` -- we want to double check that the location
                             // `*self` is mutable (i.e., this is not a `Fn` closure). But
