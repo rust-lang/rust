@@ -87,8 +87,8 @@ pub struct Guard {
 ///
 /// Both [`Mutex`]es and [`RwLock`]s are poisoned whenever a thread fails while the lock
 /// is held. The precise semantics for when a lock is poisoned is documented on
-/// each lock, but once a lock is poisoned then all future acquisitions will
-/// return this error.
+/// each lock. For a lock in the poisoned state, unless the state is cleared manually,
+/// all future acquisitions will return this error.
 ///
 /// # Examples
 ///
@@ -118,7 +118,7 @@ pub struct Guard {
 /// [`RwLock`]: crate::sync::RwLock
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
-    guard: T,
+    data: T,
     #[cfg(not(panic = "unwind"))]
     _never: !,
 }
@@ -147,14 +147,15 @@ pub enum TryLockError<T> {
 /// A type alias for the result of a lock method which can be poisoned.
 ///
 /// The [`Ok`] variant of this result indicates that the primitive was not
-/// poisoned, and the `Guard` is contained within. The [`Err`] variant indicates
+/// poisoned, and the operation result is contained within. The [`Err`] variant indicates
 /// that the primitive was poisoned. Note that the [`Err`] variant *also* carries
-/// the associated guard, and it can be acquired through the [`into_inner`]
-/// method.
+/// an associated value assigned by the lock method, and it can be acquired through the
+/// [`into_inner`] method. The semantics of the associated value depends on the corresponding
+/// lock method.
 ///
 /// [`into_inner`]: PoisonError::into_inner
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
+pub type LockResult<T> = Result<T, PoisonError<T>>;
 
 /// A type alias for the result of a nonblocking locking method.
 ///
@@ -195,8 +196,8 @@ impl<T> PoisonError<T> {
     /// This method may panic if std was built with `panic="abort"`.
     #[cfg(panic = "unwind")]
     #[stable(feature = "sync_poison", since = "1.2.0")]
-    pub fn new(guard: T) -> PoisonError<T> {
-        PoisonError { guard }
+    pub fn new(data: T) -> PoisonError<T> {
+        PoisonError { data }
     }
 
     /// Creates a `PoisonError`.
@@ -208,12 +209,12 @@ impl<T> PoisonError<T> {
     #[cfg(not(panic = "unwind"))]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     #[track_caller]
-    pub fn new(_guard: T) -> PoisonError<T> {
+    pub fn new(_data: T) -> PoisonError<T> {
         panic!("PoisonError created in a libstd built with panic=\"abort\"")
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the
-    /// underlying guard to allow access regardless.
+    /// associated data.
     ///
     /// # Examples
     ///
@@ -238,21 +239,21 @@ impl<T> PoisonError<T> {
     /// ```
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn into_inner(self) -> T {
-        self.guard
+        self.data
     }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
-    /// reference to the underlying guard to allow access regardless.
+    /// reference to the associated data.
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn get_ref(&self) -> &T {
-        &self.guard
+        &self.data
     }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
-    /// mutable reference to the underlying guard to allow access regardless.
+    /// mutable reference to the associated data.
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        &mut self.guard
+        &mut self.data
     }
 }
 
@@ -322,6 +323,6 @@ where
     match result {
         Ok(t) => Ok(f(t)),
         #[cfg(panic = "unwind")]
-        Err(PoisonError { guard }) => Err(PoisonError::new(f(guard))),
+        Err(PoisonError { data }) => Err(PoisonError::new(f(data))),
     }
 }

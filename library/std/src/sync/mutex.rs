@@ -4,10 +4,10 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::ManuallyDrop;
+use crate::mem::{self, ManuallyDrop};
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
-use crate::sync::{LockResult, TryLockError, TryLockResult, poison};
+use crate::sync::{LockResult, PoisonError, TryLockError, TryLockResult, poison};
 use crate::sys::sync as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
@@ -273,6 +273,100 @@ impl<T> Mutex<T> {
     pub const fn new(t: T) -> Mutex<T> {
         Mutex { inner: sys::Mutex::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
     }
+
+    /// Returns the contained value by cloning it.
+    ///
+    /// # Errors
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.get_cloned().unwrap(), 7);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn get_cloned(&self) -> Result<T, PoisonError<()>>
+    where
+        T: Clone,
+    {
+        match self.lock() {
+            Ok(guard) => Ok((*guard).clone()),
+            Err(_) => Err(PoisonError::new(())),
+        }
+    }
+
+    /// Sets the contained value.
+    ///
+    /// # Errors
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error containing the provided `value` instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.get_cloned().unwrap(), 7);
+    /// mutex.set(11).unwrap();
+    /// assert_eq!(mutex.get_cloned().unwrap(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn set(&self, value: T) -> Result<(), PoisonError<T>> {
+        if mem::needs_drop::<T>() {
+            // If the contained value has non-trivial destructor, we
+            // call that destructor after the lock being released.
+            self.replace(value).map(drop)
+        } else {
+            match self.lock() {
+                Ok(mut guard) => {
+                    *guard = value;
+
+                    Ok(())
+                }
+                Err(_) => Err(PoisonError::new(value)),
+            }
+        }
+    }
+
+    /// Replaces the contained value with `value`, and returns the old contained value.
+    ///
+    /// # Errors
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error containing the provided `value` instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::Mutex;
+    ///
+    /// let mut mutex = Mutex::new(7);
+    ///
+    /// assert_eq!(mutex.replace(11).unwrap(), 7);
+    /// assert_eq!(mutex.get_cloned().unwrap(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn replace(&self, value: T) -> LockResult<T> {
+        match self.lock() {
+            Ok(mut guard) => Ok(mem::replace(&mut *guard, value)),
+            Err(_) => Err(PoisonError::new(value)),
+        }
+    }
 }
 
 impl<T: ?Sized> Mutex<T> {
@@ -290,7 +384,8 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error once the mutex is acquired.
+    /// this call will return an error once the mutex is acquired. The acquired
+    /// mutex guard will be contained in the returned error.
     ///
     /// # Panics
     ///
@@ -331,7 +426,8 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return the [`Poisoned`] error if the mutex would
-    /// otherwise be acquired.
+    /// otherwise be acquired. An acquired lock guard will be contained
+    /// in the returned error.
     ///
     /// If the mutex could not be acquired because it is already locked, then
     /// this call will return the [`WouldBlock`] error.
@@ -438,7 +534,8 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error instead.
+    /// this call will return an error containing the the underlying data
+    /// instead.
     ///
     /// # Examples
     ///
@@ -465,7 +562,8 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error instead.
+    /// this call will return an error containing a mutable reference to the
+    /// underlying data instead.
     ///
     /// # Examples
     ///
