@@ -51,6 +51,10 @@ declare_clippy_lint! {
     /// There are “checked” alternatives which do not panic, and can be used with `unwrap()` to make
     /// an explicit panic when it is desired.
     ///
+    /// ### Limitations
+    /// This lint does not check for the usage of indexing or slicing on strings. These are covered
+    /// by the more specific `string_slice` lint.
+    ///
     /// ### Example
     /// ```rust,no_run
     /// // Vector
