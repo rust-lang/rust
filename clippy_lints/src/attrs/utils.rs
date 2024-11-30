@@ -75,13 +75,18 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
 
 /// Returns the lint name if it is clippy lint.
 pub(super) fn extract_clippy_lint(lint: &MetaItemInner) -> Option<Symbol> {
-    if let Some(meta_item) = lint.meta_item()
-        && meta_item.path.segments.len() > 1
-        && let tool_name = meta_item.path.segments[0].ident
-        && tool_name.name == sym::clippy
-    {
-        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
-        return Some(lint_name);
+    match namespace_and_lint(lint) {
+        (Some(sym::clippy), name) => name,
+        _ => None,
     }
-    None
+}
+
+/// Returns the lint namespace, if any, as well as the lint name. (`None`, `None`) means
+/// the lint had less than 1 or more than 2 segments.
+pub(super) fn namespace_and_lint(lint: &MetaItemInner) -> (Option<Symbol>, Option<Symbol>) {
+    match lint.meta_item().map(|m| m.path.segments.as_slice()).unwrap_or_default() {
+        [name] => (None, Some(name.ident.name)),
+        [namespace, name] => (Some(namespace.ident.name), Some(name.ident.name)),
+        _ => (None, None),
+    }
 }
