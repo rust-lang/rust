@@ -1009,6 +1009,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 #[rustc_diagnostic_item = "ptr_swap"]
+#[rustc_const_stable_indirect]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
@@ -1069,7 +1070,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_const_unstable(feature = "const_swap_nonoverlapping", issue = "133668")]
 #[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     #[allow(unused)]
@@ -1129,7 +1130,6 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x.cast::<MaybeUninit<T>>();
     let y = y.cast::<MaybeUninit<T>>();
