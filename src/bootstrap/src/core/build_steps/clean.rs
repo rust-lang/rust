@@ -203,10 +203,8 @@ fn rm_rf(path: &Path) {
 
             do_op(path, "remove dir", |p| match fs::remove_dir(p) {
                 // Check for dir not empty on Windows
-                // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
-                // match on `e.kind()` instead.
                 #[cfg(windows)]
-                Err(e) if e.raw_os_error() == Some(145) => Ok(()),
+                Err(e) if e.kind() == ErrorKind::DirectoryNotEmpty => Ok(()),
                 r => r,
             });
         }
