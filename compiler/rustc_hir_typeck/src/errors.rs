@@ -789,11 +789,8 @@ pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: bool,
+    #[suggestion(code = " as {cast_ty}", applicability = "machine-applicable", style = "verbose")]
+    pub sugg_span: Span,
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,
 }

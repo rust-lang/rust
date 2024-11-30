@@ -146,7 +146,6 @@ hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value in
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
-    .help = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
 hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
