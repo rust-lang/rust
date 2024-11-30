@@ -6,6 +6,7 @@ use crate::{
     mem, ptr,
 };
 
+use core::hint::unreachable_unchecked;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -26202,6 +26203,8 @@ pub unsafe fn _mm_mask_blend_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d 
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 32-bit elements, and store the low 64 bytes (16 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>4 bits</strong> are used from the mask (shift at maximum by 60 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_alignr_epi32&expand=245)
 #[inline]
 #[target_feature(enable = "avx512f")]
@@ -26269,7 +26272,8 @@ pub unsafe fn _mm512_alignr_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __
         12 => simd_shuffle!(a, b, [28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
         13 => simd_shuffle!(a, b, [29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
         14 => simd_shuffle!(a, b, [30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
-        _ => simd_shuffle!(a, b, [31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
+        15 => simd_shuffle!(a, b, [31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -26313,6 +26317,8 @@ pub unsafe fn _mm512_maskz_alignr_epi32<const IMM8: i32>(
 
 /// Concatenate a and b into a 64-byte immediate result, shift the result right by imm8 32-bit elements, and store the low 32 bytes (8 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>3 bits</strong> are used from the mask (shift at maximum by 28 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_alignr_epi32&expand=242)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
@@ -26323,7 +26329,7 @@ pub unsafe fn _mm256_alignr_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __
     static_assert_uimm_bits!(IMM8, 8);
     let a = a.as_i32x8();
     let b = b.as_i32x8();
-    let imm8: i32 = IMM8 % 16;
+    let imm8: i32 = IMM8 % 8;
     let r: i32x8 = match imm8 {
         0 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15]),
         1 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 0]),
@@ -26333,14 +26339,7 @@ pub unsafe fn _mm256_alignr_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __
         5 => simd_shuffle!(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
         6 => simd_shuffle!(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
         7 => simd_shuffle!(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
-        8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        9 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        10 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        11 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        12 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        13 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        14 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        _ => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -26384,6 +26383,8 @@ pub unsafe fn _mm256_maskz_alignr_epi32<const IMM8: i32>(
 
 /// Concatenate a and b into a 32-byte immediate result, shift the result right by imm8 32-bit elements, and store the low 16 bytes (4 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>2 bits</strong> are used from the mask (shift at maximum by 12 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_alignr_epi32&expand=239)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
@@ -26394,16 +26395,13 @@ pub unsafe fn _mm_alignr_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m12
     static_assert_uimm_bits!(IMM8, 8);
     let a = a.as_i32x4();
     let b = b.as_i32x4();
-    let imm8: i32 = IMM8 % 8;
+    let imm8: i32 = IMM8 % 4;
     let r: i32x4 = match imm8 {
         0 => simd_shuffle!(a, b, [4, 5, 6, 7]),
         1 => simd_shuffle!(a, b, [5, 6, 7, 0]),
         2 => simd_shuffle!(a, b, [6, 7, 0, 1]),
         3 => simd_shuffle!(a, b, [7, 0, 1, 2]),
-        4 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-        5 => simd_shuffle!(a, b, [1, 2, 3, 0]),
-        6 => simd_shuffle!(a, b, [2, 3, 0, 1]),
-        _ => simd_shuffle!(a, b, [3, 0, 1, 2]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -26447,6 +26445,8 @@ pub unsafe fn _mm_maskz_alignr_epi32<const IMM8: i32>(
 
 /// Concatenate a and b into a 128-byte immediate result, shift the result right by imm8 64-bit elements, and store the low 64 bytes (8 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>3 bits</strong> are used from the mask (shift at maximum by 56 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_alignr_epi64&expand=254)
 #[inline]
 #[target_feature(enable = "avx512f")]
@@ -26464,7 +26464,8 @@ pub unsafe fn _mm512_alignr_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __
         4 => simd_shuffle!(a, b, [12, 13, 14, 15, 0, 1, 2, 3]),
         5 => simd_shuffle!(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
         6 => simd_shuffle!(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
-        _ => simd_shuffle!(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
+        7 => simd_shuffle!(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -26508,6 +26509,8 @@ pub unsafe fn _mm512_maskz_alignr_epi64<const IMM8: i32>(
 
 /// Concatenate a and b into a 64-byte immediate result, shift the result right by imm8 64-bit elements, and store the low 32 bytes (4 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>2 bits</strong> are used from the mask (shift at maximum by 24 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_alignr_epi64&expand=251)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
@@ -26516,16 +26519,13 @@ pub unsafe fn _mm512_maskz_alignr_epi64<const IMM8: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_alignr_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8: i32 = IMM8 % 8;
+    let imm8: i32 = IMM8 % 4;
     let r: i64x4 = match imm8 {
         0 => simd_shuffle!(a, b, [4, 5, 6, 7]),
         1 => simd_shuffle!(a, b, [5, 6, 7, 0]),
         2 => simd_shuffle!(a, b, [6, 7, 0, 1]),
         3 => simd_shuffle!(a, b, [7, 0, 1, 2]),
-        4 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-        5 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-        6 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-        _ => simd_shuffle!(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }
@@ -26569,6 +26569,8 @@ pub unsafe fn _mm256_maskz_alignr_epi64<const IMM8: i32>(
 
 /// Concatenate a and b into a 32-byte immediate result, shift the result right by imm8 64-bit elements, and store the low 16 bytes (2 elements) in dst.
 ///
+/// <div class="warning">Only lowest <strong>bit</strong> is used from the mask (shift at maximum by 8 bytes)!</div>
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_alignr_epi64&expand=248)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
@@ -26577,12 +26579,11 @@ pub unsafe fn _mm256_maskz_alignr_epi64<const IMM8: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_alignr_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
     static_assert_uimm_bits!(IMM8, 8);
-    let imm8: i32 = IMM8 % 4;
+    let imm8: i32 = IMM8 % 2;
     let r: i64x2 = match imm8 {
         0 => simd_shuffle!(a, b, [2, 3]),
         1 => simd_shuffle!(a, b, [3, 0]),
-        2 => simd_shuffle!(a, b, [0, 1]),
-        _ => simd_shuffle!(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }

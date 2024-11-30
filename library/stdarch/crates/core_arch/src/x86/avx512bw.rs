@@ -4,6 +4,8 @@ use crate::{
     ptr,
 };
 
+use core::hint::unreachable_unchecked;
+
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -10850,6 +10852,8 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
 }
 
 /// Concatenate pairs of 16-byte blocks in a and b into a 32-byte temporary result, shift the result right by imm8 bytes, and store the low 16 bytes in dst.
+/// Unlike [`_mm_alignr_epi8`], [`_mm256_alignr_epi8`] functions, where the entire input vectors are concatenated to the temporary result,
+/// this concatenation happens in 4 steps, where each step builds 32-byte temporary result.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_alignr_epi8&expand=263)
 #[inline]
@@ -10860,7 +10864,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
 pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
-    if IMM8 > 32 {
+    if IMM8 >= 32 {
         return _mm512_setzero_si512();
     }
     // If palignr is shifting the pair of input vectors more than one lane,
@@ -10872,6 +10876,10 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
     };
     let a = a.as_i8x64();
     let b = b.as_i8x64();
+
+    if IMM8 == 16 {
+        return transmute(a);
+    }
 
     let r: i8x64 = match IMM8 % 16 {
         0 => simd_shuffle!(
@@ -11031,7 +11039,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 121, 122, 123, 124, 125, 126,
             ],
         ),
-        _ => b,
+        _ => unreachable_unchecked(),
     };
     transmute(r)
 }

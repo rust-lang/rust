@@ -166,7 +166,7 @@ pub unsafe fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
     static_assert_uimm_bits!(IMM8, 8);
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
-    if IMM8 > 32 {
+    if IMM8 >= 32 {
         return _mm256_setzero_si256();
     }
     // If palignr is shifting the pair of input vectors more than one lane,
