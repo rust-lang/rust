@@ -219,6 +219,8 @@ fn resolve_associated_item<'tcx>(
             // We check that the impl item is compatible with the trait item
             // because otherwise we may ICE in const eval due to type mismatches,
             // signature incompatibilities, etc.
+            // NOTE: We could also only enforce this in `PostAnalysis`, which
+            // is what CTFE and MIR inlining would care about anyways.
             if trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {

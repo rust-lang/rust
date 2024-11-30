@@ -33,7 +33,7 @@ use tracing::{debug, instrument};
 use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 
-mod refine;
+pub(super) mod refine;
 
 /// Call the query `tcx.compare_impl_item()` directly instead.
 pub(super) fn compare_impl_item(
@@ -70,12 +70,6 @@ fn compare_impl_method<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, false)?;
     compare_method_predicate_entailment(tcx, impl_m, trait_m, impl_trait_ref)?;
-    refine::check_refining_return_position_impl_trait_in_trait(
-        tcx,
-        impl_m,
-        trait_m,
-        impl_trait_ref,
-    );
     Ok(())
 }
 

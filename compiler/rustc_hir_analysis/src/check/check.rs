@@ -1045,7 +1045,24 @@ fn check_impl_items_against_trait<'tcx>(
             continue;
         };
 
-        let _ = tcx.ensure().compare_impl_item(impl_item.expect_local());
+        let res = tcx.ensure().compare_impl_item(impl_item.expect_local());
+
+        if res.is_ok() {
+            match ty_impl_item.kind {
+                ty::AssocKind::Fn => {
+                    compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
+                        tcx,
+                        ty_impl_item,
+                        ty_trait_item,
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
+                            .unwrap()
+                            .instantiate_identity(),
+                    );
+                }
+                ty::AssocKind::Const => {}
+                ty::AssocKind::Type => {}
+            }
+        }
 
         check_specialization_validity(
             tcx,
