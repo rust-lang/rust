@@ -58,8 +58,8 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
-        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
+        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         base::set_link_section(lldecl, attrs);
         if (linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR)
             && self.tcx.sess.target.supports_comdat()

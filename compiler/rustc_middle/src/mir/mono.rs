@@ -299,28 +299,6 @@ impl LinkageInfo {
             Self::ImplicitInternal => Linkage::Internal,
         }
     }
-
-    /// Linkage when the MonoItem is a naked function
-    ///
-    /// Naked functions are generated as a separate declaration (effectively an extern fn) and
-    /// definition (using global assembly). To link them together, some flavor of external linkage
-    /// must be used.
-    ///
-    /// This should be just an implementation detail of the backend, which is why this translation
-    /// is made at the final moment.
-    pub const fn into_naked_linkage(self) -> Linkage {
-        match self {
-            // promote Weak linkage to ExternalWeak
-            Self::Explicit(Linkage::WeakAny | Linkage::WeakODR) => Linkage::ExternalWeak,
-            Self::Explicit(linkage) => linkage,
-
-            // the "implicit" means that linkage is picked by the partitioning algorithm.
-            // picking external should always be valid (given that we are in fact linking
-            // to the global assembly in the same CGU)
-            Self::ImplicitExternal => Linkage::External,
-            Self::ImplicitInternal => Linkage::External,
-        }
-    }
 }
 
 /// Specifies the linkage type for a `MonoItem`.

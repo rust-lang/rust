@@ -137,13 +137,12 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             }
             MonoItem::Fn(instance) => {
                 let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
-                let linkage = if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-                    linkage_info.into_naked_linkage()
-                } else {
-                    linkage_info.into_linkage()
-                };
 
-                cx.predefine_fn(instance, linkage, visibility, symbol_name);
+                if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                    // do not define this function; it will become a global assembly block
+                } else {
+                    cx.predefine_fn(instance, linkage_info.into_linkage(), visibility, symbol_name);
+                };
             }
             MonoItem::GlobalAsm(..) => {}
         }

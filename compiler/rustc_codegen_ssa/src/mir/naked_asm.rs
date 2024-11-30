@@ -1,5 +1,5 @@
 use rustc_attr::InstructionSetAttr;
-use rustc_middle::mir::mono::{MonoItem, MonoItemData, Visibility};
+use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{Instance, TyCtxt};
@@ -153,6 +153,30 @@ fn prefix_and_suffix<'tcx>(
         ("", "")
     };
 
+    let emit_fatal = |msg| tcx.dcx().span_fatal(tcx.def_span(instance.def_id()), msg);
+
+    // see https://godbolt.org/z/cPK4sxKor.
+    // None means the default, which corresponds to internal linkage
+    let linkage = match item_data.linkage {
+        Linkage::External => Some(".globl"),
+        Linkage::LinkOnceAny => Some(".weak"),
+        Linkage::LinkOnceODR => Some(".weak"),
+        Linkage::WeakAny => Some(".weak"),
+        Linkage::WeakODR => Some(".weak"),
+        Linkage::Internal => None,
+        Linkage::Private => None,
+        Linkage::Appending => emit_fatal("Only global variables can have appending linkage!"),
+        Linkage::Common => emit_fatal("Functions may not have common linkage"),
+        Linkage::AvailableExternally => {
+            // this would make the function equal an extern definition
+            emit_fatal("Functions may not have available_externally linkage")
+        }
+        Linkage::ExternalWeak => {
+            // FIXME: actually this causes a SIGILL in LLVM
+            emit_fatal("Functions may not have external weak linkage")
+        }
+    };
+
     let mut begin = String::new();
     let mut end = String::new();
     match AsmBinaryFormat::from_target(&tcx.sess.target) {
@@ -171,7 +195,9 @@ fn prefix_and_suffix<'tcx>(
 
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
             writeln!(begin, ".balign {align}").unwrap();
-            writeln!(begin, ".globl {asm_name}").unwrap();
+            if let Some(linkage) = linkage {
+                writeln!(begin, "{linkage} {asm_name}").unwrap();
+            }
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".hidden {asm_name}").unwrap();
             }
@@ -180,6 +206,8 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(begin, "{}", arch_prefix).unwrap();
             }
             writeln!(begin, "{asm_name}:").unwrap();
+
+            eprintln!("{}", &begin);
 
             writeln!(end).unwrap();
             writeln!(end, ".size {asm_name}, . - {asm_name}").unwrap();
@@ -192,7 +220,9 @@ fn prefix_and_suffix<'tcx>(
             let section = link_section.unwrap_or("__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
-            writeln!(begin, ".globl {asm_name}").unwrap();
+            if let Some(linkage) = linkage {
+                writeln!(begin, "{linkage} {asm_name}").unwrap();
+            }
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".private_extern {asm_name}").unwrap();
             }
@@ -208,7 +238,9 @@ fn prefix_and_suffix<'tcx>(
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
-            writeln!(begin, ".globl {asm_name}").unwrap();
+            if let Some(linkage) = linkage {
+                writeln!(begin, "{linkage} {asm_name}").unwrap();
+            }
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
             writeln!(begin, ".type 32").unwrap();
