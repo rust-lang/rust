@@ -3,7 +3,6 @@
 trait X {
     fn a<T>() -> T::unknown<{}> {}
     //~^ ERROR: associated type `unknown` not found for `T`
-    //~| ERROR: associated type `unknown` not found for `T`
 }
 
 trait Y {
@@ -14,7 +13,6 @@ trait Y {
 trait Z<T> {
     fn a() -> T::unknown<{}> {}
     //~^ ERROR: associated type `unknown` not found for `T`
-    //~| ERROR: associated type `unknown` not found for `T`
 }
 
 fn main() {}
