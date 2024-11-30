@@ -1,8 +1,8 @@
 use super::USELESS_ATTRIBUTE;
-use super::utils::{extract_clippy_lint, is_lint_level, is_word};
+use super::utils::{is_lint_level, is_word, namespace_and_lint};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, first_line_of_span};
-use rustc_ast::{Attribute, Item, ItemKind, MetaItemInner};
+use rustc_ast::{Attribute, Item, ItemKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -20,11 +20,13 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                 for lint in lint_list {
                     match item.kind {
                         ItemKind::Use(..) => {
-                            if let MetaItemInner::MetaItem(meta_item) = lint
-                                && meta_item.is_word()
-                                && let Some(ident) = meta_item.ident()
+                            let (namespace @ (Some(sym::clippy) | None), Some(name)) = namespace_and_lint(lint) else {
+                                return;
+                            };
+
+                            if namespace.is_none()
                                 && matches!(
-                                    ident.name.as_str(),
+                                    name.as_str(),
                                     "ambiguous_glob_reexports"
                                         | "dead_code"
                                         | "deprecated"
@@ -39,9 +41,9 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                 return;
                             }
 
-                            if extract_clippy_lint(lint).is_some_and(|symbol| {
-                                matches!(
-                                    symbol.as_str(),
+                            if namespace == Some(sym::clippy)
+                                && matches!(
+                                    name.as_str(),
                                     "wildcard_imports"
                                         | "enum_glob_use"
                                         | "redundant_pub_crate"
@@ -52,7 +54,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                         | "disallowed_types"
                                         | "unused_trait_names"
                                 )
-                            }) {
+                            {
                                 return;
                             }
                         },
