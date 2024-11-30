@@ -401,4 +401,24 @@ fn irrefutable_match() {
         CONST_I32 => println!(),
         _ => {},
     }
+
+    let mut x = vec![1i8];
+
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => println!("{u}"),
+        // more comments!
+        None => {},
+    }
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => {
+            // bla
+            println!("{u}");
+        },
+        // bla
+        None => {},
+    }
 }

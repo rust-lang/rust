@@ -2977,12 +2977,18 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 ///
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
+}
+
+/// Returns all the comments a given span contains.
+///
+/// Comments are returned wrapped with their relevant delimiters.
+pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    let res = tokenize_with_text(&snippet)
+    tokenize_with_text(&snippet)
         .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s)
-        .join("\n");
-    res
+        .map(|(_, s, _)| s.to_string())
+        .collect::<Vec<_>>()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
