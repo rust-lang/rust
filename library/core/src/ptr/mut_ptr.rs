@@ -342,7 +342,6 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
@@ -676,7 +675,6 @@ impl<T: ?Sized> *mut T {
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
     where
         T: Sized,
@@ -1762,7 +1760,6 @@ impl<T> *mut [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(self) -> Option<*mut [T; N]> {
@@ -1963,7 +1960,6 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None
@@ -2015,7 +2011,6 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
         if self.is_null() {
             None

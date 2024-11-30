@@ -713,7 +713,6 @@ impl<T, const N: usize> Cell<[T; N]> {
     /// let array_cell: &[Cell<i32>; 3] = cell_array.as_array_of_cells();
     /// ```
     #[unstable(feature = "as_array_of_cells", issue = "88248")]
-    #[rustc_const_unstable(feature = "as_array_of_cells", issue = "88248")]
     pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }

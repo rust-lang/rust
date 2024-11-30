@@ -614,7 +614,6 @@ macro_rules! nonzero_integer {
             /// ```
             ///
             #[unstable(feature = "non_zero_count_ones", issue = "120287")]
-            #[rustc_const_unstable(feature = "non_zero_count_ones", issue = "120287")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
