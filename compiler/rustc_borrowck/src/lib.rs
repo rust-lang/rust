@@ -2083,7 +2083,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
     /// Checks the permissions for the given place and read or write kind
     ///
-    /// Returns `true` if an error is reported.
+    /// Returns `true` if an error is reported (including warnings).
     fn check_access_permissions(
         &mut self,
         (place, span): (Place<'tcx>, Span),
@@ -2115,8 +2115,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 error_access = AccessKind::MutableBorrow;
                 match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
-                        self.add_used_mut(place, span, location, error_access, root_place, state);
-                        return false;
+                        return self.add_used_mut(place, span, location, error_access, root_place, state);
                     }
                     Err(place_err) => {
                         the_place_err = place_err;
@@ -2127,8 +2126,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 error_access = AccessKind::Mutate;
                 match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
-                        self.add_used_mut(place, span, location, error_access, root_place, state);
-                        return false;
+                        return self.add_used_mut(place, span, location, error_access, root_place, state);
                     }
                     Err(place_err) => {
                         the_place_err = place_err;
@@ -2220,7 +2218,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         error_access: AccessKind,
         root_place: RootPlace<'tcx>,
         state: &BorrowckDomain<'a, 'tcx>
-    ) {
+    ) -> bool {
         match root_place {
             RootPlace { place_local: local, place_projection: [], is_local_mutation_allowed, is_non_mut_local: _ } => {
                 // If the local may have been initialized, and it is now currently being
@@ -2253,6 +2251,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
         }
 
+        let mut error_reported = false;
         //Note: logic is somewhat duplicated between here and check_access_permissions
         if let Some(the_place_err) = root_place.is_non_mut_local {
             // rust-lang/rust#21232, #54986: during period where we reject
@@ -2263,6 +2262,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             // at this point, we have set up the error reporting state.
             if let Some(init_index) = previously_initialized {
+                error_reported = true;
                 if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
                     // If this is a mutate access to an immutable local variable with no projections
                     // report the error as an illegal reassignment
@@ -2276,6 +2276,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 }
             }
         }
+
+        error_reported
     }
 
     /// Whether this value can be written or borrowed mutably.
