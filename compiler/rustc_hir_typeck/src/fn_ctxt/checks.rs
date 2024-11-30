@@ -440,20 +440,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: Ty<'tcx>,
                     cast_ty: &str,
                 ) {
-                    let (sugg_span, replace, help) =
-                        if let Ok(snippet) = sess.source_map().span_to_snippet(span) {
-                            (Some(span), format!("{snippet} as {cast_ty}"), false)
-                        } else {
-                            (None, "".to_string(), true)
-                        };
-
                     sess.dcx().emit_err(errors::PassToVariadicFunction {
                         span,
                         ty,
                         cast_ty,
-                        help,
-                        replace,
-                        sugg_span,
+                        sugg_span: span.shrink_to_hi(),
                         teach: sess.teach(E0617),
                     });
                 }
