@@ -182,6 +182,7 @@ symbols! {
         ConstParamTy_,
         Context,
         Continue,
+        ControlFlow,
         Copy,
         Cow,
         Debug,
