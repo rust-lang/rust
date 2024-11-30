@@ -68,7 +68,9 @@ impl BorrowckDiag for BWarn {
     fn struct_span_diag<'a>(cx: DiagCtxtHandle<'a>, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>)
         -> Diag<'a, Self::Guarantee>
     {
-        cx.struct_span_warn(span, msg)
+        let mut ret = cx.struct_span_warn(span, msg);
+        ret.is_lint("mut_non_mut".into(), false); // note: just a placeholder so we can detect it later
+        ret
     }
 
     fn buffer_error<'infcx>(cx: &mut crate::MirBorrowckCtxt<'_, 'infcx, '_>, err: Diag<'infcx, Self::Guarantee>){
@@ -342,7 +344,9 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         is_arg: bool,
     ) -> Diag<'infcx, ()> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_code_warn!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
+        let mut ret = struct_span_code_warn!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc);
+        ret.is_lint("mut_non_mut".into(), false); // note: just a placeholder so we can detect it later
+        ret
     }
 
     pub(crate) fn cannot_assign<T: BorrowckDiag>(&self, span: Span, desc: &str) -> Diag<'infcx, T::Guarantee> {

@@ -2524,6 +2524,22 @@ mod diags {
         }
     }
 
+    struct DiagnosticToLintDiagnostic<'a> {
+        diag: Diag<'a, ()>
+    }
+
+    macro_rules! swap_fields {($a:expr, $b:expr, $($field:tt),*) => {
+        $(core::mem::swap(&mut $a.$field, &mut $b.$field));*
+    }}
+
+    impl<'a> rustc_errors::LintDiagnostic<'a, ()> for DiagnosticToLintDiagnostic<'_> {
+        fn decorate_lint<'b>(mut self, lint_diag: &'b mut rustc_errors::Diag<'a, ()>){
+            swap_fields!(&mut **lint_diag, &mut *self.diag,
+                messages, code, span, children, suggestions, args, sort_span);
+            self.diag.cancel();
+        }
+    }
+
     impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
             self.diags.buffer_error(diag);
@@ -2604,7 +2620,16 @@ mod diags {
                 for buffered_diag in self.diags.buffered_diags.drain(..) {
                     match buffered_diag {
                         BufferedDiag::Error(diag) => res = Some(diag.emit()),
-                        BufferedDiag::NonError(diag) => diag.emit(),
+                        BufferedDiag::NonError(diag) => {
+                            if let Some(_) = diag.is_lint {
+                                self.tcx.emit_node_lint(MUT_NON_MUT,
+                                    self.tcx.local_def_id_to_hir_id(self.body.source.def_id().expect_local()),
+                                    DiagnosticToLintDiagnostic{ diag: diag }
+                                );
+                            } else {
+                                diag.emit()
+                            }
+                        },
                     }
                 }
             }

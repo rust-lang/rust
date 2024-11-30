@@ -68,6 +68,7 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         MISSING_UNSAFE_ON_EXTERN,
         MUST_NOT_SUSPEND,
+        MUT_NON_MUT,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
@@ -1647,7 +1648,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `mut_non_mut` lint warns when mutating a non-mut variable
+    /// The `mut_non_mut` lint warns when mutating a non-mut binding
     ///
     /// ### Example
     ///
@@ -1660,10 +1661,11 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The `mut` keyword helps the reader to know that a variable may be mutated.
+    /// The `mut` keyword helps the reader to know that a binding may be mutated.  Its
+    /// absence may indicate that the mutation was accidental.
     pub MUT_NON_MUT,
     Warn,
-    "mutation of a variable which was not declared with `mut`"
+    "mutation or mutable borrow of a binding which was not declared with `mut`"
 }
 
 declare_lint! {
