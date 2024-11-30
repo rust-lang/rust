@@ -18,7 +18,7 @@ impl Mutex {
     }
 
     /// # Safety
-    /// Must only be called once.
+    /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
         // Issue #33770
         //
@@ -58,7 +58,8 @@ impl Mutex {
     }
 
     /// # Safety
-    /// * If `init` was not called, reentrant locking causes undefined behaviour.
+    /// * If `init` was not called on this instance, reentrant locking causes
+    ///   undefined behaviour.
     /// * Destroying a locked mutex causes undefined behaviour.
     pub unsafe fn lock(self: Pin<&Self>) {
         #[cold]
@@ -82,7 +83,8 @@ impl Mutex {
     }
 
     /// # Safety
-    /// * If `init` was not called, reentrant locking causes undefined behaviour.
+    /// * If `init` was not called on this instance, reentrant locking causes
+    ///   undefined behaviour.
     /// * Destroying a locked mutex causes undefined behaviour.
     pub unsafe fn try_lock(self: Pin<&Self>) -> bool {
         unsafe { libc::pthread_mutex_trylock(self.raw()) == 0 }

@@ -21,7 +21,7 @@ impl Mutex {
         // This is sound however, as it cannot have been locked.
         self.pal.get_or_init(|| {
             let mut pal = Box::pin(pal::Mutex::new());
-            // SAFETY: we only call `init` once, namely here.
+            // SAFETY: we only call `init` once per `pal::Mutex`, namely here.
             unsafe { pal.as_mut().init() };
             pal
         })

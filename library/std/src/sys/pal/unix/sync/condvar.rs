@@ -23,7 +23,7 @@ impl Condvar {
     }
 
     /// # Safety
-    /// `init` must have been called.
+    /// `init` must have been called on this instance.
     #[inline]
     pub unsafe fn notify_one(self: Pin<&Self>) {
         let r = unsafe { libc::pthread_cond_signal(self.raw()) };
@@ -31,7 +31,7 @@ impl Condvar {
     }
 
     /// # Safety
-    /// `init` must have been called.
+    /// `init` must have been called on this instance.
     #[inline]
     pub unsafe fn notify_all(self: Pin<&Self>) {
         let r = unsafe { libc::pthread_cond_broadcast(self.raw()) };
@@ -39,7 +39,7 @@ impl Condvar {
     }
 
     /// # Safety
-    /// * `init` must have been called.
+    /// * `init` must have been called on this instance.
     /// * `mutex` must be locked by the current thread.
     /// * This condition variable may only be used with the same mutex.
     #[inline]
@@ -49,7 +49,7 @@ impl Condvar {
     }
 
     /// # Safety
-    /// * `init` must have been called.
+    /// * `init` must have been called on this instance.
     /// * `mutex` must be locked by the current thread.
     /// * This condition variable may only be used with the same mutex.
     pub unsafe fn wait_timeout(&self, mutex: Pin<&Mutex>, dur: Duration) -> bool {
@@ -95,7 +95,7 @@ impl Condvar {
     const CLOCK: libc::clockid_t = libc::CLOCK_MONOTONIC;
 
     /// # Safety
-    /// May only be called once.
+    /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
         use crate::mem::MaybeUninit;
 
@@ -137,7 +137,7 @@ impl Condvar {
     const CLOCK: libc::clockid_t = libc::CLOCK_REALTIME;
 
     /// # Safety
-    /// May only be called once.
+    /// May only be called once per instance of `Self`.
     pub unsafe fn init(self: Pin<&mut Self>) {
         if cfg!(any(target_os = "espidf", target_os = "horizon", target_os = "teeos")) {
             // NOTE: ESP-IDF's PTHREAD_COND_INITIALIZER support is not released yet
