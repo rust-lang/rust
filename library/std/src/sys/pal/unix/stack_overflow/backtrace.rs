@@ -9,15 +9,9 @@ use crate::ptr;
 /// even though both of them are not guaranteed to be async-signal-safe, strictly
 /// speaking. However, at least LLVM's libunwind (used by macOS) has a [test] for
 /// unwinding in signal handlers, and `dladdr` is used by `backtrace_symbols_fd`
-/// in glibc, which it [documents] as async-signal-safe.
-///
-/// In practice, this hack works well enough on GNU/Linux and macOS (and perhaps
-/// some other platforms). Realistically, the worst thing that can happen is that
-/// the stack overflow occurred inside the dynamic loaded while it holds some sort
-/// of lock, which could result in a deadlock if that happens in just the right
-/// moment. That's unlikely enough and not the *worst* thing to happen considering
-/// that a stack overflow is already an unrecoverable error and most likely
-/// indicates a bug.
+/// in glibc, which it [documents] as async-signal-safe. In practice, this hack
+/// works well enough on GNU/Linux and macOS (and perhaps some other platforms,
+/// but we haven't enabled those yet).
 ///
 /// [test]: https://github.com/llvm/llvm-project/blob/a6385a3fc8a88f092d07672210a1e773481c2919/libunwind/test/signal_unwind.pass.cpp
 /// [documents]: https://www.gnu.org/software/libc/manual/html_node/Backtraces.html#index-backtrace_005fsymbols_005ffd
@@ -29,8 +23,8 @@ pub fn print() {
         let count = unsafe { &mut *(arg as *mut usize) };
         let depth = *count;
         *count += 1;
-        if depth > 128 {
-            return unwind::_URC_NO_REASON;
+        if depth >= 128 {
+            return unwind::_URC_NORMAL_STOP;
         }
 
         let ip = unsafe { unwind::_Unwind_GetIP(ctx) };
@@ -53,11 +47,7 @@ pub fn print() {
 
     let mut count = 0usize;
     unsafe { unwind::_Unwind_Backtrace(frame, ptr::from_mut(&mut count).cast()) };
-    if count > 128 {
-        rtprintpanic!(
-            "[... omitted {} frame{} ...]\n",
-            count - 128,
-            if count - 128 > 1 { "s" } else { "" }
-        );
+    if count >= 128 {
+        rtprintpanic!("[... some frames omitted ...]\n");
     }
 }
