@@ -32783,8 +32783,8 @@ pub unsafe fn _mm512_loadu_si512(mem_addr: *const i32) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovups))] //should be vmovdqu32
-pub unsafe fn _mm512_storeu_si512(mem_addr: *mut i32, a: __m512i) {
-    ptr::write_unaligned(mem_addr as *mut __m512i, a);
+pub unsafe fn _mm512_storeu_si512(mem_addr: *mut __m512i, a: __m512i) {
+    ptr::write_unaligned(mem_addr, a);
 }
 
 /// Loads 512-bits (composed of 8 packed double-precision (64-bit)
@@ -32857,8 +32857,8 @@ pub unsafe fn _mm512_load_si512(mem_addr: *const i32) -> __m512i {
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
-pub unsafe fn _mm512_store_si512(mem_addr: *mut i32, a: __m512i) {
-    ptr::write(mem_addr as *mut __m512i, a);
+pub unsafe fn _mm512_store_si512(mem_addr: *mut __m512i, a: __m512i) {
+    ptr::write(mem_addr, a);
 }
 
 /// Load 512-bits (composed of 16 packed 32-bit integers) from memory into dst. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
@@ -55246,7 +55246,7 @@ mod tests {
     unsafe fn test_mm512_storeu_si512() {
         let a = _mm512_set1_epi32(9);
         let mut r = _mm512_undefined_epi32();
-        _mm512_storeu_si512(&mut r as *mut _ as *mut i32, a);
+        _mm512_storeu_si512(&mut r as *mut _, a);
         assert_eq_m512i(r, a);
     }
 
@@ -55269,7 +55269,7 @@ mod tests {
     unsafe fn test_mm512_store_si512() {
         let a = _mm512_set1_epi32(9);
         let mut r = _mm512_undefined_epi32();
-        _mm512_store_si512(&mut r as *mut _ as *mut i32, a);
+        _mm512_store_si512(&mut r as *mut _, a);
         assert_eq_m512i(r, a);
     }
 
