@@ -16,7 +16,6 @@
 #![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
-#![feature(const_heap)]
 #![feature(const_nonnull_new)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
