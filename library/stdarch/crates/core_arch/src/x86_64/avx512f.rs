@@ -11189,8 +11189,11 @@ mod tests {
         let r = _mm256_alignr_epi64::<0>(a, b);
         let e = _mm256_set_epi64x(8, 7, 6, 5);
         assert_eq_m256i(r, e);
+        let r = _mm256_alignr_epi64::<1>(a, b);
+        let e = _mm256_set_epi64x(1, 8, 7, 6);
+        assert_eq_m256i(r, e);
         let r = _mm256_alignr_epi64::<6>(a, b);
-        let e = _mm256_set_epi64x(6, 5, 4, 3);
+        let e = _mm256_set_epi64x(2, 1, 8, 7);
         assert_eq_m256i(r, e);
     }
 
