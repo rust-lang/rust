@@ -3,6 +3,8 @@
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]
 
+use std::ops::ControlFlow;
+
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = val;
     val
@@ -308,6 +310,13 @@ fn direct_application() {
     let _: Result<(), std::io::Error> = test_issue_3913();
     //~^ useless_conversion
 
+    let c: ControlFlow<()> = ControlFlow::Continue(());
+    let _: ControlFlow<()> = c;
+    //~^ useless_conversion
+    let c: ControlFlow<()> = ControlFlow::Continue(());
+    let _: ControlFlow<()> = c;
+    //~^ useless_conversion
+
     struct Absorb;
     impl From<()> for Absorb {
         fn from(_: ()) -> Self {
@@ -319,11 +328,17 @@ fn direct_application() {
             Self
         }
     }
+    let _: Vec<u32> = [1u32].into_iter().collect();
+    //~^ useless_conversion
 
     // No lint for those
     let _: Result<Absorb, std::io::Error> = test_issue_3913().map(Into::into);
     let _: Result<(), Absorb> = test_issue_3913().map_err(Into::into);
     let _: Result<Absorb, std::io::Error> = test_issue_3913().map(From::from);
     let _: Result<(), Absorb> = test_issue_3913().map_err(From::from);
-    let _: Vec<u32> = [1u32].into_iter().map(Into::into).collect();
+}
+
+fn gen_identity<T>(x: [T; 3]) -> Vec<T> {
+    x.into_iter().collect()
+    //~^ useless_conversion
 }

@@ -4984,6 +4984,9 @@ impl Methods {
                     manual_inspect::check(cx, expr, m_arg, name, span, &self.msrv);
                     crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
                 },
+                ("map_break" | "map_continue", [m_arg]) => {
+                    crate::useless_conversion::check_function_application(cx, expr, recv, m_arg);
+                },
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);

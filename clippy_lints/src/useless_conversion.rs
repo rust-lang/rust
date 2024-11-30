@@ -14,7 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 declare_clippy_lint! {
@@ -415,9 +415,25 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
     let recv_ty = cx.typeck_results().expr_ty(recv);
     if is_inherent_method_call(cx, expr)
         && let Some(recv_ty_defid) = recv_ty.ty_adt_def().map(AdtDef::did)
-        && let Some(diag_name) = cx.tcx.get_diagnostic_name(recv_ty_defid)
-        && matches!(diag_name, sym::Option | sym::Result)
     {
+        if let Some(diag_name) = cx.tcx.get_diagnostic_name(recv_ty_defid)
+            && matches!(diag_name, sym::Option | sym::Result)
+        {
+            return true;
+        }
+
+        // FIXME: Add ControlFlow diagnostic item
+        let def_path = cx.get_def_path(recv_ty_defid);
+        if def_path
+            .iter()
+            .map(Symbol::as_str)
+            .zip(["core", "ops", "control_flow", "ControlFlow"])
+            .all(|(sym, s)| sym == s)
+        {
+            return true;
+        }
+    }
+    if is_trait_method(cx, expr, sym::Iterator) {
         return true;
     }
     false
