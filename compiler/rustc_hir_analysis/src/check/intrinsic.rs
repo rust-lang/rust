@@ -94,6 +94,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::add_with_overflow
         | sym::sub_with_overflow
         | sym::mul_with_overflow
+        | sym::carrying_mul_add
         | sym::wrapping_add
         | sym::wrapping_sub
         | sym::wrapping_mul
@@ -434,6 +435,10 @@ pub fn check_intrinsic_type(
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 (1, 0, vec![param(0), param(0)], Ty::new_tup(tcx, &[param(0), tcx.types.bool]))
+            }
+
+            sym::carrying_mul_add => {
+                (2, 0, vec![param(0); 4], Ty::new_tup(tcx, &[param(1), param(0)]))
             }
 
             sym::ptr_guaranteed_cmp => (
