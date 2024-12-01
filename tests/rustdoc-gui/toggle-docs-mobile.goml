@@ -14,7 +14,7 @@ assert-attribute: (".top-doc", {"open": ""})
 // Assert the position of the toggle on the top doc block.
 assert-position: (".top-doc summary::before", {"x": 4})
 // Assert the position of the toggle on the impl block.
-assert-position: ("#implementations-list > details > summary::before", {"x": 4})
+assert-position: ("#implementations-list > details > summary::before", {"x": 11})
 // Assert the position of the toggle on a method.
 assert-position: (
     "#trait-implementations-list .impl-items .method-toggle > summary::before",
@@ -24,10 +24,10 @@ assert-position: (
 // Now we do the same but with a little bigger width
 set-window-size: (600, 600)
 assert-attribute: (".top-doc", {"open": ""})
-click: (4, 270) // New Y position since all search elements are back on one line.
+click: (30, 270) // New Y position since all search elements are back on one line.
 assert-attribute-false: (".top-doc", {"open": ""})
-click: (4, 270)
+click: (30, 270)
 assert-attribute: (".top-doc", {"open": ""})
 // To ensure that the toggle isn't over the text, we check that the toggle isn't clicked.
-click: (3, 270)
+click: (31, 270)
 assert-attribute: (".top-doc", {"open": ""})
