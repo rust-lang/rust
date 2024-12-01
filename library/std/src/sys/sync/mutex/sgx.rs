@@ -13,7 +13,7 @@ impl Mutex {
     }
 
     fn get(&self) -> &SpinMutex<WaitVariable<bool>> {
-        self.inner.get_or_init(|| Box::new(SpinMutex::new(WaitVariable::new(false))))
+        self.inner.get_or_init(|| Box::pin(SpinMutex::new(WaitVariable::new(false)))).get_ref()
     }
 
     #[inline]
@@ -33,7 +33,7 @@ impl Mutex {
     pub unsafe fn unlock(&self) {
         // SAFETY: the mutex was locked by the current thread, so it has been
         // initialized already.
-        let guard = unsafe { self.inner.get_unchecked().lock() };
+        let guard = unsafe { self.inner.get_unchecked().get_ref().lock() };
         if let Err(mut guard) = WaitQueue::notify_one(guard) {
             // No other waiters, unlock
             *guard.lock_var_mut() = false;
