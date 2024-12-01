@@ -185,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         method: MethodCallee<'tcx>,
     ) {
-        self.enforce_context_effects(span, method.def_id, method.args);
+        self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
     }
@@ -263,6 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Adjust::Deref(Some(overloaded_deref)) => {
                     self.enforce_context_effects(
+                        None,
                         expr.span,
                         overloaded_deref.method_call(self.tcx),
                         self.tcx.mk_args(&[a.target.into()]),
