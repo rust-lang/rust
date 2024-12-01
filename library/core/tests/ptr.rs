@@ -898,6 +898,25 @@ fn test_const_copy() {
 }
 
 #[test]
+fn test_const_swap() {
+    const {
+        let mut ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Swap ptr1 and ptr2, bytewise. `swap` does not take a count
+        // so the best we can do is use an array.
+        type T = [u8; mem::size_of::<&i32>()];
+        unsafe {
+            ptr::swap(ptr::from_mut(&mut ptr1).cast::<T>(), ptr::from_mut(&mut ptr2).cast::<T>());
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 666);
+        assert!(*ptr2 == 1);
+    };
+}
+
+#[test]
 fn test_null_array_as_slice() {
     let arr: *mut [u8; 4] = null_mut();
     let ptr: *mut [u8] = arr.as_mut_slice();
