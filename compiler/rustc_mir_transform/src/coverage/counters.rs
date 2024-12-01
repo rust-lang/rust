@@ -102,57 +102,10 @@ impl CoverageCounters {
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
         let new_expr = BcbExpression { lhs, op, rhs };
-        *self
-            .expressions_memo
-            .entry(new_expr)
-            .or_insert_with(|| Self::make_expression_inner(&mut self.expressions, new_expr))
-    }
-
-    /// This is an associated function so that we can call it while borrowing
-    /// `&mut self.expressions_memo`.
-    fn make_expression_inner(
-        expressions: &mut IndexVec<ExpressionId, BcbExpression>,
-        new_expr: BcbExpression,
-    ) -> BcbCounter {
-        // Simplify expressions using basic algebra.
-        //
-        // Some of these cases might not actually occur in practice, depending
-        // on the details of how the instrumentor builds expressions.
-        let BcbExpression { lhs, op, rhs } = new_expr;
-
-        if let BcbCounter::Expression { id } = lhs {
-            let lhs_expr = &expressions[id];
-
-            // Simplify `(a - b) + b` to `a`.
-            if lhs_expr.op == Op::Subtract && op == Op::Add && lhs_expr.rhs == rhs {
-                return lhs_expr.lhs;
-            }
-            // Simplify `(a + b) - b` to `a`.
-            if lhs_expr.op == Op::Add && op == Op::Subtract && lhs_expr.rhs == rhs {
-                return lhs_expr.lhs;
-            }
-            // Simplify `(a + b) - a` to `b`.
-            if lhs_expr.op == Op::Add && op == Op::Subtract && lhs_expr.lhs == rhs {
-                return lhs_expr.rhs;
-            }
-        }
-
-        if let BcbCounter::Expression { id } = rhs {
-            let rhs_expr = &expressions[id];
-
-            // Simplify `a + (b - a)` to `b`.
-            if op == Op::Add && rhs_expr.op == Op::Subtract && lhs == rhs_expr.rhs {
-                return rhs_expr.lhs;
-            }
-            // Simplify `a - (a - b)` to `b`.
-            if op == Op::Subtract && rhs_expr.op == Op::Subtract && lhs == rhs_expr.lhs {
-                return rhs_expr.rhs;
-            }
-        }
-
-        // Simplification failed, so actually create the new expression.
-        let id = expressions.push(new_expr);
-        BcbCounter::Expression { id }
+        *self.expressions_memo.entry(new_expr).or_insert_with(|| {
+            let id = self.expressions.push(new_expr);
+            BcbCounter::Expression { id }
+        })
     }
 
     /// Creates a counter that is the sum of the given counters.
