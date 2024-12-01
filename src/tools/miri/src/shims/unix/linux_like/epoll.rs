@@ -5,8 +5,8 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::concurrency::VClock;
-use crate::shims::unix::fd::{FdId, FileDescriptionRef, WeakFileDescriptionRef};
-use crate::shims::unix::*;
+use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
 /// An `Epoll` file descriptor connects file handles and epoll events
@@ -152,7 +152,13 @@ impl FileDescription for Epoll {
     ) -> InterpResult<'tcx, io::Result<()>> {
         interp_ok(Ok(()))
     }
+
+    fn as_unix(&self) -> &dyn UnixFileDescription {
+        self
+    }
 }
+
+impl UnixFileDescription for Epoll {}
 
 /// The table of all EpollEventInterest.
 /// The BTreeMap key is the FdId of an active file description registered with
@@ -595,7 +601,7 @@ fn check_and_update_one_event_interest<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx, bool> {
     // Get the bitmask of ready events for a file description.
-    let ready_events_bitmask = fd_ref.get_epoll_ready_events()?.get_event_bitmask(ecx);
+    let ready_events_bitmask = fd_ref.as_unix().get_epoll_ready_events()?.get_event_bitmask(ecx);
     let epoll_event_interest = interest.borrow();
     // This checks if any of the events specified in epoll_event_interest.events
     // match those in ready_events.
