@@ -1481,22 +1481,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
     pub fn scalar_may_be_null(&self, scalar: Scalar<M::Provenance>) -> InterpResult<'tcx, bool> {
-        interp_ok(match scalar.try_to_scalar_int() {
-            Ok(int) => int.is_null(),
+        match scalar.try_to_scalar_int() {
+            Ok(int) => interp_ok(int.is_null()),
             Err(_) => {
-                // Can only happen during CTFE.
+                // We can't cast this pointer to an integer. Can only happen during CTFE.
                 let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
-                        let size = self.get_alloc_info(alloc_id).size;
-                        // If the pointer is out-of-bounds, it may be null.
-                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                        offset > size
+                        let info = self.get_alloc_info(alloc_id);
+                        // If the pointer is in-bounds (including "at the end"), it is definitely not null.
+                        if offset <= info.size {
+                            return interp_ok(false);
+                        }
+                        // If the allocation is N-aligned, and the offset is not divisible by N,
+                        // then `base + offset` has a non-zero remainder after division by `N`,
+                        // which means `base + offset` cannot be null.
+                        if offset.bytes() % info.align.bytes() != 0 {
+                            return interp_ok(false);
+                        }
+                        // We don't know enough, this might be null.
+                        interp_ok(true)
                     }
                     Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
-        })
+        }
     }
 
     /// Turning a "maybe pointer" into a proper pointer (and some information
