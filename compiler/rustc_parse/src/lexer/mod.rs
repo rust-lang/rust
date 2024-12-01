@@ -300,6 +300,26 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, ident_start);
 
                     if prefix_span.at_least_rust_2021() {
+                        // If the raw lifetime is followed by \' then treat it a normal
+                        // lifetime followed by a \', which is to interpret it as a character
+                        // literal. In this case, it's always an invalid character literal
+                        // since the literal must necessarily have >3 characters (r#...) inside
+                        // of it, which is invalid.
+                        if self.cursor.as_str().starts_with('\'') {
+                            let lit_span = self.mk_sp(start, self.pos + BytePos(1));
+                            let contents = self.str_from_to(start + BytePos(1), self.pos);
+                            emit_unescape_error(
+                                self.dcx(),
+                                contents,
+                                lit_span,
+                                lit_span,
+                                Mode::Char,
+                                0..contents.len(),
+                                EscapeError::MoreThanOneChar,
+                            )
+                            .expect("expected error");
+                        }
+
                         let span = self.mk_sp(start, self.pos);
 
                         let lifetime_name_without_tick =
@@ -371,8 +391,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-                rustc_lexer::TokenKind::Unknown
-                | rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;
