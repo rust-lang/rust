@@ -128,102 +128,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         match self.tcx.hir_node(hir_id) {
-            hir::Node::Expr(&hir::Expr {
-                kind:
-                    hir::ExprKind::Call(
-                        hir::Expr { kind: hir::ExprKind::Path(qpath), span: callee_span, .. },
-                        args,
-                    ),
-                span,
-                ..
-            }) => {
-                if self.closure_span_overlaps_error(error, span) {
-                    return false;
-                }
+            hir::Node::Expr(expr) => self.point_at_expr_if_possible(
+                error,
+                def_id,
+                expr,
+                predicate_self_type_to_point_at,
+                param_to_point_at,
+                fallback_param_to_point_at,
+                self_param_to_point_at,
+            ),
 
-                if let Some(param) = predicate_self_type_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param, &qpath)
-                {
-                    return true;
-                }
-
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
-                {
-                    if self.blame_specific_arg_if_possible(
-                        error,
-                        def_id,
-                        param,
-                        hir_id,
-                        *callee_span,
-                        None,
-                        args,
-                    ) {
-                        return true;
-                    }
-                }
-
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
-                {
-                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
-                        return true;
-                    }
-                }
-            }
-            hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(qpath), span, .. }) => {
-                if self.closure_span_overlaps_error(error, span) {
-                    return false;
-                }
-
-                if let Some(param) = predicate_self_type_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param, &qpath)
-                {
-                    return true;
-                }
-
-                if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(callee, args),
-                    hir_id: call_hir_id,
-                    span: call_span,
-                    ..
-                }) = self.tcx.parent_hir_node(hir_id)
-                    && callee.hir_id == hir_id
-                {
-                    if self.closure_span_overlaps_error(error, *call_span) {
-                        return false;
-                    }
-
-                    for param in
-                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                            .into_iter()
-                            .flatten()
-                    {
-                        if self.blame_specific_arg_if_possible(
-                            error,
-                            def_id,
-                            param,
-                            *call_hir_id,
-                            callee.span,
-                            None,
-                            args,
-                        ) {
-                            return true;
-                        }
-                    }
-                }
-
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
-                {
-                    if self.point_at_path_if_possible(error, def_id, param, &qpath) {
-                        return true;
-                    }
-                }
-            }
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::Path(qpath), .. }) => {
                 for param in [
                     predicate_self_type_to_point_at,
@@ -238,18 +152,107 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return true;
                     }
                 }
+
+                false
             }
-            hir::Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::MethodCall(segment, receiver, args, ..),
-                span,
-                ..
-            }) => {
-                if self.closure_span_overlaps_error(error, span) {
-                    return false;
+
+            _ => false,
+        }
+    }
+
+    fn point_at_expr_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        callee_def_id: DefId,
+        expr: &'tcx hir::Expr<'tcx>,
+        predicate_self_type_to_point_at: Option<ty::GenericArg<'tcx>>,
+        param_to_point_at: Option<ty::GenericArg<'tcx>>,
+        fallback_param_to_point_at: Option<ty::GenericArg<'tcx>>,
+        self_param_to_point_at: Option<ty::GenericArg<'tcx>>,
+    ) -> bool {
+        if self.closure_span_overlaps_error(error, expr.span) {
+            return false;
+        }
+
+        match expr.kind {
+            hir::ExprKind::Call(
+                hir::Expr { kind: hir::ExprKind::Path(qpath), span: callee_span, .. },
+                args,
+            ) => {
+                if let Some(param) = predicate_self_type_to_point_at
+                    && self.point_at_path_if_possible(error, callee_def_id, param, &qpath)
+                {
+                    return true;
                 }
 
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
+                {
+                    if self.blame_specific_arg_if_possible(
+                        error,
+                        callee_def_id,
+                        param,
+                        expr.hir_id,
+                        *callee_span,
+                        None,
+                        args,
+                    ) {
+                        return true;
+                    }
+                }
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
+                {
+                    if self.point_at_path_if_possible(error, callee_def_id, param, &qpath) {
+                        return true;
+                    }
+                }
+            }
+            hir::ExprKind::Path(qpath) => {
+                // If the parent is an call, then process this as a call.
+                //
+                // This is because the `WhereClauseInExpr` obligations come from
+                // the well-formedness of the *path* expression, but we care to
+                // point at the call expression (namely, its args).
+                if let hir::Node::Expr(
+                    call_expr @ hir::Expr { kind: hir::ExprKind::Call(callee, ..), .. },
+                ) = self.tcx.parent_hir_node(expr.hir_id)
+                    && callee.hir_id == expr.hir_id
+                {
+                    return self.point_at_expr_if_possible(
+                        error,
+                        callee_def_id,
+                        call_expr,
+                        predicate_self_type_to_point_at,
+                        param_to_point_at,
+                        fallback_param_to_point_at,
+                        self_param_to_point_at,
+                    );
+                }
+
+                // Otherwise, just try to point at path components.
+
                 if let Some(param) = predicate_self_type_to_point_at
-                    && self.point_at_generic_if_possible(error, def_id, param, segment)
+                    && self.point_at_path_if_possible(error, callee_def_id, param, &qpath)
+                {
+                    return true;
+                }
+
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
+                {
+                    if self.point_at_path_if_possible(error, callee_def_id, param, &qpath) {
+                        return true;
+                    }
+                }
+            }
+            hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
+                if let Some(param) = predicate_self_type_to_point_at
+                    && self.point_at_generic_if_possible(error, callee_def_id, param, segment)
                 {
                     // HACK: This is not correct, since `predicate_self_type_to_point_at` might
                     // not actually correspond to the receiver of the method call. But we
@@ -259,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     error.obligation.cause.map_code(|parent_code| {
                         ObligationCauseCode::FunctionArg {
                             arg_hir_id: receiver.hir_id,
-                            call_hir_id: hir_id,
+                            call_hir_id: expr.hir_id,
                             parent_code,
                         }
                     });
@@ -272,9 +275,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if self.blame_specific_arg_if_possible(
                         error,
-                        def_id,
+                        callee_def_id,
                         param,
-                        hir_id,
+                        expr.hir_id,
                         segment.ident.span,
                         Some(receiver),
                         args,
@@ -283,7 +286,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_generic_if_possible(error, def_id, param_to_point_at, segment)
+                    && self.point_at_generic_if_possible(
+                        error,
+                        callee_def_id,
+                        param_to_point_at,
+                        segment,
+                    )
                 {
                     return true;
                 }
@@ -297,25 +305,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            hir::Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Struct(qpath, fields, ..),
-                span,
-                ..
-            }) => {
-                if self.closure_span_overlaps_error(error, span) {
-                    return false;
-                }
-
+            hir::ExprKind::Struct(qpath, fields, ..) => {
                 if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
-                    self.typeck_results.borrow().qpath_res(qpath, hir_id)
+                    self.typeck_results.borrow().qpath_res(qpath, expr.hir_id)
                 {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                             .into_iter()
                             .flatten()
                     {
-                        let refined_expr =
-                            self.point_at_field_if_possible(def_id, param, variant_def_id, fields);
+                        let refined_expr = self.point_at_field_if_possible(
+                            callee_def_id,
+                            param,
+                            variant_def_id,
+                            fields,
+                        );
 
                         match refined_expr {
                             None => {}
@@ -339,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .into_iter()
                 .flatten()
                 {
-                    if self.point_at_path_if_possible(error, def_id, param, qpath) {
+                    if self.point_at_path_if_possible(error, callee_def_id, param, qpath) {
                         return true;
                     }
                 }
