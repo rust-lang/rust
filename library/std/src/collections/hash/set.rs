@@ -107,8 +107,8 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 /// Like `HashMap`, `HashSet` is randomly seeded: each `HashSet` instance uses a different seed,
 /// which means that `HashSet::new` cannot be used in const context. To construct a `HashSet` in the
 /// initializer of a `const` or `static` item, you will have to use a different hasher that does not
-/// involve a random seed, as demonstrated in the following example. **`HashSet` constructed this
-/// way are not resistant against HashDoS!**
+/// involve a random seed, as demonstrated in the following example. **A `HashSet` constructed this
+/// way is not resistant against HashDoS!**
 ///
 /// ```rust
 /// use std::collections::HashSet;

@@ -210,8 +210,8 @@ use crate::ops::Index;
 /// As explained above, `HashMap` is randomly seeded: each `HashMap` instance uses a different seed,
 /// which means that `HashMap::new` cannot be used in const context. To construct a `HashMap` in the
 /// initializer of a `const` or `static` item, you will have to use a different hasher that does not
-/// involve a random seed, as demonstrated in the following example. **`HashMap` constructed this
-/// way are not resistant against HashDoS!**
+/// involve a random seed, as demonstrated in the following example. **A `HashMap` constructed this
+/// way is not resistant against HashDoS!**
 ///
 /// ```rust
 /// use std::collections::HashMap;
