@@ -189,7 +189,7 @@ fn layout_of_simd_ty(
     };
 
     Ok(Arc::new(Layout {
-        variants: Variants::Single { index: struct_variant_idx() },
+        variants: Variants::Single { index: Some(struct_variant_idx()) },
         fields,
         backend_repr: BackendRepr::Vector { element: e_abi, count: e_len },
         largest_niche: e_ly.largest_niche,
@@ -305,7 +305,7 @@ pub fn layout_of_ty_query(
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 
             Layout {
-                variants: Variants::Single { index: struct_variant_idx() },
+                variants: Variants::Single { index: Some(struct_variant_idx()) },
                 fields: FieldsShape::Array { stride: element.size, count },
                 backend_repr,
                 largest_niche,
@@ -318,7 +318,7 @@ pub fn layout_of_ty_query(
         TyKind::Slice(element) => {
             let element = db.layout_of_ty(element.clone(), trait_env)?;
             Layout {
-                variants: Variants::Single { index: struct_variant_idx() },
+                variants: Variants::Single { index: Some(struct_variant_idx()) },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
@@ -329,7 +329,7 @@ pub fn layout_of_ty_query(
             }
         }
         TyKind::Str => Layout {
-            variants: Variants::Single { index: struct_variant_idx() },
+            variants: Variants::Single { index: Some(struct_variant_idx()) },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,

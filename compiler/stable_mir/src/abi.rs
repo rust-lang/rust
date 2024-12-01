@@ -181,6 +181,7 @@ impl FieldsShape {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum VariantsShape {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
+    // FIXME: needs to become `Option` like in the internal type.
     Single { index: VariantIdx },
 
     /// Enum-likes with more than one inhabited variant: each variant comes with

@@ -339,14 +339,12 @@ pub(crate) mod rustc {
 
             match layout.variants() {
                 Variants::Single { index } => {
-                    // Hilariously, `Single` is used even for 0-variant enums;
-                    // `index` is just junk in that case.
-                    if ty.ty_adt_def().unwrap().variants().is_empty() {
-                        Ok(Self::uninhabited())
-                    } else {
+                    if let Some(index) = index {
                         // `Variants::Single` on enums with variants denotes that
                         // the enum delegates its layout to the variant at `index`.
                         layout_of_variant(*index, None)
+                    } else {
+                        Ok(Self::uninhabited())
                     }
                 }
                 Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
@@ -504,7 +502,7 @@ pub(crate) mod rustc {
             ty::Adt(def, args) => {
                 match layout.variants {
                     Variants::Single { index } => {
-                        let field = &def.variant(index).fields[i];
+                        let field = &def.variant(index.unwrap()).fields[i];
                         field.ty(cx.tcx(), args)
                     }
                     // Discriminant field for enums (where applicable).

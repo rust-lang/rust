@@ -18,7 +18,9 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            },
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -56,7 +58,9 @@ error: fn_abi_of(pass_zst) = FnAbi {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,

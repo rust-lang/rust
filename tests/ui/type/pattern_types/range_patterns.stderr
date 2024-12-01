@@ -32,7 +32,9 @@ error: layout_of(NonZero<u32>) = Layout {
                },
            ),
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -69,7 +71,9 @@ error: layout_of((u32) is 1..=) = Layout {
                },
            ),
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -133,7 +137,9 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -172,7 +178,9 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -241,7 +249,9 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -280,7 +290,9 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -329,7 +341,9 @@ error: layout_of(NonZeroU32New) = Layout {
                },
            ),
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),

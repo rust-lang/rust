@@ -44,7 +44,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// Read discriminant, return the runtime value as well as the variant index.
+    /// Read discriminant, return the variant index.
     /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
     ///
     /// Will never return an uninhabited variant.
@@ -66,21 +66,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
             Variants::Single { index } => {
-                // Do some extra checks on enums.
-                if ty.is_enum() {
-                    // Hilariously, `Single` is used even for 0-variant enums.
-                    // (See https://github.com/rust-lang/rust/issues/89765).
-                    if ty.ty_adt_def().unwrap().variants().is_empty() {
-                        throw_ub!(UninhabitedEnumVariantRead(index))
-                    }
+                if op.layout().is_uninhabited() {
                     // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
-                    // for uninhabited variants.
-                    if op.layout().for_variant(self, index).is_uninhabited() {
-                        throw_ub!(UninhabitedEnumVariantRead(index))
-                    }
+                    // for uninhabited enums.
+                    throw_ub!(UninhabitedEnumVariantRead(None));
                 }
-                return interp_ok(index);
+                // Since the type is inhabited, there must be an index.
+                return interp_ok(index.unwrap());
             }
             Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
@@ -199,11 +192,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
         if op.layout().for_variant(self, index).is_uninhabited() {
-            throw_ub!(UninhabitedEnumVariantRead(index))
+            throw_ub!(UninhabitedEnumVariantRead(Some(index)))
         }
         interp_ok(index)
     }
 
+    /// Read discriminant, return the user-visible discriminant.
+    /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
     pub fn discriminant_for_variant(
         &self,
         ty: Ty<'tcx>,
