@@ -305,9 +305,10 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
         cargo.env("PATH", path_for_cargo(builder, compiler));
-        // Cargo's test suite requires configurations from its own `.cargo/config.toml`.
-        // Change to the directory so Cargo can read from it.
-        cargo.current_dir(builder.src.join(Self::CRATE_PATH));
+        // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
+        // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
+        // same value as `-Zroot-dir`.
+        cargo.env("CARGO_RUSTC_CURRENT_DIR", builder.src.display().to_string());
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
