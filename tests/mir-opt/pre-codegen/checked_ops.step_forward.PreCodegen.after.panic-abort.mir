@@ -13,7 +13,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
                 scope 6 (inlined core::num::<impl u16>::checked_add) {
                     let mut _5: (u16, bool);
                     let mut _6: bool;
-                    scope 7 (inlined unlikely) {
+                    scope 7 (inlined std::intrinsics::unlikely) {
                         let _7: ();
                     }
                 }
@@ -55,7 +55,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     }
 
     bb3: {
-        _7 = cold_path() -> [return: bb4, unwind unreachable];
+        _7 = std::intrinsics::cold_path() -> [return: bb4, unwind unreachable];
     }
 
     bb4: {

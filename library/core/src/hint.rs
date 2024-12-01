@@ -511,3 +511,143 @@ pub const fn black_box<T>(dummy: T) -> T {
 pub const fn must_use<T>(value: T) -> T {
     value
 }
+
+/// Hints to the compiler that a branch condition is likely to be true.
+/// Returns the value passed to it.
+///
+/// It can be used with `if` or boolean `match` expressions.
+///
+/// When used outside of a branch condition, it may still work if there is a branch close by, but
+/// it is not guaranteed to have any effect.
+///
+/// It can also be applied to parts of expressions, such as `likely(a) && unlikely(b)`, or to
+/// compound expressions, such as `likely(a && b)`. When applied to compound expressions, it has
+/// the following effect:
+/// ```text
+///     likely(!a) => !unlikely(a)
+///     likely(a && b) => likely(a) && likely(b)
+///     likely(a || b) => a || likely(b)
+/// ```
+///
+/// See also the function [`cold_path()`] which may be more appropriate for idiomatic Rust code.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(likely_unlikely)]
+/// use core::hint::likely;
+///
+/// fn foo(x: i32) {
+///     if likely(x > 0) {
+///         println!("this branch is likely to be taken");
+///     } else {
+///         println!("this branch is unlikely to be taken");
+///     }
+///
+///     match likely(x > 0) {
+///         true => println!("this branch is likely to be taken"),
+///         false => println!("this branch is unlikely to be taken"),
+///     }
+///
+///     // Use outside of a branch condition. This may still work if there is a branch close by,
+///     // but it is not guaranteed to have any effect
+///     let cond = likely(x != 0);
+///     if cond {
+///         println!("this branch is likely to be taken");
+///     }
+/// }
+/// ```
+///
+///
+#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[rustc_nounwind]
+#[inline(always)]
+pub const fn likely(b: bool) -> bool {
+    crate::intrinsics::likely(b)
+}
+
+/// Hints to the compiler that a branch condition is unlikely to be true.
+/// Returns the value passed to it.
+///
+/// It can be used with `if` or boolean `match` expressions.
+///
+/// When used outside of a branch condition, it may still work if there is a branch close by, but
+/// it is not guaranteed to have any effect.
+///
+/// It can also be applied to parts of expressions, such as `likely(a) && unlikely(b)`, or to
+/// compound expressions, such as `unlikely(a && b)`. When applied to compound expressions, it has
+/// the following effect:
+/// ```text
+///     unlikely(!a) => !likely(a)
+///     unlikely(a && b) => a && unlikely(b)
+///     unlikely(a || b) => unlikely(a) || unlikely(b)
+/// ```
+///
+/// See also the function [`cold_path()`] which may be more appropriate for idiomatic Rust code.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(likely_unlikely)]
+/// use core::hint::unlikely;
+///
+/// fn foo(x: i32) {
+///     if unlikely(x > 0) {
+///         println!("this branch is unlikely to be taken");
+///     } else {
+///         println!("this branch is likely to be taken");
+///     }
+///
+///     match unlikely(x > 0) {
+///         true => println!("this branch is unlikely to be taken"),
+///         false => println!("this branch is likely to be taken"),
+///     }
+///
+///     // Use outside of a branch condition. This may still work if there is a branch close by,
+///     // but it is not guaranteed to have any effect
+///     let cond = unlikely(x != 0);
+///     if cond {
+///         println!("this branch is likely to be taken");
+///     }
+/// }
+/// ```
+#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[rustc_nounwind]
+#[inline(always)]
+pub const fn unlikely(b: bool) -> bool {
+    crate::intrinsics::unlikely(b)
+}
+
+/// Hints to the compiler that given path is cold, i.e., unlikely to be taken. The compiler may
+/// choose to optimize paths that are not cold at the expense of paths that are cold.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cold_path)]
+/// use core::hint::cold_path;
+///
+/// fn foo(x: &[i32]) {
+///     if let Some(first) = x.get(0) {
+///         // this is the fast path
+///     } else {
+///         // this path is unlikely
+///         cold_path();
+///     }
+/// }
+///
+/// fn bar(x: i32) -> i32 {
+///     match x {
+///         1 => 10,
+///         2 => 100,
+///         3 => { cold_path(); 1000 }, // this branch is unlikely
+///         _ => { cold_path(); 10000 }, // this is also unlikely
+///     }
+/// }
+/// ```
+#[unstable(feature = "cold_path", issue = "26179")]
+#[rustc_nounwind]
+#[inline(always)]
+pub const fn cold_path() {
+    crate::intrinsics::cold_path()
+}
