@@ -38,6 +38,8 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--code-block-border-radius: 6px;
 	--impl-items-indent: 0.3em;
 	--docblock-indent: 24px;
+	--mobile-top-navbar-height: 45px;
+	--collapse-toggle-left: -24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -746,7 +748,8 @@ ul.block, .block li, .block ul {
 	/* extend click target to far edge of screen (mile wide bar) */
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	background-clip: border-box;
-	margin: 0 calc(-24px + 0.25rem) 0 calc(-0.2rem - var(--sidebar-elems-left-padding));
+	margin: 0 calc(var(--collapse-toggle-left) + 0.25rem) 0
+		calc(-0.2rem - var(--sidebar-elems-left-padding));
 	/* Align the sidebar crate link with the search bar, which have different
 		font sizes.
 
@@ -2163,13 +2166,13 @@ details.toggle > summary.hideme::before {
 
 details.toggle > summary:not(.hideme)::before {
 	position: absolute;
-	left: -24px;
+	left: var(--collapse-toggle-left);
 	top: 4px;
 }
 
 .impl-items > details.toggle > summary:not(.hideme)::before {
 	position: absolute;
-	left: -24px;
+	left: var(--collapse-toggle-left);
 }
 
 /* We indent items of an impl block to have a visual marker that these items are part
@@ -2179,6 +2182,26 @@ details.toggle > summary:not(.hideme)::before {
 	doc block while aligning it with the impl block items. */
 .implementors-toggle > .docblock {
 	margin-left: var(--impl-items-indent);
+}
+
+h2.section-header + div > details.implementors-toggle > summary,
+details.toggle.big-toggle > summary {
+	position: sticky;
+	top: 0;
+	background: var(--main-background-color);
+	z-index: 1;
+	padding-left: calc(var(--collapse-toggle-left) * -1);
+	margin-left: var(--collapse-toggle-left);
+}
+h2.section-header + div > details.implementors-toggle > summary:not(.hideme)::before,
+details.toggle.big-toggle > summary:not(.hideme)::before {
+	left: -4px;
+}
+h2.section-header + div > details.implementors-toggle > summary .anchor {
+	left: calc(-0.5rem - var(--collapse-toggle-left));
+}
+details.toggle.big-toggle > summary .anchor {
+	left: -0.8rem;
 }
 
 details.big-toggle > summary:not(.hideme)::before {
@@ -2272,6 +2295,7 @@ in src-script.js and main.js
 @media (max-width: 700px) {
 	:root {
 		--impl-items-indent: 0.7em;
+		--collapse-toggle-left: -11px;
 	}
 
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -2279,7 +2303,7 @@ in src-script.js and main.js
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
 	*/
 	*[id] {
-		scroll-margin-top: 45px;
+		scroll-margin-top: var(--mobile-top-navbar-height);
 	}
 
 	/* We don't display this button on mobile devices. */
@@ -2327,13 +2351,13 @@ in src-script.js and main.js
 
 	.sidebar {
 		position: fixed;
-		top: 45px;
+		top: var(--mobile-top-navbar-height);
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
-		height: calc(100vh - 45px);
+		height: calc(100vh - var(--mobile-top-navbar-height));
 		width: 200px;
 	}
 
@@ -2390,7 +2414,7 @@ in src-script.js and main.js
 		position: sticky;
 		z-index: 10;
 		font-size: 2rem;
-		height: 45px;
+		height: var(--mobile-top-navbar-height);
 		width: 100%;
 		left: 0;
 		top: 0;
@@ -2416,11 +2440,6 @@ in src-script.js and main.js
 
 	.anchor {
 		display: none !important;
-	}
-
-	#main-content > details.toggle > summary::before,
-	#main-content > div > details.toggle > summary::before {
-		left: -11px;
 	}
 
 	/* sidebar button becomes topbar button */
@@ -2493,6 +2512,11 @@ in src-script.js and main.js
 		margin: 0 0 -25px 0;
 		padding: var(--nav-sub-mobile-padding);
 	}
+
+	h2.section-header + div > details.implementors-toggle > summary,
+	details.toggle.big-toggle > summary {
+		top: var(--mobile-top-navbar-height);
+	}
 }
 
 
@@ -2551,6 +2575,10 @@ in src-script.js and main.js
 
 	.search-form {
 		align-self: stretch;
+	}
+
+	#main-content > details.toggle > summary::before {
+		left: var(--collapse-toggle-left);
 	}
 }
 
