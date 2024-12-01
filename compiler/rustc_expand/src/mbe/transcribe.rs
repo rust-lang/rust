@@ -696,8 +696,10 @@ fn transcribe_metavar_expr<'a>(
                     MetaVarExprConcatElem::Var(ident) => {
                         match matched_from_ident(dcx, *ident, interp)? {
                             NamedMatch::MatchedSeq(named_matches) => {
-                                let curr_idx = repeats.last().unwrap().0;
-                                match &named_matches[curr_idx] {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
                                     // FIXME(c410-f3r) Nested repetitions are unimplemented
                                     MatchedSeq(_) => unimplemented!(),
                                     MatchedSingle(pnr) => {
