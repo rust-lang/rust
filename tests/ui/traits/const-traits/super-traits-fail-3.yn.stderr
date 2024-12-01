@@ -25,10 +25,10 @@ LL | const fn foo<T: ~const Bar>(x: &T) {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `T: ~const Foo` is not satisfied
-  --> $DIR/super-traits-fail-3.rs:24:5
+  --> $DIR/super-traits-fail-3.rs:24:7
    |
 LL |     x.a();
-   |     ^^^^^
+   |       ^
 
 error: aborting due to 4 previous errors
 

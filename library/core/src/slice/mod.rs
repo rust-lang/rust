@@ -959,7 +959,7 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[rustc_const_unstable(feature = "slice_swap_unchecked", issue = "88539")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
