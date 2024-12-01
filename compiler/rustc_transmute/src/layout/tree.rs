@@ -338,14 +338,11 @@ pub(crate) mod rustc {
                 };
 
             match layout.variants() {
+                Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
-                    if let Some(index) = index {
-                        // `Variants::Single` on enums with variants denotes that
-                        // the enum delegates its layout to the variant at `index`.
-                        layout_of_variant(*index, None)
-                    } else {
-                        Ok(Self::uninhabited())
-                    }
+                    // `Variants::Single` on enums with variants denotes that
+                    // the enum delegates its layout to the variant at `index`.
+                    layout_of_variant(*index, None)
                 }
                 Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
@@ -498,13 +495,15 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: FieldIdx,
     ) -> Ty<'tcx> {
+        // FIXME: Why does this not just use `ty_and_layout_field`?
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
                     Variants::Single { index } => {
-                        let field = &def.variant(index.unwrap()).fields[i];
+                        let field = &def.variant(index).fields[i];
                         field.ty(cx.tcx(), args)
                     }
+                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { tag, .. } => {
                         assert_eq!(i.as_usize(), 0);

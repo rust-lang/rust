@@ -65,15 +65,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
+            Variants::Empty => {
+                throw_ub!(UninhabitedEnumVariantRead(None));
+            }
             Variants::Single { index } => {
                 if op.layout().is_uninhabited() {
                     // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
                     // for uninhabited enums.
-                    throw_ub!(UninhabitedEnumVariantRead(None));
+                    throw_ub!(UninhabitedEnumVariantRead(Some(index)));
                 }
                 // Since the type is inhabited, there must be an index.
-                return interp_ok(index.unwrap());
+                return interp_ok(index);
             }
             Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
                 (tag, tag_encoding, tag_field)
@@ -238,6 +241,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         match layout.variants {
+            abi::Variants::Empty => unreachable!("we already handled uninhabited types"),
             abi::Variants::Single { .. } => {
                 // The tag of a `Single` enum is like the tag of the niched
                 // variant: there's no tag as the discriminant is encoded

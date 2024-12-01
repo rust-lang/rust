@@ -51,9 +51,7 @@ error: layout_of(Univariant) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -135,9 +133,7 @@ error: layout_of(TwoVariants) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -173,9 +169,7 @@ error: layout_of(TwoVariants) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -247,9 +241,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: Some(
                            Align(8 bytes),
@@ -275,9 +267,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(8 bytes),

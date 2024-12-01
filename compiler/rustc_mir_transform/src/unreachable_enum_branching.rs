@@ -54,11 +54,11 @@ fn variant_discriminants<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> FxHashSet<u128> {
     match &layout.variants {
-        Variants::Single { index: None } => {
+        Variants::Empty => {
             // Uninhabited, no valid discriminant.
             FxHashSet::default()
         }
-        Variants::Single { index: Some(index) } => {
+        Variants::Single { index } => {
             let mut res = FxHashSet::default();
             res.insert(
                 ty.discriminant_for_variant(tcx, *index)
