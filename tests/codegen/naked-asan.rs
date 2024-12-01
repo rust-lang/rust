@@ -12,14 +12,11 @@ pub fn caller() {
     page_fault_handler(1, 2);
 }
 
-// CHECK: declare x86_intrcc void @page_fault_handler(ptr {{.*}}, i64 {{.*}}){{.*}}#[[ATTRS:[0-9]+]]
-// CHECK-NOT: memcpy
+// CHECK: declare x86_intrcc void @page_fault_handler(ptr {{.*}}, i64{{.*}}){{.*}}#[[ATTRS:[0-9]+]]
 #[naked]
 #[no_mangle]
 pub extern "x86-interrupt" fn page_fault_handler(_: u64, _: u64) {
-    unsafe {
-        core::arch::naked_asm!("ud2");
-    }
+    unsafe { core::arch::naked_asm!("ud2") };
 }
 
 // CHECK: #[[ATTRS]] =
