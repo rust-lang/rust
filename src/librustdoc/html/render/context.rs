@@ -67,7 +67,7 @@ pub(crate) struct Context<'tcx> {
 }
 
 /// This struct contains the information that needs to be reset between each
-/// [`FormatRenderer::render_item`] call.
+/// [`FormatRenderer::item`] call.
 ///
 /// When we enter a new module, we set these values for the whole module but they might be updated
 /// in each child item (especially if it's a module). So to prevent these changes to impact other
