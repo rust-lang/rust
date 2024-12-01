@@ -18,8 +18,9 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         return;
     }
     match layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
-            assert_eq!(index.unwrap(), variant_index);
+            assert_eq!(index, variant_index);
         }
         Variants::Multiple {
             tag: _,
@@ -85,11 +86,11 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     }
 
     let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
-            let index = index.unwrap();
             let discr_val = layout
                 .ty
-                .discriminant_for_variant(fx.tcx, index)
+                .discriminant_for_variant(fx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
 
             let val = match dest_layout.ty.kind() {
