@@ -101,6 +101,25 @@ use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 /// [`HashMap`]: crate::collections::HashMap
 /// [`RefCell`]: crate::cell::RefCell
 /// [`Cell`]: crate::cell::Cell
+///
+/// # Usage in `const` and `static`
+///
+/// Like `HashMap`, `HashSet` is randomly seeded: each `HashSet` instance uses a different seed,
+/// which means that `HashSet::new` cannot be used in const context. To construct a `HashSet` in the
+/// initializer of a `const` or `static` item, you will have to use a different hasher that does not
+/// involve a random seed, as demonstrated in the following example. **`HashSet` constructed this
+/// way are not resistant against HashDoS!**
+///
+/// ```rust
+/// use std::collections::HashSet;
+/// use std::hash::{BuildHasherDefault, DefaultHasher};
+/// use std::sync::Mutex;
+///
+/// const EMPTY_SET: HashSet<String, BuildHasherDefault<DefaultHasher>> =
+///     HashSet::with_hasher(BuildHasherDefault::new());
+/// static SET: Mutex<HashSet<String, BuildHasherDefault<DefaultHasher>>> =
+///     Mutex::new(HashSet::with_hasher(BuildHasherDefault::new()));
+/// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashSet")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
@@ -369,7 +388,10 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    #[rustc_const_stable(
+        feature = "const_collections_with_hasher",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
