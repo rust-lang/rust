@@ -68,4 +68,11 @@ pub trait AsmCodegenMethods<'tcx> {
         options: InlineAsmOptions,
         line_spans: &[Span],
     );
+
+    /// The mangled name of this instance
+    ///
+    /// Additional mangling is used on
+    /// some targets to add a leading underscore (Mach-O)
+    /// or byte count suffixes (x86 Windows).
+    fn mangled_name(&self, instance: Instance<'tcx>) -> String;
 }

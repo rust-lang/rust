@@ -19,6 +19,7 @@ use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
@@ -104,7 +105,9 @@ impl<'tcx> MonoItem<'tcx> {
                 let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has an extern
                 // indicator, then we'll be creating a globally shared version.
-                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
+                let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+                if codegen_fn_attrs.contains_extern_indicator()
+                    || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
                     || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id
                 {

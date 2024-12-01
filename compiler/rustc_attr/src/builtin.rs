@@ -49,10 +49,19 @@ pub enum InlineAttr {
     Never,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
+}
+
+impl InstructionSetAttr {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ArmA32 => sym::a32.as_str(),
+            Self::ArmT32 => sym::t32.as_str(),
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]

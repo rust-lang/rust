@@ -442,6 +442,14 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             );
         }
     }
+
+    fn mangled_name(&self, instance: Instance<'tcx>) -> String {
+        let llval = self.get_fn(instance);
+        llvm::build_string(|s| unsafe {
+            llvm::LLVMRustGetMangledName(llval, s);
+        })
+        .expect("symbol is not valid UTF-8")
+    }
 }
 
 pub(crate) fn inline_asm_call<'ll>(
