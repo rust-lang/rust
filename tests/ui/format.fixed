@@ -6,7 +6,8 @@
     clippy::needless_borrow,
     clippy::uninlined_format_args,
     clippy::needless_raw_string_hashes,
-    clippy::useless_vec
+    clippy::useless_vec,
+    clippy::literal_string_with_formatting_args
 )]
 
 struct Foo(pub String);

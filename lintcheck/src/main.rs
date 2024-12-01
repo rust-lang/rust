@@ -17,7 +17,8 @@
 #![allow(
     clippy::collapsible_else_if,
     clippy::needless_borrows_for_generic_args,
-    clippy::module_name_repetitions
+    clippy::module_name_repetitions,
+    clippy::literal_string_with_formatting_args
 )]
 
 mod config;
