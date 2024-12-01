@@ -1135,6 +1135,8 @@ fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
     .captures(header)?;
     let regex = captures["regex"].to_owned();
     let replacement = captures["replacement"].to_owned();
+    // FIXME: Support escaped new-line in strings.
+    let replacement = replacement.replace("\\n", "\n");
     Some((regex, replacement))
 }
 
