@@ -1,0 +1,8 @@
+error: intrinsic const_deallocate should be marked with at most one of rustc_intrinsic_must_be_overridden and rustc_intrinsic_lowers_to_mir
+
+query stack during panic:
+#0 [intrinsic_raw] fetch intrinsic name if `const_deallocate` is an intrinsic
+#1 [check_well_formed] checking that `const_deallocate` is well-formed
+end of query stack
+error: aborting due to 1 previous error
+

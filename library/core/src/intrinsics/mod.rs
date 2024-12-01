@@ -1434,7 +1434,8 @@ pub fn abort() -> ! {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unreachable() -> ! {
     unreachable!()
 }
@@ -1453,6 +1454,7 @@ pub const unsafe fn unreachable() -> ! {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn assume(b: bool) {
     if !b {
         // SAFETY: the caller must guarantee the argument is never `false`
@@ -1605,7 +1607,8 @@ pub const fn caller_location() -> &'static crate::panic::Location<'static> {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn forget<T: ?Sized>(_: T) {
     unreachable!()
 }
@@ -1901,7 +1904,8 @@ pub const fn forget<T: ?Sized>(_: T) {
 #[rustc_diagnostic_item = "transmute"]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn transmute<Src, Dst>(_src: Src) -> Dst {
     unreachable!()
 }
@@ -1918,7 +1922,8 @@ pub const unsafe fn transmute<Src, Dst>(_src: Src) -> Dst {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn transmute_unchecked<Src, Dst>(_src: Src) -> Dst {
     unreachable!()
 }
@@ -1964,7 +1969,8 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn offset<Ptr, Delta>(_dst: Ptr, _offset: Delta) -> Ptr {
     unreachable!()
 }
@@ -2879,8 +2885,10 @@ pub const fn bitreverse<T: Copy>(_x: T) -> T {
 /// large and difficult to optimize.
 ///
 /// The stabilized version of this intrinsic is [`Ord::cmp`].
+#[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Ordering {
     unimplemented!()
 }
@@ -2898,7 +2906,8 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn add_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
     unimplemented!()
 }
@@ -2916,7 +2925,8 @@ pub const fn add_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn sub_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
     unimplemented!()
 }
@@ -2934,7 +2944,8 @@ pub const fn sub_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
     unimplemented!()
 }
@@ -2959,7 +2970,8 @@ pub const unsafe fn exact_div<T: Copy>(_x: T, _y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_div<T: Copy>(_x: T, _y: T) -> T {
     unimplemented!()
 }
@@ -2972,7 +2984,8 @@ pub const unsafe fn unchecked_div<T: Copy>(_x: T, _y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_rem<T: Copy>(_x: T, _y: T) -> T {
     unimplemented!()
 }
@@ -2986,7 +2999,8 @@ pub const unsafe fn unchecked_rem<T: Copy>(_x: T, _y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_shl<T: Copy, U: Copy>(_x: T, _y: U) -> T {
     unimplemented!()
 }
@@ -2999,7 +3013,8 @@ pub const unsafe fn unchecked_shl<T: Copy, U: Copy>(_x: T, _y: U) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_shr<T: Copy, U: Copy>(_x: T, _y: U) -> T {
     unimplemented!()
 }
@@ -3012,7 +3027,8 @@ pub const unsafe fn unchecked_shr<T: Copy, U: Copy>(_x: T, _y: U) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_add<T: Copy>(_x: T, _y: T) -> T {
     unimplemented!()
 }
@@ -3025,7 +3041,8 @@ pub const unsafe fn unchecked_add<T: Copy>(_x: T, _y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_sub<T: Copy>(_x: T, _y: T) -> T {
     unimplemented!()
 }
@@ -3038,7 +3055,8 @@ pub const unsafe fn unchecked_sub<T: Copy>(_x: T, _y: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn unchecked_mul<T: Copy>(_x: T, _y: T) -> T {
     unimplemented!()
 }
@@ -3092,7 +3110,8 @@ pub const fn rotate_right<T: Copy>(_x: T, _shift: u32) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn wrapping_add<T: Copy>(_a: T, _b: T) -> T {
     unimplemented!()
 }
@@ -3109,7 +3128,8 @@ pub const fn wrapping_add<T: Copy>(_a: T, _b: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn wrapping_sub<T: Copy>(_a: T, _b: T) -> T {
     unimplemented!()
 }
@@ -3126,7 +3146,8 @@ pub const fn wrapping_sub<T: Copy>(_a: T, _b: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn wrapping_mul<T: Copy>(_a: T, _b: T) -> T {
     unimplemented!()
 }
@@ -3175,7 +3196,8 @@ pub const fn saturating_sub<T: Copy>(_a: T, _b: T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn read_via_copy<T>(_ptr: *const T) -> T {
     unimplemented!()
 }
@@ -3189,7 +3211,8 @@ pub const unsafe fn read_via_copy<T>(_ptr: *const T) -> T {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const unsafe fn write_via_move<T>(_ptr: *mut T, _value: T) {
     unimplemented!()
 }
@@ -3206,7 +3229,8 @@ pub const unsafe fn write_via_move<T>(_ptr: *mut T, _value: T) {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn discriminant_value<T>(_v: &T) -> <T as DiscriminantKind>::Discriminant {
     unimplemented!()
 }
@@ -3601,6 +3625,7 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 #[rustc_intrinsic_const_stable_indirect] // just for UB checks
 #[inline(always)]
 #[rustc_intrinsic]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn ub_checks() -> bool {
     cfg!(ub_checks)
 }
@@ -3683,7 +3708,8 @@ pub unsafe fn vtable_align(_ptr: *const ()) -> usize {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn size_of<T>() -> usize {
     unreachable!()
 }
@@ -3700,7 +3726,8 @@ pub const fn size_of<T>() -> usize {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn min_align_of<T>() -> usize {
     unreachable!()
 }
@@ -3807,7 +3834,8 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(_data: D, _meta: M) -> P {
     // To implement a fallback we'd have to assume the layout of the pointer,
     // but the whole point of this intrinsic is that we shouldn't do that.
@@ -3832,7 +3860,8 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
+#[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *const P) -> M {
     // To implement a fallback we'd have to assume the layout of the pointer,
     // but the whole point of this intrinsic is that we shouldn't do that.
@@ -3939,7 +3968,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     #[rustc_intrinsic_const_stable_indirect]
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    #[rustc_intrinsic_must_be_overridden]
+    #[cfg_attr(bootstrap, rustc_intrinsic_must_be_overridden)]
+    #[cfg_attr(not(bootstrap), rustc_intrinsic_lowers_to_mir)]
     const unsafe fn copy_nonoverlapping<T>(_src: *const T, _dst: *mut T, _count: usize) {
         unreachable!()
     }

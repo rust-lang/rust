@@ -1,4 +1,4 @@
-error: must be overridden by codegen backend, but isn't
+error: intrinsic const_deallocate (MustBeOverridden) got to the codegen backend, but wasn't overridden
   --> $DIR/not-overridden.rs:16:14
    |
 LL |     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }

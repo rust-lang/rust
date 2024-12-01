@@ -766,7 +766,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We also ask is_safe_to_expose_on_stable_const_fn; this determines whether the intrinsic
                     // fallback body is safe to expose on stable.
                     let is_const_stable = intrinsic.const_stable
-                        || (!intrinsic.must_be_overridden
+                        || (intrinsic.has_fallback()
                             && is_safe_to_expose_on_stable_const_fn(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
                         None => {

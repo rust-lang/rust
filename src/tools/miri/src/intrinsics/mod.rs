@@ -37,7 +37,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)? {
             EmulateItemResult::NotSupported => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
-                if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                if !this.tcx.intrinsic(instance.def_id()).unwrap().has_fallback() {
                     throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
                 }
                 let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");

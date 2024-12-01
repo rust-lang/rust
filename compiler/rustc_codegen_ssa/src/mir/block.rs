@@ -952,11 +952,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
                     }
                     Err(instance) => {
-                        if intrinsic.must_be_overridden {
+                        if !intrinsic.has_fallback() {
                             span_bug!(
                                 span,
-                                "intrinsic {} must be overridden by codegen backend, but isn't",
+                                "intrinsic {} ({:?}) got to the codegen backend, but wasn't overridden",
                                 intrinsic.name,
+                                intrinsic.kind,
                             );
                         }
                         Some(instance)

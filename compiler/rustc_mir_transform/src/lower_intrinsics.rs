@@ -320,7 +320,16 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         });
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    _ => {}
+                    _ => {
+                        if intrinsic.lowers_to_mir() {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Intrinsic {} was marked as #[rustc_intrinsic_lowers_to_mir] \
+                                 but wasn't lowered by `LowerIntrinsics` pass",
+                                intrinsic.name,
+                            );
+                        }
+                    }
                 }
             }
         }

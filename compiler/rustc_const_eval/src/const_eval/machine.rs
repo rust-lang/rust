@@ -466,7 +466,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
             _ => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
-                if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+                if !ecx.tcx.intrinsic(instance.def_id()).unwrap().has_fallback() {
                     throw_unsup_format!(
                         "intrinsic `{intrinsic_name}` is not supported at compile-time"
                     );

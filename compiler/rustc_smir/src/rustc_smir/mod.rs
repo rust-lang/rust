@@ -73,7 +73,7 @@ impl<'tcx> Tables<'tcx> {
     /// In StableMIR, we handle this case as if the body is not available.
     pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
         let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
-            intrinsic.must_be_overridden
+            intrinsic.must_be_overridden()
         } else {
             false
         };

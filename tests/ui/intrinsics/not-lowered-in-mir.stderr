@@ -1,0 +1,12 @@
+error: Intrinsic const_deallocate was marked as #[rustc_intrinsic_lowers_to_mir] but wasn't lowered by `LowerIntrinsics` pass
+  --> $DIR/not-lowered-in-mir.rs:16:14
+   |
+LL |     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+query stack during panic:
+#0 [mir_drops_elaborated_and_const_checked] elaborating drops for `main`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 1 previous error
+

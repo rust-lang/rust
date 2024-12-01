@@ -23,7 +23,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
-pub use intrinsic::IntrinsicDef;
+pub use intrinsic::{IntrinsicDef, IntrinsicKind};
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;

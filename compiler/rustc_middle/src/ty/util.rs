@@ -1760,11 +1760,20 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
             || tcx.has_attr(def_id, sym::rustc_intrinsic))
     {
-        Some(ty::IntrinsicDef {
-            name: tcx.item_name(def_id.into()),
-            must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
-            const_stable: tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect),
-        })
+        let name = tcx.item_name(def_id.into());
+        let must_be_overridden = tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden);
+        let lowers_to_mir = tcx.has_attr(def_id, sym::rustc_intrinsic_lowers_to_mir);
+        let const_stable = tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect);
+        let kind = match (must_be_overridden, lowers_to_mir) {
+            (false, false) => ty::IntrinsicKind::HasFallback,
+            (true, false) => ty::IntrinsicKind::MustBeOverridden,
+            (false, true) => ty::IntrinsicKind::LowersToMir,
+            (true, true) => bug!(
+                "intrinsic {name} should be marked with at most one of \
+                rustc_intrinsic_must_be_overridden and rustc_intrinsic_lowers_to_mir",
+            ),
+        };
+        Some(ty::IntrinsicDef { name, kind, const_stable })
     } else {
         None
     }

@@ -540,7 +540,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     target,
                     unwind,
                 )? {
-                    assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
+                    assert!(self.tcx.intrinsic(fallback.def_id()).unwrap().has_fallback());
                     assert_matches!(fallback.def, ty::InstanceKind::Item(_));
                     return self.init_fn_call(
                         FnVal::Instance(fallback),

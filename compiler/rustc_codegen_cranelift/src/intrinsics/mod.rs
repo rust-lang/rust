@@ -1278,11 +1278,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
         // by converting the `InstanceKind::Intrinsic` to an `InstanceKind::Item`.
         _ => {
             let intrinsic = fx.tcx.intrinsic(instance.def_id()).unwrap();
-            if intrinsic.must_be_overridden {
+            if !intrinsic.has_fallback() {
                 span_bug!(
                     source_info.span,
-                    "intrinsic {} must be overridden by codegen_cranelift, but isn't",
+                    "intrinsic {} ({:?}) must be overridden by codegen_cranelift, but isn't",
                     intrinsic.name,
+                    intrinsic.kind,
                 );
             }
             return Err(Instance::new(instance.def_id(), instance.args));

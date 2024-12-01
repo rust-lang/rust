@@ -1010,6 +1010,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
         "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
     ),
+    gated!(
+        rustc_intrinsic_lowers_to_mir, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
+        "the `#[rustc_intrinsic_lowers_to_mir]` attribute is used to declare intrinsics translated by `LowerIntrinsics`",
+    ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
