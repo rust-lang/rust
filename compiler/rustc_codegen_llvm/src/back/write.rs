@@ -726,7 +726,12 @@ pub(crate) unsafe fn optimize(
         }?;
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = unsafe { ThinBuffer::from_raw_ptr(thin_lto_buffer) };
-            let thin_bc_out = cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name);
+            let thin_bc_out =
+                if let Some(incr_comp_session_dir) = cgcx.incr_comp_session_dir.as_ref() {
+                    incr_comp_session_dir.join(pre_lto_embed_bitcode_filename(module_name.unwrap()))
+                } else {
+                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name)
+                };
             if let Err(err) = fs::write(&thin_bc_out, thin_lto_buffer.data()) {
                 dcx.emit_err(WriteBytecode { path: &thin_bc_out, err });
             }
@@ -863,12 +868,23 @@ pub(crate) unsafe fn codegen(
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
-                let thin_bc_out =
-                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name);
-                assert!(thin_bc_out.exists(), "cannot find {:?} as embedded bitcode", thin_bc_out);
+                let thin_bc_out = if let Some(incr_comp_session_dir) =
+                    cgcx.incr_comp_session_dir.as_ref()
+                {
+                    incr_comp_session_dir.join(pre_lto_embed_bitcode_filename(module_name.unwrap()))
+                } else {
+                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name)
+                };
+                assert!(
+                    thin_bc_out.exists(),
+                    "cannot find {} as embedded bitcode",
+                    thin_bc_out.display()
+                );
                 let data = fs::read(&thin_bc_out).unwrap();
-                debug!("removing embed bitcode file {:?}", thin_bc_out);
-                ensure_removed(dcx, &thin_bc_out);
+                if cgcx.incr_comp_session_dir.is_none() {
+                    debug!("removing embed bitcode file {:?}", thin_bc_out);
+                    ensure_removed(dcx, &thin_bc_out);
+                }
                 unsafe {
                     embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &data);
                 }
@@ -1235,4 +1251,8 @@ fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Modu
     let InstructionsStats { module, total } =
         serde_json::from_str(&raw_stats).expect("cannot parse llvm cgu instructions stats");
     prof.artifact_size("cgu_instructions", module, total);
+}
+
+fn pre_lto_embed_bitcode_filename(module_name: &str) -> String {
+    format!("{module_name}.{}", OutputType::ThinBitcode.extension())
 }
