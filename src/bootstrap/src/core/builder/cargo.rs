@@ -703,6 +703,9 @@ impl Builder<'_> {
 
         cargo.arg("-j").arg(self.jobs().to_string());
 
+        // Make cargo emit diagnostics relative to the rustc src dir.
+        cargo.arg(format!("-Zroot-dir={}", self.src.display()));
+
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
         let mut metadata = if compiler.stage == 0 {
