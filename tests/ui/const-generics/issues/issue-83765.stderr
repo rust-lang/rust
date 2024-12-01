@@ -29,11 +29,11 @@ note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorD
 LL | trait TensorDimension {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when checking that `<impl at $DIR/issue-83765.rs:56:1: 56:97>` is well-formed
-  --> $DIR/issue-83765.rs:56:1
+note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:56:1: 56:97>::bget` is compatible with trait definition
+  --> $DIR/issue-83765.rs:58:5
    |
-LL | impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, { T::DIM }, DIM> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0308]: method not compatible with trait

@@ -33,7 +33,7 @@ use tracing::{debug, instrument};
 use ty::TypingMode;
 use {rustc_attr as attr, rustc_hir as hir};
 
-use super::compare_impl_item::{check_type_bounds, compare_impl_method, compare_impl_ty};
+use super::compare_impl_item::check_type_bounds;
 use super::*;
 use crate::check::intrinsicck::InlineAsmCtxt;
 
@@ -1044,18 +1044,23 @@ fn check_impl_items_against_trait<'tcx>(
             tcx.dcx().span_delayed_bug(tcx.def_span(impl_item), "missing associated item in trait");
             continue;
         };
-        match ty_impl_item.kind {
-            ty::AssocKind::Const => {
-                tcx.ensure().compare_impl_const((
-                    impl_item.expect_local(),
-                    ty_impl_item.trait_item_def_id.unwrap(),
-                ));
-            }
-            ty::AssocKind::Fn => {
-                compare_impl_method(tcx, ty_impl_item, ty_trait_item, trait_ref);
-            }
-            ty::AssocKind::Type => {
-                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, trait_ref);
+
+        let res = tcx.ensure().compare_impl_item(impl_item.expect_local());
+
+        if res.is_ok() {
+            match ty_impl_item.kind {
+                ty::AssocKind::Fn => {
+                    compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
+                        tcx,
+                        ty_impl_item,
+                        ty_trait_item,
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
+                            .unwrap()
+                            .instantiate_identity(),
+                    );
+                }
+                ty::AssocKind::Const => {}
+                ty::AssocKind::Type => {}
             }
         }
 
