@@ -1639,7 +1639,8 @@ impl Evaluator<'_> {
         };
         match &layout.variants {
             Variants::Single { index } => {
-                let r = self.const_eval_discriminant(self.db.enum_data(e).variants[index.0].0)?;
+                let r = self
+                    .const_eval_discriminant(self.db.enum_data(e).variants[index.unwrap().0].0)?;
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {

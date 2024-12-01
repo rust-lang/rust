@@ -21,7 +21,9 @@ error: fn_abi_of(test) = FnAbi {
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -67,7 +69,9 @@ error: fn_abi_of(test) = FnAbi {
                            },
                        ),
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -124,7 +128,9 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                                },
                            ),
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -161,7 +167,9 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                        fields: Primitive,
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -210,7 +218,9 @@ error: fn_abi_of(test_generic) = FnAbi {
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -244,7 +254,9 @@ error: fn_abi_of(test_generic) = FnAbi {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -292,7 +304,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -326,7 +340,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -362,7 +378,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -396,7 +414,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -435,7 +455,9 @@ error: ABIs are not compatible
                            },
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -473,7 +495,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -506,7 +530,9 @@ error: ABIs are not compatible
                            },
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -544,7 +570,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -585,7 +613,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -619,7 +649,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -655,7 +687,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -689,7 +723,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -731,7 +767,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -765,7 +803,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -801,7 +841,9 @@ error: ABIs are not compatible
                            fields: Primitive,
                            largest_niche: None,
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -835,7 +877,9 @@ error: ABIs are not compatible
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
@@ -902,7 +946,9 @@ error: fn_abi_of(assoc_test) = FnAbi {
                                },
                            ),
                            variants: Single {
-                               index: 0,
+                               index: Some(
+                                   0,
+                               ),
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
@@ -938,7 +984,9 @@ error: fn_abi_of(assoc_test) = FnAbi {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,

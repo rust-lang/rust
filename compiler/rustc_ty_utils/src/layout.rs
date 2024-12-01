@@ -340,7 +340,7 @@ fn layout_of_uncached<'tcx>(
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 
             tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
+                variants: Variants::Single { index: Some(FIRST_VARIANT) },
                 fields: FieldsShape::Array { stride: element.size, count },
                 backend_repr: abi,
                 largest_niche,
@@ -353,7 +353,7 @@ fn layout_of_uncached<'tcx>(
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
             tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
+                variants: Variants::Single { index: Some(FIRST_VARIANT) },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
@@ -364,7 +364,7 @@ fn layout_of_uncached<'tcx>(
             })
         }
         ty::Str => tcx.mk_layout(LayoutData {
-            variants: Variants::Single { index: FIRST_VARIANT },
+            variants: Variants::Single { index: Some(FIRST_VARIANT) },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,
@@ -535,7 +535,7 @@ fn layout_of_uncached<'tcx>(
             };
 
             tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
+                variants: Variants::Single { index: Some(FIRST_VARIANT) },
                 fields,
                 backend_repr: abi,
                 largest_niche: e_ly.largest_niche,
@@ -927,7 +927,7 @@ fn coroutine_layout<'tcx>(
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
-            variant.variants = Variants::Single { index };
+            variant.variants = Variants::Single { index: Some(index) };
 
             let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
                 bug!();
@@ -1106,7 +1106,9 @@ fn variant_info_for_adt<'tcx>(
 
     match layout.variants {
         Variants::Single { index } => {
-            if !adt_def.variants().is_empty() && layout.fields != FieldsShape::Primitive {
+            if let Some(index) = index
+                && layout.fields != FieldsShape::Primitive
+            {
                 debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
                 let variant_def = &adt_def.variant(index);
                 let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();

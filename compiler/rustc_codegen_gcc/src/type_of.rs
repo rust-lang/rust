@@ -99,14 +99,14 @@ fn uncached_gcc_type<'gcc, 'tcx>(
             if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_trimmed_paths!(layout.ty.to_string());
-            if let (&ty::Adt(def, _), &Variants::Single { index }) =
+            if let (&ty::Adt(def, _), &Variants::Single { index: Some(index) }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 if def.is_enum() && !def.variants().is_empty() {
                     write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
-            if let (&ty::Coroutine(_, _), &Variants::Single { index }) =
+            if let (&ty::Coroutine(_, _), &Variants::Single { index: Some(index) }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::CoroutineArgs::variant_name(index)).unwrap();
@@ -230,7 +230,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
 
         // Check the cache.
         let variant_index = match self.variants {
-            Variants::Single { index } => Some(index),
+            Variants::Single { index } => index,
             _ => None,
         };
         let cached_type = cx.types.borrow().get(&(self.ty, variant_index)).cloned();

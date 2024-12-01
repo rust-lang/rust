@@ -35,7 +35,6 @@
 //! Likewise, applying the optimisation can create a lot of new MIR, so we bound the instruction
 //! cost by `MAX_COST`.
 
-use rustc_abi::{TagEncoding, Variants};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, Immediate, InterpCx, OpTy, Projectable};
@@ -565,31 +564,15 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             StatementKind::SetDiscriminant { box place, variant_index } => {
                 let Some(discr_target) = self.map.find_discr(place.as_ref()) else { return };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
-                // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
-                // of a niche encoding. If we cannot ensure that we write to the discriminant, do
-                // nothing.
-                let Ok(enum_layout) = self.ecx.layout_of(enum_ty) else {
+                // `SetDiscriminant` guarantees that the discriminant is now `variant_index`.
+                // Even if the discriminant write does nothing due to niches, it is UB to set the
+                // discriminant when the data does not encode the desired discriminant.
+                let Some(discr) =
+                    self.ecx.discriminant_for_variant(enum_ty, *variant_index).discard_err()
+                else {
                     return;
                 };
-                let writes_discriminant = match enum_layout.variants {
-                    Variants::Single { index } => {
-                        assert_eq!(index, *variant_index);
-                        true
-                    }
-                    Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => true,
-                    Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
-                        ..
-                    } => *variant_index != untagged_variant,
-                };
-                if writes_discriminant {
-                    let Some(discr) =
-                        self.ecx.discriminant_for_variant(enum_ty, *variant_index).discard_err()
-                    else {
-                        return;
-                    };
-                    self.process_immediate(bb, discr_target, discr, state);
-                }
+                self.process_immediate(bb, discr_target, discr, state);
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(

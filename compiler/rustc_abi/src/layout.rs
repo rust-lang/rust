@@ -120,7 +120,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .max_by_key(|niche| niche.available(dl));
 
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: Some(VariantIdx::new(0)) },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO, b_offset].into(),
                 memory_index: [0, 1].into(),
@@ -214,7 +214,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     ) -> LayoutData<FieldIdx, VariantIdx> {
         let dl = self.cx.data_layout();
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: None },
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Uninhabited,
             largest_niche: None,
@@ -385,7 +385,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         Ok(LayoutData {
-            variants: Variants::Single { index: only_variant_idx },
+            variants: Variants::Single { index: Some(only_variant_idx) },
             fields: FieldsShape::Union(union_field_count),
             backend_repr: abi,
             largest_niche: None,
@@ -424,7 +424,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         let mut st = self.univariant(&variants[v], repr, kind)?;
-        st.variants = Variants::Single { index: v };
+        st.variants = Variants::Single { index: Some(v) };
 
         if is_unsafe_cell {
             let hide_niches = |scalar: &mut _| match scalar {
@@ -543,7 +543,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 .iter_enumerated()
                 .map(|(j, v)| {
                     let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
-                    st.variants = Variants::Single { index: j };
+                    st.variants = Variants::Single { index: Some(j) };
 
                     align = align.max(st.align);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -736,7 +736,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     repr,
                     StructKind::Prefixed(min_ity.size(), prefix_align),
                 )?;
-                st.variants = Variants::Single { index: i };
+                st.variants = Variants::Single { index: Some(i) };
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
                 for field_idx in st.fields.index_by_increasing_offset() {
@@ -1344,7 +1344,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         Ok(LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: Some(VariantIdx::new(0)) },
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             backend_repr: abi,
             largest_niche,

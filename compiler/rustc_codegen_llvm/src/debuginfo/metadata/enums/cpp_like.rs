@@ -213,11 +213,11 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
         |cx, enum_type_di_node| {
             match enum_type_and_layout.variants {
                 Variants::Single { index: variant_index } => {
-                    if enum_adt_def.variants().is_empty() {
+                    let Some(variant_index) = variant_index else {
                         // Uninhabited enums have Variants::Single. We don't generate
                         // any members for them.
                         return smallvec![];
-                    }
+                    };
 
                     build_single_variant_union_fields(
                         cx,

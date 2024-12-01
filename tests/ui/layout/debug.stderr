@@ -57,7 +57,9 @@ error: layout_of(E) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -83,7 +85,9 @@ error: layout_of(E) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -134,7 +138,9 @@ error: layout_of(S) = Layout {
            },
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -158,7 +164,9 @@ error: layout_of(U) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -251,7 +259,9 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -288,7 +298,9 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -321,7 +333,9 @@ error: layout_of(i32) = Layout {
            fields: Primitive,
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
@@ -345,7 +359,9 @@ error: layout_of(V) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -369,7 +385,9 @@ error: layout_of(W) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -393,7 +411,9 @@ error: layout_of(Y) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
@@ -417,7 +437,9 @@ error: layout_of(P1) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -441,7 +463,9 @@ error: layout_of(P2) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -465,7 +489,9 @@ error: layout_of(P3) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -489,7 +515,9 @@ error: layout_of(P4) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -518,7 +546,9 @@ error: layout_of(P5) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
@@ -547,7 +577,9 @@ error: layout_of(MaybeUninit<u8>) = Layout {
            ),
            largest_niche: None,
            variants: Single {
-               index: 0,
+               index: Some(
+                   0,
+               ),
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),

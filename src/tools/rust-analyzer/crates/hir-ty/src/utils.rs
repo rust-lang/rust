@@ -335,7 +335,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
 ) -> Option<(EnumVariantId, &'a Layout)> {
     let (var_id, var_layout) = match &layout.variants {
         hir_def::layout::Variants::Single { index } => {
-            (db.enum_data(e).variants[index.0].0, layout)
+            (db.enum_data(e).variants[index.unwrap().0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();

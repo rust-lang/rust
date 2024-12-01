@@ -244,6 +244,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
             Variants::Single { index } => {
+                let index = index.unwrap(); // we already checked `is_uninhabited`
                 let discr_val = self
                     .layout
                     .ty
@@ -366,7 +367,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         }
         match self.layout.variants {
             Variants::Single { index } => {
-                assert_eq!(index, variant_index);
+                assert_eq!(index.unwrap(), variant_index);
             }
             Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
                 let ptr = self.project_field(bx, tag_field);

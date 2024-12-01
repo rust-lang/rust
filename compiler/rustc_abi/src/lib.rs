@@ -1506,9 +1506,9 @@ impl BackendRepr {
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
-        /// Always 0 for non-enums/generators.
-        /// For enums without a variant, this is an invalid index!
-        index: VariantIdx,
+        /// Always `Some(0)` for types without variants (i.e., everything except for `!`, enums, and
+        /// generators). `None` indicates an uninhabited type; this is used for zero-variant enums.
+        index: Option<VariantIdx>,
     },
 
     /// Enum-likes with more than one variant: each variant comes with
@@ -1706,7 +1706,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         let size = scalar.size(cx);
         let align = scalar.align(cx);
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: Some(VariantIdx::new(0)) },
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,

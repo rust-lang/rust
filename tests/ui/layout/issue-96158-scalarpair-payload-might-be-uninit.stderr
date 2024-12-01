@@ -79,7 +79,9 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -99,7 +101,9 @@ error: layout_of(MissingPayloadField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -197,7 +201,9 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -234,7 +240,9 @@ error: layout_of(CommonPayloadField) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -330,7 +338,9 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -366,7 +376,9 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -478,7 +490,9 @@ error: layout_of(NicheFirst) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -498,7 +512,9 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -518,7 +534,9 @@ error: layout_of(NicheFirst) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 2,
+                           index: Some(
+                               2,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -630,7 +648,9 @@ error: layout_of(NicheSecond) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: 0,
+                           index: Some(
+                               0,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -650,7 +670,9 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 1,
+                           index: Some(
+                               1,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -670,7 +692,9 @@ error: layout_of(NicheSecond) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: 2,
+                           index: Some(
+                               2,
+                           ),
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),

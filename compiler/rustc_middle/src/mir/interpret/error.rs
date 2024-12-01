@@ -391,7 +391,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
-    UninhabitedEnumVariantRead(VariantIdx),
+    UninhabitedEnumVariantRead(Option<VariantIdx>),
     /// Trying to set discriminant to the niched variant, but the value does not match.
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.

@@ -732,7 +732,7 @@ where
         let layout = match this.variants {
             Variants::Single { index }
                 // If all variants but one are uninhabited, the variant layout is the enum layout.
-                if index == variant_index &&
+                if index == Some(variant_index) &&
                 // Don't confuse variants of uninhabited enums with the enum itself.
                 // For more details see https://github.com/rust-lang/rust/issues/69763.
                 this.fields != FieldsShape::Primitive =>
@@ -741,6 +741,8 @@ where
             }
 
             Variants::Single { index } => {
+                // `Single` variant enums *can* have other variants, but those are uninhabited.
+
                 let tcx = cx.tcx();
                 let typing_env = cx.typing_env();
 
@@ -756,7 +758,7 @@ where
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
                 tcx.mk_layout(LayoutData {
-                    variants: Variants::Single { index: variant_index },
+                    variants: Variants::Single { index: Some(variant_index) },
                     fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
                         None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
@@ -773,7 +775,7 @@ where
             Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
         };
 
-        assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
+        assert_eq!(*layout.variants(), Variants::Single { index: Some(variant_index) });
 
         TyAndLayout { ty: this.ty, layout }
     }
@@ -903,7 +905,7 @@ where
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
-                            .nth(index.as_usize())
+                            .nth(index.unwrap().as_usize())
                             .unwrap()
                             .nth(i)
                             .unwrap(),
@@ -922,7 +924,8 @@ where
                 ty::Adt(def, args) => {
                     match this.variants {
                         Variants::Single { index } => {
-                            let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
+                            let field =
+                                &def.variant(index.unwrap()).fields[FieldIdx::from_usize(i)];
                             TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
 
