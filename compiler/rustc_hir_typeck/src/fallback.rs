@@ -705,7 +705,8 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) -> Self::Result {
         // For a local, try suggest annotating the type if it's missing.
-        if let None = local.ty
+        if let hir::LocalSource::Normal = local.source
+            && let None = local.ty
             && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(local.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
