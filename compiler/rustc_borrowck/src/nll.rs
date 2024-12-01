@@ -1,9 +1,9 @@
 //! The entry point of the NLL borrow checker.
 
+use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::{env, io};
 
 use polonius_engine::{Algorithm, Output};
 use rustc_index::IndexSlice;
@@ -162,9 +162,8 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         }
 
         if polonius_output {
-            let algorithm =
-                env::var("POLONIUS_ALGORITHM").unwrap_or_else(|_| String::from("Hybrid"));
-            let algorithm = Algorithm::from_str(&algorithm).unwrap();
+            let algorithm = infcx.tcx.env_var("POLONIUS_ALGORITHM").unwrap_or("Hybrid");
+            let algorithm = Algorithm::from_str(algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
             Some(Box::new(Output::compute(polonius_facts, algorithm, false)))
