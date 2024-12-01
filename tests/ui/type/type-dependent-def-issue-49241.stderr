@@ -9,6 +9,12 @@ help: consider using `let` instead of `const`
 LL |     let l: usize = v.count();
    |     ~~~
 
+note: erroneous constant encountered
+  --> $DIR/type-dependent-def-issue-49241.rs:4:18
+   |
+LL |     let s: [u32; l] = v.into_iter().collect();
+   |                  ^
+
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0435`.

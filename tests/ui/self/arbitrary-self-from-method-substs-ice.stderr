@@ -17,6 +17,12 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
 LL |     }
    |     - value is dropped here
 
+note: erroneous constant encountered
+  --> $DIR/arbitrary-self-from-method-substs-ice.rs:24:5
+   |
+LL |     FOO;
+   |     ^^^
+
 error[E0801]: invalid generic `self` parameter type: `R`
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:49
    |
