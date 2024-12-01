@@ -1,5 +1,5 @@
 error: character literal may only contain one codepoint
-  --> $DIR/immediately-followed-by-lt.rs:11:4
+  --> $DIR/immediately-followed-by-lt.rs:15:4
    |
 LL | w!('r#long'id);
    |    ^^^^^^^^
