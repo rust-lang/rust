@@ -55,9 +55,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -90,9 +88,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -164,9 +160,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(2 bytes),
@@ -190,9 +184,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -225,9 +217,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: Some(
-                               2,
-                           ),
+                           index: 2,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -299,9 +289,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -334,9 +322,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
@@ -412,9 +398,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        },
                        largest_niche: None,
                        variants: Single {
-                           index: Some(
-                               0,
-                           ),
+                           index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
@@ -447,9 +431,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            },
                        ),
                        variants: Single {
-                           index: Some(
-                               1,
-                           ),
+                           index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),

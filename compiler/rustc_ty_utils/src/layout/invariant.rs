@@ -242,15 +242,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     check_layout_abi(cx, layout);
 
     match &layout.variants {
-        Variants::Single { index: None } => {
+        Variants::Empty => {
             assert!(layout.is_uninhabited());
         }
-        Variants::Single { index: Some(idx) } => {
+        Variants::Single { index } => {
             if let Some(variants) = layout.ty.variant_range(tcx) {
-                assert!(variants.contains(idx));
+                assert!(variants.contains(index));
             } else {
                 // Types without variants use `0` as dummy variant index.
-                assert!(idx.as_u32() == 0);
+                assert!(index.as_u32() == 0);
             }
         }
         Variants::Multiple { variants, tag, tag_encoding, .. } => {

@@ -392,7 +392,7 @@ fn compute_discriminant_value<'ll, 'tcx>(
     variant_index: VariantIdx,
 ) -> DiscrResult {
     match enum_type_and_layout.layout.variants() {
-        &Variants::Single { .. } => DiscrResult::NoDiscriminant,
+        &Variants::Single { .. } | &Variants::Empty => DiscrResult::NoDiscriminant,
         &Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => DiscrResult::Value(
             enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val,
         ),
