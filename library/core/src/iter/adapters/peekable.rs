@@ -8,7 +8,7 @@ use crate::ops::{ControlFlow, Try};
 /// This `struct` is created by the [`peekable`] method on [`Iterator`]. See its
 /// documentation for more.
 /// 
-/// `Peakable` has a implementation: `impl<I: Interator> From<Peekable<I>> for I`, use `I::from()` can get back to [`Iterator`].
+/// `Peakable` has an implementation: `impl<I: Interator> From<Peekable<I>> for I`, use `I::from()` can get back to [`Iterator`].
 /// ```rust
 /// struct Counter {
 ///     v: usize,
@@ -27,7 +27,7 @@ use crate::ops::{ControlFlow, Try};
 /// let counter = Counter { v: 0 };
 /// let mut peekable = counter.peekable();
 /// assert_eq!(peekable.peek(), Some(&0));
-/// let counter: Counter = Counter::from(peekable);
+/// let counter = Counter::from(peekable);
 /// assert_eq!(counter.next(), Some(0));
 /// ```
 ///
@@ -49,7 +49,7 @@ impl<I: Iterator> Peekable<I> {
     }
 }
 
-impl<I: Interator> From<Peekable<I>> for I {
+impl<I: Iterator> From<Peekable<I>> for I {
     fn from(p: Peekable<I>) -> Self {
         p.iter
     }
