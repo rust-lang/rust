@@ -137,6 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = false;
+    type ModuleData = ();
 
     fn init(
         krate: clean::Crate,
@@ -161,8 +162,12 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
-    fn make_child_renderer(&self) -> Self {
-        self.clone()
+    fn save_module_data(&mut self) -> Self::ModuleData {
+        unreachable!("RUN_ON_MODULE = false should never call save_module_data")
+    }
+
+    fn set_back_info(&mut self, _info: Self::ModuleData) {
+        unreachable!("RUN_ON_MODULE = false should never call set_back_info")
     }
 
     /// Inserts an item into the index. This should be used rather than directly calling insert on
