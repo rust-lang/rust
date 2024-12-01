@@ -97,25 +97,10 @@ impl CoverageCounters {
         }
     }
 
-    /// Shared helper used by [`Self::make_phys_node_counter`] and
-    /// [`Self::make_phys_edge_counter`]. Don't call this directly.
-    fn make_counter_inner(&mut self, site: Site) -> BcbCounter {
+    /// Creates a new physical counter for a BCB node or edge.
+    fn make_phys_counter(&mut self, site: Site) -> BcbCounter {
         let id = self.counter_increment_sites.push(site);
         BcbCounter::Counter { id }
-    }
-
-    /// Creates a new physical counter for a BCB node.
-    fn make_phys_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
-        self.make_counter_inner(Site::Node { bcb })
-    }
-
-    /// Creates a new physical counter for a BCB edge.
-    fn make_phys_edge_counter(
-        &mut self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-    ) -> BcbCounter {
-        self.make_counter_inner(Site::Edge { from_bcb, to_bcb })
     }
 
     fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
@@ -391,7 +376,7 @@ impl<'a> CountersBuilder<'a> {
         //   leading to infinite recursion.
         if predecessors.len() <= 1 || predecessors.contains(&bcb) {
             debug!(?bcb, ?predecessors, "node has <=1 predecessors or is its own predecessor");
-            let counter = self.counters.make_phys_node_counter(bcb);
+            let counter = self.counters.make_phys_counter(Site::Node { bcb });
             debug!(?bcb, ?counter, "node gets a physical counter");
             return counter;
         }
@@ -448,7 +433,7 @@ impl<'a> CountersBuilder<'a> {
         }
 
         // Make a new counter to count this edge.
-        let counter = self.counters.make_phys_edge_counter(from_bcb, to_bcb);
+        let counter = self.counters.make_phys_counter(Site::Edge { from_bcb, to_bcb });
         debug!(?from_bcb, ?to_bcb, ?counter, "edge gets a physical counter");
         counter
     }
