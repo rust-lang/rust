@@ -204,6 +204,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// list of the item.
     WhereClauseInExpr(DefId, Span, HirId, usize),
 
+    /// Like `WhereClauseinExpr`, but indexes into the `const_conditions`
+    /// rather than the `predicates_of`.
+    HostEffectInExpr(DefId, Span, HirId, usize),
+
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
 
