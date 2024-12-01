@@ -2509,7 +2509,15 @@ mod diags {
     }
 
     struct DiagnosticToLintDiagnostic<'a> {
-        diag: Diag<'a, ()>
+        diag: Option<Diag<'a, ()>>
+    }
+
+    impl Drop for DiagnosticToLintDiagnostic<'_> {
+        fn drop(&mut self){
+            if let Some(diag) = self.diag.take() {
+                diag.cancel();
+            }
+        }
     }
 
     macro_rules! swap_fields {($a:expr, $b:expr, $($field:tt),*) => {
@@ -2518,9 +2526,11 @@ mod diags {
 
     impl<'a> rustc_errors::LintDiagnostic<'a, ()> for DiagnosticToLintDiagnostic<'_> {
         fn decorate_lint<'b>(mut self, lint_diag: &'b mut rustc_errors::Diag<'a, ()>){
-            swap_fields!(&mut **lint_diag, &mut *self.diag,
+            let mut self_diag = self.diag.take().unwrap();
+            swap_fields!(&mut **lint_diag, &mut *self_diag,
                 messages, code, span, children, suggestions, args, sort_span);
-            self.diag.cancel();
+
+            self_diag.cancel();
         }
     }
 
@@ -2608,7 +2618,7 @@ mod diags {
                             if let Some(_) = diag.is_lint {
                                 self.tcx.emit_node_lint(MUT_NON_MUT,
                                     self.tcx.local_def_id_to_hir_id(self.body.source.def_id().expect_local()),
-                                    DiagnosticToLintDiagnostic{ diag: diag }
+                                    DiagnosticToLintDiagnostic{ diag: Some(diag) }
                                 );
                             } else {
                                 diag.emit()
