@@ -629,6 +629,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         .offset_of_subfield(self.typing_env, op_layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
+                    NullOp::ContractChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }

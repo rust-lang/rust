@@ -874,6 +874,15 @@ fn codegen_stmt<'tcx>(
                             lval.write_cvalue(fx, val);
                             return;
                         }
+                        NullOp::ContractChecks => {
+                            let val = fx.tcx.sess.contract_checks();
+                            let val = CValue::by_val(
+                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.layout_of(fx.tcx.types.bool),
+                            );
+                            lval.write_cvalue(fx, val);
+                            return;
+                        }
                     };
                     let val = CValue::by_val(
                         fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(val).unwrap()),

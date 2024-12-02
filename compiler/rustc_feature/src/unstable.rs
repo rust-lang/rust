@@ -403,6 +403,8 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
+    /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
+    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(133866)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry

@@ -4044,6 +4044,38 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+/// Returns whether we should perform contract-checking at runtime.
+///
+/// This is meant to be similar to the ub_checks intrinsic, in terms
+/// of not prematurely commiting at compile-time to whether contract
+/// checking is turned on, so that we can specify contracts in libstd
+/// and let an end user opt into turning them on.
+#[cfg(not(bootstrap))]
+#[rustc_const_unstable(feature = "rustc_contracts", issue = "none" /* compiler-team#759 */)]
+#[unstable(feature = "rustc_contracts", issue = "none" /* compiler-team#759 */)]
+#[inline(always)]
+#[rustc_intrinsic]
+pub const fn contract_checks() -> bool {
+    // FIXME: should this be `false` or `cfg!(contract_checks)`?
+
+    // cfg!(contract_checks)
+    false
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "rustc_contracts", issue = "none" /* compiler-team#759 */)]
+#[rustc_intrinsic]
+pub fn contract_check_requires<C: FnOnce() -> bool>(c: C) -> bool {
+    c()
+}
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "rustc_contracts", issue = "none" /* compiler-team#759 */)]
+#[rustc_intrinsic]
+pub fn contract_check_ensures<'a, Ret, C: FnOnce(&'a Ret) -> bool>(ret: &'a Ret, c: C) -> bool {
+    c(ret)
+}
+
 /// The intrinsic will return the size stored in that vtable.
 ///
 /// # Safety
