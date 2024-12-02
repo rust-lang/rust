@@ -261,9 +261,9 @@ export class Config {
         return this.get<boolean | undefined>("testExplorer");
     }
 
-    get runnablesExtraEnv() {
+    runnablesExtraEnv(label: string): Record<string, string> | undefined {
         const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
-        if (!item) return item;
+        if (!item) return undefined;
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {
                 if (typeof r[key] !== "string") {
@@ -271,11 +271,28 @@ export class Config {
                 }
             }
         };
+
+        const platform = process.platform;
+        const checkPlatform = (it: RunnableEnvCfgItem) => {
+            if (it.platform) {
+                const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
+                return platforms.indexOf(platform) >= 0;
+            }
+            return true;
+        };
+
         if (item instanceof Array) {
-            item.forEach((x) => fixRecord(x.env));
-        } else {
-            fixRecord(item);
+            const env = {};
+            for (const it of item) {
+                const masked = !it.mask || new RegExp(it.mask).test(label);
+                if (masked && checkPlatform(it)) {
+                    Object.assign(env, it.env);
+                }
+            }
+            fixRecord(env);
+            return env;
         }
+        fixRecord(item);
         return item;
     }
 
