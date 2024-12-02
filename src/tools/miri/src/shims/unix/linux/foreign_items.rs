@@ -37,7 +37,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "readdir64" => {
                 let [dirp] =
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
-                let result = this.linux_readdir64(dirp)?;
+                let result = this.linux_solarish_readdir64("dirent64", dirp)?;
                 this.write_scalar(result, dest)?;
             }
             "sync_file_range" => {

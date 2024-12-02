@@ -76,6 +76,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
+            "readdir" => {
+                let [dirp] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.linux_solarish_readdir64("dirent", dirp)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Miscellaneous
             "___errno" => {
