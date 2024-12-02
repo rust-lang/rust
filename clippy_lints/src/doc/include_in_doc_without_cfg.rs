@@ -12,7 +12,7 @@ pub fn check(cx: &LateContext<'_>, attrs: &[Attribute]) {
         if !attr.span.from_expansion()
             && let AttrKind::Normal(ref normal) = attr.kind
             && normal.item.path == sym::doc
-            && let AttrArgs::Eq { value: AttrArgsEq::Hir(ref meta), .. } = normal.item.args
+            && let AttrArgs::Eq { expr: AttrArgsEq::Hir(ref meta), .. } = normal.item.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the
             // whole attribute snippet and then modify for our suggestion.
