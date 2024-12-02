@@ -648,14 +648,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
+            AttrArgs::Eq { expr: AttrArgsEq::Ast(expr), .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 let token_str = self.expr_to_string(expr);
                 self.word(token_str);
             }
-            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
+            AttrArgs::Eq { expr: AttrArgsEq::Hir(lit), .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");

@@ -9,7 +9,7 @@ use rustc_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     if let AttrKind::Normal(normal_attr) = &attr.kind {
-        if let AttrArgs::Eq { value:  AttrArgsEq::Ast(_), .. } = &normal_attr.item.args {
+        if let AttrArgs::Eq { expr:  AttrArgsEq::Ast(_), .. } = &normal_attr.item.args {
             // `#[should_panic = ".."]` found, good
             return;
         }
