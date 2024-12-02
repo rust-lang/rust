@@ -453,7 +453,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
-        && let typing_env = typing_env_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && let typing_env = typing_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
         && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
@@ -484,7 +484,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
 }
 
 /// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
-fn typing_env_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
+fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>
     let mut params = tcx
