@@ -63,12 +63,6 @@ pub(super) struct CoverageCounters {
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     node_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
-    /// Coverage counters/expressions that are associated with the control-flow
-    /// edge between two BCBs.
-    ///
-    /// We currently don't iterate over this map, but if we do in the future,
-    /// switch it back to `FxIndexMap` to avoid query stability hazards.
-    edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
 
     /// Table of expression data, associating each expression ID with its
     /// corresponding operator (+ or -) and its LHS/RHS operands.
@@ -95,7 +89,6 @@ impl CoverageCounters {
         Self {
             counter_increment_sites: IndexVec::new(),
             node_counters: IndexVec::from_elem_n(None, num_bcbs),
-            edge_counters: FxHashMap::default(),
             expressions: IndexVec::new(),
             expressions_memo: FxHashMap::default(),
         }
@@ -191,20 +184,6 @@ impl CoverageCounters {
         counter
     }
 
-    fn set_edge_counter(
-        &mut self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-        counter: BcbCounter,
-    ) -> BcbCounter {
-        let existing = self.edge_counters.insert((from_bcb, to_bcb), counter);
-        assert!(
-            existing.is_none(),
-            "edge ({from_bcb:?} -> {to_bcb:?}) already has a counter: {existing:?} => {counter:?}"
-        );
-        counter
-    }
-
     pub(super) fn term_for_bcb(&self, bcb: BasicCoverageBlock) -> Option<CovTerm> {
         self.node_counters[bcb].map(|counter| counter.as_term())
     }
@@ -250,22 +229,53 @@ impl CoverageCounters {
     }
 }
 
+/// Symbolic representation of the coverage counter to be used for a particular
+/// node or edge in the coverage graph. The same site counter can be used for
+/// multiple sites, if they have been determined to have the same count.
+#[derive(Clone, Copy, Debug)]
+enum SiteCounter {
+    /// A physical counter at some node/edge.
+    Phys { site: Site },
+    /// A counter expression for a node that takes the sum of all its in-edge
+    /// counters.
+    NodeSumExpr { bcb: BasicCoverageBlock },
+    /// A counter expression for an edge that takes the counter of its source
+    /// node, and subtracts the counters of all its sibling out-edges.
+    EdgeDiffExpr { from_bcb: BasicCoverageBlock, to_bcb: BasicCoverageBlock },
+}
+
+/// Yields the graph successors of `from_bcb` that aren't `to_bcb`. This is
+/// used when creating a counter expression for [`SiteCounter::EdgeDiffExpr`].
+///
+/// For example, in this diagram the sibling out-edge targets of edge `AC` are
+/// the nodes `B` and `D`.
+///
+/// ```text
+///    A
+///  / | \
+/// B  C  D
+/// ```
+fn sibling_out_edge_targets(
+    graph: &CoverageGraph,
+    from_bcb: BasicCoverageBlock,
+    to_bcb: BasicCoverageBlock,
+) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+    graph.successors[from_bcb].iter().copied().filter(move |&t| t != to_bcb)
+}
+
 /// Helper struct that allows counter creation to inspect the BCB graph, and
 /// the set of nodes that need counters.
 struct CountersBuilder<'a> {
-    counters: CoverageCounters,
     graph: &'a CoverageGraph,
     bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
+
+    site_counters: FxHashMap<Site, SiteCounter>,
 }
 
 impl<'a> CountersBuilder<'a> {
     fn new(graph: &'a CoverageGraph, bcb_needs_counter: &'a BitSet<BasicCoverageBlock>) -> Self {
         assert_eq!(graph.num_nodes(), bcb_needs_counter.domain_size());
-        Self {
-            counters: CoverageCounters::with_num_bcbs(graph.num_nodes()),
-            graph,
-            bcb_needs_counter,
-        }
+        Self { graph, bcb_needs_counter, site_counters: FxHashMap::default() }
     }
 
     fn make_bcb_counters(&mut self) {
@@ -298,9 +308,7 @@ impl<'a> CountersBuilder<'a> {
     fn make_node_counter_and_out_edge_counters(&mut self, from_bcb: BasicCoverageBlock) {
         // First, ensure that this node has a counter of some kind.
         // We might also use that counter to compute one of the out-edge counters.
-        let node_counter = self.get_or_make_node_counter(from_bcb);
-
-        let successors = self.graph.successors[from_bcb].as_slice();
+        self.get_or_make_node_counter(from_bcb);
 
         // If this node's out-edges won't sum to the node's counter,
         // then there's no reason to create edge counters here.
@@ -311,11 +319,11 @@ impl<'a> CountersBuilder<'a> {
         // When choosing which out-edge should be given a counter expression, ignore edges that
         // already have counters, or could use the existing counter of their target node.
         let out_edge_has_counter = |to_bcb| {
-            if self.counters.edge_counters.contains_key(&(from_bcb, to_bcb)) {
+            if self.site_counters.contains_key(&Site::Edge { from_bcb, to_bcb }) {
                 return true;
             }
             self.graph.sole_predecessor(to_bcb) == Some(from_bcb)
-                && self.counters.node_counters[to_bcb].is_some()
+                && self.site_counters.contains_key(&Site::Node { bcb: to_bcb })
         };
 
         // Determine the set of out-edges that could benefit from being given an expression.
@@ -328,45 +336,41 @@ impl<'a> CountersBuilder<'a> {
 
         // If there are out-edges without counters, choose one to be given an expression
         // (computed from this node and the other out-edges) instead of a physical counter.
-        let Some(target_bcb) = self.choose_out_edge_for_expression(from_bcb, &candidate_successors)
+        let Some(to_bcb) = self.choose_out_edge_for_expression(from_bcb, &candidate_successors)
         else {
             return;
         };
 
         // For each out-edge other than the one that was chosen to get an expression,
         // ensure that it has a counter (existing counter/expression or a new counter).
-        let other_out_edge_counters = successors
-            .iter()
-            .copied()
-            // Skip the chosen edge, since we'll calculate its count from this sum.
-            .filter(|&edge_target_bcb| edge_target_bcb != target_bcb)
-            .map(|to_bcb| self.get_or_make_edge_counter(from_bcb, to_bcb))
-            .collect::<Vec<_>>();
+        for target in sibling_out_edge_targets(self.graph, from_bcb, to_bcb) {
+            self.get_or_make_edge_counter(from_bcb, target);
+        }
 
         // Now create an expression for the chosen edge, by taking the counter
         // for its source node and subtracting the sum of its sibling out-edges.
-        let expression = self.counters.make_subtracted_sum(node_counter, &other_out_edge_counters);
-
-        debug!("{target_bcb:?} gets an expression: {expression:?}");
-        self.counters.set_edge_counter(from_bcb, target_bcb, expression);
+        let counter = SiteCounter::EdgeDiffExpr { from_bcb, to_bcb };
+        self.site_counters.insert(Site::Edge { from_bcb, to_bcb }, counter);
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn get_or_make_node_counter(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+    fn get_or_make_node_counter(&mut self, bcb: BasicCoverageBlock) -> SiteCounter {
         // If the BCB already has a counter, return it.
-        if let Some(counter) = self.counters.node_counters[bcb] {
+        if let Some(&counter) = self.site_counters.get(&Site::Node { bcb }) {
             debug!("{bcb:?} already has a counter: {counter:?}");
             return counter;
         }
 
         let counter = self.make_node_counter_inner(bcb);
-        self.counters.set_node_counter(bcb, counter)
+        self.site_counters.insert(Site::Node { bcb }, counter);
+        counter
     }
 
-    fn make_node_counter_inner(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
+    fn make_node_counter_inner(&mut self, bcb: BasicCoverageBlock) -> SiteCounter {
         // If the node's sole in-edge already has a counter, use that.
         if let Some(sole_pred) = self.graph.sole_predecessor(bcb)
-            && let Some(&edge_counter) = self.counters.edge_counters.get(&(sole_pred, bcb))
+            && let Some(&edge_counter) =
+                self.site_counters.get(&Site::Edge { from_bcb: sole_pred, to_bcb: bcb })
         {
             return edge_counter;
         }
@@ -380,20 +384,17 @@ impl<'a> CountersBuilder<'a> {
         //   leading to infinite recursion.
         if predecessors.len() <= 1 || predecessors.contains(&bcb) {
             debug!(?bcb, ?predecessors, "node has <=1 predecessors or is its own predecessor");
-            let counter = self.counters.make_phys_counter(Site::Node { bcb });
+            let counter = SiteCounter::Phys { site: Site::Node { bcb } };
             debug!(?bcb, ?counter, "node gets a physical counter");
             return counter;
         }
 
         // A BCB with multiple incoming edges can compute its count by ensuring that counters
         // exist for each of those edges, and then adding them up to get a total count.
-        let in_edge_counters = predecessors
-            .iter()
-            .copied()
-            .map(|from_bcb| self.get_or_make_edge_counter(from_bcb, bcb))
-            .collect::<Vec<_>>();
-        let sum_of_in_edges: BcbCounter =
-            self.counters.make_sum(&in_edge_counters).expect("there must be at least one in-edge");
+        for &from_bcb in predecessors {
+            self.get_or_make_edge_counter(from_bcb, bcb);
+        }
+        let sum_of_in_edges = SiteCounter::NodeSumExpr { bcb };
 
         debug!("{bcb:?} gets a new counter (sum of predecessor counters): {sum_of_in_edges:?}");
         sum_of_in_edges
@@ -404,22 +405,23 @@ impl<'a> CountersBuilder<'a> {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-    ) -> BcbCounter {
+    ) -> SiteCounter {
         // If the edge already has a counter, return it.
-        if let Some(&counter) = self.counters.edge_counters.get(&(from_bcb, to_bcb)) {
+        if let Some(&counter) = self.site_counters.get(&Site::Edge { from_bcb, to_bcb }) {
             debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter:?}");
             return counter;
         }
 
         let counter = self.make_edge_counter_inner(from_bcb, to_bcb);
-        self.counters.set_edge_counter(from_bcb, to_bcb, counter)
+        self.site_counters.insert(Site::Edge { from_bcb, to_bcb }, counter);
+        counter
     }
 
     fn make_edge_counter_inner(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-    ) -> BcbCounter {
+    ) -> SiteCounter {
         // If the target node has exactly one in-edge (i.e. this one), then just
         // use the node's counter, since it will have the same value.
         if let Some(sole_pred) = self.graph.sole_predecessor(to_bcb) {
@@ -437,7 +439,7 @@ impl<'a> CountersBuilder<'a> {
         }
 
         // Make a new counter to count this edge.
-        let counter = self.counters.make_phys_counter(Site::Edge { from_bcb, to_bcb });
+        let counter = SiteCounter::Phys { site: Site::Edge { from_bcb, to_bcb } };
         debug!(?from_bcb, ?to_bcb, ?counter, "edge gets a physical counter");
         counter
     }
@@ -525,14 +527,14 @@ impl<'a> Transcriber<'a> {
     fn transcribe_counters(mut self) -> CoverageCounters {
         for bcb in self.old.bcb_needs_counter.iter() {
             let site = Site::Node { bcb };
-            let Some(old_counter) = self.old.counters.node_counters[bcb] else { continue };
+            let site_counter = self.site_counter(site);
 
-            // Resolve the old counter into flat lists of nodes/edges whose
+            // Resolve the site counter into flat lists of nodes/edges whose
             // physical counts contribute to the counter for this node.
             // Distinguish between counts that will be added vs subtracted.
             let mut pos = vec![];
             let mut neg = vec![];
-            self.push_resolved_sites(old_counter, &mut pos, &mut neg);
+            self.push_resolved_sites(site_counter, &mut pos, &mut neg);
 
             // Simplify by cancelling out sites that appear on both sides.
             let (mut pos, mut neg) = sort_and_cancel(pos, neg);
@@ -566,22 +568,41 @@ impl<'a> Transcriber<'a> {
         self.new
     }
 
+    fn site_counter(&self, site: Site) -> SiteCounter {
+        self.old.site_counters.get(&site).copied().unwrap_or_else(|| {
+            // We should have already created all necessary site counters.
+            // But if we somehow didn't, avoid crashing in release builds,
+            // and just use an extra physical counter instead.
+            debug_assert!(false, "{site:?} should have a counter");
+            SiteCounter::Phys { site }
+        })
+    }
+
     fn ensure_phys_counter(&mut self, site: Site) -> BcbCounter {
         *self.phys_counter_for_site.entry(site).or_insert_with(|| self.new.make_phys_counter(site))
     }
 
     /// Resolves the given counter into flat lists of nodes/edges, whose counters
     /// will then be added and subtracted to form a counter expression.
-    fn push_resolved_sites(&self, counter: BcbCounter, pos: &mut Vec<Site>, neg: &mut Vec<Site>) {
+    fn push_resolved_sites(&self, counter: SiteCounter, pos: &mut Vec<Site>, neg: &mut Vec<Site>) {
         match counter {
-            BcbCounter::Counter { id } => pos.push(self.old.counters.counter_increment_sites[id]),
-            BcbCounter::Expression { id } => {
-                let BcbExpression { lhs, op, rhs } = self.old.counters.expressions[id];
-                self.push_resolved_sites(lhs, pos, neg);
-                match op {
-                    Op::Add => self.push_resolved_sites(rhs, pos, neg),
+            SiteCounter::Phys { site } => pos.push(site),
+            SiteCounter::NodeSumExpr { bcb } => {
+                for &from_bcb in &self.old.graph.predecessors[bcb] {
+                    let edge_counter = self.site_counter(Site::Edge { from_bcb, to_bcb: bcb });
+                    self.push_resolved_sites(edge_counter, pos, neg);
+                }
+            }
+            SiteCounter::EdgeDiffExpr { from_bcb, to_bcb } => {
+                // First, add the count for `from_bcb`.
+                let node_counter = self.site_counter(Site::Node { bcb: from_bcb });
+                self.push_resolved_sites(node_counter, pos, neg);
+
+                // Then subtract the counts for the other out-edges.
+                for target in sibling_out_edge_targets(self.old.graph, from_bcb, to_bcb) {
+                    let edge_counter = self.site_counter(Site::Edge { from_bcb, to_bcb: target });
                     // Swap `neg` and `pos` so that the counter is subtracted.
-                    Op::Subtract => self.push_resolved_sites(rhs, neg, pos),
+                    self.push_resolved_sites(edge_counter, neg, pos);
                 }
             }
         }
