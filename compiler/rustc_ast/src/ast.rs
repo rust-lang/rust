@@ -1733,12 +1733,12 @@ pub enum AttrArgs {
     /// Delimited arguments: `#[attr()/[]/{}]`.
     Delimited(DelimArgs),
     /// Arguments of a key-value attribute: `#[attr = "value"]`.
-    Eq(
+    Eq {
         /// Span of the `=` token.
-        Span,
-        /// The "value".
-        AttrArgsEq,
-    ),
+        eq_span: Span,
+
+        value: AttrArgsEq,
+    },
 }
 
 // The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
@@ -1755,8 +1755,8 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
+            AttrArgs::Eq { eq_span, value: AttrArgsEq::Ast(expr) } => Some(eq_span.to(expr.span)),
+            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
                 unreachable!("in literal form when getting span: {:?}", lit);
             }
         }
@@ -1768,8 +1768,8 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
+            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => TokenStream::from_ast(expr),
+            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
                 unreachable!("in literal form when getting inner tokens: {:?}", lit)
             }
         }
@@ -1785,10 +1785,10 @@ where
         match self {
             AttrArgs::Empty => {}
             AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
                 unreachable!("hash_stable {:?}", expr);
             }
-            AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit)) => {
+            AttrArgs::Eq { eq_span, value: AttrArgsEq::Hir(lit) } => {
                 eq_span.hash_stable(ctx, hasher);
                 lit.hash_stable(ctx, hasher);
             }

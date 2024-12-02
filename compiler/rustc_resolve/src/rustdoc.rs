@@ -220,7 +220,7 @@ pub fn attrs_to_doc_fragments<'a>(
 
 fn span_for_value(attr: &ast::Attribute) -> Span {
     if let ast::AttrKind::Normal(normal) = &attr.kind
-        && let ast::AttrArgs::Eq(_, ast::AttrArgsEq::Hir(meta)) = &normal.item.args
+        && let ast::AttrArgs::Eq { value: ast::AttrArgsEq::Hir(meta), .. } = &normal.item.args
     {
         meta.span.with_ctxt(attr.span.ctxt())
     } else {
