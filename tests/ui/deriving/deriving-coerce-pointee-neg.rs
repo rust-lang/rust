@@ -29,7 +29,7 @@ struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
 struct NoGeneric<'a>(&'a u8);
 
 #[derive(CoercePointee)]
-//~^ ERROR: exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits
+//~^ ERROR: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
 #[repr(transparent)]
 struct AmbiguousPointee<'a, T1: ?Sized, T2: ?Sized> {
     a: (&'a T1, &'a T2),
@@ -38,7 +38,7 @@ struct AmbiguousPointee<'a, T1: ?Sized, T2: ?Sized> {
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
-//~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits
+//~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
 
 #[derive(CoercePointee)]
 //~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
@@ -49,7 +49,7 @@ struct NotTransparent<'a, #[pointee] T: ?Sized> {
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct NoMaybeSized<'a, #[pointee] T> {
-    //~^ ERROR: `derive(CoercePointee)` requires T to be marked `?Sized`
+    //~^ ERROR: `derive(CoercePointee)` requires `T` to be marked `?Sized`
     ptr: &'a T,
 }
 

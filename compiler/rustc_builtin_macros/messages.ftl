@@ -94,6 +94,21 @@ builtin_macros_cfg_accessible_indeterminate = cannot determine whether the path 
 builtin_macros_cfg_accessible_literal_path = `cfg_accessible` path cannot be a literal
 builtin_macros_cfg_accessible_multiple_paths = multiple `cfg_accessible` paths are specified
 builtin_macros_cfg_accessible_unspecified_path = `cfg_accessible` path is not specified
+
+builtin_macros_coerce_pointee_requires_maybe_sized = `derive(CoercePointee)` requires `{$name}` to be marked `?Sized`
+
+builtin_macros_coerce_pointee_requires_one_field = `CoercePointee` can only be derived on `struct`s with at least one field
+
+builtin_macros_coerce_pointee_requires_one_generic = `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+
+builtin_macros_coerce_pointee_requires_one_pointee = exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+
+builtin_macros_coerce_pointee_requires_transparent = `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+
+builtin_macros_coerce_pointee_too_many_pointees = only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
+    .label = here another type parameter is marked as `#[pointee]`
+
+
 builtin_macros_concat_bytes_array = cannot concatenate doubly nested array
     .note = byte strings are treated as arrays of bytes
     .help = try flattening the array

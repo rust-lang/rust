@@ -9,6 +9,7 @@ use rustc_ast::{
 use rustc_attr as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_macros::Diagnostic;
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{Span, Symbol};
 use thin_vec::{ThinVec, thin_vec};
@@ -38,12 +39,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 .any(|r| matches!(r, attr::ReprTransparent))
         });
         if !is_transparent {
-            cx.dcx()
-                .struct_span_err(
-                    span,
-                    "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
-                )
-                .emit();
+            cx.dcx().emit_err(RequireTransparent { span });
             return;
         }
         if !matches!(
@@ -51,22 +47,12 @@ pub(crate) fn expand_deriving_coerce_pointee(
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
                 if !fields.is_empty())
         {
-            cx.dcx()
-                .struct_span_err(
-                    span,
-                    "`CoercePointee` can only be derived on `struct`s with at least one field",
-                )
-                .emit();
+            cx.dcx().emit_err(RequireOneField { span });
             return;
         }
         (aitem.ident, g)
     } else {
-        cx.dcx()
-            .struct_span_err(
-                span,
-                "`CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`",
-            )
-            .emit();
+        cx.dcx().emit_err(RequireTransparent { span });
         return;
     };
 
@@ -95,10 +81,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
     let pointee_param_idx = if type_params.is_empty() {
         // `#[derive(CoercePointee)]` requires at least one generic type on the target `struct`
-        cx.dcx().struct_span_err(
-            span,
-            "`CoercePointee` can only be derived on `struct`s that are generic over at least one type",
-        ).emit();
+        cx.dcx().emit_err(RequireOneGeneric { span });
         return;
     } else if type_params.len() == 1 {
         // Regardless of the only type param being designed as `#[pointee]` or not, we can just use it as such
@@ -111,19 +94,11 @@ pub(crate) fn expand_deriving_coerce_pointee(
         match (pointees.next(), pointees.next()) {
             (Some((idx, _span)), None) => idx,
             (None, _) => {
-                cx.dcx().struct_span_err(
-                    span,
-                    "exactly one generic type parameter must be marked as #[pointee] to derive CoercePointee traits",
-                ).emit();
+                cx.dcx().emit_err(RequireOnePointee { span });
                 return;
             }
             (Some((_, one)), Some((_, another))) => {
-                cx.dcx()
-                    .struct_span_err(
-                        vec![one, another],
-                        "only one type parameter can be marked as `#[pointee]` when deriving CoercePointee traits",
-                    )
-                    .emit();
+                cx.dcx().emit_err(TooManyPointees { one, another });
                 return;
             }
         }
@@ -181,15 +156,10 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 pointee_ty_ident.name,
             )
         {
-            cx.dcx()
-                .struct_span_err(
-                    pointee_ty_ident.span,
-                    format!(
-                        "`derive(CoercePointee)` requires {} to be marked `?Sized`",
-                        pointee_ty_ident.name
-                    ),
-                )
-                .emit();
+            cx.dcx().emit_err(RequiresMaybeSized {
+                span: pointee_ty_ident.span,
+                name: pointee_ty_ident.name.to_ident_string(),
+            });
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
@@ -458,4 +428,49 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b>
             self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_transparent)]
+struct RequireTransparent {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_field)]
+struct RequireOneField {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_generic)]
+struct RequireOneGeneric {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_pointee)]
+struct RequireOnePointee {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_too_many_pointees)]
+struct TooManyPointees {
+    #[primary_span]
+    one: Span,
+    #[label]
+    another: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_coerce_pointee_requires_maybe_sized)]
+struct RequiresMaybeSized {
+    #[primary_span]
+    span: Span,
+    name: String,
 }
