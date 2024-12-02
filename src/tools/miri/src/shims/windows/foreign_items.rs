@@ -9,13 +9,8 @@ use rustc_target::callconv::{Conv, FnAbi};
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
-use crate::shims::windows::handle::HandleError;
 use crate::shims::windows::*;
 use crate::*;
-
-// The NTSTATUS STATUS_INVALID_HANDLE (0xC0000008) encoded as a HRESULT by setting the N bit.
-// (https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/0642cb2f-2075-4469-918c-4441e69c548a)
-const STATUS_INVALID_HANDLE: u32 = 0xD0000008;
 
 pub fn is_dyn_sym(name: &str) -> bool {
     // std does dynamic detection for these symbols
@@ -498,52 +493,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetThreadDescription" => {
                 let [handle, name] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let handle = this.read_scalar(handle)?;
+                let handle = this.read_handle(handle)?;
                 let name = this.read_wide_str(this.read_pointer(name)?)?;
 
-                let thread = match Handle::try_from_scalar(handle, this)? {
-                    Ok(Handle::Thread(thread)) => Ok(thread),
-                    Ok(Handle::Pseudo(PseudoHandle::CurrentThread)) => Ok(this.active_thread()),
-                    Ok(_) | Err(HandleError::InvalidHandle) =>
-                        this.invalid_handle("SetThreadDescription")?,
-                    Err(HandleError::ThreadNotFound(e)) => Err(e),
+                let thread = match handle {
+                    Handle::Thread(thread) => thread,
+                    Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
+                    _ => this.invalid_handle("SetThreadDescription")?,
                 };
-                let res = match thread {
-                    Ok(thread) => {
-                        // FIXME: use non-lossy conversion
-                        this.set_thread_name(thread, String::from_utf16_lossy(&name).into_bytes());
-                        Scalar::from_u32(0)
-                    }
-                    Err(_) => Scalar::from_u32(STATUS_INVALID_HANDLE),
-                };
-
-                this.write_scalar(res, dest)?;
+                // FIXME: use non-lossy conversion
+                this.set_thread_name(thread, String::from_utf16_lossy(&name).into_bytes());
+                this.write_scalar(Scalar::from_u32(0), dest)?;
             }
             "GetThreadDescription" => {
                 let [handle, name_ptr] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let handle = this.read_scalar(handle)?;
+                let handle = this.read_handle(handle)?;
                 let name_ptr = this.deref_pointer_as(name_ptr, this.machine.layouts.mut_raw_ptr)?; // the pointer where we should store the ptr to the name
 
-                let thread = match Handle::try_from_scalar(handle, this)? {
-                    Ok(Handle::Thread(thread)) => Ok(thread),
-                    Ok(Handle::Pseudo(PseudoHandle::CurrentThread)) => Ok(this.active_thread()),
-                    Ok(_) | Err(HandleError::InvalidHandle) =>
-                        this.invalid_handle("GetThreadDescription")?,
-                    Err(HandleError::ThreadNotFound(e)) => Err(e),
+                let thread = match handle {
+                    Handle::Thread(thread) => thread,
+                    Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
+                    _ => this.invalid_handle("GetThreadDescription")?,
                 };
-                let (name, res) = match thread {
-                    Ok(thread) => {
-                        // Looks like the default thread name is empty.
-                        let name = this.get_thread_name(thread).unwrap_or(b"").to_owned();
-                        let name = this.alloc_os_str_as_wide_str(
-                            bytes_to_os_str(&name)?,
-                            MiriMemoryKind::WinLocal.into(),
-                        )?;
-                        (Scalar::from_maybe_pointer(name, this), Scalar::from_u32(0))
-                    }
-                    Err(_) => (Scalar::null_ptr(this), Scalar::from_u32(STATUS_INVALID_HANDLE)),
-                };
+                // Looks like the default thread name is empty.
+                let name = this.get_thread_name(thread).unwrap_or(b"").to_owned();
+                let name = this.alloc_os_str_as_wide_str(
+                    bytes_to_os_str(&name)?,
+                    MiriMemoryKind::WinLocal.into(),
+                )?;
+                let name = Scalar::from_maybe_pointer(name, this);
+                let res = Scalar::from_u32(0);
 
                 this.write_scalar(name, &name_ptr)?;
                 this.write_scalar(res, dest)?;
@@ -638,11 +618,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [handle, filename, size] = this.check_shim(abi, sys_conv, link_name, args)?;
                 this.check_no_isolation("`GetModuleFileNameW`")?;
 
-                let handle = this.read_target_usize(handle)?;
+                let handle = this.read_handle(handle)?;
                 let filename = this.read_pointer(filename)?;
                 let size = this.read_scalar(size)?.to_u32()?;
 
-                if handle != 0 {
+                if handle != Handle::Null {
                     throw_unsup_format!("`GetModuleFileNameW` only supports the NULL handle");
                 }
 
