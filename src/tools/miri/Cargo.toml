@@ -31,8 +31,8 @@ directories = "5"
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
 # easily use that since we support of-tree builds.
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.jemalloc-sys]
-version = "0.5.0"
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.tikv-jemalloc-sys]
+version = "0.6.0"
 features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
