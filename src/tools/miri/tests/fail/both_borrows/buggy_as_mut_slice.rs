@@ -13,7 +13,7 @@ fn main() {
     let v1 = safe::as_mut_slice(&v);
     let v2 = safe::as_mut_slice(&v);
     v1[1] = 5;
-    //~[stack]^ ERROR: /write access .* tag does not exist in the borrow stack/
+    //~[stack]^ ERROR: /trying to retag .+ for SharedReadOnly permission .+ tag does not exist in the borrow stack for this location/
     v2[1] = 7;
     //~[tree]^ ERROR: /write access through .* is forbidden/
 }

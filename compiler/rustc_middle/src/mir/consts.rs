@@ -463,6 +463,9 @@ impl<'tcx> Const<'tcx> {
                 let const_val = tcx.valtree_to_const_val((ty, valtree));
                 Self::Val(const_val, ty)
             }
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
+                Self::Unevaluated(UnevaluatedConst { def, args, promoted: None }, ty)
+            }
             _ => Self::Ty(ty, c),
         }
     }

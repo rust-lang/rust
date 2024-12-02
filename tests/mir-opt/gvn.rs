@@ -835,6 +835,25 @@ fn array_len(x: &mut [i32; 42]) -> usize {
     std::intrinsics::ptr_metadata(x)
 }
 
+// Check that we only load the length once, rather than all 3 times.
+fn dedup_multiple_bounds_checks_lengths(x: &[i32]) -> [i32; 3] {
+    // CHECK-LABEL: fn dedup_multiple_bounds_checks_lengths
+    // CHECK: [[LEN:_.+]] = PtrMetadata(copy _1);
+    // CHECK: Lt(const 42_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[A:_.+]] = copy (*_1)[42 of 43];
+    // CHECK-NOT: PtrMetadata
+    // CHECK: Lt(const 13_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[B:_.+]] = copy (*_1)[13 of 14];
+    // CHECK-NOT: PtrMetadata
+    // CHECK: Lt(const 7_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[C:_.+]] = copy (*_1)[7 of 8];
+    // CHECK: _0 = [move [[A]], move [[B]], move [[C]]]
+    [x[42], x[13], x[7]]
+}
+
 #[custom_mir(dialect = "runtime")]
 fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, pb: *const B) {
     // CHECK-LABEL: fn generic_cast_metadata
@@ -1012,6 +1031,7 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.casts_before_aggregate_raw_ptr.GVN.diff
 // EMIT_MIR gvn.manual_slice_mut_len.GVN.diff
 // EMIT_MIR gvn.array_len.GVN.diff
+// EMIT_MIR gvn.dedup_multiple_bounds_checks_lengths.GVN.diff
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff

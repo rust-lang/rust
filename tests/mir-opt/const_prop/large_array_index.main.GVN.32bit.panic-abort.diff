@@ -6,8 +6,7 @@
       let _1: u8;
       let mut _2: [u8; 5000];
       let _3: usize;
-      let mut _4: usize;
-      let mut _5: bool;
+      let mut _4: bool;
       scope 1 {
           debug x => _1;
       }
@@ -18,11 +17,9 @@
           _2 = [const 0_u8; 5000];
           StorageLive(_3);
           _3 = const 2_usize;
--         _4 = Len(_2);
--         _5 = Lt(copy _3, copy _4);
--         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind unreachable];
-+         _4 = const 5000_usize;
-+         _5 = const true;
+-         _4 = Lt(copy _3, const 5000_usize);
+-         assert(move _4, "index out of bounds: the length is {} but the index is {}", const 5000_usize, copy _3) -> [success: bb1, unwind unreachable];
++         _4 = const true;
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> [success: bb1, unwind unreachable];
       }
   

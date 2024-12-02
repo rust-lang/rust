@@ -15,7 +15,7 @@ fn fun(_1: &[T]) -> &T {
         StorageLive(_2);
         StorageLive(_3);
         _3 = const 0_usize;
-        _4 = Len((*_1));
+        _4 = PtrMetadata(copy _1);
         _5 = Lt(copy _3, copy _4);
         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind: bb2];
     }
