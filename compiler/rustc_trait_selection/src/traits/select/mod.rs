@@ -1543,14 +1543,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Some(res) = tcx.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx) {
-                Some(res)
-            } else {
-                debug_assert_eq!(infcx.selection_cache.get(&(param_env, pred), tcx), None);
-                None
+                return Some(res);
+            } else if cfg!(debug_assertions) {
+                match infcx.selection_cache.get(&(param_env, pred), tcx) {
+                    None | Some(Err(Overflow(OverflowError::Canonical))) => {}
+                    res => bug!("unexpected local cache result: {res:?}"),
+                }
             }
-        } else {
-            infcx.selection_cache.get(&(param_env, pred), tcx)
         }
+
+        // Subtle: we need to check the local cache even if we're able to use the
+        // global cache as we don't cache overflow in the global cache but need to
+        // cache it as otherwise rustdoc hangs when compiling diesel.
+        infcx.selection_cache.get(&(param_env, pred), tcx)
     }
 
     /// Determines whether can we safely cache the result
