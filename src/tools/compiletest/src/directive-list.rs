@@ -154,6 +154,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-sanitizer-thread",
     "needs-std-debug-assertions",
     "needs-symlink",
+    "needs-target-has-atomic",
     "needs-threads",
     "needs-unwind",
     "needs-wasmtime",
