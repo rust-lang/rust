@@ -28,7 +28,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterId({})"]
     pub struct CounterId {}
 }
@@ -46,7 +45,6 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
     #[orderable]
-    #[max = 0xFFFF_FFFF]
     #[debug_format = "ExpressionId({})"]
     pub struct ExpressionId {}
 }

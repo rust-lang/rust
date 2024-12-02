@@ -984,27 +984,27 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(num_midpoint)]
     /// assert_eq!(1f32.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f32).midpoint(8.0), 1.25);
     /// ```
     #[inline]
-    #[unstable(feature = "num_midpoint", issue = "110840")]
-    pub fn midpoint(self, other: f32) -> f32 {
+    #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn midpoint(self, other: f32) -> f32 {
         cfg_if! {
+            // Allow faster implementation that have known good 64-bit float
+            // implementations. Falling back to the branchy code on targets that don't
+            // have 64-bit hardware floats or buggy implementations.
+            // https://github.com/rust-lang/rust/pull/121062#issuecomment-2123408114
             if #[cfg(any(
                     target_arch = "x86_64",
                     target_arch = "aarch64",
-                    all(any(target_arch="riscv32", target_arch= "riscv64"), target_feature="d"),
-                    all(target_arch = "arm", target_feature="vfp2"),
+                    all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "d"),
+                    all(target_arch = "arm", target_feature = "vfp2"),
                     target_arch = "wasm32",
                     target_arch = "wasm64",
                 ))] {
-                // whitelist the faster implementation to targets that have known good 64-bit float
-                // implementations. Falling back to the branchy code on targets that don't have
-                // 64-bit hardware floats or buggy implementations.
-                // see: https://github.com/rust-lang/rust/pull/121062#issuecomment-2123408114
-                ((f64::from(self) + f64::from(other)) / 2.0) as f32
+                ((self as f64 + other as f64) / 2.0) as f32
             } else {
                 const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;

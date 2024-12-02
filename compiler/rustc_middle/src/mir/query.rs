@@ -8,7 +8,7 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::BitMatrix;
+use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
@@ -359,12 +359,22 @@ pub struct DestructuredConstant<'tcx> {
 /// Used by the `coverage_ids_info` query.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageIdsInfo {
-    /// Coverage codegen needs to know the highest counter ID that is ever
+    pub counters_seen: BitSet<mir::coverage::CounterId>,
+    pub expressions_seen: BitSet<mir::coverage::ExpressionId>,
+}
+
+impl CoverageIdsInfo {
+    /// Coverage codegen needs to know how many coverage counters are ever
     /// incremented within a function, so that it can set the `num-counters`
     /// argument of the `llvm.instrprof.increment` intrinsic.
     ///
     /// This may be less than the highest counter ID emitted by the
     /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
     /// were removed by MIR optimizations.
-    pub max_counter_id: mir::coverage::CounterId,
+    pub fn num_counters_after_mir_opts(&self) -> u32 {
+        // FIXME(Zalathar): Currently this treats an unused counter as "used"
+        // if its ID is less than that of the highest counter that really is
+        // used. Fixing this would require adding a renumbering step somewhere.
+        self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
+    }
 }

@@ -535,9 +535,12 @@ fn add_unused_function_coverage<'tcx>(
         }),
     );
 
-    // An unused function's mappings will automatically be rewritten to map to
-    // zero, because none of its counters/expressions are marked as seen.
-    let function_coverage = FunctionCoverageCollector::unused(instance, function_coverage_info);
+    // An unused function's mappings will all be rewritten to map to zero.
+    let function_coverage = FunctionCoverageCollector::unused(
+        instance,
+        function_coverage_info,
+        tcx.coverage_ids_info(instance.def),
+    );
 
     cx.coverage_cx().function_coverage_map.borrow_mut().insert(instance, function_coverage);
 }

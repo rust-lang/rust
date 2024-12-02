@@ -11,6 +11,7 @@ use crate::intrinsics::{exact_div, select_unpredictable, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds, RangeInclusive};
+use crate::panic::const_panic;
 use crate::simd::{self, Simd};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{fmt, hint, ptr, range, slice};
@@ -3703,8 +3704,9 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[doc(alias = "memcpy")]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
     #[track_caller]
-    pub fn copy_from_slice(&mut self, src: &[T])
+    pub const fn copy_from_slice(&mut self, src: &[T])
     where
         T: Copy,
     {
@@ -3713,11 +3715,13 @@ impl<T> [T] {
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
         #[cfg_attr(feature = "panic_immediate_abort", inline)]
         #[track_caller]
-        fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
-            panic!(
-                "source slice length ({}) does not match destination slice length ({})",
-                src_len, dst_len,
-            );
+        const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
+            const_panic!(
+                "copy_from_slice: source slice length does not match destination slice length",
+                "copy_from_slice: source slice length ({src_len}) does not match destination slice length ({dst_len})",
+                src_len: usize,
+                dst_len: usize,
+            )
         }
 
         if self.len() != src.len() {
