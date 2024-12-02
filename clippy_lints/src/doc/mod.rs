@@ -5,7 +5,7 @@ mod too_long_first_doc_paragraph;
 
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
@@ -18,6 +18,7 @@ use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, It
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -564,6 +565,32 @@ declare_clippy_lint! {
     "check if files included in documentation are behind `cfg(doc)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if a link reference definition appears at the start of a
+    /// list item or quote.
+    ///
+    /// ### Why is this bad?
+    /// This is probably intended as an intra-doc link. If it is really
+    /// supposed to be a reference definition, it can be written outside
+    /// of the list item or quote.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! - [link]: description
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! - [link][]: description (for intra-doc link)
+    /// //!
+    /// //! [link]: destination (for link reference definition)
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub DOC_NESTED_REFDEFS,
+    suspicious,
+    "link reference defined in list item or quote"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -581,6 +608,7 @@ impl Documentation {
 impl_lint_pass!(Documentation => [
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
+    DOC_NESTED_REFDEFS,
     MISSING_SAFETY_DOC,
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
@@ -832,6 +860,31 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(BlockQuote(_)) => {
                 blockquote_level += 1;
                 containers.push(Container::Blockquote);
+                if let Some((next_event, next_range)) = events.peek() {
+                    let next_start = match next_event {
+                        End(TagEnd::BlockQuote) => next_range.end,
+                        _ => next_range.start,
+                    };
+                    if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                        let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                    {
+                        span_lint_and_then(
+                            cx,
+                            DOC_NESTED_REFDEFS,
+                            refdefspan,
+                            "link reference defined in quote",
+                            |diag| {
+                                diag.span_suggestion_short(
+                                    refdefspan.shrink_to_hi(),
+                                    "for an intra-doc link, add `[]` between the label and the colon",
+                                    "[]",
+                                    Applicability::MaybeIncorrect,
+                                );
+                                diag.help("link definitions are not shown in rendered documentation");
+                            }
+                        );
+                    }
+                }
             },
             End(TagEnd::BlockQuote) => {
                 blockquote_level -= 1;
@@ -870,11 +923,37 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     in_heading = true;
                 }
                 if let Start(Item) = event {
-                    if let Some((_next_event, next_range)) = events.peek() {
-                        containers.push(Container::List(next_range.start - range.start));
+                    let indent = if let Some((next_event, next_range)) = events.peek() {
+                        let next_start = match next_event {
+                            End(TagEnd::Item) => next_range.end,
+                            _ => next_range.start,
+                        };
+                        if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                            let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                        {
+                            span_lint_and_then(
+                                cx,
+                                DOC_NESTED_REFDEFS,
+                                refdefspan,
+                                "link reference defined in list item",
+                                |diag| {
+                                    diag.span_suggestion_short(
+                                        refdefspan.shrink_to_hi(),
+                                        "for an intra-doc link, add `[]` between the label and the colon",
+                                        "[]",
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    diag.help("link definitions are not shown in rendered documentation");
+                                }
+                            );
+                            refdefrange.start - range.start
+                        } else {
+                            next_range.start - range.start
+                        }
                     } else {
-                        containers.push(Container::List(0));
-                    }
+                        0
+                    };
+                    containers.push(Container::List(indent));
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
@@ -1045,4 +1124,26 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
+}
+
+#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
+fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    let offset = range.start;
+    let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
+    let mut start = None;
+    while let Some((i, byte)) = iterator.next() {
+        match byte {
+            b'\\' => {
+                iterator.next();
+            },
+            b'[' => {
+                start = Some(i + offset);
+            },
+            b']' if let Some(start) = start => {
+                return Some(start..i + offset + 1);
+            },
+            _ => {},
+        }
+    }
+    None
 }
