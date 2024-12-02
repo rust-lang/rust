@@ -1750,15 +1750,21 @@ pub enum AttrArgsEq {
     Hir(MetaItemLit),
 }
 
+impl AttrArgsEq {
+    pub fn span(&self) -> Span {
+        match self {
+            AttrArgsEq::Ast(p) => p.span,
+            AttrArgsEq::Hir(lit) => lit.span,
+        }
+    }
+}
+
 impl AttrArgs {
     pub fn span(&self) -> Option<Span> {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq { eq_span, value: AttrArgsEq::Ast(expr) } => Some(eq_span.to(expr.span)),
-            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
-                unreachable!("in literal form when getting span: {:?}", lit);
-            }
+            AttrArgs::Eq { eq_span, value } => Some(eq_span.to(value.span())),
         }
     }
 
