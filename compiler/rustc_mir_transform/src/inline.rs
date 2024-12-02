@@ -220,15 +220,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // Normally, this shouldn't be required, but trait normalization failure can create a
         // validation ICE.
-        if !validate_types(
-            self.tcx,
-            MirPhase::Runtime(RuntimePhase::Optimized),
-            self.typing_env,
-            &callee_body,
-            &caller_body,
-        )
-        .is_empty()
-        {
+        if !validate_types(self.tcx, self.typing_env, &callee_body, &caller_body).is_empty() {
             return Err("failed to validate callee body");
         }
 
