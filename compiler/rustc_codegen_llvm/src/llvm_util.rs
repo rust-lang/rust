@@ -717,12 +717,14 @@ pub(crate) fn global_llvm_features(
                             sess.dcx().emit_warn(unknown_feature);
                         }
                         Some((_, stability, _)) => {
-                            if let Err(reason) = stability.compute(&sess.target).allow_toggle() {
+                            if let Err(reason) =
+                                stability.compute_toggleability(&sess.target).allow_toggle()
+                            {
                                 sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
                             } else if stability.requires_nightly().is_some() {
-                                // An unstable feature. Warn about using it. (It makes little sense
+                                // An unstable feature. Warn about using it. It makes little sense
                                 // to hard-error here since we just warn about fully unknown
-                                // features above).
+                                // features above.
                                 sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                             }
                         }

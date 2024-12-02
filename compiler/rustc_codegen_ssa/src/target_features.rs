@@ -153,14 +153,14 @@ pub(crate) fn provide(providers: &mut Providers) {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
                 rustc_target::target_features::all_rust_features()
-                    .map(|(a, b)| (a.to_string(), b.compute(target)))
+                    .map(|(a, b)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             } else {
                 tcx.sess
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b.compute(target)))
+                    .map(|&(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             }
         },
