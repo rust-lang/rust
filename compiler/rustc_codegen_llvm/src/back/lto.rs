@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::File;
-use std::mem::ManuallyDrop;
 use std::path::Path;
 use std::sync::Arc;
 use std::{io, iter, slice};
@@ -9,7 +8,7 @@ use std::{io, iter, slice};
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, TargetMachineFactoryConfig};
+use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
@@ -699,18 +698,15 @@ pub(crate) unsafe fn optimize_thin_module(
     let dcx = dcx.handle();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];
-    let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
-    let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(dcx, e))?;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module
     // into that context. One day, however, we may do this for upstream
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
-    let llcx = unsafe { llvm::LLVMRustContextCreate(cgcx.fewer_names) };
-    let llmod_raw = parse_module(llcx, module_name, thin_module.data(), dcx)? as *const _;
+    let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx)?;
     let mut module = ModuleCodegen {
-        module_llvm: ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) },
+        module_llvm,
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };
