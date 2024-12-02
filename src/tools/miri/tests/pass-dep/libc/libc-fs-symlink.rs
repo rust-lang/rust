@@ -47,9 +47,8 @@ fn test_readlink() {
     assert_eq!(res, small_buf.len() as isize);
 
     // Test that we report a proper error for a missing path.
-    let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
     let res = unsafe {
-        libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len())
+        libc::readlink(c"MIRI_MISSING_FILE_NAME".as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len())
     };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
