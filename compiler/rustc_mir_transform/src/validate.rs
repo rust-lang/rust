@@ -624,7 +624,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             if let Operand::Copy(place) = operand {
                 let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
-                if !ty.is_copy_modulo_regions(self.tcx, self.typing_env) {
+                if !self.tcx.type_is_copy_modulo_regions(self.typing_env, ty) {
                     self.fail(location, format!("`Operand::Copy` with non-`Copy` type {ty}"));
                 }
             }
