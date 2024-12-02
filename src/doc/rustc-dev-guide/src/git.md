@@ -597,6 +597,27 @@ $ git submodule foreach git reset --hard
 
 and then try `git submodule update` again.
 
+Unfortunately sometimes your local git submodules configuration can become
+completely messed up for some reason.
+
+### Overcoming `fatal: not a git repository: <submodule>/../../.git/modules/<submodule>`
+
+Sometimes, for some forsaken reason, you might run into
+
+```text
+fatal: not a git repository: src/gcc/../../.git/modules/src/gcc
+```
+
+In this situation, for the given submodule path, i.e. `<submodule_path> =
+src/gcc` in this example, you need to:
+
+1. `rm -rf <submodule_path>/.git`
+2. `rm -rf .git/modules/<submodule_path>/config`
+3. `rm -rf .gitconfig.lock` if somehow the `.gitconfig` lock is orphaned.
+
+Then do something like `./x fmt` to have bootstrap manage the submodule
+checkouts for you.
+
 ## Ignoring commits during `git blame`
 
 Some commits contain large reformatting changes that don't otherwise change functionality. They can
