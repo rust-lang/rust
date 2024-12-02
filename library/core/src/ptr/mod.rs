@@ -2111,7 +2111,6 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 ///   when compiled with optimization:
 ///
 ///   ```
-///   # #![feature(ptr_fn_addr_eq)]
 ///   let f: fn(i32) -> i32 = |x| x;
 ///   let g: fn(i32) -> i32 = |x| x + 0;  // different closure, different body
 ///   let h: fn(u32) -> u32 = |x| x + 0;  // different signature too
@@ -2136,7 +2135,6 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_fn_addr_eq)]
 /// use std::ptr;
 ///
 /// fn a() { println!("a"); }
@@ -2145,7 +2143,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// ```
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
-#[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
+#[stable(feature = "ptr_fn_addr_eq", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
 pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {
