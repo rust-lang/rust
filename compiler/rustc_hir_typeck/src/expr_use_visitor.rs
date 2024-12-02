@@ -228,7 +228,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_copy_modulo_regions(self.0.tcx, self.0.typing_env())
+        self.0.type_is_copy_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {

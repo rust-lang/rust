@@ -103,7 +103,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
             // Fallback case: allow `ManuallyDrop` and things that are `Copy`,
             // also no need to report an error if the type is unresolved.
             ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                || ty.is_copy_modulo_regions(tcx, typing_env)
+                || tcx.type_is_copy_modulo_regions(typing_env, ty)
                 || ty.references_error()
         }
     };

@@ -39,9 +39,7 @@ pub use crate::format::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
-use crate::util::parser::{
-    AssocOp, PREC_CLOSURE, PREC_JUMP, PREC_PREFIX, PREC_RANGE, PREC_UNAMBIGUOUS,
-};
+use crate::util::parser::{AssocOp, ExprPrecedence};
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -1317,29 +1315,29 @@ impl Expr {
         Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
     }
 
-    pub fn precedence(&self) -> i8 {
+    pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Closure(..) => PREC_CLOSURE,
+            ExprKind::Closure(..) => ExprPrecedence::Closure,
 
             ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
             | ExprKind::Yeet(..)
-            | ExprKind::Become(..) => PREC_JUMP,
+            | ExprKind::Become(..) => ExprPrecedence::Jump,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
             // ensures that `pprust` will add parentheses in the right places to get the desired
             // parse.
-            ExprKind::Range(..) => PREC_RANGE,
+            ExprKind::Range(..) => ExprPrecedence::Range,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence() as i8,
-            ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
+            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
             ExprKind::AddrOf(..)
@@ -1348,7 +1346,7 @@ impl Expr {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
-            | ExprKind::Unary(..) => PREC_PREFIX,
+            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Never need parens
             ExprKind::Array(_)
@@ -1381,7 +1379,7 @@ impl Expr {
             | ExprKind::Underscore
             | ExprKind::While(..)
             | ExprKind::Err(_)
-            | ExprKind::Dummy => PREC_UNAMBIGUOUS,
+            | ExprKind::Dummy => ExprPrecedence::Unambiguous,
         }
     }
 

@@ -1358,6 +1358,12 @@ pub struct EarlyDiagCtxt {
     dcx: DiagCtxt,
 }
 
+impl Default for EarlyDiagCtxt {
+    fn default() -> Self {
+        Self::new(ErrorOutputType::default())
+    }
+}
+
 impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
