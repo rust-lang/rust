@@ -3,7 +3,7 @@
 //@ needs-asm-support
 
 #![deny(unreachable_code)]
-#![feature(asm_goto, asm_goto_with_outputs)]
+#![feature(asm_goto_with_outputs)]
 
 use std::arch::asm;
 
