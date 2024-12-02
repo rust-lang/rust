@@ -1347,10 +1347,10 @@ impl<T> Clone for Windows<'_, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Windows<'a, T> {
-    type Item = &'a [T];
+    type Item = &'a [T;self.size.get()];
 
     #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
+    fn next(&mut self) -> Option<&'a [T;self.size.get()]> {
         if self.size.get() > self.v.len() {
             None
         } else {
