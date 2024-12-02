@@ -241,6 +241,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 this.write_scalar(result, dest)?;
             }
+            "CreateFileW" => {
+                let [
+                    file_name,
+                    desired_access,
+                    share_mode,
+                    security_attributes,
+                    creation_disposition,
+                    flags_and_attributes,
+                    template_file,
+                ] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let handle = this.CreateFileW(
+                    file_name,
+                    desired_access,
+                    share_mode,
+                    security_attributes,
+                    creation_disposition,
+                    flags_and_attributes,
+                    template_file,
+                )?;
+                this.write_scalar(handle.to_scalar(this), dest)?;
+            }
+            "GetFileInformationByHandle" => {
+                let [handle, info] = this.check_shim(abi, sys_conv, link_name, args)?;
+                let res = this.GetFileInformationByHandle(handle, info)?;
+                this.write_scalar(res, dest)?;
+            }
 
             // Allocation
             "HeapAlloc" => {
@@ -493,7 +519,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetThreadDescription" => {
                 let [handle, name] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let handle = this.read_handle(handle)?;
+                let handle = this.read_handle(handle, "SetThreadDescription")?;
                 let name = this.read_wide_str(this.read_pointer(name)?)?;
 
                 let thread = match handle {
@@ -508,7 +534,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetThreadDescription" => {
                 let [handle, name_ptr] = this.check_shim(abi, sys_conv, link_name, args)?;
 
-                let handle = this.read_handle(handle)?;
+                let handle = this.read_handle(handle, "GetThreadDescription")?;
                 let name_ptr = this.deref_pointer_as(name_ptr, this.machine.layouts.mut_raw_ptr)?; // the pointer where we should store the ptr to the name
 
                 let thread = match handle {
@@ -618,7 +644,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [handle, filename, size] = this.check_shim(abi, sys_conv, link_name, args)?;
                 this.check_no_isolation("`GetModuleFileNameW`")?;
 
-                let handle = this.read_handle(handle)?;
+                let handle = this.read_handle(handle, "GetModuleFileNameW")?;
                 let filename = this.read_pointer(filename)?;
                 let size = this.read_scalar(size)?.to_u32()?;
 

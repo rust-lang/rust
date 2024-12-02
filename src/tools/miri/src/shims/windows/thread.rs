@@ -62,7 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let handle = this.read_handle(handle_op)?;
+        let handle = this.read_handle(handle_op, "WaitForSingleObject")?;
         let timeout = this.read_scalar(timeout_op)?.to_u32()?;
 
         let thread = match handle {
