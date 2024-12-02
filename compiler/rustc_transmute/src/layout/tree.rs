@@ -495,7 +495,10 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: FieldIdx,
     ) -> Ty<'tcx> {
-        // FIXME: Why does this not just use `ty_and_layout_field`?
+        // We cannot use `ty_and_layout_field` to retrieve the field type, since
+        // `ty_and_layout_field` erases regions in the returned type. We must
+        // not erase regions here, since we may need to ultimately emit outlives
+        // obligations as a consequence of the transmutability analysis.
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
