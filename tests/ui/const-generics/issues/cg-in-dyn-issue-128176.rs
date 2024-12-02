@@ -1,7 +1,11 @@
-//@ known-bug: rust-lang/rust#128176
+//@ check-pass
+
+// Regression test for #128176.
 
 #![feature(generic_const_exprs)]
 #![feature(dyn_compatible_for_dispatch)]
+#![allow(incomplete_features)]
+
 trait X {
     type Y<const N: i16>;
 }

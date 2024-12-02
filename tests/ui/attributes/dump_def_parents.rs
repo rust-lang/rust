@@ -3,16 +3,17 @@
 
 fn bar() {
     fn foo() {
+        #[rustc_dump_def_parents]
         fn baz() {
-            #[rustc_dump_def_parents]
+            //~^ ERROR: rustc_dump_def_parents: DefId
             || {
-                //~^ ERROR: rustc_dump_def_parents: DefId
                 qux::<
                     {
                         //~^ ERROR: rustc_dump_def_parents: DefId
                         fn inhibits_dump() {
                             qux::<
                                 {
+                                    //~^ ERROR: rustc_dump_def_parents: DefId
                                     "hi";
                                     1
                                 },
