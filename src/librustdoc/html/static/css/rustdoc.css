@@ -40,6 +40,9 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--docblock-indent: 24px;
 	--mobile-top-navbar-height: 45px;
 	--collapse-toggle-left: -24px;
+	--main-top-padding: 10px;
+	--search-top-margin: 4px;
+	--sidebar-button-size: 34px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -367,7 +370,7 @@ button#toggle-all-docs {
 main {
 	position: relative;
 	flex-grow: 1;
-	padding: 10px 15px 40px 45px;
+	padding: var(--main-top-padding) 15px 40px 45px;
 	min-width: 0; /* avoid growing beyond the size limit */
 }
 
@@ -1005,7 +1008,7 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 0 0;
+	margin: var(--search-top-margin) 0 0 0;
 	display: flex;
 	align-items: center;
 }
@@ -1872,13 +1875,22 @@ a.tooltip:hover::after {
 	display: flex;
 	margin-right: 4px;
 	position: fixed;
-	left: 6px;
-	height: 34px;
-	width: 34px;
 	background-color: var(--main-background-color);
 	z-index: 1;
 }
+.hide-sidebar #sidebar-button {
+	left: 0;
+	/* We need to do all this so this button is positioned correctly but also to hide everything
+	   going under beneath it. */
+	height: calc(var(--sidebar-button-size) + var(--main-top-padding) + var(--search-top-margin));
+	/* 6px is the left padding */
+	width: calc(var(--sidebar-button-size) + 6px);
+	padding-left: 6px;
+	padding-top: calc(var(--main-top-padding) + var(--search-top-margin));
+}
 .src #sidebar-button {
+	height: var(--sidebar-button-size);
+	width: var(--sidebar-button-size);
 	left: 8px;
 	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 }
