@@ -61,7 +61,6 @@ impl RawWaker {
     }
 
     #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
