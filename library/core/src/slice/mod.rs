@@ -858,7 +858,7 @@ impl<T> [T] {
 
     /// Gets a reference to the underlying array.
     ///
-    /// If `N` is not exactly equal to slice's the length of `self`, then this method returns `None`.
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
     #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
