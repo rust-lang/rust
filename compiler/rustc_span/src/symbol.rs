@@ -676,6 +676,7 @@ symbols! {
         const_ty_placeholder: "<const_ty>",
         constant,
         constructor,
+        contract_build_check_ensures,
         contract_check_ensures,
         contract_check_requires,
         contract_checks,

@@ -114,6 +114,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(const_carrying_mul_add)]
+#![feature(closure_track_caller)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
@@ -245,6 +246,10 @@ pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::autodiff;
 }
+
+#[cfg(not(bootstrap))]
+#[unstable(feature = "rustc_contracts", issue = "none")]
+pub mod contracts;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use crate::macros::cfg_match;
