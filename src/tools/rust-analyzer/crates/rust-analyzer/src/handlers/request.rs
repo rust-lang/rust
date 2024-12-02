@@ -11,9 +11,9 @@ use std::{
 use anyhow::Context;
 
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
-    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
-    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
+    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
@@ -1086,11 +1086,9 @@ pub(crate) fn handle_completion(
 
     let items = to_proto::completion_items(
         &snap.config,
-        &completion_config.fields_to_resolve,
         &line_index,
         snap.file_version(position.file_id),
         text_document_position,
-        completion_trigger_character,
         items,
     );
 
@@ -1123,68 +1121,36 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
-    forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
+    let additional_edits = snap
+        .analysis
+        .resolve_completion_edits(
+            &snap.config.completion(Some(source_root)),
+            FilePosition { file_id, offset },
+            resolve_data
+                .imports
+                .into_iter()
+                .map(|import| (import.full_import_path, import.imported_name)),
+        )?
+        .into_iter()
+        .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
+        .collect::<Vec<_>>();
 
-    let position = FilePosition { file_id, offset };
-    let Some(resolved_completions) = snap.analysis.completions(
-        &forced_resolve_completions_config,
-        position,
-        resolve_data.trigger_character,
-    )?
-    else {
-        return Ok(original_completion);
-    };
-    let mut resolved_completions = to_proto::completion_items(
-        &snap.config,
-        &forced_resolve_completions_config.fields_to_resolve,
-        &line_index,
-        snap.file_version(position.file_id),
-        resolve_data.position,
-        resolve_data.trigger_character,
-        resolved_completions,
-    );
-
-    let mut resolved_completion =
-        if resolved_completions.get(resolve_data.completion_item_index).is_some() {
-            resolved_completions.swap_remove(resolve_data.completion_item_index)
-        } else {
-            return Ok(original_completion);
-        };
-
-    if !resolve_data.imports.is_empty() {
-        let additional_edits = snap
-            .analysis
-            .resolve_completion_edits(
-                &forced_resolve_completions_config,
-                position,
-                resolve_data
-                    .imports
-                    .into_iter()
-                    .map(|import| (import.full_import_path, import.imported_name)),
-            )?
-            .into_iter()
-            .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-            .collect::<Vec<_>>();
-
-        if !all_edits_are_disjoint(&resolved_completion, &additional_edits) {
-            return Err(LspError::new(
-                ErrorCode::InternalError as i32,
-                "Import edit overlaps with the original completion edits, this is not LSP-compliant"
-                    .into(),
-            )
-            .into());
-        }
-
-        if let Some(original_additional_edits) = resolved_completion.additional_text_edits.as_mut()
-        {
-            original_additional_edits.extend(additional_edits)
-        } else {
-            resolved_completion.additional_text_edits = Some(additional_edits);
-        }
+    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
+        return Err(LspError::new(
+            ErrorCode::InternalError as i32,
+            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                .into(),
+        )
+        .into());
     }
 
-    Ok(resolved_completion)
+    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
+        original_additional_edits.extend(additional_edits)
+    } else {
+        original_completion.additional_text_edits = Some(additional_edits);
+    }
+
+    Ok(original_completion)
 }
 
 pub(crate) fn handle_folding_range(
