@@ -372,11 +372,18 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - image: x86_64-msvc
+  # x86_64-msvc is split into two jobs to run tests in parallel.
+  - image: x86_64-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-      SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows
+
+  - image: x86_64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows
 
   - image: i686-msvc
     env:
