@@ -597,6 +597,14 @@ $ git submodule foreach git reset --hard
 
 and then try `git submodule update` again.
 
+### Deinit git submodules
+
+If that doesn't work, you can try to deinit all git submodules...
+
+```
+git submodule deinit -f --all
+```
+
 Unfortunately sometimes your local git submodules configuration can become
 completely messed up for some reason.
 
