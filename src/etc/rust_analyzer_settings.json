@@ -34,5 +34,8 @@
     "rust-analyzer.rustc.source": "./Cargo.toml",
     "rust-analyzer.cargo.extraEnv": {
         "RUSTC_BOOTSTRAP": "1"
+    },
+    "rust-analyzer.server.extraEnv": {
+        "RUSTUP_TOOLCHAIN": "nightly"
     }
 }
