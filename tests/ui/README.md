@@ -6,9 +6,9 @@ This folder contains `rustc`'s
 ## Test Directives (Headers)
 
 Typically, a UI test will have some test directives / headers which are
-special comments that tell compiletest how to build and intepret a test.
+special comments that tell compiletest how to build and interpret a test.
 
-As part of an on-going effort to rewrite compiletest
+As part of an ongoing effort to rewrite compiletest
 (see <https://github.com/rust-lang/compiler-team/issues/536>), a major
 change proposal to change legacy compiletest-style headers `// <directive>`
 to [`ui_test`](https://github.com/oli-obk/ui_test)-style headers
@@ -30,6 +30,6 @@ but in `ui_test` style, the header would be written as
 
 compiletest is changed to accept only `//@` directives for UI tests
 (currently), and will reject and report an error if it encounters any
-comments `// <content>` that may be parsed as an legacy compiletest-style
+comments `// <content>` that may be parsed as a legacy compiletest-style
 test header. To fix this, you should migrate to the `ui_test`-style header
 `//@ <content>`.
