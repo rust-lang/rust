@@ -601,7 +601,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.info
     }
 
-    fn set_back_info(&mut self, info: Self::ModuleData) {
+    fn restore_module_data(&mut self, info: Self::ModuleData) {
         self.info = info;
     }
 
