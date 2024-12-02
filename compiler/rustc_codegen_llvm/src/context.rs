@@ -82,8 +82,8 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
 
     pub isize_ty: &'ll Type,
 
-    /// Extra codegen state needed when coverage instrumentation is enabled.
-    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
+    /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
+    pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -525,7 +525,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
         let coverage_cx =
-            tcx.sess.instrument_coverage().then(coverageinfo::CrateCoverageContext::new);
+            tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
@@ -576,7 +576,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Extra state that is only available when coverage instrumentation is enabled.
     #[inline]
     #[track_caller]
-    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CrateCoverageContext<'ll, 'tcx> {
+    pub(crate) fn coverage_cx(&self) -> &coverageinfo::CguCoverageContext<'ll, 'tcx> {
         self.coverage_cx.as_ref().expect("only called when coverage instrumentation is enabled")
     }
 

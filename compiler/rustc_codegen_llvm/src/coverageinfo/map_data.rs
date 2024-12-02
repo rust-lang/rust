@@ -1,12 +1,13 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::CoverageIdsInfo;
 use rustc_middle::mir::coverage::{
     CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, MappingKind, Op,
     SourceRegion,
 };
 use rustc_middle::ty::Instance;
-use tracing::{debug, instrument};
+use tracing::debug;
 
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
@@ -16,17 +17,8 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 pub(crate) struct FunctionCoverageCollector<'tcx> {
     /// Coverage info that was attached to this function by the instrumentor.
     function_coverage_info: &'tcx FunctionCoverageInfo,
+    ids_info: &'tcx CoverageIdsInfo,
     is_used: bool,
-
-    /// Tracks which counters have been seen, so that we can identify mappings
-    /// to counters that were optimized out, and set them to zero.
-    counters_seen: BitSet<CounterId>,
-    /// Contains all expression IDs that have been seen in an `ExpressionUsed`
-    /// coverage statement, plus all expression IDs that aren't directly used
-    /// by any mappings (and therefore do not have expression-used statements).
-    /// After MIR traversal is finished, we can conclude that any IDs missing
-    /// from this set must have had their statements deleted by MIR opts.
-    expressions_seen: BitSet<ExpressionId>,
 }
 
 impl<'tcx> FunctionCoverageCollector<'tcx> {
@@ -34,21 +26,24 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
     pub(crate) fn new(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
+        ids_info: &'tcx CoverageIdsInfo,
     ) -> Self {
-        Self::create(instance, function_coverage_info, true)
+        Self::create(instance, function_coverage_info, ids_info, true)
     }
 
     /// Creates a new set of coverage data for an unused (never called) function.
     pub(crate) fn unused(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
+        ids_info: &'tcx CoverageIdsInfo,
     ) -> Self {
-        Self::create(instance, function_coverage_info, false)
+        Self::create(instance, function_coverage_info, ids_info, false)
     }
 
     fn create(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
+        ids_info: &'tcx CoverageIdsInfo,
         is_used: bool,
     ) -> Self {
         let num_counters = function_coverage_info.num_counters;
@@ -58,44 +53,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
             num_counters={num_counters}, num_expressions={num_expressions}, is_used={is_used}"
         );
 
-        // Create a filled set of expression IDs, so that expressions not
-        // directly used by mappings will be treated as "seen".
-        // (If they end up being unused, LLVM will delete them for us.)
-        let mut expressions_seen = BitSet::new_filled(num_expressions);
-        // For each expression ID that is directly used by one or more mappings,
-        // mark it as not-yet-seen. This indicates that we expect to see a
-        // corresponding `ExpressionUsed` statement during MIR traversal.
-        for mapping in function_coverage_info.mappings.iter() {
-            // Currently we only worry about ordinary code mappings.
-            // For branch and MC/DC mappings, expressions might not correspond
-            // to any particular point in the control-flow graph.
-            // (Keep this in sync with the injection of `ExpressionUsed`
-            // statements in the `InstrumentCoverage` MIR pass.)
-            if let MappingKind::Code(term) = mapping.kind
-                && let CovTerm::Expression(id) = term
-            {
-                expressions_seen.remove(id);
-            }
-        }
-
-        Self {
-            function_coverage_info,
-            is_used,
-            counters_seen: BitSet::new_empty(num_counters),
-            expressions_seen,
-        }
-    }
-
-    /// Marks a counter ID as having been seen in a counter-increment statement.
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mark_counter_id_seen(&mut self, id: CounterId) {
-        self.counters_seen.insert(id);
-    }
-
-    /// Marks an expression ID as having been seen in an expression-used statement.
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn mark_expression_id_seen(&mut self, id: ExpressionId) {
-        self.expressions_seen.insert(id);
+        Self { function_coverage_info, ids_info, is_used }
     }
 
     /// Identify expressions that will always have a value of zero, and note
@@ -117,7 +75,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // (By construction, expressions can only refer to other expressions
         // that have lower IDs, so one pass is sufficient.)
         for (id, expression) in self.function_coverage_info.expressions.iter_enumerated() {
-            if !self.expressions_seen.contains(id) {
+            if !self.is_used || !self.ids_info.expressions_seen.contains(id) {
                 // If an expression was not seen, it must have been optimized away,
                 // so any operand that refers to it can be replaced with zero.
                 zero_expressions.insert(id);
@@ -146,7 +104,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
                     assert_operand_expression_is_lower(id);
                 }
 
-                if is_zero_term(&self.counters_seen, &zero_expressions, *operand) {
+                if is_zero_term(&self.ids_info.counters_seen, &zero_expressions, *operand) {
                     *operand = CovTerm::Zero;
                 }
             };
@@ -172,17 +130,17 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
 
     pub(crate) fn into_finished(self) -> FunctionCoverage<'tcx> {
         let zero_expressions = self.identify_zero_expressions();
-        let FunctionCoverageCollector { function_coverage_info, is_used, counters_seen, .. } = self;
+        let FunctionCoverageCollector { function_coverage_info, ids_info, is_used, .. } = self;
 
-        FunctionCoverage { function_coverage_info, is_used, counters_seen, zero_expressions }
+        FunctionCoverage { function_coverage_info, ids_info, is_used, zero_expressions }
     }
 }
 
 pub(crate) struct FunctionCoverage<'tcx> {
     pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
+    ids_info: &'tcx CoverageIdsInfo,
     is_used: bool,
 
-    counters_seen: BitSet<CounterId>,
     zero_expressions: ZeroExpressions,
 }
 
@@ -238,7 +196,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {
-        is_zero_term(&self.counters_seen, &self.zero_expressions, term)
+        !self.is_used || is_zero_term(&self.ids_info.counters_seen, &self.zero_expressions, term)
     }
 }
 

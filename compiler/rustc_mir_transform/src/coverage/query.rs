@@ -1,6 +1,7 @@
 use rustc_data_structures::captures::Captures;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::coverage::{CounterId, CoverageKind};
+use rustc_middle::mir::coverage::{CovTerm, CoverageKind, MappingKind};
 use rustc_middle::mir::{Body, CoverageIdsInfo, Statement, StatementKind};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, TyCtxt};
@@ -86,15 +87,43 @@ fn coverage_ids_info<'tcx>(
 ) -> CoverageIdsInfo {
     let mir_body = tcx.instance_mir(instance_def);
 
-    let max_counter_id = all_coverage_in_mir_body(mir_body)
-        .filter_map(|kind| match *kind {
-            CoverageKind::CounterIncrement { id } => Some(id),
-            _ => None,
-        })
-        .max()
-        .unwrap_or(CounterId::ZERO);
+    let Some(fn_cov_info) = mir_body.function_coverage_info.as_ref() else {
+        return CoverageIdsInfo {
+            counters_seen: BitSet::new_empty(0),
+            expressions_seen: BitSet::new_empty(0),
+        };
+    };
 
-    CoverageIdsInfo { max_counter_id }
+    let mut counters_seen = BitSet::new_empty(fn_cov_info.num_counters);
+    let mut expressions_seen = BitSet::new_filled(fn_cov_info.expressions.len());
+
+    // For each expression ID that is directly used by one or more mappings,
+    // mark it as not-yet-seen. This indicates that we expect to see a
+    // corresponding `ExpressionUsed` statement during MIR traversal.
+    for mapping in fn_cov_info.mappings.iter() {
+        // Currently we only worry about ordinary code mappings.
+        // For branch and MC/DC mappings, expressions might not correspond
+        // to any particular point in the control-flow graph.
+        // (Keep this in sync with the injection of `ExpressionUsed`
+        // statements in the `InstrumentCoverage` MIR pass.)
+        if let MappingKind::Code(CovTerm::Expression(id)) = mapping.kind {
+            expressions_seen.remove(id);
+        }
+    }
+
+    for kind in all_coverage_in_mir_body(mir_body) {
+        match *kind {
+            CoverageKind::CounterIncrement { id } => {
+                counters_seen.insert(id);
+            }
+            CoverageKind::ExpressionUsed { id } => {
+                expressions_seen.insert(id);
+            }
+            _ => {}
+        }
+    }
+
+    CoverageIdsInfo { counters_seen, expressions_seen }
 }
 
 fn all_coverage_in_mir_body<'a, 'tcx>(

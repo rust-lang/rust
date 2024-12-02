@@ -21,8 +21,8 @@ mod llvm_cov;
 pub(crate) mod map_data;
 mod mapgen;
 
-/// A context object for maintaining all state needed by the coverageinfo module.
-pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
+/// Extra per-CGU context/state needed for coverage instrumentation.
+pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map:
         RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
@@ -32,7 +32,7 @@ pub(crate) struct CrateCoverageContext<'ll, 'tcx> {
     covfun_section_name: OnceCell<CString>,
 }
 
-impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
+impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
         Self {
             function_coverage_map: Default::default(),
@@ -143,6 +143,13 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let bx = self;
 
+        // Due to LocalCopy instantiation or MIR inlining, coverage statements
+        // can end up in a crate that isn't doing coverage instrumentation.
+        // When that happens, we currently just discard those statements, so
+        // the corresponding code will be undercounted.
+        // FIXME(Zalathar): Find a better solution for mixed-coverage builds.
+        let Some(coverage_cx) = &bx.cx.coverage_cx else { return };
+
         let Some(function_coverage_info) =
             bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
         else {
@@ -150,32 +157,28 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             return;
         };
 
-        // FIXME(#132395): Unwrapping `coverage_cx` here has led to ICEs in the
-        // wild, so keep this early-return until we understand why.
-        let mut coverage_map = match bx.coverage_cx {
-            Some(ref cx) => cx.function_coverage_map.borrow_mut(),
-            None => return,
-        };
-        let func_coverage = coverage_map
-            .entry(instance)
-            .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
+        // Mark the instance as used in this CGU, for coverage purposes.
+        // This includes functions that were not partitioned into this CGU,
+        // but were MIR-inlined into one of this CGU's functions.
+        coverage_cx.function_coverage_map.borrow_mut().entry(instance).or_insert_with(|| {
+            FunctionCoverageCollector::new(
+                instance,
+                function_coverage_info,
+                bx.tcx.coverage_ids_info(instance.def),
+            )
+        });
 
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
             CoverageKind::CounterIncrement { id } => {
-                func_coverage.mark_counter_id_seen(id);
-                // We need to explicitly drop the `RefMut` before calling into
-                // `instrprof_increment`, as that needs an exclusive borrow.
-                drop(coverage_map);
-
                 // The number of counters passed to `llvm.instrprof.increment` might
                 // be smaller than the number originally inserted by the instrumentor,
                 // if some high-numbered counters were removed by MIR optimizations.
                 // If so, LLVM's profiler runtime will use fewer physical counters.
                 let num_counters =
-                    bx.tcx().coverage_ids_info(instance.def).max_counter_id.as_u32() + 1;
+                    bx.tcx().coverage_ids_info(instance.def).num_counters_after_mir_opts();
                 assert!(
                     num_counters as usize <= function_coverage_info.num_counters,
                     "num_counters disagreement: query says {num_counters} but function info only has {}",
@@ -192,23 +195,23 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::ExpressionUsed { id } => {
-                func_coverage.mark_expression_id_seen(id);
+            CoverageKind::ExpressionUsed { id: _ } => {
+                // Expression-used statements are markers that are handled by
+                // `coverage_ids_info`, so there's nothing to codegen here.
             }
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
-                drop(coverage_map);
-                let cond_bitmap = bx
-                    .coverage_cx()
+                let cond_bitmap = coverage_cx
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
                     .expect("mcdc cond bitmap should have been allocated for updating");
                 let cond_index = bx.const_i32(index as i32);
                 bx.mcdc_condbitmap_update(cond_index, cond_bitmap);
             }
             CoverageKind::TestVectorBitmapUpdate { bitmap_idx, decision_depth } => {
-                drop(coverage_map);
-                let cond_bitmap = bx.coverage_cx()
-                                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
-                                    .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
+                let cond_bitmap =
+                    coverage_cx.try_get_mcdc_condition_bitmap(&instance, decision_depth).expect(
+                        "mcdc cond bitmap should have been allocated for merging \
+                        into the global bitmap",
+                    );
                 assert!(
                     bitmap_idx as usize <= function_coverage_info.mcdc_bitmap_bits,
                     "bitmap index of the decision out of range"
