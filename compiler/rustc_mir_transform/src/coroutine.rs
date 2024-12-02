@@ -680,7 +680,7 @@ fn locals_live_across_suspend_points<'tcx>(
     let mut requires_storage_results =
         MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
             .iterate_to_fixpoint(tcx, body, None);
-    let mut requires_storage_cursor = requires_storage_results.as_results_cursor_mut(body);
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
