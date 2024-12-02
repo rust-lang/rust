@@ -17,7 +17,6 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "check-run-results",
     "check-stdout",
     "check-test-line-numbers-match",
-    "compare-output-lines-by-subset",
     "compile-flags",
     "doc-flags",
     "dont-check-compiler-stderr",

@@ -2541,13 +2541,10 @@ impl<'test> TestCx<'test> {
             return 0;
         }
 
-        // If `compare-output-lines-by-subset` is not explicitly enabled then
-        // auto-enable it when a `runner` is in use since wrapper tools might
-        // provide extra output on failure, for example a WebAssembly runtime
-        // might print the stack trace of an `unreachable` instruction by
-        // default.
-        let compare_output_by_lines =
-            self.props.compare_output_lines_by_subset || self.config.runner.is_some();
+        // Wrapper tools set by `runner` might provide extra output on failure,
+        // for example a WebAssembly runtime might print the stack trace of an
+        // `unreachable` instruction by default.
+        let compare_output_by_lines = self.config.runner.is_some();
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {
