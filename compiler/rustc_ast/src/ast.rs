@@ -1757,6 +1757,24 @@ impl AttrArgsEq {
             AttrArgsEq::Hir(lit) => lit.span,
         }
     }
+
+    pub fn unwrap_ast(&self) -> &Expr {
+        match self {
+            AttrArgsEq::Ast(p) => p,
+            AttrArgsEq::Hir(lit) => {
+                unreachable!("in literal form when getting inner tokens: {lit:?}")
+            }
+        }
+    }
+
+    pub fn unwrap_ast_mut(&mut self) -> &mut P<Expr> {
+        match self {
+            AttrArgsEq::Ast(p) => p,
+            AttrArgsEq::Hir(lit) => {
+                unreachable!("in literal form when getting inner tokens: {lit:?}")
+            }
+        }
+    }
 }
 
 impl AttrArgs {
@@ -1774,10 +1792,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => TokenStream::from_ast(expr),
-            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
-                unreachable!("in literal form when getting inner tokens: {:?}", lit)
-            }
+            AttrArgs::Eq { value, .. } => TokenStream::from_ast(value.unwrap_ast()),
         }
     }
 }
