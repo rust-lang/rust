@@ -803,7 +803,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f16", issue = "116909")]
     pub const fn midpoint(self, other: f16) -> f16 {
         const LO: f16 = f16::MIN_POSITIVE * 2.;
         const HI: f16 = f16::MAX / 2.;
