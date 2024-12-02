@@ -2090,6 +2090,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
             ),
             hir::ConstArgKind::Anon(anon) => Const::from_anon_const(tcx, anon.def_id),
+            hir::ConstArgKind::Infer(span) => self.ct_infer(None, span),
         }
     }
 
@@ -2310,13 +2311,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx.at(span).type_of(def_id).instantiate(tcx, args)
             }
             hir::TyKind::Array(ty, length) => {
-                let length = match length {
-                    hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
-                    hir::ArrayLen::Body(constant) => {
-                        self.lower_const_arg(constant, FeedConstTy::No)
-                    }
-                };
-
+                let length = self.lower_const_arg(length, FeedConstTy::No);
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),

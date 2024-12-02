@@ -7,7 +7,7 @@ use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
-    GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
+    FeedConstTy, GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
@@ -429,7 +429,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.cfcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.lower_const_arg(ct, param.def_id).into()
+                        self.cfcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ty_infer(Some(param), inf.span).into()

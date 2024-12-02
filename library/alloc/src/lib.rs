@@ -91,8 +91,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
-#![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
 #![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -107,13 +105,8 @@
 #![feature(box_uninit_write)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
-#![feature(const_align_of_val)]
-#![feature(const_box)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
-#![feature(const_maybe_uninit_write)]
-#![feature(const_size_of_val)]
-#![feature(const_vec_string_slice)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
@@ -170,7 +163,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(cfg_sanitize)]
 #![feature(const_precise_live_drops)]
-#![feature(const_try)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]

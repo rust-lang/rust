@@ -860,7 +860,6 @@ impl<T> [T] {
     ///
     /// If `N` is not exactly equal to slice's the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -879,7 +878,6 @@ impl<T> [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {

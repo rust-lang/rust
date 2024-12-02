@@ -1257,9 +1257,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                 ))
             }
-            TyKind::Array(ty, length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
-            }
+            TyKind::Array(ty, length) => hir::TyKind::Array(
+                self.lower_ty(ty, itctx),
+                self.lower_array_length_to_const_arg(length),
+            ),
             TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
@@ -2007,14 +2008,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
-    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
+    fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer() {
-                    hir::ArrayLen::Infer(hir::InferArg {
-                        hir_id: self.lower_node_id(c.id),
-                        span: self.lower_span(c.value.span),
-                    })
+                    let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
+                    self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
                 } else {
                     feature_err(
                         &self.tcx.sess,
@@ -2023,10 +2022,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fluent_generated::ast_lowering_underscore_array_length_unstable,
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
+                    self.lower_anon_const_to_const_arg(c)
                 }
             }
-            _ => hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c)),
+            _ => self.lower_anon_const_to_const_arg(c),
         }
     }
 

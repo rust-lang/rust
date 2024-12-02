@@ -346,7 +346,6 @@ impl<T: ?Sized> *const T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
@@ -1528,7 +1527,6 @@ impl<T> *const [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(self) -> Option<*const [T; N]> {
@@ -1608,7 +1606,6 @@ impl<T> *const [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None
