@@ -236,14 +236,18 @@ impl f128 {
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
-    /// `self = n * rhs + self.rem_euclid(rhs)`.
-    /// In other words, the result is `self / rhs` rounded to the integer `n`
-    /// such that `self >= n * rhs`.
+    /// `self.rem_euclid(rhs) = self.div_euclid(rhs).mul_add(-rhs, self)`.
+    /// In other words, the result is `self / rhs` rounded to the largest
+    /// integer `n` such that `self >= n * rhs`.
     ///
     /// # Precision
     ///
     /// The result of this operation is guaranteed to be the rounded
     /// infinite-precision result.
+    ///
+    /// If the magnitude of the exact quotient `self / rhs` is greater than or
+    /// equal to the maximum integer that can be represented precisely with this
+    /// type, then `NaN` may be returned.
     ///
     /// # Examples
     ///
@@ -259,16 +263,67 @@ impl f128 {
     /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// # }
     /// ```
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// let a: f32 = 11.0;
+    /// let b = 1.1;
+    /// assert_eq!(a.div_euclid(b), 9.0);
+    /// assert_eq!(a.rem_euclid(b), a.div_euclid(b).mul_add(-b, a));
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f128) -> f128 {
-        let q = (self / rhs).trunc();
-        if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
+        use core::ops::ControlFlow;
+
+        fn xor_sign(x: f128, y: f128, v: f128) -> f128 {
+            match () {
+                _ if x.is_sign_positive() == y.is_sign_positive() => v,
+                _ => -v,
+            }
         }
-        q
+
+        fn div_special(x: f128, y: f128) -> ControlFlow<f128> {
+            ControlFlow::Break(match (x, y) {
+                (x, y) if x.is_nan() || y.is_nan() => f128::NAN,
+                (x, y) if x == 0.0 && y == 0.0 => f128::NAN,
+                (x, y) if x == 0.0 => xor_sign(x, y, 0.0),
+                (x, y) if y == 0.0 => xor_sign(x, y, f128::INFINITY),
+                (x, y) if x.is_infinite() && y.is_infinite() => f128::NAN,
+                (x, y) if x.is_infinite() => xor_sign(x, y, f128::INFINITY),
+                (x, y) if y.is_infinite() => xor_sign(x, y, 0.0),
+                _ => return ControlFlow::Continue(()),
+            })
+        }
+
+        fn div_trunc(x: f128, y: f128) -> f128 {
+            const MAX_EXACT_Q: f128 = ((1u128 << f128::MANTISSA_DIGITS) - 1) as f128;
+            if let ControlFlow::Break(q) = div_special(x, y) {
+                return q;
+            }
+            let sign = xor_sign(x, y, 1.0);
+            let (x, y) = (x.abs(), y.abs());
+            let q = x / y;
+            if q > MAX_EXACT_Q {
+                return f128::NAN;
+            }
+            let qt = q.trunc();
+            if qt.mul_add(-y, x).is_sign_negative() { qt - 1.0 } else { qt }.copysign(sign)
+        }
+
+        if let ControlFlow::Break(q) = div_special(self, rhs) {
+            return q;
+        }
+        let qt = div_trunc(self, rhs);
+        if self % rhs < 0.0 {
+            return if rhs > 0.0 { qt - 1.0 } else { qt + 1.0 };
+        }
+        qt
     }
 
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.
