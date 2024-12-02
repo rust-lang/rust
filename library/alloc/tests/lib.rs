@@ -4,8 +4,6 @@
 #![feature(assert_matches)]
 #![feature(btree_extract_if)]
 #![feature(cow_is_borrowed)]
-#![feature(const_heap)]
-#![feature(const_try)]
 #![feature(core_intrinsics)]
 #![feature(extract_if)]
 #![feature(exact_size_is_empty)]
