@@ -19,7 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
+use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCause;
@@ -425,7 +425,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::Crate(_)
             | hir::Node::Infer(_)
             | hir::Node::WherePredicate(_)
-            | hir::Node::ArrayLenInfer(_)
             | hir::Node::PreciseCapturingNonLifetimeArg(_)
             | hir::Node::OpaqueTy(_) => {
                 unreachable!("no sub-expr expected for {parent_node:?}")
@@ -1673,9 +1672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else {
             return;
         };
-        if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
-            && let hir::ArrayLen::Body(ct) = length
-        {
+        if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
             let span = ct.span();
             self.dcx().try_steal_modify_and_emit_err(
                 span,
@@ -1713,13 +1710,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
-        count: &'tcx hir::ArrayLen<'tcx>,
+        count: &'tcx hir::ConstArg<'tcx>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count_span = count.span();
-        let count = self.try_structurally_resolve_const(count_span, self.lower_array_length(count));
+        let count = self.try_structurally_resolve_const(
+            count_span,
+            self.normalize(count_span, self.lower_const_arg(count, FeedConstTy::No)),
+        );
 
         if let Some(count) = count.try_to_target_usize(tcx) {
             self.suggest_array_len(expr, count);
