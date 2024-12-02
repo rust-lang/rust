@@ -285,8 +285,21 @@ impl f64 {
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f64) -> f64 {
-        let r = self % rhs;
-        if r < 0.0 { r + rhs.abs() } else { r }
+        if rhs.is_infinite() {
+            if self.is_infinite() || self.is_nan() {
+                return f64::NAN;
+            } else {
+                return self;
+            }
+        }
+        // FIXME(#133755): Though `self % rhs` is documented to be
+        // equivalent to this, it is not, and the distinction matters
+        // here.
+        let r = self - rhs * (self / rhs).trunc();
+        if r < 0.0 {
+            return if rhs > 0.0 { r + rhs } else { r - rhs };
+        }
+        r
     }
 
     /// Raises a number to an integer power.

@@ -309,8 +309,21 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn rem_euclid(self, rhs: f16) -> f16 {
-        let r = self % rhs;
-        if r < 0.0 { r + rhs.abs() } else { r }
+        if rhs.is_infinite() {
+            if self.is_infinite() || self.is_nan() {
+                return f16::NAN;
+            } else {
+                return self;
+            }
+        }
+        // FIXME(#133755): Though `self % rhs` is documented to be
+        // equivalent to this, it is not, and the distinction matters
+        // here.
+        let r = self - rhs * (self / rhs).trunc();
+        if r < 0.0 {
+            return if rhs > 0.0 { r + rhs } else { r - rhs };
+        }
+        r
     }
 
     /// Raises a number to an integer power.
