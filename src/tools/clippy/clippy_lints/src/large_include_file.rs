@@ -96,7 +96,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
             && let AttrKind::Normal(ref normal) = attr.kind
             && let Some(doc) = attr.doc_str()
             && doc.as_str().len() as u64 > self.max_file_size
-            && let AttrArgs::Eq { value: AttrArgsEq::Hir(ref meta), .. } = normal.item.args
+            && let AttrArgs::Eq { expr: AttrArgsEq::Hir(ref meta), .. } = normal.item.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the
             // whole attribute snippet and then modify for our suggestion.

@@ -1273,7 +1273,7 @@ pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -
     match args {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(_args) => {}
-        AttrArgs::Eq { value, .. } => try_visit!(visitor.visit_expr(value.unwrap_ast())),
+        AttrArgs::Eq { expr, .. } => try_visit!(visitor.visit_expr(expr.unwrap_ast())),
     }
     V::Result::output()
 }

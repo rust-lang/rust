@@ -889,8 +889,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            &AttrArgs::Eq { eq_span, ref value } => {
-                let expr = value.unwrap_ast();
+            &AttrArgs::Eq { eq_span, ref expr } => {
+                let expr = expr.unwrap_ast();
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ExprKind::Lit(token_lit) = expr.kind
@@ -906,7 +906,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq { eq_span, value: AttrArgsEq::Hir(lit) }
+                AttrArgs::Eq { eq_span, expr: AttrArgsEq::Hir(lit) }
             }
         }
     }

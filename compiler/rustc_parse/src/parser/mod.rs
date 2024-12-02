@@ -1376,7 +1376,7 @@ impl<'a> Parser<'a> {
             AttrArgs::Delimited(args)
         } else if self.eat(&token::Eq) {
             let eq_span = self.prev_token.span;
-            AttrArgs::Eq { eq_span, value: AttrArgsEq::Ast(self.parse_expr_force_collect()?) }
+            AttrArgs::Eq { eq_span, expr: AttrArgsEq::Ast(self.parse_expr_force_collect()?) }
         } else {
             AttrArgs::Empty
         })

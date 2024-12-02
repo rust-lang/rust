@@ -639,7 +639,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq { eq_span, value } => eq_span.to(value.span()),
+                    AttrArgs::Eq { eq_span, expr } => eq_span.to(expr.span()),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {

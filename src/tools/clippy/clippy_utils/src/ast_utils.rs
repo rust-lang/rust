@@ -872,8 +872,8 @@ pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
     match (l, r) {
         (Empty, Empty) => true,
         (Delimited(la), Delimited(ra)) => eq_delim_args(la, ra),
-        (Eq { value: AttrArgsEq::Ast(le), .. }, Eq{ value: AttrArgsEq::Ast(re), .. }) => eq_expr(le, re),
-        (Eq { value: AttrArgsEq::Hir(ll), .. }, Eq{ value: AttrArgsEq::Hir(rl), .. }) => ll.kind == rl.kind,
+        (Eq { expr: AttrArgsEq::Ast(le), .. }, Eq{ expr: AttrArgsEq::Ast(re), .. }) => eq_expr(le, re),
+        (Eq { expr: AttrArgsEq::Hir(ll), .. }, Eq{ expr: AttrArgsEq::Hir(rl), .. }) => ll.kind == rl.kind,
         _ => false,
     }
 }
