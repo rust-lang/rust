@@ -25,6 +25,12 @@ LL | const C: S = unsafe { std::mem::transmute(()) };
    = note: source type: `()` (0 bits)
    = note: target type: `S` (size can vary because of [u8])
 
+note: erroneous constant encountered
+  --> $DIR/base-layout-is-sized-ice-123078.rs:13:5
+   |
+LL |     C;
+   |     ^
+
 error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0277, E0512.

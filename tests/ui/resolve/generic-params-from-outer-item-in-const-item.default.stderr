@@ -29,6 +29,20 @@ LL |     const _: u32 = T::C;
    |
    = note: a `const` is a separate item from the item that contains it
 
+note: erroneous constant encountered
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:22:9
+   |
+LL |         I
+   |         ^
+
+note: erroneous constant encountered
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:22:9
+   |
+LL |         I
+   |         ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0401`.
