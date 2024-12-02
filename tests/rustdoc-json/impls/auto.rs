@@ -4,6 +4,9 @@
 #[lang = "sized"]
 trait Sized {}
 
+// These lines are here to ensure line numbers don't change in this
+// temporary PR.
+
 pub auto trait Bar {}
 
 /// has span
