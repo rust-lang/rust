@@ -1,7 +1,7 @@
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
-use rustc_ast::util::parser::AssocOp;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node};
 use rustc_hir_typeck::cast::check_cast;
@@ -44,8 +44,7 @@ pub(super) fn check<'tcx>(
     };
 
     if let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
-        && parent.precedence()
-            > i8::try_from(AssocOp::As.precedence()).expect("AssocOp always returns a precedence < 128")
+        && parent.precedence() > ExprPrecedence::Cast
     {
         sugg = format!("({sugg})");
     }

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{AssocOp, PREC_CLOSURE, PREC_JUMP, PREC_PREFIX, PREC_UNAMBIGUOUS};
+use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
     LitKind, TraitObjectSyntax, UintTy,
@@ -1695,22 +1695,22 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(&self) -> i8 {
+    pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Closure { .. } => PREC_CLOSURE,
+            ExprKind::Closure { .. } => ExprPrecedence::Closure,
 
             ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
-            | ExprKind::Become(..) => PREC_JUMP,
+            | ExprKind::Become(..) => ExprPrecedence::Jump,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence() as i8,
-            ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
+            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
             ExprKind::AddrOf(..)
@@ -1719,7 +1719,7 @@ impl Expr<'_> {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
-            | ExprKind::Unary(..) => PREC_PREFIX,
+            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Never need parens
             ExprKind::Array(_)
@@ -1740,7 +1740,7 @@ impl Expr<'_> {
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
-            | ExprKind::Err(_) => PREC_UNAMBIGUOUS,
+            | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
         }

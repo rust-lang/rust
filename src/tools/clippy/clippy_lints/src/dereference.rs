@@ -7,7 +7,7 @@ use clippy_utils::{
     peel_middle_ty_refs,
 };
 use core::mem;
-use rustc_ast::util::parser::{PREC_PREFIX, PREC_UNAMBIGUOUS};
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -963,7 +963,7 @@ fn report<'tcx>(
             // expr_str (the suggestion) is never shown if is_final_ufcs is true, since it's
             // `expr.kind == ExprKind::Call`. Therefore, this is, afaik, always unnecessary.
             /*
-            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < PREC_PREFIX {
+            expr_str = if !expr_is_macro_call && is_final_ufcs && expr.precedence() < ExprPrecedence::Prefix {
                 Cow::Owned(format!("({expr_str})"))
             } else {
                 expr_str
@@ -999,13 +999,13 @@ fn report<'tcx>(
                 data.first_expr.span,
                 state.msg,
                 |diag| {
-                    let (precedence, calls_field) = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
+                    let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
                         Node::Expr(e) => match e.kind {
-                            ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
-                            ExprKind::Call(..) => (PREC_UNAMBIGUOUS, matches!(expr.kind, ExprKind::Field(..))),
-                            _ => (e.precedence(), false),
+                            ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
+                            ExprKind::Call(..) => expr.precedence() < ExprPrecedence::Unambiguous || matches!(expr.kind, ExprKind::Field(..)),
+                            _ => expr.precedence() < e.precedence(),
                         },
-                        _ => (0, false),
+                        _ => false,
                     };
                     let is_in_tuple = matches!(
                         get_parent_expr(cx, data.first_expr),
@@ -1016,7 +1016,7 @@ fn report<'tcx>(
                     );
 
                     let sugg = if !snip_is_macro
-                        && (calls_field || expr.precedence() < precedence)
+                        && needs_paren
                         && !has_enclosing_paren(&snip)
                         && !is_in_tuple
                     {
@@ -1049,16 +1049,16 @@ fn report<'tcx>(
                 }
             }
 
-            let (prefix, precedence) = match mutability {
+            let (prefix, needs_paren) = match mutability {
                 Some(mutability) if !ty.is_ref() => {
                     let prefix = match mutability {
                         Mutability::Not => "&",
                         Mutability::Mut => "&mut ",
                     };
-                    (prefix, PREC_PREFIX)
+                    (prefix, expr.precedence() < ExprPrecedence::Prefix)
                 },
-                None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", 0),
-                _ => ("", 0),
+                None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
+                _ => ("", false),
             };
             span_lint_hir_and_then(
                 cx,
@@ -1070,7 +1070,7 @@ fn report<'tcx>(
                     let mut app = Applicability::MachineApplicable;
                     let (snip, snip_is_macro) =
                         snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
-                    let sugg = if !snip_is_macro && expr.precedence() < precedence && !has_enclosing_paren(&snip) {
+                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) {
                         format!("{prefix}({snip})")
                     } else {
                         format!("{prefix}{snip}")
@@ -1157,7 +1157,7 @@ impl<'tcx> Dereferencing<'tcx> {
                         },
                         Some(parent) if !parent.span.from_expansion() => {
                             // Double reference might be needed at this point.
-                            if parent.precedence() == PREC_UNAMBIGUOUS {
+                            if parent.precedence() == ExprPrecedence::Unambiguous {
                                 // Parentheses would be needed here, don't lint.
                                 *outer_pat = None;
                             } else {

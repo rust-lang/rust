@@ -10,7 +10,7 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{self, AssocOp, Fixity};
+use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
@@ -1125,12 +1125,12 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-        let prec = match func.kind {
-            hir::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
-            _ => parser::PREC_UNAMBIGUOUS,
+        let needs_paren = match func.kind {
+            hir::ExprKind::Field(..) => true,
+            _ => func.precedence() < ExprPrecedence::Unambiguous,
         };
 
-        self.print_expr_cond_paren(func, func.precedence() < prec);
+        self.print_expr_cond_paren(func, needs_paren);
         self.print_call_post(args)
     }
 
@@ -1141,7 +1141,7 @@ impl<'a> State<'a> {
         args: &[hir::Expr<'_>],
     ) {
         let base_args = args;
-        self.print_expr_cond_paren(receiver, receiver.precedence() < parser::PREC_UNAMBIGUOUS);
+        self.print_expr_cond_paren(receiver, receiver.precedence() < ExprPrecedence::Unambiguous);
         self.word(".");
         self.print_ident(segment.ident);
 
@@ -1155,37 +1155,38 @@ impl<'a> State<'a> {
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
         let assoc_op = AssocOp::from_ast_binop(op.node);
-        let prec = assoc_op.precedence() as i8;
-        let fixity = assoc_op.fixity();
+        let binop_prec = assoc_op.precedence();
+        let left_prec = lhs.precedence();
+        let right_prec = rhs.precedence();
 
-        let (left_prec, right_prec) = match fixity {
-            Fixity::Left => (prec, prec + 1),
-            Fixity::Right => (prec + 1, prec),
-            Fixity::None => (prec + 1, prec + 1),
+        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+            Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
+            Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
+            Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
         };
 
-        let left_prec = match (&lhs.kind, op.node) {
+        match (&lhs.kind, op.node) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
             (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Lt | hir::BinOpKind::Shl) => {
-                parser::PREC_FORCE_PAREN
+                left_needs_paren = true;
             }
-            (&hir::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(prec) => {
-                parser::PREC_FORCE_PAREN
+            (&hir::ExprKind::Let { .. }, _) if !parser::needs_par_as_let_scrutinee(binop_prec) => {
+                left_needs_paren = true;
             }
-            _ => left_prec,
-        };
+            _ => {}
+        }
 
-        self.print_expr_cond_paren(lhs, lhs.precedence() < left_prec);
+        self.print_expr_cond_paren(lhs, left_needs_paren);
         self.space();
         self.word_space(op.node.as_str());
-        self.print_expr_cond_paren(rhs, rhs.precedence() < right_prec)
+        self.print_expr_cond_paren(rhs, right_needs_paren);
     }
 
     fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr<'_>) {
         self.word(op.as_str());
-        self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_PREFIX)
+        self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Prefix);
     }
 
     fn print_expr_addr_of(
@@ -1202,7 +1203,7 @@ impl<'a> State<'a> {
                 self.print_mutability(mutability, true);
             }
         }
-        self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_PREFIX)
+        self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Prefix);
     }
 
     fn print_literal(&mut self, lit: &hir::Lit) {
@@ -1340,8 +1341,7 @@ impl<'a> State<'a> {
                 self.print_literal(lit);
             }
             hir::ExprKind::Cast(expr, ty) => {
-                let prec = AssocOp::As.precedence() as i8;
-                self.print_expr_cond_paren(expr, expr.precedence() < prec);
+                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Cast);
                 self.space();
                 self.word_space("as");
                 self.print_type(ty);
@@ -1442,27 +1442,25 @@ impl<'a> State<'a> {
                 self.print_block(blk);
             }
             hir::ExprKind::Assign(lhs, rhs, _) => {
-                let prec = AssocOp::Assign.precedence() as i8;
-                self.print_expr_cond_paren(lhs, lhs.precedence() <= prec);
+                self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
                 self.space();
                 self.word_space("=");
-                self.print_expr_cond_paren(rhs, rhs.precedence() < prec);
+                self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
             }
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
-                let prec = AssocOp::Assign.precedence() as i8;
-                self.print_expr_cond_paren(lhs, lhs.precedence() <= prec);
+                self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
                 self.space();
                 self.word(op.node.as_str());
                 self.word_space("=");
-                self.print_expr_cond_paren(rhs, rhs.precedence() < prec);
+                self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
             }
             hir::ExprKind::Field(expr, ident) => {
-                self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_UNAMBIGUOUS);
+                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Unambiguous);
                 self.word(".");
                 self.print_ident(ident);
             }
             hir::ExprKind::Index(expr, index, _) => {
-                self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_UNAMBIGUOUS);
+                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Unambiguous);
                 self.word("[");
                 self.print_expr(index);
                 self.word("]");
@@ -1476,7 +1474,7 @@ impl<'a> State<'a> {
                 }
                 if let Some(expr) = opt_expr {
                     self.space();
-                    self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_JUMP);
+                    self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
                 }
             }
             hir::ExprKind::Continue(destination) => {
@@ -1490,13 +1488,13 @@ impl<'a> State<'a> {
                 self.word("return");
                 if let Some(expr) = result {
                     self.word(" ");
-                    self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_JUMP);
+                    self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
                 }
             }
             hir::ExprKind::Become(result) => {
                 self.word("become");
                 self.word(" ");
-                self.print_expr_cond_paren(result, result.precedence() < parser::PREC_JUMP);
+                self.print_expr_cond_paren(result, result.precedence() < ExprPrecedence::Jump);
             }
             hir::ExprKind::InlineAsm(asm) => {
                 self.word("asm!");
@@ -1521,7 +1519,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Yield(expr, _) => {
                 self.word_space("yield");
-                self.print_expr_cond_paren(expr, expr.precedence() < parser::PREC_JUMP);
+                self.print_expr_cond_paren(expr, expr.precedence() < ExprPrecedence::Jump);
             }
             hir::ExprKind::Err(_) => {
                 self.popen();
