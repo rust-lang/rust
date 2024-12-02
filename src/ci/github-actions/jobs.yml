@@ -338,6 +338,7 @@ auto:
         --set rust.jemalloc
         --set llvm.ninja=false
         --set rust.lto=thin
+        --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
