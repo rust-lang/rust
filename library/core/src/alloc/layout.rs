@@ -179,6 +179,7 @@ impl Layout {
     /// or other unsized type like a slice).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+    #[rustc_const_stable_indirect]
     #[must_use]
     #[inline]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
@@ -215,7 +216,6 @@ impl Layout {
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
-    #[rustc_const_unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
     pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller

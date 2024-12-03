@@ -4099,6 +4099,7 @@ pub const fn variant_count<T>() -> usize {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
     unreachable!()
 }
@@ -4114,6 +4115,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(_ptr: *const T) -> usize {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn min_align_of_val<T: ?Sized>(_ptr: *const T) -> usize {
     unreachable!()
 }

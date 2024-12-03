@@ -333,7 +333,7 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_size_of_val", since = "CURRENT_RUSTC_VERSION")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
@@ -390,7 +390,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -485,7 +484,7 @@ pub const fn align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
+#[rustc_const_stable(feature = "const_align_of_val", since = "CURRENT_RUSTC_VERSION")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
@@ -534,7 +533,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[must_use]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
