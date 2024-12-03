@@ -72,7 +72,7 @@ static EXPRS: &[&str] = &[
     "(return) - 2",
     // Closures and jumps have equal precedence.
     "|| return break 2",
-    "return break (|| 2)", // FIXME: no parenthesis needed.
+    "return break || 2",
     // These mean different things.
     "if let _ = true && false {}",
     "if let _ = (true && false) {}",

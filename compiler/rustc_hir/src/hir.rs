@@ -1697,9 +1697,8 @@ pub struct Expr<'hir> {
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Closure { .. } => ExprPrecedence::Closure,
-
             ExprKind::Break(..)
+            | ExprKind::Closure { .. }
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
