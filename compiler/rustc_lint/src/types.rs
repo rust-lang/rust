@@ -743,10 +743,10 @@ enum FfiResult<'tcx> {
 /// Determine if a type is sized or not, and wether it affects references/pointers/boxes to it
 #[derive(Clone, Copy)]
 enum TypeSizedness {
-    /// sized type (pointers are C-compatible)
-    Sized,
+    /// type of definite size (pointers are C-compatible)
+    Definite,
     /// unsized type because it includes an opaque/foreign type (pointers are C-compatible)
-    UnsizedBecauseForeign,
+    UnsizedWithExternType,
     /// unsized type for other reasons (slice, string, dyn Trait, closure, ...) (pointers are not C-compatible)
     UnsizedWithMetadata,
 }
@@ -757,13 +757,13 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
     let tcx = cx.tcx;
 
     if ty.is_sized(tcx, cx.typing_env()) {
-        TypeSizedness::Sized
+        TypeSizedness::Definite
     } else {
         match ty.kind() {
             ty::Slice(_) => TypeSizedness::UnsizedWithMetadata,
             ty::Str => TypeSizedness::UnsizedWithMetadata,
             ty::Dynamic(..) => TypeSizedness::UnsizedWithMetadata,
-            ty::Foreign(..) => TypeSizedness::UnsizedBecauseForeign,
+            ty::Foreign(..) => TypeSizedness::UnsizedWithExternType,
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
             ty::Alias(ty::Opaque, ..) => todo!("We... don't know enough about this type yet?"),
@@ -797,8 +797,8 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                             .unwrap_or(field_ty);
                         match get_type_sizedness(cx, field_ty) {
                             s @ (TypeSizedness::UnsizedWithMetadata
-                            | TypeSizedness::UnsizedBecauseForeign) => s,
-                            TypeSizedness::Sized => {
+                            | TypeSizedness::UnsizedWithExternType) => s,
+                            TypeSizedness::Definite => {
                                 bug!("failed to find the reason why struct `{:?}` is unsized", ty)
                             }
                         }
@@ -816,16 +816,16 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                     .unwrap_or(field_ty);
                 match get_type_sizedness(cx, field_ty) {
                     s @ (TypeSizedness::UnsizedWithMetadata
-                    | TypeSizedness::UnsizedBecauseForeign) => s,
-                    TypeSizedness::Sized => {
+                    | TypeSizedness::UnsizedWithExternType) => s,
+                    TypeSizedness::Definite => {
                         bug!("failed to find the reason why tuple `{:?}` is unsized", ty)
                     }
                 }
             }
-            t => {
+            ty => {
                 bug!(
                     "we shouldn't be trying to determine if this is unsized for a reason or another: `{:?}`",
-                    t
+                    ty
                 )
             }
         }
@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
-                    if let TypeSizedness::UnsizedBecauseForeign | TypeSizedness::Sized =
+                    if let TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite =
                         get_type_sizedness(self.cx, inner_ty)
                     {
                         // discussion on declaration vs definition:
@@ -1340,24 +1340,27 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _) => {
-                if let TypeSizedness::UnsizedBecauseForeign | TypeSizedness::Sized =
+                if let TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite =
                     get_type_sizedness(self.cx, inner_ty)
                 {
-                    // there's a nuance on what this lint should do for function definitions
-                    // (`extern "C" fn fn_name(...) {...}`) versus declarations (`extern "C" {fn fn_name(...);}`).
-                    // (this is touched upon in https://github.com/rust-lang/rust/issues/66220
-                    // and https://github.com/rust-lang/rust/pull/72700)
+                    // there's a nuance on what this lint should do for
+                    // function definitions (`extern "C" fn fn_name(...) {...}`)
+                    // versus declarations (`unsafe extern "C" {fn fn_name(...);}`).
+                    // This is touched upon in https://github.com/rust-lang/rust/issues/66220
+                    // and https://github.com/rust-lang/rust/pull/72700
                     //
                     // The big question is: what does "ABI safety" mean? if you have something translated to a C pointer
                     // (which has a stable layout) but points to FFI-unsafe type, is it safe?
-                    // on one hand, the function's ABI will match that of a similar C-declared function API,
-                    // on the other, dereferencing the pointer in not-rust will be painful.
-                    // In this code, the opinion is split between function declarations and function definitions.
+                    // On one hand, the function's ABI will match that of a similar C-declared function API,
+                    // on the other, dereferencing the pointer on the other side of the FFI boundary will be painful.
+                    // In this code, the opinion on is split between function declarations and function definitions,
+                    // with the idea that at least one side of the FFI boundary needs to treat the pointee as an opaque type.
                     // For declarations, we see this as unsafe, but for definitions, we see this as safe.
-                    // This is mostly because, for extern function declarations, the actual definition of the function is written somewhere else,
-                    // so the fact that a pointer's pointee should be treated as opaque to one side or the other can be explicitely written out.
-                    // For extern function definitions, however, both callee and some callers can be written in rust,
-                    // so developers need to keep as much typing information as possible.
+                    //
+                    // For extern function declarations, the actual definition of the function is written somewhere else,
+                    // meaning the declaration is free to express this opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void (opaque callee-side)
+                    // For extern function definitions, however, in the case where the type is opaque caller-side, it is not opaque callee-side,
+                    // and having the full type information is necessary to compile the function.
                     if matches!(self.mode, CItemKind::Definition) {
                         return FfiSafe;
                     } else if matches!(ty.kind(), ty::RawPtr(..))

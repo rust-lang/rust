@@ -5,7 +5,7 @@ LL | pub extern "C" fn slice_type(p: &[u32]) { }
    |                                 ^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer to the slice's first element (and a length) instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 note: the lint level is defined here
   --> $DIR/lint-ctypes-fn.rs:2:9
    |
@@ -19,7 +19,7 @@ LL | pub extern "C" fn str_type(p: &str) { }
    |                               ^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:80:34
@@ -28,7 +28,7 @@ LL | pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
    |                                  ^^^^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer to the slice's first element (and a length) instead
-   = note: this box for an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<str>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:83:35
@@ -37,7 +37,7 @@ LL | pub extern "C" fn boxed_string(p: Box<str>) { }
    |                                   ^^^^^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: this box for an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn Trait>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:86:34
@@ -45,7 +45,7 @@ error: `extern` fn uses type `Box<dyn Trait>`, which is not FFI-safe
 LL | pub extern "C" fn boxed_trait(p: Box<dyn Trait>) { }
    |                                  ^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: this box for an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `char`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:89:32
@@ -158,7 +158,7 @@ LL | pub extern "C" fn transparent_str(p: TransparentStr) { }
    |                                      ^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:172:43

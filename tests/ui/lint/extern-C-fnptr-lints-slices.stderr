@@ -6,7 +6,7 @@ LL | pub type F = extern "C" fn(&[u8]);
    |
    = note: the function pointer to `for<'a> extern "C" fn(&'a [u8])` is FFI-unsafe due to `&[u8]`
    = help: consider using a raw pointer to the slice's first element (and a length) instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 note: the lint level is defined here
   --> $DIR/extern-C-fnptr-lints-slices.rs:1:8
    |

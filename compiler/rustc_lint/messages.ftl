@@ -391,7 +391,7 @@ lint_improper_ctypes_pat_help = consider using the base type instead
 lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 
 lint_improper_ctypes_sized_ptr_to_unsafe_type =
-    this reference (`{$ty}`) is can safely be translated into a C pointer, but `{$inner_ty}` itself is not FFI-safe
+    this reference (`{$ty}`) is ABI-compatible with a C pointer, but `{$inner_ty}` itself does not have a C layout
 
 lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
 
@@ -419,9 +419,9 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
-lint_improper_ctypes_unsized_box = this box for an unsized rust type contains metadata, which makes it incompatible with a C pointer
-lint_improper_ctypes_unsized_ptr = this pointer to an unsized rust type contains metadata, which makes it incompatible with a C pointer
-lint_improper_ctypes_unsized_ref = this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_box = this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ptr = this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ref = this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 lint_incomplete_include =
     include macro expected single expression in source

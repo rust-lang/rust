@@ -4,7 +4,7 @@ error: `extern` block uses type `Foo`, which is not FFI-safe
 LL |     pub fn ptr_type1(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
    |
-   = note: this reference (`*const Foo`) is can safely be translated into a C pointer, but `Foo` itself is not FFI-safe
+   = note: this reference (`*const Foo`) is ABI-compatible with a C pointer, but `Foo` itself does not have a C layout
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -24,7 +24,7 @@ error: `extern` block uses type `Foo`, which is not FFI-safe
 LL |     pub fn ptr_type2(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
    |
-   = note: this reference (`*const Foo`) is can safely be translated into a C pointer, but `Foo` itself is not FFI-safe
+   = note: this reference (`*const Foo`) is ABI-compatible with a C pointer, but `Foo` itself does not have a C layout
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -39,7 +39,7 @@ error: `extern` block uses type `((),)`, which is not FFI-safe
 LL |     pub fn ptr_tuple(p: *const ((),));
    |                         ^^^^^^^^^^^^ not FFI-safe
    |
-   = note: this reference (`*const ((),)`) is can safely be translated into a C pointer, but `((),)` itself is not FFI-safe
+   = note: this reference (`*const ((),)`) is ABI-compatible with a C pointer, but `((),)` itself does not have a C layout
    = help: consider using a struct instead
    = note: tuples have unspecified layout
 
@@ -50,7 +50,7 @@ LL |     pub fn slice_type(p: &[u32]);
    |                          ^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer to the slice's first element (and a length) instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `&str`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:65:24
@@ -59,7 +59,7 @@ LL |     pub fn str_type(p: &str);
    |                        ^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `char`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:68:25
@@ -92,7 +92,7 @@ error: `extern` block uses type `&dyn Bar`, which is not FFI-safe
 LL |     pub fn trait_type(p: &dyn Bar);
    |                          ^^^^^^^^ not FFI-safe
    |
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:72:26
@@ -180,7 +180,7 @@ LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `[u8; 8]`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:85:27
@@ -197,7 +197,7 @@ error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-saf
 LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: this reference to an unsized rust type contains metadata, which makes it incompatible with a C pointer
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:90:26

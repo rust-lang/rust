@@ -4,7 +4,7 @@ error: `extern` block uses type `Qux`, which is not FFI-safe
 LL |     fn lint_me() -> A<()>;
    |                     ^^^^^ not FFI-safe
    |
-   = note: this reference (`&Qux`) is can safely be translated into a C pointer, but `Qux` itself is not FFI-safe
+   = note: this reference (`&Qux`) is ABI-compatible with a C pointer, but `Qux` itself does not have a C layout
    = note: opaque types have no C equivalent
 note: the lint level is defined here
   --> $DIR/lint-ctypes-73249-2.rs:2:9
