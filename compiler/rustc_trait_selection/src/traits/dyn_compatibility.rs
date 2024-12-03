@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
-use rustc_span::symbol::Symbol;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -679,7 +678,7 @@ fn receiver_is_dispatchable<'tcx>(
     // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
-        Ty::new_param(tcx, u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+        Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =
