@@ -265,6 +265,27 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
+    /// `cfg` and `cfg_attr` gets replaced with an inert `rustc_cfg_placeholder` to keep the
+    /// attribute "spot" in the AST. This allows suggestions to remove an item to provide a
+    /// correct suggestion when `#[cfg_attr]`s are present.
+    fn mk_placeholder(&self, cfg_attr: &ast::Attribute) -> ast::Attribute {
+        let item = ast::AttrItem {
+            unsafety: ast::Safety::Default,
+            path: ast::Path::from_ident(rustc_span::symbol::Ident::with_dummy_span(
+                sym::rustc_cfg_placeholder,
+            )),
+            args: ast::AttrArgs::Empty,
+            tokens: None,
+        };
+        let kind = ast::AttrKind::Normal(P(ast::NormalAttr { item, tokens: None }));
+        ast::Attribute {
+            kind,
+            id: self.sess.psess.attr_id_generator.mk_attr_id(),
+            style: cfg_attr.style,
+            span: cfg_attr.span,
+        }
+    }
+
     /// Parse and expand a single `cfg_attr` attribute into a list of attributes
     /// when the configuration predicate is true, or otherwise expand into an
     /// empty list of attributes.
@@ -278,7 +299,7 @@ impl<'a> StripUnconfigured<'a> {
         let Some((cfg_predicate, expanded_attrs)) =
             rustc_parse::parse_cfg_attr(cfg_attr, &self.sess.psess)
         else {
-            return vec![];
+            return vec![self.mk_placeholder(cfg_attr)];
         };
 
         // Lint on zero attributes in source.
@@ -292,25 +313,7 @@ impl<'a> StripUnconfigured<'a> {
         }
 
         if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
-            // `cfg` and `cfg_attr` gets replaced with an inert `rustc_cfg_placeholder` to keep the
-            // attribute "spot" in the AST. This allows suggestions to remove an item to provide a
-            // correct suggestion when `#[cfg_attr]`s are present.
-            let item = ast::AttrItem {
-                unsafety: ast::Safety::Default,
-                path: ast::Path::from_ident(rustc_span::symbol::Ident::with_dummy_span(
-                    sym::rustc_cfg_placeholder,
-                )),
-                args: ast::AttrArgs::Empty,
-                tokens: None,
-            };
-            let kind = ast::AttrKind::Normal(P(ast::NormalAttr { item, tokens: None }));
-            let attr: ast::Attribute = ast::Attribute {
-                kind,
-                id: self.sess.psess.attr_id_generator.mk_attr_id(),
-                style: ast::AttrStyle::Outer,
-                span: cfg_attr.span,
-            };
-            return vec![attr];
+            return vec![self.mk_placeholder(cfg_attr)];
         }
 
         if recursive {
