@@ -392,14 +392,14 @@ impl StepDescription {
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-                println!("Skipping {pathset:?} because it is excluded");
+                eprintln!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
 
         if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
             builder.verbose(|| {
-                println!(
+                eprintln!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
                 )
@@ -1437,11 +1437,11 @@ impl<'a> Builder<'a> {
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, || eprintln!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, || eprintln!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -1462,7 +1462,7 @@ impl<'a> Builder<'a> {
             let step_string = format!("{step:?}");
             let brace_index = step_string.find('{').unwrap_or(0);
             let type_string = type_name::<S>();
-            println!(
+            eprintln!(
                 "[TIMING] {} {} -- {}.{:03}",
                 &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
                 &step_string[brace_index..],
@@ -1479,7 +1479,9 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose_than(1, || {
+            eprintln!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step)
+        });
         self.cache.put(step, out.clone());
         out
     }

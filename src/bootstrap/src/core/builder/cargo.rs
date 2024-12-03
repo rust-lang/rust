@@ -523,7 +523,7 @@ impl Builder<'_> {
 
         let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
         if self.is_verbose() && !matches!(self.config.dry_run, DryRun::SelfCheck) {
-            println!("using sysroot {sysroot_str}");
+            eprintln!("using sysroot {sysroot_str}");
         }
 
         let mut rustflags = Rustflags::new(target);
