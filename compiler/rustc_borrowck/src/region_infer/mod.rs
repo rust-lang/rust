@@ -981,8 +981,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return false;
         };
 
-        debug!("subject = {:?}", subject);
-
         let r_scc = self.constraint_sccs.scc(*lower_bound);
 
         debug!(
@@ -1063,7 +1061,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// variables in the type `T` with an equal universal region from the
     /// closure signature.
     /// This is not always possible, so this is a fallible process.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "debug", skip(self, infcx), ret)]
     fn try_promote_type_test_subject(
         &self,
         infcx: &InferCtxt<'tcx>,
