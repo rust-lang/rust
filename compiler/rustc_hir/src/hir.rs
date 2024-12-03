@@ -1696,9 +1696,15 @@ pub struct Expr<'hir> {
 
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.kind {
+        match &self.kind {
+            ExprKind::Closure(closure) => {
+                match closure.fn_decl.output {
+                    FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
+                    FnRetTy::Return(_) => ExprPrecedence::Unambiguous,
+                }
+            }
+
             ExprKind::Break(..)
-            | ExprKind::Closure { .. }
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
@@ -1741,7 +1747,7 @@ impl Expr<'_> {
             | ExprKind::Type(..)
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
-            ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
+            ExprKind::DropTemps(expr, ..) => expr.precedence(),
         }
     }
 

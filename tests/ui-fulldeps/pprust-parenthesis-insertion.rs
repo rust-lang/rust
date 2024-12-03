@@ -74,7 +74,7 @@ static EXPRS: &[&str] = &[
     "|| return break 2",
     "return break || 2",
     // Closures with a return type have especially high precedence.
-    "(|| -> T { x }) + 1", // FIXME: no parenthesis needed.
+    "|| -> T { x } + 1",
     "(|| { x }) + 1",
     // These mean different things.
     "if let _ = true && false {}",

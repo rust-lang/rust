@@ -1316,9 +1316,15 @@ impl Expr {
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.kind {
+        match &self.kind {
+            ExprKind::Closure(closure) => {
+                match closure.fn_decl.output {
+                    FnRetTy::Default(_) => ExprPrecedence::Jump,
+                    FnRetTy::Ty(_) => ExprPrecedence::Unambiguous,
+                }
+            }
+
             ExprKind::Break(..)
-            | ExprKind::Closure(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
