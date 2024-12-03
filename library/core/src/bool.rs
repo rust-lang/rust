@@ -54,6 +54,7 @@ impl bool {
     /// // `then`.
     /// assert_eq!(a, 1);
     /// ```
+    #[doc(alias = "then_with")]
     #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "bool_then")]
     #[inline]
