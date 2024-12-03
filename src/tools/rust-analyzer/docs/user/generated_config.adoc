@@ -992,11 +992,6 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
-[[rust-analyzer.typing.autoClosingAngleBrackets.enable]]rust-analyzer.typing.autoClosingAngleBrackets.enable (default: `false`)::
-+
---
-Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
---
 [[rust-analyzer.typing.excludeChars]]rust-analyzer.typing.excludeChars (default: `null`)::
 +
 --

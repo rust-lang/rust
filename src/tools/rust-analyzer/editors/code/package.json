@@ -2605,16 +2605,6 @@
             {
                 "title": "typing",
                 "properties": {
-                    "rust-analyzer.typing.autoClosingAngleBrackets.enable": {
-                        "markdownDescription": "Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.",
-                        "default": false,
-                        "type": "boolean"
-                    }
-                }
-            },
-            {
-                "title": "typing",
-                "properties": {
                     "rust-analyzer.typing.excludeChars": {
                         "markdownDescription": "Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`. Setting this to a string will disable typing assists for the specified characters.",
                         "default": null,
