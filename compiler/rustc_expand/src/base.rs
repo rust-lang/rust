@@ -870,13 +870,13 @@ impl SyntaxExtension {
         let body_stability = attr::find_body_stability(sess, attrs);
         if let Some((_, sp)) = const_stability {
             sess.dcx().emit_err(errors::MacroConstStability {
-                span: sp,
+                spans: sp.spans(),
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
         if let Some((_, sp)) = body_stability {
             sess.dcx().emit_err(errors::MacroBodyStability {
-                span: sp,
+                spans: sp.spans(),
                 head_span: sess.source_map().guess_head_span(span),
             });
         }

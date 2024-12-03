@@ -3326,6 +3326,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "smallvec",
 ]
 
 [[package]]
@@ -3498,6 +3499,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_type_ir",
+ "smallvec",
  "tracing",
 ]
 
@@ -3675,6 +3677,7 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
+ "either",
  "rustc_data_structures",
  "rustc_span",
  "serde",
@@ -4212,6 +4215,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "smallvec",
  "tracing",
 ]
 

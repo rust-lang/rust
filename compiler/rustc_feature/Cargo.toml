@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+either = "1.5.0"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_span = { path = "../rustc_span" }
 serde = { version = "1.0.125", features = [ "derive" ] }

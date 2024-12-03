@@ -21,7 +21,7 @@ pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
 };
 
 pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID);
+    let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID).cloned();
     StabilityPropagator { parent_stability: crate_stability, cx }.fold_crate(cr)
 }
 
@@ -32,8 +32,6 @@ struct StabilityPropagator<'a, 'tcx> {
 
 impl DocFolder for StabilityPropagator<'_, '_> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
-        let parent_stability = self.parent_stability;
-
         let stability = match item.item_id {
             ItemId::DefId(def_id) => {
                 let own_stability = self.cx.tcx.lookup_stability(def_id);
@@ -59,9 +57,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::MacroItem(..)
                     | ItemKind::ProcMacroItem(..)
                     | ItemKind::ConstantItem(..) => {
-                        // If any of the item's parents was stabilized later or is still unstable,
-                        // then use the parent's stability instead.
-                        merge_stability(own_stability, parent_stability)
+                        merge_stability(own_stability, self.parent_stability.as_ref())
                     }
 
                     // Don't inherit the parent's stability for these items, because they
@@ -74,7 +70,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::TyAssocTypeItem(..)
                     | ItemKind::AssocTypeItem(..)
                     | ItemKind::PrimitiveItem(..)
-                    | ItemKind::KeywordItem => own_stability,
+                    | ItemKind::KeywordItem => own_stability.cloned(),
 
                     ItemKind::StrippedItem(..) => unreachable!(),
                 }
@@ -85,8 +81,8 @@ impl DocFolder for StabilityPropagator<'_, '_> {
             }
         };
 
-        item.inner.stability = stability;
-        self.parent_stability = stability;
+        item.inner.stability = stability.clone();
+        let parent_stability = std::mem::replace(&mut self.parent_stability, stability);
         let item = self.fold_item_recur(item);
         self.parent_stability = parent_stability;
 
@@ -95,18 +91,43 @@ impl DocFolder for StabilityPropagator<'_, '_> {
 }
 
 fn merge_stability(
-    own_stability: Option<Stability>,
-    parent_stability: Option<Stability>,
+    own_stability: Option<&Stability>,
+    parent_stability: Option<&Stability>,
 ) -> Option<Stability> {
     if let Some(own_stab) = own_stability
-        && let StabilityLevel::Stable { since: own_since, allowed_through_unstable_modules: false } =
-            own_stab.level
         && let Some(parent_stab) = parent_stability
-        && (parent_stab.is_unstable()
-            || parent_stab.stable_since().is_some_and(|parent_since| parent_since > own_since))
     {
-        parent_stability
+        match own_stab.level {
+            // If any of a stable item's parents were stabilized later or are still unstable,
+            // then use the parent's stability instead.
+            StabilityLevel::Stable {
+                since: own_since,
+                allowed_through_unstable_modules: false,
+                ..
+            } if parent_stab.is_unstable()
+                || parent_stab
+                    .stable_since()
+                    .is_some_and(|parent_since| parent_since > own_since) =>
+            {
+                parent_stability.cloned()
+            }
+
+            // If any of an unstable item's parents depend on other unstable features,
+            // then use those as well.
+            StabilityLevel::Unstable { unstables: ref own_gates, reason, is_soft }
+                if let StabilityLevel::Unstable { unstables: parent_gates, .. } =
+                    &parent_stab.level =>
+            {
+                let missing_unstables = parent_gates
+                    .iter()
+                    .filter(|p| !own_gates.iter().any(|u| u.feature == p.feature));
+                let unstables = own_gates.iter().chain(missing_unstables).cloned().collect();
+                Some(Stability { level: StabilityLevel::Unstable { unstables, reason, is_soft } })
+            }
+
+            _ => own_stability.cloned(),
+        }
     } else {
-        own_stability
+        own_stability.cloned()
     }
 }

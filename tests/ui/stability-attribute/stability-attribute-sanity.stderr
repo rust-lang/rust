@@ -76,22 +76,22 @@ error[E0543]: missing 'note'
 LL |     #[deprecated(since = "5.5.5")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0544]: multiple stability levels
+error[E0544]: multiple stability levels for feature `a`
   --> $DIR/stability-attribute-sanity.rs:49:1
    |
 LL | #[stable(feature = "a", since = "4.4.4")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0544]: multiple stability levels
+error[E0544]: multiple stability levels for feature `b`
   --> $DIR/stability-attribute-sanity.rs:53:1
    |
 LL | #[unstable(feature = "b", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0544]: multiple stability levels
+error[E0544]: multiple stability levels for feature `c`
   --> $DIR/stability-attribute-sanity.rs:57:1
    |
-LL | #[stable(feature = "a", since = "4.4.4")]
+LL | #[stable(feature = "c", since = "4.4.4")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: 'since' must be a Rust version number, such as "1.31.0"
@@ -100,7 +100,7 @@ error: 'since' must be a Rust version number, such as "1.31.0"
 LL | #[stable(feature = "e", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0544]: multiple stability levels
+error[E0544]: multiple stability levels for feature `d`
   --> $DIR/stability-attribute-sanity.rs:64:1
    |
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
@@ -118,13 +118,19 @@ error[E0549]: deprecated attribute must be paired with either stable or unstable
 LL | #[deprecated(since = "5.5.5", note = "text")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0711]: feature `c` is declared stable, but was previously declared unstable
+  --> $DIR/stability-attribute-sanity.rs:57:1
+   |
+LL | #[stable(feature = "c", since = "4.4.4")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since 4.4.4
   --> $DIR/stability-attribute-sanity.rs:67:1
    |
 LL | #[stable(feature = "a", since = "1.0.0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 
 Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0711.
 For more information about an error, try `rustc --explain E0539`.

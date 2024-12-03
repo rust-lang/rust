@@ -294,37 +294,29 @@ fn default_body_is_unstable(
     tcx: TyCtxt<'_>,
     impl_span: Span,
     item_did: DefId,
-    feature: Symbol,
+    features: Vec<Symbol>,
     reason: Option<Symbol>,
-    issue: Option<NonZero<u32>>,
+    issues: Vec<NonZero<u32>>,
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
-    let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
-    match reason {
-        Some(r) => {
-            some_note = true;
-            reason_str = r.to_string();
-        }
-        None => none_note = true,
-    };
+    let reason_str = reason.map_or(String::new(), |r| r.to_string());
 
     let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
         span: impl_span,
-        some_note,
-        none_note,
         missing_item_name,
-        feature,
+        features: features.clone().into(),
+        feature_count: features.len(),
         reason: reason_str,
     });
 
     let inject_span = item_did
         .as_local()
         .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
-    rustc_session::parse::add_feature_diagnostics_for_issue(
+    rustc_session::parse::add_feature_diagnostics_for_issues(
         &mut err,
         &tcx.sess,
-        feature,
-        rustc_feature::GateIssue::Library(issue),
+        &features,
+        rustc_feature::GateIssues::Library(issues),
         false,
         inject_span,
     );

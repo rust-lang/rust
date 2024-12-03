@@ -432,10 +432,8 @@ pub(crate) fn build_impl(
     let associated_trait = tcx.impl_trait_ref(did).map(ty::EarlyBinder::skip_binder);
 
     // Do not inline compiler-internal items unless we're a compiler-internal crate.
-    let is_compiler_internal = |did| {
-        tcx.lookup_stability(did)
-            .is_some_and(|stab| stab.is_unstable() && stab.feature == sym::rustc_private)
-    };
+    let is_compiler_internal =
+        |did| tcx.lookup_stability(did).is_some_and(|stab| stab.is_rustc_private());
     let document_compiler_internal = is_compiler_internal(LOCAL_CRATE.as_def_id());
     let is_directly_public = |cx: &mut DocContext<'_>, did| {
         cx.cache.effective_visibilities.is_directly_public(tcx, did)

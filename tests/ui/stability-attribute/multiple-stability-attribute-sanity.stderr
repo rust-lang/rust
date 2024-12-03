@@ -1,0 +1,36 @@
+error: multiple reasons provided for unstability
+  --> $DIR/multiple-stability-attribute-sanity.rs:8:1
+   |
+LL | #[unstable(feature = "b", issue = "none", reason = "reason 2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple reasons provided for unstability
+  --> $DIR/multiple-stability-attribute-sanity.rs:12:1
+   |
+LL | #[unstable(feature = "b", issue = "none", reason = "reason 2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple reasons provided for unstability
+  --> $DIR/multiple-stability-attribute-sanity.rs:13:1
+   |
+LL | #[unstable(feature = "c", issue = "none", reason = "reason 3")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `soft` must be present on either none or all of an item's `unstable` attributes
+  --> $DIR/multiple-stability-attribute-sanity.rs:16:1
+   |
+LL | #[unstable(feature = "a", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[unstable(feature = "b", issue = "none", soft)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `soft` must be present on either none or all of an item's `unstable` attributes
+  --> $DIR/multiple-stability-attribute-sanity.rs:20:1
+   |
+LL | #[unstable(feature = "a", issue = "none", soft)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[unstable(feature = "b", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

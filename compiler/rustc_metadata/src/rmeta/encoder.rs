@@ -1946,7 +1946,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
 
-            Some(ProcMacroData { proc_macro_decls_static, stability, macros })
+            Some(ProcMacroData { proc_macro_decls_static, stability: stability.cloned(), macros })
         } else {
             None
         }

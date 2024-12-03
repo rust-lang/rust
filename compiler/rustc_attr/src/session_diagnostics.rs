@@ -79,6 +79,15 @@ pub(crate) struct MissingNote {
 pub(crate) struct MultipleStabilityLevels {
     #[primary_span]
     pub span: Span,
+
+    pub feature: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_multiple_unstable_reasons)]
+pub(crate) struct MultipleUnstableReasons {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -396,6 +405,13 @@ pub(crate) struct InvalidSince {
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_soft_inconsistent)]
+pub(crate) struct SoftInconsistent {
+    #[primary_span]
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

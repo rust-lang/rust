@@ -24,6 +24,7 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_feature::GateIssues;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -44,7 +45,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
-use crate::parse::{ParseSess, add_feature_diagnostics};
+use crate::parse::{ParseSess, add_feature_diagnostics_for_issues};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
 
@@ -295,12 +296,29 @@ impl Session {
     /// `feature` must be a language feature.
     #[track_caller]
     pub fn create_feature_err<'a>(&'a self, err: impl Diagnostic<'a>, feature: Symbol) -> Diag<'a> {
+        self.create_features_err(err, &[feature])
+    }
+
+    /// `features` must be language features.
+    #[track_caller]
+    pub fn create_features_err<'a>(
+        &'a self,
+        err: impl Diagnostic<'a>,
+        features: &[Symbol],
+    ) -> Diag<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
             #[allow(rustc::diagnostic_outside_of_impl)]
             err.code(E0658);
         }
-        add_feature_diagnostics(&mut err, self, feature);
+        add_feature_diagnostics_for_issues(
+            &mut err,
+            self,
+            features,
+            GateIssues::Language,
+            false,
+            None,
+        );
         err
     }
 

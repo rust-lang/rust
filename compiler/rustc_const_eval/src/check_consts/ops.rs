@@ -18,24 +18,25 @@ use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use super::ConstCx;
 use crate::{errors, fluent_generated};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Status {
     Unstable {
-        /// The feature that must be enabled to use this operation.
-        gate: Symbol,
-        /// Whether the feature gate was already checked (because the logic is a bit more
+        /// The features that must be enabled to use this operation.
+        gates: SmallVec<[Symbol; 1]>,
+        /// Whether the features gate were already checked (because the logic is a bit more
         /// complicated than just checking a single gate).
-        gate_already_checked: bool,
+        gates_already_checked: bool,
         /// Whether it is allowed to use this operation from stable `const fn`.
         /// This will usually be `false`.
         safe_to_expose_on_stable: bool,
         /// We indicate whether this is a function call, since we can use targeted
-        /// diagnostics for "callee is not safe to expose om stable".
+        /// diagnostics for "callee is not safe to expose on stable".
         is_function_call: bool,
     },
     Forbidden,
@@ -84,8 +85,8 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         // We use the `const_trait_impl` gate for all conditionally-const calls.
         Status::Unstable {
-            gate: sym::const_trait_impl,
-            gate_already_checked: false,
+            gates: smallvec![sym::const_trait_impl],
+            gates_already_checked: false,
             safe_to_expose_on_stable: false,
             // We don't want the "mark the callee as `#[rustc_const_stable_indirect]`" hint
             is_function_call: false,
@@ -326,36 +327,47 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
 /// A call to an `#[unstable]` const fn or `#[rustc_const_unstable]` function.
 ///
-/// Contains the name of the feature that would allow the use of this function.
+/// Contains the names of the features that would allow the use of this function.
 #[derive(Debug)]
 pub(crate) struct FnCallUnstable {
     pub def_id: DefId,
-    pub feature: Symbol,
-    /// If this is true, then the feature is enabled, but we need to still check if it is safe to
+    pub features: SmallVec<[Symbol; 1]>,
+    /// If this is true, then the features are enabled, but we need to still check if it is safe to
     /// expose on stable.
-    pub feature_enabled: bool,
+    pub features_enabled: bool,
     pub safe_to_expose_on_stable: bool,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
-            gate: self.feature,
-            gate_already_checked: self.feature_enabled,
+            gates: self.features.clone(),
+            gates_already_checked: self.features_enabled,
             safe_to_expose_on_stable: self.safe_to_expose_on_stable,
             is_function_call: true,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        assert!(!self.feature_enabled);
+        assert!(!self.features_enabled);
         let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
             span,
             def_path: ccx.tcx.def_path_str(self.def_id),
         });
         // FIXME: make this translatable
         #[allow(rustc::untranslatable_diagnostic)]
-        err.help(format!("add `#![feature({})]` to the crate attributes to enable", self.feature));
+        if ccx.tcx.sess.is_nightly_build() {
+            let missing_features = self
+                .features
+                .iter()
+                .filter(|&&feature| !ccx.tcx.features().enabled(feature))
+                .map(|feature| feature.as_str())
+                .intersperse(", ")
+                .collect::<String>();
+            err.help(format!(
+                "add `#![feature({missing_features})]` to the crate attributes to enable",
+            ));
+        }
 
         err
     }
@@ -381,15 +393,15 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
 #[derive(Debug)]
 pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
-    pub feature: Symbol,
+    pub features: SmallVec<[Symbol; 1]>,
     pub const_stable_indirect: bool,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
-            gate: self.feature,
-            gate_already_checked: false,
+            gates: self.features.clone(),
+            gates_already_checked: false,
             safe_to_expose_on_stable: self.const_stable_indirect,
             // We do *not* want to suggest to mark the intrinsic as `const_stable_indirect`,
             // that's not a trivial change!
@@ -398,10 +410,18 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
+        // Only report the features that aren't already enabled.
+        let missing_features = self
+            .features
+            .iter()
+            .filter(|&&feature| !ccx.tcx.features().enabled(feature))
+            .map(|feature| feature.as_str())
+            .intersperse(", ")
+            .collect();
         ccx.dcx().create_err(errors::UnstableIntrinsic {
             span,
             name: self.name,
-            feature: self.feature,
+            feature: missing_features,
         })
     }
 }
@@ -416,8 +436,8 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
         ) = self.0
         {
             Status::Unstable {
-                gate: sym::const_async_blocks,
-                gate_already_checked: false,
+                gates: smallvec![sym::const_async_blocks],
+                gates_already_checked: false,
                 safe_to_expose_on_stable: false,
                 is_function_call: false,
             }
@@ -428,8 +448,10 @@ impl<'tcx> NonConstOp<'tcx> for Coroutine {
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         let msg = format!("{:#}s are not allowed in {}s", self.0, ccx.const_kind());
-        if let Status::Unstable { gate, .. } = self.status_in_item(ccx) {
-            ccx.tcx.sess.create_feature_err(errors::UnallowedOpInConstContext { span, msg }, gate)
+        if let Status::Unstable { gates, .. } = self.status_in_item(ccx) {
+            ccx.tcx
+                .sess
+                .create_features_err(errors::UnallowedOpInConstContext { span, msg }, &gates)
         } else {
             ccx.dcx().create_err(errors::UnallowedOpInConstContext { span, msg })
         }

@@ -9,7 +9,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
+use rustc_error_messages::MultiSpan;
 use rustc_hir::def::Namespace;
 use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -767,7 +767,10 @@ pub enum BuiltinLintDiag {
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
-    UnstableFeature(DiagMessage),
+    SoftUnstableMacro {
+        features: Vec<Symbol>,
+        reason: Option<Symbol>,
+    },
     AvoidUsingIntelSyntax,
     AvoidUsingAttSyntax,
     IncompleteInclude,

@@ -53,7 +53,7 @@ impl SuggestUpgradeCompiler {
 #[derive(Subdiagnostic)]
 #[help(session_feature_diagnostic_help)]
 pub(crate) struct FeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
+    pub(crate) feature: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -63,7 +63,7 @@ pub(crate) struct FeatureDiagnosticHelp {
     code = "#![feature({feature})]\n"
 )]
 pub struct FeatureDiagnosticSuggestion {
-    pub feature: Symbol,
+    pub feature: String,
     #[primary_span]
     pub span: Span,
 }
@@ -71,7 +71,7 @@ pub struct FeatureDiagnosticSuggestion {
 #[derive(Subdiagnostic)]
 #[help(session_cli_feature_diagnostic_help)]
 pub(crate) struct CliFeatureDiagnosticHelp {
-    pub(crate) feature: Symbol,
+    pub(crate) feature: String,
 }
 
 #[derive(Diagnostic)]

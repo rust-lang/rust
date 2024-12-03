@@ -55,6 +55,12 @@ pub mod unstable {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn foo() {}
     }
+
+    //@ has stability/unstable/fn.nested_unstable.html \
+    //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
+    //      'This is a nightly-only experimental API. (test, unstable)'
+    #[unstable(feature = "test", issue = "none")]
+    pub fn nested_unstable() {}
 }
 
 #[unstable(feature = "unstable", issue = "none")]
@@ -169,3 +175,11 @@ mod prim_i32 {}
 /// We currently don't document stability for keywords, but let's test it anyway.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod if_keyword {}
+
+#[unstable(feature = "test", issue = "none")]
+#[unstable(feature = "test2", issue = "none")]
+pub trait UnstableTraitWithMultipleFeatures {
+    //@ has stability/trait.UnstableTraitWithMultipleFeatures.html \
+    //      '//span[@class="item-info"]//div[@class="stab unstable"]' \
+    //      'This is a nightly-only experimental API. (test, test2)'
+}

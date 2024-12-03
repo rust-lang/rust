@@ -59,6 +59,13 @@ impl<'tcx, T: ArenaAllocatable<'tcx>> ProcessQueryValue<'tcx, &'tcx T> for Optio
     }
 }
 
+impl<'tcx, T: ArenaAllocatable<'tcx>> ProcessQueryValue<'tcx, Option<&'tcx T>> for Option<T> {
+    #[inline(always)]
+    fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> Option<&'tcx T> {
+        self.map(|value| tcx.arena.alloc(value) as &_)
+    }
+}
+
 impl<T, E> ProcessQueryValue<'_, Result<Option<T>, E>> for Option<T> {
     #[inline(always)]
     fn process_decoded(self, _tcx: TyCtxt<'_>, _err: impl Fn() -> !) -> Result<Option<T>, E> {

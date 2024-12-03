@@ -83,7 +83,10 @@ attr_multiple_item =
     multiple '{$item}' items
 
 attr_multiple_stability_levels =
-    multiple stability levels
+    multiple stability levels for feature `{$feature}`
+
+attr_multiple_unstable_reasons =
+    multiple reasons provided for unstability
 
 attr_non_ident_feature =
     'feature' is not an identifier
@@ -96,6 +99,9 @@ attr_rustc_const_stable_indirect_pairing =
 
 attr_rustc_promotable_pairing =
     `rustc_promotable` attribute must be paired with either a `rustc_const_unstable` or a `rustc_const_stable` attribute
+
+attr_soft_inconsistent =
+    `soft` must be present on either none or all of an item's `unstable` attributes
 
 attr_soft_no_args =
     `soft` should not have any arguments

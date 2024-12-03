@@ -128,7 +128,7 @@ pub(crate) struct UnstableIntrinsic {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
-    pub feature: Symbol,
+    pub feature: String,
 }
 
 #[derive(Diagnostic)]

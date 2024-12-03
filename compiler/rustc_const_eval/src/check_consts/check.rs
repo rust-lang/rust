@@ -6,7 +6,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr::{ConstStability, StabilityLevel, Unstability};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -270,14 +270,16 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
     pub fn check_op_spanned<O: NonConstOp<'tcx>>(&mut self, op: O, span: Span) {
-        let gate = match op.status_in_item(self.ccx) {
+        let gates = match op.status_in_item(self.ccx) {
             Status::Unstable {
-                gate,
+                gates,
                 safe_to_expose_on_stable,
                 is_function_call,
-                gate_already_checked,
-            } if gate_already_checked || self.tcx.features().enabled(gate) => {
-                if gate_already_checked {
+                gates_already_checked,
+            } if gates_already_checked
+                || self.tcx.features().all_enabled(gates.iter().copied()) =>
+            {
+                if gates_already_checked {
                     assert!(
                         !safe_to_expose_on_stable,
                         "setting `gate_already_checked` without `safe_to_expose_on_stable` makes no sense"
@@ -287,20 +289,30 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // if this function wants to be safe-to-expose-on-stable.
                 if !safe_to_expose_on_stable
                     && self.enforce_recursive_const_stability()
-                    && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
+                    && !gates.iter().all(|&gate| {
+                        super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
+                    })
                 {
-                    emit_unstable_in_stable_exposed_error(self.ccx, span, gate, is_function_call);
+                    emit_unstable_in_stable_exposed_error(self.ccx, span, &gates, is_function_call);
                 }
 
                 return;
             }
 
-            Status::Unstable { gate, .. } => Some(gate),
+            Status::Unstable { gates, .. } => Some(gates),
             Status::Forbidden => None,
         };
 
         if self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.miri_unleashed_feature(span, gate);
+            if let Some(gates) = gates {
+                for gate in gates {
+                    if !self.tcx.features().enabled(gate) {
+                        self.tcx.sess.miri_unleashed_feature(span, Some(gate));
+                    }
+                }
+            } else {
+                self.tcx.sess.miri_unleashed_feature(span, None);
+            };
             return;
         }
 
@@ -781,13 +793,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         Some(ConstStability {
-                            level: StabilityLevel::Unstable { .. },
-                            feature,
+                            level: StabilityLevel::Unstable { unstables, .. },
                             ..
                         }) => {
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
-                                feature,
+                                features: unstables.iter().map(|u| u.feature).collect(),
                                 const_stable_indirect: is_const_stable,
                             });
                         }
@@ -833,11 +844,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                     }
                     Some(ConstStability {
-                        level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
-                        feature,
+                        level: StabilityLevel::Unstable { unstables, .. },
                         ..
                     }) => {
-                        // An unstable const fn with a feature gate.
+                        // An unstable const fn with feature gates.
                         let callee_safe_to_expose_on_stable =
                             is_safe_to_expose_on_stable_const_fn(tcx, callee);
 
@@ -849,9 +859,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // integrated in the check below since we want to enforce
                         // `callee_safe_to_expose_on_stable` even if
                         // `!self.enforce_recursive_const_stability()`.
-                        if (self.span.allows_unstable(feature)
-                            || implied_feature.is_some_and(|f| self.span.allows_unstable(f)))
-                            && callee_safe_to_expose_on_stable
+                        if callee_safe_to_expose_on_stable
+                            && unstables.iter().all(|u| {
+                                self.span.allows_unstable(u.feature)
+                                    || u.implied_by.is_some_and(|f| self.span.allows_unstable(f))
+                            })
                         {
                             return;
                         }
@@ -860,9 +872,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // the logic is a bit different than elsewhere: local functions don't need
                         // the feature gate, and there might be an "implied" gate that also suffices
                         // to allow this.
-                        let feature_enabled = callee.is_local()
-                            || tcx.features().enabled(feature)
-                            || implied_feature.is_some_and(|f| tcx.features().enabled(f))
+                        let features_enabled = callee.is_local()
+                            || unstables.iter().all(|u| {
+                                tcx.features().enabled(u.feature)
+                                    || u.implied_by.is_some_and(|f| tcx.features().enabled(f))
+                            })
                             || {
                                 // When we're compiling the compiler itself we may pull in
                                 // crates from crates.io, but those crates may depend on other
@@ -875,17 +889,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // annotation slide.
                                 // This matches what we do in `eval_stability_allow_unstable` for
                                 // regular stability.
-                                feature == sym::rustc_private
-                                    && issue == NonZero::new(27812)
-                                    && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                                matches!(unstables.as_slice(), [Unstability {
+                                    feature: sym::rustc_private,
+                                    issue: const { NonZero::new(27812) },
+                                    ..
+                                }]) && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
                             };
                         // Even if the feature is enabled, we still need check_op to double-check
                         // this if the callee is not safe to expose on stable.
-                        if !feature_enabled || !callee_safe_to_expose_on_stable {
+                        if !features_enabled || !callee_safe_to_expose_on_stable {
                             self.check_op(ops::FnCallUnstable {
                                 def_id: callee,
-                                feature,
-                                feature_enabled,
+                                features: unstables.iter().map(|u| u.feature).collect(),
+                                features_enabled,
                                 safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
                             });
                         }
@@ -946,13 +962,13 @@ fn is_int_bool_float_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_exposed_error(
     ccx: &ConstCx<'_, '_>,
     span: Span,
-    gate: Symbol,
+    gates: &[Symbol],
     is_function_call: bool,
 ) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
     ccx.dcx().emit_err(errors::UnstableInStableExposed {
-        gate: gate.to_string(),
+        gate: gates.iter().map(|s| s.as_str()).intersperse(", ").collect(),
         span,
         attr_span,
         is_function_call,

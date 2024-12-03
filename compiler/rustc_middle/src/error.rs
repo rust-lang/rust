@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 use std::{fmt, io};
 
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, DiagSymbolList};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;
@@ -170,4 +170,41 @@ pub struct TypeLengthLimit {
     pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_unstable_library_feature, code = E0658)]
+pub struct UnstableLibraryFeatureError {
+    #[primary_span]
+    pub span: Span,
+    pub features: DiagSymbolList,
+    pub count: usize,
+    pub reason: String,
+}
+
+impl UnstableLibraryFeatureError {
+    pub fn new(features: Vec<Symbol>, reason: Option<Symbol>, span: Span) -> Self {
+        let SoftUnstableLibraryFeature { features, count, reason } =
+            SoftUnstableLibraryFeature::new(features, reason);
+        UnstableLibraryFeatureError { span, features, count, reason }
+    }
+}
+
+/// Lint diagnostic for soft_unstable
+#[derive(LintDiagnostic)]
+#[diag(middle_unstable_library_feature)]
+pub struct SoftUnstableLibraryFeature {
+    pub features: DiagSymbolList,
+    pub count: usize,
+    pub reason: String,
+}
+
+impl SoftUnstableLibraryFeature {
+    pub fn new(features: Vec<Symbol>, reason: Option<Symbol>) -> Self {
+        SoftUnstableLibraryFeature {
+            count: features.len(),
+            features: features.into(),
+            reason: reason.map_or(String::new(), |r| r.to_string()),
+        }
+    }
 }

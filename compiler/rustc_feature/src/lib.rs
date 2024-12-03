@@ -97,7 +97,7 @@ impl UnstableFeatures {
     }
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
+pub fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
     // Search in all the feature lists.
     if let Some(f) = UNSTABLE_LANG_FEATURES.iter().find(|f| f.name == feature) {
         return f.issue;
@@ -120,15 +120,21 @@ const fn to_nonzero(n: Option<u32>) -> Option<NonZero<u32>> {
     }
 }
 
-pub enum GateIssue {
+pub enum GateIssues {
     Language,
-    Library(Option<NonZero<u32>>),
+    Library(Vec<NonZero<u32>>),
 }
 
-pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u32>> {
-    match issue {
-        GateIssue::Language => find_lang_feature_issue(feature),
-        GateIssue::Library(lib) => lib,
+pub fn find_feature_issues(
+    features: &[Symbol],
+    issues: GateIssues,
+) -> impl Iterator<Item = NonZero<u32>> + use<'_> {
+    use either::{Left, Right};
+    match issues {
+        GateIssues::Language => {
+            Left(features.iter().flat_map(|&feature| find_lang_feature_issue(feature)))
+        }
+        GateIssues::Library(lib) => Right(lib.into_iter()),
     }
 }
 

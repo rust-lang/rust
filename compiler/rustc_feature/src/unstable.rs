@@ -97,6 +97,11 @@ impl Features {
     pub fn enabled(&self, feature: Symbol) -> bool {
         self.enabled_features.contains(&feature)
     }
+
+    /// Are all the given features enabled (via `#[feature(...)]`)?
+    pub fn all_enabled(&self, features: impl IntoIterator<Item = Symbol>) -> bool {
+        features.into_iter().all(|feature| self.enabled(feature))
+    }
 }
 
 macro_rules! declare_features {

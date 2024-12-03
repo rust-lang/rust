@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, kw};
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -566,7 +566,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
         // to render "unstable" everywhere.
         let stability = import_def_id
             .map_or_else(|| item.stability(tcx), |import_did| tcx.lookup_stability(import_did));
-        if stability.is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private) {
+        if stability.is_some_and(|s| s.is_unstable() && !s.is_rustc_private()) {
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }
 

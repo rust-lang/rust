@@ -45,23 +45,23 @@ mod missing_version {
     fn f3() { }
 }
 
-#[unstable(feature = "b", issue = "none")]
-#[stable(feature = "a", since = "4.4.4")] //~ ERROR multiple stability levels [E0544]
+#[stable(feature = "a", since = "4.4.4")]
+#[stable(feature = "a", since = "4.4.4")] //~ ERROR multiple stability levels for feature `a` [E0544]
 fn multiple1() { }
 
 #[unstable(feature = "b", issue = "none")]
-#[unstable(feature = "b", issue = "none")] //~ ERROR multiple stability levels [E0544]
+#[unstable(feature = "b", issue = "none")] //~ ERROR multiple stability levels for feature `b` [E0544]
 fn multiple2() { }
 
-#[stable(feature = "a", since = "4.4.4")]
-#[stable(feature = "a", since = "4.4.4")] //~ ERROR multiple stability levels [E0544]
-fn multiple3() { }
+#[unstable(feature = "c", issue = "none")]
+#[stable(feature = "c", since = "4.4.4")] //~ ERROR multiple stability levels for feature `c` [E0544]
+fn multiple3() { }                       //~| ERROR feature `c` is declared stable, but was previously declared unstable
 
 #[stable(feature = "e", since = "b")] //~ ERROR 'since' must be a Rust version number, such as "1.31.0"
 #[deprecated(since = "5.5.5", note = "text")]
 #[deprecated(since = "5.5.5", note = "text")] //~ ERROR multiple `deprecated` attributes
-#[rustc_const_unstable(feature = "c", issue = "none")]
-#[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
+#[rustc_const_unstable(feature = "d", issue = "none")]
+#[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels for feature `d`
 pub const fn multiple4() { }
 
 #[stable(feature = "a", since = "1.0.0")] //~ ERROR feature `a` is declared stable since 1.0.0

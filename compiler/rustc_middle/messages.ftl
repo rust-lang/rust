@@ -105,6 +105,15 @@ middle_type_length_limit = reached the type-length limit while instantiating `{$
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
+middle_unstable_library_feature =
+    use of unstable library {$count ->
+        [one] feature
+        *[other] features
+    } {$features}{STREQ($reason, "") ->
+        [true] {""}
+        *[false] : {$reason}
+    }
+
 middle_values_too_big =
     values of the type `{$ty}` are too big for the target architecture
 middle_written_to_path = the full type name has been written to '{$path}'

@@ -9,7 +9,7 @@ use rustc_attr::{
 };
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
-use rustc_feature::GateIssue;
+use rustc_feature::GateIssues;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
@@ -17,12 +17,13 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
-use rustc_session::parse::feature_err_issue;
+use rustc_session::parse::add_feature_diagnostics_for_issues;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
+use crate::error::{SoftUnstableLibraryFeature, UnstableLibraryFeatureError};
 use crate::ty::TyCtxt;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -60,12 +61,12 @@ impl DeprecationEntry {
 
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
-pub struct Index {
+pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: LocalDefIdMap<Stability>,
-    pub const_stab_map: LocalDefIdMap<ConstStability>,
-    pub default_body_stab_map: LocalDefIdMap<DefaultBodyStability>,
+    pub stab_map: LocalDefIdMap<&'tcx Stability>,
+    pub const_stab_map: LocalDefIdMap<&'tcx ConstStability>,
+    pub default_body_stab_map: LocalDefIdMap<&'tcx DefaultBodyStability>,
     pub depr_map: LocalDefIdMap<DeprecationEntry>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
@@ -82,16 +83,19 @@ pub struct Index {
     pub implications: UnordMap<Symbol, Symbol>,
 }
 
-impl Index {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
+impl<'tcx> Index<'tcx> {
+    pub fn local_stability(&self, def_id: LocalDefId) -> Option<&'tcx Stability> {
         self.stab_map.get(&def_id).copied()
     }
 
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
+    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<&'tcx ConstStability> {
         self.const_stab_map.get(&def_id).copied()
     }
 
-    pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
+    pub fn local_default_body_stability(
+        &self,
+        def_id: LocalDefId,
+    ) -> Option<&'tcx DefaultBodyStability> {
         self.default_body_stab_map.get(&def_id).copied()
     }
 
@@ -102,28 +106,26 @@ impl Index {
 
 pub fn report_unstable(
     sess: &Session,
-    feature: Symbol,
+    features: Vec<Symbol>,
     reason: Option<Symbol>,
-    issue: Option<NonZero<u32>>,
-    suggestion: Option<(Span, String, String, Applicability)>,
-    is_soft: bool,
+    issues: Vec<NonZero<u32>>,
+    suggestions: Vec<(Span, String, String, Applicability)>,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, String),
 ) {
-    let msg = match reason {
-        Some(r) => format!("use of unstable library feature `{feature}`: {r}"),
-        None => format!("use of unstable library feature `{feature}`"),
-    };
-
-    if is_soft {
-        soft_handler(SOFT_UNSTABLE, span, msg)
-    } else {
-        let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
-        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
-            err.span_suggestion(inner_types, msg, sugg, applicability);
-        }
-        err.emit();
+    let mut err =
+        sess.dcx().create_err(UnstableLibraryFeatureError::new(features.clone(), reason, span));
+    add_feature_diagnostics_for_issues(
+        &mut err,
+        sess,
+        &features,
+        GateIssues::Library(issues),
+        false,
+        None,
+    );
+    for (inner_types, msg, sugg, applicability) in suggestions {
+        err.span_suggestion(inner_types, msg, sugg, applicability);
     }
+    err.emit();
 }
 
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
@@ -256,16 +258,16 @@ fn late_report_deprecation(
 
 /// Result of `TyCtxt::eval_stability`.
 pub enum EvalResult {
-    /// We can use the item because it is stable or we provided the
-    /// corresponding feature gate.
+    /// We can use the item because it is stable or we enabled the
+    /// corresponding feature gates.
     Allow,
-    /// We cannot use the item because it is unstable and we did not provide the
-    /// corresponding feature gate.
+    /// We cannot use the item because it is unstable and we did not enable the
+    /// corresponding feature gates.
     Deny {
-        feature: Symbol,
+        features: Vec<Symbol>,
         reason: Option<Symbol>,
-        issue: Option<NonZero<u32>>,
-        suggestion: Option<(Span, String, String, Applicability)>,
+        issues: Vec<NonZero<u32>>,
+        suggestions: Vec<(Span, String, String, Applicability)>,
         is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
@@ -329,8 +331,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates the stability of an item.
     ///
     /// Returns `EvalResult::Allow` if the item is stable, or unstable but the corresponding
-    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
-    /// unstable feature otherwise.
+    /// `#![feature]`s have been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable features otherwise.
     ///
     /// If `id` is `Some(_)`, this function will also check if the item at `def_id` has been
     /// deprecated. If the item is indeed deprecated, we will emit a deprecation lint attached to
@@ -391,55 +393,65 @@ impl<'tcx> TyCtxt<'tcx> {
         );
 
         match stability {
-            Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft, implied_by },
-                feature,
-                ..
-            }) => {
-                if span.allows_unstable(feature) {
-                    debug!("stability: skipping span={:?} since it is internal", span);
-                    return EvalResult::Allow;
-                }
-                if self.features().enabled(feature) {
-                    return EvalResult::Allow;
-                }
-
-                // If this item was previously part of a now-stabilized feature which is still
-                // enabled (i.e. the user hasn't removed the attribute for the stabilized feature
-                // yet) then allow use of this item.
-                if let Some(implied_by) = implied_by
-                    && self.features().enabled(implied_by)
-                {
-                    return EvalResult::Allow;
-                }
-
-                // When we're compiling the compiler itself we may pull in
-                // crates from crates.io, but those crates may depend on other
-                // crates also pulled in from crates.io. We want to ideally be
-                // able to compile everything without requiring upstream
-                // modifications, so in the case that this looks like a
-                // `rustc_private` crate (e.g., a compiler crate) and we also have
-                // the `-Z force-unstable-if-unmarked` flag present (we're
-                // compiling a compiler crate), then let this missing feature
-                // annotation slide.
-                if feature == sym::rustc_private
-                    && issue == NonZero::new(27812)
-                    && self.sess.opts.unstable_opts.force_unstable_if_unmarked
-                {
-                    return EvalResult::Allow;
-                }
-
+            Some(Stability { level: attr::Unstable { unstables, reason, is_soft } }) => {
                 if matches!(allow_unstable, AllowUnstable::Yes) {
                     return EvalResult::Allow;
                 }
 
-                let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny {
-                    feature,
-                    reason: reason.to_opt_reason(),
-                    issue,
-                    suggestion,
-                    is_soft,
+                let mut missing_features = vec![];
+                let mut issues = vec![];
+                let mut suggestions = vec![];
+
+                for unstability in unstables {
+                    let &attr::Unstability { feature, issue, .. } = unstability;
+                    if span.allows_unstable(feature) {
+                        debug!("stability: skipping span={:?} since it is internal", span);
+                        continue;
+                    }
+                    if self.features().enabled(feature) {
+                        continue;
+                    }
+
+                    // If this item was previously part of a now-stabilized feature which is still
+                    // active (i.e. the user hasn't removed the attribute for the stabilized feature
+                    // yet) then allow use of this item.
+                    if let Some(implied_by) = unstability.implied_by
+                        && self.features().enabled(implied_by)
+                    {
+                        continue;
+                    }
+
+                    // When we're compiling the compiler itself we may pull in
+                    // crates from crates.io, but those crates may depend on other
+                    // crates also pulled in from crates.io. We want to ideally be
+                    // able to compile everything without requiring upstream
+                    // modifications, so in the case that this looks like a
+                    // `rustc_private` crate (e.g., a compiler crate) and we also have
+                    // the `-Z force-unstable-if-unmarked` flag present (we're
+                    // compiling a compiler crate), then let this missing feature
+                    // annotation slide.
+                    if feature == sym::rustc_private
+                        && issue == NonZero::new(27812)
+                        && self.sess.opts.unstable_opts.force_unstable_if_unmarked
+                    {
+                        continue;
+                    }
+
+                    missing_features.push(feature);
+                    issues.extend(issue);
+                    suggestions.extend(suggestion_for_allocator_api(self, def_id, span, feature));
+                }
+
+                if missing_features.is_empty() {
+                    EvalResult::Allow
+                } else {
+                    EvalResult::Deny {
+                        features: missing_features,
+                        reason: reason.to_opt_reason(),
+                        issues,
+                        suggestions,
+                        is_soft: *is_soft,
+                    }
                 }
             }
             Some(_) => {
@@ -454,8 +466,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates the default-impl stability of an item.
     ///
     /// Returns `EvalResult::Allow` if the item's default implementation is stable, or unstable but the corresponding
-    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
-    /// unstable feature otherwise.
+    /// `#![feature]`s have been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable features otherwise.
     pub fn eval_default_body_stability(self, def_id: DefId, span: Span) -> EvalResult {
         let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
         if !is_staged_api {
@@ -474,24 +486,33 @@ impl<'tcx> TyCtxt<'tcx> {
         );
 
         match stability {
-            Some(DefaultBodyStability {
-                level: attr::Unstable { reason, issue, is_soft, .. },
-                feature,
-            }) => {
-                if span.allows_unstable(feature) {
-                    debug!("body stability: skipping span={:?} since it is internal", span);
-                    return EvalResult::Allow;
-                }
-                if self.features().enabled(feature) {
-                    return EvalResult::Allow;
+            Some(DefaultBodyStability { level: attr::Unstable { unstables, reason, is_soft } }) => {
+                let mut missing_features = vec![];
+                let mut issues = vec![];
+                for unstability in unstables {
+                    let feature = unstability.feature;
+                    if span.allows_unstable(feature) {
+                        debug!("body stability: skipping span={:?} since it is internal", span);
+                        continue;
+                    }
+                    if self.features().enabled(feature) {
+                        continue;
+                    }
+
+                    missing_features.push(feature);
+                    issues.extend(unstability.issue);
                 }
 
-                EvalResult::Deny {
-                    feature,
-                    reason: reason.to_opt_reason(),
-                    issue,
-                    suggestion: None,
-                    is_soft,
+                if missing_features.is_empty() {
+                    EvalResult::Allow
+                } else {
+                    EvalResult::Deny {
+                        features: missing_features,
+                        reason: reason.to_opt_reason(),
+                        issues,
+                        suggestions: vec![],
+                        is_soft: *is_soft,
+                    }
                 }
             }
             Some(_) => {
@@ -569,26 +590,23 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
-        let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.primary_message(msg);
-            })
-        };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
-                self.sess,
-                feature,
-                reason,
-                issue,
-                suggestion,
-                is_soft,
-                span,
-                soft_handler,
-            ),
+            EvalResult::Deny { features, reason, issues, suggestions, is_soft } => {
+                if is_soft {
+                    self.emit_node_span_lint(
+                        SOFT_UNSTABLE,
+                        id.unwrap_or(hir::CRATE_HIR_ID),
+                        span,
+                        SoftUnstableLibraryFeature::new(features, reason),
+                    );
+                } else {
+                    report_unstable(self.sess, features, reason, issues, suggestions, span);
+                }
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 
