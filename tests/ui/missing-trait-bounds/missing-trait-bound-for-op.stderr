@@ -6,7 +6,7 @@ LL |     let _ = s == t;
    |             |
    |             &[T]
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `PartialEq`
    |
 LL | pub fn foo<T: std::cmp::PartialEq>(s: &[T], t: &[T]) {
    |             +++++++++++++++++++++

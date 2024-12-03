@@ -1,0 +1,34 @@
+error[E0277]: the trait bound `T: Unstable` is not satisfied
+  --> $DIR/unstable-trait-suggestion.rs:13:9
+   |
+LL |     foo(t)
+   |     --- ^ the trait `Unstable` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `foo`
+  --> $DIR/unstable-trait-suggestion.rs:9:11
+   |
+LL | fn foo<T: Unstable>(_: T) {}
+   |           ^^^^^^^^ required by this bound in `foo`
+help: consider restricting type parameter `T` with unstable trait `Unstable`
+   |
+LL | pub fn bar<T: Unstable>(t: T) {
+   |             ++++++++++
+
+error[E0277]: the trait bound `T: Step` is not satisfied
+  --> $DIR/unstable-trait-suggestion.rs:17:14
+   |
+LL |     for _ in t {}
+   |              ^ the trait `Step` is not implemented for `T`
+   |
+   = note: required for `std::ops::Range<T>` to implement `Iterator`
+   = note: required for `std::ops::Range<T>` to implement `IntoIterator`
+help: consider restricting type parameter `T` with unstable trait `Step`
+   |
+LL | pub fn baz<T: std::iter::Step>(t: std::ops::Range<T>) {
+   |             +++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

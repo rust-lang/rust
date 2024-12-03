@@ -5,7 +5,7 @@ error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
 LL | impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
    |                                    ^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `ToUnit`
    |
 LL | impl<T: for<'a> ToUnit<'a>> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
    |       ++++++++++++++++++++
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `for<'a> T: ToUnit<'a>` is not satisfied
 LL | impl<T> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> ToUnit<'a>` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `ToUnit`
    |
 LL | impl<T: for<'a> ToUnit<'a>> Overlap<for<'a> fn(&'a (), Assoc<'a, T>)> for T {}
    |       ++++++++++++++++++++

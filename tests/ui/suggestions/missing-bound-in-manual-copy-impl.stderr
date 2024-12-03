@@ -7,7 +7,7 @@ LL |
 LL | impl<S> Copy for Wrapper<S> {}
    |                  ^^^^^^^^^^
    |
-help: consider restricting type parameter `S`
+help: consider restricting type parameter `S` with trait `Copy`
    |
 LL | impl<S: Copy> Copy for Wrapper<S> {}
    |       ++++++

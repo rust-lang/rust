@@ -16,7 +16,7 @@ LL | trait UnsafeCopy<'a, T: Copy>
 LL | where
 LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
    |                                                                ^^^^^^^^^^ required by this bound in `UnsafeCopy`
-help: consider further restricting this bound
+help: consider further restricting this bound with  `<Target = T>`
    |
 LL | impl<T: Copy + std::ops::Deref<Target = T>> UnsafeCopy<'_, T> for T {
    |                               ++++++++++++
