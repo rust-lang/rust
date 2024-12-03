@@ -2,8 +2,6 @@
 //@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
 
-#![feature(derive_coerce_pointee)]
-
 #[macro_use]
 extern crate another_proc_macro;
 
