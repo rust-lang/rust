@@ -50,7 +50,7 @@ struct LocalSourcesCollector<'a, 'tcx> {
     src_root: &'a Path,
 }
 
-fn is_real_and_local(span: clean::Span, sess: &Session) -> Option<RealFileName> {
+fn filename_real_and_local(span: clean::Span, sess: &Session) -> Option<RealFileName> {
     if span.cnum(sess) == LOCAL_CRATE
         && let FileName::Real(file) = span.filename(sess)
     {
@@ -66,7 +66,8 @@ impl LocalSourcesCollector<'_, '_> {
         let span = item.span(self.tcx);
         let Some(span) = span else { return };
         // skip all synthetic "files"
-        let Some(p) = is_real_and_local(span, sess).and_then(|file| file.into_local_path()) else {
+        let Some(p) = filename_real_and_local(span, sess).and_then(|file| file.into_local_path())
+        else {
             return;
         };
         if self.local_sources.contains_key(&*p) {
@@ -132,7 +133,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
-        if let Some(filename) = is_real_and_local(span, sess) {
+        if let Some(filename) = filename_real_and_local(span, sess) {
             let span = span.inner();
             let pos = sess.source_map().lookup_source_file(span.lo());
             let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_position());
