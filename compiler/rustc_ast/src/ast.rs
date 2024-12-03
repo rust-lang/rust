@@ -1325,7 +1325,6 @@ impl Expr {
             }
 
             ExprKind::Break(..)
-            | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
             | ExprKind::Yeet(..)
@@ -1359,6 +1358,7 @@ impl Expr {
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
+            | ExprKind::Continue(..)
             | ExprKind::Field(..)
             | ExprKind::ForLoop { .. }
             | ExprKind::FormatArgs(..)

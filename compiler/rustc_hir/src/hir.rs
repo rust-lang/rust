@@ -1705,7 +1705,6 @@ impl Expr<'_> {
             }
 
             ExprKind::Break(..)
-            | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
             | ExprKind::Become(..) => ExprPrecedence::Jump,
@@ -1731,6 +1730,7 @@ impl Expr<'_> {
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
+            | ExprKind::Continue(..)
             | ExprKind::Field(..)
             | ExprKind::If(..)
             | ExprKind::Index(..)
