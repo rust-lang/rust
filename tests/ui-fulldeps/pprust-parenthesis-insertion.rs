@@ -73,6 +73,9 @@ static EXPRS: &[&str] = &[
     // Closures and jumps have equal precedence.
     "|| return break 2",
     "return break || 2",
+    // Closures with a return type have especially high precedence.
+    "(|| -> T { x }) + 1", // FIXME: no parenthesis needed.
+    "(|| { x }) + 1",
     // These mean different things.
     "if let _ = true && false {}",
     "if let _ = (true && false) {}",
