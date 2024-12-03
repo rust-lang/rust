@@ -2630,7 +2630,7 @@ impl<'a> Parser<'a> {
 
         if !self.eat_keyword_case(kw::Fn, case) {
             // It is possible for `expect_one_of` to recover given the contents of
-            // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
+            // `self.expected_token_types`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
             match self.expect_one_of(&[], &[]) {
                 Ok(Recovered::Yes(_)) => {}

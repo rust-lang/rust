@@ -1280,7 +1280,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn check_lifetime(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Lifetime);
+        self.expected_token_types.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 

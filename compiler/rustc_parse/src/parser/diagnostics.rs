@@ -483,9 +483,10 @@ impl<'a> Parser<'a> {
             })
         }
 
-        self.expected_tokens.extend(edible.iter().chain(inedible).cloned().map(TokenType::Token));
+        self.expected_token_types
+            .extend(edible.iter().chain(inedible).cloned().map(TokenType::Token));
         let mut expected = self
-            .expected_tokens
+            .expected_token_types
             .iter()
             .filter(|token| {
                 // Filter out suggestions that suggest the same token which was found and deemed incorrect.
@@ -785,17 +786,17 @@ impl<'a> Parser<'a> {
         let Some((curr_ident, _)) = self.token.ident() else {
             return;
         };
-        let expected_tokens: &[TokenType] =
+        let expected_token_types: &[TokenType] =
             expected.len().checked_sub(10).map_or(&expected, |index| &expected[index..]);
-        let expected_keywords: Vec<Symbol> = expected_tokens
+        let expected_keywords: Vec<Symbol> = expected_token_types
             .iter()
             .filter_map(|token| if let TokenType::Keyword(kw) = token { Some(*kw) } else { None })
             .collect();
 
-        // When there are a few keywords in the last ten elements of `self.expected_tokens` and the current
-        // token is an identifier, it's probably a misspelled keyword.
-        // This handles code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in `if`-`else`
-        // and mispelled `where` in a where clause.
+        // When there are a few keywords in the last ten elements of `self.expected_token_types`
+        // and the current token is an identifier, it's probably a misspelled keyword. This handles
+        // code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in
+        // `if`-`else` and mispelled `where` in a where clause.
         if !expected_keywords.is_empty()
             && !curr_ident.is_used_keyword()
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
@@ -3016,7 +3017,7 @@ impl<'a> Parser<'a> {
     /// Check for exclusive ranges written as `..<`
     pub(crate) fn maybe_err_dotdotlt_syntax(&self, maybe_lt: Token, mut err: Diag<'a>) -> Diag<'a> {
         if maybe_lt == token::Lt
-            && (self.expected_tokens.contains(&TokenType::Token(token::Gt))
+            && (self.expected_token_types.contains(&TokenType::Token(token::Gt))
                 || matches!(self.token.kind, token::Literal(..)))
         {
             err.span_suggestion(

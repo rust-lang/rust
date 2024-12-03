@@ -95,7 +95,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
             if first {
-                p.clear_expected_tokens();
+                p.clear_expected_token_types();
             }
 
             match p.expect(&token::Comma) {

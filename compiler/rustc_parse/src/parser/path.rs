@@ -300,7 +300,7 @@ impl<'a> Parser<'a> {
             )
         };
         let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(&[
+            this.expected_token_types.extend_from_slice(&[
                 TokenType::Token(token::Lt),
                 TokenType::Token(token::OpenDelim(Delimiter::Parenthesis)),
             ]);

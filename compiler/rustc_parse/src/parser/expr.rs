@@ -153,7 +153,7 @@ impl<'a> Parser<'a> {
             return Ok((lhs, parsed_something));
         }
 
-        self.expected_tokens.push(TokenType::Operator);
+        self.expected_token_types.push(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
             let lhs_span = self.interpolated_or_expr_span(&lhs);
             let cur_op_span = self.token.span;
