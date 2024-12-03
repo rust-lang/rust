@@ -1,4 +1,5 @@
 //! Advertises the capabilities of the LSP Server.
+use ide::{CompletionFieldsToResolve, InlayFieldsToResolve};
 use ide_db::{line_index::WideEncoding, FxHashSet};
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
@@ -40,7 +41,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: config.caps().completions_resolve_provider(),
+            resolve_provider: Some(config.caps().completions_resolve_provider()),
             trigger_characters: Some(vec![
                 ":".to_owned(),
                 ".".to_owned(),
@@ -136,7 +137,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         inlay_hint_provider: Some(OneOf::Right(InlayHintServerCapabilities::Options(
             InlayHintOptions {
                 work_done_progress_options: Default::default(),
-                resolve_provider: Some(true),
+                resolve_provider: Some(config.caps().inlay_hints_resolve_provider()),
             },
         ))),
         inline_value_provider: None,
@@ -176,8 +177,18 @@ impl ClientCapabilities {
         Self(caps)
     }
 
-    fn completions_resolve_provider(&self) -> Option<bool> {
-        self.completion_item_edit_resolve().then_some(true)
+    fn completions_resolve_provider(&self) -> bool {
+        let client_capabilities = self.completion_resolve_support_properties();
+        let fields_to_resolve =
+            CompletionFieldsToResolve::from_client_capabilities(&client_capabilities);
+        fields_to_resolve != CompletionFieldsToResolve::empty()
+    }
+
+    fn inlay_hints_resolve_provider(&self) -> bool {
+        let client_capabilities = self.inlay_hint_resolve_support_properties();
+        let fields_to_resolve =
+            InlayFieldsToResolve::from_client_capabilities(&client_capabilities);
+        fields_to_resolve != InlayFieldsToResolve::empty()
     }
 
     fn experimental_bool(&self, index: &'static str) -> bool {

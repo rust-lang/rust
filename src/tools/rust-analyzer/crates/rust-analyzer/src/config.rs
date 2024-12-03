@@ -1446,15 +1446,9 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            fields_to_resolve: CompletionFieldsToResolve {
-                resolve_label_details: client_capability_fields.contains("labelDetails"),
-                resolve_tags: client_capability_fields.contains("tags"),
-                resolve_detail: client_capability_fields.contains("detail"),
-                resolve_documentation: client_capability_fields.contains("documentation"),
-                resolve_filter_text: client_capability_fields.contains("filterText"),
-                resolve_text_edit: client_capability_fields.contains("textEdit"),
-                resolve_command: client_capability_fields.contains("command"),
-            },
+            fields_to_resolve: CompletionFieldsToResolve::from_client_capabilities(
+                &client_capability_fields,
+            ),
         }
     }
 
@@ -1614,13 +1608,9 @@ impl Config {
             } else {
                 None
             },
-            fields_to_resolve: InlayFieldsToResolve {
-                resolve_text_edits: client_capability_fields.contains("textEdits"),
-                resolve_hint_tooltip: client_capability_fields.contains("tooltip"),
-                resolve_label_tooltip: client_capability_fields.contains("label.tooltip"),
-                resolve_label_location: client_capability_fields.contains("label.location"),
-                resolve_label_command: client_capability_fields.contains("label.command"),
-            },
+            fields_to_resolve: InlayFieldsToResolve::from_client_capabilities(
+                &client_capability_fields,
+            ),
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
         }
