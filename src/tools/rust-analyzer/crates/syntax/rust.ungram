@@ -37,7 +37,7 @@ Path =
 PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
-| NameRef ParamList RetType?
+| NameRef ParenthesizedArgList RetType?
 | NameRef ReturnTypeSyntax
 | '<' Type ('as' PathType)? '>'
 
@@ -48,6 +48,9 @@ ReturnTypeSyntax =
 //*************************//
 //        Generics         //
 //*************************//
+
+ParenthesizedArgList =
+  '::'? '(' (TypeArg (',' TypeArg)* ','?)? ')'
 
 GenericArgList =
   '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'

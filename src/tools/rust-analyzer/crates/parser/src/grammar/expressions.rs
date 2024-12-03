@@ -525,7 +525,7 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(
         p.bump(T![.]);
     }
     name_ref(p);
-    generic_args::opt_generic_arg_list(p, true);
+    generic_args::opt_generic_arg_list_expr(p);
     if p.at(T!['(']) {
         arg_list(p);
     } else {
