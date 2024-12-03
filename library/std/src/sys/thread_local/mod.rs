@@ -141,7 +141,7 @@ pub(crate) mod key {
             #[cfg(test)]
             mod tests;
             pub(super) use racy::LazyKey;
-            pub(super) use unix::{Key, set};
+            pub(super) use unix::{Key, set, at_process_exit};
             #[cfg(any(not(target_thread_local), test))]
             pub(super) use unix::get;
             use unix::{create, destroy};
@@ -149,14 +149,14 @@ pub(crate) mod key {
             #[cfg(test)]
             mod tests;
             mod windows;
-            pub(super) use windows::{Key, LazyKey, get, run_dtors, set};
+            pub(super) use windows::{Key, LazyKey, get, run_dtors, set, at_process_exit};
         } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
             mod racy;
             mod sgx;
             #[cfg(test)]
             mod tests;
             pub(super) use racy::LazyKey;
-            pub(super) use sgx::{Key, get, set};
+            pub(super) use sgx::{Key, get, set, at_process_exit};
             use sgx::{create, destroy};
         } else if #[cfg(target_os = "xous")] {
             mod racy;
@@ -165,7 +165,7 @@ pub(crate) mod key {
             mod xous;
             pub(super) use racy::LazyKey;
             pub(crate) use xous::destroy_tls;
-            pub(super) use xous::{Key, get, set};
+            pub(super) use xous::{Key, get, set, at_process_exit};
             use xous::{create, destroy};
         }
     }

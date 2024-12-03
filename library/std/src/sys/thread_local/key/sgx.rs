@@ -21,3 +21,5 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 pub unsafe fn destroy(key: Key) {
     Tls::destroy(AbiKey::from_usize(key))
 }
+
+pub unsafe fn at_process_exit(cb: unsafe extern "C" fn()) {}

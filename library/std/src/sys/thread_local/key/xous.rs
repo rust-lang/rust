@@ -215,3 +215,5 @@ unsafe fn run_dtors() {
 
     crate::rt::thread_cleanup();
 }
+
+pub unsafe fn at_process_exit(cb: unsafe extern "C" fn()) {}

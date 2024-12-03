@@ -282,6 +282,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_sanitizer_cfi)]
+#![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]

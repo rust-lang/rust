@@ -202,3 +202,5 @@ pub unsafe fn run_dtors() {
         }
     }
 }
+
+pub unsafe fn at_process_exit(cb: unsafe extern "C" fn()) {}

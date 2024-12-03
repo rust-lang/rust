@@ -7,17 +7,38 @@ use crate::sys::thread_local::key::{LazyKey, set};
 
 #[cfg(target_thread_local)]
 pub fn enable() {
-    use crate::sys::thread_local::destructors;
+    fn enable_thread() {
+        static DTORS: LazyKey = LazyKey::new(Some(run_thread));
 
-    static DTORS: LazyKey = LazyKey::new(Some(run));
+        // Setting the key value to something other than NULL will result in the
+        // destructor being run at thread exit.
+        unsafe {
+            set(DTORS.force(), ptr::without_provenance_mut(1));
+        }
 
-    // Setting the key value to something other than NULL will result in the
-    // destructor being run at thread exit.
-    unsafe {
-        set(DTORS.force(), ptr::without_provenance_mut(1));
+        unsafe extern "C" fn run_thread(_: *mut u8) {
+            run()
+        }
     }
 
-    unsafe extern "C" fn run(_: *mut u8) {
+    #[cfg(target_has_atomic_load_store = "8")]
+    fn enable_process() {
+        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sys::thread_local::key::at_process_exit;
+
+        static REGISTERED: AtomicBool = AtomicBool::new(false);
+        if !REGISTERED.swap(true, Ordering::AcqRel) {
+            unsafe { at_process_exit(run_process) };
+        }
+
+        unsafe extern "C" fn run_process() {
+            run()
+        }
+    }
+
+    fn run() {
+        use crate::sys::thread_local::destructors;
+
         unsafe {
             destructors::run();
             // On platforms with `__cxa_thread_atexit_impl`, `destructors::run`
@@ -28,6 +49,11 @@ pub fn enable() {
             crate::rt::thread_cleanup();
         }
     }
+
+    enable_thread();
+
+    #[cfg(target_has_atomic_load_store = "8")]
+    enable_process();
 }
 
 /// On platforms with key-based TLS, the system runs the destructors for us.

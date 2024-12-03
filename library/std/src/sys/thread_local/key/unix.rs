@@ -26,3 +26,8 @@ pub unsafe fn destroy(key: Key) {
     let r = unsafe { libc::pthread_key_delete(key) };
     debug_assert_eq!(r, 0);
 }
+
+#[inline]
+pub unsafe fn at_process_exit(cb: unsafe extern "C" fn()) {
+    assert_eq!(unsafe { libc::atexit(mem::transmute(cb)) }, 0);
+}
