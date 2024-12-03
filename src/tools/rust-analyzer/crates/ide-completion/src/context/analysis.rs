@@ -1129,7 +1129,22 @@ fn classify_name_ref(
         let is_trailing_outer_attr = kind != AttrKind::Inner
             && non_trivia_sibling(attr.syntax().clone().into(), syntax::Direction::Next).is_none();
         let annotated_item_kind = if is_trailing_outer_attr { None } else { Some(attached.kind()) };
-        Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind } })
+        let derive_helpers = annotated_item_kind
+            .filter(|kind| {
+                matches!(
+                    kind,
+                    SyntaxKind::STRUCT
+                        | SyntaxKind::ENUM
+                        | SyntaxKind::UNION
+                        | SyntaxKind::VARIANT
+                        | SyntaxKind::TUPLE_FIELD
+                        | SyntaxKind::RECORD_FIELD
+                )
+            })
+            .and_then(|_| nameref.as_ref()?.syntax().ancestors().find_map(ast::Adt::cast))
+            .and_then(|adt| sema.derive_helpers_in_scope(&adt))
+            .unwrap_or_default();
+        Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind, derive_helpers } })
     };
 
     // Infer the path kind

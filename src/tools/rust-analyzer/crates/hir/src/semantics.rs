@@ -510,6 +510,22 @@ impl<'db> SemanticsImpl<'db> {
         self.with_ctx(|ctx| ctx.has_derives(adt))
     }
 
+    pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
+        let sa = self.analyze_no_infer(adt.syntax())?;
+        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let result = sa
+            .resolver
+            .def_map()
+            .derive_helpers_in_scope(InFile::new(sa.file_id, id))?
+            .iter()
+            .map(|(name, macro_, _)| {
+                let macro_name = Macro::from(*macro_).name(self.db).symbol().clone();
+                (name.symbol().clone(), macro_name)
+            })
+            .collect();
+        Some(result)
+    }
+
     pub fn derive_helper(&self, attr: &ast::Attr) -> Option<Vec<(Macro, MacroFileId)>> {
         let adt = attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
             ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
