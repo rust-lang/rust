@@ -34,7 +34,7 @@ const REL_PY_PATH: &[&str] = &["bin", "python3"];
 const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml"];
 const BLACK_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "black.toml"];
 /// Location within build directory
-const RUFF_CACH_PATH: &[&str] = &["cache", "ruff_cache"];
+const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
 pub fn check(
@@ -96,7 +96,7 @@ fn check_impl(
         let mut cfg_path = root_path.to_owned();
         cfg_path.extend(RUFF_CONFIG_PATH);
         let mut cache_dir = outdir.to_owned();
-        cache_dir.extend(RUFF_CACH_PATH);
+        cache_dir.extend(RUFF_CACHE_PATH);
 
         cfg_args_ruff.extend([
             "--config".as_ref(),
