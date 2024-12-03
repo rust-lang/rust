@@ -56,6 +56,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
 }
 
 impl ast::Fn {
+    /// Adds a new generic param to the function using `SyntaxEditor`
     pub fn syntax_editor_add_generic_param(
         &self,
         editor: &mut SyntaxEditor,
@@ -65,23 +66,44 @@ impl ast::Fn {
             Some(generic_param_list) => match generic_param_list.generic_params().last() {
                 Some(_last_param) => {
                     // There exists a generic param list and it's not empty
-                    let mut params = generic_param_list
-                        .generic_params()
-                        .map(|param| param.clone())
-                        .collect::<Vec<_>>();
-                    params.push(new_param.into());
-                    let new_param_list = make::generic_param_list(params);
-                    editor.replace(
-                        generic_param_list.syntax(),
-                        new_param_list.syntax().clone_for_update(),
+                    let position = generic_param_list.r_angle_token().map_or_else(
+                        || crate::syntax_editor::Position::last_child_of(self.syntax()),
+                        crate::syntax_editor::Position::before,
                     );
+
+                    if let Some(last_param) = generic_param_list.generic_params().last() {
+                        if last_param
+                            .syntax()
+                            .next_sibling_or_token()
+                            .map_or(false, |it| it.kind() == SyntaxKind::COMMA)
+                        {
+                            editor.insert(
+                                crate::syntax_editor::Position::after(last_param.syntax()),
+                                new_param.syntax().clone(),
+                            );
+                            editor.insert(
+                                crate::syntax_editor::Position::after(last_param.syntax()),
+                                make::token(SyntaxKind::WHITESPACE),
+                            );
+                            editor.insert(
+                                crate::syntax_editor::Position::after(last_param.syntax()),
+                                make::token(SyntaxKind::COMMA),
+                            );
+                        } else {
+                            let elements = vec![
+                                make::token(SyntaxKind::COMMA).into(),
+                                make::token(SyntaxKind::WHITESPACE).into(),
+                                new_param.syntax().clone().into(),
+                            ];
+                            editor.insert_all(position, elements);
+                        }
+                    };
                 }
                 None => {
                     // There exists a generic param list but it's empty
                     let position = crate::syntax_editor::Position::after(
                         generic_param_list.l_angle_token().unwrap(),
                     );
-
                     editor.insert(position, new_param.syntax());
                 }
             },
@@ -96,9 +118,12 @@ impl ast::Fn {
                 } else {
                     crate::syntax_editor::Position::last_child_of(self.syntax())
                 };
-
-                let new_param_list = make::generic_param_list(once(new_param.clone()));
-                editor.insert(position, new_param_list.syntax().clone_for_update());
+                let elements = vec![
+                    make::token(SyntaxKind::L_ANGLE).into(),
+                    new_param.syntax().clone().into(),
+                    make::token(T![>]).into(),
+                ];
+                editor.insert_all(position, elements);
             }
         }
     }
