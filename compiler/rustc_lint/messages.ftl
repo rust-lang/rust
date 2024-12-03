@@ -775,6 +775,9 @@ lint_suspicious_double_ref_clone =
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
 
+lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
+    .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
+
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions
     .note2 = to ignore the value produced by the macro, add a semicolon after the invocation of `{$name}`
