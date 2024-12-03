@@ -105,6 +105,23 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # It seems that it cannot be the same as $IMAGE_TAG, otherwise it overwrites the cache
     CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
 
+    # Docker build arguments.
+    build_args=(
+        "build"
+        "--rm"
+        "-t" "rust-ci"
+        "-f" "$dockerfile"
+        "$context"
+    )
+
+    # If the environment variable DOCKER_SCRIPT is defined,
+    # set the build argument SCRIPT_ARG to DOCKER_SCRIPT.
+    # In this way, we run the script defined in CI,
+    # instead of the one defined in the Dockerfile.
+    if [ -n "${DOCKER_SCRIPT+x}" ]; then
+      build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
+    fi
+
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
     # ghcr.io registry. If it is not possible, we fall back to building the image
     # locally.
@@ -115,7 +132,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
             docker tag "${IMAGE_TAG}" rust-ci
         else
             echo "Building local Docker image"
-            retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
+            retry docker "${build_args[@]}"
         fi
     # On PR CI jobs, we don't have permissions to write to the registry cache,
     # but we can still read from it.
@@ -127,13 +144,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         # Build the image using registry caching backend
         retry docker \
           buildx \
-          build \
-          --rm \
-          -t rust-ci \
-          -f "$dockerfile" \
+          "${build_args[@]}" \
           --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
-          --output=type=docker \
-          "$context"
+          --output=type=docker
     # On auto/try builds, we can also write to the cache.
     else
         # Log into the Docker registry, so that we can read/write cache and the final image
@@ -147,14 +160,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         # Build the image using registry caching backend
         retry docker \
           buildx \
-          build \
-          --rm \
-          -t rust-ci \
-          -f "$dockerfile" \
+          "${build_args[@]}" \
           --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
           --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
-          --output=type=docker \
-          "$context"
+          --output=type=docker
 
         # Print images for debugging purposes
         docker images
