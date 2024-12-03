@@ -87,6 +87,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::assert_inhabited
         | sym::assert_zero_valid
         | sym::assert_mem_uninitialized_valid
+        | sym::breakpoint
         | sym::size_of
         | sym::min_align_of
         | sym::needs_drop

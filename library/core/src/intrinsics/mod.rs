@@ -1381,6 +1381,18 @@ pub unsafe fn prefetch_write_instruction<T>(_data: *const T, _locality: i32) {
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub fn breakpoint() {
+    unreachable!()
+}
+
+/// Executes a breakpoint trap, for inspection by a debugger.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+#[cfg(bootstrap)]
 pub unsafe fn breakpoint() {
     unreachable!()
 }
