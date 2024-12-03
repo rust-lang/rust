@@ -1694,6 +1694,8 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn pgo_gen(&mut self) {
         self.link_arg("-bdbg:namedsects:ss");
+        self.link_arg("-u");
+        self.link_arg("__llvm_profile_runtime");
     }
 
     fn control_flow_guard(&mut self) {}
