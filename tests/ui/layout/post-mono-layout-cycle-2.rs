@@ -1,7 +1,7 @@
 //@ build-fail
 //@ edition: 2021
 
-#![feature(async_closure, noop_waker)]
+#![feature(async_closure)]
 
 use std::future::Future;
 use std::pin::pin;

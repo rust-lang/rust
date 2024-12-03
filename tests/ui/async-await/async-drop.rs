@@ -5,7 +5,7 @@
 // please consider modifying miri's async drop test at
 // `src/tools/miri/tests/pass/async-drop.rs`.
 
-#![feature(async_drop, impl_trait_in_assoc_type, noop_waker, async_closure)]
+#![feature(async_drop, impl_trait_in_assoc_type, async_closure)]
 #![allow(incomplete_features, dead_code)]
 
 //@ edition: 2021

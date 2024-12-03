@@ -1,7 +1,7 @@
 //@ compile-flags: --edition 2024
 //@ check-pass
 
-#![feature(async_iterator, gen_blocks, noop_waker)]
+#![feature(async_iterator, gen_blocks)]
 
 use std::{async_iter::AsyncIterator, pin::pin, task::{Context, Waker}};
 
