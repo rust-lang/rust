@@ -2013,7 +2013,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Underscore => {
                 if self.tcx.features().generic_arg_infer() {
                     let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
-                    self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
+                    self.arena
+                        .alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
                 } else {
                     feature_err(
                         &self.tcx.sess,
