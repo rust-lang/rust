@@ -468,6 +468,7 @@ symbols! {
         async_for_loop,
         async_iterator,
         async_iterator_poll_next,
+        async_trait_bounds,
         atomic,
         atomic_mod,
         atomics,

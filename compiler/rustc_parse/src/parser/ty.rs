@@ -940,7 +940,7 @@ impl<'a> Parser<'a> {
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(kw::Async)
         {
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
             && self.token.uninterpolated_span().is_rust_2015()
@@ -951,7 +951,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else {
             BoundAsyncness::Normal

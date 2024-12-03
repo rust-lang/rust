@@ -11,7 +11,7 @@ extern crate block_on;
 
 async fn empty() {}
 
-pub async fn call_once<F: async FnOnce()>(f: F) {
+pub async fn call_once<F: AsyncFnOnce()>(f: F) {
     f().await;
 }
 

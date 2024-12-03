@@ -1,4 +1,4 @@
-#![feature(async_closure, noop_waker, async_fn_traits)]
+#![feature(async_closure, noop_waker, async_trait_bounds)]
 
 use std::future::Future;
 use std::pin::pin;

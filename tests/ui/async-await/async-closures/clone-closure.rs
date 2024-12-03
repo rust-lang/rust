@@ -7,7 +7,7 @@
 
 extern crate block_on;
 
-async fn for_each(f: impl async FnOnce(&str) + Clone) {
+async fn for_each(f: impl AsyncFnOnce(&str) + Clone) {
     f.clone()("world").await;
     f.clone()("world2").await;
 }

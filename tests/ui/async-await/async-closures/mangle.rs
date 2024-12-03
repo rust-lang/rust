@@ -13,11 +13,11 @@ use std::future::Future;
 use std::pin::pin;
 use std::task::*;
 
-async fn call_mut(f: &mut impl async FnMut()) {
+async fn call_mut(f: &mut impl AsyncFnMut()) {
     f().await;
 }
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

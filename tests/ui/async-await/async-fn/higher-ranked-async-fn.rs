@@ -15,7 +15,7 @@ async fn f(arg: &i32) {}
 
 async fn func<F>(f: F)
 where
-    F: for<'a> async Fn(&'a i32),
+    F: for<'a> AsyncFn(&'a i32),
 {
     let x: i32 = 0;
     f(&x).await;

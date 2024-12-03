@@ -4,7 +4,7 @@
    LL|       |//@ aux-build: executor.rs
    LL|       |extern crate executor;
    LL|       |
-   LL|      1|async fn call_once(f: impl async FnOnce()) {
+   LL|      1|async fn call_once(f: impl AsyncFnOnce()) {
    LL|      1|    f().await;
    LL|      1|}
    LL|       |

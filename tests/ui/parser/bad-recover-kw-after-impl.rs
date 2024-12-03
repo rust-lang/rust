@@ -12,6 +12,6 @@ macro_rules! impl_primitive {
 
 impl_primitive!(impl async);
 //~^ ERROR expected identifier, found `<eof>`
-//~| ERROR async closures are unstable
+//~| ERROR `async` trait bounds are unstable
 
 fn main() {}
