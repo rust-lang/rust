@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source, is_local_used};
+use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -71,25 +71,38 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
                 local.span,
                 "this let-binding has unit value",
                 |diag| {
+                    let mut suggestions = Vec::new();
+
+                    // Suggest omitting the `let` binding
                     if let Some(expr) = &local.init {
                         let mut app = Applicability::MachineApplicable;
                         let snip = snippet_with_context(cx, expr.span, local.span.ctxt(), "()", &mut app).0;
-                        diag.span_suggestion(local.span, "omit the `let` binding", format!("{snip};"), app);
+                        suggestions.push((local.span, format!("{snip};")));
                     }
 
-                    if let PatKind::Binding(_, binding_hir_id, ident, ..) = local.pat.kind
+                    // If this is a binding pattern, we need to add suggestions to remove any usages
+                    // of the variable
+                    if let PatKind::Binding(_, binding_hir_id, ..) = local.pat.kind
                         && let Some(body_id) = cx.enclosing_body.as_ref()
-                        && let body = cx.tcx.hir().body(*body_id)
-                        && is_local_used(cx, body, binding_hir_id)
                     {
-                        let identifier = ident.as_str();
+                        let body = cx.tcx.hir().body(*body_id);
+
+                        // Collect variable usages
                         let mut visitor = UnitVariableCollector::new(binding_hir_id);
                         walk_body(&mut visitor, body);
-                        visitor.spans.into_iter().for_each(|span| {
-                            let msg =
-                                format!("variable `{identifier}` of type `()` can be replaced with explicit `()`");
-                            diag.span_suggestion(span, msg, "()", Applicability::MachineApplicable);
-                        });
+
+                        // Add suggestions for replacing variable usages
+                        suggestions.extend(visitor.spans.into_iter().map(|span| (span, "()".to_string())));
+                    }
+
+                    // Emit appropriate diagnostic based on whether there are usages of the let binding
+                    if !suggestions.is_empty() {
+                        let message = if suggestions.len() == 1 {
+                            "omit the `let` binding"
+                        } else {
+                            "omit the `let` binding and replace variable usages with `()`"
+                        };
+                        diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
                     }
                 },
             );
