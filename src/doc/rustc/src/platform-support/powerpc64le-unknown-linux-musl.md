@@ -1,4 +1,4 @@
-# riscv64gc-unknown-linux-musl
+# powerpc64le-unknown-linux-musl
 
 **Tier: 2**
 
