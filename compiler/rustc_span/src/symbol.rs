@@ -682,6 +682,8 @@ symbols! {
         contract_check_ensures,
         contract_check_requires,
         contract_checks,
+        contracts_ensures,
+        contracts_requires,
         convert_identity,
         copy,
         copy_closures,

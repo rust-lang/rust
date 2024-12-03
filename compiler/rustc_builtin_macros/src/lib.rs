@@ -55,6 +55,7 @@ mod trace_macros;
 
 pub mod asm;
 pub mod cmdline_attrs;
+pub mod contracts;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
@@ -137,4 +138,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
     register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
+    let requires = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandRequires));
+    register(sym::contracts_requires, requires);
+    let ensures = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandEnsures));
+    register(sym::contracts_ensures, ensures);
 }

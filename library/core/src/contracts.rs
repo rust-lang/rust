@@ -1,5 +1,10 @@
 //! Unstable module containing the unstable contracts lang items and attribute macros.
 
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::contracts_ensures as ensures;
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::contracts_requires as requires;
+
 /// Emitted by rustc as a desugaring of `#[requires(PRED)] fn foo(x: X) { ... }`
 /// into: `fn foo(x: X) { check_requires(|| PRED) ... }`
 #[cfg(not(bootstrap))]

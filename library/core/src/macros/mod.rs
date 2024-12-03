@@ -1777,6 +1777,32 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Attribute macro applied to a function to give it a post-condition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as a unary closure expression that is
+    /// invoked on a reference to the return value.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "rustc_contracts", issue = "none")]
+    #[allow_internal_unstable(core_intrinsics)]
+    #[rustc_builtin_macro]
+    pub macro contracts_ensures($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Attribute macro applied to a function to give it a precondition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as an boolean expression with access to the
+    /// function's formal parameters
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "rustc_contracts", issue = "none")]
+    #[allow_internal_unstable(core_intrinsics)]
+    #[rustc_builtin_macro]
+    pub macro contracts_requires($item:item) {
+        /* compiler built-in */
+    }
+
     /// Attribute macro applied to a function to register it as a handler for allocation failure.
     ///
     /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
