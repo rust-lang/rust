@@ -75,8 +75,6 @@ fn test_cfg_macro() {
     //~^ WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
     //~| WARNING unexpected `cfg` condition value
-    cfg!(target_feature = "zebra");
-    //~^ WARNING unexpected `cfg` condition value
 }
 
 fn main() {}

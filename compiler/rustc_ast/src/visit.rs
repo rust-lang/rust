@@ -1273,10 +1273,7 @@ pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -
     match args {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(_args) => {}
-        AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => try_visit!(visitor.visit_expr(expr)),
-        AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-            unreachable!("in literal form when walking mac args eq: {:?}", lit)
-        }
+        AttrArgs::Eq { value, .. } => try_visit!(visitor.visit_expr(value.unwrap_ast())),
     }
     V::Result::output()
 }

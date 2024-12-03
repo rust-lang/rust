@@ -13,6 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -1170,19 +1171,13 @@ fn check_type_defn<'tcx>(
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
             if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
-                let cause = traits::ObligationCause::new(
-                    tcx.def_span(discr_def_id),
-                    wfcx.body_def_id,
-                    ObligationCauseCode::Misc,
-                );
-                wfcx.register_obligation(Obligation::new(
-                    tcx,
-                    cause,
-                    wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(
-                        ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    ))),
-                ));
+                match tcx.const_eval_poly(discr_def_id) {
+                    Ok(_) => {}
+                    Err(ErrorHandled::Reported(..)) => {}
+                    Err(ErrorHandled::TooGeneric(sp)) => {
+                        span_bug!(sp, "enum variant discr was too generic to eval")
+                    }
+                }
             }
         }
 

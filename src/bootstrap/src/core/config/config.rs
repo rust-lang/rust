@@ -2505,6 +2505,7 @@ impl Config {
                         // Check the config compatibility
                         // FIXME: this doesn't cover `--set` flags yet.
                         let res = check_incompatible_options_for_ci_rustc(
+                            self.build,
                             current_config_toml,
                             ci_config_toml,
                         );
@@ -3086,17 +3087,18 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
 /// Compares the current Rust options against those in the CI rustc builder and detects any incompatible options.
 /// It does this by destructuring the `Rust` instance to make sure every `Rust` field is covered and not missing.
 fn check_incompatible_options_for_ci_rustc(
+    host: TargetSelection,
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,
 ) -> Result<(), String> {
     macro_rules! err {
-        ($current:expr, $expected:expr) => {
+        ($current:expr, $expected:expr, $config_section:expr) => {
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
                     return Err(format!(
-                        "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`. \
+                        "ERROR: Setting `{}` is incompatible with `rust.download-rustc`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
-                        stringify!($expected).replace("_", "-"),
+                        format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
                         $current,
                         if $expected.is_some() { "None/" } else { "" },
                         $expected,
@@ -3107,13 +3109,13 @@ fn check_incompatible_options_for_ci_rustc(
     }
 
     macro_rules! warn {
-        ($current:expr, $expected:expr) => {
+        ($current:expr, $expected:expr, $config_section:expr) => {
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
                     println!(
-                        "WARNING: `rust.{}` has no effect with `rust.download-rustc`. \
+                        "WARNING: `{}` has no effect with `rust.download-rustc`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
-                        stringify!($expected).replace("_", "-"),
+                        format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
                         $current,
                         if $expected.is_some() { "None/" } else { "" },
                         $expected,
@@ -3121,6 +3123,31 @@ fn check_incompatible_options_for_ci_rustc(
                 };
             };
         };
+    }
+
+    let current_profiler = current_config_toml.build.as_ref().and_then(|b| b.profiler);
+    let profiler = ci_config_toml.build.as_ref().and_then(|b| b.profiler);
+    err!(current_profiler, profiler, "build");
+
+    let current_optimized_compiler_builtins =
+        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+    let optimized_compiler_builtins =
+        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+    err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
+
+    // We always build the in-tree compiler on cross targets, so we only care
+    // about the host target here.
+    let host_str = host.to_string();
+    if let Some(current_cfg) = current_config_toml.target.as_ref().and_then(|c| c.get(&host_str)) {
+        if current_cfg.profiler.is_some() {
+            let ci_target_toml = ci_config_toml.target.as_ref().and_then(|c| c.get(&host_str));
+            let ci_cfg = ci_target_toml.ok_or(format!(
+                "Target specific config for '{host_str}' is not present for CI-rustc"
+            ))?;
+
+            let profiler = &ci_cfg.profiler;
+            err!(current_cfg.profiler, profiler, "build");
+        }
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
@@ -3196,24 +3223,24 @@ fn check_incompatible_options_for_ci_rustc(
     // If the option belongs to the first category, we call `err` macro for a hard error;
     // otherwise, we just print a warning with `warn` macro.
 
-    err!(current_rust_config.optimize, optimize);
-    err!(current_rust_config.randomize_layout, randomize_layout);
-    err!(current_rust_config.debug_logging, debug_logging);
-    err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc);
-    err!(current_rust_config.rpath, rpath);
-    err!(current_rust_config.strip, strip);
-    err!(current_rust_config.lld_mode, lld_mode);
-    err!(current_rust_config.llvm_tools, llvm_tools);
-    err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker);
-    err!(current_rust_config.jemalloc, jemalloc);
-    err!(current_rust_config.default_linker, default_linker);
-    err!(current_rust_config.stack_protector, stack_protector);
-    err!(current_rust_config.lto, lto);
-    err!(current_rust_config.std_features, std_features);
+    err!(current_rust_config.optimize, optimize, "rust");
+    err!(current_rust_config.randomize_layout, randomize_layout, "rust");
+    err!(current_rust_config.debug_logging, debug_logging, "rust");
+    err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
+    err!(current_rust_config.rpath, rpath, "rust");
+    err!(current_rust_config.strip, strip, "rust");
+    err!(current_rust_config.lld_mode, lld_mode, "rust");
+    err!(current_rust_config.llvm_tools, llvm_tools, "rust");
+    err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
+    err!(current_rust_config.jemalloc, jemalloc, "rust");
+    err!(current_rust_config.default_linker, default_linker, "rust");
+    err!(current_rust_config.stack_protector, stack_protector, "rust");
+    err!(current_rust_config.lto, lto, "rust");
+    err!(current_rust_config.std_features, std_features, "rust");
 
-    warn!(current_rust_config.channel, channel);
-    warn!(current_rust_config.description, description);
-    warn!(current_rust_config.incremental, incremental);
+    warn!(current_rust_config.channel, channel, "rust");
+    warn!(current_rust_config.description, description, "rust");
+    warn!(current_rust_config.incremental, incremental, "rust");
 
     Ok(())
 }

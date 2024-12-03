@@ -2647,7 +2647,7 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
             });
             args.tokens = TokenStream::new(tokens);
         }
-        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {}
+        ast::AttrArgs::Empty | ast::AttrArgs::Eq { .. } => {}
     }
 }
 

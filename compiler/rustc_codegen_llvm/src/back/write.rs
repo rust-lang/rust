@@ -509,7 +509,7 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
 }
 
 fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
-    config.instrument_coverage.then(|| CString::new("default_%m_%p.profraw").unwrap())
+    config.instrument_coverage.then(|| c"default_%m_%p.profraw".to_owned())
 }
 
 pub(crate) unsafe fn llvm_optimize(
