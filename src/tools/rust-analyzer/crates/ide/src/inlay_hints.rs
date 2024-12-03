@@ -8,8 +8,8 @@ use hir::{
     sym, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
     ModuleDefId, Semantics,
 };
-use ide_db::text_edit::TextEdit;
 use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
+use ide_db::{text_edit::TextEdit, FxHashSet};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
 use span::{Edition, EditionedFileId};
@@ -289,6 +289,16 @@ pub struct InlayFieldsToResolve {
 }
 
 impl InlayFieldsToResolve {
+    pub fn from_client_capabilities(client_capability_fields: &FxHashSet<&str>) -> Self {
+        Self {
+            resolve_text_edits: client_capability_fields.contains("textEdits"),
+            resolve_hint_tooltip: client_capability_fields.contains("tooltip"),
+            resolve_label_tooltip: client_capability_fields.contains("label.tooltip"),
+            resolve_label_location: client_capability_fields.contains("label.location"),
+            resolve_label_command: client_capability_fields.contains("label.command"),
+        }
+    }
+
     pub const fn empty() -> Self {
         Self {
             resolve_text_edits: false,
