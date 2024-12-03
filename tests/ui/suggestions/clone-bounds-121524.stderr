@@ -9,7 +9,7 @@ note: this `clone()` copies the reference, which does not do anything, because `
    |
 LL |     drops_impl_owned(thing.clone());
    |                            ^^^^^
-help: consider further restricting this bound
+help: consider restricting opaque type `impl DoesAThing` with trait `Clone`
    |
 LL | fn clones_impl_ref_inline(thing: &impl DoesAThing + Clone) {
    |                                                   +++++++

@@ -5,7 +5,7 @@ LL | impl<B: ?Sized> Display for Cow<'_, B> {
    |                             ^^^^^^^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
-help: consider further restricting this bound
+help: consider further restricting type parameter `B` with trait `Clone`
    |
 LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
@@ -17,7 +17,7 @@ LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
-help: consider further restricting this bound
+help: consider further restricting type parameter `B` with trait `Clone`
    |
 LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
@@ -29,7 +29,7 @@ LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |             ^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
-help: consider further restricting this bound
+help: consider further restricting type parameter `B` with trait `Clone`
    |
 LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
@@ -47,7 +47,7 @@ LL | |     }
    | |_____^ the trait `Clone` is not implemented for `B`
    |
    = note: required for `B` to implement `ToOwned`
-help: consider further restricting this bound
+help: consider further restricting type parameter `B` with trait `Clone`
    |
 LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++

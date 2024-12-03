@@ -9,7 +9,7 @@ note: required by a bound in `Foo`
    |
 LL | pub struct Foo<T: Bound>(T);
    |                   ^^^^^ required by this bound in `Foo`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Bound`
    |
 LL | impl<T: Bound> Trait2 for Foo<T> {}
    |       +++++++

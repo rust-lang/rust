@@ -23,7 +23,7 @@ note: required by a bound in `UnsafeCopy::Copy`
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |                   ^^^^ required by this bound in `UnsafeCopy::Copy`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Clone`
    |
 LL |     type Copy<T: std::clone::Clone>: Copy = Box<T>;
    |                +++++++++++++++++++
