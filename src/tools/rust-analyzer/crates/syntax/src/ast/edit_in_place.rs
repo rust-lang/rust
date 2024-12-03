@@ -121,7 +121,7 @@ impl ast::Fn {
                 let elements = vec![
                     make::token(SyntaxKind::L_ANGLE).into(),
                     new_param.syntax().clone().into(),
-                    make::token(T![>]).into(),
+                    make::token(SyntaxKind::R_ANGLE).into(),
                 ];
                 editor.insert_all(position, elements);
             }
