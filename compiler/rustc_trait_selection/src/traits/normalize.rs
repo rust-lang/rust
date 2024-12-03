@@ -7,6 +7,7 @@ use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
 use rustc_macros::extension;
+use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
@@ -63,10 +64,18 @@ impl<'tcx> At<'_, 'tcx> {
         if self.infcx.next_trait_solver() {
             crate::solve::deeply_normalize(self, value)
         } else {
+            if fulfill_cx.has_pending_obligations() {
+                let pending_obligations = fulfill_cx.pending_obligations();
+                span_bug!(
+                    pending_obligations[0].cause.span,
+                    "deeply_normalize should not be called with pending obligations: \
+                    {pending_obligations:#?}"
+                );
+            }
             let value = self
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
-            let errors = fulfill_cx.select_where_possible(self.infcx);
+            let errors = fulfill_cx.select_all_or_error(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
             if errors.is_empty() { Ok(value) } else { Err(errors) }
         }

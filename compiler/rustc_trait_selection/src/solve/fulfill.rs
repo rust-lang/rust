@@ -199,6 +199,10 @@ where
         errors
     }
 
+    fn has_pending_obligations(&self) -> bool {
+        !self.obligations.pending.is_empty() || !self.obligations.overflowed.is_empty()
+    }
+
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
