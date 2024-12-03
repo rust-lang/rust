@@ -2,7 +2,7 @@
 //@ revisions: yes no none
 //@ [yes] compile-flags: -Zcontract-checks=yes
 //@ [no] compile-flags: -Zcontract-checks=no
-#![feature(cfg_contract_checks, rustc_contracts, core_intrinsics)]
+#![feature(cfg_contract_checks, rustc_contracts_internals, core_intrinsics)]
 
 fn main() {
     #[cfg(none)] // default: disabled

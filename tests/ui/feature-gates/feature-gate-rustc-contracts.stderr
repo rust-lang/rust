@@ -1,0 +1,43 @@
+error[E0658]: use of unstable library feature `rustc_contracts`
+  --> $DIR/feature-gate-rustc-contracts.rs:3:3
+   |
+LL | #[core::contracts::requires(x > 0)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts`
+  --> $DIR/feature-gate-rustc-contracts.rs:8:3
+   |
+LL | #[core::contracts::ensures(|ret| *ret > 0)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: contracts are experimental
+  --> $DIR/feature-gate-rustc-contracts.rs:3:1
+   |
+LL | #[core::contracts::requires(x > 0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: contracts are experimental
+  --> $DIR/feature-gate-rustc-contracts.rs:8:1
+   |
+LL | #[core::contracts::ensures(|ret| *ret > 0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

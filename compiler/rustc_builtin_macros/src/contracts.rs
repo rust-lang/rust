@@ -36,17 +36,17 @@ impl AttrProcMacro for ExpandEnsures {
 }
 
 fn expand_injecting_circa_where_clause(
-    _ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
     annotated: TokenStream,
     inject: impl FnOnce(&mut Vec<TokenTree>) -> Result<(), ErrorGuaranteed>,
 ) -> Result<TokenStream, ErrorGuaranteed> {
     let mut new_tts = Vec::with_capacity(annotated.len());
-    let mut cursor = annotated.into_trees();
+    let mut cursor = annotated.iter();
 
     // Find the `fn name<G,...>(x:X,...)` and inject the AST contract forms right after
     // the formal parameters (and return type if any).
-    while let Some(tt) = cursor.next_ref() {
+    while let Some(tt) = cursor.next() {
         new_tts.push(tt.clone());
         if let TokenTree::Token(tok, _) = tt
             && tok.is_ident_named(kw::Fn)
@@ -58,7 +58,7 @@ fn expand_injecting_circa_where_clause(
     // Found the `fn` keyword, now find the formal parameters.
     //
     // FIXME: can this fail if you have parentheticals in a generics list, like `fn foo<F: Fn(X) -> Y>` ?
-    while let Some(tt) = cursor.next_ref() {
+    while let Some(tt) = cursor.next() {
         new_tts.push(tt.clone());
 
         if let TokenTree::Delimited(_, _, token::Delimiter::Parenthesis, _) = tt {
@@ -81,7 +81,7 @@ fn expand_injecting_circa_where_clause(
     // parse the type expression itself. But rather than try to fix things with hacks like that,
     // time might be better spent extending the attribute expander to suport tt-annotation atop
     // ast-annotated, which would be an elegant way to sidestep all of this.
-    let mut opt_next_tt = cursor.next_ref();
+    let mut opt_next_tt = cursor.next();
     while let Some(next_tt) = opt_next_tt {
         if let TokenTree::Token(tok, _) = next_tt
             && tok.is_ident_named(kw::Where)
@@ -97,8 +97,7 @@ fn expand_injecting_circa_where_clause(
 
         // for anything else, transcribe the tt and keep looking.
         new_tts.push(next_tt.clone());
-        opt_next_tt = cursor.next_ref();
-        continue;
+        opt_next_tt = cursor.next();
     }
 
     // At this point, we've transcribed everything from the `fn` through the formal parameter list
@@ -118,9 +117,14 @@ fn expand_injecting_circa_where_clause(
     if let Some(tt) = opt_next_tt {
         new_tts.push(tt.clone());
     }
-    while let Some(tt) = cursor.next_ref() {
+    while let Some(tt) = cursor.next() {
         new_tts.push(tt.clone());
     }
+
+    // Record the span as a contract attribute expansion.
+    // This is used later to stop users from using the extended syntax directly
+    // which is gated via `rustc_contracts_internals`.
+    ecx.psess().contract_attribute_spans.push(attr_span);
 
     Ok(TokenStream::new(new_tts))
 }

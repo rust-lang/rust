@@ -16,7 +16,7 @@
 //@ [chk_fail_pre] compile-flags: -Zcontract-checks=yes
 //@ [chk_fail_post] compile-flags: -Zcontract-checks=yes
 
-#![feature(rustc_contracts)]
+#![feature(rustc_contracts_internals)]
 
 fn tail(x: Baz) -> i32
     rustc_contract_requires(|| x.baz > 0)

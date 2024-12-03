@@ -1,6 +1,6 @@
 //@ run-pass
 //@ compile-flags: -Zcontract-checks=yes
-#![feature(rustc_contracts)]
+#![feature(rustc_contracts_internals)]
 
 struct Outer { outer: std::cell::Cell<i32> }
 

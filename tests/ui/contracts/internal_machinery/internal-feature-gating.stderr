@@ -1,0 +1,73 @@
+error[E0658]: contract internal machinery is for internal use only
+  --> $DIR/internal-feature-gating.rs:19:51
+   |
+LL |     fn identity_1() -> i32 rustc_contract_requires(|| true) { 10 }
+   |                                                   ^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: contract internal machinery is for internal use only
+  --> $DIR/internal-feature-gating.rs:21:50
+   |
+LL |     fn identity_2() -> i32 rustc_contract_ensures(|_| true) { 10 }
+   |                                                  ^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts_internals`
+  --> $DIR/internal-feature-gating.rs:5:5
+   |
+LL |     core::intrinsics::contract_checks();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts_internals`
+  --> $DIR/internal-feature-gating.rs:7:5
+   |
+LL |     core::intrinsics::contract_check_requires(|| true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts_internals`
+  --> $DIR/internal-feature-gating.rs:9:5
+   |
+LL |     core::intrinsics::contract_check_ensures(&1, |_|true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts_internals`
+  --> $DIR/internal-feature-gating.rs:13:5
+   |
+LL |     core::contracts::check_requires(|| true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `rustc_contracts_internals`
+  --> $DIR/internal-feature-gating.rs:15:5
+   |
+LL |     core::contracts::build_check_ensures(|_: &()| true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = help: add `#![feature(rustc_contracts_internals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

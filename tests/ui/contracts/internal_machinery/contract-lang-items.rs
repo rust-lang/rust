@@ -16,7 +16,8 @@
 //@ [chk_fail_pre] compile-flags: -Zcontract-checks=yes
 //@ [chk_fail_post] compile-flags: -Zcontract-checks=yes
 
-#![feature(rustc_contracts)]
+#![feature(rustc_contracts)] // to access core::contracts
+#![feature(rustc_contracts_internals)] // to access check_requires lang item
 
 fn foo(x: Baz) -> i32 {
     core::contracts::check_requires(|| x.baz > 0);

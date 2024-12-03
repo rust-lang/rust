@@ -1783,8 +1783,8 @@ pub(crate) mod builtin {
     /// eventually parsed as a unary closure expression that is
     /// invoked on a reference to the return value.
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "rustc_contracts", issue = "none")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[unstable(feature = "rustc_contracts", issue = "133866")]
+    #[allow_internal_unstable(rustc_contracts_internals)]
     #[rustc_builtin_macro]
     pub macro contracts_ensures($item:item) {
         /* compiler built-in */
@@ -1796,8 +1796,8 @@ pub(crate) mod builtin {
     /// eventually parsed as an boolean expression with access to the
     /// function's formal parameters
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "rustc_contracts", issue = "none")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[unstable(feature = "rustc_contracts", issue = "133866")]
+    #[allow_internal_unstable(rustc_contracts_internals)]
     #[rustc_builtin_macro]
     pub macro contracts_requires($item:item) {
         /* compiler built-in */

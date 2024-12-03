@@ -1,6 +1,6 @@
 //@ run-pass
 //@ compile-flags: -Zcontract-checks=yes
-#![feature(rustc_contracts)]
+#![feature(rustc_contracts_internals)]
 
 fn outer() -> i32
     rustc_contract_ensures(|ret| *ret > 0)
