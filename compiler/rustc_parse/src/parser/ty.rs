@@ -9,7 +9,7 @@ use rustc_ast::{
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
@@ -940,7 +940,7 @@ impl<'a> Parser<'a> {
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(kw::Async)
         {
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
             && self.token.uninterpolated_span().is_rust_2015()
@@ -951,7 +951,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else {
             BoundAsyncness::Normal
@@ -1136,7 +1136,7 @@ impl<'a> Parser<'a> {
                 Some(ast::Path {
                     span: fn_token_span.to(self.prev_token.span),
                     segments: thin_vec![ast::PathSegment {
-                        ident: Ident::new(Symbol::intern("Fn"), fn_token_span),
+                        ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
                         args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
                             span: args_lo.to(self.prev_token.span),

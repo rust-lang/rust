@@ -2257,7 +2257,7 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
                 collect_mod(names, parent);
             }
         } else {
-            names.push(Symbol::intern("<opaque>"));
+            names.push(sym::opaque_module_name_placeholder);
             collect_mod(names, module.parent.unwrap());
         }
     }

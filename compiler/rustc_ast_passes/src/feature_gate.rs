@@ -4,9 +4,9 @@ use rustc_ast::{NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -516,6 +516,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(
+        async_trait_bounds,
+        "`async` trait bounds are unstable",
+        "use the desugared name of the async trait, such as `AsyncFn`"
+    );
     gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
         closure_lifetime_binder,
@@ -690,6 +695,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
+        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
         sess.dcx().emit_err(errors::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),

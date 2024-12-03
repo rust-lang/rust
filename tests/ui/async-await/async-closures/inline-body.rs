@@ -24,7 +24,7 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
-async fn call_once<T>(f: impl async FnOnce() -> T) -> T {
+async fn call_once<T>(f: impl AsyncFnOnce() -> T) -> T {
     f().await
 }
 

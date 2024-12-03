@@ -6,7 +6,9 @@
 
 #![feature(async_closure, unboxed_closures, async_fn_traits)]
 
-fn project<F: async Fn<()>>(_: F) -> Option<F::Output> { None }
+use std::ops::AsyncFn;
+
+fn project<F: AsyncFn<()>>(_: F) -> Option<F::Output> { None }
 
 fn main() {
     let x: Option<i32> = project(|| async { 1i32 });

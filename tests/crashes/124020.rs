@@ -1,7 +1,7 @@
 //@ known-bug: #124020
 //@ compile-flags: -Zpolymorphize=on --edition=2018 --crate-type=lib
 
-#![feature(async_closure, noop_waker, async_fn_traits)]
+#![feature(async_closure, noop_waker, async_trait_bounds)]
 
 use std::future::Future;
 use std::pin::pin;
@@ -19,7 +19,7 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
-async fn call_once(f: impl async FnOnce(DropMe)) {
+async fn call_once(f: impl AsyncFnOnce(DropMe)) {
     f(DropMe("world")).await;
 }
 

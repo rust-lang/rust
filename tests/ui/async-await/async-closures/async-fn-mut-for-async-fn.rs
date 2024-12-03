@@ -10,7 +10,7 @@ fn main() {
     block_on::block_on(async {
         let x = async || {};
 
-        async fn needs_async_fn_mut(mut x: impl async FnMut()) {
+        async fn needs_async_fn_mut(mut x: impl AsyncFnMut()) {
             x().await;
         }
         needs_async_fn_mut(x).await;

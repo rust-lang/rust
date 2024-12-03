@@ -2,7 +2,7 @@
 
 #![feature(async_closure)]
 
-fn foo(x: &dyn async Fn()) {}
+fn foo(x: &dyn AsyncFn()) {}
 //~^ ERROR the trait `AsyncFnMut` cannot be made into an object
 
 fn main() {}

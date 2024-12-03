@@ -13,7 +13,6 @@
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(clone_to_uninit)]
-#![feature(const_align_of_val_raw)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
 #![feature(const_nonnull_new)]

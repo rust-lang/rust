@@ -1389,10 +1389,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // `ConstArgKind::Path`. We never actually access this `DefId`
             // anywhere so we don't need to encode it for other crates.
             if def_kind == DefKind::AnonConst
-                && matches!(
-                    tcx.hir_node_by_def_id(local_id),
-                    hir::Node::ConstArg(hir::ConstArg { kind: hir::ConstArgKind::Path(..), .. })
-                )
+                && match tcx.hir_node_by_def_id(local_id) {
+                    hir::Node::ConstArg(hir::ConstArg { kind, .. }) => match kind {
+                        // Skip encoding defs for these as they should not have had a `DefId` created
+                        hir::ConstArgKind::Path(..) | hir::ConstArgKind::Infer(..) => true,
+                        hir::ConstArgKind::Anon(..) => false,
+                    },
+                    _ => false,
+                }
             {
                 continue;
             }

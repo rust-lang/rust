@@ -74,7 +74,7 @@ fn create_jit_module(
     jit_builder.symbol("__clif_jit_fn", clif_jit_fn as *const u8);
     let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
 
-    let cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, Symbol::intern("dummy_cgu_name"));
+    let cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, sym::dummy_cgu_name);
 
     crate::allocator::codegen(tcx, &mut jit_module);
 
@@ -276,12 +276,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
 
             jit_module.module.prepare_for_function_redefine(func_id).unwrap();
 
-            let mut cx = crate::CodegenCx::new(
-                tcx,
-                jit_module.isa(),
-                false,
-                Symbol::intern("dummy_cgu_name"),
-            );
+            let mut cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, sym::dummy_cgu_name);
             codegen_and_compile_fn(tcx, &mut cx, &mut Context::new(), jit_module, instance);
 
             assert!(cx.global_asm.is_empty());
