@@ -1287,8 +1287,8 @@ impl InferenceContext<'_> {
         tgt_expr: ExprId,
     ) {
         match fn_x {
-            FnTrait::FnOnce => (),
-            FnTrait::FnMut => {
+            FnTrait::FnOnce | FnTrait::AsyncFnOnce => (),
+            FnTrait::FnMut | FnTrait::AsyncFnMut => {
                 if let TyKind::Ref(Mutability::Mut, lt, inner) = derefed_callee.kind(Interner) {
                     if adjustments
                         .last()
@@ -1312,7 +1312,7 @@ impl InferenceContext<'_> {
                     ));
                 }
             }
-            FnTrait::Fn => {
+            FnTrait::Fn | FnTrait::AsyncFn => {
                 if !matches!(derefed_callee.kind(Interner), TyKind::Ref(Mutability::Not, _, _)) {
                     adjustments.push(Adjustment::borrow(
                         Mutability::Not,

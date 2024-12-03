@@ -794,69 +794,75 @@ impl<'a> InferenceTable<'a> {
         ty: &Ty,
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty>, Ty)> {
-        let krate = self.trait_env.krate;
-        let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
-        let trait_data = self.db.trait_data(fn_once_trait);
-        let output_assoc_type =
-            trait_data.associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
+        for (fn_trait_name, output_assoc_name, subtraits) in [
+            (FnTrait::FnOnce, sym::Output.clone(), &[FnTrait::Fn, FnTrait::FnMut][..]),
+            (FnTrait::AsyncFnMut, sym::CallRefFuture.clone(), &[FnTrait::AsyncFn]),
+            (FnTrait::AsyncFnOnce, sym::CallOnceFuture.clone(), &[]),
+        ] {
+            let krate = self.trait_env.krate;
+            let fn_trait = fn_trait_name.get_id(self.db, krate)?;
+            let trait_data = self.db.trait_data(fn_trait);
+            let output_assoc_type =
+                trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
-        let mut arg_tys = Vec::with_capacity(num_args);
-        let arg_ty = TyBuilder::tuple(num_args)
-            .fill(|it| {
-                let arg = match it {
-                    ParamKind::Type => self.new_type_var(),
-                    ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
-                    ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
-                };
-                arg_tys.push(arg.clone());
-                arg.cast(Interner)
-            })
-            .build();
+            let mut arg_tys = Vec::with_capacity(num_args);
+            let arg_ty = TyBuilder::tuple(num_args)
+                .fill(|it| {
+                    let arg = match it {
+                        ParamKind::Type => self.new_type_var(),
+                        ParamKind::Lifetime => unreachable!("Tuple with lifetime parameter"),
+                        ParamKind::Const(_) => unreachable!("Tuple with const parameter"),
+                    };
+                    arg_tys.push(arg.clone());
+                    arg.cast(Interner)
+                })
+                .build();
 
-        let b = TyBuilder::trait_ref(self.db, fn_once_trait);
-        if b.remaining() != 2 {
-            return None;
-        }
-        let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
+            let b = TyBuilder::trait_ref(self.db, fn_trait);
+            if b.remaining() != 2 {
+                return None;
+            }
+            let mut trait_ref = b.push(ty.clone()).push(arg_ty).build();
 
-        let projection = {
-            TyBuilder::assoc_type_projection(
+            let projection = TyBuilder::assoc_type_projection(
                 self.db,
                 output_assoc_type,
                 Some(trait_ref.substitution.clone()),
             )
-            .build()
-        };
+            .fill_with_unknown()
+            .build();
 
-        let trait_env = self.trait_env.env.clone();
-        let obligation = InEnvironment {
-            goal: trait_ref.clone().cast(Interner),
-            environment: trait_env.clone(),
-        };
-        let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some() {
-            self.register_obligation(obligation.goal);
-            let return_ty = self.normalize_projection_ty(projection);
-            for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
-                let fn_x_trait = fn_x.get_id(self.db, krate)?;
-                trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
-                let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
-                    goal: trait_ref.clone().cast(Interner),
-                    environment: trait_env.clone(),
-                };
-                let canonical = self.canonicalize(obligation.clone());
-                if self
-                    .db
-                    .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
-                    .is_some()
-                {
-                    return Some((fn_x, arg_tys, return_ty));
+            let trait_env = self.trait_env.env.clone();
+            let obligation = InEnvironment {
+                goal: trait_ref.clone().cast(Interner),
+                environment: trait_env.clone(),
+            };
+            let canonical = self.canonicalize(obligation.clone());
+            if self.db.trait_solve(krate, self.trait_env.block, canonical.cast(Interner)).is_some()
+            {
+                self.register_obligation(obligation.goal);
+                let return_ty = self.normalize_projection_ty(projection);
+                for &fn_x in subtraits {
+                    let fn_x_trait = fn_x.get_id(self.db, krate)?;
+                    trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
+                    let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> =
+                        InEnvironment {
+                            goal: trait_ref.clone().cast(Interner),
+                            environment: trait_env.clone(),
+                        };
+                    let canonical = self.canonicalize(obligation.clone());
+                    if self
+                        .db
+                        .trait_solve(krate, self.trait_env.block, canonical.cast(Interner))
+                        .is_some()
+                    {
+                        return Some((fn_x, arg_tys, return_ty));
+                    }
                 }
+                return Some((fn_trait_name, arg_tys, return_ty));
             }
-            unreachable!("It should at least implement FnOnce at this point");
-        } else {
-            None
         }
+        None
     }
 
     pub(super) fn insert_type_vars<T>(&mut self, ty: T) -> T
