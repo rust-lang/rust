@@ -425,6 +425,41 @@
                         ],
                         "default": "openLogs",
                         "markdownDescription": "Action to run when clicking the extension status bar item."
+                    },
+                    "rust-analyzer.statusBar.documentSelector": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "language": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "pattern": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            }
+                        },
+                        "default": [
+                            {
+                                "language": "rust"
+                            },
+                            {
+                                "pattern": "**/Cargo.toml"
+                            },
+                            {
+                                "pattern": "**/Cargo.lock"
+                            }
+                        ],
+                        "markdownDescription": "Determines when to show the extension status bar item based on the currently open file. Use `{ \"pattern\": \"**\" }` to always show. Use `null` to never show."
                     }
                 }
             },
