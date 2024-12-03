@@ -8,7 +8,7 @@
 #![allow(dropping_copy_types)]
 #![allow(unused_imports)]
 
- //~ WARNING unused extern crate
+ //~ WARNING unused `extern crate`
 // Shouldn't suggest changing to `use`, as `another_name`
 // would no longer be added to the prelude which could cause
 // compilation errors for imports that use `another_name` in other
