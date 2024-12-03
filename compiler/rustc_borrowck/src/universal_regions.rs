@@ -33,8 +33,8 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{ErrorGuaranteed, Symbol};
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -524,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 let reg_vid = self
                     .infcx
-                    .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("c-variadic")))
+                    .next_nll_region_var(FR, || RegionCtxt::Free(sym::c_dash_variadic))
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
@@ -540,10 +540,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
         }
 
-        let fr_fn_body = self
-            .infcx
-            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("fn_body")))
-            .as_var();
+        let fr_fn_body =
+            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(sym::fn_body)).as_var();
 
         let num_universals = self.infcx.num_region_vars();
 
