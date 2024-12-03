@@ -350,10 +350,13 @@ impl<'test> TestCx<'test> {
             }
         } else {
             if proc_res.status.success() {
-                self.fatal_proc_rec(
-                    &format!("{} test compiled successfully!", self.config.mode)[..],
-                    proc_res,
-                );
+                {
+                    self.error(&format!("{} test did not emit an error", self.config.mode));
+                    if self.config.mode == crate::common::Mode::Ui {
+                        println!("note: by default, ui tests are expected not to compile");
+                    }
+                    proc_res.fatal(None, || ());
+                };
             }
 
             if !self.props.dont_check_failure_status {
