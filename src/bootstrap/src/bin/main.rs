@@ -48,9 +48,9 @@ fn main() {
             err => {
                 drop(err);
                 if let Ok(pid) = pid {
-                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                    eprintln!("WARNING: build directory locked by process {pid}, waiting for lock");
                 } else {
-                    println!("WARNING: build directory locked, waiting for lock");
+                    eprintln!("WARNING: build directory locked, waiting for lock");
                 }
                 let mut lock = t!(build_lock.write());
                 t!(lock.write(process::id().to_string().as_ref()));
@@ -70,13 +70,13 @@ fn main() {
     // changelog warning, not the `x.py setup` message.
     let suggest_setup = config.config.is_none() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
-        println!("WARNING: you have not made a `config.toml`");
-        println!(
+        eprintln!("WARNING: you have not made a `config.toml`");
+        eprintln!(
             "HELP: consider running `./x.py setup` or copying `config.example.toml` by running \
             `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
-        println!("{suggestion}");
+        eprintln!("{suggestion}");
     }
 
     let pre_commit = config.src.join(".git").join("hooks").join("pre-commit");
@@ -86,13 +86,13 @@ fn main() {
     Build::new(config).build();
 
     if suggest_setup {
-        println!("WARNING: you have not made a `config.toml`");
-        println!(
+        eprintln!("WARNING: you have not made a `config.toml`");
+        eprintln!(
             "HELP: consider running `./x.py setup` or copying `config.example.toml` by running \
             `cp config.example.toml config.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
-        println!("{suggestion}");
+        eprintln!("{suggestion}");
     }
 
     // Give a warning if the pre-commit script is in pre-commit and not pre-push.
@@ -102,14 +102,14 @@ fn main() {
     if fs::read_to_string(pre_commit).is_ok_and(|contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
-        println!(
+        eprintln!(
             "WARNING: You have the pre-push script installed to .git/hooks/pre-commit. \
                   Consider moving it to .git/hooks/pre-push instead, which runs less often."
         );
     }
 
     if suggest_setup || changelog_suggestion.is_some() {
-        println!("NOTE: this message was printed twice to make it more likely to be seen");
+        eprintln!("NOTE: this message was printed twice to make it more likely to be seen");
     }
 
     if dump_bootstrap_shims {
