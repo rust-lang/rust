@@ -14,7 +14,6 @@
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
-#![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 // Configure clippy and other lints
 #![allow(

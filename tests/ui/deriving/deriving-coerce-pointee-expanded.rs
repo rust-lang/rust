@@ -1,6 +1,5 @@
 //@ check-pass
 //@ compile-flags: -Zunpretty=expanded
-#![feature(derive_coerce_pointee)]
 use std::marker::CoercePointee;
 
 pub trait MyTrait<T: ?Sized> {}
