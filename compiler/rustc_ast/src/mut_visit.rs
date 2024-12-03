@@ -1789,20 +1789,21 @@ pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Optio
 
 pub fn walk_flat_map_stmt<T: MutVisitor>(
     vis: &mut T,
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, span, mut id }: Stmt,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
-    let stmts: SmallVec<_> = walk_flat_map_stmt_kind(vis, kind)
+    let mut stmts: SmallVec<[Stmt; 1]> = walk_flat_map_stmt_kind(vis, kind)
         .into_iter()
         .map(|kind| Stmt { id, kind, span })
         .collect();
-    if stmts.len() > 1 {
-        panic!(
+    match stmts.len() {
+        0 => {}
+        1 => vis.visit_span(&mut stmts[0].span),
+        2.. => panic!(
             "cloning statement `NodeId`s is prohibited by default, \
              the visitor should implement custom statement visiting"
-        );
+        ),
     }
-    vis.visit_span(&mut span);
     stmts
 }
 
