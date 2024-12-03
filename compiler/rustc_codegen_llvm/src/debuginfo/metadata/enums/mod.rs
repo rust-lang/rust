@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_abi::{FieldIdx, TagEncoding, VariantIdx, Variants};
 use rustc_codegen_ssa::debuginfo::type_names::{compute_debuginfo_type_name, cpp_like_debuginfo};
 use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
+use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
 use rustc_middle::bug;
@@ -16,8 +17,8 @@ use super::{SmallVec, size_and_align_of};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub};
 use crate::debuginfo::metadata::{
-    UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
-    unknown_file_metadata,
+    UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes,
+    file_metadata_from_def_id, type_di_node, unknown_file_metadata,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFlags, DIType};
@@ -68,6 +69,11 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let containing_scope = get_namespace_for_item(cx, enum_adt_def.did());
+    let enum_adt_def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(enum_adt_def.did())
+    } else {
+        None
+    };
     DINodeCreationResult {
         di_node: build_enumeration_type_di_node(
             cx,
@@ -77,6 +83,7 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
                 let name = Cow::from(enum_adt_def.variant(variant_index).name.as_str());
                 (name, discr.val)
             }),
+            enum_adt_def_id,
             containing_scope,
         ),
         already_stored_in_typemap: false,
@@ -92,6 +99,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
     type_name: &str,
     base_type: Ty<'tcx>,
     enumerators: impl Iterator<Item = (Cow<'tcx, str>, u128)>,
+    def_id: Option<rustc_span::def_id::DefId>,
     containing_scope: &'ll DIType,
 ) -> &'ll DIType {
     let is_unsigned = match base_type.kind() {
@@ -115,14 +123,21 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         })
         .collect();
 
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, def_id)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateEnumerationType(
             DIB(cx),
             containing_scope,
             type_name.as_c_char_ptr(),
             type_name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            file_metadata,
+            line_number,
             size.bits(),
             align.bits() as u32,
             create_DIArray(DIB(cx), &enumerator_di_nodes[..]),
@@ -193,6 +208,12 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ) -> &'ll DIType {
     assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
 
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(variant_def.def_id)))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -204,6 +225,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             variant_def.name.as_str(),
+            def_location,
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),
@@ -231,6 +253,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         variant_layout.fields.offset(field_index),
                         di_flags,
                         type_di_node(cx, field_layout.ty),
+                        None,
                     )
                 })
                 .collect::<SmallVec<_>>()
@@ -286,6 +309,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &variant_name,
+            None,
             size_and_align_of(coroutine_type_and_layout),
             Some(coroutine_type_di_node),
             DIFlags::FlagZero,
@@ -312,6 +336,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         variant_layout.fields.offset(field_index),
                         DIFlags::FlagZero,
                         type_di_node(cx, field_type),
+                        None,
                     )
                 })
                 .collect();
@@ -331,6 +356,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         coroutine_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, upvar_ty),
+                        None,
                     )
                 })
                 .collect();
