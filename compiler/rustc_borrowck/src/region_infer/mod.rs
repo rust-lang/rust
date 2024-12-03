@@ -1068,37 +1068,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
-
-        // Opaque types' args may include useless lifetimes.
-        // We will replace them with ReStatic.
-        struct OpaqueFolder<'tcx> {
-            tcx: TyCtxt<'tcx>,
-        }
-        impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for OpaqueFolder<'tcx> {
-            fn cx(&self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                use ty::TypeSuperFoldable as _;
-                let tcx = self.tcx;
-                let &ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() else {
-                    return t.super_fold_with(self);
-                };
-                let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {
-                    match (arg.unpack(), v) {
-                        (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => {
-                            tcx.lifetimes.re_static.into()
-                        }
-                        _ => arg.fold_with(self),
-                    }
-                });
-                Ty::new_opaque(tcx, def_id, tcx.mk_args_from_iter(args))
-            }
-        }
-
-        let ty = ty.fold_with(&mut OpaqueFolder { tcx });
         let mut failed = false;
-
         let ty = fold_regions(tcx, ty, |r, _depth| {
             let r_vid = self.to_region_vid(r);
             let r_scc = self.constraint_sccs.scc(r_vid);
