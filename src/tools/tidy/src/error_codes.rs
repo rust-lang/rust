@@ -38,7 +38,7 @@ const IGNORE_UI_TEST_CHECK: &[&str] =
 macro_rules! verbose_print {
     ($verbose:expr, $($fmt:tt)*) => {
         if $verbose {
-            println!("{}", format_args!($($fmt)*));
+            eprintln!("{}", format_args!($($fmt)*));
         }
     };
 }
@@ -49,8 +49,8 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
     // Stage 1: create list
     let error_codes = extract_error_codes(root_path, &mut errors);
     if verbose {
-        println!("Found {} error codes", error_codes.len());
-        println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
+        eprintln!("Found {} error codes", error_codes.len());
+        eprintln!("Highest error code: `{}`", error_codes.iter().max().unwrap());
     }
 
     // Stage 2: check list has docs
