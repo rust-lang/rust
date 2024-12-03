@@ -19,6 +19,8 @@ fn main() {
         "static/images/favicon-32x32.png",
         "static/fonts/FiraSans-Regular.woff2",
         "static/fonts/FiraSans-Medium.woff2",
+        "static/fonts/FiraMono-Regular.woff2",
+        "static/fonts/FiraMono-Medium.woff2",
         "static/fonts/FiraSans-LICENSE.txt",
         "static/fonts/SourceSerif4-Regular.ttf.woff2",
         "static/fonts/SourceSerif4-Bold.ttf.woff2",

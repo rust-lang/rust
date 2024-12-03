@@ -100,6 +100,8 @@ static_files! {
     rust_favicon_png_32 => "static/images/favicon-32x32.png",
     fira_sans_regular => "static/fonts/FiraSans-Regular.woff2",
     fira_sans_medium => "static/fonts/FiraSans-Medium.woff2",
+    fira_mono_regular => "static/fonts/FiraMono-Regular.woff2",
+    fira_mono_medium => "static/fonts/FiraMono-Medium.woff2",
     fira_sans_license => "static/fonts/FiraSans-LICENSE.txt",
     source_serif_4_regular => "static/fonts/SourceSerif4-Regular.ttf.woff2",
     source_serif_4_bold => "static/fonts/SourceSerif4-Bold.ttf.woff2",

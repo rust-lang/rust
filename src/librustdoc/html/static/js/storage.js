@@ -211,6 +211,9 @@ if (getSettingValue("hide-toc") === "true") {
 if (getSettingValue("hide-modnav") === "true") {
     addClass(document.documentElement, "hide-modnav");
 }
+if (getSettingValue("sans-serif-fonts") === "true") {
+    addClass(document.documentElement, "sans-serif");
+}
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
     if (desktopSidebarWidth && desktopSidebarWidth !== "null") {
