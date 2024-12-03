@@ -10,7 +10,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, sym};
 
-use super::CHARS_ENUMERATE_FOR_BYTE_INDICES;
+use super::CHAR_INDICES_AS_BYTE_INDICES;
 
 // The list of `str` methods we want to lint that have a `usize` argument representing a byte index.
 // Note: `String` also has methods that work with byte indices,
@@ -101,7 +101,7 @@ fn check_index_usage<'tcx>(
 
     span_lint_hir_and_then(
         cx,
-        CHARS_ENUMERATE_FOR_BYTE_INDICES,
+        CHAR_INDICES_AS_BYTE_INDICES,
         expr.hir_id,
         expr.span,
         message,

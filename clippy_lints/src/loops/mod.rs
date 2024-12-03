@@ -1,4 +1,4 @@
-mod chars_enumerate_for_byte_indices;
+mod char_indices_as_byte_indices;
 mod empty_loop;
 mod explicit_counter_loop;
 mod explicit_into_iter_loop;
@@ -779,7 +779,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.83.0"]
-    pub CHARS_ENUMERATE_FOR_BYTE_INDICES,
+    pub CHAR_INDICES_AS_BYTE_INDICES,
     correctness,
     "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"
 }
@@ -821,7 +821,7 @@ impl_lint_pass!(Loops => [
     UNUSED_ENUMERATE_INDEX,
     INFINITE_LOOP,
     MANUAL_SLICE_FILL,
-    CHARS_ENUMERATE_FOR_BYTE_INDICES,
+    CHAR_INDICES_AS_BYTE_INDICES,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -905,7 +905,7 @@ impl Loops {
         manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
         unused_enumerate_index::check(cx, pat, arg, body);
-        chars_enumerate_for_byte_indices::check(cx, pat, arg, body);
+        char_indices_as_byte_indices::check(cx, pat, arg, body);
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
