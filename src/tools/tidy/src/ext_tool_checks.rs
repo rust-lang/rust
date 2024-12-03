@@ -445,7 +445,7 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
     }
 
     let status = Command::new("shellcheck").args(args).status()?;
-    if status.success() { Ok(()) } else { Err(Error::FailedCheck("black")) }
+    if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
 }
 
 /// Check git for tracked files matching an extension
