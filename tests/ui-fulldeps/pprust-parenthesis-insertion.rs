@@ -165,13 +165,6 @@ impl MutVisitor for Normalize {
         *span = DUMMY_SP;
     }
 
-    fn visit_expr(&mut self, expr: &mut P<Expr>) {
-        if let ExprKind::Binary(binop, _left, _right) = &mut expr.kind {
-            self.visit_span(&mut binop.span);
-        }
-        mut_visit::walk_expr(self, expr);
-    }
-
     fn flat_map_stmt(&mut self, mut stmt: Stmt) -> SmallVec<[Stmt; 1]> {
         self.visit_span(&mut stmt.span);
         mut_visit::walk_flat_map_stmt(self, stmt)

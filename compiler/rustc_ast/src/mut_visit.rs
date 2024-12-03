@@ -1628,9 +1628,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             visit_thin_exprs(vis, call_args);
             vis.visit_span(span);
         }
-        ExprKind::Binary(_binop, lhs, rhs) => {
+        ExprKind::Binary(binop, lhs, rhs) => {
             vis.visit_expr(lhs);
             vis.visit_expr(rhs);
+            vis.visit_span(&mut binop.span);
         }
         ExprKind::Unary(_unop, ohs) => vis.visit_expr(ohs),
         ExprKind::Cast(expr, ty) => {
