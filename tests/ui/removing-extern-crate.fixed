@@ -5,12 +5,12 @@
 
 #![warn(rust_2018_idioms)]
 
- //~ WARNING unused extern crate
- //~ WARNING unused extern crate
+ //~ WARNING unused `extern crate`
+ //~ WARNING unused `extern crate`
 
 mod another {
-     //~ WARNING unused extern crate
-     //~ WARNING unused extern crate
+     //~ WARNING unused `extern crate`
+     //~ WARNING unused `extern crate`
 }
 
 fn main() {}

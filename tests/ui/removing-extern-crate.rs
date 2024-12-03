@@ -5,12 +5,14 @@
 
 #![warn(rust_2018_idioms)]
 
-extern crate removing_extern_crate as foo; //~ WARNING unused extern crate
-extern crate core; //~ WARNING unused extern crate
+#[cfg_attr(test, macro_use)]
+extern crate removing_extern_crate as foo; //~ WARNING unused `extern crate`
+extern crate core; //~ WARNING unused `extern crate`
 
 mod another {
-    extern crate removing_extern_crate as foo; //~ WARNING unused extern crate
-    extern crate core; //~ WARNING unused extern crate
+    #[cfg_attr(test, macro_use)]
+    extern crate removing_extern_crate as foo; //~ WARNING unused `extern crate`
+    extern crate core; //~ WARNING unused `extern crate`
 }
 
 fn main() {}

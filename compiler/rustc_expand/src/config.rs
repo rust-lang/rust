@@ -292,7 +292,25 @@ impl<'a> StripUnconfigured<'a> {
         }
 
         if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
-            return vec![];
+            // `cfg` and `cfg_attr` gets replaced with an inert `rustc_cfg_placeholder` to keep the
+            // attribute "spot" in the AST. This allows suggestions to remove an item to provide a
+            // correct suggestion when `#[cfg_attr]`s are present.
+            let item = ast::AttrItem {
+                unsafety: ast::Safety::Default,
+                path: ast::Path::from_ident(rustc_span::symbol::Ident::with_dummy_span(
+                    sym::rustc_cfg_placeholder,
+                )),
+                args: ast::AttrArgs::Empty,
+                tokens: None,
+            };
+            let kind = ast::AttrKind::Normal(P(ast::NormalAttr { item, tokens: None }));
+            let attr: ast::Attribute = ast::Attribute {
+                kind,
+                id: self.sess.psess.attr_id_generator.mk_attr_id(),
+                style: ast::AttrStyle::Outer,
+                span: cfg_attr.span,
+            };
+            return vec![attr];
         }
 
         if recursive {
