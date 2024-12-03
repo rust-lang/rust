@@ -348,6 +348,10 @@ export class Config {
         return this.get<string>("statusBar.clickAction");
     }
 
+    get statusBarDocumentSelector() {
+        return this.get<vscode.DocumentSelector>("statusBar.documentSelector");
+    }
+
     get initializeStopped() {
         return this.get<boolean>("initializeStopped");
     }
