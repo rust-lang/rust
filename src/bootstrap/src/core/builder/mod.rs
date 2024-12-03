@@ -765,6 +765,54 @@ impl Kind {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct Libdir {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Libdir {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let relative_sysroot_libdir = builder.sysroot_libdir_relative(self.compiler);
+        let sysroot = builder.sysroot(self.compiler).join(relative_sysroot_libdir).join("rustlib");
+
+        if !builder.config.dry_run() {
+            // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
+            // Sysroot`).
+            if !builder.download_rustc() {
+                let sysroot_target_libdir = sysroot.join(self.target).join("lib");
+                builder.verbose(|| {
+                    eprintln!(
+                        "Removing sysroot {} to avoid caching bugs",
+                        sysroot_target_libdir.display()
+                    )
+                });
+                let _ = fs::remove_dir_all(&sysroot_target_libdir);
+                t!(fs::create_dir_all(&sysroot_target_libdir));
+            }
+
+            if self.compiler.stage == 0 {
+                // The stage 0 compiler for the build triple is always pre-built. Ensure that
+                // `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use
+                // it when run.
+                dist::maybe_install_llvm_target(
+                    builder,
+                    self.compiler.host,
+                    &builder.sysroot(self.compiler),
+                );
+            }
+        }
+
+        sysroot
+    }
+}
+
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
@@ -1165,56 +1213,13 @@ impl<'a> Builder<'a> {
 
     /// Returns the bindir for a compiler's sysroot.
     pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
-        self.sysroot_target_libdir(compiler, target).parent().unwrap().join("bin")
+        self.ensure(Libdir { compiler, target }).join(target).join("bin")
     }
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
     pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        struct Libdir {
-            compiler: Compiler,
-            target: TargetSelection,
-        }
-        impl Step for Libdir {
-            type Output = PathBuf;
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.never()
-            }
-
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
-                let lib = builder.sysroot_libdir_relative(self.compiler);
-                let sysroot = builder
-                    .sysroot(self.compiler)
-                    .join(lib)
-                    .join("rustlib")
-                    .join(self.target)
-                    .join("lib");
-                // Avoid deleting the rustlib/ directory we just copied
-                // (in `impl Step for Sysroot`).
-                if !builder.download_rustc() {
-                    builder.verbose(|| {
-                        println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
-                    });
-                    let _ = fs::remove_dir_all(&sysroot);
-                    t!(fs::create_dir_all(&sysroot));
-                }
-
-                if self.compiler.stage == 0 {
-                    // The stage 0 compiler for the build triple is always pre-built.
-                    // Ensure that `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use it when run.
-                    dist::maybe_install_llvm_target(
-                        builder,
-                        self.compiler.host,
-                        &builder.sysroot(self.compiler),
-                    );
-                }
-
-                sysroot
-            }
-        }
-        self.ensure(Libdir { compiler, target })
+        self.ensure(Libdir { compiler, target }).join(target).join("lib")
     }
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {

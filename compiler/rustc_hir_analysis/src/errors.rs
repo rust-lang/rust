@@ -1080,13 +1080,6 @@ pub(crate) struct EmptySpecialization {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_const_specialize)]
-pub(crate) struct ConstSpecialize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_static_specialize)]
 pub(crate) struct StaticSpecialize {
     #[primary_span]
