@@ -24,21 +24,31 @@ fn minos(file: &str, version: &str) {
 
 fn main() {
     // These versions should generally be higher than the default versions
-    let (env_var, example_version, higher_example_version) = match apple_os() {
-        "macos" => ("MACOSX_DEPLOYMENT_TARGET", "12.0", "13.0"),
+    let (example_version, higher_example_version) = match apple_os() {
+        "macos" => ("12.0", "13.0"),
         // armv7s-apple-ios and i386-apple-ios only supports iOS 10.0
-        "ios" if target() == "armv7s-apple-ios" || target() == "i386-apple-ios" => {
-            ("IPHONEOS_DEPLOYMENT_TARGET", "10.0", "10.0")
-        }
-        "ios" => ("IPHONEOS_DEPLOYMENT_TARGET", "15.0", "16.0"),
-        "watchos" => ("WATCHOS_DEPLOYMENT_TARGET", "7.0", "9.0"),
-        "tvos" => ("TVOS_DEPLOYMENT_TARGET", "14.0", "15.0"),
-        "visionos" => ("XROS_DEPLOYMENT_TARGET", "1.1", "1.2"),
+        "ios" if target() == "armv7s-apple-ios" || target() == "i386-apple-ios" => ("10.0", "10.0"),
+        "ios" => ("15.0", "16.0"),
+        "watchos" => ("7.0", "9.0"),
+        "tvos" => ("14.0", "15.0"),
+        "visionos" => ("1.1", "1.2"),
         _ => unreachable!(),
     };
-    let default_version =
-        rustc().target(target()).env_remove(env_var).print("deployment-target").run().stdout_utf8();
-    let default_version = default_version.strip_prefix("deployment_target=").unwrap().trim();
+
+    // Remove env vars to get `rustc`'s default
+    let output = rustc()
+        .target(target())
+        .env_remove("MACOSX_DEPLOYMENT_TARGET")
+        .env_remove("IPHONEOS_DEPLOYMENT_TARGET")
+        .env_remove("WATCHOS_DEPLOYMENT_TARGET")
+        .env_remove("TVOS_DEPLOYMENT_TARGET")
+        .env_remove("XROS_DEPLOYMENT_TARGET")
+        .print("deployment-target")
+        .run()
+        .stdout_utf8();
+    let (env_var, default_version) = output.split_once('=').unwrap();
+    let env_var = env_var.trim();
+    let default_version = default_version.trim();
 
     // Test that version makes it to the object file.
     run_in_tmpdir(|| {
