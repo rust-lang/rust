@@ -8,7 +8,7 @@
 #![allow(unused_variables)]
 #![allow(deprecated)]
 
-extern crate lint_unused_extern_crate5; //~ ERROR: unused extern crate
+extern crate lint_unused_extern_crate5; //~ ERROR: unused `extern crate`
 
 pub extern crate lint_unused_extern_crate4; // no error, it is re-exported
 
@@ -26,7 +26,7 @@ use other::*;
 
 mod foo {
     // Test that this is unused even though an earlier `extern crate` is used.
-    extern crate lint_unused_extern_crate2; //~ ERROR unused extern crate
+    extern crate lint_unused_extern_crate2; //~ ERROR unused `extern crate`
 }
 
 fn main() {
