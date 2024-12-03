@@ -307,7 +307,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _)
                 if !ty.has_escaping_bound_vars() =>
             {
-                self.normalize(span, ty).ty_adt_def()
+                if self.next_trait_solver() {
+                    self.try_structurally_resolve_type(span, ty).ty_adt_def()
+                } else {
+                    self.normalize(span, ty).ty_adt_def()
+                }
             }
             _ => None,
         }
