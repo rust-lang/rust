@@ -1,5 +1,5 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/lending_iterator.rs:13:45
+  --> $DIR/lending_iterator.rs:8:45
    |
 LL |     fn from_iter<T: for<'x> LendingIterator<Item<'x> = A>>(iter: T) -> Self;
    |     ------------------------------------------------------------------------ definition of `from_iter` from trait
@@ -8,7 +8,7 @@ LL |     fn from_iter<I: for<'x> LendingIterator<Item<'x> = A>>(mut iter: I) -> 
    |                                             ^^^^^^^^^^^^ impl has extra requirement `I: 'x`
 
 error: `Self` does not live long enough
-  --> $DIR/lending_iterator.rs:34:9
+  --> $DIR/lending_iterator.rs:28:9
    |
 LL |         <B as FromLendingIterator<A>>::from_iter(self)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

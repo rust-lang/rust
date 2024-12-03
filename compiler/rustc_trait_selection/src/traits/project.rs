@@ -14,7 +14,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
@@ -179,35 +179,11 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
 ) -> ProjectAndUnifyResult<'tcx> {
     let infcx = selcx.infcx;
     let r = infcx.commit_if_ok(|_snapshot| {
-        let old_universe = infcx.universe();
         let placeholder_predicate = infcx.enter_forall_and_leak_universe(obligation.predicate);
-        let new_universe = infcx.universe();
 
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
         match project_and_unify_term(selcx, &placeholder_obligation) {
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
-            ProjectAndUnifyResult::Holds(obligations)
-                if old_universe != new_universe
-                    && selcx.tcx().features().generic_associated_types_extended() =>
-            {
-                // If the `generic_associated_types_extended` feature is active, then we ignore any
-                // obligations references lifetimes from any universe greater than or equal to the
-                // universe just created. Otherwise, we can end up with something like `for<'a> I: 'a`,
-                // which isn't quite what we want. Ideally, we want either an implied
-                // `for<'a where I: 'a> I: 'a` or we want to "lazily" check these hold when we
-                // instantiate concrete regions. There is design work to be done here; until then,
-                // however, this allows experimenting potential GAT features without running into
-                // well-formedness issues.
-                let new_obligations = obligations
-                    .into_iter()
-                    .filter(|obligation| {
-                        let mut visitor = MaxUniverse::new();
-                        obligation.predicate.visit_with(&mut visitor);
-                        visitor.max_universe() < new_universe
-                    })
-                    .collect();
-                Ok(ProjectAndUnifyResult::Holds(new_obligations))
-            }
             other => Ok(other),
         }
     });
