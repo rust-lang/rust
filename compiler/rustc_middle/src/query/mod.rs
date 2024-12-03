@@ -1081,6 +1081,8 @@ rustc_queries! {
     }
 
     /// Computes the tag (if any) for a given type and variant.
+    /// `None` means that the variant doesn't need a tag (because it is niched).
+    /// Will panic for uninhabited variants.
     query tag_for_variant(
         key: (Ty<'tcx>, abi::VariantIdx)
     ) -> Option<ty::ScalarInt> {

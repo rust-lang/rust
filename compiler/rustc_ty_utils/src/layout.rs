@@ -81,7 +81,7 @@ fn layout_of<'tcx>(
         record_layout_for_printing(&cx, layout);
     }
 
-    invariant::partially_check_layout(&cx, &layout);
+    invariant::layout_sanity_check(&cx, &layout);
 
     Ok(layout)
 }
