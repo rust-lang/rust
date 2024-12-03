@@ -13,7 +13,7 @@ note: required by a bound in `copy`
    |
 LL | fn copy<R: Unpin, W>(_: R, _: W) {}
    |            ^^^^^ required by this bound in `copy`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn f<T: std::marker::Unpin>(r: T) {
    |       ++++++++++++++++++++
