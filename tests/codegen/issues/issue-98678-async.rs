@@ -6,7 +6,7 @@
 
 // ignore-tidy-linelength
 
-// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-async.rs{{".*}})
+// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-async.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-async.rs{{".*}})
 
 // NONMSVC-DAG: !DISubprogram(name: "foo",{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],

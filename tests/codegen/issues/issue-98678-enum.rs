@@ -4,7 +4,7 @@
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-enum.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-enum.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-enum.rs{{".*}})
 
 // NONMSVC: !DICompositeType({{.*"}}SingleCase{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],

@@ -5,7 +5,7 @@
 
 // ignore-tidy-linelength
 
-// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-struct-union.rs{{".*}})
+// NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-struct-union.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-struct-union.rs{{".*}})
 
 // CHECK: !DICompositeType({{.*"}}MyType{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],

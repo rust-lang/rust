@@ -6,7 +6,7 @@
 
 // ignore-tidy-linelength
 
-// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/issue-98678-closure-coroutine.rs{{".*}})
+// NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-closure-coroutine.rs{{".*}})
 // MSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-closure-coroutine.rs{{".*}})
 
 pub fn foo() {
