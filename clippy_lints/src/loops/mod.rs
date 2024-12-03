@@ -758,7 +758,8 @@ declare_clippy_lint! {
     /// Instead of `.chars().enumerate()`, the correct iterator to use is `.char_indices()`, which yields byte indices.
     ///
     /// This pattern is technically fine if the strings are known to only use the ASCII subset,
-    /// but there is also no downside to just using `.char_indices()` directly.
+    /// though in those cases it would be better to use `bytes()` directly to make the intent clearer,
+    /// but there is also no downside to just using `.char_indices()` directly and supporting non-ASCII strings.
     ///
     /// You may also want to read the [chapter on strings in the Rust Book](https://doc.rust-lang.org/book/ch08-02-strings.html)
     /// which goes into this in more detail.
