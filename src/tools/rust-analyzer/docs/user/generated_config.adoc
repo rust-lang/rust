@@ -992,10 +992,10 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
-[[rust-analyzer.typing.autoClosingAngleBrackets.enable]]rust-analyzer.typing.autoClosingAngleBrackets.enable (default: `false`)::
+[[rust-analyzer.typing.excludeChars]]rust-analyzer.typing.excludeChars (default: `null`)::
 +
 --
-Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`. Setting this to a string will disable typing assists for the specified characters.
 --
 [[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
 +

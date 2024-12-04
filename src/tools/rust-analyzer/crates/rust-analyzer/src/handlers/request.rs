@@ -459,9 +459,9 @@ pub(crate) fn handle_on_type_formatting(
     if char_typed == '>' {
         return Ok(None);
     }
+    let chars_to_exclude = snap.config.typing_exclude_chars();
 
-    let edit =
-        snap.analysis.on_char_typed(position, char_typed, snap.config.typing_autoclose_angle())?;
+    let edit = snap.analysis.on_char_typed(position, char_typed, chars_to_exclude)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
