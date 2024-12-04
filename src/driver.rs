@@ -284,7 +284,7 @@ pub fn main() {
         let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
             && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
 
-        // If `--no-deps` is enabled only lint the primary pacakge
+        // If `--no-deps` is enabled only lint the primary package
         let relevant_package = !no_deps || env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
         // Do not run Clippy for Cargo's info queries so that invalid CLIPPY_ARGS are not cached
