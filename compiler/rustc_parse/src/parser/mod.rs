@@ -882,14 +882,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Checks if the next token is contained within `kets`, and returns `true` if so.
+    /// Checks if the next token is contained within `closes`, and returns `true` if so.
     fn expect_any_with_type(
         &mut self,
-        kets_expected: &[&TokenKind],
-        kets_not_expected: &[&TokenKind],
+        closes_expected: &[&TokenKind],
+        closes_not_expected: &[&TokenKind],
     ) -> bool {
-        kets_expected.iter().any(|k| self.check(k))
-            || kets_not_expected.iter().any(|k| self.check_noexpect(k))
+        closes_expected.iter().any(|k| self.check(k))
+            || closes_not_expected.iter().any(|k| self.check_noexpect(k))
     }
 
     /// Parses a sequence until the specified delimiters. The function
@@ -897,8 +897,8 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_before_tokens<T>(
         &mut self,
-        kets_expected: &[&TokenKind],
-        kets_not_expected: &[&TokenKind],
+        closes_expected: &[&TokenKind],
+        closes_not_expected: &[&TokenKind],
         sep: SeqSep,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
@@ -907,7 +907,7 @@ impl<'a> Parser<'a> {
         let mut trailing = Trailing::No;
         let mut v = ThinVec::new();
 
-        while !self.expect_any_with_type(kets_expected, kets_not_expected) {
+        while !self.expect_any_with_type(closes_expected, closes_not_expected) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
                 break;
             }
@@ -1006,7 +1006,7 @@ impl<'a> Parser<'a> {
                                         // we will try to recover in `maybe_recover_struct_lit_bad_delims`
                                         return Err(expect_err);
                                     } else if let [token::CloseDelim(Delimiter::Parenthesis)] =
-                                        kets_expected
+                                        closes_expected
                                     {
                                         return Err(expect_err);
                                     } else {
@@ -1020,7 +1020,7 @@ impl<'a> Parser<'a> {
                 }
             }
             if sep.trailing_sep_allowed
-                && self.expect_any_with_type(kets_expected, kets_not_expected)
+                && self.expect_any_with_type(closes_expected, closes_not_expected)
             {
                 trailing = Trailing::Yes;
                 break;
@@ -1096,11 +1096,11 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_before_end<T>(
         &mut self,
-        ket: &TokenKind,
+        close: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
-        self.parse_seq_to_before_tokens(&[ket], &[], sep, f)
+        self.parse_seq_to_before_tokens(&[close], &[], sep, f)
     }
 
     /// Parses a sequence, including only the closing delimiter. The function
@@ -1108,15 +1108,15 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_seq_to_end<T>(
         &mut self,
-        ket: &TokenKind,
+        close: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
-        let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-        if matches!(recovered, Recovered::No) && !self.eat(ket) {
+        let (val, trailing, recovered) = self.parse_seq_to_before_end(close, sep, f)?;
+        if matches!(recovered, Recovered::No) && !self.eat(close) {
             self.dcx().span_delayed_bug(
                 self.token.span,
-                "recovered but `parse_seq_to_before_end` did not give us the ket token",
+                "recovered but `parse_seq_to_before_end` did not give us the close token",
             );
         }
         Ok((val, trailing))
@@ -1127,13 +1127,13 @@ impl<'a> Parser<'a> {
     /// closing bracket.
     fn parse_unspanned_seq<T>(
         &mut self,
-        bra: &TokenKind,
-        ket: &TokenKind,
+        open: &TokenKind,
+        close: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
-        self.expect(bra)?;
-        self.parse_seq_to_end(ket, sep, f)
+        self.expect(open)?;
+        self.parse_seq_to_end(close, sep, f)
     }
 
     /// Parses a comma-separated sequence, including both delimiters.

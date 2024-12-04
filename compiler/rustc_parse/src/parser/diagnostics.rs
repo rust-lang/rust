@@ -1125,11 +1125,11 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_err(lo.to(self.token.span), guar))
     }
 
-    /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
+    /// Eats and discards tokens until one of `closes` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        if let Err(err) =
-            self.parse_seq_to_before_tokens(kets, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
+    pub(super) fn eat_to_tokens(&mut self, closes: &[&TokenKind]) {
+        if let Err(err) = self
+            .parse_seq_to_before_tokens(closes, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
         {
             err.cancel();
         }
